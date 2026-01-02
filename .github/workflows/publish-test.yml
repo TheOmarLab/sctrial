@@ -9,6 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       id-token: write  # Mandatory for Trusted Publishing
+      contents: read   # Mandatory for actions/checkout in organization repos
 
     steps:
     - uses: actions/checkout@v4
