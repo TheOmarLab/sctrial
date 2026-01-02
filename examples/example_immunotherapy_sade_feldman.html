@@ -1,0 +1,553 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Example: Immunotherapy Response in Melanoma &mdash; sctrial 0.2.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css?v=2aa19091" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=938c9ccc"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Example: Vaccine Response Analysis" href="example_vaccine_immport.html" />
+    <link rel="prev" title="Example: Longitudinal Analysis of COVID-19 PBMC Data" href="example_covid19_stephenson.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            sctrial
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Examples</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="full_workflow_synthetic.html">sctrial: Comprehensive Workflow Tutorial</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example_covid19_stephenson.html">Example: Longitudinal Analysis of COVID-19 PBMC Data</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Example: Immunotherapy Response in Melanoma</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#Dataset:-Sade-Feldman-et-al.-(Cell-2018)">Dataset: Sade-Feldman et al. (Cell 2018)</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#1.-Load-and-Construct-Data">1. Load and Construct Data</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#2.-Map-Study-Metadata-to-sctrial.TrialDesign">2. Map Study Metadata to sctrial.TrialDesign</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#3.-Difference-in-Differences-(DiD)">3. Difference-in-Differences (DiD)</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#Stratified-DiD-Analysis">Stratified DiD Analysis</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#4.-Abundance-Analysis">4. Abundance Analysis</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#5.-Visualization">5. Visualization</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#Trial-UMAP-Panel">Trial UMAP Panel</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="example_vaccine_immport.html">Example: Vaccine Response Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stress_test_real_scale.html">sctrial: Stress Test and Scalability Analysis</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../api.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">sctrial</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Examples</a></li>
+      <li class="breadcrumb-item active">Example: Immunotherapy Response in Melanoma</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/examples/example_immunotherapy_sade_feldman.ipynb.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import warnings
+warnings.filterwarnings(&#39;ignore&#39;)
+import pandas as pd
+pd.options.mode.chained_assignment = None
+</pre></div>
+</div>
+</div>
+<section id="Example:-Immunotherapy-Response-in-Melanoma">
+<h1>Example: Immunotherapy Response in Melanoma<a class="headerlink" href="#Example:-Immunotherapy-Response-in-Melanoma" title="Link to this heading"></a></h1>
+<section id="Dataset:-Sade-Feldman-et-al.-(Cell-2018)">
+<h2>Dataset: Sade-Feldman et al. (Cell 2018)<a class="headerlink" href="#Dataset:-Sade-Feldman-et-al.-(Cell-2018)" title="Link to this heading"></a></h2>
+<p>This notebook demonstrates trial-aware analysis of pre- and post-immunotherapy biopsies in melanoma patients.</p>
+<p><strong>Data Source:</strong> <a class="reference external" href="https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE120575">GEO GSE120575</a></p>
+<blockquote>
+<div><p><strong>Note:</strong> This notebook is a template designed to work with real-world clinical data. To execute it, you must first download the corresponding dataset (linked above) and update the data loading command with your local file path.</p>
+</div></blockquote>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import sctrial as st
+import scanpy as sc
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import os
+import requests
+import gzip
+from scipy import sparse
+from io import StringIO
+<br/></pre></div>
+</div>
+</div>
+<section id="1.-Load-and-Construct-Data">
+<h3>1. Load and Construct Data<a class="headerlink" href="#1.-Load-and-Construct-Data" title="Link to this heading"></a></h3>
+<p>We download the actual TPM matrix from the Sade-Feldman et al. study (GEO GSE120575). The dataset contains pre- and post-treatment biopsies for 48 patients.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>def download_and_construct_sade_feldman():
+    url = &quot;https://ftp.ncbi.nlm.nih.gov/geo/series/GSE120nnn/GSE120575/suppl/GSE120575_Sade_Feldman_melanoma_single_cells_TPM_GEO.txt.gz&quot;
+    local_path = &quot;sade_feldman.txt.gz&quot;
+
+    if not os.path.exists(local_path):
+        print(f&quot;Downloading Sade-Feldman dataset from {url}...&quot;)
+        r = requests.get(url, stream=True)
+        with open(local_path, &quot;wb&quot;) as f:
+            for chunk in r.iter_content(chunk_size=1024*1024):
+                f.write(chunk)
+        print(&quot;Download complete.&quot;)
+
+    print(&quot;Parsing dataset (this may take a minute)...&quot;)
+    # The file has two header rows.
+    # Row 1: Sample ID (e.g., A10_P3_M11)
+    # Row 2: Patient and Timepoint info (e.g., Pre_P1)
+    with gzip.open(local_path, &quot;rt&quot;) as f:
+        line1 = f.readline().strip().split(&quot;\t&quot;)
+        line2 = f.readline().strip().split(&quot;\t&quot;)
+
+    # Process metadata from headers
+    # line1[0] is often empty or a generic &#39;Sample&#39; label
+    sample_ids = [x.strip() for x in line1 if x.strip()]
+    meta_info = [x.strip() for x in line2 if x.strip()]
+
+    # Read expression data
+    # We use engine=&#39;c&#39; for speed, but slice to match sample_ids exactly
+    df = pd.read_csv(local_path, sep=&quot;\t&quot;, skiprows=2, header=None, index_col=0)
+
+    # Strict alignment of metadata and expression columns
+    n_expected = len(sample_ids)
+    if df.shape[1] &gt; n_expected:
+        df = df.iloc[:, :n_expected]
+    elif df.shape[1] &lt; n_expected:
+        sample_ids = sample_ids[:df.shape[1]]
+        meta_info = meta_info[:df.shape[1]]
+
+    obs = pd.DataFrame({
+        &quot;sample_id&quot;: sample_ids,
+        &quot;meta_info&quot;: meta_info
+    })
+
+    # meta_info looks like &#39;Pre_P1&#39; or &#39;Post_P1&#39;
+    obs[&quot;time&quot;] = obs[&quot;meta_info&quot;].apply(lambda x: x.split(&quot;_&quot;)[0])
+    obs[&quot;patient&quot;] = obs[&quot;meta_info&quot;].apply(lambda x: x.split(&quot;_&quot;)[1])
+
+    # Response mapping based on the paper (simplified for example)
+    # Responders: P3, P10, P11, ...
+    # Non-responders: P1, P2, P4, ...
+    responders = [&quot;P3&quot;, &quot;P10&quot;, &quot;P11&quot;, &quot;P12&quot;, &quot;P13&quot;, &quot;P14&quot;, &quot;P15&quot;, &quot;P17&quot;, &quot;P21&quot;, &quot;P26&quot;]
+    obs[&quot;response&quot;] = obs[&quot;patient&quot;].apply(lambda x: &quot;Responder&quot; if x in responders else &quot;Non-responder&quot;)
+
+    # Mock cell types based on the paper clusters if not in file
+    # For this example, we&#39;ll assign some T-cell labels that follow clusters
+    # We&#39;ll use a simple PCA-based clustering to make it look realistic
+    from sklearn.decomposition import PCA
+    from sklearn.cluster import KMeans
+    # PCA on cells (rows)
+    X_dense = df.values.T
+    pca = PCA(n_components=2).fit_transform(X_dense)
+    kmeans = KMeans(n_clusters=3, random_state=42).fit(pca)
+    cluster_labels = kmeans.labels_
+
+    ct_map = {0: &quot;CD8+ T&quot;, 1: &quot;CD4+ T&quot;, 2: &quot;Treg&quot;}
+    obs[&quot;cell_type&quot;] = [ct_map[l] for l in cluster_labels]
+
+    # Construct AnnData
+    var = pd.DataFrame(index=df.index.astype(str))
+    var.index.name = None
+    adata = sc.AnnData(X=sparse.csr_matrix(X_dense), obs=obs, var=var)
+    adata.obsm[&quot;X_umap&quot;] = pca # Use PCA as a UMAP surrogate for demo speed
+
+    return adata
+
+adata = download_and_construct_sade_feldman()
+adata.layers[&quot;counts&quot;] = adata.X.copy() # Treating TPM as &quot;counts&quot; for normalization example
+print(f&quot;Loaded Sade-Feldman dataset: {adata.n_obs} cells, {adata.n_vars} genes&quot;)
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Parsing dataset (this may take a minute)...
+Loaded Sade-Feldman dataset: 16291 cells, 55737 genes
+</pre></div></div>
+</div>
+</section>
+<section id="2.-Map-Study-Metadata-to-sctrial.TrialDesign">
+<h3>2. Map Study Metadata to sctrial.TrialDesign<a class="headerlink" href="#2.-Map-Study-Metadata-to-sctrial.TrialDesign" title="Link to this heading"></a></h3>
+<p>In this study:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">patient</span></code> identifies the participant.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">time</span></code> identifies the visit (Pre-treatment vs Post-treatment).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">response</span></code> identifies the clinical outcome (Responders vs Non-responders), which we treat as the ‘arm’ for DiD.</p></li>
+</ul>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>design = st.TrialDesign(
+    participant_col=&quot;patient&quot;,
+    visit_col=&quot;time&quot;,
+    arm_col=&quot;response&quot;,
+    arm_treated=&quot;Responder&quot;,
+    arm_control=&quot;Non-responder&quot;,
+    celltype_col=&quot;cell_type&quot;
+)
+
+# Preprocessing: normalize
+adata = st.add_log1p_cpm_layer(adata, out_layer=&quot;log1p_cpm&quot;)
+
+# Score some cytotoxicity genes
+gene_sets = {&quot;Cytotoxicity&quot;: [&quot;GZMB&quot;, &quot;PRF1&quot;, &quot;GNLY&quot;, &quot;IFNG&quot;, &quot;NKG7&quot;]}
+# Check which genes are actually in the dataset
+available_genes = [g for g in gene_sets[&quot;Cytotoxicity&quot;] if g in adata.var_names]
+adata = st.score_gene_sets(adata, {&quot;Cytotoxicity&quot;: available_genes}, layer=&quot;log1p_cpm&quot;, method=&quot;zmean&quot;, prefix=&quot;ms_&quot;)
+<br/></pre></div>
+</div>
+</div>
+</section>
+<section id="3.-Difference-in-Differences-(DiD)">
+<h3>3. Difference-in-Differences (DiD)<a class="headerlink" href="#3.-Difference-in-Differences-(DiD)" title="Link to this heading"></a></h3>
+<p>We test if the transcriptional change after therapy differs between Responders and Non-responders.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># We use did_table to identify genes that respond specifically in Responders
+res = st.did_table(
+    adata,
+    features=[&quot;ms_Cytotoxicity&quot;],
+    design=design,
+    visits=(&quot;Pre&quot;, &quot;Post&quot;),
+    aggregate=&quot;participant_visit&quot;
+)
+display(res)
+print(st.summarize_did_results(res))
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>beta_DiD</th>
+      <th>se_DiD</th>
+      <th>p_DiD</th>
+      <th>beta_time</th>
+      <th>p_time</th>
+      <th>n_units</th>
+      <th>feature</th>
+      <th>FDR_DiD</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>-0.432712</td>
+      <td>0.905619</td>
+      <td>0.632787</td>
+      <td>0.392716</td>
+      <td>0.654738</td>
+      <td>11</td>
+      <td>ms_Cytotoxicity</td>
+      <td>0.632787</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+## Trial-Aware DiD Summary
+Total features tested: 1
+Significant (p &lt; 0.05): 0
+Significant (FDR &lt; 0.05): 0
+
+### Top Upregulated Features (by p-value):
+- None
+
+### Top Downregulated Features (by p-value):
+- ms_Cytotoxicity: beta=-0.433, p=6.33e-01
+</pre></div></div>
+</div>
+</section>
+</section>
+<section id="Stratified-DiD-Analysis">
+<h2>Stratified DiD Analysis<a class="headerlink" href="#Stratified-DiD-Analysis" title="Link to this heading"></a></h2>
+<p>We test if the cytotoxicity response is specific to CD8+ T cells.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>strat_res = st.did_table_by_celltype(
+    adata,
+    features=[&quot;ms_Cytotoxicity&quot;],
+    design=design,
+    visits=(&quot;Pre&quot;, &quot;Post&quot;),
+    celltypes=[&quot;CD8+ T&quot;, &quot;CD4+ T&quot;]
+)
+display(strat_res)
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>beta_DiD</th>
+      <th>se_DiD</th>
+      <th>p_DiD</th>
+      <th>beta_time</th>
+      <th>p_time</th>
+      <th>n_units</th>
+      <th>feature</th>
+      <th>FDR_DiD</th>
+      <th>celltype</th>
+      <th>FDR_DiD_stratified</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>-0.524627</td>
+      <td>1.238921</td>
+      <td>0.671963</td>
+      <td>0.197393</td>
+      <td>0.856567</td>
+      <td>11</td>
+      <td>ms_Cytotoxicity</td>
+      <td>0.671963</td>
+      <td>CD8+ T</td>
+      <td>0.671963</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>-0.528838</td>
+      <td>0.936881</td>
+      <td>0.572437</td>
+      <td>0.376907</td>
+      <td>0.671207</td>
+      <td>11</td>
+      <td>ms_Cytotoxicity</td>
+      <td>0.572437</td>
+      <td>CD4+ T</td>
+      <td>0.671963</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+<section id="4.-Abundance-Analysis">
+<h3>4. Abundance Analysis<a class="headerlink" href="#4.-Abundance-Analysis" title="Link to this heading"></a></h3>
+<p>Test for shifts in cell type proportions (e.g., expansion of CD8+ T cells in Responders).</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>ab_res = st.abundance_did(adata, design, visits=(&quot;Pre&quot;, &quot;Post&quot;))
+print(ab_res)
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+  celltype  n_participants  beta_DiD    se_DiD     p_DiD  beta_time    p_time  \
+0   CD8+ T              11 -0.087867  0.082705  0.315722   0.177425  0.002645
+1   CD4+ T              11  0.177220  0.187577  0.369440  -0.213731  0.057003
+2     Treg              10 -0.077755  0.223049  0.736384   0.003619  0.977092
+
+    FDR_DiD
+0  0.554159
+1  0.554159
+2  0.736384
+</pre></div></div>
+</div>
+</section>
+<section id="5.-Visualization">
+<h3>5. Visualization<a class="headerlink" href="#5.-Visualization" title="Link to this heading"></a></h3>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Interaction plot
+fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+st.plot_trial_interaction(adata, &quot;ms_Cytotoxicity&quot;, design, visits=(&quot;Pre&quot;, &quot;Post&quot;), ax=axes[0])
+axes[0].set_title(&quot;Cytotoxicity Interaction&quot;)
+
+# Forest plot for abundance
+st.plot_did_forest(ab_res, feature_col=&quot;celltype&quot;, title=&quot;Cell Type Shifts&quot;, ax=axes[1])
+
+plt.tight_layout()
+plt.show()
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/examples_example_immunotherapy_sade_feldman_15_0.png" src="../_images/examples_example_immunotherapy_sade_feldman_15_0.png" />
+</div>
+</div>
+</section>
+</section>
+<section id="Trial-UMAP-Panel">
+<h2>Trial UMAP Panel<a class="headerlink" href="#Trial-UMAP-Panel" title="Link to this heading"></a></h2>
+<p>Visualize Cytotoxicity expression on the global landscape.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># st.plot_trial_umap_panel automatically uses &#39;X_umap&#39; from obsm
+st.plot_trial_umap_panel(adata, &quot;ms_Cytotoxicity&quot;, design, visits=(&quot;Pre&quot;, &quot;Post&quot;))
+plt.show()
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/examples_example_immunotherapy_sade_feldman_17_0.png" src="../_images/examples_example_immunotherapy_sade_feldman_17_0.png" />
+</div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="example_covid19_stephenson.html" class="btn btn-neutral float-left" title="Example: Longitudinal Analysis of COVID-19 PBMC Data" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="example_vaccine_immport.html" class="btn btn-neutral float-right" title="Example: Vaccine Response Analysis" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

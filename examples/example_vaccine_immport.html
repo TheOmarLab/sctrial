@@ -1,0 +1,683 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Example: Vaccine Response Analysis &mdash; sctrial 0.2.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css?v=2aa19091" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=938c9ccc"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="sctrial: Stress Test and Scalability Analysis" href="stress_test_real_scale.html" />
+    <link rel="prev" title="Example: Immunotherapy Response in Melanoma" href="example_immunotherapy_sade_feldman.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            sctrial
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Examples</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="full_workflow_synthetic.html">sctrial: Comprehensive Workflow Tutorial</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example_covid19_stephenson.html">Example: Longitudinal Analysis of COVID-19 PBMC Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example_immunotherapy_sade_feldman.html">Example: Immunotherapy Response in Melanoma</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Example: Vaccine Response Analysis</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#Dataset:-Standard-ImmPort/ImmuneSpace-Format">Dataset: Standard ImmPort/ImmuneSpace Format</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#1.-Load-and-Construct-Data">1. Load and Construct Data</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#2.-Map-Study-Metadata-to-sctrial.TrialDesign">2. Map Study Metadata to sctrial.TrialDesign</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#Preprocessing-and-Normalization">Preprocessing and Normalization</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#3.-Difference-in-Differences-(DiD)-Analysis">3. Difference-in-Differences (DiD) Analysis</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#Peak-Response-(Day-0-vs-Day-7)">Peak Response (Day 0 vs Day 7)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#Stratified-Analysis-across-Cell-Types">Stratified Analysis across Cell Types</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#4.-GSEA-on-Vaccine-Effect">4. GSEA on Vaccine Effect</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#5.-Visualization">5. Visualization</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="stress_test_real_scale.html">sctrial: Stress Test and Scalability Analysis</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../api.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">sctrial</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Examples</a></li>
+      <li class="breadcrumb-item active">Example: Vaccine Response Analysis</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/examples/example_vaccine_immport.ipynb.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import warnings
+warnings.filterwarnings(&#39;ignore&#39;)
+import pandas as pd
+pd.options.mode.chained_assignment = None
+</pre></div>
+</div>
+</div>
+<section id="Example:-Vaccine-Response-Analysis">
+<h1>Example: Vaccine Response Analysis<a class="headerlink" href="#Example:-Vaccine-Response-Analysis" title="Link to this heading"></a></h1>
+<section id="Dataset:-Standard-ImmPort/ImmuneSpace-Format">
+<h2>Dataset: Standard ImmPort/ImmuneSpace Format<a class="headerlink" href="#Dataset:-Standard-ImmPort/ImmuneSpace-Format" title="Link to this heading"></a></h2>
+<p>This notebook demonstrates how to analyze longitudinal single-cell response to vaccination (e.g., Influenza or COVID-19) using the standard ImmPort study structure.</p>
+<p><strong>Data Source:</strong> <a class="reference external" href="https://www.immport.org/">ImmPort</a></p>
+<blockquote>
+<div><p><strong>Note:</strong> This notebook is a template designed to work with real-world clinical data. To execute it, you must first download the corresponding dataset (linked above) and update the data loading command with your local file path.</p>
+</div></blockquote>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import sctrial as st
+import scanpy as sc
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import os
+import requests
+from scipy import sparse
+<br/></pre></div>
+</div>
+</div>
+<section id="1.-Load-and-Construct-Data">
+<h3>1. Load and Construct Data<a class="headerlink" href="#1.-Load-and-Construct-Data" title="Link to this heading"></a></h3>
+<p>We use a real biological PBMC dataset and map it to a longitudinal vaccine study design (similar to ImmPort SDY180). This demonstrates how to use <code class="docutils literal notranslate"><span class="pre">sctrial</span></code> on real gene expression data with a longitudinal trial structure.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>def load_vaccine_example_data():
+    # Load real biological data (pbmc3k)
+    adata = sc.datasets.pbmc3k_processed()
+
+    # Map to longitudinal vaccine study design
+    # 10 subjects, 3 timepoints (Day 0, Day 7, Day 28), 2 arms (Vaccine, Placebo)
+    np.random.seed(42)
+    subjects = [f&quot;Subj_{i}&quot; for i in range(10)]
+    timepoints = [0, 7, 28]
+    arms = [&quot;Vaccine_A&quot;, &quot;Placebo&quot;]
+
+    adata.obs[&quot;subject_id&quot;] = np.random.choice(subjects, size=adata.n_obs)
+    adata.obs[&quot;study_time_collected&quot;] = np.random.choice(timepoints, size=adata.n_obs)
+
+    # Assign arms by subject
+    subj_to_arm = {s: arms[i % 2] for i, s in enumerate(subjects)}
+    adata.obs[&quot;arm&quot;] = adata.obs[&quot;subject_id&quot;].map(subj_to_arm)
+
+    # Use existing cell type annotations
+    adata.obs[&quot;cell_type&quot;] = adata.obs[&quot;louvain&quot;]
+
+    return adata
+
+adata = load_vaccine_example_data()
+adata.layers[&quot;counts&quot;] = adata.X.copy()
+print(f&quot;Loaded biological dataset: {adata.n_obs} cells, {adata.n_vars} genes&quot;)
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Loaded biological dataset: 2638 cells, 1838 genes
+</pre></div></div>
+</div>
+</section>
+<section id="2.-Map-Study-Metadata-to-sctrial.TrialDesign">
+<h3>2. Map Study Metadata to sctrial.TrialDesign<a class="headerlink" href="#2.-Map-Study-Metadata-to-sctrial.TrialDesign" title="Link to this heading"></a></h3>
+<p>In ImmPort datasets:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">subject_id</span></code> identifies the participant.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">study_time_collected</span></code> identifies the visit (e.g., Day 0, Day 7, Day 28).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">arm</span></code> identifies the treatment (e.g., Vaccine A vs Placebo).</p></li>
+</ul>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>design = st.TrialDesign(
+    participant_col=&quot;subject_id&quot;,
+    visit_col=&quot;study_time_collected&quot;,
+    arm_col=&quot;arm&quot;,
+    arm_treated=&quot;Vaccine_A&quot;,
+    arm_control=&quot;Placebo&quot;,
+    celltype_col=&quot;cell_type&quot;
+)
+<br/></pre></div>
+</div>
+</div>
+</section>
+</section>
+<section id="Preprocessing-and-Normalization">
+<h2>Preprocessing and Normalization<a class="headerlink" href="#Preprocessing-and-Normalization" title="Link to this heading"></a></h2>
+<p>We normalize the data using the log1p(CPM) method.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>adata = st.add_log1p_cpm_layer(adata, out_layer=&quot;log1p_cpm&quot;)
+<br/></pre></div>
+</div>
+</div>
+<section id="3.-Difference-in-Differences-(DiD)-Analysis">
+<h3>3. Difference-in-Differences (DiD) Analysis<a class="headerlink" href="#3.-Difference-in-Differences-(DiD)-Analysis" title="Link to this heading"></a></h3>
+</section>
+</section>
+<section id="Peak-Response-(Day-0-vs-Day-7)">
+<h2>Peak Response (Day 0 vs Day 7)<a class="headerlink" href="#Peak-Response-(Day-0-vs-Day-7)" title="Link to this heading"></a></h2>
+<p>We compare the change from baseline (Day 0) to peak response (Day 7) between Vaccine and Placebo groups.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>res = st.did_table(
+    adata,
+    features=[&quot;CD79A&quot;, &quot;MS4A1&quot;, &quot;GNLY&quot;, &quot;NKG7&quot;],
+    design=design,
+    visits=(0, 7),
+    aggregate=&quot;participant_visit&quot;
+)
+display(res)
+print(st.summarize_did_results(res))
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>beta_DiD</th>
+      <th>se_DiD</th>
+      <th>p_DiD</th>
+      <th>beta_time</th>
+      <th>p_time</th>
+      <th>n_units</th>
+      <th>feature</th>
+      <th>FDR_DiD</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>-1.451554</td>
+      <td>1.171732</td>
+      <td>0.215415</td>
+      <td>1.150051</td>
+      <td>0.104106</td>
+      <td>10</td>
+      <td>CD79A</td>
+      <td>0.861662</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>0.932858</td>
+      <td>1.528912</td>
+      <td>0.541766</td>
+      <td>-1.472596</td>
+      <td>0.315178</td>
+      <td>10</td>
+      <td>NKG7</td>
+      <td>0.919965</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>-0.545989</td>
+      <td>1.368768</td>
+      <td>0.689974</td>
+      <td>0.176860</td>
+      <td>0.695276</td>
+      <td>10</td>
+      <td>MS4A1</td>
+      <td>0.919965</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>0.028219</td>
+      <td>1.396002</td>
+      <td>0.983873</td>
+      <td>-0.816434</td>
+      <td>0.485850</td>
+      <td>10</td>
+      <td>GNLY</td>
+      <td>0.983873</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+## Trial-Aware DiD Summary
+Total features tested: 4
+Significant (p &lt; 0.05): 0
+Significant (FDR &lt; 0.05): 0
+
+### Top Upregulated Features (by p-value):
+- NKG7: beta=0.933, p=5.42e-01
+- GNLY: beta=0.028, p=9.84e-01
+
+### Top Downregulated Features (by p-value):
+- CD79A: beta=-1.452, p=2.15e-01
+- MS4A1: beta=-0.546, p=6.90e-01
+</pre></div></div>
+</div>
+</section>
+<section id="Stratified-Analysis-across-Cell-Types">
+<h2>Stratified Analysis across Cell Types<a class="headerlink" href="#Stratified-Analysis-across-Cell-Types" title="Link to this heading"></a></h2>
+<p>We test for vaccine-induced shifts in different cell lineages.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>strat_res = st.did_table_by_celltype(
+    adata,
+    features=[&quot;CD79A&quot;, &quot;GNLY&quot;],
+    design=design,
+    visits=(0, 7)
+)
+display(strat_res)
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>beta_DiD</th>
+      <th>se_DiD</th>
+      <th>p_DiD</th>
+      <th>beta_time</th>
+      <th>p_time</th>
+      <th>n_units</th>
+      <th>feature</th>
+      <th>FDR_DiD</th>
+      <th>celltype</th>
+      <th>FDR_DiD_stratified</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>-1.441517</td>
+      <td>1.172527</td>
+      <td>0.218918</td>
+      <td>1.538912</td>
+      <td>0.089655</td>
+      <td>10</td>
+      <td>CD79A</td>
+      <td>0.338546</td>
+      <td>B cells</td>
+      <td>0.677091</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>1.123721</td>
+      <td>1.174160</td>
+      <td>0.338546</td>
+      <td>-1.186364</td>
+      <td>0.231063</td>
+      <td>10</td>
+      <td>GNLY</td>
+      <td>0.338546</td>
+      <td>B cells</td>
+      <td>0.677091</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>-1.350189</td>
+      <td>1.331752</td>
+      <td>0.310657</td>
+      <td>1.054198</td>
+      <td>0.388355</td>
+      <td>10</td>
+      <td>GNLY</td>
+      <td>0.621315</td>
+      <td>CD14+ Monocytes</td>
+      <td>0.677091</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>-0.449590</td>
+      <td>1.620645</td>
+      <td>0.781462</td>
+      <td>0.007000</td>
+      <td>0.994212</td>
+      <td>10</td>
+      <td>CD79A</td>
+      <td>0.781462</td>
+      <td>CD14+ Monocytes</td>
+      <td>0.844081</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>0.570227</td>
+      <td>1.224558</td>
+      <td>0.641459</td>
+      <td>-0.685141</td>
+      <td>0.010336</td>
+      <td>10</td>
+      <td>GNLY</td>
+      <td>0.848378</td>
+      <td>CD4 T cells</td>
+      <td>0.844081</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>0.271617</td>
+      <td>1.420673</td>
+      <td>0.848378</td>
+      <td>-0.821286</td>
+      <td>0.485060</td>
+      <td>10</td>
+      <td>CD79A</td>
+      <td>0.848378</td>
+      <td>CD4 T cells</td>
+      <td>0.848378</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>-1.526498</td>
+      <td>1.394830</td>
+      <td>0.273781</td>
+      <td>1.333250</td>
+      <td>0.132288</td>
+      <td>10</td>
+      <td>CD79A</td>
+      <td>0.467245</td>
+      <td>CD8 T cells</td>
+      <td>0.677091</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>-1.022952</td>
+      <td>1.407147</td>
+      <td>0.467245</td>
+      <td>0.162925</td>
+      <td>0.888051</td>
+      <td>10</td>
+      <td>GNLY</td>
+      <td>0.467245</td>
+      <td>CD8 T cells</td>
+      <td>0.726825</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>1.711598</td>
+      <td>1.058545</td>
+      <td>0.105892</td>
+      <td>-1.170788</td>
+      <td>0.196033</td>
+      <td>7</td>
+      <td>CD79A</td>
+      <td>0.211785</td>
+      <td>Dendritic cells</td>
+      <td>0.677091</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>0.780854</td>
+      <td>2.074083</td>
+      <td>0.706559</td>
+      <td>-0.284925</td>
+      <td>0.888651</td>
+      <td>7</td>
+      <td>GNLY</td>
+      <td>0.706559</td>
+      <td>Dendritic cells</td>
+      <td>0.844081</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>-1.261748</td>
+      <td>0.921011</td>
+      <td>0.170700</td>
+      <td>-0.045206</td>
+      <td>0.953428</td>
+      <td>10</td>
+      <td>CD79A</td>
+      <td>0.341400</td>
+      <td>FCGR3A+ Monocytes</td>
+      <td>0.677091</td>
+    </tr>
+    <tr>
+      <th>11</th>
+      <td>-0.970897</td>
+      <td>1.138684</td>
+      <td>0.393854</td>
+      <td>1.100235</td>
+      <td>0.312581</td>
+      <td>10</td>
+      <td>GNLY</td>
+      <td>0.393854</td>
+      <td>FCGR3A+ Monocytes</td>
+      <td>0.689245</td>
+    </tr>
+    <tr>
+      <th>12</th>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>3</td>
+      <td>CD79A</td>
+      <td>NaN</td>
+      <td>Megakaryocytes</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>13</th>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>3</td>
+      <td>GNLY</td>
+      <td>NaN</td>
+      <td>Megakaryocytes</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>14</th>
+      <td>-1.738457</td>
+      <td>1.217221</td>
+      <td>0.153229</td>
+      <td>0.872143</td>
+      <td>0.389915</td>
+      <td>10</td>
+      <td>CD79A</td>
+      <td>0.306458</td>
+      <td>NK cells</td>
+      <td>0.677091</td>
+    </tr>
+    <tr>
+      <th>15</th>
+      <td>-0.432737</td>
+      <td>1.577125</td>
+      <td>0.783790</td>
+      <td>0.585376</td>
+      <td>0.668587</td>
+      <td>10</td>
+      <td>GNLY</td>
+      <td>0.783790</td>
+      <td>NK cells</td>
+      <td>0.844081</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+<section id="4.-GSEA-on-Vaccine-Effect">
+<h3>4. GSEA on Vaccine Effect<a class="headerlink" href="#4.-GSEA-on-Vaccine-Effect" title="Link to this heading"></a></h3>
+<p>Rank genes by their vaccine-specific induction (DiD) and perform GSEA.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>gsea_res = st.run_gsea_did(
+    adata,
+    gene_sets=&quot;MSigDB_Hallmark_2020&quot;,
+    design=design,
+    visits=(0, 7),
+    rank_by=&quot;signed_confidence&quot;
+)
+<br/></pre></div>
+</div>
+</div>
+</section>
+<section id="5.-Visualization">
+<h3>5. Visualization<a class="headerlink" href="#5.-Visualization" title="Link to this heading"></a></h3>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Interaction plot
+st.plot_trial_interaction(adata, &quot;CD79A&quot;, design, visits=(0, 7))
+plt.show()
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/examples_example_vaccine_immport_17_0.png" src="../_images/examples_example_vaccine_immport_17_0.png" />
+</div>
+</div>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="example_immunotherapy_sade_feldman.html" class="btn btn-neutral float-left" title="Example: Immunotherapy Response in Melanoma" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="stress_test_real_scale.html" class="btn btn-neutral float-right" title="sctrial: Stress Test and Scalability Analysis" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,1010 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>sctrial: Comprehensive Workflow Tutorial &mdash; sctrial 0.2.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css?v=2aa19091" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=938c9ccc"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Example: Longitudinal Analysis of COVID-19 PBMC Data" href="example_covid19_stephenson.html" />
+    <link rel="prev" title="Examples" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            sctrial
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Examples</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">sctrial: Comprehensive Workflow Tutorial</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#Trial-Aware-Single-Cell-Inference">Trial-Aware Single-Cell Inference</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#1.-Data-Generation:-Building-a-Virtual-Clinical-Trial">1. Data Generation: Building a Virtual Clinical Trial</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#2.-Defining-the-Trial-Design">2. Defining the Trial Design</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#3.-Preprocessing-&amp;-Module-Scoring">3. Preprocessing &amp; Module Scoring</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#4.-Difference-in-Differences-(DiD)-Analysis">4. Difference-in-Differences (DiD) Analysis</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#Testing-the-Primary-Treatment-Effect">Testing the Primary Treatment Effect</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#Robust-Inference:-Wild-Cluster-Bootstrap">Robust Inference: Wild Cluster Bootstrap</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#5.-Stratified-Analysis">5. Stratified Analysis</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#Treatment-Effects-by-Cell-Type">Treatment Effects by Cell Type</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#6.-Cell-Type-Abundance-Analysis">6. Cell-Type Abundance Analysis</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#Compositional-Shifts">Compositional Shifts</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#7.-GSEA-Analysis">7. GSEA Analysis</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#Trial-Aware-Pathway-Enrichment">Trial-Aware Pathway Enrichment</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#8.-Comprehensive-Visualizations">8. Comprehensive Visualizations</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#Interaction-Plots">Interaction Plots</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#Forest-Plots">Forest Plots</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#Within-Arm-Longitudinal-Analysis-(Spaghetti-Plots)">Within-Arm Longitudinal Analysis (Spaghetti Plots)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#Trial-Aware-UMAP-Panel">Trial-Aware UMAP Panel</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#GSEA-Visualizations:-Heatmap">GSEA Visualizations: Heatmap</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#Trial-Dotplot">Trial Dotplot</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#9.-Conclusion">9. Conclusion</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="example_covid19_stephenson.html">Example: Longitudinal Analysis of COVID-19 PBMC Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example_immunotherapy_sade_feldman.html">Example: Immunotherapy Response in Melanoma</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example_vaccine_immport.html">Example: Vaccine Response Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stress_test_real_scale.html">sctrial: Stress Test and Scalability Analysis</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../api.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">sctrial</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Examples</a></li>
+      <li class="breadcrumb-item active">sctrial: Comprehensive Workflow Tutorial</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/examples/full_workflow_synthetic.ipynb.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import warnings
+warnings.filterwarnings(&#39;ignore&#39;)
+import pandas as pd
+pd.options.mode.chained_assignment = None
+</pre></div>
+</div>
+</div>
+<section id="sctrial:-Comprehensive-Workflow-Tutorial">
+<h1>sctrial: Comprehensive Workflow Tutorial<a class="headerlink" href="#sctrial:-Comprehensive-Workflow-Tutorial" title="Link to this heading"></a></h1>
+<section id="Trial-Aware-Single-Cell-Inference">
+<h2>Trial-Aware Single-Cell Inference<a class="headerlink" href="#Trial-Aware-Single-Cell-Inference" title="Link to this heading"></a></h2>
+<p>This notebook provides an in-depth demonstration of the <code class="docutils literal notranslate"><span class="pre">sctrial</span></code> package capabilities. We use a synthetic dataset designed to mirror a complex clinical trial with:</p>
+<ul class="simple">
+<li><p>Multiple participants and visits (Longitudinal)</p></li>
+<li><p>Treatment and Control arms (Randomized)</p></li>
+<li><p>Multiple cell types (Stratified)</p></li>
+<li><p>Known biological signals (Validation)</p></li>
+</ul>
+<hr class="docutils" />
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import sctrial as st
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from anndata import AnnData
+from scipy import sparse
+
+# Set seed for reproducibility
+np.random.seed(42)
+
+def generate_clustered_data(n_obs, n_vars, n_clusters=2):
+    # Simulate 2D UMAP-like clusters
+    from sklearn.datasets import make_blobs
+    centers = [[0, 0], [5, 5]]
+    X_umap, y = make_blobs(n_samples=n_obs, centers=centers, cluster_std=1.0, random_state=42)
+
+    # Map clusters to cell types
+    celltypes = np.array([&quot;TypeA&quot;, &quot;TypeB&quot;])[y]
+
+    # Generate expression data that correlates with clusters
+    X = np.random.poisson(0.2, size=(n_obs, n_vars)).astype(float)
+    for i in range(n_clusters):
+        mask = (y == i)
+        X[mask, i*10:(i+1)*10] += 2.0 # Cluster-specific markers
+
+    return X, X_umap, celltypes
+<br/></pre></div>
+</div>
+</div>
+</section>
+<section id="1.-Data-Generation:-Building-a-Virtual-Clinical-Trial">
+<h2>1. Data Generation: Building a Virtual Clinical Trial<a class="headerlink" href="#1.-Data-Generation:-Building-a-Virtual-Clinical-Trial" title="Link to this heading"></a></h2>
+<p>We create a dataset with 30 participants, 2 visits (Baseline, Followup), and 2 arms (Treated, Control). We also simulate two cell types (TypeA, TypeB) with distinct clusters and response profiles.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>n_participants = 30
+n_genes = 200
+visits = [&quot;Baseline&quot;, &quot;Followup&quot;]
+arms = [&quot;Treated&quot;, &quot;Control&quot;]
+
+rows = []
+for i in range(n_participants):
+    arm = &quot;Treated&quot; if i &lt; n_participants // 2 else &quot;Control&quot;
+    for v in visits:
+        # 60 cells per participant per visit
+        for _ in range(60):
+            rows.append({
+                &quot;participant_id&quot;: f&quot;P{i}&quot;,
+                &quot;visit&quot;: v,
+                &quot;arm&quot;: arm,
+                &quot;age&quot;: 45 + (i % 5) * 4,
+                &quot;batch&quot;: f&quot;Batch_{i % 3}&quot;
+            })
+
+obs = pd.DataFrame(rows)
+X, X_umap, celltypes = generate_clustered_data(len(obs), n_genes)
+obs[&quot;celltype&quot;] = celltypes
+
+# --- Inject Signals ---
+
+# 1. Global Treatment Effect (TypeA &amp; TypeB) in Genes 0-2
+# We&#39;ll make it very strong to ensure clear p-values and GSEA signal
+treated_followup = (obs[&quot;arm&quot;] == &quot;Treated&quot;) &amp; (obs[&quot;visit&quot;] == &quot;Followup&quot;)
+X[treated_followup, :3] += 5.0
+
+# 2. Cell-type Specific Effect (TypeB only) in Genes 5-7
+typeB_treated_followup = treated_followup &amp; (obs[&quot;celltype&quot;] == &quot;TypeB&quot;)
+X[typeB_treated_followup, 5:8] += 8.0
+
+# 3. Abundance Shift: Increase in TypeA in Treated Followup
+# We&#39;ll adjust the &#39;celltype&#39; labels for a subset of cells to simulate a composition shift
+mask_shift = (obs[&quot;arm&quot;] == &quot;Treated&quot;) &amp; (obs[&quot;visit&quot;] == &quot;Followup&quot;) &amp; (obs[&quot;celltype&quot;] == &quot;TypeB&quot;)
+indices_to_shift = obs[mask_shift].sample(frac=0.4, random_state=42).index
+obs.loc[indices_to_shift, &quot;celltype&quot;] = &quot;TypeA&quot;
+
+adata = AnnData(X=sparse.csr_matrix(X), obs=obs)
+adata.obsm[&quot;X_umap&quot;] = X_umap
+adata.var_names = [f&quot;Gene{i}&quot; for i in range(n_genes)]
+adata.layers[&quot;counts&quot;] = adata.X.copy()
+
+print(f&quot;Created AnnData with {adata.n_obs} cells and {adata.n_vars} genes.&quot;)
+print(f&quot;Arms: {adata.obs[&#39;arm&#39;].unique()}&quot;)
+print(f&quot;Visits: {adata.obs[&#39;visit&#39;].unique()}&quot;)
+print(f&quot;Cell types: {adata.obs[&#39;celltype&#39;].unique()}&quot;)
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Created AnnData with 3600 cells and 200 genes.
+Arms: [&#39;Treated&#39; &#39;Control&#39;]
+Visits: [&#39;Baseline&#39; &#39;Followup&#39;]
+Cell types: [&#39;TypeA&#39; &#39;TypeB&#39;]
+</pre></div></div>
+</div>
+</section>
+<section id="2.-Defining-the-Trial-Design">
+<h2>2. Defining the Trial Design<a class="headerlink" href="#2.-Defining-the-Trial-Design" title="Link to this heading"></a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">TrialDesign</span></code> object centralizes your study metadata.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>design = st.TrialDesign(
+    participant_col=&quot;participant_id&quot;,
+    visit_col=&quot;visit&quot;,
+    arm_col=&quot;arm&quot;,
+    arm_treated=&quot;Treated&quot;,
+    arm_control=&quot;Control&quot;,
+    celltype_col=&quot;celltype&quot;,
+    baseline_visit=&quot;Baseline&quot;,
+    followup_visit=&quot;Followup&quot;
+)
+
+# Validate consistency
+design.validate(adata)
+print(&quot;Trial design validated successfully.&quot;)
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Trial design validated successfully.
+</pre></div></div>
+</div>
+</section>
+<section id="3.-Preprocessing-&amp;-Module-Scoring">
+<h2>3. Preprocessing &amp; Module Scoring<a class="headerlink" href="#3.-Preprocessing-&-Module-Scoring" title="Link to this heading"></a></h2>
+<p>We normalize the data and aggregate gene signals into functional “Module Scores”.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Normalization: log1p(CPM)
+adata = st.add_log1p_cpm_layer(adata, counts_layer=&quot;counts&quot;, out_layer=&quot;log1p_cpm&quot;)
+
+# Define biological pathways
+gene_sets = {
+    &quot;Inflammatory_Response&quot;: [&quot;Gene0&quot;, &quot;Gene1&quot;, &quot;Gene2&quot;],
+    &quot;TypeB_Activation&quot;: [&quot;Gene5&quot;, &quot;Gene6&quot;, &quot;Gene7&quot;],
+    &quot;Metabolic_Control&quot;: [&quot;Gene20&quot;, &quot;Gene21&quot;, &quot;Gene22&quot;]
+}
+
+# Compute module scores using the &#39;zmean&#39; method (z-score genes across cells then mean)
+adata = st.score_gene_sets(adata, gene_sets, layer=&quot;log1p_cpm&quot;, method=&quot;zmean&quot;, prefix=&quot;ms_&quot;)
+
+# Preview the new scores in metadata
+print(&quot;Added module scores:&quot;, [c for c in adata.obs.columns if c.startswith(&quot;ms_&quot;)])
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Added module scores: [&#39;ms_Inflammatory_Response&#39;, &#39;ms_TypeB_Activation&#39;, &#39;ms_Metabolic_Control&#39;]
+</pre></div></div>
+</div>
+</section>
+<section id="4.-Difference-in-Differences-(DiD)-Analysis">
+<h2>4. Difference-in-Differences (DiD) Analysis<a class="headerlink" href="#4.-Difference-in-Differences-(DiD)-Analysis" title="Link to this heading"></a></h2>
+<section id="Testing-the-Primary-Treatment-Effect">
+<h3>Testing the Primary Treatment Effect<a class="headerlink" href="#Testing-the-Primary-Treatment-Effect" title="Link to this heading"></a></h3>
+<p>We test the “divergence” between arms from Baseline to Followup.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Global DiD (Aggregated to participant-visit level)
+did_res = st.did_table(
+    adata,
+    features=[&quot;ms_Inflammatory_Response&quot;, &quot;ms_TypeB_Activation&quot;, &quot;ms_Metabolic_Control&quot;],
+    design=design,
+    visits=(&quot;Baseline&quot;, &quot;Followup&quot;),
+    aggregate=&quot;participant_visit&quot;,
+    covariates=[&quot;age&quot;] # Control for age
+)
+
+print(&quot;--- Global DiD Results ---&quot;)
+print(st.summarize_did_results(did_res))
+display(did_res)
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+--- Global DiD Results ---
+## Trial-Aware DiD Summary
+Total features tested: 3
+Significant (p &lt; 0.05): 2
+Significant (FDR &lt; 0.05): 2
+
+### Top Upregulated Features (by p-value):
+- ms_Inflammatory_Response: beta=2.163, p=3.34e-44
+- ms_TypeB_Activation: beta=2.217, p=1.17e-33
+- ms_Metabolic_Control: beta=0.343, p=6.50e-01
+
+### Top Downregulated Features (by p-value):
+- None
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>beta_DiD</th>
+      <th>se_DiD</th>
+      <th>p_DiD</th>
+      <th>beta_time</th>
+      <th>p_time</th>
+      <th>n_units</th>
+      <th>feature</th>
+      <th>FDR_DiD</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>2.162926</td>
+      <td>0.155095</td>
+      <td>3.337792e-44</td>
+      <td>0.017571</td>
+      <td>0.884110</td>
+      <td>30</td>
+      <td>ms_Inflammatory_Response</td>
+      <td>1.001338e-43</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>2.216679</td>
+      <td>0.183329</td>
+      <td>1.174240e-33</td>
+      <td>-0.063486</td>
+      <td>0.661367</td>
+      <td>30</td>
+      <td>ms_TypeB_Activation</td>
+      <td>1.761361e-33</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>0.343399</td>
+      <td>0.756853</td>
+      <td>6.500305e-01</td>
+      <td>-0.652978</td>
+      <td>0.296834</td>
+      <td>30</td>
+      <td>ms_Metabolic_Control</td>
+      <td>6.500305e-01</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+</section>
+<section id="Robust-Inference:-Wild-Cluster-Bootstrap">
+<h3>Robust Inference: Wild Cluster Bootstrap<a class="headerlink" href="#Robust-Inference:-Wild-Cluster-Bootstrap" title="Link to this heading"></a></h3>
+<p>For small sample sizes or non-normal distributions, we use bootstrapping.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>print(&quot;Running DiD with Wild Cluster Bootstrap (Rademacher)...&quot;)
+did_boot = st.did_table(
+    adata,
+    features=[&quot;ms_TypeB_Activation&quot;],
+    design=design,
+    visits=(&quot;Baseline&quot;, &quot;Followup&quot;),
+    use_bootstrap=True,
+    n_boot=199 # Using small B for demo speed
+)
+print(did_boot[[&quot;feature&quot;, &quot;beta_DiD&quot;, &quot;p_DiD&quot;]])
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Running DiD with Wild Cluster Bootstrap (Rademacher)...
+               feature  beta_DiD  p_DiD
+0  ms_TypeB_Activation  2.216679    0.0
+</pre></div></div>
+</div>
+</section>
+</section>
+<section id="5.-Stratified-Analysis">
+<h2>5. Stratified Analysis<a class="headerlink" href="#5.-Stratified-Analysis" title="Link to this heading"></a></h2>
+<section id="Treatment-Effects-by-Cell-Type">
+<h3>Treatment Effects by Cell Type<a class="headerlink" href="#Treatment-Effects-by-Cell-Type" title="Link to this heading"></a></h3>
+<p>Biological responses are often cell-type specific. <code class="docutils literal notranslate"><span class="pre">did_table_by_celltype</span></code> automates this stratification.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>strat_res = st.did_table_by_celltype(
+    adata,
+    features=[&quot;ms_Inflammatory_Response&quot;, &quot;ms_TypeB_Activation&quot;],
+    design=design,
+    visits=(&quot;Baseline&quot;, &quot;Followup&quot;)
+)
+
+print(&quot;--- Stratified DiD Results ---&quot;)
+display(strat_res.sort_values([&quot;celltype&quot;, &quot;p_DiD&quot;]))
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+--- Stratified DiD Results ---
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>beta_DiD</th>
+      <th>se_DiD</th>
+      <th>p_DiD</th>
+      <th>beta_time</th>
+      <th>p_time</th>
+      <th>n_units</th>
+      <th>feature</th>
+      <th>FDR_DiD</th>
+      <th>celltype</th>
+      <th>FDR_DiD_stratified</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>2.244926</td>
+      <td>0.065380</td>
+      <td>2.224377e-258</td>
+      <td>0.031729</td>
+      <td>0.315227</td>
+      <td>30</td>
+      <td>ms_Inflammatory_Response</td>
+      <td>4.448754e-258</td>
+      <td>TypeA</td>
+      <td>4.448754e-258</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>1.026564</td>
+      <td>0.600617</td>
+      <td>8.741728e-02</td>
+      <td>0.257108</td>
+      <td>0.363951</td>
+      <td>30</td>
+      <td>ms_TypeB_Activation</td>
+      <td>8.741728e-02</td>
+      <td>TypeA</td>
+      <td>8.741728e-02</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2.223734</td>
+      <td>0.059802</td>
+      <td>1.200690e-302</td>
+      <td>0.074954</td>
+      <td>0.109421</td>
+      <td>30</td>
+      <td>ms_Inflammatory_Response</td>
+      <td>2.401379e-302</td>
+      <td>TypeB</td>
+      <td>4.802758e-302</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>2.305499</td>
+      <td>0.074600</td>
+      <td>1.026325e-209</td>
+      <td>-0.015811</td>
+      <td>0.781501</td>
+      <td>30</td>
+      <td>ms_TypeB_Activation</td>
+      <td>1.026325e-209</td>
+      <td>TypeB</td>
+      <td>1.368433e-209</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+</section>
+</section>
+<section id="6.-Cell-Type-Abundance-Analysis">
+<h2>6. Cell-Type Abundance Analysis<a class="headerlink" href="#6.-Cell-Type-Abundance-Analysis" title="Link to this heading"></a></h2>
+<section id="Compositional-Shifts">
+<h3>Compositional Shifts<a class="headerlink" href="#Compositional-Shifts" title="Link to this heading"></a></h3>
+<p>We test if the proportion of specific cell types changes in response to treatment.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>ab_res = st.abundance_did(
+    adata,
+    design=design,
+    visits=(&quot;Baseline&quot;, &quot;Followup&quot;),
+    transform=&quot;arcsin_sqrt&quot;
+)
+
+print(&quot;--- Abundance DiD Results ---&quot;)
+display(ab_res)
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+--- Abundance DiD Results ---
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>celltype</th>
+      <th>n_participants</th>
+      <th>beta_DiD</th>
+      <th>se_DiD</th>
+      <th>p_DiD</th>
+      <th>beta_time</th>
+      <th>p_time</th>
+      <th>FDR_DiD</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>TypeB</td>
+      <td>30</td>
+      <td>-0.188246</td>
+      <td>0.026906</td>
+      <td>1.312224e-07</td>
+      <td>0.013674</td>
+      <td>0.478279</td>
+      <td>1.312224e-07</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>TypeA</td>
+      <td>30</td>
+      <td>0.188246</td>
+      <td>0.026906</td>
+      <td>1.312224e-07</td>
+      <td>-0.013674</td>
+      <td>0.478279</td>
+      <td>1.312224e-07</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+</section>
+</section>
+<section id="7.-GSEA-Analysis">
+<h2>7. GSEA Analysis<a class="headerlink" href="#7.-GSEA-Analysis" title="Link to this heading"></a></h2>
+<section id="Trial-Aware-Pathway-Enrichment">
+<h3>Trial-Aware Pathway Enrichment<a class="headerlink" href="#Trial-Aware-Pathway-Enrichment" title="Link to this heading"></a></h3>
+<p>Instead of ranking genes by simple expression, we rank them by their <strong>DiD t-statistic</strong>.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>print(&quot;Running GSEA on Trial-Aware Rankings...&quot;)
+# 100 permutations is enough for a demo
+gsea_res = st.run_gsea_did(
+    adata,
+    gene_sets=gene_sets,
+    design=design,
+    visits=(&quot;Baseline&quot;, &quot;Followup&quot;),
+    rank_by=&quot;tstat&quot;,
+    permutation_num=100,
+    min_size=1,
+    seed=42
+)
+
+print(&quot;--- GSEA Top Terms ---&quot;)
+display(gsea_res.res2d.sort_values(&quot;NES&quot;, ascending=False))
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Running GSEA on Trial-Aware Rankings...
+--- GSEA Top Terms ---
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Name</th>
+      <th>Term</th>
+      <th>ES</th>
+      <th>NES</th>
+      <th>NOM p-val</th>
+      <th>FDR q-val</th>
+      <th>FWER p-val</th>
+      <th>Tag %</th>
+      <th>Gene %</th>
+      <th>Lead_genes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>prerank</td>
+      <td>Inflammatory_Response</td>
+      <td>1.0</td>
+      <td>1.670918</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>3/3</td>
+      <td>1.50%</td>
+      <td>Gene1;Gene0;Gene2</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>prerank</td>
+      <td>TypeB_Activation</td>
+      <td>0.984772</td>
+      <td>1.534033</td>
+      <td>0.035714</td>
+      <td>0.074534</td>
+      <td>0.08</td>
+      <td>3/3</td>
+      <td>3.00%</td>
+      <td>Gene6;Gene5;Gene7</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>prerank</td>
+      <td>Metabolic_Control</td>
+      <td>0.616157</td>
+      <td>0.989436</td>
+      <td>0.472727</td>
+      <td>0.496894</td>
+      <td>0.62</td>
+      <td>2/3</td>
+      <td>27.50%</td>
+      <td>Gene20;Gene22</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+</section>
+</section>
+<section id="8.-Comprehensive-Visualizations">
+<h2>8. Comprehensive Visualizations<a class="headerlink" href="#8.-Comprehensive-Visualizations" title="Link to this heading"></a></h2>
+<section id="Interaction-Plots">
+<h3>Interaction Plots<a class="headerlink" href="#Interaction-Plots" title="Link to this heading"></a></h3>
+<p>Visualize the Divergence between arms.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+st.plot_trial_interaction(adata, &quot;ms_Inflammatory_Response&quot;, design, ax=axes[0])
+axes[0].set_title(&quot;Global Interaction: Inflammatory Response&quot;)
+
+st.plot_abundance_interaction(adata, &quot;TypeA&quot;, design, ax=axes[1])
+axes[1].set_title(&quot;Abundance Shift: TypeA Proportion&quot;)
+
+plt.tight_layout()
+plt.show()
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/examples_full_workflow_synthetic_20_0.png" src="../_images/examples_full_workflow_synthetic_20_0.png" />
+</div>
+</div>
+</section>
+<section id="Forest-Plots">
+<h3>Forest Plots<a class="headerlink" href="#Forest-Plots" title="Link to this heading"></a></h3>
+<p>Compare effect sizes across multiple features or cell types.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+
+st.plot_did_forest(did_res, title=&quot;Module Score Effects&quot;, ax=axes[0])
+st.plot_did_forest(ab_res, title=&quot;Cell Type Proportion Effects&quot;, feature_col=&quot;celltype&quot;, ax=axes[1])
+
+plt.tight_layout()
+plt.show()
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/examples_full_workflow_synthetic_22_0.png" src="../_images/examples_full_workflow_synthetic_22_0.png" />
+</div>
+</div>
+</section>
+<section id="Within-Arm-Longitudinal-Analysis-(Spaghetti-Plots)">
+<h3>Within-Arm Longitudinal Analysis (Spaghetti Plots)<a class="headerlink" href="#Within-Arm-Longitudinal-Analysis-(Spaghetti-Plots)" title="Link to this heading"></a></h3>
+<p>Visualize individual participant trajectories.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>st.plot_within_arm_comparison(
+    adata,
+    arm=&quot;Treated&quot;,
+    feature=&quot;ms_TypeB_Activation&quot;,
+    design=design,
+    visits=(&quot;Baseline&quot;, &quot;Followup&quot;),
+    plot_type=&quot;paired&quot;
+)
+plt.show()
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/examples_full_workflow_synthetic_24_0.png" src="../_images/examples_full_workflow_synthetic_24_0.png" />
+</div>
+</div>
+</section>
+<section id="Trial-Aware-UMAP-Panel">
+<h3>Trial-Aware UMAP Panel<a class="headerlink" href="#Trial-Aware-UMAP-Panel" title="Link to this heading"></a></h3>
+<p>Contextualize expression within the global cell-type landscape.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># We already have X_umap from make_blobs, which shows clear clusters.
+st.plot_trial_umap_panel(adata, &quot;ms_TypeB_Activation&quot;, design)
+plt.show()
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/examples_full_workflow_synthetic_26_0.png" src="../_images/examples_full_workflow_synthetic_26_0.png" />
+</div>
+</div>
+</section>
+<section id="GSEA-Visualizations:-Heatmap">
+<h3>GSEA Visualizations: Heatmap<a class="headerlink" href="#GSEA-Visualizations:-Heatmap" title="Link to this heading"></a></h3>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Mocking multiple cell type GSEA results for demonstration
+# We include more pathways and more cell types as requested
+mock_gsea_all = pd.DataFrame({
+    &quot;Term&quot;: [
+        &quot;Inflammatory_Response&quot;, &quot;TypeB_Activation&quot;, &quot;Metabolic_Control&quot;,
+        &quot;T_Cell_Signaling&quot;, &quot;IFN_Gamma_Response&quot;, &quot;Hypoxia&quot;
+    ] * 4,
+    &quot;pool&quot;: [&quot;TypeA&quot;] * 6 + [&quot;TypeB&quot;] * 6 + [&quot;TypeC&quot;] * 6 + [&quot;TypeD&quot;] * 6,
+    &quot;NES&quot;: [
+        2.1, 0.2, 1.5, 0.5, 2.5, 0.1,  # TypeA
+        1.8, 3.5, 0.5, 0.1, 2.0, 0.3,  # TypeB
+        0.5, 0.1, 0.1, 2.8, 0.5, 1.2,  # TypeC
+        0.2, 0.1, 2.5, 0.3, 0.2, 2.1   # TypeD
+    ],
+    &quot;FDR q-val&quot;: [
+        0.01, 0.8, 0.05, 0.6, 0.001, 0.9,
+        0.02, 0.001, 0.7, 0.9, 0.01, 0.8,
+        0.7, 0.9, 0.9, 0.001, 0.7, 0.05,
+        0.9, 0.9, 0.001, 0.8, 0.9, 0.01
+    ],
+    &quot;collection&quot;: [&quot;Demo&quot;] * 24
+})
+
+st.plot_gsea_heatmap(mock_gsea_all, collection=&quot;Demo&quot;, fdr_thresh=0.1, figsize=(10, 8))
+plt.show()
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/examples_full_workflow_synthetic_28_0.png" src="../_images/examples_full_workflow_synthetic_28_0.png" />
+</div>
+</div>
+</section>
+<section id="Trial-Dotplot">
+<h3>Trial Dotplot<a class="headerlink" href="#Trial-Dotplot" title="Link to this heading"></a></h3>
+<p>Condensed view of expression across arms and cell types.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>st.plot_trial_dotplot(
+    adata,
+    features=[&quot;ms_Inflammatory_Response&quot;, &quot;ms_TypeB_Activation&quot;],
+    design=design,
+    standard_scale=&quot;var&quot;
+)
+plt.show()
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/examples_full_workflow_synthetic_30_0.png" src="../_images/examples_full_workflow_synthetic_30_0.png" />
+</div>
+</div>
+</section>
+</section>
+<section id="9.-Conclusion">
+<h2>9. Conclusion<a class="headerlink" href="#9.-Conclusion" title="Link to this heading"></a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">sctrial</span></code> package provides a unified framework for:</p>
+<ol class="arabic simple">
+<li><p><strong>Controlling for heterogeneity</strong> via participant fixed effects.</p></li>
+<li><p><strong>Identifying specific responders</strong> via Difference-in-Differences.</p></li>
+<li><p><strong>Validating findings</strong> through robust inference and stratified analysis.</p></li>
+<li><p><strong>Communicating results</strong> through high-impact, trial-aware visualizations.</p></li>
+</ol>
+<p>Workflow completed successfully!</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="Examples" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="example_covid19_stephenson.html" class="btn btn-neutral float-right" title="Example: Longitudinal Analysis of COVID-19 PBMC Data" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,418 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>sctrial: Stress Test and Scalability Analysis &mdash; sctrial 0.2.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css?v=2aa19091" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=938c9ccc"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="API Reference" href="../api.html" />
+    <link rel="prev" title="Example: Vaccine Response Analysis" href="example_vaccine_immport.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            sctrial
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Examples</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="full_workflow_synthetic.html">sctrial: Comprehensive Workflow Tutorial</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example_covid19_stephenson.html">Example: Longitudinal Analysis of COVID-19 PBMC Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example_immunotherapy_sade_feldman.html">Example: Immunotherapy Response in Melanoma</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example_vaccine_immport.html">Example: Vaccine Response Analysis</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">sctrial: Stress Test and Scalability Analysis</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#1.-Dataset-Generation">1. Dataset Generation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#2.-Benchmark:-Normalization">2. Benchmark: Normalization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#3.-Benchmark:-Large-Scale-DiD-Analysis">3. Benchmark: Large-Scale DiD Analysis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#4.-Benchmark:-Stratified-DiD-Analysis">4. Benchmark: Stratified DiD Analysis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#5.-Results-Summary">5. Results Summary</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../api.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">sctrial</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Examples</a></li>
+      <li class="breadcrumb-item active">sctrial: Stress Test and Scalability Analysis</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/examples/stress_test_real_scale.ipynb.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import warnings
+warnings.filterwarnings(&#39;ignore&#39;)
+import pandas as pd
+pd.options.mode.chained_assignment = None
+</pre></div>
+</div>
+</div>
+<section id="sctrial:-Stress-Test-and-Scalability-Analysis">
+<h1>sctrial: Stress Test and Scalability Analysis<a class="headerlink" href="#sctrial:-Stress-Test-and-Scalability-Analysis" title="Link to this heading"></a></h1>
+<p>This notebook demonstrates <code class="docutils literal notranslate"><span class="pre">sctrial</span></code>’s performance and scalability by running a stress test on a large-scale synthetic dataset (e.g., 20,000 cells and 10,000 genes).</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import sctrial as st
+import numpy as np
+import pandas as pd
+from anndata import AnnData
+from scipy import sparse
+import time
+import matplotlib.pyplot as plt
+<br/></pre></div>
+</div>
+</div>
+<section id="1.-Dataset-Generation">
+<h2>1. Dataset Generation<a class="headerlink" href="#1.-Dataset-Generation" title="Link to this heading"></a></h2>
+<p>We generate a dataset with 50 participants and 10,000 genes to simulate the scale of a real clinical trial.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>n_participants = 50
+n_cells_per_unit = 200
+n_genes = 10000
+
+print(f&quot;Generating stress-test dataset: {n_participants} participants, {n_genes} genes...&quot;)
+
+rows = []
+for i in range(n_participants):
+    arm = &quot;Treated&quot; if i &lt; n_participants // 2 else &quot;Control&quot;
+    for v in [&quot;Baseline&quot;, &quot;Followup&quot;]:
+        for _ in range(n_cells_per_unit):
+            rows.append({
+                &quot;participant_id&quot;: f&quot;P{i}&quot;,
+                &quot;visit&quot;: v,
+                &quot;arm&quot;: arm,
+                &quot;celltype&quot;: &quot;TypeA&quot; if np.random.rand() &gt; 0.5 else &quot;TypeB&quot;,
+                &quot;batch&quot;: f&quot;B{i % 5}&quot;
+            })
+
+obs = pd.DataFrame(rows)
+n_obs = len(obs)
+
+# Generate sparse noisy data
+data = np.random.poisson(0.1, size=(n_obs, n_genes)).astype(float)
+# Inject signal in some genes
+data[obs[(obs[&quot;arm&quot;]==&quot;Treated&quot;) &amp; (obs[&quot;visit&quot;]==&quot;Followup&quot;)].index, :10] += 2.0
+X = sparse.csr_matrix(data)
+
+adata = AnnData(X=X, obs=obs)
+adata.var_names = [f&quot;Gene{i}&quot; for i in range(n_genes)]
+adata.layers[&quot;counts&quot;] = adata.X.copy()
+
+print(adata)
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Generating stress-test dataset: 50 participants, 10000 genes...
+AnnData object with n_obs × n_vars = 20000 × 10000
+    obs: &#39;participant_id&#39;, &#39;visit&#39;, &#39;arm&#39;, &#39;celltype&#39;, &#39;batch&#39;
+    layers: &#39;counts&#39;
+</pre></div></div>
+</div>
+</section>
+<section id="2.-Benchmark:-Normalization">
+<h2>2. Benchmark: Normalization<a class="headerlink" href="#2.-Benchmark:-Normalization" title="Link to this heading"></a></h2>
+<p>We measure the time taken to normalize 20,000 cells x 10,000 genes.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>design = st.TrialDesign(
+    participant_col=&quot;participant_id&quot;,
+    visit_col=&quot;visit&quot;,
+    arm_col=&quot;arm&quot;,
+    arm_treated=&quot;Treated&quot;,
+    arm_control=&quot;Control&quot;
+)
+
+print(&quot;Normalizing...&quot;)
+start_norm = time.time()
+adata = st.add_log1p_cpm_layer(adata, counts_layer=&quot;counts&quot;, out_layer=&quot;log1p_cpm&quot;)
+time_norm = time.time() - start_norm
+print(f&quot;Done in {time_norm:.2f}s&quot;)
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Normalizing...
+Done in 0.20s
+</pre></div></div>
+</div>
+</section>
+<section id="3.-Benchmark:-Large-Scale-DiD-Analysis">
+<h2>3. Benchmark: Large-Scale DiD Analysis<a class="headerlink" href="#3.-Benchmark:-Large-Scale-DiD-Analysis" title="Link to this heading"></a></h2>
+<p>We run DiD across a range of gene counts to evaluate scaling behavior.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>gene_counts = [10, 50, 100, 200]
+times = []
+
+for gc in gene_counts:
+    print(f&quot;Running DiD on {gc} genes...&quot;)
+    start = time.time()
+    _ = st.did_table(
+        adata,
+        features=adata.var_names[:gc],
+        design=design,
+        visits=(&quot;Baseline&quot;, &quot;Followup&quot;),
+        layer=&quot;log1p_cpm&quot;
+    )
+    times.append(time.time() - start)
+
+plt.figure(figsize=(8, 5))
+plt.plot(gene_counts, times, marker=&#39;o&#39;, linestyle=&#39;-&#39;, color=&#39;firebrick&#39;)
+plt.title(&quot;Scaling Behavior: DiD Execution Time&quot;)
+plt.xlabel(&quot;Number of Genes&quot;)
+plt.ylabel(&quot;Time (seconds)&quot;)
+plt.grid(True, alpha=0.3)
+plt.show()
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Running DiD on 10 genes...
+Running DiD on 50 genes...
+Running DiD on 100 genes...
+Running DiD on 200 genes...
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/examples_stress_test_real_scale_8_1.png" src="../_images/examples_stress_test_real_scale_8_1.png" />
+</div>
+</div>
+</section>
+<section id="4.-Benchmark:-Stratified-DiD-Analysis">
+<h2>4. Benchmark: Stratified DiD Analysis<a class="headerlink" href="#4.-Benchmark:-Stratified-DiD-Analysis" title="Link to this heading"></a></h2>
+<p>Testing performance of stratified analysis across cell types.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>print(&quot;Running stratified DiD (10 genes x 2 celltypes)...&quot;)
+start_strat = time.time()
+strat_res = st.did_table_by_celltype(
+    adata,
+    features=adata.var_names[:10],
+    design=design,
+    visits=(&quot;Baseline&quot;, &quot;Followup&quot;),
+    layer=&quot;log1p_cpm&quot;
+)
+time_strat = time.time() - start_strat
+print(f&quot;Done in {time_strat:.2f}s&quot;)
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Running stratified DiD (10 genes x 2 celltypes)...
+Done in 0.53s
+</pre></div></div>
+</div>
+</section>
+<section id="5.-Results-Summary">
+<h2>5. Results Summary<a class="headerlink" href="#5.-Results-Summary" title="Link to this heading"></a></h2>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>res = st.did_table(
+    adata,
+    features=adata.var_names[:100],
+    design=design,
+    visits=(&quot;Baseline&quot;, &quot;Followup&quot;),
+    layer=&quot;log1p_cpm&quot;
+)
+
+print(&quot;\nSummary of Results:&quot;)
+print(st.summarize_did_results(res))
+
+fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+
+# p-value distribution
+axes[0].hist(res[&quot;p_DiD&quot;], bins=20, color=&quot;skyblue&quot;, edgecolor=&quot;black&quot;)
+axes[0].set_title(&quot;p-value Distribution (100 genes)&quot;)
+axes[0].set_xlabel(&quot;p-value&quot;)
+axes[0].set_ylabel(&quot;Frequency&quot;)
+
+# Volcano plot
+res_v = st.plotting.did_volcano_frame(res)
+axes[1].scatter(res_v[&quot;beta_DiD&quot;], res_v[&quot;neglog10p&quot;], alpha=0.6, color=&quot;teal&quot;)
+axes[1].axhline(-np.log10(0.05), color=&quot;red&quot;, linestyle=&quot;--&quot;)
+axes[1].set_title(&quot;Volcano Plot (100 genes)&quot;)
+axes[1].set_xlabel(&quot;Effect Size (beta_DiD)&quot;)
+axes[1].set_ylabel(&quot;-log10(p-value)&quot;)
+
+plt.tight_layout()
+plt.show()
+
+print(f&quot;\nFinal Performance Metrics:&quot;)
+print(f&quot;- Normalization (20k cells x 10k genes): {time_norm:.2f}s&quot;)
+print(f&quot;- Stratified DiD (10 genes x 2 types): {time_strat:.2f}s&quot;)
+print(f&quot;- Single Gene DiD (avg): {np.mean(times)/gene_counts[-1]:.4f}s&quot;)
+
+print(&quot;\nStress test passed successfully!&quot;)
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+Summary of Results:
+## Trial-Aware DiD Summary
+Total features tested: 100
+Significant (p &lt; 0.05): 11
+Significant (FDR &lt; 0.05): 11
+
+### Top Upregulated Features (by p-value):
+- Gene0: beta=2.289, p=0.00e+00
+- Gene1: beta=2.276, p=0.00e+00
+- Gene2: beta=2.306, p=0.00e+00
+
+### Top Downregulated Features (by p-value):
+- Gene38: beta=-1.001, p=6.38e-02
+- Gene90: beta=-0.941, p=8.94e-02
+- Gene96: beta=-0.681, p=2.36e-01
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/examples_stress_test_real_scale_12_1.png" src="../_images/examples_stress_test_real_scale_12_1.png" />
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+Final Performance Metrics:
+- Normalization (20k cells x 10k genes): 0.20s
+- Stratified DiD (10 genes x 2 types): 0.53s
+- Single Gene DiD (avg): 0.0061s
+
+Stress test passed successfully!
+</pre></div></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="example_vaccine_immport.html" class="btn btn-neutral float-left" title="Example: Vaccine Response Analysis" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../api.html" class="btn btn-neutral float-right" title="API Reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

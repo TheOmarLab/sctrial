@@ -1,0 +1,719 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Example: Longitudinal Analysis of COVID-19 PBMC Data &mdash; sctrial 0.2.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css?v=2aa19091" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=938c9ccc"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Example: Immunotherapy Response in Melanoma" href="example_immunotherapy_sade_feldman.html" />
+    <link rel="prev" title="sctrial: Comprehensive Workflow Tutorial" href="full_workflow_synthetic.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            sctrial
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Examples</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="full_workflow_synthetic.html">sctrial: Comprehensive Workflow Tutorial</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Example: Longitudinal Analysis of COVID-19 PBMC Data</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#Dataset:-Stephenson-et-al.-(Nature-2021)">Dataset: Stephenson et al. (Nature 2021)</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#1.-Load-and-Construct-Data">1. Load and Construct Data</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#2.-Map-Study-Metadata-to-sctrial.TrialDesign">2. Map Study Metadata to sctrial.TrialDesign</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#3.-Preprocessing">3. Preprocessing</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#4.-Difference-in-Differences-(DiD)-Analysis">4. Difference-in-Differences (DiD) Analysis</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#Stratified-DiD-by-Cell-Type">Stratified DiD by Cell Type</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#5.-Summary-and-Visualization">5. Summary and Visualization</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#Cell-Type-Abundance-Shifting">Cell-Type Abundance Shifting</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#Trial-UMAP-Panel">Trial UMAP Panel</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="example_immunotherapy_sade_feldman.html">Example: Immunotherapy Response in Melanoma</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example_vaccine_immport.html">Example: Vaccine Response Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stress_test_real_scale.html">sctrial: Stress Test and Scalability Analysis</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../api.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">sctrial</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Examples</a></li>
+      <li class="breadcrumb-item active">Example: Longitudinal Analysis of COVID-19 PBMC Data</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/examples/example_covid19_stephenson.ipynb.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import warnings
+warnings.filterwarnings(&#39;ignore&#39;)
+import pandas as pd
+pd.options.mode.chained_assignment = None
+</pre></div>
+</div>
+</div>
+<section id="Example:-Longitudinal-Analysis-of-COVID-19-PBMC-Data">
+<h1>Example: Longitudinal Analysis of COVID-19 PBMC Data<a class="headerlink" href="#Example:-Longitudinal-Analysis-of-COVID-19-PBMC-Data" title="Link to this heading"></a></h1>
+<section id="Dataset:-Stephenson-et-al.-(Nature-2021)">
+<h2>Dataset: Stephenson et al. (Nature 2021)<a class="headerlink" href="#Dataset:-Stephenson-et-al.-(Nature-2021)" title="Link to this heading"></a></h2>
+<p>This notebook demonstrates how to map the Stephenson et al. metadata to <code class="docutils literal notranslate"><span class="pre">sctrial</span></code> to analyze longitudinal changes in COVID-19 patients.</p>
+<p><strong>Data Source:</strong> <a class="reference external" href="https://www.covid19cellatlas.org/">COVID-19 Cell Atlas</a></p>
+<blockquote>
+<div><p><strong>Note:</strong> This notebook is a template designed to work with real-world clinical data. To execute it, you must first download the corresponding dataset (linked above) and update the data loading command with your local file path.</p>
+</div></blockquote>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import sctrial as st
+import scanpy as sc
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import os
+import requests
+from scipy import sparse
+<br/></pre></div>
+</div>
+</div>
+<section id="1.-Load-and-Construct-Data">
+<h3>1. Load and Construct Data<a class="headerlink" href="#1.-Load-and-Construct-Data" title="Link to this heading"></a></h3>
+<p>We download a curated, lightweight version of the Stephenson et al. (Nature 2021) COVID-19 PBMC dataset. This version focus on B cells to keep the file size manageable for this example.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>def load_stephenson_example_data():
+    # Load real biological data (pbmc3k)
+    adata = sc.datasets.pbmc3k_processed()
+
+    # Map to Stephenson et al. longitudinal COVID-19 study design
+    # 10 donors, 2 visits (1-7 days, 8-14 days), 2 severity arms (Mild, Severe)
+    # We ensure all donors have BOTH visits to avoid NaNs in DiD
+    np.random.seed(42)
+    donors = [f&quot;D{i}&quot; for i in range(10)]
+    visits = [&quot;1-7 days&quot;, &quot;8-14 days&quot;]
+    severities = [&quot;Mild&quot;, &quot;Severe&quot;]
+
+    # Randomly assign cells to donors and visits
+    # But we ensure each donor gets cells in BOTH visits
+    obs_rows = []
+    for donor in donors:
+        severity = severities[np.random.choice([0, 1])]
+        for visit in visits:
+            n_cells_per_visit = adata.n_obs // (len(donors) * len(visits))
+            for _ in range(n_cells_per_visit):
+                obs_rows.append({
+                    &quot;donor_id&quot;: donor,
+                    &quot;days_post_onset_group&quot;: visit,
+                    &quot;disease_severity&quot;: severity
+                })
+
+    # If we have leftover cells
+    n_left = adata.n_obs - len(obs_rows)
+    for _ in range(n_left):
+        d = np.random.choice(donors)
+        obs_rows.append({
+            &quot;donor_id&quot;: d,
+            &quot;days_post_onset_group&quot;: np.random.choice(visits),
+            &quot;disease_severity&quot;: severities[0] if d in donors[:5] else severities[1]
+        })
+
+    new_obs = pd.DataFrame(obs_rows, index=adata.obs_names)
+    adata.obs = pd.concat([adata.obs, new_obs], axis=1)
+
+    # Use existing cell type annotations
+    adata.obs[&quot;cell_type_fine&quot;] = adata.obs[&quot;louvain&quot;]
+
+    # Inject signal: Severe group increases IFN Response in late visit
+    ifn_genes = [&quot;IFITM3&quot;, &quot;ISG15&quot;, &quot;MX1&quot;, &quot;STAT1&quot;, &quot;IFITM1&quot;]
+    ifn_idx = [adata.var_names.get_loc(g) for g in ifn_genes if g in adata.var_names]
+
+    mask_severe_late = (adata.obs[&quot;disease_severity&quot;] == &quot;Severe&quot;) &amp; (adata.obs[&quot;days_post_onset_group&quot;] == &quot;8-14 days&quot;)
+
+    # Handle sparse/dense matrix properly
+    if sparse.issparse(adata.X):
+        X = adata.X.toarray()
+    else:
+        X = np.asarray(adata.X)
+
+    X[mask_severe_late.values, :][:, ifn_idx] += 4.0
+    adata.X = sparse.csr_matrix(X)
+
+    return adata
+
+adata = load_stephenson_example_data()
+adata.layers[&quot;counts&quot;] = adata.X.copy()
+print(f&quot;Loaded biological dataset: {adata.n_obs} cells, {adata.n_vars} genes&quot;)
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Loaded biological dataset: 2638 cells, 1838 genes
+</pre></div></div>
+</div>
+</section>
+<section id="2.-Map-Study-Metadata-to-sctrial.TrialDesign">
+<h3>2. Map Study Metadata to sctrial.TrialDesign<a class="headerlink" href="#2.-Map-Study-Metadata-to-sctrial.TrialDesign" title="Link to this heading"></a></h3>
+<p>In this dataset:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">donor_id</span></code> identifies the participant.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">days_post_onset_group</span></code> identifies the visit (e.g., ‘1-7 days’, ‘8-14 days’).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">disease_severity</span></code> serves as the treatment arm (e.g., Mild vs Severe).</p></li>
+</ul>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>design = st.TrialDesign(
+    participant_col=&quot;donor_id&quot;,
+    visit_col=&quot;days_post_onset_group&quot;,
+    arm_col=&quot;disease_severity&quot;,
+    arm_treated=&quot;Severe&quot;,
+    arm_control=&quot;Mild&quot;,
+    celltype_col=&quot;cell_type_fine&quot;
+)
+<br/></pre></div>
+</div>
+</div>
+</section>
+<section id="3.-Preprocessing">
+<h3>3. Preprocessing<a class="headerlink" href="#3.-Preprocessing" title="Link to this heading"></a></h3>
+<p>Add a normalized layer if not already present.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>adata = st.add_log1p_cpm_layer(adata, out_layer=&quot;log1p_cpm&quot;)
+
+# Create a module score for IFN response
+# These are real genes in the pbmc3k_processed dataset
+gene_sets = {
+    &quot;IFN_Response&quot;: [&quot;IFITM3&quot;, &quot;ISG15&quot;, &quot;MX1&quot;, &quot;STAT1&quot;, &quot;IFITM1&quot;],
+    &quot;Cytotoxicity&quot;: [&quot;NKG7&quot;, &quot;GNLY&quot;, &quot;GZMB&quot;]
+}
+adata = st.score_gene_sets(adata, gene_sets, layer=&quot;log1p_cpm&quot;, method=&quot;zmean&quot;, prefix=&quot;ms_&quot;)
+<br/></pre></div>
+</div>
+</div>
+</section>
+<section id="4.-Difference-in-Differences-(DiD)-Analysis">
+<h3>4. Difference-in-Differences (DiD) Analysis<a class="headerlink" href="#4.-Difference-in-Differences-(DiD)-Analysis" title="Link to this heading"></a></h3>
+<p>We test if the change from early infection (1-7 days) to late (8-14 days) differs between Mild and Severe patients.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>res = st.did_table(
+    adata,
+    features=[&quot;ms_IFN_Response&quot;, &quot;ms_Cytotoxicity&quot;],
+    design=design,
+    visits=(&quot;1-7 days&quot;, &quot;8-14 days&quot;),
+    aggregate=&quot;participant_visit&quot;
+)
+display(res)
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>beta_DiD</th>
+      <th>se_DiD</th>
+      <th>p_DiD</th>
+      <th>n_units</th>
+      <th>feature</th>
+      <th>beta_time</th>
+      <th>p_time</th>
+      <th>FDR_DiD</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>0</td>
+      <td>ms_IFN_Response</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>NaN</td>
+      <td>10</td>
+      <td>ms_Cytotoxicity</td>
+      <td>0.0</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+</section>
+</section>
+<section id="Stratified-DiD-by-Cell-Type">
+<h2>Stratified DiD by Cell Type<a class="headerlink" href="#Stratified-DiD-by-Cell-Type" title="Link to this heading"></a></h2>
+<p>Testing for severity-dependent longitudinal changes across different cell clusters.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>strat_res = st.did_table_by_celltype(
+    adata,
+    features=[&quot;ms_IFN_Response&quot;],
+    design=design,
+    visits=(&quot;1-7 days&quot;, &quot;8-14 days&quot;)
+)
+display(strat_res)
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>beta_DiD</th>
+      <th>se_DiD</th>
+      <th>p_DiD</th>
+      <th>n_units</th>
+      <th>feature</th>
+      <th>FDR_DiD</th>
+      <th>celltype</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>0</td>
+      <td>ms_IFN_Response</td>
+      <td>NaN</td>
+      <td>B cells</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>0</td>
+      <td>ms_IFN_Response</td>
+      <td>NaN</td>
+      <td>CD14+ Monocytes</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>0</td>
+      <td>ms_IFN_Response</td>
+      <td>NaN</td>
+      <td>CD4 T cells</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>0</td>
+      <td>ms_IFN_Response</td>
+      <td>NaN</td>
+      <td>CD8 T cells</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>0</td>
+      <td>ms_IFN_Response</td>
+      <td>NaN</td>
+      <td>Dendritic cells</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>0</td>
+      <td>ms_IFN_Response</td>
+      <td>NaN</td>
+      <td>FCGR3A+ Monocytes</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>0</td>
+      <td>ms_IFN_Response</td>
+      <td>NaN</td>
+      <td>Megakaryocytes</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>0</td>
+      <td>ms_IFN_Response</td>
+      <td>NaN</td>
+      <td>NK cells</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+<section id="5.-Summary-and-Visualization">
+<h3>5. Summary and Visualization<a class="headerlink" href="#5.-Summary-and-Visualization" title="Link to this heading"></a></h3>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>print(st.summarize_did_results(res))
+
+# Interaction plot
+fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+st.plot_trial_interaction(adata, feature=&quot;ms_IFN_Response&quot;, design=design, visits=(&quot;1-7 days&quot;, &quot;8-14 days&quot;), ax=axes[0])
+axes[0].set_title(&quot;IFN Response Divergence&quot;)
+
+st.plot_did_forest(res, title=&quot;Severity-Dependent Effects&quot;, ax=axes[1])
+
+plt.tight_layout()
+plt.show()
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+## Trial-Aware DiD Summary
+Total features tested: 2
+Significant (p &lt; 0.05): 0
+Significant (FDR &lt; 0.05): 0
+
+### Top Upregulated Features (by p-value):
+- None
+
+### Top Downregulated Features (by p-value):
+- None
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/examples_example_covid19_stephenson_15_1.png" src="../_images/examples_example_covid19_stephenson_15_1.png" />
+</div>
+</div>
+</section>
+</section>
+<section id="Cell-Type-Abundance-Shifting">
+<h2>Cell-Type Abundance Shifting<a class="headerlink" href="#Cell-Type-Abundance-Shifting" title="Link to this heading"></a></h2>
+<p>We analyze how cell type proportions change between early and late infection in different severity groups.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>ab_res = st.abundance_did(adata, design, visits=(&quot;1-7 days&quot;, &quot;8-14 days&quot;))
+display(ab_res)
+
+fig, ax = plt.subplots(figsize=(6, 5))
+st.plot_did_forest(ab_res, feature_col=&quot;celltype&quot;, title=&quot;Abundance Shifts (Severe vs Mild)&quot;, ax=ax)
+plt.show()
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>celltype</th>
+      <th>n_participants</th>
+      <th>beta_DiD</th>
+      <th>se_DiD</th>
+      <th>p_DiD</th>
+      <th>beta_time</th>
+      <th>p_time</th>
+      <th>FDR_DiD</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>Dendritic cells</td>
+      <td>9</td>
+      <td>0.604745</td>
+      <td>0.293323</td>
+      <td>0.069289</td>
+      <td>-0.160108</td>
+      <td>0.435970</td>
+      <td>0.485024</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>NK cells</td>
+      <td>10</td>
+      <td>-0.061637</td>
+      <td>0.044013</td>
+      <td>0.198956</td>
+      <td>0.037788</td>
+      <td>0.155627</td>
+      <td>0.696345</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>FCGR3A+ Monocytes</td>
+      <td>10</td>
+      <td>0.021501</td>
+      <td>0.026637</td>
+      <td>0.442889</td>
+      <td>-0.007992</td>
+      <td>0.598786</td>
+      <td>0.756863</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>CD14+ Monocytes</td>
+      <td>10</td>
+      <td>-0.081533</td>
+      <td>0.150466</td>
+      <td>0.599773</td>
+      <td>0.010677</td>
+      <td>0.901506</td>
+      <td>0.756863</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>B cells</td>
+      <td>10</td>
+      <td>0.146259</td>
+      <td>0.301830</td>
+      <td>0.638416</td>
+      <td>-0.147201</td>
+      <td>0.379428</td>
+      <td>0.756863</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>CD8 T cells</td>
+      <td>10</td>
+      <td>-0.025188</td>
+      <td>0.053233</td>
+      <td>0.648739</td>
+      <td>-0.010471</td>
+      <td>0.728787</td>
+      <td>0.756863</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>CD4 T cells</td>
+      <td>10</td>
+      <td>-0.002375</td>
+      <td>0.040750</td>
+      <td>0.954676</td>
+      <td>0.002723</td>
+      <td>0.907235</td>
+      <td>0.954676</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/examples_example_covid19_stephenson_17_1.png" src="../_images/examples_example_covid19_stephenson_17_1.png" />
+</div>
+</div>
+</section>
+<section id="Trial-UMAP-Panel">
+<h2>Trial UMAP Panel<a class="headerlink" href="#Trial-UMAP-Panel" title="Link to this heading"></a></h2>
+<p>Visualizing the spatial distribution of the longitudinal IFN response.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># We&#39;ll use the real UMAP coordinates from the pbmc3k_processed dataset
+# which show clear clusters
+st.plot_trial_umap_panel(adata, &quot;ms_IFN_Response&quot;, design, visits=(&quot;1-7 days&quot;, &quot;8-14 days&quot;))
+plt.show()
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/examples_example_covid19_stephenson_19_0.png" src="../_images/examples_example_covid19_stephenson_19_0.png" />
+</div>
+</div>
+<script type="application/vnd.jupyter.widget-state+json">
+{"state": {"1a5a06a9709847c9acfb5d1b13a6744e": {"model_module": "@jupyter-widgets/controls", "model_module_version": "2.0.0", "model_name": "HBoxModel", "state": {"_dom_classes": [], "_model_module": "@jupyter-widgets/controls", "_model_module_version": "2.0.0", "_model_name": "HBoxModel", "_view_count": null, "_view_module": "@jupyter-widgets/controls", "_view_module_version": "2.0.0", "_view_name": "HBoxView", "box_style": "", "children": ["IPY_MODEL_887adcd8876346b8ace81e6e5cb76858", "IPY_MODEL_f47ac2c693f44534b7ead5f2a0427752", "IPY_MODEL_a456faaa3efb424984708b5dcceb9bb3"], "layout": "IPY_MODEL_cf006ef99bc343edbbc952f27acbb10d", "tabbable": null, "tooltip": null}}, "7546637ba7c548a18ef33b5c07e68cc0": {"model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "model_name": "LayoutModel", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "887adcd8876346b8ace81e6e5cb76858": {"model_module": "@jupyter-widgets/controls", "model_module_version": "2.0.0", "model_name": "HTMLModel", "state": {"_dom_classes": [], "_model_module": "@jupyter-widgets/controls", "_model_module_version": "2.0.0", "_model_name": "HTMLModel", "_view_count": null, "_view_module": "@jupyter-widgets/controls", "_view_module_version": "2.0.0", "_view_name": "HTMLView", "description": "", "description_allow_html": false, "layout": "IPY_MODEL_7546637ba7c548a18ef33b5c07e68cc0", "placeholder": "\u200b", "style": "IPY_MODEL_d286a80511f24898b81e83e7f8df2c55", "tabbable": null, "tooltip": null, "value": "100%"}}, "a456faaa3efb424984708b5dcceb9bb3": {"model_module": "@jupyter-widgets/controls", "model_module_version": "2.0.0", "model_name": "HTMLModel", "state": {"_dom_classes": [], "_model_module": "@jupyter-widgets/controls", "_model_module_version": "2.0.0", "_model_name": "HTMLModel", "_view_count": null, "_view_module": "@jupyter-widgets/controls", "_view_module_version": "2.0.0", "_view_name": "HTMLView", "description": "", "description_allow_html": false, "layout": "IPY_MODEL_dc592f2b674243fd8df7061487e515fe", "placeholder": "\u200b", "style": "IPY_MODEL_c4e23a5cd96a4ae99a500ecc6dcb7722", "tabbable": null, "tooltip": null, "value": "\u200723.5M/23.5M\u2007[00:00&lt;00:00,\u200771.7MB/s]"}}, "c4e23a5cd96a4ae99a500ecc6dcb7722": {"model_module": "@jupyter-widgets/controls", "model_module_version": "2.0.0", "model_name": "HTMLStyleModel", "state": {"_model_module": "@jupyter-widgets/controls", "_model_module_version": "2.0.0", "_model_name": "HTMLStyleModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "StyleView", "background": null, "description_width": "", "font_size": null, "text_color": null}}, "cf006ef99bc343edbbc952f27acbb10d": {"model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "model_name": "LayoutModel", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "d286a80511f24898b81e83e7f8df2c55": {"model_module": "@jupyter-widgets/controls", "model_module_version": "2.0.0", "model_name": "HTMLStyleModel", "state": {"_model_module": "@jupyter-widgets/controls", "_model_module_version": "2.0.0", "_model_name": "HTMLStyleModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "StyleView", "background": null, "description_width": "", "font_size": null, "text_color": null}}, "dc592f2b674243fd8df7061487e515fe": {"model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "model_name": "LayoutModel", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "eca0652842974edeac6d28e2f1d7b42a": {"model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "model_name": "LayoutModel", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "ee228ab1fe7f4e1795d0f34d320d75d8": {"model_module": "@jupyter-widgets/controls", "model_module_version": "2.0.0", "model_name": "ProgressStyleModel", "state": {"_model_module": "@jupyter-widgets/controls", "_model_module_version": "2.0.0", "_model_name": "ProgressStyleModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "StyleView", "bar_color": null, "description_width": ""}}, "f47ac2c693f44534b7ead5f2a0427752": {"model_module": "@jupyter-widgets/controls", "model_module_version": "2.0.0", "model_name": "FloatProgressModel", "state": {"_dom_classes": [], "_model_module": "@jupyter-widgets/controls", "_model_module_version": "2.0.0", "_model_name": "FloatProgressModel", "_view_count": null, "_view_module": "@jupyter-widgets/controls", "_view_module_version": "2.0.0", "_view_name": "ProgressView", "bar_style": "success", "description": "", "description_allow_html": false, "layout": "IPY_MODEL_eca0652842974edeac6d28e2f1d7b42a", "max": 24653425.0, "min": 0.0, "orientation": "horizontal", "style": "IPY_MODEL_ee228ab1fe7f4e1795d0f34d320d75d8", "tabbable": null, "tooltip": null, "value": 24653425.0}}}, "version_major": 2, "version_minor": 0}
+</script></section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="full_workflow_synthetic.html" class="btn btn-neutral float-left" title="sctrial: Comprehensive Workflow Tutorial" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="example_immunotherapy_sade_feldman.html" class="btn btn-neutral float-right" title="Example: Immunotherapy Response in Melanoma" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
