@@ -1,12 +1,6 @@
 import pandas as pd
-import pytest
+import re
 from sctrial.utils import ensure_unique_index
-
-def safe_filename(s: str, maxlen: int = 180) -> str:
-    s = str(s)
-    # Ensure we handle common greek letters often found in cell names
-    s = s.replace("γ", "gamma").replace("δ", "delta").replace("α", "alpha").replace("β", "beta")
-    s = re.sub(r"\s+", "_", s.strip())
 
 def test_ensure_unique_index():
     df = pd.DataFrame({"val": [1, 3, 10]}, index=["A", "A", "B"])
