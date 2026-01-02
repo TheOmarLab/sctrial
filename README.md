@@ -3,6 +3,7 @@
 [![Test Status](https://github.com/TheOmarLab/sctrial/actions/workflows/test.yml/badge.svg)](https://github.com/TheOmarLab/sctrial/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python Versions](https://img.shields.io/pypi/pyversions/sctrial.svg)](https://pypi.org/project/sctrial/)
+[![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg)](https://TheOmarLab.github.io/sctrial/)
 
 `sctrial` provides *trial-aware inference* helpers for **single-cell** data represented as `AnnData`,
 focusing on analyses common in longitudinal / randomized / crossover designs:
