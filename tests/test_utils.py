@@ -1,5 +1,4 @@
 import pandas as pd
-import re
 from sctrial.utils import ensure_unique_index
 
 def test_ensure_unique_index():

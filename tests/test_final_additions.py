@@ -1,8 +1,7 @@
-import pytest
 import numpy as np
 import pandas as pd
 import sctrial as st
-from anndata import AnnData
+import pytest
 
 def test_resolve_feature(sample_adata):
     # exact

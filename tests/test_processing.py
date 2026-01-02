@@ -1,5 +1,4 @@
 import numpy as np
-import pytest
 import sctrial as st
 
 def test_log1p_cpm_and_scoring(sample_adata):

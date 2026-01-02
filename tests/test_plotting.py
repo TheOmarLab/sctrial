@@ -1,6 +1,6 @@
-import pytest
 import matplotlib.pyplot as plt
 import sctrial as st
+import pytest
 
 def test_plotting_trial_interaction(sample_adata, trial_design):
     # Prepare data

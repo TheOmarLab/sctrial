@@ -1,6 +1,4 @@
-import pytest
 import numpy as np
-import pandas as pd
 import sctrial as st
 
 def test_within_arm_comparison(sample_adata, trial_design):
