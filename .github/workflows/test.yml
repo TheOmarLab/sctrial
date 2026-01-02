@@ -34,11 +34,11 @@ jobs:
         mypy src
     - name: Run tests
       run: |
-        export PYTHONPATH=$PYTHONPATH:$(pwd)/src
+        pip install -e .[dev,plots,gsea]
         pytest --cov=sctrial --cov-report=xml
     - name: Build documentation
       run: |
-        export PYTHONPATH=$PYTHONPATH:$(pwd)/src
+        pip install -e .[plots,gsea]
         pip install sphinx sphinx_rtd_theme nbsphinx
         cd docs && sphinx-build -b html source build/html
         touch build/html/.nojekyll
@@ -55,11 +55,10 @@ jobs:
         python-version: "3.10"
     - name: Install dependencies
       run: |
-        pip install .[plots,gsea]
+        pip install -e .[plots,gsea]
         pip install sphinx sphinx_rtd_theme nbsphinx
     - name: Build documentation
       run: |
-        export PYTHONPATH=$PYTHONPATH:$(pwd)/src
         cd docs && sphinx-build -b html source build/html
         touch build/html/.nojekyll
     - name: Deploy to GitHub Pages
