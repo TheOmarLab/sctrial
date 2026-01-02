@@ -1,6 +1,5 @@
 from __future__ import annotations
 import pandas as pd
-import numpy as np
 
 def summarize_did_results(
     df: pd.DataFrame,

@@ -1,6 +1,5 @@
 from __future__ import annotations
-from typing import Dict, List, Optional, Sequence, Tuple
-import pandas as pd
+from typing import Dict, List, Optional, Tuple
 import numpy as np
 from anndata import AnnData
 from .did import did_table

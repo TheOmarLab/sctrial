@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Optional, Sequence, Tuple, Literal, Dict, List
+from typing import Optional, Sequence, Tuple, Literal
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -532,8 +532,6 @@ def plot_trial_umap_panel(
     sc.pl.umap(ad, color=design.celltype_col, ax=ax_big, show=False, frameon=False, title="Cell Types")
 
     # 2. 2x2 Grid on the right
-    arms = [design.arm_treated, design.arm_control]
-    
     # Calculate global vmin/vmax for consistent color scale
     vals = ad.obs[feature].values
     vmin = np.nanpercentile(vals, 1)
