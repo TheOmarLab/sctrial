@@ -1,0 +1,17 @@
+name: Feature request
+description: Suggest an idea for sctrial
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: feature-description
+    attributes:
+      label: Description of the feature
+      description: Is your feature request related to a problem? Please describe.
+      placeholder: I would like to be able to...
+    validations:
+      required: true
+  - type: textarea
+    id: alternative-solutions
+    attributes:
+      label: Alternative solutions
+      description: Describe any alternative solutions or features you've considered.
