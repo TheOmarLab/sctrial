@@ -94,6 +94,16 @@ res_gsea = run_gsea_did(
 )
 ```
 
+## Real-World Examples
+
+We provide interactive Jupyter Notebooks and template scripts for applying `sctrial` to well-known public clinical datasets in the `examples/` directory:
+
+- **Full Workflow (Synthetic)**: `examples/full_workflow_synthetic.ipynb` (Complete runnable example)
+- **COVID-19 PBMC**: `examples/example_covid19_stephenson.ipynb` (Stephenson et al., Nature 2021)
+- **Immunotherapy Response**: `examples/example_immunotherapy_sade_feldman.ipynb` (Sade-Feldman et al., Cell 2018)
+- **Vaccine Studies**: `examples/example_vaccine_immport.ipynb` (ImmPort database template)
+- **Scalability Stress Test**: `examples/stress_test_real_scale.ipynb`
+
 ## Primary phase DiD on module scores (participant-level means)
 
 ```python

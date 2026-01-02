@@ -24,3 +24,12 @@ dmypy.json
 venv/
 env/
 ENV/
+
+*.h5ad
+*.gz
+*.txt.gz
+data/
+examples/data/
+**/__pycache__/
+.DS_Store
+**/.DS_Store

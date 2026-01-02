@@ -8,6 +8,7 @@ sctrial: Trial-Aware Single-Cell Inference
    installation
    quickstart
    tutorials/index
+   examples/index
    api
 
 Indices and tables
