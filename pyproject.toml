@@ -65,3 +65,7 @@ include = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+
+[tool.mypy]
+ignore_missing_imports = true
+check_untyped_defs = true

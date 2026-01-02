@@ -336,7 +336,7 @@ def plot_trial_umap(
                 ax.axis("off")
 
     plt.suptitle(f"Trial UMAP: {feature}", fontsize=16)
-    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    plt.tight_layout(rect=(0, 0, 1, 0.96))
     return fig
 
 
@@ -560,7 +560,7 @@ def plot_trial_umap_panel(
     if title is None:
         title = f"Trial UMAP Panel: {feature}"
     plt.suptitle(title, fontsize=16)
-    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    plt.tight_layout(rect=(0, 0, 1, 0.96))
     return fig
 
 
