@@ -38,6 +38,7 @@ jobs:
         pytest --cov=sctrial --cov-report=xml
     - name: Build documentation
       run: |
+        export PYTHONPATH=$PYTHONPATH:$(pwd)/src
         pip install sphinx sphinx_rtd_theme nbsphinx
         cd docs && sphinx-build -b html source build/html
         touch build/html/.nojekyll
@@ -58,6 +59,7 @@ jobs:
         pip install sphinx sphinx_rtd_theme nbsphinx
     - name: Build documentation
       run: |
+        export PYTHONPATH=$PYTHONPATH:$(pwd)/src
         cd docs && sphinx-build -b html source build/html
         touch build/html/.nojekyll
     - name: Deploy to GitHub Pages
