@@ -38,4 +38,3 @@ def test_abundance_did_basic():
     res = st.abundance_did(adata, design, visits=("V1", "V2"), min_units=2)
     
     assert len(res) >= 1, "Abundance DiD should return results for celltype A"
-    res_a = res[res["celltype"] == "A"].iloc[0]

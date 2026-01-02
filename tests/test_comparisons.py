@@ -1,4 +1,3 @@
-import numpy as np
 import sctrial as st
 
 def test_within_arm_comparison(sample_adata, trial_design):
