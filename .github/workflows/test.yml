@@ -35,7 +35,8 @@ jobs:
     - name: Run tests
       run: |
         pip install -e .[dev,plots,gsea]
-        pytest --cov=sctrial --cov-report=xml
+        pip list
+        pytest -v --cov=sctrial --cov-report=xml
     - name: Build documentation
       run: |
         pip install -e .[plots,gsea]
