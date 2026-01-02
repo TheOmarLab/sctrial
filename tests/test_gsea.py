@@ -1,8 +1,16 @@
 import pandas as pd
 from unittest.mock import MagicMock, patch
+import pytest
 import sctrial as st
-import gseapy as gp
 
+try:
+    import gseapy as gp
+    HAS_GSEAPY = True
+except ImportError:
+    HAS_GSEAPY = False
+    gp = None
+
+@pytest.mark.skipif(not HAS_GSEAPY, reason="gseapy not installed")
 def test_run_gsea_did_real_logic(sample_adata, trial_design):
     """Test run_gsea_did with real gseapy call using a dummy local gene set."""
     
@@ -29,9 +37,11 @@ def test_run_gsea_did_real_logic(sample_adata, trial_design):
         max_size=100
     )
     
-    assert isinstance(res, gp.Prerank)
-    assert "PATHWAY_UP" in res.res2d.index or "PATHWAY_UP" in res.results
+    # By default, function returns DataFrame (res2d), not Prerank object
+    assert isinstance(res, pd.DataFrame)
+    assert "PATHWAY_UP" in res["Term"].values or "PATHWAY_UP" in res.index
     
+@pytest.mark.skipif(not HAS_GSEAPY, reason="gseapy not installed")
 def test_run_gsea_did_mock(sample_adata, trial_design):
     """Test run_gsea_did with a mocked gseapy call to ensure ranking logic is correct."""
     

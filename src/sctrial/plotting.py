@@ -2,13 +2,34 @@ from __future__ import annotations
 from typing import Optional, Sequence, Tuple, Literal
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 from anndata import AnnData
 from .design import TrialDesign
 from .stats._extract import extract_gene_vector
-import scanpy as sc
-from matplotlib.gridspec import GridSpec
+from ._env import ensure_numba_cache_dir, ensure_matplotlib_config_dir
+
+# Optional dependencies for plotting
+# Ensure caches/config go to writable temp dirs to avoid numba/matplotlib failures.
+ensure_matplotlib_config_dir()
+ensure_numba_cache_dir()
+
+try:
+    import matplotlib.pyplot as plt
+    from matplotlib.gridspec import GridSpec
+except ImportError:
+    plt = None
+    GridSpec = None
+
+try:
+    import seaborn as sns
+except ImportError:
+    sns = None
+
+scanpy_import_error = None
+try:
+    import scanpy as sc
+except Exception as e:  # ImportError or runtime errors (e.g., numba cache)
+    sc = None
+    scanpy_import_error = e
 
 def did_volcano_frame(
         df: pd.DataFrame,
@@ -55,13 +76,18 @@ def plot_trial_interaction(
     visits: Optional[Tuple[str, str]] = None,
     layer: Optional[str] = None,
     color_palette: Optional[dict] = None,
-    ax: Optional[plt.Axes] = None,
-) -> plt.Axes:
+    ax: Optional["plt.Axes"] = None,
+) -> "plt.Axes":
     """Plot mean expression (interaction plot) by arm and visit.
     
     This visualizes the DiD effect: the change from baseline to follow-up 
     across treatment arms.
     """
+    if plt is None or sns is None:
+        raise ImportError(
+            "matplotlib and seaborn are required for plotting. "
+            "Install with: pip install sctrial[plots]"
+        )
     if visits is None:
         visits = design.primary_visits()
 
@@ -104,8 +130,8 @@ def plot_did_forest(
     p_col: str = "p_DiD",
     alpha: float = 0.05,
     title: str = "DiD Effect Sizes",
-    ax: Optional[plt.Axes] = None,
-) -> plt.Axes:
+    ax: Optional["plt.Axes"] = None,
+) -> "plt.Axes":
     """Plot a forest plot of DiD effect sizes with confidence intervals.
 
     Parameters
@@ -127,8 +153,18 @@ def plot_did_forest(
     ax
         Optional matplotlib axes.
     """
+    if plt is None or sns is None:
+        raise ImportError(
+            "matplotlib and seaborn are required for plotting. "
+            "Install with: pip install sctrial[plots]"
+        )
     if df.empty:
-        raise ValueError("DataFrame is empty.")
+        # Gracefully handle empty dataframe
+        if ax is None:
+            fig, ax = plt.subplots(figsize=(5, 2))
+        ax.text(0.5, 0.5, "No data to plot", ha="center")
+        ax.set_title(title)
+        return ax
     
     # Ensure necessary columns exist
     for col in [feature_col, beta_col, se_col]:
@@ -140,6 +176,15 @@ def plot_did_forest(
                 raise KeyError(f"Missing column '{col}' in DataFrame.")
 
     df_plot = df.copy()
+    # Filter rows with NaNs in beta or se
+    df_plot = df_plot.dropna(subset=[beta_col, se_col])
+    if df_plot.empty:
+        if ax is None:
+            fig, ax = plt.subplots(figsize=(5, 2))
+        ax.text(0.5, 0.5, "No valid DiD estimates", ha="center")
+        ax.set_title(title)
+        return ax
+
     df_plot["ci"] = 1.96 * df_plot[se_col]
     df_plot = df_plot.sort_values(beta_col)
 
@@ -200,8 +245,8 @@ def plot_within_arm_comparison(
     visits: Tuple[str, str],
     layer: Optional[str] = None,
     plot_type: Literal["box", "paired"] = "paired",
-    ax: Optional[plt.Axes] = None,
-) -> plt.Axes:
+    ax: Optional["plt.Axes"] = None,
+) -> "plt.Axes":
     """Plot within-arm longitudinal change.
 
     Parameters
@@ -224,6 +269,11 @@ def plot_within_arm_comparison(
     ax
         Optional matplotlib axes.
     """
+    if plt is None or sns is None:
+        raise ImportError(
+            "matplotlib and seaborn are required for plotting. "
+            "Install with: pip install sctrial[plots]"
+        )
     from .stats.comparisons import subset_cells
     ad = subset_cells(adata, design, arm=arm)
     ad = ad[ad.obs[design.visit_col].isin(visits)].copy()
@@ -269,7 +319,7 @@ def plot_trial_umap(
     layer: Optional[str] = None,
     cmap: str = "magma",
     figsize: Tuple[float, float] = (12, 8),
-) -> plt.Figure:
+) -> "plt.Figure":
     """Create a panel of UMAPs stratified by arm and visit.
 
     This creates a 2x2 panel (Treated/Control x Baseline/Followup) showing 
@@ -296,7 +346,12 @@ def plot_trial_umap(
     -------
     fig : matplotlib.figure.Figure
     """
-    import scanpy as sc
+    if plt is None or sc is None:
+        raise ImportError(
+            "matplotlib and scanpy are required for plotting. "
+            "Install with: pip install sctrial[plots]"
+            + (f" (scanpy import failed: {scanpy_import_error})" if scanpy_import_error else "")
+        )
     if visits is None:
         visits = design.primary_visits()
 
@@ -347,7 +402,7 @@ def plot_gsea_radar(
     nes_col: str = "NES",
     title: Optional[str] = None,
     figsize: Tuple[float, float] = (6, 6),
-) -> plt.Figure:
+) -> "plt.Figure":
     """Radar (spider) plot of GSEA NES across pools/cell types.
 
     Parameters
@@ -365,6 +420,11 @@ def plot_gsea_radar(
     figsize
         Figure size.
     """
+    if plt is None:
+        raise ImportError(
+            "matplotlib is required for plotting. "
+            "Install with: pip install sctrial[plots]"
+        )
     from math import pi
     df_term = gsea_results[gsea_results["Term"].str.contains(term, case=False, na=False)]
     if df_term.empty:
@@ -415,7 +475,12 @@ def plot_trial_dotplot(
 
     Replicates the 'celltype_treatment' dotplot pattern.
     """
-    import scanpy as sc
+    if sc is None:
+        raise ImportError(
+            "scanpy is required for plotting. "
+            "Install with: pip install sctrial[plots]"
+            + (f" (scanpy import failed: {scanpy_import_error})" if scanpy_import_error else "")
+        )
     ad = adata.copy()
     if visits:
         ad = ad[ad.obs[design.visit_col].isin(visits)].copy()
@@ -458,9 +523,14 @@ def plot_abundance_interaction(
     celltype: str,
     design: TrialDesign,
     visits: Optional[Tuple[str, str]] = None,
-    ax: Optional[plt.Axes] = None,
-) -> plt.Axes:
+    ax: Optional["plt.Axes"] = None,
+) -> "plt.Axes":
     """Plot cell type abundance (proportion) by arm and visit."""
+    if plt is None or sns is None:
+        raise ImportError(
+            "matplotlib and seaborn are required for plotting. "
+            "Install with: pip install sctrial[plots]"
+        )
     if design.celltype_col is None:
         raise ValueError("TrialDesign must have celltype_col defined.")
     if visits is None:
@@ -504,11 +574,17 @@ def plot_trial_umap_panel(
     cmap: str = "magma",
     figsize: Tuple[float, float] = (16, 8),
     title: Optional[str] = None,
-) -> plt.Figure:
+) -> "plt.Figure":
     """Combined UMAP panel: Cell Types + 4 Trial-stratified UMAPs.
 
     Replicates the layout: [Large Cell Type UMAP] [2x2 Grid of Feature UMAPs].
     """
+    if plt is None or sc is None or GridSpec is None:
+        raise ImportError(
+            "matplotlib and scanpy are required for plotting. "
+            "Install with: pip install sctrial[plots]"
+            + (f" (scanpy import failed: {scanpy_import_error})" if scanpy_import_error else "")
+        )
     if visits is None:
         visits = design.primary_visits()
     
@@ -574,7 +650,8 @@ def plot_gsea_heatmap(
     nes_col: str = "NES",
     fdr_col: str = "FDR q-val",
     figsize: Tuple[float, float] = (12, 10),
-) -> plt.Axes:
+    title: Optional[str] = None,
+) -> "plt.Axes":
     """Heatmap of GSEA NES across pools (cell types).
 
     Parameters
@@ -587,8 +664,26 @@ def plot_gsea_heatmap(
         Only include pathways that are significant (FDR < thresh) in at least one pool.
     top_n
         Number of top pathways to show (ranked by minimum FDR across pools).
+    figsize
+        Figure size.
+    title
+        Optional title.
     """
-    df = gsea_results.copy()
+    if plt is None or sns is None:
+        raise ImportError(
+            "matplotlib and seaborn are required for plotting. "
+            "Install with: pip install sctrial[plots]"
+        )
+    # If it's a gseapy Prerank object, extract res2d
+    if hasattr(gsea_results, "res2d"):
+        df = gsea_results.res2d.copy()
+    else:
+        df = gsea_results.copy()
+        
+    if pool_col not in df.columns:
+        # Assume global result if pool column is missing
+        df[pool_col] = "Global"
+        
     if collection:
         if "collection" in df.columns:
             df = df[df["collection"] == collection]
@@ -596,21 +691,34 @@ def plot_gsea_heatmap(
     # 1. Filter significant
     df_sig = df[df[fdr_col] <= fdr_thresh].copy()
     if df_sig.empty:
-        raise ValueError(f"No pathways with {fdr_col} < {fdr_thresh}")
-
-    # 2. Rank pathways by minimum FDR
-    top_terms = df_sig.groupby(term_col)[fdr_col].min().sort_values().head(top_n).index.tolist()
+        # Fallback to top_n without FDR threshold if none significant
+        top_terms = df.groupby(term_col)[fdr_col].min().sort_values().head(top_n).index.tolist()
+    else:
+        # 2. Rank pathways by minimum FDR
+        top_terms = df_sig.groupby(term_col)[fdr_col].min().sort_values().head(top_n).index.tolist()
     
+    if not top_terms:
+        fig, ax = plt.subplots(figsize=(5, 2))
+        ax.text(0.5, 0.5, "No pathways to plot", ha="center")
+        return ax
+
     # 3. Pivot
     df_top = df[df[term_col].isin(top_terms)].copy()
     mat = df_top.pivot_table(index=term_col, columns=pool_col, values=nes_col, aggfunc="mean")
     
     # Sort terms by original min FDR ranking
     mat = mat.loc[top_terms]
+    
+    # Ensure numeric
+    mat = mat.astype(float)
 
     plt.figure(figsize=figsize)
     ax = sns.heatmap(mat, cmap="RdBu_r", center=0, linewidths=0.5, linecolor="gray", cbar_kws={"label": "NES"})
-    plt.title(f"GSEA NES Heatmap: {collection if collection else 'Top Pathways'}")
+    
+    if title is None:
+        title = f"GSEA NES Heatmap: {collection if collection else 'Top Pathways'}"
+    plt.title(title)
+    
     plt.xlabel("Pool")
     plt.ylabel("Pathway")
     plt.tight_layout()

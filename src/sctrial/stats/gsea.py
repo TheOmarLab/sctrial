@@ -1,9 +1,13 @@
 from __future__ import annotations
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union, TYPE_CHECKING
 import numpy as np
+import pandas as pd
 from anndata import AnnData
 from .did import did_table
 from ..design import TrialDesign
+
+if TYPE_CHECKING:
+    import gseapy as gp
 
 try:
     import gseapy as gp
@@ -12,7 +16,7 @@ except ImportError:
 
 def run_gsea_did(
     adata: AnnData,
-    gene_sets: str | Dict[str, List[str]],
+    gene_sets: Union[str, Dict[str, List[str]]],
     design: TrialDesign,
     visits: Tuple[str, str],
     layer: Optional[str] = None,
@@ -21,8 +25,9 @@ def run_gsea_did(
     min_units: int = 5,
     use_bootstrap: bool = False,
     n_boot: int = 999,
+    return_obj: bool = False,
     **kwargs
-) -> gp.GSEA | gp.Prerank:
+) -> Union[pd.DataFrame, "gp.Prerank"]:
     """Perform Gene Set Enrichment Analysis (GSEA) on trial-aware rankings.
     
     This function calculates Difference-in-Differences (DiD) effect sizes for 
@@ -60,32 +65,28 @@ def run_gsea_did(
         rank_by is 'signed_confidence').
     n_boot
         Number of bootstrap permutations.
+    return_obj
+        Whether to return the full gseapy object. If False (default), 
+        returns the results DataFrame (`res2d`).
     **kwargs
         Additional parameters passed to `gseapy.prerank` (e.g., `permutation_num`, 
         `outdir`, `min_size`, `max_size`).
 
     Returns
     -------
-    gseapy.Prerank
-        A gseapy result object containing enrichment scores and pathway stats.
+    pd.DataFrame or gseapy.Prerank
+        A DataFrame of enrichment results (if return_obj=False) or the 
+        gseapy result object.
 
     Examples
     --------
     >>> res = run_gsea_did(adata, gene_sets="KEGG_2021_Human", design=design, visits=("V1", "V2"))
-    >>> print(res.res2d.head())
+    >>> print(res.head())
     """
     if gp is None:
         raise ImportError("gseapy is required for run_gsea_did. Install with 'pip install gseapy'.")
 
     # 1. Run DiD for all genes
-    # Note: did_table might be slow for all genes if not optimized, 
-    # but the summary says "tens-hundreds" in did_table docstring.
-    # However, for GSEA we need genome-wide or at least a large set.
-    
-    # We'll use did_table but might need to ensure it handles many genes efficiently.
-    # Actually, the summary says: "Rather than naïve differential expression, we performed GSEA 
-    # using DiD-derived gene rankings".
-    
     genes = adata.var_names.tolist()
     res = did_table(
         adata,
@@ -101,11 +102,11 @@ def run_gsea_did(
     
     # 2. Rank genes
     if rank_by == "signed_confidence":
-        res["rank"] = np.sign(res["beta_DiD"]) * -np.log10(res["p_DiD"] + 1e-12)
+        res["rank"] = np.sign(res["beta_DiD"].fillna(0)) * -np.log10(res["p_DiD"].fillna(1) + 1e-12)
     elif rank_by == "beta":
-        res["rank"] = res["beta_DiD"]
+        res["rank"] = res["beta_DiD"].fillna(0)
     elif rank_by == "tstat":
-        res["rank"] = res["beta_DiD"] / (res["se_DiD"] + 1e-12)
+        res["rank"] = res["beta_DiD"].fillna(0) / (res["se_DiD"].fillna(1) + 1e-12)
     else:
         raise ValueError(f"Unknown rank_by: {rank_by}")
         
@@ -117,4 +118,11 @@ def run_gsea_did(
         gene_sets=gene_sets,
         **kwargs
     )
+    
+    if return_obj:
+        return pre_res
+    
+    # Handle both gseapy >= 1.0 (has .res2d) and potentially older versions
+    if hasattr(pre_res, "res2d"):
+        return pre_res.res2d
     return pre_res

@@ -1,9 +1,21 @@
+# Core dependencies (required)
 numpy>=1.22
 pandas>=1.5
 scipy>=1.8
 statsmodels>=0.13
 anndata>=0.9
+
+# Optional dependencies for plotting (install with: pip install sctrial[plots])
 matplotlib>=3.6
 seaborn>=0.12
 scanpy>=1.9
+
+# Optional dependency for GSEA (install with: pip install sctrial[gsea])
 gseapy>=1.0
+
+# Note: For production use, prefer installing via:
+#   pip install sctrial                    # Core only
+#   pip install sctrial[plots]              # Core + plotting
+#   pip install sctrial[gsea]               # Core + GSEA
+#   pip install sctrial[plots,gsea]         # All features
+# See pyproject.toml for the canonical dependency specification.

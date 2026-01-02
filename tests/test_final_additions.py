@@ -3,6 +3,12 @@ import pandas as pd
 import sctrial as st
 import pytest
 
+try:
+    import scanpy as sc
+    HAS_SCANPY = True
+except Exception:
+    HAS_SCANPY = False
+
 def test_resolve_feature(sample_adata):
     # exact
     assert st.resolve_feature(sample_adata, "participant_id") == "participant_id"
@@ -25,6 +31,7 @@ def test_between_arm_comparison_wilcoxon(sample_adata, trial_design):
     assert "p_arm" in res.columns
     assert res.shape[0] == 2
 
+@pytest.mark.skipif(not HAS_SCANPY, reason="scanpy not installed")
 def test_plot_trial_umap_panel(sample_adata, trial_design):
     import matplotlib.pyplot as plt
     # mock umap

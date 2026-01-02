@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from typing import Optional, Tuple, Sequence
+from typing import Optional, Tuple, Sequence, List
 import numpy as np
 import pandas as pd
 from anndata import AnnData
 from .design import TrialDesign
 
 
-def _require_cols(obs: pd.DataFrame, cols: list[str]) -> None:
+def _require_cols(obs: pd.DataFrame, cols: List[str]) -> None:
     missing = [c for c in cols if c not in obs.columns]
     if missing:
         raise KeyError(f"Missing required obs columns: {missing}. Available: {list(obs.columns)}")

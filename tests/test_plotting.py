@@ -1,7 +1,14 @@
-import matplotlib.pyplot as plt
-import sctrial as st
 import pytest
+import sctrial as st
 
+try:
+    import matplotlib.pyplot as plt
+    HAS_MATPLOTLIB = True
+except ImportError:
+    HAS_MATPLOTLIB = False
+    plt = None
+
+@pytest.mark.skipif(not HAS_MATPLOTLIB, reason="matplotlib not installed")
 def test_plotting_trial_interaction(sample_adata, trial_design):
     # Prepare data
     adata = st.add_log1p_cpm_layer(sample_adata, out_layer="log1p_cpm")
@@ -18,11 +25,13 @@ def test_plotting_trial_interaction(sample_adata, trial_design):
     assert isinstance(ax, plt.Axes)
     plt.close()
 
+@pytest.mark.skipif(not HAS_MATPLOTLIB, reason="matplotlib not installed")
 def test_plotting_abundance_interaction(sample_adata, trial_design):
     ax = st.plot_abundance_interaction(sample_adata, celltype="TypeA", design=trial_design, visits=("V1", "V2"))
     assert isinstance(ax, plt.Axes)
     plt.close()
 
+@pytest.mark.skipif(not HAS_MATPLOTLIB, reason="matplotlib not installed")
 def test_volcano_helpers():
     import pandas as pd
     df = pd.DataFrame({

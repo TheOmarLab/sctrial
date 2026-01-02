@@ -1,7 +1,20 @@
 import numpy as np
 import pandas as pd
 import sctrial as st
-import matplotlib.pyplot as plt
+import pytest
+
+try:
+    import matplotlib.pyplot as plt
+    HAS_MATPLOTLIB = True
+except ImportError:
+    HAS_MATPLOTLIB = False
+    plt = None
+
+try:
+    import scanpy as sc
+    HAS_SCANPY = True
+except Exception:
+    HAS_SCANPY = False
 
 def test_bootstrap_did(sample_adata, trial_design):
     # Run DiD with bootstrap - use very small n_boot for speed
@@ -17,6 +30,7 @@ def test_bootstrap_did(sample_adata, trial_design):
     assert "p_DiD" in res.columns
     assert res["p_DiD"].notna().all()
 
+@pytest.mark.skipif(not HAS_MATPLOTLIB, reason="matplotlib not installed")
 def test_forest_plot():
     df = pd.DataFrame({
         "feature": ["G1", "G2", "G3"],
@@ -28,6 +42,7 @@ def test_forest_plot():
     assert isinstance(ax, plt.Axes)
     plt.close()
 
+@pytest.mark.skipif(not HAS_MATPLOTLIB, reason="matplotlib not installed")
 def test_within_arm_plot(sample_adata, trial_design):
     ax = st.plot_within_arm_comparison(
         sample_adata,
@@ -67,6 +82,7 @@ def test_abundance_did_bootstrap(sample_adata, trial_design):
     assert "p_DiD" in res.columns
     assert len(res) > 0
 
+@pytest.mark.skipif(not HAS_SCANPY or not HAS_MATPLOTLIB, reason="scanpy and matplotlib not installed")
 def test_trial_umap(sample_adata, trial_design):
     # Mock X_umap
     sample_adata.obsm["X_umap"] = np.random.randn(sample_adata.n_obs, 2)

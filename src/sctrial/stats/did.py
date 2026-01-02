@@ -231,30 +231,34 @@ def did_table(
             df[gene] = X[:, i]
 
     missing = []
+    final_features = []
     for feat in features:
         if feat in ad.obs.columns:
-            df[feat] = ad.obs[feat].values
+            val = ad.obs[feat]
+            if not pd.api.types.is_numeric_dtype(val):
+                continue # skip non-numeric obs columns
+            df[feat] = val.values
+            final_features.append(feat)
         elif feat in genes_to_extract:
-            pass # already handled
+            final_features.append(feat)
         else:
             missing.append(feat)
+    
     if missing:
         raise KeyError(f"Features not found in obs or var_names: {missing[:5]}")
+    
+    if not final_features:
+        raise ValueError("No numeric features found to analyze.")
 
     # aggregate if requested
     if aggregate == "participant_visit":
         grp_cols = [design.participant_col, design.visit_col, design.arm_col]
         
-        # We need to preserve 'arm_bin' and 'n_cells'
-        # 'arm_bin' is constant per participant
-        # 'n_cells' is the count of cells per participant-visit
-        df["n_cells"] = 1 # each row is one cell initially
-        
-        agg_features = list(features)
+        df["n_cells"] = 1
+        agg_features = list(final_features)
         if covariates:
             agg_features.extend([c for c in covariates if c not in grp_cols])
         
-        # custom aggregation to include n_cells
         df_use = df.groupby(grp_cols, observed=True).agg({
             **{f: agg for f in agg_features},
             "n_cells": "sum",
@@ -272,7 +276,7 @@ def did_table(
         grp_cols = [design.participant_col, design.visit_col, design.arm_col, design.celltype_col]
 
         df["n_cells"] = 1
-        agg_features = list(features)
+        agg_features = list(final_features)
         if covariates:
             agg_features.extend([c for c in covariates if c not in grp_cols])
 
@@ -297,7 +301,7 @@ def did_table(
         df_use["visit_num"] = df_use[design.visit_col].map({visits[0]:0, visits[1]:1}).astype(float)
 
     rows=[]
-    for feat in features:
+    for feat in final_features:
         out = did_fit(
             df_use, 
             y=feat, 
