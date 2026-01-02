@@ -4,7 +4,7 @@ import sctrial as st
 import pytest
 
 try:
-    import scanpy as sc
+    import scanpy  # noqa: F401
     HAS_SCANPY = True
 except Exception:
     HAS_SCANPY = False
