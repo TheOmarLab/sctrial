@@ -207,9 +207,13 @@
 
         <span class="c1"># residual df guard for FE</span>
         <span class="n">model</span> <span class="o">=</span> <span class="n">smf</span><span class="o">.</span><span class="n">ols</span><span class="p">(</span><span class="n">formula</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">tmp</span><span class="p">)</span>
-        
+
         <span class="k">try</span><span class="p">:</span>
-            <span class="n">fit</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
+            <span class="c1"># Use cluster-robust standard errors for consistency with did_fit</span>
+            <span class="n">fit</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span>
+                <span class="n">cov_type</span><span class="o">=</span><span class="s2">&quot;cluster&quot;</span><span class="p">,</span>
+                <span class="n">cov_kwds</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;groups&quot;</span><span class="p">:</span> <span class="n">tmp</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]}</span>
+            <span class="p">)</span>
             <span class="n">term</span> <span class="o">=</span> <span class="s2">&quot;visit_num:arm_bin&quot;</span>
             
             <span class="c1"># Check if interaction term was estimable</span>

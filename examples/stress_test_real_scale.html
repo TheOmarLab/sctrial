@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>sctrial: Stress Test and Scalability Analysis &mdash; sctrial 0.2.0 documentation</title>
+  <title>sctrial: Scalability Analysis &mdash; sctrial 0.2.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
       <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css?v=2aa19091" />
@@ -24,7 +24,7 @@
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="API Reference" href="../api.html" />
-    <link rel="prev" title="Example: Vaccine Response Analysis" href="example_vaccine_immport.html" /> 
+    <link rel="prev" title="Example: Vaccine Response Analysis (GSE171964)" href="example_vaccine_immport.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -52,18 +52,11 @@
 <li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="index.html">Examples</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="full_workflow_synthetic.html">sctrial: Comprehensive Workflow Tutorial</a></li>
 <li class="toctree-l2"><a class="reference internal" href="example_covid19_stephenson.html">Example: Longitudinal Analysis of COVID-19 PBMC Data</a></li>
 <li class="toctree-l2"><a class="reference internal" href="example_immunotherapy_sade_feldman.html">Example: Immunotherapy Response in Melanoma</a></li>
-<li class="toctree-l2"><a class="reference internal" href="example_vaccine_immport.html">Example: Vaccine Response Analysis</a></li>
-<li class="toctree-l2 current"><a class="current reference internal" href="#">sctrial: Stress Test and Scalability Analysis</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#1.-Dataset-Generation">1. Dataset Generation</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#2.-Benchmark:-Normalization">2. Benchmark: Normalization</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#3.-Benchmark:-Large-Scale-DiD-Analysis">3. Benchmark: Large-Scale DiD Analysis</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#4.-Benchmark:-Stratified-DiD-Analysis">4. Benchmark: Stratified DiD Analysis</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#6.-Large-Scale-GSEA-Benchmark">6. Large-Scale GSEA Benchmark</a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="example_vaccine_immport.html">Example: Vaccine Response Analysis (GSE171964)</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">sctrial: Scalability Analysis</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#1.-Benchmarking">1. Benchmarking</a></li>
 </ul>
 </li>
 </ul>
@@ -86,7 +79,7 @@
   <ul class="wy-breadcrumbs">
       <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
           <li class="breadcrumb-item"><a href="index.html">Examples</a></li>
-      <li class="breadcrumb-item active">sctrial: Stress Test and Scalability Analysis</li>
+      <li class="breadcrumb-item active">sctrial: Scalability Analysis</li>
       <li class="wy-breadcrumbs-aside">
             <a href="../_sources/examples/stress_test_real_scale.ipynb.txt" rel="nofollow"> View page source</a>
       </li>
@@ -104,66 +97,38 @@
 <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="n">pd</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">mode</span><span class="o">.</span><span class="n">chained_assignment</span> <span class="o">=</span> <span class="kc">None</span>
-</pre></div>
+<br/></pre></div>
 </div>
 </div>
-<section id="sctrial:-Stress-Test-and-Scalability-Analysis">
-<h1>sctrial: Stress Test and Scalability Analysis<a class="headerlink" href="#sctrial:-Stress-Test-and-Scalability-Analysis" title="Link to this heading"></a></h1>
-<p>This notebook demonstrates <code class="docutils literal notranslate"><span class="pre">sctrial</span></code>’s performance and scalability by running a stress test on a large-scale synthetic dataset (e.g., 20,000 cells and 10,000 genes).</p>
-<div class="nbinput nblast docutils container">
+<section id="sctrial:-Scalability-Analysis">
+<h1>sctrial: Scalability Analysis<a class="headerlink" href="#sctrial:-Scalability-Analysis" title="Link to this heading"></a></h1>
+<section id="1.-Benchmarking">
+<h2>1. Benchmarking<a class="headerlink" href="#1.-Benchmarking" title="Link to this heading"></a></h2>
+<div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">sctrial</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">scanpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sc</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">anndata</span><span class="w"> </span><span class="kn">import</span> <span class="n">AnnData</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">sparse</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sctrial</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
-<br/></pre></div>
-</div>
-</div>
-<section id="1.-Dataset-Generation">
-<h2>1. Dataset Generation<a class="headerlink" href="#1.-Dataset-Generation" title="Link to this heading"></a></h2>
-<p>We generate a dataset with 50 participants and 10,000 genes to simulate the scale of a real clinical trial.</p>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">n_participants</span> <span class="o">=</span> <span class="mi">50</span>
-<span class="n">n_cells_per_unit</span> <span class="o">=</span> <span class="mi">200</span>
-<span class="n">n_genes</span> <span class="o">=</span> <span class="mi">10000</span>
 
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Generating stress-test dataset: </span><span class="si">{</span><span class="n">n_participants</span><span class="si">}</span><span class="s2"> participants, </span><span class="si">{</span><span class="n">n_genes</span><span class="si">}</span><span class="s2"> genes...&quot;</span><span class="p">)</span>
+<span class="n">adata</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">pbmc68k_reduced</span><span class="p">()</span>
+<span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s1">&#39;donor&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">([</span><span class="sa">f</span><span class="s2">&quot;D</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">20</span><span class="p">)],</span> <span class="n">size</span><span class="o">=</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="p">)</span>
+<span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s1">&#39;visit&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">([</span><span class="s1">&#39;V1&#39;</span><span class="p">,</span> <span class="s1">&#39;V2&#39;</span><span class="p">],</span> <span class="n">size</span><span class="o">=</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="p">)</span>
+<span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s1">&#39;arm&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s1">&#39;donor&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">([</span><span class="sa">f</span><span class="s2">&quot;D</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">)]),</span> <span class="s1">&#39;T&#39;</span><span class="p">,</span> <span class="s1">&#39;C&#39;</span><span class="p">)</span>
 
-<span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
-<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_participants</span><span class="p">):</span>
-    <span class="n">arm</span> <span class="o">=</span> <span class="s2">&quot;Treated&quot;</span> <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">n_participants</span> <span class="o">//</span> <span class="mi">2</span> <span class="k">else</span> <span class="s2">&quot;Control&quot;</span>
-    <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;Baseline&quot;</span><span class="p">,</span> <span class="s2">&quot;Followup&quot;</span><span class="p">]:</span>
-        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_cells_per_unit</span><span class="p">):</span>
-            <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
-                <span class="s2">&quot;participant_id&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;P</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;visit&quot;</span><span class="p">:</span> <span class="n">v</span><span class="p">,</span>
-                <span class="s2">&quot;arm&quot;</span><span class="p">:</span> <span class="n">arm</span><span class="p">,</span>
-                <span class="s2">&quot;celltype&quot;</span><span class="p">:</span> <span class="s2">&quot;TypeA&quot;</span> <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mf">0.5</span> <span class="k">else</span> <span class="s2">&quot;TypeB&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;batch&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;B</span><span class="si">{</span><span class="n">i</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="mi">5</span><span class="si">}</span><span class="s2">&quot;</span>
-            <span class="p">})</span>
+<span class="n">c</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s1">&#39;donor&#39;</span><span class="p">,</span> <span class="s1">&#39;visit&#39;</span><span class="p">],</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">size</span><span class="p">()</span><span class="o">.</span><span class="n">unstack</span><span class="p">(</span><span class="n">fill_value</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">keep</span> <span class="o">=</span> <span class="n">c</span><span class="p">[(</span><span class="n">c</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;V1&#39;</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;V2&#39;</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">)]</span><span class="o">.</span><span class="n">index</span>
+<span class="n">adata</span> <span class="o">=</span> <span class="n">adata</span><span class="p">[</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s1">&#39;donor&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">keep</span><span class="p">)]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
-<span class="n">obs</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
-<span class="n">n_obs</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span>
-
-<span class="c1"># Generate sparse noisy data</span>
-<span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">n_obs</span><span class="p">,</span> <span class="n">n_genes</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
-<span class="c1"># Inject signal in some genes</span>
-<span class="n">data</span><span class="p">[</span><span class="n">obs</span><span class="p">[(</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;arm&quot;</span><span class="p">]</span><span class="o">==</span><span class="s2">&quot;Treated&quot;</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;visit&quot;</span><span class="p">]</span><span class="o">==</span><span class="s2">&quot;Followup&quot;</span><span class="p">)]</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="p">:</span><span class="mi">10</span><span class="p">]</span> <span class="o">+=</span> <span class="mf">2.0</span>
-<span class="n">X</span> <span class="o">=</span> <span class="n">sparse</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-
-<span class="n">adata</span> <span class="o">=</span> <span class="n">AnnData</span><span class="p">(</span><span class="n">X</span><span class="o">=</span><span class="n">X</span><span class="p">,</span> <span class="n">obs</span><span class="o">=</span><span class="n">obs</span><span class="p">)</span>
-<span class="n">adata</span><span class="o">.</span><span class="n">var_names</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;Gene</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_genes</span><span class="p">)]</span>
-<span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">&quot;counts&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">X</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+<span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+<span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="p">[:</span><span class="mi">1000</span><span class="p">],</span>
+                   <span class="n">design</span><span class="o">=</span><span class="n">st</span><span class="o">.</span><span class="n">TrialDesign</span><span class="p">(</span><span class="n">participant_col</span><span class="o">=</span><span class="s1">&#39;donor&#39;</span><span class="p">,</span> <span class="n">visit_col</span><span class="o">=</span><span class="s1">&#39;visit&#39;</span><span class="p">,</span> <span class="n">arm_col</span><span class="o">=</span><span class="s1">&#39;arm&#39;</span><span class="p">,</span>
+                                         <span class="n">arm_treated</span><span class="o">=</span><span class="s1">&#39;T&#39;</span><span class="p">,</span> <span class="n">arm_control</span><span class="o">=</span><span class="s1">&#39;C&#39;</span><span class="p">),</span>
+                   <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;V1&#39;</span><span class="p">,</span> <span class="s1">&#39;V2&#39;</span><span class="p">),</span> <span class="n">aggregate</span><span class="o">=</span><span class="s1">&#39;participant_visit&#39;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Genome-wide DiD (1000 genes) took </span><span class="si">{</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">start</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> seconds.&quot;</span><span class="p">)</span>
 <br/></pre></div>
 </div>
 </div>
@@ -172,277 +137,9 @@
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-Generating stress-test dataset: 50 participants, 10000 genes...
-AnnData object with n_obs × n_vars = 20000 × 10000
-    obs: &#39;participant_id&#39;, &#39;visit&#39;, &#39;arm&#39;, &#39;celltype&#39;, &#39;batch&#39;
-    layers: &#39;counts&#39;
+Genome-wide DiD (1000 genes) took 2.10 seconds.
 </pre></div></div>
 </div>
-</section>
-<section id="2.-Benchmark:-Normalization">
-<h2>2. Benchmark: Normalization<a class="headerlink" href="#2.-Benchmark:-Normalization" title="Link to this heading"></a></h2>
-<p>We measure the time taken to normalize 20,000 cells x 10,000 genes.</p>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">design</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">TrialDesign</span><span class="p">(</span>
-    <span class="n">participant_col</span><span class="o">=</span><span class="s2">&quot;participant_id&quot;</span><span class="p">,</span>
-    <span class="n">visit_col</span><span class="o">=</span><span class="s2">&quot;visit&quot;</span><span class="p">,</span>
-    <span class="n">arm_col</span><span class="o">=</span><span class="s2">&quot;arm&quot;</span><span class="p">,</span>
-    <span class="n">arm_treated</span><span class="o">=</span><span class="s2">&quot;Treated&quot;</span><span class="p">,</span>
-    <span class="n">arm_control</span><span class="o">=</span><span class="s2">&quot;Control&quot;</span>
-<span class="p">)</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Normalizing...&quot;</span><span class="p">)</span>
-<span class="n">start_norm</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
-<span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">add_log1p_cpm_layer</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">counts_layer</span><span class="o">=</span><span class="s2">&quot;counts&quot;</span><span class="p">,</span> <span class="n">out_layer</span><span class="o">=</span><span class="s2">&quot;log1p_cpm&quot;</span><span class="p">)</span>
-<span class="n">time_norm</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_norm</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Done in </span><span class="si">{</span><span class="n">time_norm</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span>
-<br/></pre></div>
-</div>
-</div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-Normalizing...
-Done in 0.21s
-</pre></div></div>
-</div>
-</section>
-<section id="3.-Benchmark:-Large-Scale-DiD-Analysis">
-<h2>3. Benchmark: Large-Scale DiD Analysis<a class="headerlink" href="#3.-Benchmark:-Large-Scale-DiD-Analysis" title="Link to this heading"></a></h2>
-<p>We run DiD across a range of gene counts to evaluate scaling behavior.</p>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">gene_counts</span> <span class="o">=</span> <span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">200</span><span class="p">]</span>
-<span class="n">times</span> <span class="o">=</span> <span class="p">[]</span>
-
-<span class="k">for</span> <span class="n">gc</span> <span class="ow">in</span> <span class="n">gene_counts</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Running DiD on </span><span class="si">{</span><span class="n">gc</span><span class="si">}</span><span class="s2"> genes...&quot;</span><span class="p">)</span>
-    <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
-    <span class="n">_</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span>
-        <span class="n">adata</span><span class="p">,</span>
-        <span class="n">features</span><span class="o">=</span><span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="p">[:</span><span class="n">gc</span><span class="p">],</span>
-        <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
-        <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;Baseline&quot;</span><span class="p">,</span> <span class="s2">&quot;Followup&quot;</span><span class="p">),</span>
-        <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;log1p_cpm&quot;</span>
-    <span class="p">)</span>
-    <span class="n">times</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span><span class="p">)</span>
-
-<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">gene_counts</span><span class="p">,</span> <span class="n">times</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="s1">&#39;o&#39;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;-&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;firebrick&#39;</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Scaling Behavior: DiD Execution Time&quot;</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Number of Genes&quot;</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Time (seconds)&quot;</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-<br/></pre></div>
-</div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-Running DiD on 10 genes...
-Running DiD on 50 genes...
-Running DiD on 100 genes...
-Running DiD on 200 genes...
-</pre></div></div>
-</div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<img alt="../_images/examples_stress_test_real_scale_8_1.png" src="../_images/examples_stress_test_real_scale_8_1.png" />
-</div>
-</div>
-</section>
-<section id="4.-Benchmark:-Stratified-DiD-Analysis">
-<h2>4. Benchmark: Stratified DiD Analysis<a class="headerlink" href="#4.-Benchmark:-Stratified-DiD-Analysis" title="Link to this heading"></a></h2>
-<p>Testing performance of stratified analysis across cell types.</p>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Running stratified DiD (10 genes x 2 celltypes)...&quot;</span><span class="p">)</span>
-<span class="n">start_strat</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
-<span class="n">strat_res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table_by_celltype</span><span class="p">(</span>
-    <span class="n">adata</span><span class="p">,</span>
-    <span class="n">features</span><span class="o">=</span><span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="p">[:</span><span class="mi">10</span><span class="p">],</span>
-    <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
-    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;Baseline&quot;</span><span class="p">,</span> <span class="s2">&quot;Followup&quot;</span><span class="p">),</span>
-    <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;log1p_cpm&quot;</span>
-<span class="p">)</span>
-<span class="n">time_strat</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_strat</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Done in </span><span class="si">{</span><span class="n">time_strat</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span>
-<br/></pre></div>
-</div>
-</div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-Running stratified DiD (10 genes x 2 celltypes)...
-Done in 0.59s
-</pre></div></div>
-</div>
-<section id="6.-Large-Scale-GSEA-Benchmark">
-<h3>6. Large-Scale GSEA Benchmark<a class="headerlink" href="#6.-Large-Scale-GSEA-Benchmark" title="Link to this heading"></a></h3>
-<p>We measure the time taken to run GSEA on 10 pathways across 20,000 cells.</p>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Running GSEA benchmark (10 pathways)...&quot;</span><span class="p">)</span>
-<span class="n">gene_sets_large</span> <span class="o">=</span> <span class="p">{</span><span class="sa">f</span><span class="s2">&quot;Pathway_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">:</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;Gene</span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">i</span><span class="o">*</span><span class="mi">10</span><span class="p">,</span> <span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="mi">10</span><span class="p">)]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">)}</span>
-
-<span class="n">start_gsea</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
-<span class="n">gsea_res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">run_gsea_did</span><span class="p">(</span>
-    <span class="n">adata</span><span class="p">,</span>
-    <span class="n">gene_sets</span><span class="o">=</span><span class="n">gene_sets_large</span><span class="p">,</span>
-    <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
-    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;Baseline&quot;</span><span class="p">,</span> <span class="s2">&quot;Followup&quot;</span><span class="p">),</span>
-    <span class="n">permutation_num</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
-    <span class="n">min_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-    <span class="n">seed</span><span class="o">=</span><span class="mi">42</span>
-<span class="p">)</span>
-<span class="n">time_gsea</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_gsea</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Done in </span><span class="si">{</span><span class="n">time_gsea</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span>
-
-<span class="c1"># Plot GSEA results</span>
-<span class="n">st</span><span class="o">.</span><span class="n">plot_gsea_heatmap</span><span class="p">(</span><span class="n">gsea_res</span><span class="p">,</span> <span class="n">fdr_thresh</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">8</span><span class="p">))</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;GSEA Heatmap (Stress Test)&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-<br/></pre></div>
-</div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-Running GSEA benchmark (10 pathways)...
-</pre></div></div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area stderr docutils container">
-<div class="highlight"><pre>
-2026-01-02 18:43:21,047 [WARNING] Duplicated values found in preranked stats: 0.61% of genes
-The order of those genes will be arbitrary, which may produce unexpected results.
-</pre></div></div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-Done in 108.19s
-</pre></div></div>
-</div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<img alt="../_images/examples_stress_test_real_scale_12_3.png" src="../_images/examples_stress_test_real_scale_12_3.png" />
-</div>
-</div>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span>
-    <span class="n">adata</span><span class="p">,</span>
-    <span class="n">features</span><span class="o">=</span><span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="p">[:</span><span class="mi">100</span><span class="p">],</span>
-    <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
-    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;Baseline&quot;</span><span class="p">,</span> <span class="s2">&quot;Followup&quot;</span><span class="p">),</span>
-    <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;log1p_cpm&quot;</span>
-<span class="p">)</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Summary of Results:&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">st</span><span class="o">.</span><span class="n">summarize_did_results</span><span class="p">(</span><span class="n">res</span><span class="p">))</span>
-
-<span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">14</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
-
-<span class="c1"># p-value distribution</span>
-<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span><span class="n">res</span><span class="p">[</span><span class="s2">&quot;p_DiD&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">(),</span> <span class="n">bins</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;skyblue&quot;</span><span class="p">,</span> <span class="n">edgecolor</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">)</span>
-<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;p-value Distribution (100 genes)&quot;</span><span class="p">)</span>
-<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;p-value&quot;</span><span class="p">)</span>
-<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Frequency&quot;</span><span class="p">)</span>
-
-<span class="c1"># Volcano plot</span>
-<span class="n">res_v</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">plotting</span><span class="o">.</span><span class="n">did_volcano_frame</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
-<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">res_v</span><span class="p">[</span><span class="s2">&quot;beta_DiD&quot;</span><span class="p">],</span> <span class="n">res_v</span><span class="p">[</span><span class="s2">&quot;neglog10p&quot;</span><span class="p">],</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.6</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;teal&quot;</span><span class="p">)</span>
-<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="mf">0.05</span><span class="p">),</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;red&quot;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s2">&quot;--&quot;</span><span class="p">)</span>
-<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Volcano Plot (100 genes)&quot;</span><span class="p">)</span>
-<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Effect Size (beta_DiD)&quot;</span><span class="p">)</span>
-<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;-log10(p-value)&quot;</span><span class="p">)</span>
-
-<span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Final Performance Metrics:&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- Normalization (20k cells x 10k genes): </span><span class="si">{</span><span class="n">time_norm</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- Stratified DiD (10 genes x 2 types): </span><span class="si">{</span><span class="n">time_strat</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- GSEA Benchmark (10 pathways): </span><span class="si">{</span><span class="n">time_gsea</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Stress test passed successfully!&quot;</span><span class="p">)</span>
-<br/></pre></div>
-</div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-
-Summary of Results:
-## Trial-Aware DiD Summary
-Total features tested: 100
-Significant (p &lt; 0.05): 13
-Significant (FDR &lt; 0.05): 10
-
-### Top Upregulated Features (by p-value):
-- Gene0: beta=2.300, p=0.00e+00
-- Gene8: beta=2.294, p=0.00e+00
-- Gene7: beta=2.330, p=0.00e+00
-
-### Top Downregulated Features (by p-value):
-- Gene28: beta=-1.411, p=9.28e-03
-- Gene98: beta=-1.310, p=1.65e-02
-- Gene62: beta=-1.069, p=1.65e-02
-</pre></div></div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<img alt="../_images/examples_stress_test_real_scale_13_1.png" src="../_images/examples_stress_test_real_scale_13_1.png" />
-</div>
-</div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-
-Final Performance Metrics:
-- Normalization (20k cells x 10k genes): 0.21s
-- Stratified DiD (10 genes x 2 types): 0.59s
-- GSEA Benchmark (10 pathways): 108.19s
-
-Stress test passed successfully!
-</pre></div></div>
-</div>
-</section>
 </section>
 </section>
 
@@ -450,7 +147,7 @@ Stress test passed successfully!
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="example_vaccine_immport.html" class="btn btn-neutral float-left" title="Example: Vaccine Response Analysis" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="example_vaccine_immport.html" class="btn btn-neutral float-left" title="Example: Vaccine Response Analysis (GSE171964)" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
         <a href="../api.html" class="btn btn-neutral float-right" title="API Reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
