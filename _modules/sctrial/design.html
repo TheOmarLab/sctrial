@@ -92,41 +92,34 @@
 <span class="sd">    The `TrialDesign` object centralizes the mapping of your study design to </span>
 <span class="sd">    the AnnData object. It is used by almost all statistical and plotting </span>
 <span class="sd">    functions in `sctrial`.</span>
-
-<span class="sd">    Attributes</span>
-<span class="sd">    ----------</span>
-<span class="sd">    participant_col</span>
-<span class="sd">        Name of the column containing unique participant identifiers.</span>
-<span class="sd">    visit_col</span>
-<span class="sd">        Name of the column containing visit or timepoint labels.</span>
-<span class="sd">    arm_col</span>
-<span class="sd">        Name of the column containing treatment arm assignments.</span>
-<span class="sd">    arm_treated</span>
-<span class="sd">        The label in `arm_col` representing the treatment/experimental group.</span>
-<span class="sd">    arm_control</span>
-<span class="sd">        The label in `arm_col` representing the control/placebo group.</span>
-<span class="sd">    celltype_col</span>
-<span class="sd">        Optional name of the column containing cell-type annotations.</span>
-<span class="sd">    crossover_col</span>
-<span class="sd">        Optional name of the column containing boolean-like indicators for </span>
-<span class="sd">        crossover cells.</span>
-<span class="sd">    baseline_visit</span>
-<span class="sd">        Optional default baseline visit label (e.g., &#39;Baseline&#39;, &#39;V1&#39;).</span>
-<span class="sd">    followup_visit</span>
-<span class="sd">        Optional default follow-up visit label (e.g., &#39;Follow-up&#39;, &#39;V2&#39;).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">participant_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;participant_id&quot;</span>
-    <span class="n">visit_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;visit&quot;</span>
-    <span class="n">arm_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;arm&quot;</span>
-    <span class="n">arm_treated</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Treated&quot;</span>
-    <span class="n">arm_control</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Control&quot;</span>
-    <span class="n">celltype_col</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;celltype&quot;</span>
-    <span class="n">crossover_col</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Name of the column containing unique participant identifiers.&quot;&quot;&quot;</span>
 
-    <span class="c1"># Optional defaults (handy for projects; optional for package)</span>
+    <span class="n">visit_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;visit&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Name of the column containing visit or timepoint labels.&quot;&quot;&quot;</span>
+
+    <span class="n">arm_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;arm&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Name of the column containing treatment arm assignments.&quot;&quot;&quot;</span>
+
+    <span class="n">arm_treated</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Treated&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The label in `arm_col` representing the treatment/experimental group.&quot;&quot;&quot;</span>
+
+    <span class="n">arm_control</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Control&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The label in `arm_col` representing the control/placebo group.&quot;&quot;&quot;</span>
+
+    <span class="n">celltype_col</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;celltype&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Optional name of the column containing cell-type annotations.&quot;&quot;&quot;</span>
+
+    <span class="n">crossover_col</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Optional name of the column containing boolean-like indicators for crossover cells.&quot;&quot;&quot;</span>
+
     <span class="n">baseline_visit</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Optional default baseline visit label (e.g., &#39;Baseline&#39;, &#39;V1&#39;).&quot;&quot;&quot;</span>
+
     <span class="n">followup_visit</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Optional default follow-up visit label (e.g., &#39;Follow-up&#39;, &#39;V2&#39;).&quot;&quot;&quot;</span>
 
 <div class="viewcode-block" id="TrialDesign.primary_visits">
 <a class="viewcode-back" href="../../api.html#sctrial.design.TrialDesign.primary_visits">[docs]</a>

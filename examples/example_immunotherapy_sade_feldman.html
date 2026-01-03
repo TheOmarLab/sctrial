@@ -110,10 +110,10 @@
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import warnings
-warnings.filterwarnings(&#39;ignore&#39;)
-import pandas as pd
-pd.options.mode.chained_assignment = None
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="n">pd</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">mode</span><span class="o">.</span><span class="n">chained_assignment</span> <span class="o">=</span> <span class="kc">None</span>
 </pre></div>
 </div>
 </div>
@@ -130,16 +130,16 @@ pd.options.mode.chained_assignment = None
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import sctrial as st
-import scanpy as sc
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import os
-import requests
-import gzip
-from scipy import sparse
-from io import StringIO
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">sctrial</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">scanpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sc</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">requests</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">gzip</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">sparse</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">io</span><span class="w"> </span><span class="kn">import</span> <span class="n">StringIO</span>
 <br/></pre></div>
 </div>
 </div>
@@ -150,151 +150,151 @@ from io import StringIO
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>def download_and_construct_sade_feldman():
-    url_tpm = &quot;https://ftp.ncbi.nlm.nih.gov/geo/series/GSE120nnn/GSE120575/suppl/GSE120575_Sade_Feldman_melanoma_single_cells_TPM_GEO.txt.gz&quot;
-    url_meta = &quot;https://ftp.ncbi.nlm.nih.gov/geo/series/GSE120nnn/GSE120575/suppl/GSE120575_patient_ID_single_cells.txt.gz&quot;
-    local_tpm = &quot;sade_feldman_tpm.txt.gz&quot;
-    local_meta = &quot;sade_feldman_meta.txt.gz&quot;
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">download_and_construct_sade_feldman</span><span class="p">():</span>
+    <span class="n">url_tpm</span> <span class="o">=</span> <span class="s2">&quot;https://ftp.ncbi.nlm.nih.gov/geo/series/GSE120nnn/GSE120575/suppl/GSE120575_Sade_Feldman_melanoma_single_cells_TPM_GEO.txt.gz&quot;</span>
+    <span class="n">url_meta</span> <span class="o">=</span> <span class="s2">&quot;https://ftp.ncbi.nlm.nih.gov/geo/series/GSE120nnn/GSE120575/suppl/GSE120575_patient_ID_single_cells.txt.gz&quot;</span>
+    <span class="n">local_tpm</span> <span class="o">=</span> <span class="s2">&quot;sade_feldman_tpm.txt.gz&quot;</span>
+    <span class="n">local_meta</span> <span class="o">=</span> <span class="s2">&quot;sade_feldman_meta.txt.gz&quot;</span>
 
-    for url, local in [(url_tpm, local_tpm), (url_meta, local_meta)]:
-        if os.path.exists(local):
-            if os.path.getsize(local) &lt; 1024:
-                os.remove(local)
-        if not os.path.exists(local):
-            print(f&quot;Downloading {local}...&quot;)
-            r = requests.get(url, stream=True)
-            if r.status_code == 200:
-                with open(local, &quot;wb&quot;) as f:
-                    for chunk in r.iter_content(chunk_size=1024*1024):
-                        f.write(chunk)
-            else:
-                print(f&quot;Failed to download {url}&quot;)
+    <span class="k">for</span> <span class="n">url</span><span class="p">,</span> <span class="n">local</span> <span class="ow">in</span> <span class="p">[(</span><span class="n">url_tpm</span><span class="p">,</span> <span class="n">local_tpm</span><span class="p">),</span> <span class="p">(</span><span class="n">url_meta</span><span class="p">,</span> <span class="n">local_meta</span><span class="p">)]:</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">local</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">getsize</span><span class="p">(</span><span class="n">local</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">1024</span><span class="p">:</span>
+                <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">local</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">local</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Downloading </span><span class="si">{</span><span class="n">local</span><span class="si">}</span><span class="s2">...&quot;</span><span class="p">)</span>
+            <span class="n">r</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">stream</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">200</span><span class="p">:</span>
+                <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">local</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">r</span><span class="o">.</span><span class="n">iter_content</span><span class="p">(</span><span class="n">chunk_size</span><span class="o">=</span><span class="mi">1024</span><span class="o">*</span><span class="mi">1024</span><span class="p">):</span>
+                        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to download </span><span class="si">{</span><span class="n">url</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-    print(&quot;Parsing metadata...&quot;)
-    try:
-        # The metadata file has a complex structure. We need to find the SAMPLES section.
-        with gzip.open(local_meta, &quot;rt&quot;) as f:
-            lines = f.readlines()
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Parsing metadata...&quot;</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># The metadata file has a complex structure. We need to find the SAMPLES section.</span>
+        <span class="k">with</span> <span class="n">gzip</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">local_meta</span><span class="p">,</span> <span class="s2">&quot;rt&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">lines</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readlines</span><span class="p">()</span>
 
-        start_idx = -1
-        for i, line in enumerate(lines):
-            if &quot;Sample name&quot; in line and &quot;title&quot; in line and &quot;characteristics&quot; in line:
-                start_idx = i
-                break
+        <span class="n">start_idx</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">lines</span><span class="p">):</span>
+            <span class="k">if</span> <span class="s2">&quot;Sample name&quot;</span> <span class="ow">in</span> <span class="n">line</span> <span class="ow">and</span> <span class="s2">&quot;title&quot;</span> <span class="ow">in</span> <span class="n">line</span> <span class="ow">and</span> <span class="s2">&quot;characteristics&quot;</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+                <span class="n">start_idx</span> <span class="o">=</span> <span class="n">i</span>
+                <span class="k">break</span>
 
-        if start_idx == -1:
-            raise ValueError(&quot;Could not find SAMPLES section in metadata&quot;)
+        <span class="k">if</span> <span class="n">start_idx</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Could not find SAMPLES section in metadata&quot;</span><span class="p">)</span>
 
-        meta_df = pd.read_csv(StringIO(&quot;&quot;.join(lines[start_idx:])), sep=&quot;\t&quot;, index_col=1) # index by title
-        meta_df.columns = [c.strip() for c in meta_df.columns]
-    except Exception as e:
-        print(f&quot;Error parsing metadata: {e}. Using fallback.&quot;)
-        # Fallback to pbmc3k with GUARANTEED pairing
-        adata = sc.datasets.pbmc3k()
-        np.random.seed(42)
+        <span class="n">meta_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">StringIO</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">[</span><span class="n">start_idx</span><span class="p">:])),</span> <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">index_col</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="c1"># index by title</span>
+        <span class="n">meta_df</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">meta_df</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error parsing metadata: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">. Using fallback.&quot;</span><span class="p">)</span>
+        <span class="c1"># Fallback to pbmc3k with GUARANTEED pairing</span>
+        <span class="n">adata</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">pbmc3k</span><span class="p">()</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
 
-        # Ensure at least 6 donors with both Pre and Post
-        donors = [f&quot;P{i}&quot; for i in range(6)]
-        visits = [&quot;Pre&quot;, &quot;Post&quot;]
-        responses = [&quot;Responder&quot;] * 3 + [&quot;Non-responder&quot;] * 3
+        <span class="c1"># Ensure at least 6 donors with both Pre and Post</span>
+        <span class="n">donors</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;P</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">6</span><span class="p">)]</span>
+        <span class="n">visits</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Pre&quot;</span><span class="p">,</span> <span class="s2">&quot;Post&quot;</span><span class="p">]</span>
+        <span class="n">responses</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Responder&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">3</span> <span class="o">+</span> <span class="p">[</span><span class="s2">&quot;Non-responder&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">3</span>
 
-        new_obs = pd.DataFrame(index=adata.obs_names)
-        new_obs[&quot;patient&quot;] = &quot;Unknown&quot;
-        new_obs[&quot;time&quot;] = &quot;Unknown&quot;
-        new_obs[&quot;response&quot;] = &quot;Unknown&quot;
+        <span class="n">new_obs</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">adata</span><span class="o">.</span><span class="n">obs_names</span><span class="p">)</span>
+        <span class="n">new_obs</span><span class="p">[</span><span class="s2">&quot;patient&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Unknown&quot;</span>
+        <span class="n">new_obs</span><span class="p">[</span><span class="s2">&quot;time&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Unknown&quot;</span>
+        <span class="n">new_obs</span><span class="p">[</span><span class="s2">&quot;response&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Unknown&quot;</span>
 
-        indices = np.arange(adata.n_obs)
-        np.random.shuffle(indices)
+        <span class="n">indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="p">)</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">shuffle</span><span class="p">(</span><span class="n">indices</span><span class="p">)</span>
 
-        cells_per_unit = adata.n_obs // (len(donors) * len(visits))
-        curr = 0
-        for i, donor in enumerate(donors):
-            resp = responses[i]
-            for v in visits:
-                end = curr + cells_per_unit
-                subset = indices[curr:end]
-                new_obs.iloc[subset, 0] = donor
-                new_obs.iloc[subset, 1] = v
-                new_obs.iloc[subset, 2] = resp
-                curr = end
+        <span class="n">cells_per_unit</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span> <span class="o">//</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">donors</span><span class="p">)</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">visits</span><span class="p">))</span>
+        <span class="n">curr</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">donor</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">donors</span><span class="p">):</span>
+            <span class="n">resp</span> <span class="o">=</span> <span class="n">responses</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">visits</span><span class="p">:</span>
+                <span class="n">end</span> <span class="o">=</span> <span class="n">curr</span> <span class="o">+</span> <span class="n">cells_per_unit</span>
+                <span class="n">subset</span> <span class="o">=</span> <span class="n">indices</span><span class="p">[</span><span class="n">curr</span><span class="p">:</span><span class="n">end</span><span class="p">]</span>
+                <span class="n">new_obs</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">subset</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">donor</span>
+                <span class="n">new_obs</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">subset</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+                <span class="n">new_obs</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">subset</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">resp</span>
+                <span class="n">curr</span> <span class="o">=</span> <span class="n">end</span>
 
-        adata.obs = pd.concat([adata.obs, new_obs], axis=1)
-        adata = adata[adata.obs[&quot;patient&quot;] != &quot;Unknown&quot;].copy()
-        adata.obs[&quot;cell_type&quot;] = np.random.choice([&quot;CD8+ T&quot;, &quot;CD4+ T&quot;], size=adata.n_obs)
+        <span class="n">adata</span><span class="o">.</span><span class="n">obs</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">,</span> <span class="n">new_obs</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">adata</span> <span class="o">=</span> <span class="n">adata</span><span class="p">[</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;patient&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;Unknown&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;cell_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">([</span><span class="s2">&quot;CD8+ T&quot;</span><span class="p">,</span> <span class="s2">&quot;CD4+ T&quot;</span><span class="p">],</span> <span class="n">size</span><span class="o">=</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="p">)</span>
 
-        sc.pp.normalize_total(adata, target_sum=1e4)
-        sc.pp.log1p(adata)
-        sc.pp.pca(adata)
-        sc.pp.neighbors(adata)
-        sc.tl.umap(adata)
-        return adata
+        <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">normalize_total</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">target_sum</span><span class="o">=</span><span class="mf">1e4</span><span class="p">)</span>
+        <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">log1p</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+        <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">pca</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+        <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">neighbors</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+        <span class="n">sc</span><span class="o">.</span><span class="n">tl</span><span class="o">.</span><span class="n">umap</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">adata</span>
 
-    print(&quot;Parsing TPM matrix (reading header and first 2000 genes)...&quot;)
-    try:
-        # Only read a subset of genes to keep it fast
-        df = pd.read_csv(local_tpm, sep=&quot;\t&quot;, skiprows=2, header=None, index_col=0, nrows=2000)
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Parsing TPM matrix (reading header and first 2000 genes)...&quot;</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># Only read a subset of genes to keep it fast</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">local_tpm</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">skiprows</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">index_col</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">nrows</span><span class="o">=</span><span class="mi">2000</span><span class="p">)</span>
 
-        with gzip.open(local_tpm, &quot;rt&quot;) as f:
-            line1 = f.readline().strip().split(&quot;\t&quot;)
+        <span class="k">with</span> <span class="n">gzip</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">local_tpm</span><span class="p">,</span> <span class="s2">&quot;rt&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">line1</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">&quot;</span><span class="p">)</span>
 
-        sample_ids = [x for x in line1 if x and x != &quot;Gene&quot;]
-        df.columns = sample_ids[:df.shape[1]]
+        <span class="n">sample_ids</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">line1</span> <span class="k">if</span> <span class="n">x</span> <span class="ow">and</span> <span class="n">x</span> <span class="o">!=</span> <span class="s2">&quot;Gene&quot;</span><span class="p">]</span>
+        <span class="n">df</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="n">sample_ids</span><span class="p">[:</span><span class="n">df</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span>
 
-        common = meta_df.index.intersection(df.columns)
-        if len(common) == 0:
-             meta_df.index = meta_df[&quot;Sample name&quot;]
-             common = meta_df.index.intersection(df.columns)
+        <span class="n">common</span> <span class="o">=</span> <span class="n">meta_df</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">common</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+             <span class="n">meta_df</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">meta_df</span><span class="p">[</span><span class="s2">&quot;Sample name&quot;</span><span class="p">]</span>
+             <span class="n">common</span> <span class="o">=</span> <span class="n">meta_df</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>
 
-        if len(common) == 0:
-            raise ValueError(&quot;Could not align TPM and metadata&quot;)
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">common</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Could not align TPM and metadata&quot;</span><span class="p">)</span>
 
-        df = df[common]
-        obs = meta_df.loc[common].copy()
+        <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">common</span><span class="p">]</span>
+        <span class="n">obs</span> <span class="o">=</span> <span class="n">meta_df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">common</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
-        # Extract patient and time from the ID column (e.g., &quot;Post_P1Responder&quot;)
-        id_col = [c for c in obs.columns if &quot;patinet ID&quot; in c][0]
-        resp_col = [c for c in obs.columns if &quot;response&quot; in c][0]
+        <span class="c1"># Extract patient and time from the ID column (e.g., &quot;Post_P1Responder&quot;)</span>
+        <span class="n">id_col</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">obs</span><span class="o">.</span><span class="n">columns</span> <span class="k">if</span> <span class="s2">&quot;patinet ID&quot;</span> <span class="ow">in</span> <span class="n">c</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">resp_col</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">obs</span><span class="o">.</span><span class="n">columns</span> <span class="k">if</span> <span class="s2">&quot;response&quot;</span> <span class="ow">in</span> <span class="n">c</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
 
-        obs[&quot;time&quot;] = obs[id_col].apply(lambda x: &quot;Post&quot; if &quot;Post&quot; in x else &quot;Pre&quot;)
-        obs[&quot;patient&quot;] = obs[id_col].apply(lambda x: x.split(&quot;_&quot;)[1].replace(&quot;Responder&quot;,&quot;&quot;).replace(&quot;Non-responder&quot;,&quot;&quot;) if &quot;_&quot; in x else x)
-        obs[&quot;response&quot;] = obs[resp_col]
-        obs[&quot;cell_type&quot;] = &quot;T cell&quot;
+        <span class="n">obs</span><span class="p">[</span><span class="s2">&quot;time&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">obs</span><span class="p">[</span><span class="n">id_col</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="s2">&quot;Post&quot;</span> <span class="k">if</span> <span class="s2">&quot;Post&quot;</span> <span class="ow">in</span> <span class="n">x</span> <span class="k">else</span> <span class="s2">&quot;Pre&quot;</span><span class="p">)</span>
+        <span class="n">obs</span><span class="p">[</span><span class="s2">&quot;patient&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">obs</span><span class="p">[</span><span class="n">id_col</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;Responder&quot;</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;Non-responder&quot;</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="s2">&quot;_&quot;</span> <span class="ow">in</span> <span class="n">x</span> <span class="k">else</span> <span class="n">x</span><span class="p">)</span>
+        <span class="n">obs</span><span class="p">[</span><span class="s2">&quot;response&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">obs</span><span class="p">[</span><span class="n">resp_col</span><span class="p">]</span>
+        <span class="n">obs</span><span class="p">[</span><span class="s2">&quot;cell_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;T cell&quot;</span>
 
-        # Verify pairing
-        pairing = obs.groupby(&quot;patient&quot;)[&quot;time&quot;].nunique()
-        valid_patients = pairing[pairing &gt;= 2].index
-        obs = obs[obs[&quot;patient&quot;].isin(valid_patients)]
-        df = df[obs.index]
+        <span class="c1"># Verify pairing</span>
+        <span class="n">pairing</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;patient&quot;</span><span class="p">)[</span><span class="s2">&quot;time&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span>
+        <span class="n">valid_patients</span> <span class="o">=</span> <span class="n">pairing</span><span class="p">[</span><span class="n">pairing</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">index</span>
+        <span class="n">obs</span> <span class="o">=</span> <span class="n">obs</span><span class="p">[</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;patient&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">valid_patients</span><span class="p">)]</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">obs</span><span class="o">.</span><span class="n">index</span><span class="p">]</span>
 
-        adata = sc.AnnData(X=sparse.csr_matrix(df.values.T), obs=obs, var=pd.DataFrame(index=df.index))
-        sc.pp.log1p(adata)
-        sc.pp.pca(adata)
-        sc.pp.neighbors(adata)
-        sc.tl.umap(adata)
+        <span class="n">adata</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">AnnData</span><span class="p">(</span><span class="n">X</span><span class="o">=</span><span class="n">sparse</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">T</span><span class="p">),</span> <span class="n">obs</span><span class="o">=</span><span class="n">obs</span><span class="p">,</span> <span class="n">var</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">))</span>
+        <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">log1p</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+        <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">pca</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+        <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">neighbors</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+        <span class="n">sc</span><span class="o">.</span><span class="n">tl</span><span class="o">.</span><span class="n">umap</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
 
-        return adata
-    except Exception as e:
-        print(f&quot;Error processing real data: {e}. Falling back to synthetic.&quot;)
-        # Simplified synthetic fallback
-        adata = sc.datasets.pbmc3k()
-        donors = [f&quot;P{i}&quot; for i in range(10)]
-        visits = [&quot;Pre&quot;, &quot;Post&quot;]
-        new_obs = pd.DataFrame(index=adata.obs_names)
-        new_obs[&quot;patient&quot;] = np.random.choice(donors, size=adata.n_obs)
-        new_obs[&quot;time&quot;] = np.random.choice(visits, size=adata.n_obs)
-        new_obs[&quot;response&quot;] = new_obs[&quot;patient&quot;].apply(lambda x: &quot;Responder&quot; if int(x[1:]) &lt; 5 else &quot;Non-responder&quot;)
-        adata.obs = pd.concat([adata.obs, new_obs], axis=1)
-        adata.obs[&quot;cell_type&quot;] = &quot;T cell&quot;
-        sc.pp.normalize_total(adata, target_sum=1e4)
-        sc.pp.log1p(adata)
-        sc.pp.pca(adata)
-        sc.pp.neighbors(adata)
-        sc.tl.umap(adata)
-        return adata
+        <span class="k">return</span> <span class="n">adata</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error processing real data: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">. Falling back to synthetic.&quot;</span><span class="p">)</span>
+        <span class="c1"># Simplified synthetic fallback</span>
+        <span class="n">adata</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">pbmc3k</span><span class="p">()</span>
+        <span class="n">donors</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;P</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">)]</span>
+        <span class="n">visits</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Pre&quot;</span><span class="p">,</span> <span class="s2">&quot;Post&quot;</span><span class="p">]</span>
+        <span class="n">new_obs</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">adata</span><span class="o">.</span><span class="n">obs_names</span><span class="p">)</span>
+        <span class="n">new_obs</span><span class="p">[</span><span class="s2">&quot;patient&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">donors</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="p">)</span>
+        <span class="n">new_obs</span><span class="p">[</span><span class="s2">&quot;time&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">visits</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="p">)</span>
+        <span class="n">new_obs</span><span class="p">[</span><span class="s2">&quot;response&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_obs</span><span class="p">[</span><span class="s2">&quot;patient&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="s2">&quot;Responder&quot;</span> <span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span> <span class="o">&lt;</span> <span class="mi">5</span> <span class="k">else</span> <span class="s2">&quot;Non-responder&quot;</span><span class="p">)</span>
+        <span class="n">adata</span><span class="o">.</span><span class="n">obs</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">,</span> <span class="n">new_obs</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;cell_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;T cell&quot;</span>
+        <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">normalize_total</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">target_sum</span><span class="o">=</span><span class="mf">1e4</span><span class="p">)</span>
+        <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">log1p</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+        <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">pca</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+        <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">neighbors</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+        <span class="n">sc</span><span class="o">.</span><span class="n">tl</span><span class="o">.</span><span class="n">umap</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">adata</span>
 
-adata = download_and_construct_sade_feldman()
-adata.layers[&quot;counts&quot;] = adata.X.copy() # Treating TPM as &quot;counts&quot; for normalization example
-print(f&quot;Loaded Sade-Feldman dataset: {adata.n_obs} cells, {adata.n_vars} genes&quot;)
+<span class="n">adata</span> <span class="o">=</span> <span class="n">download_and_construct_sade_feldman</span><span class="p">()</span>
+<span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">&quot;counts&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">X</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> <span class="c1"># Treating TPM as &quot;counts&quot; for normalization example</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded Sade-Feldman dataset: </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">}</span><span class="s2"> genes&quot;</span><span class="p">)</span>
 <br/></pre></div>
 </div>
 </div>
@@ -303,6 +303,7 @@ print(f&quot;Loaded Sade-Feldman dataset: {adata.n_obs} cells, {adata.n_vars} ge
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
+Downloading sade_feldman_tpm.txt.gz...
 Downloading sade_feldman_meta.txt.gz...
 Parsing metadata...
 Error parsing metadata: &#39;utf-8&#39; codec can&#39;t decode byte 0xb5 in position 1644: invalid start byte. Using fallback.
@@ -322,23 +323,23 @@ Loaded Sade-Feldman dataset: 2700 cells, 32738 genes
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>design = st.TrialDesign(
-    participant_col=&quot;patient&quot;,
-    visit_col=&quot;time&quot;,
-    arm_col=&quot;response&quot;,
-    arm_treated=&quot;Responder&quot;,
-    arm_control=&quot;Non-responder&quot;,
-    celltype_col=&quot;cell_type&quot;
-)
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">design</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">TrialDesign</span><span class="p">(</span>
+    <span class="n">participant_col</span><span class="o">=</span><span class="s2">&quot;patient&quot;</span><span class="p">,</span>
+    <span class="n">visit_col</span><span class="o">=</span><span class="s2">&quot;time&quot;</span><span class="p">,</span>
+    <span class="n">arm_col</span><span class="o">=</span><span class="s2">&quot;response&quot;</span><span class="p">,</span>
+    <span class="n">arm_treated</span><span class="o">=</span><span class="s2">&quot;Responder&quot;</span><span class="p">,</span>
+    <span class="n">arm_control</span><span class="o">=</span><span class="s2">&quot;Non-responder&quot;</span><span class="p">,</span>
+    <span class="n">celltype_col</span><span class="o">=</span><span class="s2">&quot;cell_type&quot;</span>
+<span class="p">)</span>
 
-# Preprocessing: normalize
-adata = st.add_log1p_cpm_layer(adata, out_layer=&quot;log1p_cpm&quot;)
+<span class="c1"># Preprocessing: normalize</span>
+<span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">add_log1p_cpm_layer</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">out_layer</span><span class="o">=</span><span class="s2">&quot;log1p_cpm&quot;</span><span class="p">)</span>
 
-# Score some cytotoxicity genes
-gene_sets = {&quot;Cytotoxicity&quot;: [&quot;GZMB&quot;, &quot;PRF1&quot;, &quot;GNLY&quot;, &quot;IFNG&quot;, &quot;NKG7&quot;]}
-# Check which genes are actually in the dataset
-available_genes = [g for g in gene_sets[&quot;Cytotoxicity&quot;] if g in adata.var_names]
-adata = st.score_gene_sets(adata, {&quot;Cytotoxicity&quot;: available_genes}, layer=&quot;log1p_cpm&quot;, method=&quot;zmean&quot;, prefix=&quot;ms_&quot;)
+<span class="c1"># Score some cytotoxicity genes</span>
+<span class="n">gene_sets</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;Cytotoxicity&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;GZMB&quot;</span><span class="p">,</span> <span class="s2">&quot;PRF1&quot;</span><span class="p">,</span> <span class="s2">&quot;GNLY&quot;</span><span class="p">,</span> <span class="s2">&quot;IFNG&quot;</span><span class="p">,</span> <span class="s2">&quot;NKG7&quot;</span><span class="p">]}</span>
+<span class="c1"># Check which genes are actually in the dataset</span>
+<span class="n">available_genes</span> <span class="o">=</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">gene_sets</span><span class="p">[</span><span class="s2">&quot;Cytotoxicity&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="p">]</span>
+<span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">score_gene_sets</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;Cytotoxicity&quot;</span><span class="p">:</span> <span class="n">available_genes</span><span class="p">},</span> <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;log1p_cpm&quot;</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;zmean&quot;</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;ms_&quot;</span><span class="p">)</span>
 <br/></pre></div>
 </div>
 </div>
@@ -350,16 +351,16 @@ adata = st.score_gene_sets(adata, {&quot;Cytotoxicity&quot;: available_genes}, l
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># We use did_table to identify genes that respond specifically in Responders
-res = st.did_table(
-    adata,
-    features=[&quot;ms_Cytotoxicity&quot;],
-    design=design,
-    visits=(&quot;Pre&quot;, &quot;Post&quot;),
-    aggregate=&quot;participant_visit&quot;
-)
-display(res)
-print(st.summarize_did_results(res))
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># We use did_table to identify genes that respond specifically in Responders</span>
+<span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">,</span>
+    <span class="n">features</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ms_Cytotoxicity&quot;</span><span class="p">],</span>
+    <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;Pre&quot;</span><span class="p">,</span> <span class="s2">&quot;Post&quot;</span><span class="p">),</span>
+    <span class="n">aggregate</span><span class="o">=</span><span class="s2">&quot;participant_visit&quot;</span>
+<span class="p">)</span>
+<span class="n">display</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">st</span><span class="o">.</span><span class="n">summarize_did_results</span><span class="p">(</span><span class="n">res</span><span class="p">))</span>
 <br/></pre></div>
 </div>
 </div>
@@ -437,14 +438,14 @@ Significant (FDR &lt; 0.05): 0
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>strat_res = st.did_table_by_celltype(
-    adata,
-    features=[&quot;ms_Cytotoxicity&quot;],
-    design=design,
-    visits=(&quot;Pre&quot;, &quot;Post&quot;),
-    celltypes=[&quot;CD8+ T&quot;, &quot;CD4+ T&quot;]
-)
-display(strat_res)
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">strat_res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table_by_celltype</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">,</span>
+    <span class="n">features</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ms_Cytotoxicity&quot;</span><span class="p">],</span>
+    <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;Pre&quot;</span><span class="p">,</span> <span class="s2">&quot;Post&quot;</span><span class="p">),</span>
+    <span class="n">celltypes</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;CD8+ T&quot;</span><span class="p">,</span> <span class="s2">&quot;CD4+ T&quot;</span><span class="p">]</span>
+<span class="p">)</span>
+<span class="n">display</span><span class="p">(</span><span class="n">strat_res</span><span class="p">)</span>
 <br/></pre></div>
 </div>
 </div>
@@ -520,8 +521,8 @@ display(strat_res)
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>ab_res = st.abundance_did(adata, design, visits=(&quot;Pre&quot;, &quot;Post&quot;))
-print(ab_res)
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ab_res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">abundance_did</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;Pre&quot;</span><span class="p">,</span> <span class="s2">&quot;Post&quot;</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">ab_res</span><span class="p">)</span>
 <br/></pre></div>
 </div>
 </div>
@@ -546,9 +547,9 @@ print(ab_res)
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Abundance Analysis
-ab_res = st.abundance_did(adata, design, visits=(&quot;Pre&quot;, &quot;Post&quot;))
-display(ab_res)
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Abundance Analysis</span>
+<span class="n">ab_res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">abundance_did</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;Pre&quot;</span><span class="p">,</span> <span class="s2">&quot;Post&quot;</span><span class="p">))</span>
+<span class="n">display</span><span class="p">(</span><span class="n">ab_res</span><span class="p">)</span>
 <br/></pre></div>
 </div>
 </div>
@@ -623,13 +624,13 @@ display(ab_res)
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">14</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
 
-st.plot_did_forest(res, title=&quot;Gene Expression Shifts&quot;, ax=axes[0])
-st.plot_did_forest(ab_res, feature_col=&quot;celltype&quot;, title=&quot;Cell Type Abundance Shifts&quot;, ax=axes[1])
+<span class="n">st</span><span class="o">.</span><span class="n">plot_did_forest</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Gene Expression Shifts&quot;</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+<span class="n">st</span><span class="o">.</span><span class="n">plot_did_forest</span><span class="p">(</span><span class="n">ab_res</span><span class="p">,</span> <span class="n">feature_col</span><span class="o">=</span><span class="s2">&quot;celltype&quot;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Cell Type Abundance Shifts&quot;</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
 
-plt.tight_layout()
-plt.show()
+<span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 <br/></pre></div>
 </div>
 </div>
@@ -648,8 +649,8 @@ plt.show()
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>st.plot_trial_interaction(adata, &quot;ms_Cytotoxicity&quot;, design, visits=(&quot;Pre&quot;, &quot;Post&quot;))
-plt.show()
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">st</span><span class="o">.</span><span class="n">plot_trial_interaction</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="s2">&quot;ms_Cytotoxicity&quot;</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;Pre&quot;</span><span class="p">,</span> <span class="s2">&quot;Post&quot;</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 <br/></pre></div>
 </div>
 </div>
@@ -668,8 +669,8 @@ plt.show()
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>st.plot_trial_umap_panel(adata, &quot;ms_Cytotoxicity&quot;, design, visits=(&quot;Pre&quot;, &quot;Post&quot;))
-plt.show()
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">st</span><span class="o">.</span><span class="n">plot_trial_umap_panel</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="s2">&quot;ms_Cytotoxicity&quot;</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;Pre&quot;</span><span class="p">,</span> <span class="s2">&quot;Post&quot;</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 <br/></pre></div>
 </div>
 </div>
@@ -688,139 +689,54 @@ plt.show()
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Define more comprehensive gene sets for a high-quality heatmap
-available_genes = set(adata.var_names)
-gsea_gene_sets = {
-    &quot;Cytotoxicity&quot;: [g for g in [&quot;PRF1&quot;, &quot;GZMB&quot;, &quot;GZMA&quot;, &quot;GNLY&quot;, &quot;GZMH&quot;, &quot;NKG7&quot;] if g in available_genes],
-    &quot;T_Cell_Activation&quot;: [g for g in [&quot;CD3D&quot;, &quot;CD3E&quot;, &quot;CD3G&quot;, &quot;CD28&quot;, &quot;CD247&quot;, &quot;LCK&quot;] if g in available_genes],
-    &quot;Exhaustion&quot;: [g for g in [&quot;PDCD1&quot;, &quot;LAG3&quot;, &quot;HAVCR2&quot;, &quot;TIGIT&quot;, &quot;CTLA4&quot;, &quot;ENTPD1&quot;] if g in available_genes],
-    &quot;Interferon_Gamma&quot;: [g for g in [&quot;IFNG&quot;, &quot;STAT1&quot;, &quot;IRF1&quot;, &quot;GBP1&quot;, &quot;GBP2&quot;] if g in available_genes],
-    &quot;Antigen_Presentation&quot;: [g for g in [&quot;HLA-DRA&quot;, &quot;HLA-DRB1&quot;, &quot;CD74&quot;, &quot;HLA-DQA1&quot;, &quot;HLA-DQB1&quot;] if g in available_genes],
-    &quot;Chemokines&quot;: [g for g in [&quot;CCL5&quot;, &quot;CXCL9&quot;, &quot;CXCL10&quot;, &quot;CXCL11&quot;, &quot;CXCR3&quot;] if g in available_genes],
-    &quot;Cell_Cycle&quot;: [g for g in [&quot;MKI67&quot;, &quot;TOP2A&quot;, &quot;PCNA&quot;, &quot;CDK1&quot;] if g in available_genes],
-    &quot;Apoptosis&quot;: [g for g in [&quot;CASP3&quot;, &quot;CASP8&quot;, &quot;FAS&quot;, &quot;BAX&quot;] if g in available_genes]
-}
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Define more comprehensive gene sets for a high-quality heatmap</span>
+<span class="n">available_genes</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="p">)</span>
+<span class="n">gsea_gene_sets</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;B_Cell_Activation&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;CD79A&quot;</span><span class="p">,</span> <span class="s2">&quot;CD79B&quot;</span><span class="p">,</span> <span class="s2">&quot;MS4A1&quot;</span><span class="p">,</span> <span class="s2">&quot;CD19&quot;</span><span class="p">,</span> <span class="s2">&quot;BANK1&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;T_Cell_Signaling&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;CD3D&quot;</span><span class="p">,</span> <span class="s2">&quot;CD3E&quot;</span><span class="p">,</span> <span class="s2">&quot;CD3G&quot;</span><span class="p">,</span> <span class="s2">&quot;LCK&quot;</span><span class="p">,</span> <span class="s2">&quot;ZAP70&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;Antigen_Presentation&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;HLA-DRA&quot;</span><span class="p">,</span> <span class="s2">&quot;HLA-DRB1&quot;</span><span class="p">,</span> <span class="s2">&quot;CD74&quot;</span><span class="p">,</span> <span class="s2">&quot;HLA-DPA1&quot;</span><span class="p">,</span> <span class="s2">&quot;HLA-DPB1&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;IFN_Response&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;IFITM3&quot;</span><span class="p">,</span> <span class="s2">&quot;ISG15&quot;</span><span class="p">,</span> <span class="s2">&quot;MX1&quot;</span><span class="p">,</span> <span class="s2">&quot;STAT1&quot;</span><span class="p">,</span> <span class="s2">&quot;IFI6&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;Cytotoxicity&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;NKG7&quot;</span><span class="p">,</span> <span class="s2">&quot;GNLY&quot;</span><span class="p">,</span> <span class="s2">&quot;GZMB&quot;</span><span class="p">,</span> <span class="s2">&quot;PRF1&quot;</span><span class="p">,</span> <span class="s2">&quot;GZMA&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;Inflammation&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;S100A8&quot;</span><span class="p">,</span> <span class="s2">&quot;S100A9&quot;</span><span class="p">,</span> <span class="s2">&quot;LYZ&quot;</span><span class="p">,</span> <span class="s2">&quot;CD14&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;Cell_Cycle&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;MKI67&quot;</span><span class="p">,</span> <span class="s2">&quot;TOP2A&quot;</span><span class="p">,</span> <span class="s2">&quot;PCNA&quot;</span><span class="p">,</span> <span class="s2">&quot;CDK1&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;MHC_Class_II&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;HLA-DQA1&quot;</span><span class="p">,</span> <span class="s2">&quot;HLA-DQB1&quot;</span><span class="p">,</span> <span class="s2">&quot;HLA-DMA&quot;</span><span class="p">,</span> <span class="s2">&quot;HLA-DMB&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;Chemokines&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;CCL5&quot;</span><span class="p">,</span> <span class="s2">&quot;CXCL9&quot;</span><span class="p">,</span> <span class="s2">&quot;CXCL10&quot;</span><span class="p">,</span> <span class="s2">&quot;CXCL11&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;Apoptosis&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;CASP3&quot;</span><span class="p">,</span> <span class="s2">&quot;CASP8&quot;</span><span class="p">,</span> <span class="s2">&quot;FAS&quot;</span><span class="p">,</span> <span class="s2">&quot;BAX&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;Glycolysis&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;LDHA&quot;</span><span class="p">,</span> <span class="s2">&quot;PGK1&quot;</span><span class="p">,</span> <span class="s2">&quot;ENO1&quot;</span><span class="p">,</span> <span class="s2">&quot;GAPDH&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;Translational_Activity&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;RPS6&quot;</span><span class="p">,</span> <span class="s2">&quot;RPL13&quot;</span><span class="p">,</span> <span class="s2">&quot;RPS3&quot;</span><span class="p">,</span> <span class="s2">&quot;RPL11&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+<span class="p">}</span>
 
-# Filter out empty or too small sets
-gsea_gene_sets = {k: v for k, v in gsea_gene_sets.items() if len(v) &gt;= 2}
-
-if len(gsea_gene_sets) &gt; 0:
-    # Run GSEA stratified by a subset of cell types if available, otherwise global
-    try:
-        # For this example, we&#39;ll simulate cross-pool results if we only have one cell type
-        # In real data with multiple cell types, you&#39;d use st.run_gsea_did inside a loop
-        # or on a stratified adata.
-
-        # Here we demonstrate the multi-pool heatmap by running on different subsets
-        pools = [&quot;Global&quot;, &quot;CD8+ T (sim)&quot;, &quot;CD4+ T (sim)&quot;]
-        results = []
-        for pool in pools:
-            res_p = st.run_gsea_did(
-                adata,
-                gene_sets=gsea_gene_sets,
-                design=design,
-                visits=(&quot;Pre&quot;, &quot;Post&quot;),
-                min_size=1
-            )
-            if not res_p.empty:
-                res_p[&quot;pool&quot;] = pool
-                # Add some variance for visual interest in the example
-                res_p[&quot;NES&quot;] = res_p[&quot;NES&quot;] * np.random.uniform(0.8, 1.2, size=len(res_p))
-                results.append(res_p)
-
-        if results:
-            gsea_res_all = pd.concat(results)
-            display(gsea_res_all.head())
-            st.plot_gsea_heatmap(gsea_res_all, fdr_thresh=1.0, figsize=(12, 10))
-            plt.title(&quot;Cross-Pool Immunotherapy Pathway Enrichment&quot;, fontsize=15, fontweight=&#39;bold&#39;)
-            plt.show()
-    except Exception as e:
-        print(f&quot;GSEA error: {e}&quot;)
-else:
-    print(&quot;No valid gene sets for GSEA&quot;)
+<span class="c1"># Filter out empty or too small sets</span>
+<span class="n">gsea_gene_sets</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">gsea_gene_sets</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">}</span>
+    <span class="s2">&quot;B_Cell_Activation&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;CD79A&quot;</span><span class="p">,</span> <span class="s2">&quot;CD79B&quot;</span><span class="p">,</span> <span class="s2">&quot;MS4A1&quot;</span><span class="p">,</span> <span class="s2">&quot;CD19&quot;</span><span class="p">,</span> <span class="s2">&quot;BANK1&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;T_Cell_Signaling&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;CD3D&quot;</span><span class="p">,</span> <span class="s2">&quot;CD3E&quot;</span><span class="p">,</span> <span class="s2">&quot;CD3G&quot;</span><span class="p">,</span> <span class="s2">&quot;LCK&quot;</span><span class="p">,</span> <span class="s2">&quot;ZAP70&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;Antigen_Presentation&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;HLA-DRA&quot;</span><span class="p">,</span> <span class="s2">&quot;HLA-DRB1&quot;</span><span class="p">,</span> <span class="s2">&quot;CD74&quot;</span><span class="p">,</span> <span class="s2">&quot;HLA-DPA1&quot;</span><span class="p">,</span> <span class="s2">&quot;HLA-DPB1&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;IFN_Response&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;IFITM3&quot;</span><span class="p">,</span> <span class="s2">&quot;ISG15&quot;</span><span class="p">,</span> <span class="s2">&quot;MX1&quot;</span><span class="p">,</span> <span class="s2">&quot;STAT1&quot;</span><span class="p">,</span> <span class="s2">&quot;IFI6&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;Cytotoxicity&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;NKG7&quot;</span><span class="p">,</span> <span class="s2">&quot;GNLY&quot;</span><span class="p">,</span> <span class="s2">&quot;GZMB&quot;</span><span class="p">,</span> <span class="s2">&quot;PRF1&quot;</span><span class="p">,</span> <span class="s2">&quot;GZMA&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;Inflammation&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;S100A8&quot;</span><span class="p">,</span> <span class="s2">&quot;S100A9&quot;</span><span class="p">,</span> <span class="s2">&quot;LYZ&quot;</span><span class="p">,</span> <span class="s2">&quot;CD14&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;Cell_Cycle&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;MKI67&quot;</span><span class="p">,</span> <span class="s2">&quot;TOP2A&quot;</span><span class="p">,</span> <span class="s2">&quot;PCNA&quot;</span><span class="p">,</span> <span class="s2">&quot;CDK1&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;MHC_Class_II&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;HLA-DQA1&quot;</span><span class="p">,</span> <span class="s2">&quot;HLA-DQB1&quot;</span><span class="p">,</span> <span class="s2">&quot;HLA-DMA&quot;</span><span class="p">,</span> <span class="s2">&quot;HLA-DMB&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;Chemokines&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;CCL5&quot;</span><span class="p">,</span> <span class="s2">&quot;CXCL9&quot;</span><span class="p">,</span> <span class="s2">&quot;CXCL10&quot;</span><span class="p">,</span> <span class="s2">&quot;CXCL11&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;Apoptosis&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;CASP3&quot;</span><span class="p">,</span> <span class="s2">&quot;CASP8&quot;</span><span class="p">,</span> <span class="s2">&quot;FAS&quot;</span><span class="p">,</span> <span class="s2">&quot;BAX&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;Glycolysis&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;LDHA&quot;</span><span class="p">,</span> <span class="s2">&quot;PGK1&quot;</span><span class="p">,</span> <span class="s2">&quot;ENO1&quot;</span><span class="p">,</span> <span class="s2">&quot;GAPDH&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;Translational_Activity&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;RPS6&quot;</span><span class="p">,</span> <span class="s2">&quot;RPL13&quot;</span><span class="p">,</span> <span class="s2">&quot;RPS3&quot;</span><span class="p">,</span> <span class="s2">&quot;RPL11&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+<span class="p">}</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No valid gene sets for GSEA&quot;</span><span class="p">)</span>
 <br/></pre></div>
 </div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area stderr docutils container">
-<div class="highlight"><pre>
-2026-01-02 13:31:24,891 [WARNING] Duplicated values found in preranked stats: 55.39% of genes
-The order of those genes will be arbitrary, which may produce unexpected results.
-</pre></div></div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area rendered_html docutils container">
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>Name</th>
-      <th>Term</th>
-      <th>ES</th>
-      <th>NES</th>
-      <th>NOM p-val</th>
-      <th>FDR q-val</th>
-      <th>FWER p-val</th>
-      <th>Tag %</th>
-      <th>Gene %</th>
-      <th>Lead_genes</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>prerank</td>
-      <td>Cytotoxicity</td>
-      <td>0.790753</td>
-      <td>1.05004</td>
-      <td>0.513684</td>
-      <td>0.933333</td>
-      <td>0.394</td>
-      <td>3/4</td>
-      <td>18.57%</td>
-      <td>GZMA;GZMB;PRF1</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>prerank</td>
-      <td>Exhaustion</td>
-      <td>0.515714</td>
-      <td>0.63994</td>
-      <td>0.942268</td>
-      <td>0.93125</td>
-      <td>0.696</td>
-      <td>1/3</td>
-      <td>17.13%</td>
-      <td>LAG3</td>
-    </tr>
-  </tbody>
-</table>
-</div></div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_immunotherapy_sade_feldman_23_2.png" src="../_images/examples_example_immunotherapy_sade_feldman_23_2.png" />
-</div>
+<div class="highlight"><pre>
+<span class="ansi-cyan-fg">  Cell </span><span class="ansi-green-fg">In[12], line 20</span>
+<span class="ansi-red-fg">    &#34;B_Cell_Activation&#34;: [g for g in [&#34;CD79A&#34;, &#34;CD79B&#34;, &#34;MS4A1&#34;, &#34;CD19&#34;, &#34;BANK1&#34;] if g in available_genes],</span>
+    ^
+<span class="ansi-red-fg">IndentationError</span><span class="ansi-red-fg">:</span> unexpected indent
+
+</pre></div></div>
 </div>
 </section>
 <section id="Trial-UMAP-Panel">
@@ -830,9 +746,9 @@ The order of those genes will be arbitrary, which may produce unexpected results
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># st.plot_trial_umap_panel automatically uses &#39;X_umap&#39; from obsm
-st.plot_trial_umap_panel(adata, &quot;ms_Cytotoxicity&quot;, design, visits=(&quot;Pre&quot;, &quot;Post&quot;))
-plt.show()
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># st.plot_trial_umap_panel automatically uses &#39;X_umap&#39; from obsm</span>
+<span class="n">st</span><span class="o">.</span><span class="n">plot_trial_umap_panel</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="s2">&quot;ms_Cytotoxicity&quot;</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;Pre&quot;</span><span class="p">,</span> <span class="s2">&quot;Post&quot;</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 <br/></pre></div>
 </div>
 </div>

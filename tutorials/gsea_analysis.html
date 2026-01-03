@@ -55,6 +55,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#interpreting-results">3. Interpreting Results</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#custom-gene-sets">4. Custom Gene Sets</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#visualization-of-rankings">5. Visualization of Rankings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#multi-celltype-gsea-heatmap">6. Multi-Celltype GSEA Heatmap</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="advanced_designs.html">Advanced Trial Analysis</a></li>
@@ -184,6 +185,41 @@
 <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Effect Size (beta_DiD)&quot;</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;-log10(p_DiD)&quot;</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Trial-Aware Volcano Plot&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="multi-celltype-gsea-heatmap">
+<h2>6. Multi-Celltype GSEA Heatmap<a class="headerlink" href="#multi-celltype-gsea-heatmap" title="Link to this heading"></a></h2>
+<p>When analyzing multiple cell types or cell pools, a heatmap is the best way to compare pathway enrichments across different lineages. The <cite>plot_gsea_heatmap</cite> function allows you to visualize multiple GSEA results in a single, comprehensive view.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Run GSEA for multiple cell types (e.g., T cells, B cells, Monocytes)</span>
+<span class="c1"># and combine the results into a single table</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="n">celltypes</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;CD4 T cells&quot;</span><span class="p">,</span> <span class="s2">&quot;B cells&quot;</span><span class="p">,</span> <span class="s2">&quot;Monocytes&quot;</span><span class="p">]</span>
+<span class="n">all_gsea_results</span> <span class="o">=</span> <span class="p">[]</span>
+
+<span class="k">for</span> <span class="n">ct</span> <span class="ow">in</span> <span class="n">celltypes</span><span class="p">:</span>
+    <span class="n">ct_adata</span> <span class="o">=</span> <span class="n">adata</span><span class="p">[</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;celltype&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">ct</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">run_gsea_did</span><span class="p">(</span>
+        <span class="n">ct_adata</span><span class="p">,</span>
+        <span class="n">gene_sets</span><span class="o">=</span><span class="n">custom_sets</span><span class="p">,</span>
+        <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+        <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">res</span><span class="p">[</span><span class="s2">&quot;pool&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ct</span>
+    <span class="n">all_gsea_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+
+<span class="n">combined_res</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">all_gsea_results</span><span class="p">)</span>
+
+<span class="c1"># Plot a comprehensive heatmap across all cell types</span>
+<span class="c1"># Shows the Normalized Enrichment Score (NES)</span>
+<span class="n">st</span><span class="o">.</span><span class="n">plot_gsea_heatmap</span><span class="p">(</span>
+    <span class="n">combined_res</span><span class="p">,</span>
+    <span class="n">fdr_thresh</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span>
+    <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">8</span><span class="p">),</span>
+    <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Pathway Enrichment Across Cell Types&quot;</span>
+<span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>

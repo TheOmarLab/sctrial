@@ -106,10 +106,10 @@
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import warnings
-warnings.filterwarnings(&#39;ignore&#39;)
-import pandas as pd
-pd.options.mode.chained_assignment = None
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="n">pd</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">mode</span><span class="o">.</span><span class="n">chained_assignment</span> <span class="o">=</span> <span class="kc">None</span>
 </pre></div>
 </div>
 </div>
@@ -126,14 +126,14 @@ pd.options.mode.chained_assignment = None
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import sctrial as st
-import scanpy as sc
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import os
-import requests
-from scipy import sparse
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">sctrial</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">scanpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sc</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">requests</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">sparse</span>
 <br/></pre></div>
 </div>
 </div>
@@ -144,128 +144,169 @@ from scipy import sparse
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>def load_stephenson_example_data():
-    # Load raw biological data
-    adata = sc.datasets.pbmc3k()
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">load_stephenson_example_data</span><span class="p">():</span>
+    <span class="c1"># Load raw biological data</span>
+    <span class="n">adata</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">pbmc3k</span><span class="p">()</span>
 
-    # Basic Preprocessing to get cell types first
-    adata.layers[&quot;counts&quot;] = adata.X.copy()
-    sc.pp.normalize_total(adata, target_sum=1e4)
-    sc.pp.log1p(adata)
-    sc.pp.pca(adata)
-    sc.pp.neighbors(adata)
-    sc.tl.leiden(adata)
-    sc.tl.umap(adata)
+    <span class="c1"># Basic Preprocessing to get cell types first</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">&quot;counts&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">X</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">normalize_total</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">target_sum</span><span class="o">=</span><span class="mf">1e4</span><span class="p">)</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">log1p</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">pca</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">neighbors</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">tl</span><span class="o">.</span><span class="n">leiden</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">tl</span><span class="o">.</span><span class="n">umap</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
 
-    type_map = {
-        &quot;0&quot;: &quot;CD4 T&quot;, &quot;1&quot;: &quot;Monocytes&quot;, &quot;2&quot;: &quot;B cells&quot;, &quot;3&quot;: &quot;CD8 T&quot;,
-        &quot;4&quot;: &quot;NK cells&quot;, &quot;5&quot;: &quot;Monocytes&quot;, &quot;6&quot;: &quot;Dendritic&quot;, &quot;7&quot;: &quot;Megakaryocytes&quot;
-    }
-    adata.obs[&quot;cell_type_fine&quot;] = adata.obs[&quot;leiden&quot;].map(type_map).fillna(&quot;Other&quot;)
+    <span class="n">type_map</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;0&quot;</span><span class="p">:</span> <span class="s2">&quot;CD4 T&quot;</span><span class="p">,</span> <span class="s2">&quot;1&quot;</span><span class="p">:</span> <span class="s2">&quot;Monocytes&quot;</span><span class="p">,</span> <span class="s2">&quot;2&quot;</span><span class="p">:</span> <span class="s2">&quot;B cells&quot;</span><span class="p">,</span> <span class="s2">&quot;3&quot;</span><span class="p">:</span> <span class="s2">&quot;CD8 T&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;4&quot;</span><span class="p">:</span> <span class="s2">&quot;NK cells&quot;</span><span class="p">,</span> <span class="s2">&quot;5&quot;</span><span class="p">:</span> <span class="s2">&quot;Monocytes&quot;</span><span class="p">,</span> <span class="s2">&quot;6&quot;</span><span class="p">:</span> <span class="s2">&quot;Dendritic&quot;</span><span class="p">,</span> <span class="s2">&quot;7&quot;</span><span class="p">:</span> <span class="s2">&quot;Megakaryocytes&quot;</span>
+    <span class="p">}</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;cell_type_fine&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;leiden&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">type_map</span><span class="p">)</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="s2">&quot;Other&quot;</span><span class="p">)</span>
 
-    # Increase to 12 donors to ensure sufficient participants per cell type
-    # Split: 6 Mild, 6 Severe for better statistical power
-    donors = [f&quot;Donor_{i}&quot; for i in range(12)]
-    visits = [&quot;1-7 days&quot;, &quot;8-14 days&quot;]
-    severities = [&quot;Mild&quot;, &quot;Severe&quot;]
+    <span class="c1"># Increase to 12 donors to ensure sufficient participants per cell type</span>
+    <span class="c1"># Split: 6 Mild, 6 Severe for better statistical power</span>
+    <span class="n">donors</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;Donor_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">12</span><span class="p">)]</span>
+    <span class="n">visits</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;1-7 days&quot;</span><span class="p">,</span> <span class="s2">&quot;8-14 days&quot;</span><span class="p">]</span>
+    <span class="n">severities</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Mild&quot;</span><span class="p">,</span> <span class="s2">&quot;Severe&quot;</span><span class="p">]</span>
 
-    # Create metadata: Ensure pairing WITHIN each cell type
-    # FIX: Use fixed random seed for reproducibility and ensure proper pairing
-    np.random.seed(42)
-    new_obs = pd.DataFrame(index=adata.obs_names)
-    new_obs[&quot;donor_id&quot;] = &quot;Unknown&quot;
-    new_obs[&quot;days_post_onset_group&quot;] = &quot;Unknown&quot;
-    new_obs[&quot;disease_severity&quot;] = &quot;Unknown&quot;
+    <span class="c1"># Create metadata: Ensure pairing WITHIN each cell type</span>
+    <span class="c1"># FIX: Use fixed random seed for reproducibility and ensure proper pairing</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+    <span class="n">new_obs</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">adata</span><span class="o">.</span><span class="n">obs_names</span><span class="p">)</span>
+    <span class="n">new_obs</span><span class="p">[</span><span class="s2">&quot;donor_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Unknown&quot;</span>
+    <span class="n">new_obs</span><span class="p">[</span><span class="s2">&quot;days_post_onset_group&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Unknown&quot;</span>
+    <span class="n">new_obs</span><span class="p">[</span><span class="s2">&quot;disease_severity&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Unknown&quot;</span>
 
-    for ct in adata.obs[&quot;cell_type_fine&quot;].unique():
-        ct_mask = adata.obs[&quot;cell_type_fine&quot;] == ct
-        ct_indices = np.where(ct_mask)[0]
-        np.random.shuffle(ct_indices)
+    <span class="k">for</span> <span class="n">ct</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;cell_type_fine&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">():</span>
+        <span class="n">ct_mask</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;cell_type_fine&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">ct</span>
+        <span class="n">ct_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">ct_mask</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">shuffle</span><span class="p">(</span><span class="n">ct_indices</span><span class="p">)</span>
 
-        n_cells = len(ct_indices)
-        cells_per_unit = n_cells // (len(donors) * len(visits))
-        if cells_per_unit == 0:
-            # FIX: Skip cell types with too few cells
-            continue
+        <span class="n">n_cells</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">ct_indices</span><span class="p">)</span>
+        <span class="n">cells_per_unit</span> <span class="o">=</span> <span class="n">n_cells</span> <span class="o">//</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">donors</span><span class="p">)</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">visits</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">cells_per_unit</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># FIX: Skip cell types with too few cells</span>
+            <span class="k">continue</span>
 
-        curr = 0
-        for i, donor in enumerate(donors):
-            severity = severities[0] if i &lt; 6 else severities[1]  # FIX: 6 per arm
-            for visit in visits:
-                end = curr + cells_per_unit
-                idx_subset = ct_indices[curr:end]
-                if len(idx_subset) &gt; 0:  # FIX: Only assign if we have cells
-                    new_obs.iloc[idx_subset, new_obs.columns.get_loc(&quot;donor_id&quot;)] = donor
-                    new_obs.iloc[idx_subset, new_obs.columns.get_loc(&quot;days_post_onset_group&quot;)] = visit
-                    new_obs.iloc[idx_subset, new_obs.columns.get_loc(&quot;disease_severity&quot;)] = severity
-                curr = end
+        <span class="n">curr</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">donor</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">donors</span><span class="p">):</span>
+            <span class="n">severity</span> <span class="o">=</span> <span class="n">severities</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">6</span> <span class="k">else</span> <span class="n">severities</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># FIX: 6 per arm</span>
+            <span class="k">for</span> <span class="n">visit</span> <span class="ow">in</span> <span class="n">visits</span><span class="p">:</span>
+                <span class="n">end</span> <span class="o">=</span> <span class="n">curr</span> <span class="o">+</span> <span class="n">cells_per_unit</span>
+                <span class="n">idx_subset</span> <span class="o">=</span> <span class="n">ct_indices</span><span class="p">[</span><span class="n">curr</span><span class="p">:</span><span class="n">end</span><span class="p">]</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">idx_subset</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># FIX: Only assign if we have cells</span>
+                    <span class="n">new_obs</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">idx_subset</span><span class="p">,</span> <span class="n">new_obs</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">get_loc</span><span class="p">(</span><span class="s2">&quot;donor_id&quot;</span><span class="p">)]</span> <span class="o">=</span> <span class="n">donor</span>
+                    <span class="n">new_obs</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">idx_subset</span><span class="p">,</span> <span class="n">new_obs</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">get_loc</span><span class="p">(</span><span class="s2">&quot;days_post_onset_group&quot;</span><span class="p">)]</span> <span class="o">=</span> <span class="n">visit</span>
+                    <span class="n">new_obs</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">idx_subset</span><span class="p">,</span> <span class="n">new_obs</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">get_loc</span><span class="p">(</span><span class="s2">&quot;disease_severity&quot;</span><span class="p">)]</span> <span class="o">=</span> <span class="n">severity</span>
+                <span class="n">curr</span> <span class="o">=</span> <span class="n">end</span>
 
-    adata.obs = pd.concat([adata.obs, new_obs], axis=1)
-    # Remove cells that didn&#39;t get assigned (to keep pairing perfect)
-    adata = adata[adata.obs[&quot;donor_id&quot;] != &quot;Unknown&quot;].copy()
+    <span class="n">adata</span><span class="o">.</span><span class="n">obs</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">,</span> <span class="n">new_obs</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="c1"># Remove cells that didn&#39;t get assigned (to keep pairing perfect)</span>
+    <span class="n">adata</span> <span class="o">=</span> <span class="n">adata</span><span class="p">[</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;donor_id&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;Unknown&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
-    # FIX: Verify pairing - ensure each donor has both visits
-    pairing_check = adata.obs.groupby([&quot;donor_id&quot;, &quot;disease_severity&quot;])[&quot;days_post_onset_group&quot;].nunique()
-    incomplete_donors = pairing_check[pairing_check &lt; 2].index
-    if len(incomplete_donors) &gt; 0:
-        print(f&quot;Warning: Removing {len(incomplete_donors)} donors with incomplete pairing&quot;)
-        adata = adata[~adata.obs[&quot;donor_id&quot;].isin([d[0] for d in incomplete_donors])].copy()
+    <span class="c1"># FIX: Verify pairing - ensure each donor has both visits</span>
+    <span class="n">pairing_check</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">&quot;donor_id&quot;</span><span class="p">,</span> <span class="s2">&quot;disease_severity&quot;</span><span class="p">])[</span><span class="s2">&quot;days_post_onset_group&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span>
+    <span class="n">incomplete_donors</span> <span class="o">=</span> <span class="n">pairing_check</span><span class="p">[</span><span class="n">pairing_check</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">index</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">incomplete_donors</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Warning: Removing </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">incomplete_donors</span><span class="p">)</span><span class="si">}</span><span class="s2"> donors with incomplete pairing&quot;</span><span class="p">)</span>
+        <span class="n">adata</span> <span class="o">=</span> <span class="n">adata</span><span class="p">[</span><span class="o">~</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;donor_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">([</span><span class="n">d</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">incomplete_donors</span><span class="p">])]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
-    # Inject Signal: Severe group increases IFN Response in late visit
-    # FIX: Check which genes actually exist in the dataset
-    ifn_genes = [&quot;IFITM3&quot;, &quot;ISG15&quot;, &quot;MX1&quot;, &quot;STAT1&quot;]
-    ifn_idx = []
-    for g in ifn_genes:
-        if g in adata.var_names:
-            ifn_idx.append(adata.var_names.get_loc(g))
+    <span class="c1"># Inject Signal: Severe group increases IFN Response in late visit</span>
+    <span class="c1"># FIX: Check which genes actually exist in the dataset</span>
+    <span class="n">ifn_genes</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;IFITM3&quot;</span><span class="p">,</span> <span class="s2">&quot;ISG15&quot;</span><span class="p">,</span> <span class="s2">&quot;MX1&quot;</span><span class="p">,</span> <span class="s2">&quot;STAT1&quot;</span><span class="p">]</span>
+    <span class="n">ifn_idx</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">ifn_genes</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="p">:</span>
+            <span class="n">ifn_idx</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="o">.</span><span class="n">get_loc</span><span class="p">(</span><span class="n">g</span><span class="p">))</span>
 
-    if len(ifn_idx) &gt; 0:
-        mask = (adata.obs[&quot;disease_severity&quot;] == &quot;Severe&quot;) &amp; (adata.obs[&quot;days_post_onset_group&quot;] == &quot;8-14 days&quot;)
-        X = adata.layers[&quot;counts&quot;].toarray() if hasattr(adata.layers[&quot;counts&quot;], &quot;toarray&quot;) else adata.layers[&quot;counts&quot;]
-        # Convert to float to avoid type issues during addition
-        X = X.astype(np.float32)
-        X[mask.values, :][:, ifn_idx] += 30.0 # Stronger signal
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ifn_idx</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;disease_severity&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Severe&quot;</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;days_post_onset_group&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;8-14 days&quot;</span><span class="p">)</span>
+        <span class="n">X</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">&quot;counts&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">&quot;counts&quot;</span><span class="p">],</span> <span class="s2">&quot;toarray&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">&quot;counts&quot;</span><span class="p">]</span>
+        <span class="c1"># Convert to float to avoid type issues during addition</span>
+        <span class="n">X</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="n">X</span><span class="p">[</span><span class="n">mask</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="p">:][:,</span> <span class="n">ifn_idx</span><span class="p">]</span> <span class="o">+=</span> <span class="mf">30.0</span> <span class="c1"># Stronger signal</span>
 
-        # Also inject signal into B cells specifically to differentiate clusters
-        b_mask = (adata.obs[&quot;cell_type_fine&quot;] == &quot;B cells&quot;) &amp; (adata.obs[&quot;disease_severity&quot;] == &quot;Severe&quot;)
-        cd79a_idx = adata.var_names.get_loc(&quot;CD79A&quot;) if &quot;CD79A&quot; in adata.var_names else None
-        if cd79a_idx is not None:
-            X[b_mask.values, cd79a_idx] += 15.0
+        <span class="c1"># Also inject signal into B cells specifically to differentiate clusters</span>
+        <span class="n">b_mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;cell_type_fine&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;B cells&quot;</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;disease_severity&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Severe&quot;</span><span class="p">)</span>
+        <span class="n">cd79a_idx</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="o">.</span><span class="n">get_loc</span><span class="p">(</span><span class="s2">&quot;CD79A&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="s2">&quot;CD79A&quot;</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">var_names</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">cd79a_idx</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">X</span><span class="p">[</span><span class="n">b_mask</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">cd79a_idx</span><span class="p">]</span> <span class="o">+=</span> <span class="mf">15.0</span>
 
-        adata.layers[&quot;counts&quot;] = sparse.csr_matrix(X)
-        adata.X = adata.layers[&quot;counts&quot;].copy()
-        sc.pp.normalize_total(adata, target_sum=1e4)
-        sc.pp.log1p(adata)
+        <span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">&quot;counts&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sparse</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+        <span class="n">adata</span><span class="o">.</span><span class="n">X</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">&quot;counts&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">normalize_total</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">target_sum</span><span class="o">=</span><span class="mf">1e4</span><span class="p">)</span>
+        <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">log1p</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
 
-    # Recalculate PCA/UMAP to see distinct clusters and signals
-    sc.pp.highly_variable_genes(adata, n_top_genes=2000, flavor=&#39;seurat_v3&#39;, layer=&#39;counts&#39;)
-    sc.pp.pca(adata)
-    sc.pp.neighbors(adata)
-    sc.tl.umap(adata)
+    <span class="c1"># Recalculate PCA/UMAP to see distinct clusters and signals</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">highly_variable_genes</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">n_top_genes</span><span class="o">=</span><span class="mi">2000</span><span class="p">,</span> <span class="n">flavor</span><span class="o">=</span><span class="s1">&#39;seurat_v3&#39;</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s1">&#39;counts&#39;</span><span class="p">)</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">pca</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">neighbors</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">tl</span><span class="o">.</span><span class="n">umap</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
 
-    # FIX: Verify final data quality
-    print(f&quot;Final dataset: {adata.n_obs} cells, {adata.n_vars} genes&quot;)
-    print(f&quot;Donors: {adata.obs[&#39;donor_id&#39;].nunique()}, Visits: {adata.obs[&#39;days_post_onset_group&#39;].unique()}&quot;)
-    print(f&quot;Cell types: {adata.obs[&#39;cell_type_fine&#39;].nunique()}&quot;)
+    <span class="c1"># FIX: Verify final data quality</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Final dataset: </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">}</span><span class="s2"> genes&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Donors: </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s1">&#39;donor_id&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span><span class="si">}</span><span class="s2">, Visits: </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s1">&#39;days_post_onset_group&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cell types: </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s1">&#39;cell_type_fine&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-    return adata
+    <span class="k">return</span> <span class="n">adata</span>
 
-adata = load_stephenson_example_data()
-adata.layers[&quot;counts&quot;] = adata.X.copy()
-print(f&quot;Loaded biological dataset: {adata.n_obs} cells, {adata.n_vars} genes&quot;)
+<span class="n">adata</span> <span class="o">=</span> <span class="n">load_stephenson_example_data</span><span class="p">()</span>
+<span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">&quot;counts&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">X</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded biological dataset: </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">}</span><span class="s2"> genes&quot;</span><span class="p">)</span>
 <br/></pre></div>
 </div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+100%|██████████| 5.58M/5.58M [00:00&lt;00:00, 6.43MB/s]
+</pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-WARNING: adata.X seems to be already log-transformed.
-Final dataset: 2568 cells, 32738 genes
-Donors: 12, Visits: [&#39;1-7 days&#39; &#39;8-14 days&#39;]
-Cell types: 8
-Loaded biological dataset: 2568 cells, 32738 genes
+<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
+<span class="ansi-red-fg">ImportError</span>                               Traceback (most recent call last)
+Cell <span class="ansi-green-fg">In[3], line 107</span>
+<span class="ansi-green-intense-fg ansi-bold">    103</span>     <span style="color: rgb(0,135,0)">print</span>(<span style="color: rgb(175,0,0)">f</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">Cell types: </span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span>adata<span style="color: rgb(98,98,98)">.</span>obs[<span style="color: rgb(175,0,0)">&#39;</span><span style="color: rgb(175,0,0)">cell_type_fine</span><span style="color: rgb(175,0,0)">&#39;</span>]<span style="color: rgb(98,98,98)">.</span>nunique()<span class="ansi-bold" style="color: rgb(175,95,135)">}</span><span style="color: rgb(175,0,0)">&#34;</span>)
+<span class="ansi-green-intense-fg ansi-bold">    105</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">return</span> adata
+<span class="ansi-green-fg">--&gt; 107</span> adata <span style="color: rgb(98,98,98)">=</span> <span class="ansi-yellow-bg">load_stephenson_example_data</span><span class="ansi-yellow-bg">(</span><span class="ansi-yellow-bg">)</span>
+<span class="ansi-green-intense-fg ansi-bold">    108</span> adata<span style="color: rgb(98,98,98)">.</span>layers[<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">counts</span><span style="color: rgb(175,0,0)">&#34;</span>] <span style="color: rgb(98,98,98)">=</span> adata<span style="color: rgb(98,98,98)">.</span>X<span style="color: rgb(98,98,98)">.</span>copy()
+<span class="ansi-green-intense-fg ansi-bold">    109</span> <span style="color: rgb(0,135,0)">print</span>(<span style="color: rgb(175,0,0)">f</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">Loaded biological dataset: </span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span>adata<span style="color: rgb(98,98,98)">.</span>n_obs<span class="ansi-bold" style="color: rgb(175,95,135)">}</span><span style="color: rgb(175,0,0)"> cells, </span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span>adata<span style="color: rgb(98,98,98)">.</span>n_vars<span class="ansi-bold" style="color: rgb(175,95,135)">}</span><span style="color: rgb(175,0,0)"> genes</span><span style="color: rgb(175,0,0)">&#34;</span>)
+
+Cell <span class="ansi-green-fg">In[3], line 11</span>, in <span class="ansi-cyan-fg">load_stephenson_example_data</span><span class="ansi-blue-fg">()</span>
+<span class="ansi-green-intense-fg ansi-bold">      9</span> sc<span style="color: rgb(98,98,98)">.</span>pp<span style="color: rgb(98,98,98)">.</span>pca(adata)
+<span class="ansi-green-intense-fg ansi-bold">     10</span> sc<span style="color: rgb(98,98,98)">.</span>pp<span style="color: rgb(98,98,98)">.</span>neighbors(adata)
+<span class="ansi-green-fg">---&gt; 11</span> <span class="ansi-yellow-bg">sc</span><span class="ansi-yellow-bg" style="color: rgb(98,98,98)">.</span><span class="ansi-yellow-bg">tl</span><span class="ansi-yellow-bg" style="color: rgb(98,98,98)">.</span><span class="ansi-yellow-bg">leiden</span><span class="ansi-yellow-bg">(</span><span class="ansi-yellow-bg">adata</span><span class="ansi-yellow-bg">)</span>
+<span class="ansi-green-intense-fg ansi-bold">     12</span> sc<span style="color: rgb(98,98,98)">.</span>tl<span style="color: rgb(98,98,98)">.</span>umap(adata)
+<span class="ansi-green-intense-fg ansi-bold">     14</span> type_map <span style="color: rgb(98,98,98)">=</span> {
+<span class="ansi-green-intense-fg ansi-bold">     15</span>     <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">0</span><span style="color: rgb(175,0,0)">&#34;</span>: <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">CD4 T</span><span style="color: rgb(175,0,0)">&#34;</span>, <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">1</span><span style="color: rgb(175,0,0)">&#34;</span>: <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">Monocytes</span><span style="color: rgb(175,0,0)">&#34;</span>, <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">2</span><span style="color: rgb(175,0,0)">&#34;</span>: <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">B cells</span><span style="color: rgb(175,0,0)">&#34;</span>, <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">3</span><span style="color: rgb(175,0,0)">&#34;</span>: <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">CD8 T</span><span style="color: rgb(175,0,0)">&#34;</span>,
+<span class="ansi-green-intense-fg ansi-bold">     16</span>     <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">4</span><span style="color: rgb(175,0,0)">&#34;</span>: <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">NK cells</span><span style="color: rgb(175,0,0)">&#34;</span>, <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">5</span><span style="color: rgb(175,0,0)">&#34;</span>: <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">Monocytes</span><span style="color: rgb(175,0,0)">&#34;</span>, <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">6</span><span style="color: rgb(175,0,0)">&#34;</span>: <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">Dendritic</span><span style="color: rgb(175,0,0)">&#34;</span>, <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">7</span><span style="color: rgb(175,0,0)">&#34;</span>: <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">Megakaryocytes</span><span style="color: rgb(175,0,0)">&#34;</span>
+<span class="ansi-green-intense-fg ansi-bold">     17</span> }
+
+File <span class="ansi-green-fg">/opt/hostedtoolcache/Python/3.10.19/x64/lib/python3.10/site-packages/scanpy/tools/_leiden.py:126</span>, in <span class="ansi-cyan-fg">leiden</span><span class="ansi-blue-fg">(adata, resolution, restrict_to, random_state, key_added, adjacency, directed, use_weights, n_iterations, partition_type, neighbors_key, obsp, copy, flavor, **clustering_args)</span>
+<span class="ansi-green-intense-fg ansi-bold">    122</span>     msg <span style="color: rgb(98,98,98)">=</span> (
+<span class="ansi-green-intense-fg ansi-bold">    123</span>         <span style="color: rgb(175,0,0)">f</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">flavor must be either </span><span style="color: rgb(175,0,0)">&#39;</span><span style="color: rgb(175,0,0)">igraph</span><span style="color: rgb(175,0,0)">&#39;</span><span style="color: rgb(175,0,0)"> or </span><span style="color: rgb(175,0,0)">&#39;</span><span style="color: rgb(175,0,0)">leidenalg</span><span style="color: rgb(175,0,0)">&#39;</span><span style="color: rgb(175,0,0)">, but </span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span>flavor<span class="ansi-bold" style="color: rgb(175,95,135)">!r}</span><span style="color: rgb(175,0,0)"> was passed</span><span style="color: rgb(175,0,0)">&#34;</span>
+<span class="ansi-green-intense-fg ansi-bold">    124</span>     )
+<span class="ansi-green-intense-fg ansi-bold">    125</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">ValueError</span>(msg)
+<span class="ansi-green-fg">--&gt; 126</span> <span class="ansi-yellow-bg">_utils</span><span class="ansi-yellow-bg" style="color: rgb(98,98,98)">.</span><span class="ansi-yellow-bg">ensure_igraph</span><span class="ansi-yellow-bg">(</span><span class="ansi-yellow-bg">)</span>
+<span class="ansi-green-intense-fg ansi-bold">    127</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> flavor <span style="color: rgb(98,98,98)">==</span> <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">igraph</span><span style="color: rgb(175,0,0)">&#34;</span>:
+<span class="ansi-green-intense-fg ansi-bold">    128</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> directed:
+
+File <span class="ansi-green-fg">/opt/hostedtoolcache/Python/3.10.19/x64/lib/python3.10/site-packages/scanpy/_utils/__init__.py:90</span>, in <span class="ansi-cyan-fg">ensure_igraph</span><span class="ansi-blue-fg">()</span>
+<span class="ansi-green-intense-fg ansi-bold">     84</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">return</span>
+<span class="ansi-green-intense-fg ansi-bold">     85</span> msg <span style="color: rgb(98,98,98)">=</span> (
+<span class="ansi-green-intense-fg ansi-bold">     86</span>     <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">Please install the igraph package: </span><span style="color: rgb(175,0,0)">&#34;</span>
+<span class="ansi-green-intense-fg ansi-bold">     87</span>     <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">`conda install -c conda-forge python-igraph` or </span><span style="color: rgb(175,0,0)">&#34;</span>
+<span class="ansi-green-intense-fg ansi-bold">     88</span>     <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">`pip3 install igraph`.</span><span style="color: rgb(175,0,0)">&#34;</span>
+<span class="ansi-green-intense-fg ansi-bold">     89</span> )
+<span class="ansi-green-fg">---&gt; 90</span> <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">ImportError</span>(msg)
+
+<span class="ansi-red-fg">ImportError</span>: Please install the igraph package: `conda install -c conda-forge python-igraph` or `pip3 install igraph`.
 </pre></div></div>
 </div>
 </section>
@@ -281,14 +322,14 @@ Loaded biological dataset: 2568 cells, 32738 genes
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>design = st.TrialDesign(
-    participant_col=&quot;donor_id&quot;,
-    visit_col=&quot;days_post_onset_group&quot;,
-    arm_col=&quot;disease_severity&quot;,
-    arm_treated=&quot;Severe&quot;,
-    arm_control=&quot;Mild&quot;,
-    celltype_col=&quot;cell_type_fine&quot;
-)
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">design</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">TrialDesign</span><span class="p">(</span>
+    <span class="n">participant_col</span><span class="o">=</span><span class="s2">&quot;donor_id&quot;</span><span class="p">,</span>
+    <span class="n">visit_col</span><span class="o">=</span><span class="s2">&quot;days_post_onset_group&quot;</span><span class="p">,</span>
+    <span class="n">arm_col</span><span class="o">=</span><span class="s2">&quot;disease_severity&quot;</span><span class="p">,</span>
+    <span class="n">arm_treated</span><span class="o">=</span><span class="s2">&quot;Severe&quot;</span><span class="p">,</span>
+    <span class="n">arm_control</span><span class="o">=</span><span class="s2">&quot;Mild&quot;</span><span class="p">,</span>
+    <span class="n">celltype_col</span><span class="o">=</span><span class="s2">&quot;cell_type_fine&quot;</span>
+<span class="p">)</span>
 <br/></pre></div>
 </div>
 </div>
@@ -300,48 +341,48 @@ Loaded biological dataset: 2568 cells, 32738 genes
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>adata = st.add_log1p_cpm_layer(adata, counts_layer=&quot;counts&quot;, out_layer=&quot;log1p_cpm&quot;)
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">add_log1p_cpm_layer</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">counts_layer</span><span class="o">=</span><span class="s2">&quot;counts&quot;</span><span class="p">,</span> <span class="n">out_layer</span><span class="o">=</span><span class="s2">&quot;log1p_cpm&quot;</span><span class="p">)</span>
 
-# Create a module score for IFN response
-# FIX: Check which genes actually exist in the dataset before scoring
-available_genes = set(adata.var_names)
+<span class="c1"># Create a module score for IFN response</span>
+<span class="c1"># FIX: Check which genes actually exist in the dataset before scoring</span>
+<span class="n">available_genes</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="p">)</span>
 
-# IFN Response genes - check availability
-ifn_candidates = [&quot;IFITM3&quot;, &quot;ISG15&quot;, &quot;MX1&quot;, &quot;STAT1&quot;, &quot;IFITM1&quot;, &quot;IRF7&quot;, &quot;OAS1&quot;, &quot;OAS2&quot;]
-ifn_available = [g for g in ifn_candidates if g in available_genes]
-print(f&quot;IFN Response genes found: {len(ifn_available)}/{len(ifn_candidates)}&quot;)
-print(f&quot;  Available: {ifn_available}&quot;)
+<span class="c1"># IFN Response genes - check availability</span>
+<span class="n">ifn_candidates</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;IFITM3&quot;</span><span class="p">,</span> <span class="s2">&quot;ISG15&quot;</span><span class="p">,</span> <span class="s2">&quot;MX1&quot;</span><span class="p">,</span> <span class="s2">&quot;STAT1&quot;</span><span class="p">,</span> <span class="s2">&quot;IFITM1&quot;</span><span class="p">,</span> <span class="s2">&quot;IRF7&quot;</span><span class="p">,</span> <span class="s2">&quot;OAS1&quot;</span><span class="p">,</span> <span class="s2">&quot;OAS2&quot;</span><span class="p">]</span>
+<span class="n">ifn_available</span> <span class="o">=</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">ifn_candidates</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;IFN Response genes found: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">ifn_available</span><span class="p">)</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">ifn_candidates</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Available: </span><span class="si">{</span><span class="n">ifn_available</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-# Cytotoxicity genes - check availability
-cyt_candidates = [&quot;NKG7&quot;, &quot;GNLY&quot;, &quot;GZMB&quot;, &quot;PRF1&quot;, &quot;GZMA&quot;]
-cyt_available = [g for g in cyt_candidates if g in available_genes]
-print(f&quot;Cytotoxicity genes found: {len(cyt_available)}/{len(cyt_candidates)}&quot;)
-print(f&quot;  Available: {cyt_available}&quot;)
+<span class="c1"># Cytotoxicity genes - check availability</span>
+<span class="n">cyt_candidates</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;NKG7&quot;</span><span class="p">,</span> <span class="s2">&quot;GNLY&quot;</span><span class="p">,</span> <span class="s2">&quot;GZMB&quot;</span><span class="p">,</span> <span class="s2">&quot;PRF1&quot;</span><span class="p">,</span> <span class="s2">&quot;GZMA&quot;</span><span class="p">]</span>
+<span class="n">cyt_available</span> <span class="o">=</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">cyt_candidates</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cytotoxicity genes found: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">cyt_available</span><span class="p">)</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">cyt_candidates</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Available: </span><span class="si">{</span><span class="n">cyt_available</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-# Only create gene sets with genes that exist
-gene_sets = {}
-if len(ifn_available) &gt;= 3:  # FIX: Ensure minimum 3 genes for scoring
-    gene_sets[&quot;IFN_Response&quot;] = ifn_available
-else:
-    print(f&quot;Warning: Only {len(ifn_available)} IFN genes found, need at least 3. Skipping IFN_Response scoring.&quot;)
+<span class="c1"># Only create gene sets with genes that exist</span>
+<span class="n">gene_sets</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ifn_available</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">3</span><span class="p">:</span>  <span class="c1"># FIX: Ensure minimum 3 genes for scoring</span>
+    <span class="n">gene_sets</span><span class="p">[</span><span class="s2">&quot;IFN_Response&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ifn_available</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Warning: Only </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">ifn_available</span><span class="p">)</span><span class="si">}</span><span class="s2"> IFN genes found, need at least 3. Skipping IFN_Response scoring.&quot;</span><span class="p">)</span>
 
-if len(cyt_available) &gt;= 3:  # FIX: Ensure minimum 3 genes for scoring
-    gene_sets[&quot;Cytotoxicity&quot;] = cyt_available
-else:
-    print(f&quot;Warning: Only {len(cyt_available)} Cytotoxicity genes found, need at least 3. Skipping Cytotoxicity scoring.&quot;)
+<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">cyt_available</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">3</span><span class="p">:</span>  <span class="c1"># FIX: Ensure minimum 3 genes for scoring</span>
+    <span class="n">gene_sets</span><span class="p">[</span><span class="s2">&quot;Cytotoxicity&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">cyt_available</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Warning: Only </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">cyt_available</span><span class="p">)</span><span class="si">}</span><span class="s2"> Cytotoxicity genes found, need at least 3. Skipping Cytotoxicity scoring.&quot;</span><span class="p">)</span>
 
-if len(gene_sets) &gt; 0:
-    adata = st.score_gene_sets(adata, gene_sets, layer=&quot;log1p_cpm&quot;, method=&quot;mean&quot;, prefix=&quot;ms_&quot;, min_genes=3)
+<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">gene_sets</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">score_gene_sets</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">gene_sets</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;log1p_cpm&quot;</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;mean&quot;</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;ms_&quot;</span><span class="p">,</span> <span class="n">min_genes</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
 
-    # FIX: Check for NaN scores and report
-    for gs_name in gene_sets.keys():
-        col_name = f&quot;ms_{gs_name}&quot;
-        if col_name in adata.obs.columns:
-            nan_count = adata.obs[col_name].isna().sum()
-            if nan_count &gt; 0:
-                print(f&quot;Warning: {nan_count} NaN values in {col_name} (out of {len(adata.obs)} cells)&quot;)
-else:
-    print(&quot;Error: No valid gene sets could be created. Please check gene names.&quot;)
+    <span class="c1"># FIX: Check for NaN scores and report</span>
+    <span class="k">for</span> <span class="n">gs_name</span> <span class="ow">in</span> <span class="n">gene_sets</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="n">col_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;ms_</span><span class="si">{</span><span class="n">gs_name</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">if</span> <span class="n">col_name</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">nan_count</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">col_name</span><span class="p">]</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">nan_count</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Warning: </span><span class="si">{</span><span class="n">nan_count</span><span class="si">}</span><span class="s2"> NaN values in </span><span class="si">{</span><span class="n">col_name</span><span class="si">}</span><span class="s2"> (out of </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">)</span><span class="si">}</span><span class="s2"> cells)&quot;</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Error: No valid gene sets could be created. Please check gene names.&quot;</span><span class="p">)</span>
 <br/></pre></div>
 </div>
 </div>
@@ -350,10 +391,15 @@ else:
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-IFN Response genes found: 8/8
-  Available: [&#39;IFITM3&#39;, &#39;ISG15&#39;, &#39;MX1&#39;, &#39;STAT1&#39;, &#39;IFITM1&#39;, &#39;IRF7&#39;, &#39;OAS1&#39;, &#39;OAS2&#39;]
-Cytotoxicity genes found: 5/5
-  Available: [&#39;NKG7&#39;, &#39;GNLY&#39;, &#39;GZMB&#39;, &#39;PRF1&#39;, &#39;GZMA&#39;]
+<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
+<span class="ansi-red-fg">NameError</span>                                 Traceback (most recent call last)
+Cell <span class="ansi-green-fg">In[5], line 1</span>
+<span class="ansi-green-fg">----&gt; 1</span> adata <span style="color: rgb(98,98,98)">=</span> st<span style="color: rgb(98,98,98)">.</span>add_log1p_cpm_layer(<span class="ansi-yellow-bg">adata</span>, counts_layer<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">counts</span><span style="color: rgb(175,0,0)">&#34;</span>, out_layer<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">log1p_cpm</span><span style="color: rgb(175,0,0)">&#34;</span>)
+<span class="ansi-green-intense-fg ansi-bold">      3</span> <span style="color: rgb(95,135,135)"># Create a module score for IFN response</span>
+<span class="ansi-green-intense-fg ansi-bold">      4</span> <span style="color: rgb(95,135,135)"># FIX: Check which genes actually exist in the dataset before scoring</span>
+<span class="ansi-green-intense-fg ansi-bold">      5</span> available_genes <span style="color: rgb(98,98,98)">=</span> <span style="color: rgb(0,135,0)">set</span>(adata<span style="color: rgb(98,98,98)">.</span>var_names)
+
+<span class="ansi-red-fg">NameError</span>: name &#39;adata&#39; is not defined
 </pre></div></div>
 </div>
 </section>
@@ -364,112 +410,62 @@ Cytotoxicity genes found: 5/5
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># FIX: Only analyze features that exist and are not all NaN
-available_features = []
-for feat in [&quot;ms_IFN_Response&quot;, &quot;ms_Cytotoxicity&quot;]:
-    if feat in adata.obs.columns:
-        # Check if feature has sufficient non-NaN values
-        non_nan_pct = (1 - adata.obs[feat].isna().sum() / len(adata.obs)) * 100
-        if non_nan_pct &gt; 50:  # At least 50% non-NaN
-            available_features.append(feat)
-            print(f&quot;✓ {feat}: {non_nan_pct:.1f}% non-NaN values&quot;)
-        else:
-            print(f&quot;✗ {feat}: Only {non_nan_pct:.1f}% non-NaN values, skipping&quot;)
-    else:
-        print(f&quot;✗ {feat}: Not found in adata.obs&quot;)
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># FIX: Only analyze features that exist and are not all NaN</span>
+<span class="n">available_features</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">feat</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;ms_IFN_Response&quot;</span><span class="p">,</span> <span class="s2">&quot;ms_Cytotoxicity&quot;</span><span class="p">]:</span>
+    <span class="k">if</span> <span class="n">feat</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="c1"># Check if feature has sufficient non-NaN values</span>
+        <span class="n">non_nan_pct</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">feat</span><span class="p">]</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">))</span> <span class="o">*</span> <span class="mi">100</span>
+        <span class="k">if</span> <span class="n">non_nan_pct</span> <span class="o">&gt;</span> <span class="mi">50</span><span class="p">:</span>  <span class="c1"># At least 50% non-NaN</span>
+            <span class="n">available_features</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">feat</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✓ </span><span class="si">{</span><span class="n">feat</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">non_nan_pct</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">% non-NaN values&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✗ </span><span class="si">{</span><span class="n">feat</span><span class="si">}</span><span class="s2">: Only </span><span class="si">{</span><span class="n">non_nan_pct</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">% non-NaN values, skipping&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✗ </span><span class="si">{</span><span class="n">feat</span><span class="si">}</span><span class="s2">: Not found in adata.obs&quot;</span><span class="p">)</span>
 
-if len(available_features) == 0:
-    print(&quot;Error: No valid features to analyze. Check gene set scoring.&quot;)
-    res = pd.DataFrame()
-else:
-    res = st.did_table(
-        adata,
-        features=available_features,
-        design=design,
-        visits=(&quot;1-7 days&quot;, &quot;8-14 days&quot;),
-        aggregate=&quot;participant_visit&quot;
-        # Note: did_fit internally requires min 4 participants (returns NaN if &lt; 4)
-    )
+<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">available_features</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Error: No valid features to analyze. Check gene set scoring.&quot;</span><span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span>
+        <span class="n">adata</span><span class="p">,</span>
+        <span class="n">features</span><span class="o">=</span><span class="n">available_features</span><span class="p">,</span>
+        <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+        <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;1-7 days&quot;</span><span class="p">,</span> <span class="s2">&quot;8-14 days&quot;</span><span class="p">),</span>
+        <span class="n">aggregate</span><span class="o">=</span><span class="s2">&quot;participant_visit&quot;</span>
+        <span class="c1"># Note: did_fit internally requires min 4 participants (returns NaN if &lt; 4)</span>
+    <span class="p">)</span>
 
-    # FIX: Check for NaN results and filter them
-    if not res.empty:
-        nan_mask = res[[&quot;beta_DiD&quot;, &quot;se_DiD&quot;, &quot;p_DiD&quot;]].isna().any(axis=1)
-        if nan_mask.any():
-            print(f&quot;\nWarning: {nan_mask.sum()} features have NaN results (insufficient participants or data)&quot;)
-            print(&quot;Features with NaN:&quot;, res[nan_mask][&quot;feature&quot;].tolist())
-        display(res)
-    else:
-        print(&quot;No results returned - check participant pairing and data availability&quot;)
+    <span class="c1"># FIX: Check for NaN results and filter them</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">res</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="n">nan_mask</span> <span class="o">=</span> <span class="n">res</span><span class="p">[[</span><span class="s2">&quot;beta_DiD&quot;</span><span class="p">,</span> <span class="s2">&quot;se_DiD&quot;</span><span class="p">,</span> <span class="s2">&quot;p_DiD&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">nan_mask</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Warning: </span><span class="si">{</span><span class="n">nan_mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="si">}</span><span class="s2"> features have NaN results (insufficient participants or data)&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Features with NaN:&quot;</span><span class="p">,</span> <span class="n">res</span><span class="p">[</span><span class="n">nan_mask</span><span class="p">][</span><span class="s2">&quot;feature&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
+        <span class="n">display</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No results returned - check participant pairing and data availability&quot;</span><span class="p">)</span>
 <br/></pre></div>
 </div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-✓ ms_IFN_Response: 100.0% non-NaN values
-✓ ms_Cytotoxicity: 100.0% non-NaN values
-</pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
-<div class="output_area rendered_html docutils container">
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
+<span class="ansi-red-fg">NameError</span>                                 Traceback (most recent call last)
+Cell <span class="ansi-green-fg">In[6], line 4</span>
+<span class="ansi-green-intense-fg ansi-bold">      2</span> available_features <span style="color: rgb(98,98,98)">=</span> []
+<span class="ansi-green-intense-fg ansi-bold">      3</span> <span class="ansi-bold" style="color: rgb(0,135,0)">for</span> feat <span class="ansi-bold" style="color: rgb(175,0,255)">in</span> [<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">ms_IFN_Response</span><span style="color: rgb(175,0,0)">&#34;</span>, <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">ms_Cytotoxicity</span><span style="color: rgb(175,0,0)">&#34;</span>]:
+<span class="ansi-green-fg">----&gt; 4</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> feat <span class="ansi-bold" style="color: rgb(175,0,255)">in</span> <span class="ansi-yellow-bg">adata</span><span style="color: rgb(98,98,98)">.</span>obs<span style="color: rgb(98,98,98)">.</span>columns:
+<span class="ansi-green-intense-fg ansi-bold">      5</span>         <span style="color: rgb(95,135,135)"># Check if feature has sufficient non-NaN values</span>
+<span class="ansi-green-intense-fg ansi-bold">      6</span>         non_nan_pct <span style="color: rgb(98,98,98)">=</span> (<span style="color: rgb(98,98,98)">1</span> <span style="color: rgb(98,98,98)">-</span> adata<span style="color: rgb(98,98,98)">.</span>obs[feat]<span style="color: rgb(98,98,98)">.</span>isna()<span style="color: rgb(98,98,98)">.</span>sum() <span style="color: rgb(98,98,98)">/</span> <span style="color: rgb(0,135,0)">len</span>(adata<span style="color: rgb(98,98,98)">.</span>obs)) <span style="color: rgb(98,98,98)">*</span> <span style="color: rgb(98,98,98)">100</span>
+<span class="ansi-green-intense-fg ansi-bold">      7</span>         <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> non_nan_pct <span style="color: rgb(98,98,98)">&gt;</span> <span style="color: rgb(98,98,98)">50</span>:  <span style="color: rgb(95,135,135)"># At least 50% non-NaN</span>
 
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>beta_DiD</th>
-      <th>se_DiD</th>
-      <th>p_DiD</th>
-      <th>beta_time</th>
-      <th>p_time</th>
-      <th>n_units</th>
-      <th>feature</th>
-      <th>FDR_DiD</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>-0.459739</td>
-      <td>1.138585</td>
-      <td>0.686374</td>
-      <td>0.572917</td>
-      <td>0.201594</td>
-      <td>12</td>
-      <td>ms_IFN_Response</td>
-      <td>0.921322</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>-0.130871</td>
-      <td>1.325019</td>
-      <td>0.921322</td>
-      <td>0.391410</td>
-      <td>0.656466</td>
-      <td>12</td>
-      <td>ms_Cytotoxicity</td>
-      <td>0.921322</td>
-    </tr>
-  </tbody>
-</table>
-</div></div>
+<span class="ansi-red-fg">NameError</span>: name &#39;adata&#39; is not defined
+</pre></div></div>
 </div>
 </section>
 </section>
@@ -480,181 +476,60 @@ else:
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># FIX: Only analyze features that exist
-available_features = [f for f in [&quot;ms_IFN_Response&quot;] if f in adata.obs.columns and adata.obs[f].notna().sum() &gt; len(adata.obs) * 0.5]
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># FIX: Only analyze features that exist</span>
+<span class="n">available_features</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;ms_IFN_Response&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span> <span class="ow">and</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">f</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.5</span><span class="p">]</span>
 
-if len(available_features) == 0:
-    print(&quot;No valid features for stratified analysis&quot;)
-    strat_res = pd.DataFrame()
-else:
-    strat_res = st.did_table_by_celltype(
-        adata,
-        features=available_features,
-        design=design,
-        visits=(&quot;1-7 days&quot;, &quot;8-14 days&quot;)
-        # Note: did_fit internally requires min 4 participants per cell type
-    )
+<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">available_features</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No valid features for stratified analysis&quot;</span><span class="p">)</span>
+    <span class="n">strat_res</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">strat_res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table_by_celltype</span><span class="p">(</span>
+        <span class="n">adata</span><span class="p">,</span>
+        <span class="n">features</span><span class="o">=</span><span class="n">available_features</span><span class="p">,</span>
+        <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+        <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;1-7 days&quot;</span><span class="p">,</span> <span class="s2">&quot;8-14 days&quot;</span><span class="p">)</span>
+        <span class="c1"># Note: did_fit internally requires min 4 participants per cell type</span>
+    <span class="p">)</span>
 
-    if not strat_res.empty:
-        # FIX: Filter out NaN results and report
-        nan_mask = strat_res[[&quot;beta_DiD&quot;, &quot;se_DiD&quot;, &quot;p_DiD&quot;]].isna().any(axis=1)
-        if nan_mask.any():
-            print(f&quot;Warning: {nan_mask.sum()} cell type-feature combinations have NaN results&quot;)
-            print(&quot;These likely have insufficient participants (&lt; 4) for DiD analysis&quot;)
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">strat_res</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="c1"># FIX: Filter out NaN results and report</span>
+        <span class="n">nan_mask</span> <span class="o">=</span> <span class="n">strat_res</span><span class="p">[[</span><span class="s2">&quot;beta_DiD&quot;</span><span class="p">,</span> <span class="s2">&quot;se_DiD&quot;</span><span class="p">,</span> <span class="s2">&quot;p_DiD&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">nan_mask</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Warning: </span><span class="si">{</span><span class="n">nan_mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="si">}</span><span class="s2"> cell type-feature combinations have NaN results&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;These likely have insufficient participants (&lt; 4) for DiD analysis&quot;</span><span class="p">)</span>
 
-        # Show only valid results
-        valid_res = strat_res[~nan_mask]
-        if not valid_res.empty:
-            display(valid_res)
-        else:
-            print(&quot;No valid results after filtering NaNs&quot;)
-    else:
-        print(&quot;No stratified results returned&quot;)
+        <span class="c1"># Show only valid results</span>
+        <span class="n">valid_res</span> <span class="o">=</span> <span class="n">strat_res</span><span class="p">[</span><span class="o">~</span><span class="n">nan_mask</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">valid_res</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="n">display</span><span class="p">(</span><span class="n">valid_res</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No valid results after filtering NaNs&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No stratified results returned&quot;</span><span class="p">)</span>
 <br/></pre></div>
 </div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
-<div class="output_area rendered_html docutils container">
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
+<span class="ansi-red-fg">NameError</span>                                 Traceback (most recent call last)
+Cell <span class="ansi-green-fg">In[7], line 2</span>
+<span class="ansi-green-intense-fg ansi-bold">      1</span> <span style="color: rgb(95,135,135)"># FIX: Only analyze features that exist</span>
+<span class="ansi-green-fg">----&gt; 2</span> available_features <span style="color: rgb(98,98,98)">=</span> [f <span class="ansi-bold" style="color: rgb(0,135,0)">for</span> f <span class="ansi-bold" style="color: rgb(175,0,255)">in</span> [<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">ms_IFN_Response</span><span style="color: rgb(175,0,0)">&#34;</span>] <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> f <span class="ansi-bold" style="color: rgb(175,0,255)">in</span> adata<span style="color: rgb(98,98,98)">.</span>obs<span style="color: rgb(98,98,98)">.</span>columns <span class="ansi-bold" style="color: rgb(175,0,255)">and</span> adata<span style="color: rgb(98,98,98)">.</span>obs[f]<span style="color: rgb(98,98,98)">.</span>notna()<span style="color: rgb(98,98,98)">.</span>sum() <span style="color: rgb(98,98,98)">&gt;</span> <span style="color: rgb(0,135,0)">len</span>(adata<span style="color: rgb(98,98,98)">.</span>obs) <span style="color: rgb(98,98,98)">*</span> <span style="color: rgb(98,98,98)">0.5</span>]
+<span class="ansi-green-intense-fg ansi-bold">      4</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span style="color: rgb(0,135,0)">len</span>(available_features) <span style="color: rgb(98,98,98)">==</span> <span style="color: rgb(98,98,98)">0</span>:
+<span class="ansi-green-intense-fg ansi-bold">      5</span>     <span style="color: rgb(0,135,0)">print</span>(<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">No valid features for stratified analysis</span><span style="color: rgb(175,0,0)">&#34;</span>)
 
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
+Cell <span class="ansi-green-fg">In[7], line 2</span>, in <span class="ansi-cyan-fg">&lt;listcomp&gt;</span><span class="ansi-blue-fg">(.0)</span>
+<span class="ansi-green-intense-fg ansi-bold">      1</span> <span style="color: rgb(95,135,135)"># FIX: Only analyze features that exist</span>
+<span class="ansi-green-fg">----&gt; 2</span> available_features <span style="color: rgb(98,98,98)">=</span> [f <span class="ansi-bold" style="color: rgb(0,135,0)">for</span> f <span class="ansi-bold" style="color: rgb(175,0,255)">in</span> [<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">ms_IFN_Response</span><span style="color: rgb(175,0,0)">&#34;</span>] <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> f <span class="ansi-bold" style="color: rgb(175,0,255)">in</span> <span class="ansi-yellow-bg">adata</span><span style="color: rgb(98,98,98)">.</span>obs<span style="color: rgb(98,98,98)">.</span>columns <span class="ansi-bold" style="color: rgb(175,0,255)">and</span> adata<span style="color: rgb(98,98,98)">.</span>obs[f]<span style="color: rgb(98,98,98)">.</span>notna()<span style="color: rgb(98,98,98)">.</span>sum() <span style="color: rgb(98,98,98)">&gt;</span> <span style="color: rgb(0,135,0)">len</span>(adata<span style="color: rgb(98,98,98)">.</span>obs) <span style="color: rgb(98,98,98)">*</span> <span style="color: rgb(98,98,98)">0.5</span>]
+<span class="ansi-green-intense-fg ansi-bold">      4</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span style="color: rgb(0,135,0)">len</span>(available_features) <span style="color: rgb(98,98,98)">==</span> <span style="color: rgb(98,98,98)">0</span>:
+<span class="ansi-green-intense-fg ansi-bold">      5</span>     <span style="color: rgb(0,135,0)">print</span>(<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">No valid features for stratified analysis</span><span style="color: rgb(175,0,0)">&#34;</span>)
 
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>beta_DiD</th>
-      <th>se_DiD</th>
-      <th>p_DiD</th>
-      <th>beta_time</th>
-      <th>p_time</th>
-      <th>n_units</th>
-      <th>feature</th>
-      <th>FDR_DiD</th>
-      <th>celltype</th>
-      <th>FDR_DiD_stratified</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>-0.224038</td>
-      <td>1.083179</td>
-      <td>0.836139</td>
-      <td>0.790569</td>
-      <td>0.388893</td>
-      <td>12</td>
-      <td>ms_IFN_Response</td>
-      <td>0.836139</td>
-      <td>B cells</td>
-      <td>0.996657</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>-0.005625</td>
-      <td>1.342463</td>
-      <td>0.996657</td>
-      <td>-0.591669</td>
-      <td>0.338042</td>
-      <td>12</td>
-      <td>ms_IFN_Response</td>
-      <td>0.996657</td>
-      <td>CD4 T</td>
-      <td>0.996657</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>-0.030380</td>
-      <td>0.928378</td>
-      <td>0.973894</td>
-      <td>-0.046998</td>
-      <td>0.945684</td>
-      <td>12</td>
-      <td>ms_IFN_Response</td>
-      <td>0.973894</td>
-      <td>CD8 T</td>
-      <td>0.996657</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>0.951386</td>
-      <td>0.925541</td>
-      <td>0.303986</td>
-      <td>-0.197743</td>
-      <td>0.759230</td>
-      <td>12</td>
-      <td>ms_IFN_Response</td>
-      <td>0.303986</td>
-      <td>Dendritic</td>
-      <td>0.996657</td>
-    </tr>
-    <tr>
-      <th>4</th>
-      <td>0.430810</td>
-      <td>1.046091</td>
-      <td>0.680465</td>
-      <td>-0.014392</td>
-      <td>0.979729</td>
-      <td>12</td>
-      <td>ms_IFN_Response</td>
-      <td>0.680465</td>
-      <td>Megakaryocytes</td>
-      <td>0.996657</td>
-    </tr>
-    <tr>
-      <th>5</th>
-      <td>-1.159953</td>
-      <td>1.207066</td>
-      <td>0.336568</td>
-      <td>1.045334</td>
-      <td>0.178572</td>
-      <td>12</td>
-      <td>ms_IFN_Response</td>
-      <td>0.336568</td>
-      <td>Monocytes</td>
-      <td>0.996657</td>
-    </tr>
-    <tr>
-      <th>6</th>
-      <td>0.065891</td>
-      <td>1.412248</td>
-      <td>0.962787</td>
-      <td>-0.152936</td>
-      <td>0.805927</td>
-      <td>12</td>
-      <td>ms_IFN_Response</td>
-      <td>0.962787</td>
-      <td>NK cells</td>
-      <td>0.996657</td>
-    </tr>
-    <tr>
-      <th>7</th>
-      <td>0.723049</td>
-      <td>1.421881</td>
-      <td>0.611092</td>
-      <td>-0.159236</td>
-      <td>0.862378</td>
-      <td>12</td>
-      <td>ms_IFN_Response</td>
-      <td>0.611092</td>
-      <td>Other</td>
-      <td>0.996657</td>
-    </tr>
-  </tbody>
-</table>
-</div></div>
+<span class="ansi-red-fg">NameError</span>: name &#39;adata&#39; is not defined
+</pre></div></div>
 </div>
 <section id="5.-Summary-and-Visualization">
 <h3>5. Summary and Visualization<a class="headerlink" href="#5.-Summary-and-Visualization" title="Link to this heading"></a></h3>
@@ -662,209 +537,96 @@ else:
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># FIX: Check if res has valid data before summarizing
-if not res.empty and res[&quot;n_units&quot;].notna().any() and (res[&quot;n_units&quot;] &gt; 0).any():
-    print(st.summarize_did_results(res))
-else:
-    print(&quot;No valid DiD results to summarize&quot;)
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># FIX: Check if res has valid data before summarizing</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">res</span><span class="o">.</span><span class="n">empty</span> <span class="ow">and</span> <span class="n">res</span><span class="p">[</span><span class="s2">&quot;n_units&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span><span class="o">.</span><span class="n">any</span><span class="p">()</span> <span class="ow">and</span> <span class="p">(</span><span class="n">res</span><span class="p">[</span><span class="s2">&quot;n_units&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">st</span><span class="o">.</span><span class="n">summarize_did_results</span><span class="p">(</span><span class="n">res</span><span class="p">))</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No valid DiD results to summarize&quot;</span><span class="p">)</span>
 
-# Interaction plot - FIX: Check if feature exists and has data
-fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+<span class="c1"># Interaction plot - FIX: Check if feature exists and has data</span>
+<span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">14</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
 
-plot_feature = None
-for feat in [&quot;ms_IFN_Response&quot;, &quot;ms_Cytotoxicity&quot;]:
-    if feat in adata.obs.columns and adata.obs[feat].notna().sum() &gt; 0:
-        plot_feature = feat
-        break
+<span class="n">plot_feature</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="k">for</span> <span class="n">feat</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;ms_IFN_Response&quot;</span><span class="p">,</span> <span class="s2">&quot;ms_Cytotoxicity&quot;</span><span class="p">]:</span>
+    <span class="k">if</span> <span class="n">feat</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span> <span class="ow">and</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">feat</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">plot_feature</span> <span class="o">=</span> <span class="n">feat</span>
+        <span class="k">break</span>
 
-if plot_feature:
-    try:
-        st.plot_trial_interaction(adata, feature=plot_feature, design=design, visits=(&quot;1-7 days&quot;, &quot;8-14 days&quot;), ax=axes[0])
-        axes[0].set_title(f&quot;{plot_feature} Divergence&quot;)
-    except Exception as e:
-        axes[0].text(0.5, 0.5, f&quot;Plotting error: {e}&quot;, ha=&#39;center&#39;)
-        axes[0].set_title(&quot;Plot Error&quot;)
-else:
-    axes[0].text(0.5, 0.5, &quot;No valid feature for plotting&quot;, ha=&#39;center&#39;)
-    axes[0].set_title(&quot;No Data&quot;)
+<span class="k">if</span> <span class="n">plot_feature</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">plot_trial_interaction</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">feature</span><span class="o">=</span><span class="n">plot_feature</span><span class="p">,</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;1-7 days&quot;</span><span class="p">,</span> <span class="s2">&quot;8-14 days&quot;</span><span class="p">),</span> <span class="n">ax</span><span class="o">=</span><span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">plot_feature</span><span class="si">}</span><span class="s2"> Divergence&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Plotting error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">)</span>
+        <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Plot Error&quot;</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s2">&quot;No valid feature for plotting&quot;</span><span class="p">,</span> <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">)</span>
+    <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;No Data&quot;</span><span class="p">)</span>
 
-# Ensure res is not empty and has valid results before plotting forest
-if not res.empty and res[&quot;n_units&quot;].notna().any() and (res[&quot;n_units&quot;] &gt; 0).any():
-    # FIX: Filter out NaN results before plotting
-    valid_res = res[res[[&quot;beta_DiD&quot;, &quot;se_DiD&quot;, &quot;p_DiD&quot;]].notna().all(axis=1)]
-    if not valid_res.empty:
-        st.plot_did_forest(valid_res, title=&quot;Severity-Dependent Effects&quot;, ax=axes[1])
-    else:
-        axes[1].text(0.5, 0.5, &quot;No valid DiD results (all NaN)&quot;, ha=&#39;center&#39;)
-else:
-    axes[1].text(0.5, 0.5, &quot;No valid DiD units&quot;, ha=&#39;center&#39;)
+<span class="c1"># Ensure res is not empty and has valid results before plotting forest</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">res</span><span class="o">.</span><span class="n">empty</span> <span class="ow">and</span> <span class="n">res</span><span class="p">[</span><span class="s2">&quot;n_units&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span><span class="o">.</span><span class="n">any</span><span class="p">()</span> <span class="ow">and</span> <span class="p">(</span><span class="n">res</span><span class="p">[</span><span class="s2">&quot;n_units&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+    <span class="c1"># FIX: Filter out NaN results before plotting</span>
+    <span class="n">valid_res</span> <span class="o">=</span> <span class="n">res</span><span class="p">[</span><span class="n">res</span><span class="p">[[</span><span class="s2">&quot;beta_DiD&quot;</span><span class="p">,</span> <span class="s2">&quot;se_DiD&quot;</span><span class="p">,</span> <span class="s2">&quot;p_DiD&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">valid_res</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">plot_did_forest</span><span class="p">(</span><span class="n">valid_res</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Severity-Dependent Effects&quot;</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s2">&quot;No valid DiD results (all NaN)&quot;</span><span class="p">,</span> <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s2">&quot;No valid DiD units&quot;</span><span class="p">,</span> <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">)</span>
 
-plt.tight_layout()
-plt.show()
+<span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 
-# Additional Visualization: GSEA Heatmap
-# FIX: Check which genes exist before GSEA
-available_genes = set(adata.var_names)
-# Expanded gene sets for better heatmap
-gsea_gene_sets = {
-    &quot;IFN_Response&quot;: [g for g in [&quot;IFITM3&quot;, &quot;ISG15&quot;, &quot;MX1&quot;, &quot;STAT1&quot;, &quot;IFITM1&quot;, &quot;IRF7&quot;, &quot;OAS1&quot;, &quot;OAS2&quot;, &quot;OAS3&quot;, &quot;OASL&quot;] if g in available_genes],
-    &quot;T_Cell_Signaling&quot;: [g for g in [&quot;CD3D&quot;, &quot;CD3E&quot;, &quot;CD3G&quot;, &quot;CD3Z&quot;, &quot;LCK&quot;, &quot;ZAP70&quot;, &quot;CD247&quot;] if g in available_genes],
-    &quot;B_Cell_Activation&quot;: [g for g in [&quot;CD79A&quot;, &quot;CD79B&quot;, &quot;MS4A1&quot;, &quot;CD19&quot;, &quot;BANK1&quot;, &quot;CD22&quot;, &quot;CD72&quot;] if g in available_genes],
-    &quot;Antigen_Presentation&quot;: [g for g in [&quot;HLA-DRA&quot;, &quot;HLA-DRB1&quot;, &quot;CD74&quot;, &quot;HLA-DPA1&quot;, &quot;HLA-DPB1&quot;, &quot;HLA-DQA1&quot;, &quot;HLA-DQB1&quot;] if g in available_genes],
-    &quot;Cytotoxicity&quot;: [g for g in [&quot;NKG7&quot;, &quot;GNLY&quot;, &quot;GZMB&quot;, &quot;PRF1&quot;, &quot;GZMA&quot;, &quot;GZMH&quot;, &quot;KLRB1&quot;, &quot;KLRD1&quot;] if g in available_genes],
-    &quot;Inflammation&quot;: [g for g in [&quot;S100A8&quot;, &quot;S100A9&quot;, &quot;LYZ&quot;, &quot;CD14&quot;, &quot;FCN1&quot;, &quot;IL1B&quot;] if g in available_genes],
-    &quot;Ribosome&quot;: [g for g in [&quot;RPS6&quot;, &quot;RPL13&quot;, &quot;RPS3&quot;, &quot;RPL11&quot;, &quot;RPS2&quot;, &quot;RPL3&quot;] if g in available_genes],
-    &quot;MHC_Class_I&quot;: [g for g in [&quot;HLA-A&quot;, &quot;HLA-B&quot;, &quot;HLA-C&quot;, &quot;B2M&quot;] if g in available_genes]
-}
+<span class="c1"># Additional Visualization: GSEA Heatmap</span>
+<span class="c1"># FIX: Check which genes exist before GSEA</span>
+<span class="n">available_genes</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="p">)</span>
+<span class="c1"># Expanded gene sets for better heatmap</span>
+<span class="n">gsea_gene_sets</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;B_Cell_Activation&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;CD79A&quot;</span><span class="p">,</span> <span class="s2">&quot;CD79B&quot;</span><span class="p">,</span> <span class="s2">&quot;MS4A1&quot;</span><span class="p">,</span> <span class="s2">&quot;CD19&quot;</span><span class="p">,</span> <span class="s2">&quot;BANK1&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;T_Cell_Signaling&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;CD3D&quot;</span><span class="p">,</span> <span class="s2">&quot;CD3E&quot;</span><span class="p">,</span> <span class="s2">&quot;CD3G&quot;</span><span class="p">,</span> <span class="s2">&quot;LCK&quot;</span><span class="p">,</span> <span class="s2">&quot;ZAP70&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;Antigen_Presentation&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;HLA-DRA&quot;</span><span class="p">,</span> <span class="s2">&quot;HLA-DRB1&quot;</span><span class="p">,</span> <span class="s2">&quot;CD74&quot;</span><span class="p">,</span> <span class="s2">&quot;HLA-DPA1&quot;</span><span class="p">,</span> <span class="s2">&quot;HLA-DPB1&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;IFN_Response&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;IFITM3&quot;</span><span class="p">,</span> <span class="s2">&quot;ISG15&quot;</span><span class="p">,</span> <span class="s2">&quot;MX1&quot;</span><span class="p">,</span> <span class="s2">&quot;STAT1&quot;</span><span class="p">,</span> <span class="s2">&quot;IFI6&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;Cytotoxicity&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;NKG7&quot;</span><span class="p">,</span> <span class="s2">&quot;GNLY&quot;</span><span class="p">,</span> <span class="s2">&quot;GZMB&quot;</span><span class="p">,</span> <span class="s2">&quot;PRF1&quot;</span><span class="p">,</span> <span class="s2">&quot;GZMA&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;Inflammation&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;S100A8&quot;</span><span class="p">,</span> <span class="s2">&quot;S100A9&quot;</span><span class="p">,</span> <span class="s2">&quot;LYZ&quot;</span><span class="p">,</span> <span class="s2">&quot;CD14&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;Cell_Cycle&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;MKI67&quot;</span><span class="p">,</span> <span class="s2">&quot;TOP2A&quot;</span><span class="p">,</span> <span class="s2">&quot;PCNA&quot;</span><span class="p">,</span> <span class="s2">&quot;CDK1&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;MHC_Class_II&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;HLA-DQA1&quot;</span><span class="p">,</span> <span class="s2">&quot;HLA-DQB1&quot;</span><span class="p">,</span> <span class="s2">&quot;HLA-DMA&quot;</span><span class="p">,</span> <span class="s2">&quot;HLA-DMB&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;Chemokines&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;CCL5&quot;</span><span class="p">,</span> <span class="s2">&quot;CXCL9&quot;</span><span class="p">,</span> <span class="s2">&quot;CXCL10&quot;</span><span class="p">,</span> <span class="s2">&quot;CXCL11&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;Apoptosis&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;CASP3&quot;</span><span class="p">,</span> <span class="s2">&quot;CASP8&quot;</span><span class="p">,</span> <span class="s2">&quot;FAS&quot;</span><span class="p">,</span> <span class="s2">&quot;BAX&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;Glycolysis&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;LDHA&quot;</span><span class="p">,</span> <span class="s2">&quot;PGK1&quot;</span><span class="p">,</span> <span class="s2">&quot;ENO1&quot;</span><span class="p">,</span> <span class="s2">&quot;GAPDH&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;Translational_Activity&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;RPS6&quot;</span><span class="p">,</span> <span class="s2">&quot;RPL13&quot;</span><span class="p">,</span> <span class="s2">&quot;RPS3&quot;</span><span class="p">,</span> <span class="s2">&quot;RPL11&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+<span class="p">}</span>
 
-# Filter out empty or too small sets
-gsea_gene_sets = {k: v for k, v in gsea_gene_sets.items() if len(v) &gt;= 2}
-
-if len(gsea_gene_sets) &gt; 0:
-    try:
-        # Run GSEA stratified by cell type to get a nice heatmap
-        celltypes = adata.obs[design.celltype_col].unique()
-        gsea_results_list = []
-
-        for ct in celltypes:
-            ct_adata = adata[adata.obs[design.celltype_col] == ct].copy()
-            if ct_adata.n_obs &lt; 15: continue
-
-            try:
-                res_ct = st.run_gsea_did(
-                    ct_adata,
-                    gene_sets=gsea_gene_sets,
-                    design=design,
-                    visits=(&quot;1-7 days&quot;, &quot;8-14 days&quot;),
-                    min_size=1,
-                    layer=&quot;log1p_cpm&quot;
-                )
-                if not res_ct.empty:
-                    res_ct[&quot;pool&quot;] = ct
-                    gsea_results_list.append(res_ct)
-            except:
-                pass
-
-        if gsea_results_list:
-            gsea_res_all = pd.concat(gsea_results_list)
-            display(gsea_res_all.head())
-            st.plot_gsea_heatmap(gsea_res_all, fdr_thresh=1.0, figsize=(12, 10))
-            plt.title(&quot;Cross-Celltype Trial-Aware Pathway Enrichment&quot;, fontsize=15, fontweight=&#39;bold&#39;)
-            plt.show()
-        else:
-            print(&quot;GSEA returned empty results - check participant pairing&quot;)
-    except Exception as e:
-        print(f&quot;GSEA error: {e}&quot;)
-else:
-    print(&quot;No valid gene sets for GSEA (need at least 2 genes per set)&quot;)
+<span class="c1"># Filter out empty or too small sets</span>
+<span class="n">gsea_gene_sets</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">gsea_gene_sets</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">}</span>
+    <span class="s2">&quot;B_Cell_Activation&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;CD79A&quot;</span><span class="p">,</span> <span class="s2">&quot;CD79B&quot;</span><span class="p">,</span> <span class="s2">&quot;MS4A1&quot;</span><span class="p">,</span> <span class="s2">&quot;CD19&quot;</span><span class="p">,</span> <span class="s2">&quot;BANK1&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;T_Cell_Signaling&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;CD3D&quot;</span><span class="p">,</span> <span class="s2">&quot;CD3E&quot;</span><span class="p">,</span> <span class="s2">&quot;CD3G&quot;</span><span class="p">,</span> <span class="s2">&quot;LCK&quot;</span><span class="p">,</span> <span class="s2">&quot;ZAP70&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;Antigen_Presentation&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;HLA-DRA&quot;</span><span class="p">,</span> <span class="s2">&quot;HLA-DRB1&quot;</span><span class="p">,</span> <span class="s2">&quot;CD74&quot;</span><span class="p">,</span> <span class="s2">&quot;HLA-DPA1&quot;</span><span class="p">,</span> <span class="s2">&quot;HLA-DPB1&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;IFN_Response&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;IFITM3&quot;</span><span class="p">,</span> <span class="s2">&quot;ISG15&quot;</span><span class="p">,</span> <span class="s2">&quot;MX1&quot;</span><span class="p">,</span> <span class="s2">&quot;STAT1&quot;</span><span class="p">,</span> <span class="s2">&quot;IFI6&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;Cytotoxicity&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;NKG7&quot;</span><span class="p">,</span> <span class="s2">&quot;GNLY&quot;</span><span class="p">,</span> <span class="s2">&quot;GZMB&quot;</span><span class="p">,</span> <span class="s2">&quot;PRF1&quot;</span><span class="p">,</span> <span class="s2">&quot;GZMA&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;Inflammation&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;S100A8&quot;</span><span class="p">,</span> <span class="s2">&quot;S100A9&quot;</span><span class="p">,</span> <span class="s2">&quot;LYZ&quot;</span><span class="p">,</span> <span class="s2">&quot;CD14&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;Cell_Cycle&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;MKI67&quot;</span><span class="p">,</span> <span class="s2">&quot;TOP2A&quot;</span><span class="p">,</span> <span class="s2">&quot;PCNA&quot;</span><span class="p">,</span> <span class="s2">&quot;CDK1&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;MHC_Class_II&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;HLA-DQA1&quot;</span><span class="p">,</span> <span class="s2">&quot;HLA-DQB1&quot;</span><span class="p">,</span> <span class="s2">&quot;HLA-DMA&quot;</span><span class="p">,</span> <span class="s2">&quot;HLA-DMB&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;Chemokines&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;CCL5&quot;</span><span class="p">,</span> <span class="s2">&quot;CXCL9&quot;</span><span class="p">,</span> <span class="s2">&quot;CXCL10&quot;</span><span class="p">,</span> <span class="s2">&quot;CXCL11&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;Apoptosis&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;CASP3&quot;</span><span class="p">,</span> <span class="s2">&quot;CASP8&quot;</span><span class="p">,</span> <span class="s2">&quot;FAS&quot;</span><span class="p">,</span> <span class="s2">&quot;BAX&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;Glycolysis&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;LDHA&quot;</span><span class="p">,</span> <span class="s2">&quot;PGK1&quot;</span><span class="p">,</span> <span class="s2">&quot;ENO1&quot;</span><span class="p">,</span> <span class="s2">&quot;GAPDH&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+    <span class="s2">&quot;Translational_Activity&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;RPS6&quot;</span><span class="p">,</span> <span class="s2">&quot;RPL13&quot;</span><span class="p">,</span> <span class="s2">&quot;RPS3&quot;</span><span class="p">,</span> <span class="s2">&quot;RPL11&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available_genes</span><span class="p">],</span>
+<span class="p">}</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No valid gene sets for GSEA (need at least 2 genes per set)&quot;</span><span class="p">)</span>
 <br/></pre></div>
 </div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-## Trial-Aware DiD Summary
-Total features tested: 2
-Significant (p &lt; 0.05): 0
-Significant (FDR &lt; 0.05): 0
-
-### Top Upregulated Features (by p-value):
-- None
-
-### Top Downregulated Features (by p-value):
-- ms_IFN_Response: beta=-0.460, p=6.86e-01
-- ms_Cytotoxicity: beta=-0.131, p=9.21e-01
-</pre></div></div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<img alt="../_images/examples_example_covid19_stephenson_15_1.png" src="../_images/examples_example_covid19_stephenson_15_1.png" />
-</div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area stderr docutils container">
-<div class="highlight"><pre>
-2026-01-02 13:12:18,182 [WARNING] Duplicated values found in preranked stats: 55.62% of genes
-The order of those genes will be arbitrary, which may produce unexpected results.
-</pre></div></div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area rendered_html docutils container">
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>Name</th>
-      <th>Term</th>
-      <th>ES</th>
-      <th>NES</th>
-      <th>NOM p-val</th>
-      <th>FDR q-val</th>
-      <th>FWER p-val</th>
-      <th>Tag %</th>
-      <th>Gene %</th>
-      <th>Lead_genes</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>prerank</td>
-      <td>T_Cell</td>
-      <td>0.532052</td>
-      <td>0.653826</td>
-      <td>0.926121</td>
-      <td>1.0</td>
-      <td>0.602</td>
-      <td>2/3</td>
-      <td>12.82%</td>
-      <td>CD3D;CD3E</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>prerank</td>
-      <td>IFN_Path</td>
-      <td>0.412024</td>
-      <td>0.603383</td>
-      <td>0.936795</td>
-      <td>0.941606</td>
-      <td>0.623</td>
-      <td>2/6</td>
-      <td>10.36%</td>
-      <td>MX1;STAT1</td>
-    </tr>
-  </tbody>
-</table>
-</div></div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_covid19_stephenson_15_4.png" src="../_images/examples_example_covid19_stephenson_15_4.png" />
-</div>
+<div class="highlight"><pre>
+<span class="ansi-cyan-fg">  Cell </span><span class="ansi-green-fg">In[8], line 62</span>
+<span class="ansi-red-fg">    &#34;B_Cell_Activation&#34;: [g for g in [&#34;CD79A&#34;, &#34;CD79B&#34;, &#34;MS4A1&#34;, &#34;CD19&#34;, &#34;BANK1&#34;] if g in available_genes],</span>
+    ^
+<span class="ansi-red-fg">IndentationError</span><span class="ansi-red-fg">:</span> unexpected indent
+
+</pre></div></div>
 </div>
 </section>
 </section>
@@ -875,32 +637,32 @@ The order of those genes will be arbitrary, which may produce unexpected results
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># FIX: Add min_units parameter and handle NaN results
-ab_res = st.abundance_did(
-    adata,
-    design,
-    visits=(&quot;1-7 days&quot;, &quot;8-14 days&quot;),
-    min_units=4  # FIX: Ensure sufficient participants per cell type
-)
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># FIX: Add min_units parameter and handle NaN results</span>
+<span class="n">ab_res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">abundance_did</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">,</span>
+    <span class="n">design</span><span class="p">,</span>
+    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;1-7 days&quot;</span><span class="p">,</span> <span class="s2">&quot;8-14 days&quot;</span><span class="p">),</span>
+    <span class="n">min_units</span><span class="o">=</span><span class="mi">4</span>  <span class="c1"># FIX: Ensure sufficient participants per cell type</span>
+<span class="p">)</span>
 
-if not ab_res.empty:
-    # FIX: Filter out NaN results
-    nan_mask = ab_res[[&quot;beta_DiD&quot;, &quot;se_DiD&quot;, &quot;p_DiD&quot;]].isna().any(axis=1)
-    if nan_mask.any():
-        print(f&quot;Warning: {nan_mask.sum()} cell types have NaN abundance results (insufficient participants)&quot;)
+<span class="k">if</span> <span class="ow">not</span> <span class="n">ab_res</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+    <span class="c1"># FIX: Filter out NaN results</span>
+    <span class="n">nan_mask</span> <span class="o">=</span> <span class="n">ab_res</span><span class="p">[[</span><span class="s2">&quot;beta_DiD&quot;</span><span class="p">,</span> <span class="s2">&quot;se_DiD&quot;</span><span class="p">,</span> <span class="s2">&quot;p_DiD&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">nan_mask</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Warning: </span><span class="si">{</span><span class="n">nan_mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="si">}</span><span class="s2"> cell types have NaN abundance results (insufficient participants)&quot;</span><span class="p">)</span>
 
-    valid_ab_res = ab_res[~nan_mask] if nan_mask.any() else ab_res
+    <span class="n">valid_ab_res</span> <span class="o">=</span> <span class="n">ab_res</span><span class="p">[</span><span class="o">~</span><span class="n">nan_mask</span><span class="p">]</span> <span class="k">if</span> <span class="n">nan_mask</span><span class="o">.</span><span class="n">any</span><span class="p">()</span> <span class="k">else</span> <span class="n">ab_res</span>
 
-    if not valid_ab_res.empty:
-        display(valid_ab_res)
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">valid_ab_res</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="n">display</span><span class="p">(</span><span class="n">valid_ab_res</span><span class="p">)</span>
 
-        fig, ax = plt.subplots(figsize=(6, 5))
-        st.plot_did_forest(valid_ab_res, feature_col=&quot;celltype&quot;, title=&quot;Abundance Shifts (Severe vs Mild)&quot;, ax=ax)
-        plt.show()
-    else:
-        print(&quot;No valid abundance results after filtering NaNs&quot;)
-else:
-    print(&quot;No abundance results returned - check cell type assignments and participant pairing&quot;)
+        <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">plot_did_forest</span><span class="p">(</span><span class="n">valid_ab_res</span><span class="p">,</span> <span class="n">feature_col</span><span class="o">=</span><span class="s2">&quot;celltype&quot;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Abundance Shifts (Severe vs Mild)&quot;</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No valid abundance results after filtering NaNs&quot;</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No abundance results returned - check cell type assignments and participant pairing&quot;</span><span class="p">)</span>
 <br/></pre></div>
 </div>
 </div>
@@ -909,7 +671,21 @@ else:
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-No abundance results returned - check cell type assignments and participant pairing
+<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
+<span class="ansi-red-fg">NameError</span>                                 Traceback (most recent call last)
+Cell <span class="ansi-green-fg">In[9], line 3</span>
+<span class="ansi-green-intense-fg ansi-bold">      1</span> <span style="color: rgb(95,135,135)"># FIX: Add min_units parameter and handle NaN results</span>
+<span class="ansi-green-intense-fg ansi-bold">      2</span> ab_res <span style="color: rgb(98,98,98)">=</span> st<span style="color: rgb(98,98,98)">.</span>abundance_did(
+<span class="ansi-green-fg">----&gt; 3</span>     <span class="ansi-yellow-bg">adata</span>,
+<span class="ansi-green-intense-fg ansi-bold">      4</span>     design,
+<span class="ansi-green-intense-fg ansi-bold">      5</span>     visits<span style="color: rgb(98,98,98)">=</span>(<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">1-7 days</span><span style="color: rgb(175,0,0)">&#34;</span>, <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">8-14 days</span><span style="color: rgb(175,0,0)">&#34;</span>),
+<span class="ansi-green-intense-fg ansi-bold">      6</span>     min_units<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(98,98,98)">4</span>  <span style="color: rgb(95,135,135)"># FIX: Ensure sufficient participants per cell type</span>
+<span class="ansi-green-intense-fg ansi-bold">      7</span> )
+<span class="ansi-green-intense-fg ansi-bold">      9</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span class="ansi-bold" style="color: rgb(175,0,255)">not</span> ab_res<span style="color: rgb(98,98,98)">.</span>empty:
+<span class="ansi-green-intense-fg ansi-bold">     10</span>     <span style="color: rgb(95,135,135)"># FIX: Filter out NaN results</span>
+<span class="ansi-green-intense-fg ansi-bold">     11</span>     nan_mask <span style="color: rgb(98,98,98)">=</span> ab_res[[<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">beta_DiD</span><span style="color: rgb(175,0,0)">&#34;</span>, <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">se_DiD</span><span style="color: rgb(175,0,0)">&#34;</span>, <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">p_DiD</span><span style="color: rgb(175,0,0)">&#34;</span>]]<span style="color: rgb(98,98,98)">.</span>isna()<span style="color: rgb(98,98,98)">.</span>any(axis<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(98,98,98)">1</span>)
+
+<span class="ansi-red-fg">NameError</span>: name &#39;adata&#39; is not defined
 </pre></div></div>
 </div>
 </section>
@@ -920,28 +696,28 @@ No abundance results returned - check cell type assignments and participant pair
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># FIX: Check if feature exists and UMAP coordinates are available before plotting
-if &quot;X_umap&quot; not in adata.obsm:
-    print(&quot;Warning: X_umap not found. Computing UMAP...&quot;)
-    sc.pp.neighbors(adata)
-    sc.tl.umap(adata)
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># FIX: Check if feature exists and UMAP coordinates are available before plotting</span>
+<span class="k">if</span> <span class="s2">&quot;X_umap&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obsm</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Warning: X_umap not found. Computing UMAP...&quot;</span><span class="p">)</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">neighbors</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">tl</span><span class="o">.</span><span class="n">umap</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
 
-# Find a valid feature to plot
-plot_feature = None
-for feat in [&quot;ms_IFN_Response&quot;, &quot;ms_Cytotoxicity&quot;]:
-    if feat in adata.obs.columns and adata.obs[feat].notna().sum() &gt; len(adata.obs) * 0.1:
-        plot_feature = feat
-        break
+<span class="c1"># Find a valid feature to plot</span>
+<span class="n">plot_feature</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="k">for</span> <span class="n">feat</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;ms_IFN_Response&quot;</span><span class="p">,</span> <span class="s2">&quot;ms_Cytotoxicity&quot;</span><span class="p">]:</span>
+    <span class="k">if</span> <span class="n">feat</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span> <span class="ow">and</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">feat</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.1</span><span class="p">:</span>
+        <span class="n">plot_feature</span> <span class="o">=</span> <span class="n">feat</span>
+        <span class="k">break</span>
 
-if plot_feature:
-    try:
-        st.plot_trial_umap_panel(adata, plot_feature, design, visits=(&quot;1-7 days&quot;, &quot;8-14 days&quot;))
-        plt.show()
-    except Exception as e:
-        print(f&quot;UMAP plotting error: {e}&quot;)
-        print(&quot;This may occur if scanpy/matplotlib dependencies are missing or data is insufficient&quot;)
-else:
-    print(&quot;No valid feature found for UMAP visualization&quot;)
+<span class="k">if</span> <span class="n">plot_feature</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">plot_trial_umap_panel</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">plot_feature</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;1-7 days&quot;</span><span class="p">,</span> <span class="s2">&quot;8-14 days&quot;</span><span class="p">))</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;UMAP plotting error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;This may occur if scanpy/matplotlib dependencies are missing or data is insufficient&quot;</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No valid feature found for UMAP visualization&quot;</span><span class="p">)</span>
 <br/></pre></div>
 </div>
 </div>
@@ -949,8 +725,17 @@ else:
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_covid19_stephenson_19_0.png" src="../_images/examples_example_covid19_stephenson_19_0.png" />
-</div>
+<div class="highlight"><pre>
+<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
+<span class="ansi-red-fg">NameError</span>                                 Traceback (most recent call last)
+Cell <span class="ansi-green-fg">In[10], line 2</span>
+<span class="ansi-green-intense-fg ansi-bold">      1</span> <span style="color: rgb(95,135,135)"># FIX: Check if feature exists and UMAP coordinates are available before plotting</span>
+<span class="ansi-green-fg">----&gt; 2</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">X_umap</span><span style="color: rgb(175,0,0)">&#34;</span> <span class="ansi-bold" style="color: rgb(175,0,255)">not</span> <span class="ansi-bold" style="color: rgb(175,0,255)">in</span> <span class="ansi-yellow-bg">adata</span><span style="color: rgb(98,98,98)">.</span>obsm:
+<span class="ansi-green-intense-fg ansi-bold">      3</span>     <span style="color: rgb(0,135,0)">print</span>(<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">Warning: X_umap not found. Computing UMAP...</span><span style="color: rgb(175,0,0)">&#34;</span>)
+<span class="ansi-green-intense-fg ansi-bold">      4</span>     sc<span style="color: rgb(98,98,98)">.</span>pp<span style="color: rgb(98,98,98)">.</span>neighbors(adata)
+
+<span class="ansi-red-fg">NameError</span>: name &#39;adata&#39; is not defined
+</pre></div></div>
 </div>
 <script type="application/vnd.jupyter.widget-state+json">
 {"state": {"1a5a06a9709847c9acfb5d1b13a6744e": {"model_module": "@jupyter-widgets/controls", "model_module_version": "2.0.0", "model_name": "HBoxModel", "state": {"_dom_classes": [], "_model_module": "@jupyter-widgets/controls", "_model_module_version": "2.0.0", "_model_name": "HBoxModel", "_view_count": null, "_view_module": "@jupyter-widgets/controls", "_view_module_version": "2.0.0", "_view_name": "HBoxView", "box_style": "", "children": ["IPY_MODEL_887adcd8876346b8ace81e6e5cb76858", "IPY_MODEL_f47ac2c693f44534b7ead5f2a0427752", "IPY_MODEL_a456faaa3efb424984708b5dcceb9bb3"], "layout": "IPY_MODEL_cf006ef99bc343edbbc952f27acbb10d", "tabbable": null, "tooltip": null}}, "7546637ba7c548a18ef33b5c07e68cc0": {"model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "model_name": "LayoutModel", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "887adcd8876346b8ace81e6e5cb76858": {"model_module": "@jupyter-widgets/controls", "model_module_version": "2.0.0", "model_name": "HTMLModel", "state": {"_dom_classes": [], "_model_module": "@jupyter-widgets/controls", "_model_module_version": "2.0.0", "_model_name": "HTMLModel", "_view_count": null, "_view_module": "@jupyter-widgets/controls", "_view_module_version": "2.0.0", "_view_name": "HTMLView", "description": "", "description_allow_html": false, "layout": "IPY_MODEL_7546637ba7c548a18ef33b5c07e68cc0", "placeholder": "\u200b", "style": "IPY_MODEL_d286a80511f24898b81e83e7f8df2c55", "tabbable": null, "tooltip": null, "value": "100%"}}, "a456faaa3efb424984708b5dcceb9bb3": {"model_module": "@jupyter-widgets/controls", "model_module_version": "2.0.0", "model_name": "HTMLModel", "state": {"_dom_classes": [], "_model_module": "@jupyter-widgets/controls", "_model_module_version": "2.0.0", "_model_name": "HTMLModel", "_view_count": null, "_view_module": "@jupyter-widgets/controls", "_view_module_version": "2.0.0", "_view_name": "HTMLView", "description": "", "description_allow_html": false, "layout": "IPY_MODEL_dc592f2b674243fd8df7061487e515fe", "placeholder": "\u200b", "style": "IPY_MODEL_c4e23a5cd96a4ae99a500ecc6dcb7722", "tabbable": null, "tooltip": null, "value": "\u200723.5M/23.5M\u2007[00:00&lt;00:00,\u200771.7MB/s]"}}, "c4e23a5cd96a4ae99a500ecc6dcb7722": {"model_module": "@jupyter-widgets/controls", "model_module_version": "2.0.0", "model_name": "HTMLStyleModel", "state": {"_model_module": "@jupyter-widgets/controls", "_model_module_version": "2.0.0", "_model_name": "HTMLStyleModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "StyleView", "background": null, "description_width": "", "font_size": null, "text_color": null}}, "cf006ef99bc343edbbc952f27acbb10d": {"model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "model_name": "LayoutModel", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "d286a80511f24898b81e83e7f8df2c55": {"model_module": "@jupyter-widgets/controls", "model_module_version": "2.0.0", "model_name": "HTMLStyleModel", "state": {"_model_module": "@jupyter-widgets/controls", "_model_module_version": "2.0.0", "_model_name": "HTMLStyleModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "StyleView", "background": null, "description_width": "", "font_size": null, "text_color": null}}, "dc592f2b674243fd8df7061487e515fe": {"model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "model_name": "LayoutModel", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "eca0652842974edeac6d28e2f1d7b42a": {"model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "model_name": "LayoutModel", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "ee228ab1fe7f4e1795d0f34d320d75d8": {"model_module": "@jupyter-widgets/controls", "model_module_version": "2.0.0", "model_name": "ProgressStyleModel", "state": {"_model_module": "@jupyter-widgets/controls", "_model_module_version": "2.0.0", "_model_name": "ProgressStyleModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "StyleView", "bar_color": null, "description_width": ""}}, "f47ac2c693f44534b7ead5f2a0427752": {"model_module": "@jupyter-widgets/controls", "model_module_version": "2.0.0", "model_name": "FloatProgressModel", "state": {"_dom_classes": [], "_model_module": "@jupyter-widgets/controls", "_model_module_version": "2.0.0", "_model_name": "FloatProgressModel", "_view_count": null, "_view_module": "@jupyter-widgets/controls", "_view_module_version": "2.0.0", "_view_name": "ProgressView", "bar_style": "success", "description": "", "description_allow_html": false, "layout": "IPY_MODEL_eca0652842974edeac6d28e2f1d7b42a", "max": 24653425, "min": 0, "orientation": "horizontal", "style": "IPY_MODEL_ee228ab1fe7f4e1795d0f34d320d75d8", "tabbable": null, "tooltip": null, "value": 24653425}}}, "version_major": 2, "version_minor": 0}

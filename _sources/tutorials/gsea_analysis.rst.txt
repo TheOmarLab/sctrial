@@ -108,3 +108,40 @@ It is often useful to visualize the distribution of DiD effect sizes (Volcano pl
    plt.ylabel("-log10(p_DiD)")
    plt.title("Trial-Aware Volcano Plot")
    plt.show()
+
+6. Multi-Celltype GSEA Heatmap
+------------------------------
+
+When analyzing multiple cell types or cell pools, a heatmap is the best way to compare pathway enrichments across different lineages. The `plot_gsea_heatmap` function allows you to visualize multiple GSEA results in a single, comprehensive view.
+
+.. code-block:: python
+
+   # Run GSEA for multiple cell types (e.g., T cells, B cells, Monocytes)
+   # and combine the results into a single table
+   import pandas as pd
+   
+   celltypes = ["CD4 T cells", "B cells", "Monocytes"]
+   all_gsea_results = []
+   
+   for ct in celltypes:
+       ct_adata = adata[adata.obs["celltype"] == ct].copy()
+       res = st.run_gsea_did(
+           ct_adata,
+           gene_sets=custom_sets,
+           design=design,
+           visits=("V1", "V2")
+       )
+       res["pool"] = ct
+       all_gsea_results.append(res)
+       
+   combined_res = pd.concat(all_gsea_results)
+   
+   # Plot a comprehensive heatmap across all cell types
+   # Shows the Normalized Enrichment Score (NES)
+   st.plot_gsea_heatmap(
+       combined_res, 
+       fdr_thresh=0.25, 
+       figsize=(10, 8),
+       title="Pathway Enrichment Across Cell Types"
+   )
+   plt.show()

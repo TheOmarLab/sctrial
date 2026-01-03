@@ -124,10 +124,10 @@
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import warnings
-warnings.filterwarnings(&#39;ignore&#39;)
-import pandas as pd
-pd.options.mode.chained_assignment = None
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="n">pd</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">mode</span><span class="o">.</span><span class="n">chained_assignment</span> <span class="o">=</span> <span class="kc">None</span>
 </pre></div>
 </div>
 </div>
@@ -147,34 +147,34 @@ pd.options.mode.chained_assignment = None
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import sctrial as st
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-from anndata import AnnData
-from scipy import sparse
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">sctrial</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">seaborn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sns</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">anndata</span><span class="w"> </span><span class="kn">import</span> <span class="n">AnnData</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">sparse</span>
 
-# Set seed for reproducibility
-np.random.seed(42)
+<span class="c1"># Set seed for reproducibility</span>
+<span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
 
-def generate_clustered_data(n_obs, n_vars, n_clusters=4):
-    # Simulate 2D UMAP-like clusters with 4 distinct groups
-    from sklearn.datasets import make_blobs
-    centers = [[0, 0], [10, 10], [15, 0], [0, 15]]
-    X_umap, y = make_blobs(n_samples=n_obs, centers=centers, cluster_std=1.2, random_state=42)
+<span class="k">def</span><span class="w"> </span><span class="nf">generate_clustered_data</span><span class="p">(</span><span class="n">n_obs</span><span class="p">,</span> <span class="n">n_vars</span><span class="p">,</span> <span class="n">n_clusters</span><span class="o">=</span><span class="mi">4</span><span class="p">):</span>
+    <span class="c1"># Simulate 2D UMAP-like clusters with 4 distinct groups</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="n">make_blobs</span>
+    <span class="n">centers</span> <span class="o">=</span> <span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">],</span> <span class="p">[</span><span class="mi">15</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">15</span><span class="p">]]</span>
+    <span class="n">X_umap</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">make_blobs</span><span class="p">(</span><span class="n">n_samples</span><span class="o">=</span><span class="n">n_obs</span><span class="p">,</span> <span class="n">centers</span><span class="o">=</span><span class="n">centers</span><span class="p">,</span> <span class="n">cluster_std</span><span class="o">=</span><span class="mf">1.2</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
 
-    # Map clusters to cell types
-    celltypes = np.array([&quot;TypeA&quot;, &quot;TypeB&quot;, &quot;TypeC&quot;, &quot;TypeD&quot;])[y]
+    <span class="c1"># Map clusters to cell types</span>
+    <span class="n">celltypes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="s2">&quot;TypeA&quot;</span><span class="p">,</span> <span class="s2">&quot;TypeB&quot;</span><span class="p">,</span> <span class="s2">&quot;TypeC&quot;</span><span class="p">,</span> <span class="s2">&quot;TypeD&quot;</span><span class="p">])[</span><span class="n">y</span><span class="p">]</span>
 
-    # Generate expression data that correlates with clusters
-    X = np.random.poisson(0.1, size=(n_obs, n_vars)).astype(float)
-    for i in range(n_clusters):
-        mask = (y == i)
-        # Cluster-specific markers (5 genes each)
-        X[mask, i*10:(i*10)+5] += 3.0
+    <span class="c1"># Generate expression data that correlates with clusters</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">n_obs</span><span class="p">,</span> <span class="n">n_vars</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_clusters</span><span class="p">):</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">y</span> <span class="o">==</span> <span class="n">i</span><span class="p">)</span>
+        <span class="c1"># Cluster-specific markers (5 genes each)</span>
+        <span class="n">X</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="n">i</span><span class="o">*</span><span class="mi">10</span><span class="p">:(</span><span class="n">i</span><span class="o">*</span><span class="mi">10</span><span class="p">)</span><span class="o">+</span><span class="mi">5</span><span class="p">]</span> <span class="o">+=</span> <span class="mf">3.0</span>
 
-    return X, X_umap, celltypes
+    <span class="k">return</span> <span class="n">X</span><span class="p">,</span> <span class="n">X_umap</span><span class="p">,</span> <span class="n">celltypes</span>
 <br/></pre></div>
 </div>
 </div>
@@ -186,62 +186,62 @@ def generate_clustered_data(n_obs, n_vars, n_clusters=4):
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>n_participants = 30
-n_genes = 200
-visits = [&quot;Baseline&quot;, &quot;Followup&quot;]
-arms = [&quot;Treated&quot;, &quot;Control&quot;]
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">n_participants</span> <span class="o">=</span> <span class="mi">30</span>
+<span class="n">n_genes</span> <span class="o">=</span> <span class="mi">200</span>
+<span class="n">visits</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Baseline&quot;</span><span class="p">,</span> <span class="s2">&quot;Followup&quot;</span><span class="p">]</span>
+<span class="n">arms</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Treated&quot;</span><span class="p">,</span> <span class="s2">&quot;Control&quot;</span><span class="p">]</span>
 
-rows = []
-for i in range(n_participants):
-    arm = &quot;Treated&quot; if i &lt; n_participants // 2 else &quot;Control&quot;
-    for v in visits:
-        # 60 cells per participant per visit
-        for _ in range(60):
-            rows.append({
-                &quot;participant_id&quot;: f&quot;P{i}&quot;,
-                &quot;visit&quot;: v,
-                &quot;arm&quot;: arm,
-                &quot;age&quot;: 45 + (i % 5) * 4,
-                &quot;batch&quot;: f&quot;Batch_{i % 3}&quot;
-            })
+<span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_participants</span><span class="p">):</span>
+    <span class="n">arm</span> <span class="o">=</span> <span class="s2">&quot;Treated&quot;</span> <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">n_participants</span> <span class="o">//</span> <span class="mi">2</span> <span class="k">else</span> <span class="s2">&quot;Control&quot;</span>
+    <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">visits</span><span class="p">:</span>
+        <span class="c1"># 60 cells per participant per visit</span>
+        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">60</span><span class="p">):</span>
+            <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                <span class="s2">&quot;participant_id&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;P</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;visit&quot;</span><span class="p">:</span> <span class="n">v</span><span class="p">,</span>
+                <span class="s2">&quot;arm&quot;</span><span class="p">:</span> <span class="n">arm</span><span class="p">,</span>
+                <span class="s2">&quot;age&quot;</span><span class="p">:</span> <span class="mi">45</span> <span class="o">+</span> <span class="p">(</span><span class="n">i</span> <span class="o">%</span> <span class="mi">5</span><span class="p">)</span> <span class="o">*</span> <span class="mi">4</span><span class="p">,</span>
+                <span class="s2">&quot;batch&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Batch_</span><span class="si">{</span><span class="n">i</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="mi">3</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">})</span>
 
-obs = pd.DataFrame(rows)
-X, X_umap, celltypes = generate_clustered_data(len(obs), n_genes)
-obs[&quot;celltype&quot;] = celltypes
+<span class="n">obs</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
+<span class="n">X</span><span class="p">,</span> <span class="n">X_umap</span><span class="p">,</span> <span class="n">celltypes</span> <span class="o">=</span> <span class="n">generate_clustered_data</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">obs</span><span class="p">),</span> <span class="n">n_genes</span><span class="p">)</span>
+<span class="n">obs</span><span class="p">[</span><span class="s2">&quot;celltype&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">celltypes</span>
 
-# --- Inject Signals ---
+<span class="c1"># --- Inject Signals ---</span>
 
-# 1. Global Treatment Effect (TypeA &amp; TypeB) in Genes 0-4
-# We&#39;ll make it very strong to ensure clear p-values and GSEA signal
-treated_followup = (obs[&quot;arm&quot;] == &quot;Treated&quot;) &amp; (obs[&quot;visit&quot;] == &quot;Followup&quot;)
-X[treated_followup, :5] += 6.0
+<span class="c1"># 1. Global Treatment Effect (TypeA &amp; TypeB) in Genes 0-4</span>
+<span class="c1"># We&#39;ll make it very strong to ensure clear p-values and GSEA signal</span>
+<span class="n">treated_followup</span> <span class="o">=</span> <span class="p">(</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;arm&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Treated&quot;</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;visit&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Followup&quot;</span><span class="p">)</span>
+<span class="n">X</span><span class="p">[</span><span class="n">treated_followup</span><span class="p">,</span> <span class="p">:</span><span class="mi">5</span><span class="p">]</span> <span class="o">+=</span> <span class="mf">6.0</span>
 
-# 2. Cell-type Specific Effect (TypeB only) in Genes 5-9
-typeB_treated_followup = treated_followup &amp; (obs[&quot;celltype&quot;] == &quot;TypeB&quot;)
-X[typeB_treated_followup, 5:10] += 10.0
+<span class="c1"># 2. Cell-type Specific Effect (TypeB only) in Genes 5-9</span>
+<span class="n">typeB_treated_followup</span> <span class="o">=</span> <span class="n">treated_followup</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;celltype&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;TypeB&quot;</span><span class="p">)</span>
+<span class="n">X</span><span class="p">[</span><span class="n">typeB_treated_followup</span><span class="p">,</span> <span class="mi">5</span><span class="p">:</span><span class="mi">10</span><span class="p">]</span> <span class="o">+=</span> <span class="mf">10.0</span>
 
-# 3. Add more interesting signals for GSEA (TypeC and TypeD)
-typeC_treated_followup = treated_followup &amp; (obs[&quot;celltype&quot;] == &quot;TypeC&quot;)
-X[typeC_treated_followup, 20:25] += 8.0
+<span class="c1"># 3. Add more interesting signals for GSEA (TypeC and TypeD)</span>
+<span class="n">typeC_treated_followup</span> <span class="o">=</span> <span class="n">treated_followup</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;celltype&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;TypeC&quot;</span><span class="p">)</span>
+<span class="n">X</span><span class="p">[</span><span class="n">typeC_treated_followup</span><span class="p">,</span> <span class="mi">20</span><span class="p">:</span><span class="mi">25</span><span class="p">]</span> <span class="o">+=</span> <span class="mf">8.0</span>
 
-typeD_treated_followup = treated_followup &amp; (obs[&quot;celltype&quot;] == &quot;TypeD&quot;)
-X[typeD_treated_followup, 30:35] += 7.0
+<span class="n">typeD_treated_followup</span> <span class="o">=</span> <span class="n">treated_followup</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;celltype&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;TypeD&quot;</span><span class="p">)</span>
+<span class="n">X</span><span class="p">[</span><span class="n">typeD_treated_followup</span><span class="p">,</span> <span class="mi">30</span><span class="p">:</span><span class="mi">35</span><span class="p">]</span> <span class="o">+=</span> <span class="mf">7.0</span>
 
-# 3. Abundance Shift: Increase in TypeA in Treated Followup
-# We&#39;ll adjust the &#39;celltype&#39; labels for a subset of cells to simulate a composition shift
-mask_shift = (obs[&quot;arm&quot;] == &quot;Treated&quot;) &amp; (obs[&quot;visit&quot;] == &quot;Followup&quot;) &amp; (obs[&quot;celltype&quot;] == &quot;TypeB&quot;)
-indices_to_shift = obs[mask_shift].sample(frac=0.4, random_state=42).index
-obs.loc[indices_to_shift, &quot;celltype&quot;] = &quot;TypeA&quot;
+<span class="c1"># 3. Abundance Shift: Increase in TypeA in Treated Followup</span>
+<span class="c1"># We&#39;ll adjust the &#39;celltype&#39; labels for a subset of cells to simulate a composition shift</span>
+<span class="n">mask_shift</span> <span class="o">=</span> <span class="p">(</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;arm&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Treated&quot;</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;visit&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Followup&quot;</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;celltype&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;TypeB&quot;</span><span class="p">)</span>
+<span class="n">indices_to_shift</span> <span class="o">=</span> <span class="n">obs</span><span class="p">[</span><span class="n">mask_shift</span><span class="p">]</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">frac</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span><span class="o">.</span><span class="n">index</span>
+<span class="n">obs</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">indices_to_shift</span><span class="p">,</span> <span class="s2">&quot;celltype&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;TypeA&quot;</span>
 
-adata = AnnData(X=sparse.csr_matrix(X), obs=obs)
-adata.obsm[&quot;X_umap&quot;] = X_umap
-adata.var_names = [f&quot;Gene{i}&quot; for i in range(n_genes)]
-adata.layers[&quot;counts&quot;] = adata.X.copy()
+<span class="n">adata</span> <span class="o">=</span> <span class="n">AnnData</span><span class="p">(</span><span class="n">X</span><span class="o">=</span><span class="n">sparse</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">(</span><span class="n">X</span><span class="p">),</span> <span class="n">obs</span><span class="o">=</span><span class="n">obs</span><span class="p">)</span>
+<span class="n">adata</span><span class="o">.</span><span class="n">obsm</span><span class="p">[</span><span class="s2">&quot;X_umap&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">X_umap</span>
+<span class="n">adata</span><span class="o">.</span><span class="n">var_names</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;Gene</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_genes</span><span class="p">)]</span>
+<span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">&quot;counts&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">X</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
-print(f&quot;Created AnnData with {adata.n_obs} cells and {adata.n_vars} genes.&quot;)
-print(f&quot;Arms: {adata.obs[&#39;arm&#39;].unique()}&quot;)
-print(f&quot;Visits: {adata.obs[&#39;visit&#39;].unique()}&quot;)
-print(f&quot;Cell types: {adata.obs[&#39;celltype&#39;].unique()}&quot;)
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Created AnnData with </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">}</span><span class="s2"> cells and </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">}</span><span class="s2"> genes.&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Arms: </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s1">&#39;arm&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Visits: </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s1">&#39;visit&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cell types: </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s1">&#39;celltype&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <br/></pre></div>
 </div>
 </div>
@@ -264,20 +264,20 @@ Cell types: [&#39;TypeA&#39; &#39;TypeB&#39; &#39;TypeC&#39; &#39;TypeD&#39;]
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>design = st.TrialDesign(
-    participant_col=&quot;participant_id&quot;,
-    visit_col=&quot;visit&quot;,
-    arm_col=&quot;arm&quot;,
-    arm_treated=&quot;Treated&quot;,
-    arm_control=&quot;Control&quot;,
-    celltype_col=&quot;celltype&quot;,
-    baseline_visit=&quot;Baseline&quot;,
-    followup_visit=&quot;Followup&quot;
-)
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">design</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">TrialDesign</span><span class="p">(</span>
+    <span class="n">participant_col</span><span class="o">=</span><span class="s2">&quot;participant_id&quot;</span><span class="p">,</span>
+    <span class="n">visit_col</span><span class="o">=</span><span class="s2">&quot;visit&quot;</span><span class="p">,</span>
+    <span class="n">arm_col</span><span class="o">=</span><span class="s2">&quot;arm&quot;</span><span class="p">,</span>
+    <span class="n">arm_treated</span><span class="o">=</span><span class="s2">&quot;Treated&quot;</span><span class="p">,</span>
+    <span class="n">arm_control</span><span class="o">=</span><span class="s2">&quot;Control&quot;</span><span class="p">,</span>
+    <span class="n">celltype_col</span><span class="o">=</span><span class="s2">&quot;celltype&quot;</span><span class="p">,</span>
+    <span class="n">baseline_visit</span><span class="o">=</span><span class="s2">&quot;Baseline&quot;</span><span class="p">,</span>
+    <span class="n">followup_visit</span><span class="o">=</span><span class="s2">&quot;Followup&quot;</span>
+<span class="p">)</span>
 
-# Validate consistency
-design.validate(adata)
-print(&quot;Trial design validated successfully.&quot;)
+<span class="c1"># Validate consistency</span>
+<span class="n">design</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Trial design validated successfully.&quot;</span><span class="p">)</span>
 <br/></pre></div>
 </div>
 </div>
@@ -297,21 +297,21 @@ Trial design validated successfully.
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Normalization: log1p(CPM)
-adata = st.add_log1p_cpm_layer(adata, counts_layer=&quot;counts&quot;, out_layer=&quot;log1p_cpm&quot;)
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Normalization: log1p(CPM)</span>
+<span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">add_log1p_cpm_layer</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">counts_layer</span><span class="o">=</span><span class="s2">&quot;counts&quot;</span><span class="p">,</span> <span class="n">out_layer</span><span class="o">=</span><span class="s2">&quot;log1p_cpm&quot;</span><span class="p">)</span>
 
-# Define biological pathways
-gene_sets = {
-    &quot;Inflammatory_Response&quot;: [&quot;Gene0&quot;, &quot;Gene1&quot;, &quot;Gene2&quot;],
-    &quot;TypeB_Activation&quot;: [&quot;Gene5&quot;, &quot;Gene6&quot;, &quot;Gene7&quot;],
-    &quot;Metabolic_Control&quot;: [&quot;Gene20&quot;, &quot;Gene21&quot;, &quot;Gene22&quot;]
-}
+<span class="c1"># Define biological pathways</span>
+<span class="n">gene_sets</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;Inflammatory_Response&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;Gene0&quot;</span><span class="p">,</span> <span class="s2">&quot;Gene1&quot;</span><span class="p">,</span> <span class="s2">&quot;Gene2&quot;</span><span class="p">],</span>
+    <span class="s2">&quot;TypeB_Activation&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;Gene5&quot;</span><span class="p">,</span> <span class="s2">&quot;Gene6&quot;</span><span class="p">,</span> <span class="s2">&quot;Gene7&quot;</span><span class="p">],</span>
+    <span class="s2">&quot;Metabolic_Control&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;Gene20&quot;</span><span class="p">,</span> <span class="s2">&quot;Gene21&quot;</span><span class="p">,</span> <span class="s2">&quot;Gene22&quot;</span><span class="p">]</span>
+<span class="p">}</span>
 
-# Compute module scores using the &#39;zmean&#39; method (z-score genes across cells then mean)
-adata = st.score_gene_sets(adata, gene_sets, layer=&quot;log1p_cpm&quot;, method=&quot;zmean&quot;, prefix=&quot;ms_&quot;)
+<span class="c1"># Compute module scores using the &#39;zmean&#39; method (z-score genes across cells then mean)</span>
+<span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">score_gene_sets</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">gene_sets</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;log1p_cpm&quot;</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;zmean&quot;</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;ms_&quot;</span><span class="p">)</span>
 
-# Preview the new scores in metadata
-print(&quot;Added module scores:&quot;, [c for c in adata.obs.columns if c.startswith(&quot;ms_&quot;)])
+<span class="c1"># Preview the new scores in metadata</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Added module scores:&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span> <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;ms_&quot;</span><span class="p">)])</span>
 <br/></pre></div>
 </div>
 </div>
@@ -333,19 +333,19 @@ Added module scores: [&#39;ms_Inflammatory_Response&#39;, &#39;ms_TypeB_Activati
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Global DiD (Aggregated to participant-visit level)
-did_res = st.did_table(
-    adata,
-    features=[&quot;ms_Inflammatory_Response&quot;, &quot;ms_TypeB_Activation&quot;, &quot;ms_Metabolic_Control&quot;],
-    design=design,
-    visits=(&quot;Baseline&quot;, &quot;Followup&quot;),
-    aggregate=&quot;participant_visit&quot;,
-    covariates=[&quot;age&quot;] # Control for age
-)
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Global DiD (Aggregated to participant-visit level)</span>
+<span class="n">did_res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">,</span>
+    <span class="n">features</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ms_Inflammatory_Response&quot;</span><span class="p">,</span> <span class="s2">&quot;ms_TypeB_Activation&quot;</span><span class="p">,</span> <span class="s2">&quot;ms_Metabolic_Control&quot;</span><span class="p">],</span>
+    <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;Baseline&quot;</span><span class="p">,</span> <span class="s2">&quot;Followup&quot;</span><span class="p">),</span>
+    <span class="n">aggregate</span><span class="o">=</span><span class="s2">&quot;participant_visit&quot;</span><span class="p">,</span>
+    <span class="n">covariates</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;age&quot;</span><span class="p">]</span> <span class="c1"># Control for age</span>
+<span class="p">)</span>
 
-print(&quot;--- Global DiD Results ---&quot;)
-print(st.summarize_did_results(did_res))
-display(did_res)
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;--- Global DiD Results ---&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">st</span><span class="o">.</span><span class="n">summarize_did_results</span><span class="p">(</span><span class="n">did_res</span><span class="p">))</span>
+<span class="n">display</span><span class="p">(</span><span class="n">did_res</span><span class="p">)</span>
 <br/></pre></div>
 </div>
 </div>
@@ -447,16 +447,16 @@ Significant (FDR &lt; 0.05): 2
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>print(&quot;Running DiD with Wild Cluster Bootstrap (Rademacher)...&quot;)
-did_boot = st.did_table(
-    adata,
-    features=[&quot;ms_TypeB_Activation&quot;],
-    design=design,
-    visits=(&quot;Baseline&quot;, &quot;Followup&quot;),
-    use_bootstrap=True,
-    n_boot=199 # Using small B for demo speed
-)
-print(did_boot[[&quot;feature&quot;, &quot;beta_DiD&quot;, &quot;p_DiD&quot;]])
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Running DiD with Wild Cluster Bootstrap (Rademacher)...&quot;</span><span class="p">)</span>
+<span class="n">did_boot</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">,</span>
+    <span class="n">features</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ms_TypeB_Activation&quot;</span><span class="p">],</span>
+    <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;Baseline&quot;</span><span class="p">,</span> <span class="s2">&quot;Followup&quot;</span><span class="p">),</span>
+    <span class="n">use_bootstrap</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">n_boot</span><span class="o">=</span><span class="mi">199</span> <span class="c1"># Using small B for demo speed</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">did_boot</span><span class="p">[[</span><span class="s2">&quot;feature&quot;</span><span class="p">,</span> <span class="s2">&quot;beta_DiD&quot;</span><span class="p">,</span> <span class="s2">&quot;p_DiD&quot;</span><span class="p">]])</span>
 <br/></pre></div>
 </div>
 </div>
@@ -481,15 +481,15 @@ Running DiD with Wild Cluster Bootstrap (Rademacher)...
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>strat_res = st.did_table_by_celltype(
-    adata,
-    features=[&quot;ms_Inflammatory_Response&quot;, &quot;ms_TypeB_Activation&quot;],
-    design=design,
-    visits=(&quot;Baseline&quot;, &quot;Followup&quot;)
-)
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">strat_res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table_by_celltype</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">,</span>
+    <span class="n">features</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ms_Inflammatory_Response&quot;</span><span class="p">,</span> <span class="s2">&quot;ms_TypeB_Activation&quot;</span><span class="p">],</span>
+    <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;Baseline&quot;</span><span class="p">,</span> <span class="s2">&quot;Followup&quot;</span><span class="p">)</span>
+<span class="p">)</span>
 
-print(&quot;--- Stratified DiD Results ---&quot;)
-display(strat_res.sort_values([&quot;celltype&quot;, &quot;p_DiD&quot;]))
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;--- Stratified DiD Results ---&quot;</span><span class="p">)</span>
+<span class="n">display</span><span class="p">(</span><span class="n">strat_res</span><span class="o">.</span><span class="n">sort_values</span><span class="p">([</span><span class="s2">&quot;celltype&quot;</span><span class="p">,</span> <span class="s2">&quot;p_DiD&quot;</span><span class="p">]))</span>
 <br/></pre></div>
 </div>
 </div>
@@ -655,15 +655,15 @@ display(strat_res.sort_values([&quot;celltype&quot;, &quot;p_DiD&quot;]))
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>ab_res = st.abundance_did(
-    adata,
-    design=design,
-    visits=(&quot;Baseline&quot;, &quot;Followup&quot;),
-    transform=&quot;arcsin_sqrt&quot;
-)
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ab_res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">abundance_did</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">,</span>
+    <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;Baseline&quot;</span><span class="p">,</span> <span class="s2">&quot;Followup&quot;</span><span class="p">),</span>
+    <span class="n">transform</span><span class="o">=</span><span class="s2">&quot;arcsin_sqrt&quot;</span>
+<span class="p">)</span>
 
-print(&quot;--- Abundance DiD Results ---&quot;)
-display(ab_res)
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;--- Abundance DiD Results ---&quot;</span><span class="p">)</span>
+<span class="n">display</span><span class="p">(</span><span class="n">ab_res</span><span class="p">)</span>
 <br/></pre></div>
 </div>
 </div>
@@ -767,32 +767,32 @@ display(ab_res)
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>print(&quot;Running GSEA on Trial-Aware Rankings...&quot;)
-# 100 permutations is enough for a demo
-# Define more pathways for the heatmap
-gene_sets_ext = {
-    **gene_sets,
-    &quot;T_Cell_Signaling&quot;: [f&quot;Gene{i}&quot; for i in range(20, 25)],
-    &quot;B_Cell_Activation&quot;: [f&quot;Gene{i}&quot; for i in range(30, 35)],
-    &quot;IFN_Response&quot;: [f&quot;Gene{i}&quot; for i in range(40, 45)],
-    &quot;Metabolic_Shift&quot;: [f&quot;Gene{i}&quot; for i in range(50, 55)],
-    &quot;Cell_Cycle&quot;: [f&quot;Gene{i}&quot; for i in range(60, 65)],
-    &quot;Apoptosis&quot;: [f&quot;Gene{i}&quot; for i in range(70, 75)]
-}
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Running GSEA on Trial-Aware Rankings...&quot;</span><span class="p">)</span>
+<span class="c1"># 100 permutations is enough for a demo</span>
+<span class="c1"># Define more pathways for the heatmap</span>
+<span class="n">gene_sets_ext</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="o">**</span><span class="n">gene_sets</span><span class="p">,</span>
+    <span class="s2">&quot;T_Cell_Signaling&quot;</span><span class="p">:</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;Gene</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">25</span><span class="p">)],</span>
+    <span class="s2">&quot;B_Cell_Activation&quot;</span><span class="p">:</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;Gene</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">30</span><span class="p">,</span> <span class="mi">35</span><span class="p">)],</span>
+    <span class="s2">&quot;IFN_Response&quot;</span><span class="p">:</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;Gene</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">40</span><span class="p">,</span> <span class="mi">45</span><span class="p">)],</span>
+    <span class="s2">&quot;Metabolic_Shift&quot;</span><span class="p">:</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;Gene</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="mi">55</span><span class="p">)],</span>
+    <span class="s2">&quot;Cell_Cycle&quot;</span><span class="p">:</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;Gene</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">60</span><span class="p">,</span> <span class="mi">65</span><span class="p">)],</span>
+    <span class="s2">&quot;Apoptosis&quot;</span><span class="p">:</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;Gene</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">70</span><span class="p">,</span> <span class="mi">75</span><span class="p">)]</span>
+<span class="p">}</span>
 
-gsea_res = st.run_gsea_did(
-    adata,
-    gene_sets=gene_sets_ext,
-    design=design,
-    visits=(&quot;Baseline&quot;, &quot;Followup&quot;),
-    rank_by=&quot;tstat&quot;,
-    permutation_num=100,
-    min_size=1,
-    seed=42
-)
+<span class="n">gsea_res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">run_gsea_did</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">,</span>
+    <span class="n">gene_sets</span><span class="o">=</span><span class="n">gene_sets_ext</span><span class="p">,</span>
+    <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;Baseline&quot;</span><span class="p">,</span> <span class="s2">&quot;Followup&quot;</span><span class="p">),</span>
+    <span class="n">rank_by</span><span class="o">=</span><span class="s2">&quot;tstat&quot;</span><span class="p">,</span>
+    <span class="n">permutation_num</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+    <span class="n">min_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">seed</span><span class="o">=</span><span class="mi">42</span>
+<span class="p">)</span>
 
-print(&quot;--- GSEA Top Terms ---&quot;)
-display(gsea_res.sort_values(&quot;NES&quot;, ascending=False))
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;--- GSEA Top Terms ---&quot;</span><span class="p">)</span>
+<span class="n">display</span><span class="p">(</span><span class="n">gsea_res</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s2">&quot;NES&quot;</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="kc">False</span><span class="p">))</span>
 <br/></pre></div>
 </div>
 </div>
@@ -972,16 +972,16 @@ Running GSEA on Trial-Aware Rankings...
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
 
-st.plot_trial_interaction(adata, &quot;ms_Inflammatory_Response&quot;, design, ax=axes[0])
-axes[0].set_title(&quot;Global Interaction: Inflammatory Response&quot;)
+<span class="n">st</span><span class="o">.</span><span class="n">plot_trial_interaction</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="s2">&quot;ms_Inflammatory_Response&quot;</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Global Interaction: Inflammatory Response&quot;</span><span class="p">)</span>
 
-st.plot_abundance_interaction(adata, &quot;TypeA&quot;, design, ax=axes[1])
-axes[1].set_title(&quot;Abundance Shift: TypeA Proportion&quot;)
+<span class="n">st</span><span class="o">.</span><span class="n">plot_abundance_interaction</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="s2">&quot;TypeA&quot;</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Abundance Shift: TypeA Proportion&quot;</span><span class="p">)</span>
 
-plt.tight_layout()
-plt.show()
+<span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 <br/></pre></div>
 </div>
 </div>
@@ -1000,13 +1000,13 @@ plt.show()
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">14</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
 
-st.plot_did_forest(did_res, title=&quot;Module Score Effects&quot;, ax=axes[0])
-st.plot_did_forest(ab_res, title=&quot;Cell Type Proportion Effects&quot;, feature_col=&quot;celltype&quot;, ax=axes[1])
+<span class="n">st</span><span class="o">.</span><span class="n">plot_did_forest</span><span class="p">(</span><span class="n">did_res</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Module Score Effects&quot;</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+<span class="n">st</span><span class="o">.</span><span class="n">plot_did_forest</span><span class="p">(</span><span class="n">ab_res</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Cell Type Proportion Effects&quot;</span><span class="p">,</span> <span class="n">feature_col</span><span class="o">=</span><span class="s2">&quot;celltype&quot;</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
 
-plt.tight_layout()
-plt.show()
+<span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 <br/></pre></div>
 </div>
 </div>
@@ -1025,15 +1025,15 @@ plt.show()
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>st.plot_within_arm_comparison(
-    adata,
-    arm=&quot;Treated&quot;,
-    feature=&quot;ms_TypeB_Activation&quot;,
-    design=design,
-    visits=(&quot;Baseline&quot;, &quot;Followup&quot;),
-    plot_type=&quot;paired&quot;
-)
-plt.show()
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">st</span><span class="o">.</span><span class="n">plot_within_arm_comparison</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">,</span>
+    <span class="n">arm</span><span class="o">=</span><span class="s2">&quot;Treated&quot;</span><span class="p">,</span>
+    <span class="n">feature</span><span class="o">=</span><span class="s2">&quot;ms_TypeB_Activation&quot;</span><span class="p">,</span>
+    <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;Baseline&quot;</span><span class="p">,</span> <span class="s2">&quot;Followup&quot;</span><span class="p">),</span>
+    <span class="n">plot_type</span><span class="o">=</span><span class="s2">&quot;paired&quot;</span>
+<span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 <br/></pre></div>
 </div>
 </div>
@@ -1052,9 +1052,9 @@ plt.show()
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># We already have X_umap from make_blobs, which shows clear clusters.
-st.plot_trial_umap_panel(adata, &quot;ms_TypeB_Activation&quot;, design)
-plt.show()
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># We already have X_umap from make_blobs, which shows clear clusters.</span>
+<span class="n">st</span><span class="o">.</span><span class="n">plot_trial_umap_panel</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="s2">&quot;ms_TypeB_Activation&quot;</span><span class="p">,</span> <span class="n">design</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 <br/></pre></div>
 </div>
 </div>
@@ -1072,32 +1072,30 @@ plt.show()
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Mocking multiple cell type GSEA results for demonstration
-# We include more pathways and more cell types as requested
-mock_gsea_all = pd.DataFrame({
-    &quot;Term&quot;: [
-        &quot;Inflammatory_Response&quot;, &quot;TypeB_Activation&quot;, &quot;Metabolic_Control&quot;,
-        &quot;T_Cell_Signaling&quot;, &quot;IFN_Gamma_Response&quot;, &quot;Hypoxia&quot;
-    ] * 4,
-    &quot;pool&quot;: [&quot;TypeA&quot;] * 6 + [&quot;TypeB&quot;] * 6 + [&quot;TypeC&quot;] * 6 + [&quot;TypeD&quot;] * 6,
-    &quot;NES&quot;: [
-        2.1, 0.2, 1.5, 0.5, 2.5, 0.1,  # TypeA
-        1.8, 3.5, 0.5, 0.1, 2.0, 0.3,  # TypeB
-        0.5, 0.1, 0.1, 2.8, 0.5, 1.2,  # TypeC
-        0.2, 0.1, 2.5, 0.3, 0.2, 2.1   # TypeD
-    ],
-    &quot;FDR q-val&quot;: [
-        0.01, 0.8, 0.05, 0.6, 0.001, 0.9,
-        0.02, 0.001, 0.7, 0.9, 0.01, 0.8,
-        0.7, 0.9, 0.9, 0.001, 0.7, 0.05,
-        0.9, 0.9, 0.001, 0.8, 0.9, 0.01
-    ],
-    &quot;collection&quot;: [&quot;Demo&quot;] * 24
-})
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Mocking multiple cell type GSEA results for demonstration</span>
+<span class="c1"># We include 12 pathways and 4 cell types for a comprehensive heatmap</span>
+<span class="n">mock_gsea_all</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+    <span class="s2">&quot;Term&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;Inflammatory_Response&#39;</span><span class="p">,</span> <span class="s1">&#39;TypeB_Activation&#39;</span><span class="p">,</span> <span class="s1">&#39;Metabolic_Control&#39;</span><span class="p">,</span> <span class="s1">&#39;T_Cell_Signaling&#39;</span><span class="p">,</span> <span class="s1">&#39;IFN_Gamma_Response&#39;</span><span class="p">,</span> <span class="s1">&#39;Hypoxia&#39;</span><span class="p">,</span> <span class="s1">&#39;Cell_Cycle&#39;</span><span class="p">,</span> <span class="s1">&#39;Apoptosis&#39;</span><span class="p">,</span> <span class="s1">&#39;Angiogenesis&#39;</span><span class="p">,</span> <span class="s1">&#39;Fatty_Acid_Metabolism&#39;</span><span class="p">,</span> <span class="s1">&#39;MTORC1_Signaling&#39;</span><span class="p">,</span> <span class="s1">&#39;Glycolysis&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">4</span><span class="p">,</span>
+    <span class="s2">&quot;pool&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;TypeA&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">12</span> <span class="o">+</span> <span class="p">[</span><span class="s2">&quot;TypeB&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">12</span> <span class="o">+</span> <span class="p">[</span><span class="s2">&quot;TypeC&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">12</span> <span class="o">+</span> <span class="p">[</span><span class="s2">&quot;TypeD&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">12</span><span class="p">,</span>
+    <span class="s2">&quot;NES&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="mf">2.1</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">1.2</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.8</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="c1"># TypeA</span>
+        <span class="mf">1.8</span><span class="p">,</span> <span class="mf">3.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">,</span> <span class="mf">2.2</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="c1"># TypeB</span>
+        <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">2.8</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.2</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">1.8</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="c1"># TypeC</span>
+        <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">2.1</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">2.4</span>  <span class="c1"># TypeD</span>
+    <span class="p">],</span>
+    <span class="s2">&quot;FDR q-val&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">,</span>
+        <span class="mf">0.02</span><span class="p">,</span> <span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">,</span> <span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">,</span>
+        <span class="mf">0.7</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">,</span> <span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">,</span>
+        <span class="mf">0.9</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">,</span> <span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">,</span> <span class="mf">0.001</span>
+    <span class="p">],</span>
+    <span class="s2">&quot;collection&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;Demo&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">48</span>
+<span class="p">})</span>
 
-st.plot_gsea_heatmap(mock_gsea_all, collection=&quot;Demo&quot;, fdr_thresh=0.1, figsize=(10, 8))
-plt.show()
-<br/></pre></div>
+<span class="n">st</span><span class="o">.</span><span class="n">plot_gsea_heatmap</span><span class="p">(</span><span class="n">mock_gsea_all</span><span class="p">,</span> <span class="n">collection</span><span class="o">=</span><span class="s2">&quot;Demo&quot;</span><span class="p">,</span> <span class="n">fdr_thresh</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Example Cross-Celltype GSEA Heatmap&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
 </div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -1115,13 +1113,13 @@ plt.show()
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>st.plot_trial_dotplot(
-    adata,
-    features=[&quot;ms_Inflammatory_Response&quot;, &quot;ms_TypeB_Activation&quot;],
-    design=design,
-    standard_scale=&quot;var&quot;
-)
-plt.show()
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">st</span><span class="o">.</span><span class="n">plot_trial_dotplot</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">,</span>
+    <span class="n">features</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ms_Inflammatory_Response&quot;</span><span class="p">,</span> <span class="s2">&quot;ms_TypeB_Activation&quot;</span><span class="p">],</span>
+    <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+    <span class="n">standard_scale</span><span class="o">=</span><span class="s2">&quot;var&quot;</span>
+<span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 <br/></pre></div>
 </div>
 </div>

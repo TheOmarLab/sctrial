@@ -51,28 +51,19 @@
 <li class="toctree-l1 current"><a class="current reference internal" href="#">API Reference</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#trial-design">Trial Design</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#sctrial.design.TrialDesign"><code class="docutils literal notranslate"><span class="pre">TrialDesign</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#sctrial.design.TrialDesign.participant_col"><code class="docutils literal notranslate"><span class="pre">TrialDesign.participant_col</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#sctrial.design.TrialDesign.visit_col"><code class="docutils literal notranslate"><span class="pre">TrialDesign.visit_col</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#sctrial.design.TrialDesign.arm_bin"><code class="docutils literal notranslate"><span class="pre">TrialDesign.arm_bin()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#sctrial.design.TrialDesign.arm_col"><code class="docutils literal notranslate"><span class="pre">TrialDesign.arm_col</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#sctrial.design.TrialDesign.arm_treated"><code class="docutils literal notranslate"><span class="pre">TrialDesign.arm_treated</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#sctrial.design.TrialDesign.arm_control"><code class="docutils literal notranslate"><span class="pre">TrialDesign.arm_control</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#sctrial.design.TrialDesign.arm_treated"><code class="docutils literal notranslate"><span class="pre">TrialDesign.arm_treated</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#sctrial.design.TrialDesign.baseline_visit"><code class="docutils literal notranslate"><span class="pre">TrialDesign.baseline_visit</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#sctrial.design.TrialDesign.celltype_col"><code class="docutils literal notranslate"><span class="pre">TrialDesign.celltype_col</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#sctrial.design.TrialDesign.crossover_col"><code class="docutils literal notranslate"><span class="pre">TrialDesign.crossover_col</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#sctrial.design.TrialDesign.baseline_visit"><code class="docutils literal notranslate"><span class="pre">TrialDesign.baseline_visit</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#sctrial.design.TrialDesign.followup_visit"><code class="docutils literal notranslate"><span class="pre">TrialDesign.followup_visit</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#sctrial.design.TrialDesign.arm_bin"><code class="docutils literal notranslate"><span class="pre">TrialDesign.arm_bin()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id0"><code class="docutils literal notranslate"><span class="pre">TrialDesign.arm_col</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id1"><code class="docutils literal notranslate"><span class="pre">TrialDesign.arm_control</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id2"><code class="docutils literal notranslate"><span class="pre">TrialDesign.arm_treated</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id3"><code class="docutils literal notranslate"><span class="pre">TrialDesign.baseline_visit</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id4"><code class="docutils literal notranslate"><span class="pre">TrialDesign.celltype_col</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id5"><code class="docutils literal notranslate"><span class="pre">TrialDesign.crossover_col</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id6"><code class="docutils literal notranslate"><span class="pre">TrialDesign.followup_visit</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id7"><code class="docutils literal notranslate"><span class="pre">TrialDesign.participant_col</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#sctrial.design.TrialDesign.participant_col"><code class="docutils literal notranslate"><span class="pre">TrialDesign.participant_col</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#sctrial.design.TrialDesign.primary_visits"><code class="docutils literal notranslate"><span class="pre">TrialDesign.primary_visits()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#sctrial.design.TrialDesign.required_cols"><code class="docutils literal notranslate"><span class="pre">TrialDesign.required_cols()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#sctrial.design.TrialDesign.validate"><code class="docutils literal notranslate"><span class="pre">TrialDesign.validate()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id8"><code class="docutils literal notranslate"><span class="pre">TrialDesign.visit_col</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#sctrial.design.TrialDesign.visit_col"><code class="docutils literal notranslate"><span class="pre">TrialDesign.visit_col</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -159,106 +150,6 @@
 <p>The <cite>TrialDesign</cite> object centralizes the mapping of your study design to
 the AnnData object. It is used by almost all statistical and plotting
 functions in <cite>sctrial</cite>.</p>
-<dl class="py attribute">
-<dt class="sig sig-object py" id="sctrial.design.TrialDesign.participant_col">
-<span class="sig-name descname"><span class="pre">participant_col</span></span><a class="headerlink" href="#sctrial.design.TrialDesign.participant_col" title="Link to this definition"></a></dt>
-<dd><p>Name of the column containing unique participant identifiers.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="sctrial.design.TrialDesign.visit_col">
-<span class="sig-name descname"><span class="pre">visit_col</span></span><a class="headerlink" href="#sctrial.design.TrialDesign.visit_col" title="Link to this definition"></a></dt>
-<dd><p>Name of the column containing visit or timepoint labels.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="sctrial.design.TrialDesign.arm_col">
-<span class="sig-name descname"><span class="pre">arm_col</span></span><a class="headerlink" href="#sctrial.design.TrialDesign.arm_col" title="Link to this definition"></a></dt>
-<dd><p>Name of the column containing treatment arm assignments.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="sctrial.design.TrialDesign.arm_treated">
-<span class="sig-name descname"><span class="pre">arm_treated</span></span><a class="headerlink" href="#sctrial.design.TrialDesign.arm_treated" title="Link to this definition"></a></dt>
-<dd><p>The label in <cite>arm_col</cite> representing the treatment/experimental group.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="sctrial.design.TrialDesign.arm_control">
-<span class="sig-name descname"><span class="pre">arm_control</span></span><a class="headerlink" href="#sctrial.design.TrialDesign.arm_control" title="Link to this definition"></a></dt>
-<dd><p>The label in <cite>arm_col</cite> representing the control/placebo group.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="sctrial.design.TrialDesign.celltype_col">
-<span class="sig-name descname"><span class="pre">celltype_col</span></span><a class="headerlink" href="#sctrial.design.TrialDesign.celltype_col" title="Link to this definition"></a></dt>
-<dd><p>Optional name of the column containing cell-type annotations.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a> | None</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="sctrial.design.TrialDesign.crossover_col">
-<span class="sig-name descname"><span class="pre">crossover_col</span></span><a class="headerlink" href="#sctrial.design.TrialDesign.crossover_col" title="Link to this definition"></a></dt>
-<dd><p>Optional name of the column containing boolean-like indicators for
-crossover cells.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a> | None</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="sctrial.design.TrialDesign.baseline_visit">
-<span class="sig-name descname"><span class="pre">baseline_visit</span></span><a class="headerlink" href="#sctrial.design.TrialDesign.baseline_visit" title="Link to this definition"></a></dt>
-<dd><p>Optional default baseline visit label (e.g., ‘Baseline’, ‘V1’).</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a> | None</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="sctrial.design.TrialDesign.followup_visit">
-<span class="sig-name descname"><span class="pre">followup_visit</span></span><a class="headerlink" href="#sctrial.design.TrialDesign.followup_visit" title="Link to this definition"></a></dt>
-<dd><p>Optional default follow-up visit label (e.g., ‘Follow-up’, ‘V2’).</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a> | None</p>
-</dd>
-</dl>
-</dd></dl>
-
 <dl class="py method">
 <dt class="sig sig-object py" id="sctrial.design.TrialDesign.arm_bin">
 <span class="sig-name descname"><span class="pre">arm_bin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v2.3.3)"><span class="pre">Series</span></a></span></span><a class="reference internal" href="_modules/sctrial/design.html#TrialDesign.arm_bin"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.design.TrialDesign.arm_bin" title="Link to this definition"></a></dt>
@@ -266,44 +157,52 @@ crossover cells.</p>
 </dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="id0">
-<span class="sig-name descname"><span class="pre">arm_col</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'arm'</span></em><a class="headerlink" href="#id0" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<dt class="sig sig-object py" id="sctrial.design.TrialDesign.arm_col">
+<span class="sig-name descname"><span class="pre">arm_col</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'arm'</span></em><a class="headerlink" href="#sctrial.design.TrialDesign.arm_col" title="Link to this definition"></a></dt>
+<dd><p>Name of the column containing treatment arm assignments.</p>
+</dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="id1">
-<span class="sig-name descname"><span class="pre">arm_control</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'Control'</span></em><a class="headerlink" href="#id1" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<dt class="sig sig-object py" id="sctrial.design.TrialDesign.arm_control">
+<span class="sig-name descname"><span class="pre">arm_control</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'Control'</span></em><a class="headerlink" href="#sctrial.design.TrialDesign.arm_control" title="Link to this definition"></a></dt>
+<dd><p>The label in <cite>arm_col</cite> representing the control/placebo group.</p>
+</dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="id2">
-<span class="sig-name descname"><span class="pre">arm_treated</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'Treated'</span></em><a class="headerlink" href="#id2" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<dt class="sig sig-object py" id="sctrial.design.TrialDesign.arm_treated">
+<span class="sig-name descname"><span class="pre">arm_treated</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'Treated'</span></em><a class="headerlink" href="#sctrial.design.TrialDesign.arm_treated" title="Link to this definition"></a></dt>
+<dd><p>The label in <cite>arm_col</cite> representing the treatment/experimental group.</p>
+</dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="id3">
-<span class="sig-name descname"><span class="pre">baseline_visit</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#id3" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<dt class="sig sig-object py" id="sctrial.design.TrialDesign.baseline_visit">
+<span class="sig-name descname"><span class="pre">baseline_visit</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#sctrial.design.TrialDesign.baseline_visit" title="Link to this definition"></a></dt>
+<dd><p>Optional default baseline visit label (e.g., ‘Baseline’, ‘V1’).</p>
+</dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="id4">
-<span class="sig-name descname"><span class="pre">celltype_col</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'celltype'</span></em><a class="headerlink" href="#id4" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<dt class="sig sig-object py" id="sctrial.design.TrialDesign.celltype_col">
+<span class="sig-name descname"><span class="pre">celltype_col</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'celltype'</span></em><a class="headerlink" href="#sctrial.design.TrialDesign.celltype_col" title="Link to this definition"></a></dt>
+<dd><p>Optional name of the column containing cell-type annotations.</p>
+</dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="id5">
-<span class="sig-name descname"><span class="pre">crossover_col</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#id5" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<dt class="sig sig-object py" id="sctrial.design.TrialDesign.crossover_col">
+<span class="sig-name descname"><span class="pre">crossover_col</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#sctrial.design.TrialDesign.crossover_col" title="Link to this definition"></a></dt>
+<dd><p>Optional name of the column containing boolean-like indicators for crossover cells.</p>
+</dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="id6">
-<span class="sig-name descname"><span class="pre">followup_visit</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#id6" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<dt class="sig sig-object py" id="sctrial.design.TrialDesign.followup_visit">
+<span class="sig-name descname"><span class="pre">followup_visit</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#sctrial.design.TrialDesign.followup_visit" title="Link to this definition"></a></dt>
+<dd><p>Optional default follow-up visit label (e.g., ‘Follow-up’, ‘V2’).</p>
+</dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="id7">
-<span class="sig-name descname"><span class="pre">participant_col</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'participant_id'</span></em><a class="headerlink" href="#id7" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<dt class="sig sig-object py" id="sctrial.design.TrialDesign.participant_col">
+<span class="sig-name descname"><span class="pre">participant_col</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'participant_id'</span></em><a class="headerlink" href="#sctrial.design.TrialDesign.participant_col" title="Link to this definition"></a></dt>
+<dd><p>Name of the column containing unique participant identifiers.</p>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="sctrial.design.TrialDesign.primary_visits">
@@ -321,9 +220,10 @@ crossover cells.</p>
 <dd></dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="id8">
-<span class="sig-name descname"><span class="pre">visit_col</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'visit'</span></em><a class="headerlink" href="#id8" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<dt class="sig sig-object py" id="sctrial.design.TrialDesign.visit_col">
+<span class="sig-name descname"><span class="pre">visit_col</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'visit'</span></em><a class="headerlink" href="#sctrial.design.TrialDesign.visit_col" title="Link to this definition"></a></dt>
+<dd><p>Name of the column containing visit or timepoint labels.</p>
+</dd></dl>
 
 </dd></dl>
 
