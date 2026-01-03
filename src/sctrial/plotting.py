@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Optional, Sequence, Tuple, Literal
+from typing import Optional, Sequence, Tuple, Literal, Any
 import numpy as np
 import pandas as pd
 from anndata import AnnData
@@ -12,6 +12,9 @@ from ._env import ensure_numba_cache_dir, ensure_matplotlib_config_dir
 ensure_matplotlib_config_dir()
 ensure_numba_cache_dir()
 
+plt: Any = None
+GridSpec: Any = None
+# type: ignore[no-redef]
 try:
     import matplotlib.pyplot as plt
     from matplotlib.gridspec import GridSpec
@@ -19,12 +22,13 @@ except ImportError:
     plt = None
     GridSpec = None
 
+# type: ignore[no-redef]
 try:
     import seaborn as sns
 except ImportError:
     sns = None
 
-scanpy_import_error = None
+# type: ignore[no-redef]
 try:
     import scanpy as sc
 except Exception as e:  # ImportError or runtime errors (e.g., numba cache)
@@ -198,6 +202,7 @@ def plot_did_forest(
     y_pos = np.arange(len(df_plot))
     
     # Identify significant ones
+    sig: Any
     if p_col in df_plot.columns:
         sig = df_plot[p_col] < alpha
     else:
@@ -675,6 +680,7 @@ def plot_gsea_heatmap(
             "Install with: pip install sctrial[plots]"
         )
     # If it's a gseapy Prerank object, extract res2d
+    df: Any
     if hasattr(gsea_results, "res2d"):
         df = gsea_results.res2d.copy()
     else:
