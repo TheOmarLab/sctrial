@@ -14,41 +14,34 @@ class TrialDesign:
     The `TrialDesign` object centralizes the mapping of your study design to 
     the AnnData object. It is used by almost all statistical and plotting 
     functions in `sctrial`.
-
-    Attributes
-    ----------
-    participant_col
-        Name of the column containing unique participant identifiers.
-    visit_col
-        Name of the column containing visit or timepoint labels.
-    arm_col
-        Name of the column containing treatment arm assignments.
-    arm_treated
-        The label in `arm_col` representing the treatment/experimental group.
-    arm_control
-        The label in `arm_col` representing the control/placebo group.
-    celltype_col
-        Optional name of the column containing cell-type annotations.
-    crossover_col
-        Optional name of the column containing boolean-like indicators for 
-        crossover cells.
-    baseline_visit
-        Optional default baseline visit label (e.g., 'Baseline', 'V1').
-    followup_visit
-        Optional default follow-up visit label (e.g., 'Follow-up', 'V2').
     """
 
     participant_col: str = "participant_id"
-    visit_col: str = "visit"
-    arm_col: str = "arm"
-    arm_treated: str = "Treated"
-    arm_control: str = "Control"
-    celltype_col: Optional[str] = "celltype"
-    crossover_col: Optional[str] = None
+    """Name of the column containing unique participant identifiers."""
 
-    # Optional defaults (handy for projects; optional for package)
+    visit_col: str = "visit"
+    """Name of the column containing visit or timepoint labels."""
+
+    arm_col: str = "arm"
+    """Name of the column containing treatment arm assignments."""
+
+    arm_treated: str = "Treated"
+    """The label in `arm_col` representing the treatment/experimental group."""
+
+    arm_control: str = "Control"
+    """The label in `arm_col` representing the control/placebo group."""
+
+    celltype_col: Optional[str] = "celltype"
+    """Optional name of the column containing cell-type annotations."""
+
+    crossover_col: Optional[str] = None
+    """Optional name of the column containing boolean-like indicators for crossover cells."""
+
     baseline_visit: Optional[str] = None
+    """Optional default baseline visit label (e.g., 'Baseline', 'V1')."""
+
     followup_visit: Optional[str] = None
+    """Optional default follow-up visit label (e.g., 'Follow-up', 'V2')."""
 
     def primary_visits(
             self,

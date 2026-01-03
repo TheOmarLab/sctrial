@@ -27,6 +27,8 @@ jobs:
         sudo apt-get update && sudo apt-get install -y pandoc
         python -m pip install --upgrade pip
         pip install .[dev,plots,gsea]
+        pip install ipykernel
+        python -m ipykernel install --user --name python3
     - name: Lint with Ruff
       run: |
         ruff check src tests
@@ -58,8 +60,9 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update && sudo apt-get install -y pandoc
-        pip install -e .[plots,gsea]
-        pip install sphinx sphinx_rtd_theme nbsphinx
+        pip install .[plots,gsea]
+        pip install sphinx sphinx_rtd_theme nbsphinx ipykernel
+        python -m ipykernel install --user --name python3
     - name: Build documentation
       run: |
         cd docs && sphinx-build -b html source build/html
