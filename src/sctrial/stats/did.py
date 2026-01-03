@@ -43,7 +43,12 @@ def did_fit(
     # time is assumed numeric 0/1 already
     if standardize:
         yy = tmp[y].astype(float)
-        tmp["_y"] = (yy - yy.mean())/(yy.std(ddof=1)+1e-12)
+        y_std = yy.std(ddof=1)
+        # Skip features with near-zero variance to avoid misleading standardized estimates
+        if y_std < 1e-8:
+            return {"beta_DiD": np.nan, "se_DiD": np.nan, "p_DiD": np.nan,
+                    "beta_time": np.nan, "p_time": np.nan, "n_units": tmp[unit].nunique()}
+        tmp["_y"] = (yy - yy.mean()) / y_std
     else:
         tmp["_y"] = tmp[y].astype(float)
 

@@ -69,13 +69,17 @@ def score_gene_sets(
         elif method == "zmean":
             mu = sub.mean(axis=0, keepdims=True)
             sd = sub.std(axis=0, ddof=1, keepdims=True)
-            
+
             # Mask zero-variance genes to prevent NaNs
             mask = (sd > 1e-12).ravel()
-            z = np.zeros(sub.shape, dtype=np.float64)
-            if np.any(mask):
-                z[:, mask] = (sub[:, mask] - mu[:, mask]) / sd[:, mask]
-            score = z.mean(axis=1)
+            n_valid = mask.sum()
+            if n_valid == 0:
+                # All genes have zero variance - return NaN
+                score = np.full(sub.shape[0], np.nan)
+            else:
+                # Only average over genes with non-zero variance
+                z = (sub[:, mask] - mu[:, mask]) / sd[:, mask]
+                score = z.mean(axis=1)
         else:
             raise ValueError(f"Unknown method: {method}")
 

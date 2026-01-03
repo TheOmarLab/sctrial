@@ -22,7 +22,6 @@ def run_gsea_did(
     layer: Optional[str] = None,
     exclude_crossovers: bool = True,
     rank_by: str = "signed_confidence",
-    min_units: int = 5,
     use_bootstrap: bool = False,
     n_boot: int = 999,
     return_obj: bool = False,
@@ -54,12 +53,10 @@ def run_gsea_did(
     rank_by
         Metric for ranking genes:
 
-        - 'signed_confidence': sign(beta_DiD) * -log10(p_DiD). Highlights 
+        - 'signed_confidence': sign(beta_DiD) * -log10(p_DiD). Highlights
           genes with high effect and high significance.
         - 'beta': ranks genes solely by the DiD effect size.
         - 'tstat': ranks genes by the t-statistic (beta_DiD / se_DiD).
-    min_units
-        Minimum paired participants required for DiD.
     use_bootstrap
         Whether to use Wild Cluster Bootstrap for DiD p-values (used if 
         rank_by is 'signed_confidence').

@@ -29,6 +29,7 @@ except ImportError:
     sns = None
 
 # type: ignore[no-redef]
+scanpy_import_error = None
 try:
     import scanpy as sc
 except Exception as e:  # ImportError or runtime errors (e.g., numba cache)
@@ -279,7 +280,7 @@ def plot_within_arm_comparison(
             "matplotlib and seaborn are required for plotting. "
             "Install with: pip install sctrial[plots]"
         )
-    from .stats.comparisons import subset_cells
+    from .adata_tools import subset_cells
     ad = subset_cells(adata, design, arm=arm)
     ad = ad[ad.obs[design.visit_col].isin(visits)].copy()
 

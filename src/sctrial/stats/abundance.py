@@ -129,9 +129,13 @@ def abundance_did(
 
         # residual df guard for FE
         model = smf.ols(formula, data=tmp)
-        
+
         try:
-            fit = model.fit()
+            # Use cluster-robust standard errors for consistency with did_fit
+            fit = model.fit(
+                cov_type="cluster",
+                cov_kwds={"groups": tmp[design.participant_col]}
+            )
             term = "visit_num:arm_bin"
             
             # Check if interaction term was estimable
