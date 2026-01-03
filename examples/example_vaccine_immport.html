@@ -67,10 +67,15 @@
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#Peak-Response-(Day-0-vs-Day-7)">Peak Response (Day 0 vs Day 7)</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#Stratified-Analysis-across-Cell-Types">Stratified Analysis across Cell Types</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#4.-GSEA-on-Vaccine-Effect">4. GSEA on Vaccine Effect</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#4.-Abundance-Analysis">4. Abundance Analysis</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#5.-Visualization">5. Visualization</a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="#Forest-Plots">Forest Plots</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#Individual-Participant-Trajectories">Individual Participant Trajectories</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#Interaction-Plots">Interaction Plots</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#Trial-Aware-UMAP-Panel">Trial-Aware UMAP Panel</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#GSEA-Pathway-Analysis">GSEA Pathway Analysis</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="stress_test_real_scale.html">sctrial: Stress Test and Scalability Analysis</a></li>
@@ -147,25 +152,69 @@ from scipy import sparse
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>def load_vaccine_example_data():
-    # Load real biological data (pbmc3k)
-    adata = sc.datasets.pbmc3k_processed()
+    # Load raw biological data
+    adata = sc.datasets.pbmc3k()
 
-    # Map to longitudinal vaccine study design
+    # Basic Preprocessing to get cell types first
+    adata.layers[&quot;counts&quot;] = adata.X.copy()
+    sc.pp.normalize_total(adata, target_sum=1e4)
+    sc.pp.log1p(adata)
+    sc.pp.pca(adata)
+    sc.pp.neighbors(adata)
+    sc.tl.leiden(adata)
+    sc.tl.umap(adata)
+
+    type_map = {
+        &quot;0&quot;: &quot;CD4 T&quot;, &quot;1&quot;: &quot;Monocytes&quot;, &quot;2&quot;: &quot;B cells&quot;, &quot;3&quot;: &quot;CD8 T&quot;,
+        &quot;4&quot;: &quot;NK cells&quot;, &quot;5&quot;: &quot;Monocytes&quot;, &quot;6&quot;: &quot;Dendritic&quot;, &quot;7&quot;: &quot;Megakaryocytes&quot;
+    }
+    adata.obs[&quot;cell_type&quot;] = adata.obs[&quot;leiden&quot;].map(type_map).fillna(&quot;Other&quot;)
+
     # 10 subjects, 3 timepoints (Day 0, Day 7, Day 28), 2 arms (Vaccine, Placebo)
     np.random.seed(42)
     subjects = [f&quot;Subj_{i}&quot; for i in range(10)]
     timepoints = [0, 7, 28]
     arms = [&quot;Vaccine_A&quot;, &quot;Placebo&quot;]
 
-    adata.obs[&quot;subject_id&quot;] = np.random.choice(subjects, size=adata.n_obs)
-    adata.obs[&quot;study_time_collected&quot;] = np.random.choice(timepoints, size=adata.n_obs)
+    # Create metadata: Ensure pairing WITHIN each cell type
+    new_obs = pd.DataFrame(index=adata.obs_names)
+    new_obs[&quot;subject_id&quot;] = &quot;Unknown&quot;
+    new_obs[&quot;study_time_collected&quot;] = -1
+    new_obs[&quot;arm&quot;] = &quot;Unknown&quot;
 
-    # Assign arms by subject
-    subj_to_arm = {s: arms[i % 2] for i, s in enumerate(subjects)}
-    adata.obs[&quot;arm&quot;] = adata.obs[&quot;subject_id&quot;].map(subj_to_arm)
+    for ct in adata.obs[&quot;cell_type&quot;].unique():
+        ct_mask = adata.obs[&quot;cell_type&quot;] == ct
+        ct_indices = np.where(ct_mask)[0]
+        np.random.shuffle(ct_indices)
 
-    # Use existing cell type annotations
-    adata.obs[&quot;cell_type&quot;] = adata.obs[&quot;louvain&quot;]
+        n_cells = len(ct_indices)
+        cells_per_unit = n_cells // (len(subjects) * len(timepoints))
+        if cells_per_unit == 0: continue
+
+        curr = 0
+        for i, subj in enumerate(subjects):
+            arm = arms[i % 2]
+            for tp in timepoints:
+                end = curr + cells_per_unit
+                idx_subset = ct_indices[curr:end]
+                new_obs.iloc[idx_subset, new_obs.columns.get_loc(&quot;subject_id&quot;)] = subj
+                new_obs.iloc[idx_subset, new_obs.columns.get_loc(&quot;study_time_collected&quot;)] = tp
+                new_obs.iloc[idx_subset, new_obs.columns.get_loc(&quot;arm&quot;)] = arm
+                curr = end
+
+    adata.obs = pd.concat([adata.obs, new_obs], axis=1)
+    adata = adata[adata.obs[&quot;subject_id&quot;] != &quot;Unknown&quot;].copy()
+
+    # Inject signal: Vaccine induces activation markers at Day 7
+    vaccine_idx = (adata.obs[&quot;arm&quot;] == &quot;Vaccine_A&quot;) &amp; (adata.obs[&quot;study_time_collected&quot;] == 7)
+    gene_idx = adata.var_names.get_loc(&quot;CD79A&quot;)
+
+    X = adata.layers[&quot;counts&quot;].toarray() if hasattr(adata.layers[&quot;counts&quot;], &quot;toarray&quot;) else adata.layers[&quot;counts&quot;]
+    X[vaccine_idx.values, gene_idx] += 20
+    adata.layers[&quot;counts&quot;] = sparse.csr_matrix(X)
+    adata.X = adata.layers[&quot;counts&quot;].copy()
+    sc.pp.normalize_total(adata, target_sum=1e4)
+    sc.pp.log1p(adata)
 
     return adata
 
@@ -180,7 +229,8 @@ print(f&quot;Loaded biological dataset: {adata.n_obs} cells, {adata.n_vars} gene
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-Loaded biological dataset: 2638 cells, 1838 genes
+WARNING: adata.X seems to be already log-transformed.
+Loaded biological dataset: 2580 cells, 32738 genes
 </pre></div></div>
 </div>
 </section>
@@ -216,7 +266,14 @@ Loaded biological dataset: 2638 cells, 1838 genes
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>adata = st.add_log1p_cpm_layer(adata, out_layer=&quot;log1p_cpm&quot;)
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>adata = st.add_log1p_cpm_layer(adata, counts_layer=&quot;counts&quot;, out_layer=&quot;log1p_cpm&quot;)
+
+# Score features
+gene_sets = {
+    &quot;Activation&quot;: [&quot;CD79A&quot;, &quot;CD79B&quot;, &quot;MS4A1&quot;],
+    &quot;Cytotoxicity&quot;: [&quot;GNLY&quot;, &quot;NKG7&quot;, &quot;GZMB&quot;]
+}
+adata = st.score_gene_sets(adata, gene_sets, layer=&quot;log1p_cpm&quot;, method=&quot;mean&quot;, prefix=&quot;ms_&quot;)
 <br/></pre></div>
 </div>
 </div>
@@ -233,7 +290,7 @@ Loaded biological dataset: 2638 cells, 1838 genes
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>res = st.did_table(
     adata,
-    features=[&quot;CD79A&quot;, &quot;MS4A1&quot;, &quot;GNLY&quot;, &quot;NKG7&quot;],
+    features=[&quot;ms_Activation&quot;, &quot;ms_Cytotoxicity&quot;, &quot;CD79A&quot;, &quot;MS4A1&quot;, &quot;GNLY&quot;, &quot;NKG7&quot;],
     design=design,
     visits=(0, 7),
     aggregate=&quot;participant_visit&quot;
@@ -278,47 +335,69 @@ print(st.summarize_did_results(res))
   <tbody>
     <tr>
       <th>0</th>
-      <td>-1.451554</td>
-      <td>1.171732</td>
-      <td>0.215415</td>
-      <td>1.150051</td>
-      <td>0.104106</td>
+      <td>2.269939</td>
+      <td>0.034974</td>
+      <td>0.000000e+00</td>
+      <td>-0.005498</td>
+      <td>0.869414</td>
       <td>10</td>
       <td>CD79A</td>
-      <td>0.861662</td>
+      <td>0.000000e+00</td>
     </tr>
     <tr>
       <th>1</th>
-      <td>0.932858</td>
-      <td>1.528912</td>
-      <td>0.541766</td>
-      <td>-1.472596</td>
-      <td>0.315178</td>
+      <td>2.213965</td>
+      <td>0.269151</td>
+      <td>1.939790e-16</td>
+      <td>0.041339</td>
+      <td>0.804972</td>
       <td>10</td>
-      <td>NKG7</td>
-      <td>0.919965</td>
+      <td>ms_Activation</td>
+      <td>5.819371e-16</td>
     </tr>
     <tr>
       <th>2</th>
-      <td>-0.545989</td>
-      <td>1.368768</td>
-      <td>0.689974</td>
-      <td>0.176860</td>
-      <td>0.695276</td>
+      <td>-0.810554</td>
+      <td>1.041547</td>
+      <td>4.364385e-01</td>
+      <td>0.550729</td>
+      <td>0.527296</td>
       <td>10</td>
-      <td>MS4A1</td>
-      <td>0.919965</td>
+      <td>GNLY</td>
+      <td>8.728770e-01</td>
     </tr>
     <tr>
       <th>3</th>
-      <td>0.028219</td>
-      <td>1.396002</td>
-      <td>0.983873</td>
-      <td>-0.816434</td>
-      <td>0.485850</td>
+      <td>0.380536</td>
+      <td>1.295159</td>
+      <td>7.689000e-01</td>
+      <td>-0.378855</td>
+      <td>0.564508</td>
       <td>10</td>
-      <td>GNLY</td>
-      <td>0.983873</td>
+      <td>MS4A1</td>
+      <td>8.771675e-01</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>0.287789</td>
+      <td>1.449151</td>
+      <td>8.425824e-01</td>
+      <td>0.361292</td>
+      <td>0.606418</td>
+      <td>10</td>
+      <td>NKG7</td>
+      <td>8.771675e-01</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>-0.202378</td>
+      <td>1.309374</td>
+      <td>8.771675e-01</td>
+      <td>0.106571</td>
+      <td>0.874962</td>
+      <td>10</td>
+      <td>ms_Cytotoxicity</td>
+      <td>8.771675e-01</td>
     </tr>
   </tbody>
 </table>
@@ -330,17 +409,18 @@ print(st.summarize_did_results(res))
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 ## Trial-Aware DiD Summary
-Total features tested: 4
-Significant (p &lt; 0.05): 0
-Significant (FDR &lt; 0.05): 0
+Total features tested: 6
+Significant (p &lt; 0.05): 2
+Significant (FDR &lt; 0.05): 2
 
 ### Top Upregulated Features (by p-value):
-- NKG7: beta=0.933, p=5.42e-01
-- GNLY: beta=0.028, p=9.84e-01
+- CD79A: beta=2.270, p=0.00e+00
+- ms_Activation: beta=2.214, p=1.94e-16
+- MS4A1: beta=0.381, p=7.69e-01
 
 ### Top Downregulated Features (by p-value):
-- CD79A: beta=-1.452, p=2.15e-01
-- MS4A1: beta=-0.546, p=6.90e-01
+- GNLY: beta=-0.811, p=4.36e-01
+- ms_Cytotoxicity: beta=-0.202, p=8.77e-01
 </pre></div></div>
 </div>
 </section>
@@ -353,7 +433,7 @@ Significant (FDR &lt; 0.05): 0
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>strat_res = st.did_table_by_celltype(
     adata,
-    features=[&quot;CD79A&quot;, &quot;GNLY&quot;],
+    features=[&quot;ms_Activation&quot;, &quot;CD79A&quot;],
     design=design,
     visits=(0, 7)
 )
@@ -398,242 +478,283 @@ display(strat_res)
   <tbody>
     <tr>
       <th>0</th>
-      <td>-1.441517</td>
-      <td>1.172527</td>
-      <td>0.218918</td>
-      <td>1.538912</td>
-      <td>0.089655</td>
+      <td>2.430951</td>
+      <td>0.272940</td>
+      <td>5.265325e-19</td>
+      <td>1.001253e-02</td>
+      <td>0.967490</td>
       <td>10</td>
       <td>CD79A</td>
-      <td>0.338546</td>
+      <td>1.053065e-18</td>
       <td>B cells</td>
-      <td>0.677091</td>
+      <td>1.203503e-18</td>
     </tr>
     <tr>
       <th>1</th>
-      <td>1.123721</td>
-      <td>1.174160</td>
-      <td>0.338546</td>
-      <td>-1.186364</td>
-      <td>0.231063</td>
+      <td>1.487161</td>
+      <td>0.809970</td>
+      <td>6.634721e-02</td>
+      <td>6.753245e-02</td>
+      <td>0.877442</td>
       <td>10</td>
-      <td>GNLY</td>
-      <td>0.338546</td>
+      <td>ms_Activation</td>
+      <td>6.634721e-02</td>
       <td>B cells</td>
-      <td>0.677091</td>
+      <td>7.077035e-02</td>
     </tr>
     <tr>
       <th>2</th>
-      <td>-1.350189</td>
-      <td>1.331752</td>
-      <td>0.310657</td>
-      <td>1.054198</td>
-      <td>0.388355</td>
+      <td>2.284393</td>
+      <td>0.060024</td>
+      <td>0.000000e+00</td>
+      <td>-4.317620e-02</td>
+      <td>0.092038</td>
       <td>10</td>
-      <td>GNLY</td>
-      <td>0.621315</td>
-      <td>CD14+ Monocytes</td>
-      <td>0.677091</td>
+      <td>CD79A</td>
+      <td>0.000000e+00</td>
+      <td>CD4 T</td>
+      <td>0.000000e+00</td>
     </tr>
     <tr>
       <th>3</th>
-      <td>-0.449590</td>
-      <td>1.620645</td>
-      <td>0.781462</td>
-      <td>0.007000</td>
-      <td>0.994212</td>
+      <td>2.353759</td>
+      <td>0.307077</td>
+      <td>1.787776e-14</td>
+      <td>-1.110953e-01</td>
+      <td>0.608553</td>
       <td>10</td>
-      <td>CD79A</td>
-      <td>0.781462</td>
-      <td>CD14+ Monocytes</td>
-      <td>0.844081</td>
+      <td>ms_Activation</td>
+      <td>1.787776e-14</td>
+      <td>CD4 T</td>
+      <td>3.178268e-14</td>
     </tr>
     <tr>
       <th>4</th>
-      <td>0.570227</td>
-      <td>1.224558</td>
-      <td>0.641459</td>
-      <td>-0.685141</td>
-      <td>0.010336</td>
+      <td>2.242422</td>
+      <td>0.065312</td>
+      <td>2.431000e-258</td>
+      <td>-1.201580e-02</td>
+      <td>0.491297</td>
       <td>10</td>
-      <td>GNLY</td>
-      <td>0.848378</td>
-      <td>CD4 T cells</td>
-      <td>0.844081</td>
+      <td>CD79A</td>
+      <td>4.862000e-258</td>
+      <td>CD8 T</td>
+      <td>9.724000e-258</td>
     </tr>
     <tr>
       <th>5</th>
-      <td>0.271617</td>
-      <td>1.420673</td>
-      <td>0.848378</td>
-      <td>-0.821286</td>
-      <td>0.485060</td>
+      <td>2.235935</td>
+      <td>0.415038</td>
+      <td>7.152291e-08</td>
+      <td>-6.536571e-02</td>
+      <td>0.850708</td>
       <td>10</td>
-      <td>CD79A</td>
-      <td>0.848378</td>
-      <td>CD4 T cells</td>
-      <td>0.848378</td>
+      <td>ms_Activation</td>
+      <td>7.152291e-08</td>
+      <td>CD8 T</td>
+      <td>1.144367e-07</td>
     </tr>
     <tr>
       <th>6</th>
-      <td>-1.526498</td>
-      <td>1.394830</td>
-      <td>0.273781</td>
-      <td>1.333250</td>
-      <td>0.132288</td>
+      <td>2.204543</td>
+      <td>0.097106</td>
+      <td>4.232032e-114</td>
+      <td>-5.995204e-15</td>
+      <td>0.190571</td>
       <td>10</td>
       <td>CD79A</td>
-      <td>0.467245</td>
-      <td>CD8 T cells</td>
-      <td>0.677091</td>
+      <td>8.464063e-114</td>
+      <td>Dendritic</td>
+      <td>1.354250e-113</td>
     </tr>
     <tr>
       <th>7</th>
-      <td>-1.022952</td>
-      <td>1.407147</td>
-      <td>0.467245</td>
-      <td>0.162925</td>
-      <td>0.888051</td>
+      <td>1.934584</td>
+      <td>0.491023</td>
+      <td>8.151241e-05</td>
+      <td>1.729167e-01</td>
+      <td>0.645118</td>
       <td>10</td>
-      <td>GNLY</td>
-      <td>0.467245</td>
-      <td>CD8 T cells</td>
-      <td>0.726825</td>
+      <td>ms_Activation</td>
+      <td>8.151241e-05</td>
+      <td>Dendritic</td>
+      <td>1.003230e-04</td>
     </tr>
     <tr>
       <th>8</th>
-      <td>1.711598</td>
-      <td>1.058545</td>
-      <td>0.105892</td>
-      <td>-1.170788</td>
-      <td>0.196033</td>
-      <td>7</td>
+      <td>2.249081</td>
+      <td>0.136929</td>
+      <td>1.264306e-60</td>
+      <td>1.634010e-03</td>
+      <td>0.984556</td>
+      <td>10</td>
       <td>CD79A</td>
-      <td>0.211785</td>
-      <td>Dendritic cells</td>
-      <td>0.677091</td>
+      <td>2.528611e-60</td>
+      <td>Megakaryocytes</td>
+      <td>3.371481e-60</td>
     </tr>
     <tr>
       <th>9</th>
-      <td>0.780854</td>
-      <td>2.074083</td>
-      <td>0.706559</td>
-      <td>-0.284925</td>
-      <td>0.888651</td>
-      <td>7</td>
-      <td>GNLY</td>
-      <td>0.706559</td>
-      <td>Dendritic cells</td>
-      <td>0.844081</td>
+      <td>1.939074</td>
+      <td>0.563390</td>
+      <td>5.778668e-04</td>
+      <td>9.259607e-02</td>
+      <td>0.768391</td>
+      <td>10</td>
+      <td>ms_Activation</td>
+      <td>5.778668e-04</td>
+      <td>Megakaryocytes</td>
+      <td>6.604192e-04</td>
     </tr>
     <tr>
       <th>10</th>
-      <td>-1.261748</td>
-      <td>0.921011</td>
-      <td>0.170700</td>
-      <td>-0.045206</td>
-      <td>0.953428</td>
+      <td>2.215135</td>
+      <td>0.045430</td>
+      <td>0.000000e+00</td>
+      <td>2.690574e-02</td>
+      <td>0.499407</td>
       <td>10</td>
       <td>CD79A</td>
-      <td>0.341400</td>
-      <td>FCGR3A+ Monocytes</td>
-      <td>0.677091</td>
+      <td>0.000000e+00</td>
+      <td>Monocytes</td>
+      <td>0.000000e+00</td>
     </tr>
     <tr>
       <th>11</th>
-      <td>-0.970897</td>
-      <td>1.138684</td>
-      <td>0.393854</td>
-      <td>1.100235</td>
-      <td>0.312581</td>
+      <td>1.988068</td>
+      <td>0.413203</td>
+      <td>1.499089e-06</td>
+      <td>1.898919e-01</td>
+      <td>0.494968</td>
       <td>10</td>
-      <td>GNLY</td>
-      <td>0.393854</td>
-      <td>FCGR3A+ Monocytes</td>
-      <td>0.689245</td>
+      <td>ms_Activation</td>
+      <td>1.499089e-06</td>
+      <td>Monocytes</td>
+      <td>1.998785e-06</td>
     </tr>
     <tr>
       <th>12</th>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>3</td>
+      <td>2.282265</td>
+      <td>0.052873</td>
+      <td>0.000000e+00</td>
+      <td>-2.752936e-02</td>
+      <td>0.285911</td>
+      <td>10</td>
       <td>CD79A</td>
-      <td>NaN</td>
-      <td>Megakaryocytes</td>
-      <td>NaN</td>
+      <td>0.000000e+00</td>
+      <td>NK cells</td>
+      <td>0.000000e+00</td>
     </tr>
     <tr>
       <th>13</th>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>3</td>
-      <td>GNLY</td>
-      <td>NaN</td>
-      <td>Megakaryocytes</td>
-      <td>NaN</td>
+      <td>2.260340</td>
+      <td>0.257777</td>
+      <td>1.809369e-18</td>
+      <td>-1.072615e-01</td>
+      <td>0.465638</td>
+      <td>10</td>
+      <td>ms_Activation</td>
+      <td>1.809369e-18</td>
+      <td>NK cells</td>
+      <td>3.618737e-18</td>
     </tr>
     <tr>
       <th>14</th>
-      <td>-1.738457</td>
-      <td>1.217221</td>
-      <td>0.153229</td>
-      <td>0.872143</td>
-      <td>0.389915</td>
+      <td>2.189704</td>
+      <td>0.424894</td>
+      <td>2.556277e-07</td>
+      <td>6.585179e-02</td>
+      <td>0.868022</td>
       <td>10</td>
       <td>CD79A</td>
-      <td>0.306458</td>
-      <td>NK cells</td>
-      <td>0.677091</td>
+      <td>5.112555e-07</td>
+      <td>Other</td>
+      <td>3.718222e-07</td>
     </tr>
     <tr>
       <th>15</th>
-      <td>-0.432737</td>
-      <td>1.577125</td>
-      <td>0.783790</td>
-      <td>0.585376</td>
-      <td>0.668587</td>
+      <td>1.089998</td>
+      <td>0.988625</td>
+      <td>2.702270e-01</td>
+      <td>3.559180e-01</td>
+      <td>0.681097</td>
       <td>10</td>
-      <td>GNLY</td>
-      <td>0.783790</td>
-      <td>NK cells</td>
-      <td>0.844081</td>
+      <td>ms_Activation</td>
+      <td>2.702270e-01</td>
+      <td>Other</td>
+      <td>2.702270e-01</td>
     </tr>
   </tbody>
 </table>
 </div></div>
 </div>
-<section id="4.-GSEA-on-Vaccine-Effect">
-<h3>4. GSEA on Vaccine Effect<a class="headerlink" href="#4.-GSEA-on-Vaccine-Effect" title="Link to this heading"></a></h3>
-<p>Rank genes by their vaccine-specific induction (DiD) and perform GSEA.</p>
-<div class="nbinput nblast docutils container">
+<section id="4.-Abundance-Analysis">
+<h3>4. Abundance Analysis<a class="headerlink" href="#4.-Abundance-Analysis" title="Link to this heading"></a></h3>
+<p>We analyze shifts in cell type proportions following vaccination.</p>
+<div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>gsea_res = st.run_gsea_did(
-    adata,
-    gene_sets=&quot;MSigDB_Hallmark_2020&quot;,
-    design=design,
-    visits=(0, 7),
-    rank_by=&quot;signed_confidence&quot;
-)
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>ab_res = st.abundance_did(adata, design, visits=(0, 7))
+display(ab_res)
 <br/></pre></div>
 </div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>celltype</th>
+      <th>n_participants</th>
+      <th>beta_DiD</th>
+      <th>se_DiD</th>
+      <th>p_DiD</th>
+      <th>beta_time</th>
+      <th>p_time</th>
+      <th>FDR_DiD</th>
+    </tr>
+  </thead>
+  <tbody>
+  </tbody>
+</table>
+</div></div>
 </div>
 </section>
 <section id="5.-Visualization">
 <h3>5. Visualization<a class="headerlink" href="#5.-Visualization" title="Link to this heading"></a></h3>
+</section>
+</section>
+<section id="Forest-Plots">
+<h2>Forest Plots<a class="headerlink" href="#Forest-Plots" title="Link to this heading"></a></h2>
+<p>We visualize the effect sizes and confidence intervals for both expression and abundance. Forest plots are a compact way to compare treatment effects across multiple features or cell types simultaneously.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Interaction plot
-st.plot_trial_interaction(adata, &quot;CD79A&quot;, design, visits=(0, 7))
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+
+st.plot_did_forest(res, title=&quot;Vaccine-Induced Gene Changes&quot;, ax=axes[0])
+st.plot_did_forest(ab_res, feature_col=&quot;celltype&quot;, title=&quot;Cell Type Proportion Shifts&quot;, ax=axes[1])
+
+plt.tight_layout()
 plt.show()
 <br/></pre></div>
 </div>
@@ -646,6 +767,180 @@ plt.show()
 </div>
 </div>
 </section>
+<section id="Individual-Participant-Trajectories">
+<h2>Individual Participant Trajectories<a class="headerlink" href="#Individual-Participant-Trajectories" title="Link to this heading"></a></h2>
+<p>We can visualize how specific features change within individuals over time using spaghetti plots. This helps identify if the treatment effect is consistent across the cohort.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>fig, ax = plt.subplots(figsize=(8, 6))
+# Focus on Vaccine arm for individual trends
+st.plot_within_arm_comparison(
+    adata,
+    arm=&quot;Vaccine_A&quot;,
+    feature=&quot;CD79A&quot;,
+    design=design,
+    visits=(0, 7),
+    plot_type=&quot;paired&quot;,
+    ax=ax
+)
+plt.title(&quot;Individual B-cell Activation Trajectories (Vaccine Arm)&quot;)
+plt.show()
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/examples_example_vaccine_immport_19_0.png" src="../_images/examples_example_vaccine_immport_19_0.png" />
+</div>
+</div>
+</section>
+<section id="Interaction-Plots">
+<h2>Interaction Plots<a class="headerlink" href="#Interaction-Plots" title="Link to this heading"></a></h2>
+<p>Visualizing the activation of B cells (CD79A) over time across treatment groups. Interaction plots clearly show the ‘Difference-in-Differences’ effect.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>st.plot_trial_interaction(adata, &quot;CD79A&quot;, design, visits=(0, 7))
+plt.show()
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/examples_example_vaccine_immport_21_0.png" src="../_images/examples_example_vaccine_immport_21_0.png" />
+</div>
+</div>
+</section>
+<section id="Trial-Aware-UMAP-Panel">
+<h2>Trial-Aware UMAP Panel<a class="headerlink" href="#Trial-Aware-UMAP-Panel" title="Link to this heading"></a></h2>
+<p>Visualizing feature expression on the global cell-type landscape, stratified by arm and visit.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>st.plot_trial_umap_panel(adata, &quot;CD79A&quot;, design, visits=(0, 7))
+plt.show()
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/examples_example_vaccine_immport_23_0.png" src="../_images/examples_example_vaccine_immport_23_0.png" />
+</div>
+</div>
+</section>
+<section id="GSEA-Pathway-Analysis">
+<h2>GSEA Pathway Analysis<a class="headerlink" href="#GSEA-Pathway-Analysis" title="Link to this heading"></a></h2>
+<p>Enrichment of immune pathways in the vaccine-induced ranking. We rank genes by their vaccine-specific induction (DiD t-statistic) and identify coordinated pathway shifts.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>gsea_res = st.run_gsea_did(
+    adata,
+    gene_sets={&quot;B_Cell&quot;: [&quot;CD79A&quot;, &quot;CD79B&quot;, &quot;MS4A1&quot;], &quot;NK_Cell&quot;: [&quot;GNLY&quot;, &quot;NKG7&quot;, &quot;GZMB&quot;]},
+    design=design,
+    visits=(0, 7),
+    min_size=1
+)
+display(gsea_res)
+
+st.plot_gsea_heatmap(gsea_res)
+plt.title(&quot;Vaccine Pathway Enrichment&quot;)
+plt.show()
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+2026-01-02 13:16:01,326 [WARNING] Duplicated values found in preranked stats: 58.02% of genes
+The order of those genes will be arbitrary, which may produce unexpected results.
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Name</th>
+      <th>Term</th>
+      <th>ES</th>
+      <th>NES</th>
+      <th>NOM p-val</th>
+      <th>FDR q-val</th>
+      <th>FWER p-val</th>
+      <th>Tag %</th>
+      <th>Gene %</th>
+      <th>Lead_genes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>prerank</td>
+      <td>B_Cell</td>
+      <td>0.988528</td>
+      <td>1.22839</td>
+      <td>0.019417</td>
+      <td>0.021152</td>
+      <td>0.018</td>
+      <td>1/3</td>
+      <td>0.00%</td>
+      <td>CD79A</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>prerank</td>
+      <td>NK_Cell</td>
+      <td>-0.685265</td>
+      <td>-0.967033</td>
+      <td>0.639929</td>
+      <td>0.631854</td>
+      <td>0.71481</td>
+      <td>1/3</td>
+      <td>6.27%</td>
+      <td>GNLY</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/examples_example_vaccine_immport_25_2.png" src="../_images/examples_example_vaccine_immport_25_2.png" />
+</div>
+</div>
 </section>
 </section>
 

@@ -75,11 +75,15 @@
              
   <h1>Source code for sctrial.stats.gsea</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">anndata</span><span class="w"> </span><span class="kn">import</span> <span class="n">AnnData</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.did</span><span class="w"> </span><span class="kn">import</span> <span class="n">did_table</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..design</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrialDesign</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">gseapy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">gp</span>
 
 <span class="k">try</span><span class="p">:</span>
     <span class="kn">import</span><span class="w"> </span><span class="nn">gseapy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">gp</span>
@@ -90,7 +94,7 @@
 <a class="viewcode-back" href="../../../api.html#sctrial.stats.gsea.run_gsea_did">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">run_gsea_did</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
-    <span class="n">gene_sets</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]],</span>
+    <span class="n">gene_sets</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]],</span>
     <span class="n">design</span><span class="p">:</span> <span class="n">TrialDesign</span><span class="p">,</span>
     <span class="n">visits</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
     <span class="n">layer</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -99,8 +103,9 @@
     <span class="n">min_units</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
     <span class="n">use_bootstrap</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="n">n_boot</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">999</span><span class="p">,</span>
+    <span class="n">return_obj</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="o">**</span><span class="n">kwargs</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">gp</span><span class="o">.</span><span class="n">GSEA</span> <span class="o">|</span> <span class="n">gp</span><span class="o">.</span><span class="n">Prerank</span><span class="p">:</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="s2">&quot;gp.Prerank&quot;</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Perform Gene Set Enrichment Analysis (GSEA) on trial-aware rankings.</span>
 <span class="sd">    </span>
 <span class="sd">    This function calculates Difference-in-Differences (DiD) effect sizes for </span>
@@ -138,32 +143,28 @@
 <span class="sd">        rank_by is &#39;signed_confidence&#39;).</span>
 <span class="sd">    n_boot</span>
 <span class="sd">        Number of bootstrap permutations.</span>
+<span class="sd">    return_obj</span>
+<span class="sd">        Whether to return the full gseapy object. If False (default), </span>
+<span class="sd">        returns the results DataFrame (`res2d`).</span>
 <span class="sd">    **kwargs</span>
 <span class="sd">        Additional parameters passed to `gseapy.prerank` (e.g., `permutation_num`, </span>
 <span class="sd">        `outdir`, `min_size`, `max_size`).</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    gseapy.Prerank</span>
-<span class="sd">        A gseapy result object containing enrichment scores and pathway stats.</span>
+<span class="sd">    pd.DataFrame or gseapy.Prerank</span>
+<span class="sd">        A DataFrame of enrichment results (if return_obj=False) or the </span>
+<span class="sd">        gseapy result object.</span>
 
 <span class="sd">    Examples</span>
 <span class="sd">    --------</span>
 <span class="sd">    &gt;&gt;&gt; res = run_gsea_did(adata, gene_sets=&quot;KEGG_2021_Human&quot;, design=design, visits=(&quot;V1&quot;, &quot;V2&quot;))</span>
-<span class="sd">    &gt;&gt;&gt; print(res.res2d.head())</span>
+<span class="sd">    &gt;&gt;&gt; print(res.head())</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">gp</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span><span class="s2">&quot;gseapy is required for run_gsea_did. Install with &#39;pip install gseapy&#39;.&quot;</span><span class="p">)</span>
 
     <span class="c1"># 1. Run DiD for all genes</span>
-    <span class="c1"># Note: did_table might be slow for all genes if not optimized, </span>
-    <span class="c1"># but the summary says &quot;tens-hundreds&quot; in did_table docstring.</span>
-    <span class="c1"># However, for GSEA we need genome-wide or at least a large set.</span>
-    
-    <span class="c1"># We&#39;ll use did_table but might need to ensure it handles many genes efficiently.</span>
-    <span class="c1"># Actually, the summary says: &quot;Rather than naïve differential expression, we performed GSEA </span>
-    <span class="c1"># using DiD-derived gene rankings&quot;.</span>
-    
     <span class="n">genes</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
     <span class="n">res</span> <span class="o">=</span> <span class="n">did_table</span><span class="p">(</span>
         <span class="n">adata</span><span class="p">,</span>
@@ -179,11 +180,11 @@
     
     <span class="c1"># 2. Rank genes</span>
     <span class="k">if</span> <span class="n">rank_by</span> <span class="o">==</span> <span class="s2">&quot;signed_confidence&quot;</span><span class="p">:</span>
-        <span class="n">res</span><span class="p">[</span><span class="s2">&quot;rank&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span><span class="n">res</span><span class="p">[</span><span class="s2">&quot;beta_DiD&quot;</span><span class="p">])</span> <span class="o">*</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">res</span><span class="p">[</span><span class="s2">&quot;p_DiD&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="mf">1e-12</span><span class="p">)</span>
+        <span class="n">res</span><span class="p">[</span><span class="s2">&quot;rank&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span><span class="n">res</span><span class="p">[</span><span class="s2">&quot;beta_DiD&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span> <span class="o">*</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">res</span><span class="p">[</span><span class="s2">&quot;p_DiD&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="mf">1e-12</span><span class="p">)</span>
     <span class="k">elif</span> <span class="n">rank_by</span> <span class="o">==</span> <span class="s2">&quot;beta&quot;</span><span class="p">:</span>
-        <span class="n">res</span><span class="p">[</span><span class="s2">&quot;rank&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">res</span><span class="p">[</span><span class="s2">&quot;beta_DiD&quot;</span><span class="p">]</span>
+        <span class="n">res</span><span class="p">[</span><span class="s2">&quot;rank&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">res</span><span class="p">[</span><span class="s2">&quot;beta_DiD&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
     <span class="k">elif</span> <span class="n">rank_by</span> <span class="o">==</span> <span class="s2">&quot;tstat&quot;</span><span class="p">:</span>
-        <span class="n">res</span><span class="p">[</span><span class="s2">&quot;rank&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">res</span><span class="p">[</span><span class="s2">&quot;beta_DiD&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="p">(</span><span class="n">res</span><span class="p">[</span><span class="s2">&quot;se_DiD&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="mf">1e-12</span><span class="p">)</span>
+        <span class="n">res</span><span class="p">[</span><span class="s2">&quot;rank&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">res</span><span class="p">[</span><span class="s2">&quot;beta_DiD&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">res</span><span class="p">[</span><span class="s2">&quot;se_DiD&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="mf">1e-12</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown rank_by: </span><span class="si">{</span><span class="n">rank_by</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         
@@ -195,6 +196,13 @@
         <span class="n">gene_sets</span><span class="o">=</span><span class="n">gene_sets</span><span class="p">,</span>
         <span class="o">**</span><span class="n">kwargs</span>
     <span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">return_obj</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">pre_res</span>
+    
+    <span class="c1"># Handle both gseapy &gt;= 1.0 (has .res2d) and potentially older versions</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">pre_res</span><span class="p">,</span> <span class="s2">&quot;res2d&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">pre_res</span><span class="o">.</span><span class="n">res2d</span>
     <span class="k">return</span> <span class="n">pre_res</span></div>
 
 </pre></div>

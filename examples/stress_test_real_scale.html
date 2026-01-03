@@ -288,7 +288,7 @@ print(f&quot;Done in {time_strat:.2f}s&quot;)
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 Running stratified DiD (10 genes x 2 celltypes)...
-Done in 0.53s
+Done in 0.48s
 </pre></div></div>
 </div>
 </section>
@@ -346,18 +346,18 @@ print(&quot;\nStress test passed successfully!&quot;)
 Summary of Results:
 ## Trial-Aware DiD Summary
 Total features tested: 100
-Significant (p &lt; 0.05): 11
-Significant (FDR &lt; 0.05): 11
+Significant (p &lt; 0.05): 12
+Significant (FDR &lt; 0.05): 10
 
 ### Top Upregulated Features (by p-value):
-- Gene0: beta=2.289, p=0.00e+00
-- Gene1: beta=2.276, p=0.00e+00
-- Gene2: beta=2.306, p=0.00e+00
+- Gene0: beta=2.285, p=0.00e+00
+- Gene1: beta=2.300, p=0.00e+00
+- Gene2: beta=2.314, p=0.00e+00
 
 ### Top Downregulated Features (by p-value):
-- Gene38: beta=-1.001, p=6.38e-02
-- Gene90: beta=-0.941, p=8.94e-02
-- Gene96: beta=-0.681, p=2.36e-01
+- Gene67: beta=-0.821, p=6.20e-02
+- Gene84: beta=-0.805, p=1.24e-01
+- Gene35: beta=-0.634, p=2.03e-01
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -375,8 +375,8 @@ Significant (FDR &lt; 0.05): 11
 
 Final Performance Metrics:
 - Normalization (20k cells x 10k genes): 0.20s
-- Stratified DiD (10 genes x 2 types): 0.53s
-- Single Gene DiD (avg): 0.0061s
+- Stratified DiD (10 genes x 2 types): 0.48s
+- Single Gene DiD (avg): 0.0049s
 
 Stress test passed successfully!
 </pre></div></div>

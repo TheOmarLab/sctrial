@@ -75,16 +75,41 @@
              
   <h1>Source code for sctrial.plotting</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Literal</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Any</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">seaborn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sns</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">anndata</span><span class="w"> </span><span class="kn">import</span> <span class="n">AnnData</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.design</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrialDesign</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.stats._extract</span><span class="w"> </span><span class="kn">import</span> <span class="n">extract_gene_vector</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">scanpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sc</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib.gridspec</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridSpec</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._env</span><span class="w"> </span><span class="kn">import</span> <span class="n">ensure_numba_cache_dir</span><span class="p">,</span> <span class="n">ensure_matplotlib_config_dir</span>
+
+<span class="c1"># Optional dependencies for plotting</span>
+<span class="c1"># Ensure caches/config go to writable temp dirs to avoid numba/matplotlib failures.</span>
+<span class="n">ensure_matplotlib_config_dir</span><span class="p">()</span>
+<span class="n">ensure_numba_cache_dir</span><span class="p">()</span>
+
+<span class="n">plt</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">GridSpec</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="c1"># type: ignore[no-redef]</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib.gridspec</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridSpec</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">plt</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">GridSpec</span> <span class="o">=</span> <span class="kc">None</span>
+
+<span class="c1"># type: ignore[no-redef]</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">seaborn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sns</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">sns</span> <span class="o">=</span> <span class="kc">None</span>
+
+<span class="c1"># type: ignore[no-redef]</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">scanpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sc</span>
+<span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>  <span class="c1"># ImportError or runtime errors (e.g., numba cache)</span>
+    <span class="n">sc</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">scanpy_import_error</span> <span class="o">=</span> <span class="n">e</span>
 
 <div class="viewcode-block" id="did_volcano_frame">
 <a class="viewcode-back" href="../../api.html#sctrial.plotting.did_volcano_frame">[docs]</a>
@@ -139,13 +164,18 @@
     <span class="n">visits</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">layer</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">color_palette</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">ax</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">:</span>
+    <span class="n">ax</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="s2">&quot;plt.Axes&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;plt.Axes&quot;</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Plot mean expression (interaction plot) by arm and visit.</span>
 <span class="sd">    </span>
 <span class="sd">    This visualizes the DiD effect: the change from baseline to follow-up </span>
 <span class="sd">    across treatment arms.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">plt</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">sns</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
+            <span class="s2">&quot;matplotlib and seaborn are required for plotting. &quot;</span>
+            <span class="s2">&quot;Install with: pip install sctrial[plots]&quot;</span>
+        <span class="p">)</span>
     <span class="k">if</span> <span class="n">visits</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">visits</span> <span class="o">=</span> <span class="n">design</span><span class="o">.</span><span class="n">primary_visits</span><span class="p">()</span>
 
@@ -191,8 +221,8 @@
     <span class="n">p_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;p_DiD&quot;</span><span class="p">,</span>
     <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
     <span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;DiD Effect Sizes&quot;</span><span class="p">,</span>
-    <span class="n">ax</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">:</span>
+    <span class="n">ax</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="s2">&quot;plt.Axes&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;plt.Axes&quot;</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Plot a forest plot of DiD effect sizes with confidence intervals.</span>
 
 <span class="sd">    Parameters</span>
@@ -214,8 +244,18 @@
 <span class="sd">    ax</span>
 <span class="sd">        Optional matplotlib axes.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">plt</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">sns</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
+            <span class="s2">&quot;matplotlib and seaborn are required for plotting. &quot;</span>
+            <span class="s2">&quot;Install with: pip install sctrial[plots]&quot;</span>
+        <span class="p">)</span>
     <span class="k">if</span> <span class="n">df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;DataFrame is empty.&quot;</span><span class="p">)</span>
+        <span class="c1"># Gracefully handle empty dataframe</span>
+        <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s2">&quot;No data to plot&quot;</span><span class="p">,</span> <span class="n">ha</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="n">title</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ax</span>
     
     <span class="c1"># Ensure necessary columns exist</span>
     <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="p">[</span><span class="n">feature_col</span><span class="p">,</span> <span class="n">beta_col</span><span class="p">,</span> <span class="n">se_col</span><span class="p">]:</span>
@@ -227,6 +267,15 @@
                 <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing column &#39;</span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">&#39; in DataFrame.&quot;</span><span class="p">)</span>
 
     <span class="n">df_plot</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="c1"># Filter rows with NaNs in beta or se</span>
+    <span class="n">df_plot</span> <span class="o">=</span> <span class="n">df_plot</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="n">beta_col</span><span class="p">,</span> <span class="n">se_col</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">df_plot</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s2">&quot;No valid DiD estimates&quot;</span><span class="p">,</span> <span class="n">ha</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="n">title</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ax</span>
+
     <span class="n">df_plot</span><span class="p">[</span><span class="s2">&quot;ci&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.96</span> <span class="o">*</span> <span class="n">df_plot</span><span class="p">[</span><span class="n">se_col</span><span class="p">]</span>
     <span class="n">df_plot</span> <span class="o">=</span> <span class="n">df_plot</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">beta_col</span><span class="p">)</span>
 
@@ -240,6 +289,7 @@
     <span class="n">y_pos</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">df_plot</span><span class="p">))</span>
     
     <span class="c1"># Identify significant ones</span>
+    <span class="n">sig</span><span class="p">:</span> <span class="n">Any</span>
     <span class="k">if</span> <span class="n">p_col</span> <span class="ow">in</span> <span class="n">df_plot</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
         <span class="n">sig</span> <span class="o">=</span> <span class="n">df_plot</span><span class="p">[</span><span class="n">p_col</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">alpha</span>
     <span class="k">else</span><span class="p">:</span>
@@ -290,8 +340,8 @@
     <span class="n">visits</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
     <span class="n">layer</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">plot_type</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;box&quot;</span><span class="p">,</span> <span class="s2">&quot;paired&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;paired&quot;</span><span class="p">,</span>
-    <span class="n">ax</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">:</span>
+    <span class="n">ax</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="s2">&quot;plt.Axes&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;plt.Axes&quot;</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Plot within-arm longitudinal change.</span>
 
 <span class="sd">    Parameters</span>
@@ -314,6 +364,11 @@
 <span class="sd">    ax</span>
 <span class="sd">        Optional matplotlib axes.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">plt</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">sns</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
+            <span class="s2">&quot;matplotlib and seaborn are required for plotting. &quot;</span>
+            <span class="s2">&quot;Install with: pip install sctrial[plots]&quot;</span>
+        <span class="p">)</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">.stats.comparisons</span><span class="w"> </span><span class="kn">import</span> <span class="n">subset_cells</span>
     <span class="n">ad</span> <span class="o">=</span> <span class="n">subset_cells</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">arm</span><span class="o">=</span><span class="n">arm</span><span class="p">)</span>
     <span class="n">ad</span> <span class="o">=</span> <span class="n">ad</span><span class="p">[</span><span class="n">ad</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">visits</span><span class="p">)]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
@@ -362,7 +417,7 @@
     <span class="n">layer</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">cmap</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;magma&quot;</span><span class="p">,</span>
     <span class="n">figsize</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">8</span><span class="p">),</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">:</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;plt.Figure&quot;</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a panel of UMAPs stratified by arm and visit.</span>
 
 <span class="sd">    This creates a 2x2 panel (Treated/Control x Baseline/Followup) showing </span>
@@ -389,7 +444,12 @@
 <span class="sd">    -------</span>
 <span class="sd">    fig : matplotlib.figure.Figure</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="kn">import</span><span class="w"> </span><span class="nn">scanpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sc</span>
+    <span class="k">if</span> <span class="n">plt</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">sc</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
+            <span class="s2">&quot;matplotlib and scanpy are required for plotting. &quot;</span>
+            <span class="s2">&quot;Install with: pip install sctrial[plots]&quot;</span>
+            <span class="o">+</span> <span class="p">(</span><span class="sa">f</span><span class="s2">&quot; (scanpy import failed: </span><span class="si">{</span><span class="n">scanpy_import_error</span><span class="si">}</span><span class="s2">)&quot;</span> <span class="k">if</span> <span class="n">scanpy_import_error</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="p">)</span>
     <span class="k">if</span> <span class="n">visits</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">visits</span> <span class="o">=</span> <span class="n">design</span><span class="o">.</span><span class="n">primary_visits</span><span class="p">()</span>
 
@@ -443,7 +503,7 @@
     <span class="n">nes_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;NES&quot;</span><span class="p">,</span>
     <span class="n">title</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">figsize</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">:</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;plt.Figure&quot;</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Radar (spider) plot of GSEA NES across pools/cell types.</span>
 
 <span class="sd">    Parameters</span>
@@ -461,6 +521,11 @@
 <span class="sd">    figsize</span>
 <span class="sd">        Figure size.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">plt</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
+            <span class="s2">&quot;matplotlib is required for plotting. &quot;</span>
+            <span class="s2">&quot;Install with: pip install sctrial[plots]&quot;</span>
+        <span class="p">)</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">math</span><span class="w"> </span><span class="kn">import</span> <span class="n">pi</span>
     <span class="n">df_term</span> <span class="o">=</span> <span class="n">gsea_results</span><span class="p">[</span><span class="n">gsea_results</span><span class="p">[</span><span class="s2">&quot;Term&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">contains</span><span class="p">(</span><span class="n">term</span><span class="p">,</span> <span class="n">case</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">na</span><span class="o">=</span><span class="kc">False</span><span class="p">)]</span>
     <span class="k">if</span> <span class="n">df_term</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
@@ -514,7 +579,12 @@
 
 <span class="sd">    Replicates the &#39;celltype_treatment&#39; dotplot pattern.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="kn">import</span><span class="w"> </span><span class="nn">scanpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sc</span>
+    <span class="k">if</span> <span class="n">sc</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
+            <span class="s2">&quot;scanpy is required for plotting. &quot;</span>
+            <span class="s2">&quot;Install with: pip install sctrial[plots]&quot;</span>
+            <span class="o">+</span> <span class="p">(</span><span class="sa">f</span><span class="s2">&quot; (scanpy import failed: </span><span class="si">{</span><span class="n">scanpy_import_error</span><span class="si">}</span><span class="s2">)&quot;</span> <span class="k">if</span> <span class="n">scanpy_import_error</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="p">)</span>
     <span class="n">ad</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
     <span class="k">if</span> <span class="n">visits</span><span class="p">:</span>
         <span class="n">ad</span> <span class="o">=</span> <span class="n">ad</span><span class="p">[</span><span class="n">ad</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">visits</span><span class="p">)]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
@@ -560,9 +630,14 @@
     <span class="n">celltype</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">design</span><span class="p">:</span> <span class="n">TrialDesign</span><span class="p">,</span>
     <span class="n">visits</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">ax</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">:</span>
+    <span class="n">ax</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="s2">&quot;plt.Axes&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;plt.Axes&quot;</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Plot cell type abundance (proportion) by arm and visit.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">plt</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">sns</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
+            <span class="s2">&quot;matplotlib and seaborn are required for plotting. &quot;</span>
+            <span class="s2">&quot;Install with: pip install sctrial[plots]&quot;</span>
+        <span class="p">)</span>
     <span class="k">if</span> <span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;TrialDesign must have celltype_col defined.&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">visits</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -609,11 +684,17 @@
     <span class="n">cmap</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;magma&quot;</span><span class="p">,</span>
     <span class="n">figsize</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">8</span><span class="p">),</span>
     <span class="n">title</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">:</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;plt.Figure&quot;</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Combined UMAP panel: Cell Types + 4 Trial-stratified UMAPs.</span>
 
 <span class="sd">    Replicates the layout: [Large Cell Type UMAP] [2x2 Grid of Feature UMAPs].</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">plt</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">sc</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">GridSpec</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
+            <span class="s2">&quot;matplotlib and scanpy are required for plotting. &quot;</span>
+            <span class="s2">&quot;Install with: pip install sctrial[plots]&quot;</span>
+            <span class="o">+</span> <span class="p">(</span><span class="sa">f</span><span class="s2">&quot; (scanpy import failed: </span><span class="si">{</span><span class="n">scanpy_import_error</span><span class="si">}</span><span class="s2">)&quot;</span> <span class="k">if</span> <span class="n">scanpy_import_error</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="p">)</span>
     <span class="k">if</span> <span class="n">visits</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">visits</span> <span class="o">=</span> <span class="n">design</span><span class="o">.</span><span class="n">primary_visits</span><span class="p">()</span>
     
@@ -682,7 +763,8 @@
     <span class="n">nes_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;NES&quot;</span><span class="p">,</span>
     <span class="n">fdr_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;FDR q-val&quot;</span><span class="p">,</span>
     <span class="n">figsize</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">:</span>
+    <span class="n">title</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;plt.Axes&quot;</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Heatmap of GSEA NES across pools (cell types).</span>
 
 <span class="sd">    Parameters</span>
@@ -695,8 +777,27 @@
 <span class="sd">        Only include pathways that are significant (FDR &lt; thresh) in at least one pool.</span>
 <span class="sd">    top_n</span>
 <span class="sd">        Number of top pathways to show (ranked by minimum FDR across pools).</span>
+<span class="sd">    figsize</span>
+<span class="sd">        Figure size.</span>
+<span class="sd">    title</span>
+<span class="sd">        Optional title.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">df</span> <span class="o">=</span> <span class="n">gsea_results</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">plt</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">sns</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
+            <span class="s2">&quot;matplotlib and seaborn are required for plotting. &quot;</span>
+            <span class="s2">&quot;Install with: pip install sctrial[plots]&quot;</span>
+        <span class="p">)</span>
+    <span class="c1"># If it&#39;s a gseapy Prerank object, extract res2d</span>
+    <span class="n">df</span><span class="p">:</span> <span class="n">Any</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">gsea_results</span><span class="p">,</span> <span class="s2">&quot;res2d&quot;</span><span class="p">):</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">gsea_results</span><span class="o">.</span><span class="n">res2d</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">gsea_results</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        
+    <span class="k">if</span> <span class="n">pool_col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="c1"># Assume global result if pool column is missing</span>
+        <span class="n">df</span><span class="p">[</span><span class="n">pool_col</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Global&quot;</span>
+        
     <span class="k">if</span> <span class="n">collection</span><span class="p">:</span>
         <span class="k">if</span> <span class="s2">&quot;collection&quot;</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
             <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;collection&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">collection</span><span class="p">]</span>
@@ -704,21 +805,34 @@
     <span class="c1"># 1. Filter significant</span>
     <span class="n">df_sig</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="n">fdr_col</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">fdr_thresh</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
     <span class="k">if</span> <span class="n">df_sig</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No pathways with </span><span class="si">{</span><span class="n">fdr_col</span><span class="si">}</span><span class="s2"> &lt; </span><span class="si">{</span><span class="n">fdr_thresh</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
-    <span class="c1"># 2. Rank pathways by minimum FDR</span>
-    <span class="n">top_terms</span> <span class="o">=</span> <span class="n">df_sig</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">term_col</span><span class="p">)[</span><span class="n">fdr_col</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="o">.</span><span class="n">sort_values</span><span class="p">()</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="n">top_n</span><span class="p">)</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="c1"># Fallback to top_n without FDR threshold if none significant</span>
+        <span class="n">top_terms</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">term_col</span><span class="p">)[</span><span class="n">fdr_col</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="o">.</span><span class="n">sort_values</span><span class="p">()</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="n">top_n</span><span class="p">)</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># 2. Rank pathways by minimum FDR</span>
+        <span class="n">top_terms</span> <span class="o">=</span> <span class="n">df_sig</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">term_col</span><span class="p">)[</span><span class="n">fdr_col</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="o">.</span><span class="n">sort_values</span><span class="p">()</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="n">top_n</span><span class="p">)</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
     
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">top_terms</span><span class="p">:</span>
+        <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s2">&quot;No pathways to plot&quot;</span><span class="p">,</span> <span class="n">ha</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ax</span>
+
     <span class="c1"># 3. Pivot</span>
     <span class="n">df_top</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="n">term_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">top_terms</span><span class="p">)]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
     <span class="n">mat</span> <span class="o">=</span> <span class="n">df_top</span><span class="o">.</span><span class="n">pivot_table</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">term_col</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="n">pool_col</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="n">nes_col</span><span class="p">,</span> <span class="n">aggfunc</span><span class="o">=</span><span class="s2">&quot;mean&quot;</span><span class="p">)</span>
     
     <span class="c1"># Sort terms by original min FDR ranking</span>
     <span class="n">mat</span> <span class="o">=</span> <span class="n">mat</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">top_terms</span><span class="p">]</span>
+    
+    <span class="c1"># Ensure numeric</span>
+    <span class="n">mat</span> <span class="o">=</span> <span class="n">mat</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
 
     <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">)</span>
     <span class="n">ax</span> <span class="o">=</span> <span class="n">sns</span><span class="o">.</span><span class="n">heatmap</span><span class="p">(</span><span class="n">mat</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;RdBu_r&quot;</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">linewidths</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">linecolor</span><span class="o">=</span><span class="s2">&quot;gray&quot;</span><span class="p">,</span> <span class="n">cbar_kws</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="s2">&quot;NES&quot;</span><span class="p">})</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;GSEA NES Heatmap: </span><span class="si">{</span><span class="n">collection</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">collection</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;Top Pathways&#39;</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">title</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">title</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;GSEA NES Heatmap: </span><span class="si">{</span><span class="n">collection</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">collection</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;Top Pathways&#39;</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="n">title</span><span class="p">)</span>
+    
     <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Pool&quot;</span><span class="p">)</span>
     <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Pathway&quot;</span><span class="p">)</span>
     <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
