@@ -158,20 +158,21 @@ from scipy import sparse
 # Set seed for reproducibility
 np.random.seed(42)
 
-def generate_clustered_data(n_obs, n_vars, n_clusters=2):
-    # Simulate 2D UMAP-like clusters
+def generate_clustered_data(n_obs, n_vars, n_clusters=4):
+    # Simulate 2D UMAP-like clusters with 4 distinct groups
     from sklearn.datasets import make_blobs
-    centers = [[0, 0], [5, 5]]
-    X_umap, y = make_blobs(n_samples=n_obs, centers=centers, cluster_std=1.0, random_state=42)
+    centers = [[0, 0], [10, 10], [15, 0], [0, 15]]
+    X_umap, y = make_blobs(n_samples=n_obs, centers=centers, cluster_std=1.2, random_state=42)
 
     # Map clusters to cell types
-    celltypes = np.array([&quot;TypeA&quot;, &quot;TypeB&quot;])[y]
+    celltypes = np.array([&quot;TypeA&quot;, &quot;TypeB&quot;, &quot;TypeC&quot;, &quot;TypeD&quot;])[y]
 
     # Generate expression data that correlates with clusters
-    X = np.random.poisson(0.2, size=(n_obs, n_vars)).astype(float)
+    X = np.random.poisson(0.1, size=(n_obs, n_vars)).astype(float)
     for i in range(n_clusters):
         mask = (y == i)
-        X[mask, i*10:(i+1)*10] += 2.0 # Cluster-specific markers
+        # Cluster-specific markers (5 genes each)
+        X[mask, i*10:(i*10)+5] += 3.0
 
     return X, X_umap, celltypes
 <br/></pre></div>
@@ -210,14 +211,21 @@ obs[&quot;celltype&quot;] = celltypes
 
 # --- Inject Signals ---
 
-# 1. Global Treatment Effect (TypeA &amp; TypeB) in Genes 0-2
+# 1. Global Treatment Effect (TypeA &amp; TypeB) in Genes 0-4
 # We&#39;ll make it very strong to ensure clear p-values and GSEA signal
 treated_followup = (obs[&quot;arm&quot;] == &quot;Treated&quot;) &amp; (obs[&quot;visit&quot;] == &quot;Followup&quot;)
-X[treated_followup, :3] += 5.0
+X[treated_followup, :5] += 6.0
 
-# 2. Cell-type Specific Effect (TypeB only) in Genes 5-7
+# 2. Cell-type Specific Effect (TypeB only) in Genes 5-9
 typeB_treated_followup = treated_followup &amp; (obs[&quot;celltype&quot;] == &quot;TypeB&quot;)
-X[typeB_treated_followup, 5:8] += 8.0
+X[typeB_treated_followup, 5:10] += 10.0
+
+# 3. Add more interesting signals for GSEA (TypeC and TypeD)
+typeC_treated_followup = treated_followup &amp; (obs[&quot;celltype&quot;] == &quot;TypeC&quot;)
+X[typeC_treated_followup, 20:25] += 8.0
+
+typeD_treated_followup = treated_followup &amp; (obs[&quot;celltype&quot;] == &quot;TypeD&quot;)
+X[typeD_treated_followup, 30:35] += 7.0
 
 # 3. Abundance Shift: Increase in TypeA in Treated Followup
 # We&#39;ll adjust the &#39;celltype&#39; labels for a subset of cells to simulate a composition shift
@@ -245,7 +253,7 @@ print(f&quot;Cell types: {adata.obs[&#39;celltype&#39;].unique()}&quot;)
 Created AnnData with 3600 cells and 200 genes.
 Arms: [&#39;Treated&#39; &#39;Control&#39;]
 Visits: [&#39;Baseline&#39; &#39;Followup&#39;]
-Cell types: [&#39;TypeA&#39; &#39;TypeB&#39;]
+Cell types: [&#39;TypeA&#39; &#39;TypeB&#39; &#39;TypeC&#39; &#39;TypeD&#39;]
 </pre></div></div>
 </div>
 </section>
@@ -353,9 +361,9 @@ Significant (p &lt; 0.05): 2
 Significant (FDR &lt; 0.05): 2
 
 ### Top Upregulated Features (by p-value):
-- ms_Inflammatory_Response: beta=2.163, p=3.34e-44
-- ms_TypeB_Activation: beta=2.217, p=1.17e-33
-- ms_Metabolic_Control: beta=0.343, p=6.50e-01
+- ms_Inflammatory_Response: beta=2.194, p=7.37e-89
+- ms_TypeB_Activation: beta=2.211, p=7.39e-27
+- ms_Metabolic_Control: beta=0.060, p=9.44e-01
 
 ### Top Downregulated Features (by p-value):
 - None
@@ -396,36 +404,36 @@ Significant (FDR &lt; 0.05): 2
   <tbody>
     <tr>
       <th>0</th>
-      <td>2.162926</td>
-      <td>0.155095</td>
-      <td>3.337792e-44</td>
-      <td>0.017571</td>
-      <td>0.884110</td>
+      <td>2.193640</td>
+      <td>0.109762</td>
+      <td>7.373597e-89</td>
+      <td>0.001254</td>
+      <td>0.988676</td>
       <td>30</td>
       <td>ms_Inflammatory_Response</td>
-      <td>1.001338e-43</td>
+      <td>2.212079e-88</td>
     </tr>
     <tr>
       <th>1</th>
-      <td>2.216679</td>
-      <td>0.183329</td>
-      <td>1.174240e-33</td>
-      <td>-0.063486</td>
-      <td>0.661367</td>
+      <td>2.211331</td>
+      <td>0.206097</td>
+      <td>7.394546e-27</td>
+      <td>0.005024</td>
+      <td>0.960072</td>
       <td>30</td>
       <td>ms_TypeB_Activation</td>
-      <td>1.761361e-33</td>
+      <td>1.109182e-26</td>
     </tr>
     <tr>
       <th>2</th>
-      <td>0.343399</td>
-      <td>0.756853</td>
-      <td>6.500305e-01</td>
-      <td>-0.652978</td>
-      <td>0.296834</td>
+      <td>0.059613</td>
+      <td>0.844913</td>
+      <td>9.437517e-01</td>
+      <td>0.228786</td>
+      <td>0.692017</td>
       <td>30</td>
       <td>ms_Metabolic_Control</td>
-      <td>6.500305e-01</td>
+      <td>9.437517e-01</td>
     </tr>
   </tbody>
 </table>
@@ -459,7 +467,7 @@ print(did_boot[[&quot;feature&quot;, &quot;beta_DiD&quot;, &quot;p_DiD&quot;]])
 <div class="highlight"><pre>
 Running DiD with Wild Cluster Bootstrap (Rademacher)...
                feature  beta_DiD  p_DiD
-0  ms_TypeB_Activation  2.216679    0.0
+0  ms_TypeB_Activation  2.211331    0.0
 </pre></div></div>
 </div>
 </section>
@@ -530,55 +538,107 @@ display(strat_res.sort_values([&quot;celltype&quot;, &quot;p_DiD&quot;]))
   <tbody>
     <tr>
       <th>0</th>
-      <td>2.244926</td>
-      <td>0.065380</td>
-      <td>2.224377e-258</td>
-      <td>0.031729</td>
-      <td>0.315227</td>
+      <td>2.136460</td>
+      <td>0.332688</td>
+      <td>1.346678e-10</td>
+      <td>0.017933</td>
+      <td>0.928988</td>
       <td>30</td>
-      <td>ms_Inflammatory_Response</td>
-      <td>4.448754e-258</td>
+      <td>ms_TypeB_Activation</td>
+      <td>2.693355e-10</td>
       <td>TypeA</td>
-      <td>4.448754e-258</td>
+      <td>2.154684e-10</td>
     </tr>
     <tr>
       <th>1</th>
-      <td>1.026564</td>
-      <td>0.600617</td>
-      <td>8.741728e-02</td>
-      <td>0.257108</td>
-      <td>0.363951</td>
+      <td>1.857935</td>
+      <td>0.318681</td>
+      <td>5.539986e-09</td>
+      <td>0.127482</td>
+      <td>0.422528</td>
       <td>30</td>
-      <td>ms_TypeB_Activation</td>
-      <td>8.741728e-02</td>
+      <td>ms_Inflammatory_Response</td>
+      <td>5.539986e-09</td>
       <td>TypeA</td>
-      <td>8.741728e-02</td>
+      <td>7.386648e-09</td>
     </tr>
     <tr>
       <th>2</th>
-      <td>2.223734</td>
-      <td>0.059802</td>
-      <td>1.200690e-302</td>
-      <td>0.074954</td>
-      <td>0.109421</td>
+      <td>2.240588</td>
+      <td>0.061989</td>
+      <td>4.515681e-286</td>
+      <td>0.051950</td>
+      <td>0.324460</td>
       <td>30</td>
-      <td>ms_Inflammatory_Response</td>
-      <td>2.401379e-302</td>
+      <td>ms_TypeB_Activation</td>
+      <td>9.031362e-286</td>
       <td>TypeB</td>
-      <td>4.802758e-302</td>
+      <td>3.612545e-285</td>
     </tr>
     <tr>
       <th>3</th>
-      <td>2.305499</td>
-      <td>0.074600</td>
-      <td>1.026325e-209</td>
-      <td>-0.015811</td>
-      <td>0.781501</td>
+      <td>2.263175</td>
+      <td>0.080074</td>
+      <td>9.707890e-176</td>
+      <td>0.007829</td>
+      <td>0.912217</td>
+      <td>30</td>
+      <td>ms_Inflammatory_Response</td>
+      <td>9.707890e-176</td>
+      <td>TypeB</td>
+      <td>2.588771e-175</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>2.239978</td>
+      <td>0.073411</td>
+      <td>1.760643e-204</td>
+      <td>0.007608</td>
+      <td>0.896277</td>
+      <td>30</td>
+      <td>ms_Inflammatory_Response</td>
+      <td>3.521286e-204</td>
+      <td>TypeC</td>
+      <td>7.042572e-204</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>-0.575928</td>
+      <td>0.810041</td>
+      <td>4.770927e-01</td>
+      <td>0.041367</td>
+      <td>0.931491</td>
       <td>30</td>
       <td>ms_TypeB_Activation</td>
-      <td>1.026325e-209</td>
-      <td>TypeB</td>
-      <td>1.368433e-209</td>
+      <td>4.770927e-01</td>
+      <td>TypeC</td>
+      <td>5.452488e-01</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>2.285121</td>
+      <td>0.081235</td>
+      <td>4.223448e-174</td>
+      <td>-0.011762</td>
+      <td>0.868449</td>
+      <td>30</td>
+      <td>ms_Inflammatory_Response</td>
+      <td>8.446896e-174</td>
+      <td>TypeD</td>
+      <td>8.446896e-174</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>-0.318366</td>
+      <td>0.695721</td>
+      <td>6.472358e-01</td>
+      <td>-0.221593</td>
+      <td>0.631438</td>
+      <td>30</td>
+      <td>ms_TypeB_Activation</td>
+      <td>6.472358e-01</td>
+      <td>TypeD</td>
+      <td>6.472358e-01</td>
     </tr>
   </tbody>
 </table>
@@ -652,23 +712,45 @@ display(ab_res)
       <th>0</th>
       <td>TypeB</td>
       <td>30</td>
-      <td>-0.188246</td>
-      <td>0.026906</td>
-      <td>1.312224e-07</td>
-      <td>0.013674</td>
-      <td>0.478279</td>
-      <td>1.312224e-07</td>
+      <td>-0.117836</td>
+      <td>0.033426</td>
+      <td>0.001476</td>
+      <td>-0.017852</td>
+      <td>0.456384</td>
+      <td>0.005904</td>
     </tr>
     <tr>
       <th>1</th>
       <td>TypeA</td>
       <td>30</td>
-      <td>0.188246</td>
-      <td>0.026906</td>
-      <td>1.312224e-07</td>
-      <td>-0.013674</td>
-      <td>0.478279</td>
-      <td>1.312224e-07</td>
+      <td>0.070467</td>
+      <td>0.034385</td>
+      <td>0.049899</td>
+      <td>0.003869</td>
+      <td>0.874698</td>
+      <td>0.099798</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>TypeD</td>
+      <td>30</td>
+      <td>0.015335</td>
+      <td>0.036440</td>
+      <td>0.677085</td>
+      <td>0.003974</td>
+      <td>0.878545</td>
+      <td>0.720661</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>TypeC</td>
+      <td>30</td>
+      <td>0.011377</td>
+      <td>0.031497</td>
+      <td>0.720661</td>
+      <td>0.012579</td>
+      <td>0.576699</td>
+      <td>0.720661</td>
     </tr>
   </tbody>
 </table>
@@ -687,9 +769,20 @@ display(ab_res)
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>print(&quot;Running GSEA on Trial-Aware Rankings...&quot;)
 # 100 permutations is enough for a demo
+# Define more pathways for the heatmap
+gene_sets_ext = {
+    **gene_sets,
+    &quot;T_Cell_Signaling&quot;: [f&quot;Gene{i}&quot; for i in range(20, 25)],
+    &quot;B_Cell_Activation&quot;: [f&quot;Gene{i}&quot; for i in range(30, 35)],
+    &quot;IFN_Response&quot;: [f&quot;Gene{i}&quot; for i in range(40, 45)],
+    &quot;Metabolic_Shift&quot;: [f&quot;Gene{i}&quot; for i in range(50, 55)],
+    &quot;Cell_Cycle&quot;: [f&quot;Gene{i}&quot; for i in range(60, 65)],
+    &quot;Apoptosis&quot;: [f&quot;Gene{i}&quot; for i in range(70, 75)]
+}
+
 gsea_res = st.run_gsea_did(
     adata,
-    gene_sets=gene_sets,
+    gene_sets=gene_sets_ext,
     design=design,
     visits=(&quot;Baseline&quot;, &quot;Followup&quot;),
     rank_by=&quot;tstat&quot;,
@@ -751,40 +844,118 @@ Running GSEA on Trial-Aware Rankings...
       <th>0</th>
       <td>prerank</td>
       <td>Inflammatory_Response</td>
-      <td>1.0</td>
-      <td>1.670918</td>
+      <td>0.989848</td>
+      <td>1.512642</td>
       <td>0.0</td>
       <td>0.0</td>
       <td>0.0</td>
       <td>3/3</td>
-      <td>1.50%</td>
-      <td>Gene1;Gene0;Gene2</td>
+      <td>2.50%</td>
+      <td>Gene0;Gene2;Gene1</td>
     </tr>
     <tr>
       <th>1</th>
       <td>prerank</td>
-      <td>TypeB_Activation</td>
-      <td>0.984772</td>
-      <td>1.534033</td>
-      <td>0.035714</td>
-      <td>0.074534</td>
-      <td>0.08</td>
-      <td>3/3</td>
-      <td>3.00%</td>
-      <td>Gene6;Gene5;Gene7</td>
+      <td>T_Cell_Signaling</td>
+      <td>0.94359</td>
+      <td>1.405906</td>
+      <td>0.074627</td>
+      <td>0.21164</td>
+      <td>0.24</td>
+      <td>5/5</td>
+      <td>8.00%</td>
+      <td>Gene23;Gene24;Gene22;Gene20;Gene21</td>
     </tr>
     <tr>
       <th>2</th>
       <td>prerank</td>
       <td>Metabolic_Control</td>
-      <td>0.616157</td>
-      <td>0.989436</td>
-      <td>0.472727</td>
-      <td>0.496894</td>
-      <td>0.62</td>
-      <td>2/3</td>
-      <td>27.50%</td>
-      <td>Gene20;Gene22</td>
+      <td>0.93401</td>
+      <td>1.369347</td>
+      <td>0.166667</td>
+      <td>0.235156</td>
+      <td>0.35</td>
+      <td>3/3</td>
+      <td>8.00%</td>
+      <td>Gene22;Gene20;Gene21</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>prerank</td>
+      <td>TypeB_Activation</td>
+      <td>0.969543</td>
+      <td>1.36596</td>
+      <td>0.04</td>
+      <td>0.179894</td>
+      <td>0.36</td>
+      <td>3/3</td>
+      <td>4.50%</td>
+      <td>Gene7;Gene6;Gene5</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>prerank</td>
+      <td>B_Cell_Activation</td>
+      <td>0.923077</td>
+      <td>1.273408</td>
+      <td>0.175439</td>
+      <td>0.358377</td>
+      <td>0.74</td>
+      <td>5/5</td>
+      <td>10.00%</td>
+      <td>Gene30;Gene33;Gene32;Gene31;Gene34</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>prerank</td>
+      <td>Cell_Cycle</td>
+      <td>0.579226</td>
+      <td>0.880693</td>
+      <td>0.636364</td>
+      <td>0.886537</td>
+      <td>1.0</td>
+      <td>3/5</td>
+      <td>24.00%</td>
+      <td>Gene64;Gene60;Gene62</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>prerank</td>
+      <td>Metabolic_Shift</td>
+      <td>0.56781</td>
+      <td>0.776214</td>
+      <td>0.777778</td>
+      <td>0.836483</td>
+      <td>1.0</td>
+      <td>2/5</td>
+      <td>16.00%</td>
+      <td>Gene51;Gene54</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>prerank</td>
+      <td>Apoptosis</td>
+      <td>0.478653</td>
+      <td>0.721838</td>
+      <td>0.712121</td>
+      <td>0.767196</td>
+      <td>1.0</td>
+      <td>3/5</td>
+      <td>37.00%</td>
+      <td>Gene74;Gene73;Gene72</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>prerank</td>
+      <td>IFN_Response</td>
+      <td>-0.430175</td>
+      <td>-0.894608</td>
+      <td>0.545455</td>
+      <td>0.618619</td>
+      <td>0.888889</td>
+      <td>1/5</td>
+      <td>3.50%</td>
+      <td>Gene41</td>
     </tr>
   </tbody>
 </table>

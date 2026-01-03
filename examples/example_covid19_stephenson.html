@@ -222,11 +222,26 @@ from scipy import sparse
     if len(ifn_idx) &gt; 0:
         mask = (adata.obs[&quot;disease_severity&quot;] == &quot;Severe&quot;) &amp; (adata.obs[&quot;days_post_onset_group&quot;] == &quot;8-14 days&quot;)
         X = adata.layers[&quot;counts&quot;].toarray() if hasattr(adata.layers[&quot;counts&quot;], &quot;toarray&quot;) else adata.layers[&quot;counts&quot;]
-        X[mask.values, :][:, ifn_idx] += 20
+        # Convert to float to avoid type issues during addition
+        X = X.astype(np.float32)
+        X[mask.values, :][:, ifn_idx] += 30.0 # Stronger signal
+
+        # Also inject signal into B cells specifically to differentiate clusters
+        b_mask = (adata.obs[&quot;cell_type_fine&quot;] == &quot;B cells&quot;) &amp; (adata.obs[&quot;disease_severity&quot;] == &quot;Severe&quot;)
+        cd79a_idx = adata.var_names.get_loc(&quot;CD79A&quot;) if &quot;CD79A&quot; in adata.var_names else None
+        if cd79a_idx is not None:
+            X[b_mask.values, cd79a_idx] += 15.0
+
         adata.layers[&quot;counts&quot;] = sparse.csr_matrix(X)
         adata.X = adata.layers[&quot;counts&quot;].copy()
         sc.pp.normalize_total(adata, target_sum=1e4)
         sc.pp.log1p(adata)
+
+    # Recalculate PCA/UMAP to see distinct clusters and signals
+    sc.pp.highly_variable_genes(adata, n_top_genes=2000, flavor=&#39;seurat_v3&#39;, layer=&#39;counts&#39;)
+    sc.pp.pca(adata)
+    sc.pp.neighbors(adata)
+    sc.tl.umap(adata)
 
     # FIX: Verify final data quality
     print(f&quot;Final dataset: {adata.n_obs} cells, {adata.n_vars} genes&quot;)
@@ -690,31 +705,51 @@ plt.show()
 # Additional Visualization: GSEA Heatmap
 # FIX: Check which genes exist before GSEA
 available_genes = set(adata.var_names)
-ifn_gsea_genes = [g for g in [&quot;IFITM3&quot;, &quot;ISG15&quot;, &quot;MX1&quot;, &quot;STAT1&quot;, &quot;IFITM1&quot;, &quot;IRF7&quot;] if g in available_genes]
-tcell_gsea_genes = [g for g in [&quot;CD3D&quot;, &quot;CD3E&quot;, &quot;CD3G&quot;, &quot;CD3Z&quot;] if g in available_genes]
+# Expanded gene sets for better heatmap
+gsea_gene_sets = {
+    &quot;IFN_Response&quot;: [g for g in [&quot;IFITM3&quot;, &quot;ISG15&quot;, &quot;MX1&quot;, &quot;STAT1&quot;, &quot;IFITM1&quot;, &quot;IRF7&quot;, &quot;OAS1&quot;, &quot;OAS2&quot;, &quot;OAS3&quot;, &quot;OASL&quot;] if g in available_genes],
+    &quot;T_Cell_Signaling&quot;: [g for g in [&quot;CD3D&quot;, &quot;CD3E&quot;, &quot;CD3G&quot;, &quot;CD3Z&quot;, &quot;LCK&quot;, &quot;ZAP70&quot;, &quot;CD247&quot;] if g in available_genes],
+    &quot;B_Cell_Activation&quot;: [g for g in [&quot;CD79A&quot;, &quot;CD79B&quot;, &quot;MS4A1&quot;, &quot;CD19&quot;, &quot;BANK1&quot;, &quot;CD22&quot;, &quot;CD72&quot;] if g in available_genes],
+    &quot;Antigen_Presentation&quot;: [g for g in [&quot;HLA-DRA&quot;, &quot;HLA-DRB1&quot;, &quot;CD74&quot;, &quot;HLA-DPA1&quot;, &quot;HLA-DPB1&quot;, &quot;HLA-DQA1&quot;, &quot;HLA-DQB1&quot;] if g in available_genes],
+    &quot;Cytotoxicity&quot;: [g for g in [&quot;NKG7&quot;, &quot;GNLY&quot;, &quot;GZMB&quot;, &quot;PRF1&quot;, &quot;GZMA&quot;, &quot;GZMH&quot;, &quot;KLRB1&quot;, &quot;KLRD1&quot;] if g in available_genes],
+    &quot;Inflammation&quot;: [g for g in [&quot;S100A8&quot;, &quot;S100A9&quot;, &quot;LYZ&quot;, &quot;CD14&quot;, &quot;FCN1&quot;, &quot;IL1B&quot;] if g in available_genes],
+    &quot;Ribosome&quot;: [g for g in [&quot;RPS6&quot;, &quot;RPL13&quot;, &quot;RPS3&quot;, &quot;RPL11&quot;, &quot;RPS2&quot;, &quot;RPL3&quot;] if g in available_genes],
+    &quot;MHC_Class_I&quot;: [g for g in [&quot;HLA-A&quot;, &quot;HLA-B&quot;, &quot;HLA-C&quot;, &quot;B2M&quot;] if g in available_genes]
+}
 
-gsea_gene_sets = {}
-if len(ifn_gsea_genes) &gt;= 2:
-    gsea_gene_sets[&quot;IFN_Path&quot;] = ifn_gsea_genes
-if len(tcell_gsea_genes) &gt;= 2:
-    gsea_gene_sets[&quot;T_Cell&quot;] = tcell_gsea_genes
+# Filter out empty or too small sets
+gsea_gene_sets = {k: v for k, v in gsea_gene_sets.items() if len(v) &gt;= 2}
 
 if len(gsea_gene_sets) &gt; 0:
     try:
-        gsea_res = st.run_gsea_did(
-            adata,
-            gene_sets=gsea_gene_sets,
-            design=design,
-            visits=(&quot;1-7 days&quot;, &quot;8-14 days&quot;),
-            min_size=1,
-            layer=&quot;log1p_cpm&quot;
-            # Note: run_gsea_did uses min_units=5 by default (can be overridden)
-        )
+        # Run GSEA stratified by cell type to get a nice heatmap
+        celltypes = adata.obs[design.celltype_col].unique()
+        gsea_results_list = []
 
-        if not gsea_res.empty:
-            display(gsea_res)
-            st.plot_gsea_heatmap(gsea_res)
-            plt.title(&quot;Trial-Aware Pathway Enrichment&quot;)
+        for ct in celltypes:
+            ct_adata = adata[adata.obs[design.celltype_col] == ct].copy()
+            if ct_adata.n_obs &lt; 15: continue
+
+            try:
+                res_ct = st.run_gsea_did(
+                    ct_adata,
+                    gene_sets=gsea_gene_sets,
+                    design=design,
+                    visits=(&quot;1-7 days&quot;, &quot;8-14 days&quot;),
+                    min_size=1,
+                    layer=&quot;log1p_cpm&quot;
+                )
+                if not res_ct.empty:
+                    res_ct[&quot;pool&quot;] = ct
+                    gsea_results_list.append(res_ct)
+            except:
+                pass
+
+        if gsea_results_list:
+            gsea_res_all = pd.concat(gsea_results_list)
+            display(gsea_res_all.head())
+            st.plot_gsea_heatmap(gsea_res_all, fdr_thresh=1.0, figsize=(12, 10))
+            plt.title(&quot;Cross-Celltype Trial-Aware Pathway Enrichment&quot;, fontsize=15, fontweight=&#39;bold&#39;)
             plt.show()
         else:
             print(&quot;GSEA returned empty results - check participant pairing&quot;)

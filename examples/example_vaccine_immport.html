@@ -206,15 +206,37 @@ from scipy import sparse
     adata = adata[adata.obs[&quot;subject_id&quot;] != &quot;Unknown&quot;].copy()
 
     # Inject signal: Vaccine induces activation markers at Day 7
-    vaccine_idx = (adata.obs[&quot;arm&quot;] == &quot;Vaccine_A&quot;) &amp; (adata.obs[&quot;study_time_collected&quot;] == 7)
-    gene_idx = adata.var_names.get_loc(&quot;CD79A&quot;)
+    # FIX: Check which genes exist
+    available = set(adata.var_names)
+
+    # Vaccine signal in multiple genes for strong GSEA
+    vaccine_genes = {
+        &quot;CD79A&quot;: 3.0, &quot;CD79B&quot;: 2.5, &quot;MS4A1&quot;: 2.0, &quot;CD19&quot;: 2.0, &quot;BANK1&quot;: 2.0, # B cell
+        &quot;HLA-DRA&quot;: 1.5, &quot;HLA-DRB1&quot;: 1.5, &quot;CD74&quot;: 1.5, # APC
+        &quot;IFITM3&quot;: 2.0, &quot;ISG15&quot;: 2.0, &quot;MX1&quot;: 2.0, # IFN
+        &quot;NKG7&quot;: 2.5, &quot;GZMB&quot;: 2.5, &quot;PRF1&quot;: 2.0 # NK/T activation
+    }
 
     X = adata.layers[&quot;counts&quot;].toarray() if hasattr(adata.layers[&quot;counts&quot;], &quot;toarray&quot;) else adata.layers[&quot;counts&quot;]
-    X[vaccine_idx.values, gene_idx] += 20
+    X = X.astype(np.float32)
+
+    vaccine_idx = (adata.obs[&quot;arm&quot;] == &quot;Vaccine_A&quot;) &amp; (adata.obs[&quot;study_time_collected&quot;] == 7)
+
+    for g, shift in vaccine_genes.items():
+        if g in available:
+            idx = adata.var_names.get_loc(g)
+            X[vaccine_idx.values, idx] += shift
+
     adata.layers[&quot;counts&quot;] = sparse.csr_matrix(X)
     adata.X = adata.layers[&quot;counts&quot;].copy()
     sc.pp.normalize_total(adata, target_sum=1e4)
     sc.pp.log1p(adata)
+
+    # Distinct UMAP clusters
+    sc.pp.highly_variable_genes(adata, n_top_genes=2000, flavor=&#39;seurat_v3&#39;, layer=&#39;counts&#39;)
+    sc.pp.pca(adata)
+    sc.pp.neighbors(adata)
+    sc.tl.umap(adata)
 
     return adata
 
@@ -845,18 +867,59 @@ plt.show()
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>gsea_res = st.run_gsea_did(
-    adata,
-    gene_sets={&quot;B_Cell&quot;: [&quot;CD79A&quot;, &quot;CD79B&quot;, &quot;MS4A1&quot;], &quot;NK_Cell&quot;: [&quot;GNLY&quot;, &quot;NKG7&quot;, &quot;GZMB&quot;]},
-    design=design,
-    visits=(0, 7),
-    min_size=1
-)
-display(gsea_res)
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Define more comprehensive gene sets for a high-quality heatmap
+available_genes = set(adata.var_names)
+gsea_gene_sets = {
+    &quot;B_Cell_Activation&quot;: [g for g in [&quot;CD79A&quot;, &quot;CD79B&quot;, &quot;MS4A1&quot;, &quot;CD19&quot;, &quot;BANK1&quot;] if g in available_genes],
+    &quot;Antigen_Presentation&quot;: [g for g in [&quot;HLA-DRA&quot;, &quot;HLA-DRB1&quot;, &quot;CD74&quot;, &quot;HLA-DPA1&quot;, &quot;HLA-DPB1&quot;] if g in available_genes],
+    &quot;IFN_Response&quot;: [g for g in [&quot;IFITM3&quot;, &quot;ISG15&quot;, &quot;MX1&quot;, &quot;STAT1&quot;, &quot;IFI6&quot;] if g in available_genes],
+    &quot;NK_Cell_Activation&quot;: [g for g in [&quot;GNLY&quot;, &quot;NKG7&quot;, &quot;GZMB&quot;, &quot;PRF1&quot;, &quot;KLRB1&quot;] if g in available_genes],
+    &quot;T_Cell_Signaling&quot;: [g for g in [&quot;CD3D&quot;, &quot;CD3E&quot;, &quot;CD3G&quot;, &quot;LCK&quot;, &quot;ZAP70&quot;] if g in available_genes],
+    &quot;Chemokines&quot;: [g for g in [&quot;CCL5&quot;, &quot;CXCL9&quot;, &quot;CXCL10&quot;, &quot;CXCL11&quot;] if g in available_genes],
+    &quot;Ribosome&quot;: [g for g in [&quot;RPS6&quot;, &quot;RPL13&quot;, &quot;RPS3&quot;, &quot;RPL11&quot;] if g in available_genes],
+    &quot;MHC_Class_II&quot;: [g for g in [&quot;HLA-DQA1&quot;, &quot;HLA-DQB1&quot;, &quot;HLA-DMA&quot;, &quot;HLA-DMB&quot;] if g in available_genes]
+}
 
-st.plot_gsea_heatmap(gsea_res)
-plt.title(&quot;Vaccine Pathway Enrichment&quot;)
-plt.show()
+# Filter out empty or too small sets
+gsea_gene_sets = {k: v for k, v in gsea_gene_sets.items() if len(v) &gt;= 2}
+
+if len(gsea_gene_sets) &gt; 0:
+    try:
+        # Run GSEA stratified by cell type to get a nice heatmap
+        celltypes = adata.obs[design.celltype_col].unique()
+        gsea_results_list = []
+
+        for ct in celltypes:
+            ct_adata = adata[adata.obs[design.celltype_col] == ct].copy()
+            if ct_adata.n_obs &lt; 15: continue
+
+            try:
+                res_ct = st.run_gsea_did(
+                    ct_adata,
+                    gene_sets=gsea_gene_sets,
+                    design=design,
+                    visits=(0, 7),
+                    min_size=1,
+                    layer=&quot;log1p_cpm&quot;
+                )
+                if not res_ct.empty:
+                    res_ct[&quot;pool&quot;] = ct
+                    gsea_results_list.append(res_ct)
+            except:
+                pass
+
+        if gsea_results_list:
+            gsea_res_all = pd.concat(gsea_results_list)
+            display(gsea_res_all.head())
+            st.plot_gsea_heatmap(gsea_res_all, fdr_thresh=1.0, figsize=(12, 10))
+            plt.title(&quot;Cross-Celltype Vaccine Response Enrichment&quot;, fontsize=15, fontweight=&#39;bold&#39;)
+            plt.show()
+        else:
+            print(&quot;GSEA returned empty results&quot;)
+    except Exception as e:
+        print(f&quot;GSEA error: {e}&quot;)
+else:
+    print(&quot;No valid gene sets for GSEA&quot;)
 <br/></pre></div>
 </div>
 </div>
