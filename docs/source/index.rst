@@ -11,6 +11,15 @@ sctrial: Trial-Aware Single-Cell Inference
    examples/index
    api
 
+.. toctree::
+   :maxdepth: 2
+   :caption: User Guides:
+
+   best_practices
+   troubleshooting
+   faq
+   performance
+
 Indices and tables
 ==================
 

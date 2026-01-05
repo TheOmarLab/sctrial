@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from io import StringIO
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Dict, Optional, Sequence, Tuple
 import gzip
 import urllib.request
 
@@ -96,17 +96,18 @@ def _get_counts_matrix(adata: ad.AnnData) -> Tuple[Optional[np.ndarray], Optiona
 def _params_match(prev: Dict, curr: Dict) -> bool:
     for k, v in curr.items():
         pv = prev.get(k, None)
+        pv_normalized: Any
         if isinstance(pv, (list, tuple)):
-            pv_list = list(pv)
-        elif hasattr(pv, "tolist"):
-            pv_list = pv.tolist()
+            pv_normalized = list(pv)
+        elif pv is not None and hasattr(pv, "tolist"):
+            pv_normalized = pv.tolist()
         else:
-            pv_list = pv
+            pv_normalized = pv
         if isinstance(v, (list, tuple)):
-            if list(v) != pv_list:
+            if list(v) != pv_normalized:
                 return False
         else:
-            if pv_list != v:
+            if pv_normalized != v:
                 return False
     return True
 
@@ -119,14 +120,14 @@ def load_sade_feldman(
     force_reprocess: bool = False,
 ) -> ad.AnnData:
     """Load and preprocess Sade-Feldman melanoma immunotherapy dataset (GSE120575)."""
-    data_dir = _resolve_dir_with_files(
+    data_dir_path = _resolve_dir_with_files(
         data_dir,
         [
             "GSE120575_Sade_Feldman_melanoma_single_cells_TPM_GEO.txt.gz",
             "GSE120575_patient_ID_single_cells.txt.gz",
         ],
     )
-    processed_path = data_dir.parent / "processed" / processed_name
+    processed_path = data_dir_path.parent / "processed" / processed_name
 
     processing_params = {
         "version": "v5",
@@ -143,8 +144,8 @@ def load_sade_feldman(
             return adata
         print("Processed file parameters differ; reprocessing.")
 
-    tpm_path = data_dir / "GSE120575_Sade_Feldman_melanoma_single_cells_TPM_GEO.txt.gz"
-    meta_path = data_dir / "GSE120575_patient_ID_single_cells.txt.gz"
+    tpm_path = data_dir_path / "GSE120575_Sade_Feldman_melanoma_single_cells_TPM_GEO.txt.gz"
+    meta_path = data_dir_path / "GSE120575_patient_ID_single_cells.txt.gz"
 
     for p in [tpm_path, meta_path]:
         if not p.exists():
@@ -236,8 +237,8 @@ def load_stephenson_data(
     force_reprocess: bool = False,
 ) -> ad.AnnData:
     """Load and preprocess Stephenson COVID-19 dataset (E-MTAB-10026)."""
-    data_path = _resolve_file(data_path)
-    data_root = data_path.parent.parent if data_path.exists() else Path("data")
+    data_path_resolved = _resolve_file(data_path)
+    data_root = data_path_resolved.parent.parent if data_path_resolved.exists() else Path("data")
     processed_path = data_root / "processed" / processed_name
 
     if processed_path.exists() and not force_reprocess:
@@ -246,18 +247,18 @@ def load_stephenson_data(
         print(f"  {adata.n_obs:,} cells, {adata.n_vars:,} genes")
         return adata
 
-    if not data_path.exists():
+    if not data_path_resolved.exists():
         if not allow_download:
             raise FileNotFoundError(
-                f"Data not found at {data_path}. Download from: https://www.ebi.ac.uk/biostudies/files/E-MTAB-10026/"
+                f"Data not found at {data_path_resolved}. Download from: https://www.ebi.ac.uk/biostudies/files/E-MTAB-10026/"
             )
         url = "https://www.ebi.ac.uk/biostudies/files/E-MTAB-10026/covid_portal_210320_with_raw.h5ad"
-        data_path.parent.mkdir(parents=True, exist_ok=True)
+        data_path_resolved.parent.mkdir(parents=True, exist_ok=True)
         print(f"Downloading from {url}...")
-        urllib.request.urlretrieve(url, data_path)
+        urllib.request.urlretrieve(url, str(data_path_resolved))
 
     print("Processing raw data...")
-    adata = ad.read_h5ad(data_path)
+    adata = ad.read_h5ad(data_path_resolved)
 
     X_counts, source = _get_counts_matrix(adata)
     if X_counts is None:
@@ -306,7 +307,7 @@ def load_vaccine_gse171964(
     force_reprocess: bool = False,
 ) -> ad.AnnData:
     """Load and preprocess GSE171964 PBMC vaccine time course data (Day 0 vs Day 7)."""
-    data_dir = _resolve_dir_with_files(
+    data_dir_path = _resolve_dir_with_files(
         data_dir,
         [
             "GSE171964_barcodes_v2.tsv.gz",
@@ -315,7 +316,7 @@ def load_vaccine_gse171964(
             "GSE171964_countsmatrix_v2.mtx.gz",
         ],
     )
-    processed_path = data_dir.parent / "processed" / processed_name
+    processed_path = data_dir_path.parent / "processed" / processed_name
 
     processing_params = {
         "version": "v2",
@@ -337,10 +338,10 @@ def load_vaccine_gse171964(
             return adata
         print("Processed file parameters differ; reprocessing.")
 
-    barcodes_path = data_dir / "GSE171964_barcodes_v2.tsv.gz"
-    feats_path = data_dir / "GSE171964_feats_v2.tsv.gz"
-    pheno_path = data_dir / "GSE171964_geo_pheno_v2.csv.gz"
-    mtx_path = data_dir / "GSE171964_countsmatrix_v2.mtx.gz"
+    barcodes_path = data_dir_path / "GSE171964_barcodes_v2.tsv.gz"
+    feats_path = data_dir_path / "GSE171964_feats_v2.tsv.gz"
+    pheno_path = data_dir_path / "GSE171964_geo_pheno_v2.csv.gz"
+    mtx_path = data_dir_path / "GSE171964_countsmatrix_v2.mtx.gz"
 
     for p in [barcodes_path, feats_path, pheno_path, mtx_path]:
         if not p.exists():

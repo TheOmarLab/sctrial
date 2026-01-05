@@ -21,7 +21,7 @@ from .stats.gsea import run_gsea_did
 from .stats.comparisons import within_arm_comparison, between_arm_comparison
 from .stats.summary import summarize_did_results
 from .plotting import (
-    plot_trial_interaction, 
+    plot_trial_interaction,
     plot_abundance_interaction,
     plot_did_forest,
     plot_within_arm_comparison,
@@ -31,6 +31,13 @@ from .plotting import (
     plot_gsea_heatmap,
     plot_trial_dotplot
 )
+from .validation import (
+    validate_adata,
+    validate_features,
+    diagnose_trial_data,
+    TrialDataValidator,
+)
+from .convenience import quick_did, auto_detect_design
 
 
 __all__ = [
@@ -64,6 +71,12 @@ __all__ = [
     "plot_gsea_radar",
     "plot_gsea_heatmap",
     "plot_trial_dotplot",
+    "validate_adata",
+    "validate_features",
+    "diagnose_trial_data",
+    "TrialDataValidator",
+    "quick_did",
+    "auto_detect_design",
 ]
 
 try:

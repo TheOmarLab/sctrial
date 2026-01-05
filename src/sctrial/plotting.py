@@ -12,28 +12,27 @@ from ._env import ensure_numba_cache_dir, ensure_matplotlib_config_dir
 ensure_matplotlib_config_dir()
 ensure_numba_cache_dir()
 
+# Initialize optional plotting dependencies to avoid type errors
 plt: Any = None
 GridSpec: Any = None
-# type: ignore[no-redef]
-try:
-    import matplotlib.pyplot as plt
-    from matplotlib.gridspec import GridSpec
-except ImportError:
-    plt = None
-    GridSpec = None
+sns: Any = None
+sc: Any = None
+_scanpy_import_error: Optional[Exception] = None
 
-# type: ignore[no-redef]
 try:
-    import seaborn as sns
+    import matplotlib.pyplot as plt  # type: ignore[no-redef]
+    from matplotlib.gridspec import GridSpec  # type: ignore[no-redef]
 except ImportError:
-    sns = None
+    pass
 
-# type: ignore[no-redef]
-_scanpy_import_error = None
 try:
-    import scanpy as sc
+    import seaborn as sns  # type: ignore[no-redef]
+except ImportError:
+    pass
+
+try:
+    import scanpy as sc  # type: ignore[no-redef]
 except Exception as e:  # ImportError or runtime errors (e.g., numba cache)
-    sc = None
     _scanpy_import_error = e
 
 def did_volcano_frame(

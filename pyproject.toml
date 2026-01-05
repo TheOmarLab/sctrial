@@ -40,6 +40,7 @@ Issues = "https://github.com/TheOmarLab/sctrial/issues"
 [project.optional-dependencies]
 plots = ["matplotlib>=3.6", "seaborn>=0.12", "scanpy>=1.9"]
 gsea = ["gseapy>=1.0"]
+all = ["matplotlib>=3.6", "seaborn>=0.12", "scanpy>=1.9", "gseapy>=1.0"]
 dev = [
   "pytest>=7.0",
   "pytest-cov>=4.0",
@@ -48,6 +49,7 @@ dev = [
   "pre-commit>=3.0",
   "build>=1.0",
   "twine>=5.0",
+  "psutil>=5.9",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -69,3 +71,26 @@ addopts = "-q"
 [tool.mypy]
 ignore_missing_imports = true
 check_untyped_defs = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP"]
+ignore = []
+
+[tool.coverage.run]
+branch = true
+source = ["src/sctrial"]
+omit = ["*/tests/*", "*/__pycache__/*", "*/conftest.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+]
