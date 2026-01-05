@@ -24,7 +24,7 @@
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="sctrial: Scalability Analysis" href="stress_test_real_scale.html" />
-    <link rel="prev" title="Example: Immunotherapy Response in Melanoma" href="example_immunotherapy_sade_feldman.html" /> 
+    <link rel="prev" title="Immunotherapy Response in Melanoma: Longitudinal Single-Cell Analysis" href="example_immunotherapy_sade_feldman.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -52,12 +52,32 @@
 <li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="index.html">Examples</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="example_covid19_stephenson.html">Example: Longitudinal Analysis of COVID-19 PBMC Data</a></li>
-<li class="toctree-l2"><a class="reference internal" href="example_immunotherapy_sade_feldman.html">Example: Immunotherapy Response in Melanoma</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example_covid19_stephenson.html">Immune Profiling of COVID-19 Severity: A Cross-Sectional Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example_immunotherapy_sade_feldman.html">Immunotherapy Response in Melanoma: Longitudinal Single-Cell Analysis</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Example: Vaccine Response Analysis (GSE171964)</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#Dataset:-BNT162b2-vaccination-time-course-(GEO-GSE171964)">Dataset: BNT162b2 vaccination time course (GEO GSE171964)</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#1.-Load-Actual-Data">1. Load Actual Data</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#2.-Analysis">2. Analysis</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#Background">Background</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#Important-Methodological-Notes">Important Methodological Notes</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#1.-Setup">1. Setup</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#2.-Data-Loading-and-Processing">2. Data Loading and Processing</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#2.1-Load-processed-AnnData">2.1 Load processed AnnData</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#2.2-Quick-exploratory-summaries">2.2 Quick exploratory summaries</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#3.-Trial-Design-and-Timepoint-Strategy">3. Trial Design and Timepoint Strategy</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#3.1-Exploratory-plots-of-cell-types-per-visit">3.1 Exploratory plots of cell types per visit</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#4.-UMAPs-of-All-Cell-Types">4. UMAPs of All Cell Types</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#5.-Module-Scoring-and-Gene-Panel">5. Module Scoring and Gene Panel</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#6.-Within‑Arm-Comparisons-(Participant‑Level)">6. Within‑Arm Comparisons (Participant‑Level)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#7.-Gene-Expression-Within‑Arm-(Panel-Genes)">7. Gene Expression Within‑Arm (Panel Genes)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#8.-Pseudobulk-Within‑Arm-(Panel-Genes)">8. Pseudobulk Within‑Arm (Panel Genes)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#9.-Trial-Interaction-Plot-(Single-Arm)">9. Trial Interaction Plot (Single Arm)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#10.-Trial-UMAP-Panel-for-a-Module-Score">10. Trial UMAP Panel for a Module Score</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#11.-Dotplot-of-Panel-Genes">11. Dotplot of Panel Genes</a></li>
 </ul>
 </li>
 </ul>
@@ -93,30 +113,73 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="nbinput nblast docutils container">
+  <section id="Example:-Vaccine-Response-Analysis-(GSE171964)">
+<h1>Example: Vaccine Response Analysis (GSE171964)<a class="headerlink" href="#Example:-Vaccine-Response-Analysis-(GSE171964)" title="Link to this heading"></a></h1>
+<section id="Dataset:-BNT162b2-vaccination-time-course-(GEO-GSE171964)">
+<h2>Dataset: BNT162b2 vaccination time course (GEO GSE171964)<a class="headerlink" href="#Dataset:-BNT162b2-vaccination-time-course-(GEO-GSE171964)" title="Link to this heading"></a></h2>
+<section id="Background">
+<h3>Background<a class="headerlink" href="#Background" title="Link to this heading"></a></h3>
+<p>This dataset profiles PBMCs collected at baseline and after BNT162b2 vaccination, capturing short‑term immune dynamics.</p>
+</section>
+</section>
+<section id="Important-Methodological-Notes">
+<h2>Important Methodological Notes<a class="headerlink" href="#Important-Methodological-Notes" title="Link to this heading"></a></h2>
+<p><strong>Single‑arm longitudinal study:</strong></p>
+<ul class="simple">
+<li><p>All participants received vaccine</p></li>
+<li><p>Analyses focus on <strong>within‑participant</strong> changes over time</p></li>
+<li><p>We do not estimate treatment effects versus an unvaccinated control</p></li>
+</ul>
+<p><strong>Time axis:</strong></p>
+<ul class="simple">
+<li><p>We use <strong>Day 0 vs Day 7</strong> as the primary comparison</p></li>
+</ul>
+<p><strong>Analysis strategy:</strong></p>
+<ul class="simple">
+<li><p>Participant‑level aggregation avoids treating cells as independent</p></li>
+<li><p>Cross‑sectional summaries are descriptive; inference uses paired comparisons</p></li>
+<li><p>Multiple testing is controlled using FDR (alpha = 0.25)</p></li>
+</ul>
+<p><strong>Sampling and scope:</strong></p>
+<ul class="simple">
+<li><p>We restrict to participants with both Day 0 and Day 7 samples</p></li>
+<li><p>For speed, we cap the number of participants and cells per participant/day/cell type</p></li>
+</ul>
+<section id="1.-Setup">
+<h3>1. Setup<a class="headerlink" href="#1.-Setup" title="Link to this heading"></a></h3>
+<div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
-<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">&#39;ignore&#39;</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">FutureWarning</span><span class="p">)</span>
+<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">&#39;ignore&#39;</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">UserWarning</span><span class="p">)</span>
+
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">seaborn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sns</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">scanpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sc</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">sctrial</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">scipy.sparse</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sp</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">statsmodels.stats.multitest</span><span class="w"> </span><span class="kn">import</span> <span class="n">multipletests</span>
+
 <span class="n">pd</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">mode</span><span class="o">.</span><span class="n">chained_assignment</span> <span class="o">=</span> <span class="kc">None</span>
+
+<span class="c1"># Configuration</span>
+<span class="n">SEED</span> <span class="o">=</span> <span class="mi">42</span>
+<span class="n">MIN_PAIRED</span> <span class="o">=</span> <span class="mi">4</span>
+<span class="n">MIN_GENES_FOR_SCORE</span> <span class="o">=</span> <span class="mi">5</span>
+<span class="n">FDR_ALPHA</span> <span class="o">=</span> <span class="mf">0.25</span>
+
+<span class="n">sc</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">set_figure_params</span><span class="p">(</span><span class="n">dpi</span><span class="o">=</span><span class="mi">120</span><span class="p">)</span>
 <br/></pre></div>
 </div>
 </div>
-<section id="Example:-Vaccine-Response-Analysis-(GSE171964)">
-<h1>Example: Vaccine Response Analysis (GSE171964)<a class="headerlink" href="#Example:-Vaccine-Response-Analysis-(GSE171964)" title="Link to this heading"></a></h1>
-<section id="Dataset:-BNT162b2-vaccination-time-course-(GEO-GSE171964)">
-<h2>Dataset: BNT162b2 vaccination time course (GEO GSE171964)<a class="headerlink" href="#Dataset:-BNT162b2-vaccination-time-course-(GEO-GSE171964)" title="Link to this heading"></a></h2>
-<p><strong>Background:</strong> This notebook analyzes a real single-cell PBMC dataset collected across multiple post-vaccination days.</p>
-<p><strong>Data Source:</strong> GEO GSE171964 (barcodes, features, counts matrix, and phenotype metadata).</p>
-<section id="1.-Load-Actual-Data">
-<h3>1. Load Actual Data<a class="headerlink" href="#1.-Load-Actual-Data" title="Link to this heading"></a></h3>
-<div class="nbinput docutils container">
+</section>
+<section id="2.-Data-Loading-and-Processing">
+<h3>2. Data Loading and Processing<a class="headerlink" href="#2.-Data-Loading-and-Processing" title="Link to this heading"></a></h3>
+<div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
 </pre></div>
 </div>
@@ -137,13 +200,38 @@
     <span class="k">return</span> <span class="n">path</span>
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">_params_match</span><span class="p">(</span><span class="n">prev</span><span class="p">,</span> <span class="n">curr</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">curr</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">pv</span> <span class="o">=</span> <span class="n">prev</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pv</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+            <span class="n">pv_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">pv</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">pv</span><span class="p">,</span> <span class="s1">&#39;tolist&#39;</span><span class="p">):</span>
+            <span class="n">pv_list</span> <span class="o">=</span> <span class="n">pv</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">pv_list</span> <span class="o">=</span> <span class="n">pv</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="nb">list</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="o">!=</span> <span class="n">pv_list</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">pv_list</span> <span class="o">!=</span> <span class="n">v</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">return</span> <span class="kc">True</span>
+
+
 <span class="k">def</span><span class="w"> </span><span class="nf">load_vaccine_example_data</span><span class="p">(</span>
     <span class="n">data_dir</span><span class="o">=</span><span class="s2">&quot;data/vaccine_gse171964&quot;</span><span class="p">,</span>
     <span class="n">processed_name</span><span class="o">=</span><span class="s2">&quot;vaccine_gse171964_day0_day7.h5ad&quot;</span><span class="p">,</span>
     <span class="n">max_participants</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
     <span class="n">max_cells_per_group</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
-    <span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span>
+    <span class="n">seed</span><span class="o">=</span><span class="n">SEED</span><span class="p">,</span>
+    <span class="n">force_reprocess</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
 <span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Load and preprocess GSE171964 PBMC vaccine time course data.</span>
+
+<span class="sd">    We keep Day 0 and Day 7 samples, then restrict to participants with both days.</span>
+<span class="sd">    For speed, we cap the number of participants and cells per participant/day/cell type.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">data_dir</span> <span class="o">=</span> <span class="n">_resolve_dir_with_files</span><span class="p">(</span>
         <span class="n">data_dir</span><span class="p">,</span>
         <span class="p">[</span>
@@ -155,14 +243,26 @@
     <span class="p">)</span>
     <span class="n">processed_path</span> <span class="o">=</span> <span class="n">data_dir</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span>
 
-    <span class="k">if</span> <span class="n">processed_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+    <span class="n">processing_params</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;version&quot;</span><span class="p">:</span> <span class="s2">&quot;v2&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;max_participants&quot;</span><span class="p">:</span> <span class="n">max_participants</span><span class="p">,</span>
+        <span class="s2">&quot;max_cells_per_group&quot;</span><span class="p">:</span> <span class="n">max_cells_per_group</span><span class="p">,</span>
+        <span class="s2">&quot;seed&quot;</span><span class="p">:</span> <span class="n">seed</span><span class="p">,</span>
+        <span class="s2">&quot;days&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">7</span><span class="p">],</span>
+    <span class="p">}</span>
+
+    <span class="k">if</span> <span class="n">processed_path</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">force_reprocess</span><span class="p">:</span>
         <span class="n">adata</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="n">processed_path</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded processed vaccine dataset (GSE171964): </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">}</span><span class="s2"> genes&quot;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Processed file:&quot;</span><span class="p">,</span> <span class="n">processed_path</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Days:&quot;</span><span class="p">,</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;day&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">())</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Participants:&quot;</span><span class="p">,</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;pt_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">())</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Cell types:&quot;</span><span class="p">,</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;clustnm&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">())</span>
-        <span class="k">return</span> <span class="n">adata</span>
+        <span class="n">prev</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">uns</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;processing_params&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="k">if</span> <span class="n">_params_match</span><span class="p">(</span><span class="n">prev</span><span class="p">,</span> <span class="n">processing_params</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded processed vaccine dataset (GSE171964): </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">}</span><span class="s2"> genes&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Processed file:&quot;</span><span class="p">,</span> <span class="n">processed_path</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Days:&quot;</span><span class="p">,</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;day&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">())</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Participants:&quot;</span><span class="p">,</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;pt_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">())</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Cell types:&quot;</span><span class="p">,</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;clustnm&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">())</span>
+            <span class="k">return</span> <span class="n">adata</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Processed file parameters differ; reprocessing.&quot;</span><span class="p">)</span>
 
     <span class="n">barcodes_path</span> <span class="o">=</span> <span class="n">data_dir</span> <span class="o">/</span> <span class="s2">&quot;GSE171964_barcodes_v2.tsv.gz&quot;</span>
     <span class="n">feats_path</span> <span class="o">=</span> <span class="n">data_dir</span> <span class="o">/</span> <span class="s2">&quot;GSE171964_feats_v2.tsv.gz&quot;</span>
@@ -173,7 +273,6 @@
         <span class="k">if</span> <span class="ow">not</span> <span class="n">p</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
             <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing file: </span><span class="si">{</span><span class="n">p</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-    <span class="c1"># Load barcodes and features</span>
     <span class="n">barcodes</span> <span class="o">=</span> <span class="p">(</span>
         <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">barcodes_path</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;\s+&quot;</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="s2">&quot;python&quot;</span><span class="p">,</span> <span class="n">skiprows</span><span class="o">=</span><span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
         <span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
@@ -187,11 +286,9 @@
         <span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
     <span class="p">)</span>
 
-    <span class="c1"># Load count matrix</span>
     <span class="k">with</span> <span class="n">gzip</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">mtx_path</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
         <span class="n">X</span> <span class="o">=</span> <span class="n">mmread</span><span class="p">(</span><span class="n">f</span><span class="p">)</span><span class="o">.</span><span class="n">tocsr</span><span class="p">()</span>
 
-    <span class="c1"># Ensure shape is cells x genes</span>
     <span class="k">if</span> <span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">features</span><span class="p">)</span> <span class="ow">and</span> <span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">barcodes</span><span class="p">):</span>
         <span class="n">X</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">T</span>
     <span class="k">elif</span> <span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">barcodes</span><span class="p">)</span> <span class="ow">and</span> <span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">features</span><span class="p">):</span>
@@ -203,14 +300,13 @@
     <span class="n">adata</span><span class="o">.</span><span class="n">obs_names</span> <span class="o">=</span> <span class="n">barcodes</span>
     <span class="n">adata</span><span class="o">.</span><span class="n">var_names</span> <span class="o">=</span> <span class="n">features</span>
 
-    <span class="c1"># Add phenotype metadata</span>
     <span class="n">pheno</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">pheno_path</span><span class="p">)</span>
     <span class="n">pheno</span><span class="p">[</span><span class="s2">&quot;barcode&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pheno</span><span class="p">[</span><span class="s2">&quot;barcode&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
     <span class="n">pheno</span> <span class="o">=</span> <span class="n">pheno</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s2">&quot;barcode&quot;</span><span class="p">)</span>
     <span class="n">pheno</span> <span class="o">=</span> <span class="n">pheno</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">adata</span><span class="o">.</span><span class="n">obs_names</span><span class="p">]</span>
     <span class="n">adata</span><span class="o">.</span><span class="n">obs</span> <span class="o">=</span> <span class="n">pheno</span>
 
-    <span class="c1"># Keep baseline and day 7 for a paired vaccine response</span>
+    <span class="c1"># Keep baseline and day 7</span>
     <span class="n">adata</span> <span class="o">=</span> <span class="n">adata</span><span class="p">[</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;day&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">7</span><span class="p">])]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
     <span class="c1"># Keep paired participants and cap participants</span>
@@ -236,6 +332,8 @@
     <span class="c1"># Add counts layer</span>
     <span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">&quot;counts&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">X</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
+    <span class="n">adata</span><span class="o">.</span><span class="n">uns</span><span class="p">[</span><span class="s2">&quot;processing_params&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">processing_params</span>
+
     <span class="n">processed_path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">adata</span><span class="o">.</span><span class="n">write_h5ad</span><span class="p">(</span><span class="n">processed_path</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Saved processed file:&quot;</span><span class="p">,</span> <span class="n">processed_path</span><span class="p">)</span>
@@ -246,8 +344,26 @@
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Cell types:&quot;</span><span class="p">,</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;clustnm&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">())</span>
 
     <span class="k">return</span> <span class="n">adata</span>
+<br/></pre></div>
+</div>
+</div>
+</section>
+</section>
+<section id="2.1-Load-processed-AnnData">
+<h2>2.1 Load processed AnnData<a class="headerlink" href="#2.1-Load-processed-AnnData" title="Link to this heading"></a></h2>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">adata</span> <span class="o">=</span> <span class="n">load_vaccine_example_data</span><span class="p">(</span>
+    <span class="n">max_participants</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+    <span class="n">max_cells_per_group</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+    <span class="n">seed</span><span class="o">=</span><span class="n">SEED</span><span class="p">,</span>
+<span class="p">)</span>
 
-<span class="n">adata</span> <span class="o">=</span> <span class="n">load_vaccine_example_data</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Obs columns:&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">tolist</span><span class="p">()))</span>
 <br/></pre></div>
 </div>
 </div>
@@ -256,267 +372,666 @@
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-Loaded processed vaccine dataset (GSE171964): 21331 cells, 20102 genes
-Processed file: /Users/omarm/Documents/Research/projects/sc-trialdiff/data/processed/vaccine_gse171964_day0_day7.h5ad
-Days: [0 7]
-Participants: 6
-Cell types: 18
+<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
+<span class="ansi-red-fg">FileNotFoundError</span>                         Traceback (most recent call last)
+Cell <span class="ansi-green-fg">In[3], line 1</span>
+<span class="ansi-green-fg">----&gt; 1</span> adata <span style="color: rgb(98,98,98)">=</span> <span class="ansi-yellow-bg">load_vaccine_example_data</span><span class="ansi-yellow-bg">(</span>
+<span class="ansi-green-intense-fg ansi-bold">      2</span> <span class="ansi-yellow-bg">    </span><span class="ansi-yellow-bg">max_participants</span><span class="ansi-yellow-bg" style="color: rgb(98,98,98)">=</span><span class="ansi-yellow-bg" style="color: rgb(98,98,98)">30</span><span class="ansi-yellow-bg">,</span>
+<span class="ansi-green-intense-fg ansi-bold">      3</span> <span class="ansi-yellow-bg">    </span><span class="ansi-yellow-bg">max_cells_per_group</span><span class="ansi-yellow-bg" style="color: rgb(98,98,98)">=</span><span class="ansi-yellow-bg" style="color: rgb(98,98,98)">200</span><span class="ansi-yellow-bg">,</span>
+<span class="ansi-green-intense-fg ansi-bold">      4</span> <span class="ansi-yellow-bg">    </span><span class="ansi-yellow-bg">seed</span><span class="ansi-yellow-bg" style="color: rgb(98,98,98)">=</span><span class="ansi-yellow-bg">SEED</span><span class="ansi-yellow-bg">,</span>
+<span class="ansi-green-intense-fg ansi-bold">      5</span> <span class="ansi-yellow-bg">)</span>
+<span class="ansi-green-intense-fg ansi-bold">      7</span> <span style="color: rgb(0,135,0)">print</span>(adata)
+<span class="ansi-green-intense-fg ansi-bold">      8</span> <span style="color: rgb(0,135,0)">print</span>(<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">Obs columns:</span><span style="color: rgb(175,0,0)">&#34;</span>)
+
+Cell <span class="ansi-green-fg">In[2], line 89</span>, in <span class="ansi-cyan-fg">load_vaccine_example_data</span><span class="ansi-blue-fg">(data_dir, processed_name, max_participants, max_cells_per_group, seed, force_reprocess)</span>
+<span class="ansi-green-intense-fg ansi-bold">     87</span> <span class="ansi-bold" style="color: rgb(0,135,0)">for</span> p <span class="ansi-bold" style="color: rgb(175,0,255)">in</span> [barcodes_path, feats_path, pheno_path, mtx_path]:
+<span class="ansi-green-intense-fg ansi-bold">     88</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span class="ansi-bold" style="color: rgb(175,0,255)">not</span> p<span style="color: rgb(98,98,98)">.</span>exists():
+<span class="ansi-green-fg">---&gt; 89</span>         <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">FileNotFoundError</span>(<span style="color: rgb(175,0,0)">f</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">Missing file: </span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span>p<span class="ansi-bold" style="color: rgb(175,95,135)">}</span><span style="color: rgb(175,0,0)">&#34;</span>)
+<span class="ansi-green-intense-fg ansi-bold">     91</span> barcodes <span style="color: rgb(98,98,98)">=</span> (
+<span class="ansi-green-intense-fg ansi-bold">     92</span>     pd<span style="color: rgb(98,98,98)">.</span>read_csv(barcodes_path, sep<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">\</span><span style="color: rgb(175,0,0)">s+</span><span style="color: rgb(175,0,0)">&#34;</span>, header<span style="color: rgb(98,98,98)">=</span><span class="ansi-bold" style="color: rgb(0,135,0)">None</span>, engine<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">python</span><span style="color: rgb(175,0,0)">&#34;</span>, skiprows<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(98,98,98)">1</span>)[<span style="color: rgb(98,98,98)">1</span>]
+<span class="ansi-green-intense-fg ansi-bold">     93</span>     <span style="color: rgb(98,98,98)">.</span>astype(<span style="color: rgb(0,135,0)">str</span>)
+<span class="ansi-green-intense-fg ansi-bold">     94</span>     <span style="color: rgb(98,98,98)">.</span>str<span style="color: rgb(98,98,98)">.</span>strip(<span style="color: rgb(175,0,0)">&#39;</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">&#39;</span>)
+<span class="ansi-green-intense-fg ansi-bold">     95</span>     <span style="color: rgb(98,98,98)">.</span>tolist()
+<span class="ansi-green-intense-fg ansi-bold">     96</span> )
+<span class="ansi-green-intense-fg ansi-bold">     97</span> features <span style="color: rgb(98,98,98)">=</span> (
+<span class="ansi-green-intense-fg ansi-bold">     98</span>     pd<span style="color: rgb(98,98,98)">.</span>read_csv(feats_path, sep<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">\</span><span style="color: rgb(175,0,0)">s+</span><span style="color: rgb(175,0,0)">&#34;</span>, header<span style="color: rgb(98,98,98)">=</span><span class="ansi-bold" style="color: rgb(0,135,0)">None</span>, engine<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">python</span><span style="color: rgb(175,0,0)">&#34;</span>, skiprows<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(98,98,98)">1</span>)[<span style="color: rgb(98,98,98)">1</span>]
+<span class="ansi-green-intense-fg ansi-bold">     99</span>     <span style="color: rgb(98,98,98)">.</span>astype(<span style="color: rgb(0,135,0)">str</span>)
+<span class="ansi-green-intense-fg ansi-bold">    100</span>     <span style="color: rgb(98,98,98)">.</span>str<span style="color: rgb(98,98,98)">.</span>strip(<span style="color: rgb(175,0,0)">&#39;</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">&#39;</span>)
+<span class="ansi-green-intense-fg ansi-bold">    101</span>     <span style="color: rgb(98,98,98)">.</span>tolist()
+<span class="ansi-green-intense-fg ansi-bold">    102</span> )
+
+<span class="ansi-red-fg">FileNotFoundError</span>: Missing file: data/vaccine_gse171964/GSE171964_barcodes_v2.tsv.gz
 </pre></div></div>
 </div>
 </section>
-<section id="2.-Analysis">
-<h3>2. Analysis<a class="headerlink" href="#2.-Analysis" title="Link to this heading"></a></h3>
+<section id="2.2-Quick-exploratory-summaries">
+<h2>2.2 Quick exploratory summaries<a class="headerlink" href="#2.2-Quick-exploratory-summaries" title="Link to this heading"></a></h2>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">available</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="p">)</span>
-<span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">add_log1p_cpm_layer</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">counts_layer</span><span class="o">=</span><span class="s2">&quot;counts&quot;</span><span class="p">,</span> <span class="n">out_layer</span><span class="o">=</span><span class="s2">&quot;log1p_cpm&quot;</span><span class="p">)</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Days:&quot;</span><span class="p">,</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;day&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">())</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Participants:&quot;</span><span class="p">,</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;pt_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">())</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Cell types:&quot;</span><span class="p">,</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;clustnm&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">())</span>
 
-<span class="n">gene_sets</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s2">&quot;B_Cell_Response&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;CD79A&quot;</span><span class="p">,</span> <span class="s2">&quot;CD79B&quot;</span><span class="p">,</span> <span class="s2">&quot;MS4A1&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available</span><span class="p">],</span>
-    <span class="s2">&quot;IFN_Signature&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;ISG15&quot;</span><span class="p">,</span> <span class="s2">&quot;IFI6&quot;</span><span class="p">,</span> <span class="s2">&quot;MX1&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available</span><span class="p">],</span>
-    <span class="s2">&quot;Inflammatory&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;S100A8&quot;</span><span class="p">,</span> <span class="s2">&quot;S100A9&quot;</span><span class="p">,</span> <span class="s2">&quot;LYZ&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available</span><span class="p">]</span>
-<span class="p">}</span>
+<span class="c1"># Participants per day (before pairing restriction for analysis)</span>
+<span class="n">pt_per_day</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;day&quot;</span><span class="p">)[</span><span class="s2">&quot;pt_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span><span class="o">.</span><span class="n">sort_index</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Participants per day:&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">pt_per_day</span><span class="p">)</span>
 
-<span class="n">gene_sets</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">gene_sets</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">3</span><span class="p">}</span>
-<span class="k">if</span> <span class="n">gene_sets</span><span class="p">:</span>
-    <span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">score_gene_sets</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">gene_sets</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;log1p_cpm&quot;</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;mean&quot;</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;ms_&quot;</span><span class="p">)</span>
-<span class="k">else</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No gene sets matched this dataset; skipping module scoring.&quot;</span><span class="p">)</span>
+<span class="c1"># Cell counts</span>
+<span class="n">eday_counts</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;day&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">value_counts</span><span class="p">()</span><span class="o">.</span><span class="n">sort_index</span><span class="p">()</span>
+<span class="n">ct_counts</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;clustnm&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">value_counts</span><span class="p">()</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">15</span><span class="p">)</span>
 
-<span class="c1"># Standardize metadata for trial analysis</span>
+<span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+<span class="n">eday_counts</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s2">&quot;bar&quot;</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Cells by day&quot;</span><span class="p">)</span>
+<span class="n">ct_counts</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s2">&quot;bar&quot;</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Top cell types&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">();</span> <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
+<span class="ansi-red-fg">NameError</span>                                 Traceback (most recent call last)
+Cell <span class="ansi-green-fg">In[4], line 1</span>
+<span class="ansi-green-fg">----&gt; 1</span> <span style="color: rgb(0,135,0)">print</span>(<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">Days:</span><span style="color: rgb(175,0,0)">&#34;</span>, <span class="ansi-yellow-bg">adata</span><span style="color: rgb(98,98,98)">.</span>obs[<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">day</span><span style="color: rgb(175,0,0)">&#34;</span>]<span style="color: rgb(98,98,98)">.</span>unique())
+<span class="ansi-green-intense-fg ansi-bold">      2</span> <span style="color: rgb(0,135,0)">print</span>(<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">Participants:</span><span style="color: rgb(175,0,0)">&#34;</span>, adata<span style="color: rgb(98,98,98)">.</span>obs[<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">pt_id</span><span style="color: rgb(175,0,0)">&#34;</span>]<span style="color: rgb(98,98,98)">.</span>nunique())
+<span class="ansi-green-intense-fg ansi-bold">      3</span> <span style="color: rgb(0,135,0)">print</span>(<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">Cell types:</span><span style="color: rgb(175,0,0)">&#34;</span>, adata<span style="color: rgb(98,98,98)">.</span>obs[<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">clustnm</span><span style="color: rgb(175,0,0)">&#34;</span>]<span style="color: rgb(98,98,98)">.</span>nunique())
+
+<span class="ansi-red-fg">NameError</span>: name &#39;adata&#39; is not defined
+</pre></div></div>
+</div>
+<section id="3.-Trial-Design-and-Timepoint-Strategy">
+<h3>3. Trial Design and Timepoint Strategy<a class="headerlink" href="#3.-Trial-Design-and-Timepoint-Strategy" title="Link to this heading"></a></h3>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Ensure log1p CPM</span>
+<span class="k">if</span> <span class="s2">&quot;log1p_cpm&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">:</span>
+    <span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">add_log1p_cpm_layer</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">counts_layer</span><span class="o">=</span><span class="s2">&quot;counts&quot;</span><span class="p">,</span> <span class="n">out_layer</span><span class="o">=</span><span class="s2">&quot;log1p_cpm&quot;</span><span class="p">)</span>
+
+<span class="c1"># Standardize metadata</span>
 <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;visit&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;day&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
 <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;participant_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;pt_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
 <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;arm&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Vaccinated&quot;</span>
 <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;cell_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;clustnm&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
 
+<span class="n">visit_col</span> <span class="o">=</span> <span class="s2">&quot;visit&quot;</span>
+<span class="n">visits</span> <span class="o">=</span> <span class="p">[</span><span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;0&quot;</span><span class="p">,</span> <span class="s2">&quot;7&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()]</span>
+
+<span class="c1"># Participant-level pairing</span>
+<span class="n">participant_summary</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;participant_id&quot;</span><span class="p">)[</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="nb">set</span><span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+<span class="p">)</span>
+<span class="n">participant_summary</span><span class="p">[</span><span class="s2">&quot;has_day0&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">participant_summary</span><span class="p">[</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="s2">&quot;0&quot;</span> <span class="ow">in</span> <span class="n">x</span><span class="p">)</span>
+<span class="n">participant_summary</span><span class="p">[</span><span class="s2">&quot;has_day7&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">participant_summary</span><span class="p">[</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="s2">&quot;7&quot;</span> <span class="ow">in</span> <span class="n">x</span><span class="p">)</span>
+<span class="n">participant_summary</span><span class="p">[</span><span class="s2">&quot;is_paired&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">participant_summary</span><span class="p">[</span><span class="s2">&quot;has_day0&quot;</span><span class="p">]</span> <span class="o">&amp;</span> <span class="n">participant_summary</span><span class="p">[</span><span class="s2">&quot;has_day7&quot;</span><span class="p">]</span>
+<span class="n">paired_ids</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">participant_summary</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">participant_summary</span><span class="p">[</span><span class="s2">&quot;is_paired&quot;</span><span class="p">],</span> <span class="s2">&quot;participant_id&quot;</span><span class="p">])</span>
+
+<span class="n">n_paired</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">paired_ids</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Paired participants (0 vs 7): </span><span class="si">{</span><span class="n">n_paired</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># Analysis subset: paired participants only</span>
+<span class="n">adata_analysis</span> <span class="o">=</span> <span class="n">adata</span><span class="p">[</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;participant_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">paired_ids</span><span class="p">)]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Analysis subset cells: </span><span class="si">{</span><span class="n">adata_analysis</span><span class="o">.</span><span class="n">n_obs</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># Covariates (if available)</span>
+<span class="n">candidate_covariates</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;age&quot;</span><span class="p">,</span> <span class="s2">&quot;sex&quot;</span><span class="p">,</span> <span class="s2">&quot;batch&quot;</span><span class="p">,</span> <span class="s2">&quot;site&quot;</span><span class="p">]</span>
+<span class="n">covariates</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">candidate_covariates</span> <span class="k">if</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Covariates available (not modeled here):&quot;</span><span class="p">,</span> <span class="n">covariates</span><span class="p">)</span>
+
+<span class="c1"># Design object (single arm); arm labels are placeholders for API consistency</span>
+<span class="c1"># We rely on paired within-participant tests, not treated vs control inference.</span>
 <span class="n">design</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">TrialDesign</span><span class="p">(</span>
     <span class="n">participant_col</span><span class="o">=</span><span class="s2">&quot;participant_id&quot;</span><span class="p">,</span>
-    <span class="n">visit_col</span><span class="o">=</span><span class="s2">&quot;visit&quot;</span><span class="p">,</span>
+    <span class="n">visit_col</span><span class="o">=</span><span class="n">visit_col</span><span class="p">,</span>
     <span class="n">arm_col</span><span class="o">=</span><span class="s2">&quot;arm&quot;</span><span class="p">,</span>
     <span class="n">arm_treated</span><span class="o">=</span><span class="s2">&quot;Vaccinated&quot;</span><span class="p">,</span>
     <span class="n">arm_control</span><span class="o">=</span><span class="s2">&quot;Vaccinated&quot;</span><span class="p">,</span>
     <span class="n">celltype_col</span><span class="o">=</span><span class="s2">&quot;cell_type&quot;</span><span class="p">,</span>
 <span class="p">)</span>
-
-<span class="n">features</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span> <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;ms_&quot;</span><span class="p">)]</span>
-<span class="n">paired</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;participant_id&quot;</span><span class="p">)[</span><span class="s2">&quot;visit&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span>
-<span class="n">n_paired</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="n">paired</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Paired participants (0 vs 7): </span><span class="si">{</span><span class="n">n_paired</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
-<span class="k">if</span> <span class="ow">not</span> <span class="n">features</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No module scores available; skipping within-arm analysis.&quot;</span><span class="p">)</span>
-<span class="k">elif</span> <span class="n">n_paired</span> <span class="o">&lt;</span> <span class="mi">4</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Within-arm analysis requires at least 4 paired participants; skipping.&quot;</span><span class="p">)</span>
-<span class="k">else</span><span class="p">:</span>
-    <span class="c1"># Within-arm comparison (participant_visit)</span>
-    <span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">within_arm_comparison</span><span class="p">(</span>
-        <span class="n">adata</span><span class="p">,</span>
-        <span class="n">arm</span><span class="o">=</span><span class="s2">&quot;Vaccinated&quot;</span><span class="p">,</span>
-        <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span>
-        <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
-        <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;0&quot;</span><span class="p">,</span> <span class="s2">&quot;7&quot;</span><span class="p">),</span>
-        <span class="n">aggregate</span><span class="o">=</span><span class="s2">&quot;participant_visit&quot;</span><span class="p">,</span>
-        <span class="n">standardize</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-    <span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Within-arm (participant_visit, standardized):&quot;</span><span class="p">)</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">res</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
-        <span class="n">display</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s2">&quot;feature&quot;</span><span class="p">))</span>
-
-    <span class="c1"># Within-arm comparison (cell-level, raw)</span>
-    <span class="n">res_cell</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">within_arm_comparison</span><span class="p">(</span>
-        <span class="n">adata</span><span class="p">,</span>
-        <span class="n">arm</span><span class="o">=</span><span class="s2">&quot;Vaccinated&quot;</span><span class="p">,</span>
-        <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span>
-        <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
-        <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;0&quot;</span><span class="p">,</span> <span class="s2">&quot;7&quot;</span><span class="p">),</span>
-        <span class="n">aggregate</span><span class="o">=</span><span class="s2">&quot;cell&quot;</span><span class="p">,</span>
-        <span class="n">standardize</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-    <span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Within-arm (cell-level, raw):&quot;</span><span class="p">)</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">res_cell</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
-        <span class="n">display</span><span class="p">(</span><span class="n">res_cell</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s2">&quot;feature&quot;</span><span class="p">))</span>
-
-    <span class="c1"># Plots (single-arm, so skip multi-arm interaction)</span>
-    <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
-    <span class="n">st</span><span class="o">.</span><span class="n">plot_within_arm_comparison</span><span class="p">(</span>
-        <span class="n">adata</span><span class="p">,</span>
-        <span class="n">arm</span><span class="o">=</span><span class="s2">&quot;Vaccinated&quot;</span><span class="p">,</span>
-        <span class="n">feature</span><span class="o">=</span><span class="n">features</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
-        <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
-        <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;0&quot;</span><span class="p">,</span> <span class="s2">&quot;7&quot;</span><span class="p">),</span>
-        <span class="n">plot_type</span><span class="o">=</span><span class="s2">&quot;paired&quot;</span><span class="p">,</span>
-        <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
-    <span class="p">)</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">();</span> <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-
-    <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
-    <span class="n">st</span><span class="o">.</span><span class="n">plot_within_arm_comparison</span><span class="p">(</span>
-        <span class="n">adata</span><span class="p">,</span>
-        <span class="n">arm</span><span class="o">=</span><span class="s2">&quot;Vaccinated&quot;</span><span class="p">,</span>
-        <span class="n">feature</span><span class="o">=</span><span class="n">features</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
-        <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
-        <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;0&quot;</span><span class="p">,</span> <span class="s2">&quot;7&quot;</span><span class="p">),</span>
-        <span class="n">plot_type</span><span class="o">=</span><span class="s2">&quot;box&quot;</span><span class="p">,</span>
-        <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
-    <span class="p">)</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">();</span> <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 <br/></pre></div>
-</div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-Paired participants (0 vs 7): 6
-Within-arm (participant_visit, standardized):
-</pre></div></div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area rendered_html docutils container">
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>beta_time</th>
-      <th>p_time</th>
-      <th>n_units</th>
-      <th>FDR_time</th>
-    </tr>
-    <tr>
-      <th>feature</th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>ms_B_Cell_Response</th>
-      <td>-0.328167</td>
-      <td>0.731723</td>
-      <td>6</td>
-      <td>0.958162</td>
-    </tr>
-    <tr>
-      <th>ms_IFN_Signature</th>
-      <td>0.745510</td>
-      <td>0.199715</td>
-      <td>6</td>
-      <td>0.599144</td>
-    </tr>
-    <tr>
-      <th>ms_Inflammatory</th>
-      <td>-0.055257</td>
-      <td>0.958162</td>
-      <td>6</td>
-      <td>0.958162</td>
-    </tr>
-  </tbody>
-</table>
-</div></div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-Within-arm (cell-level, raw):
-</pre></div></div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area rendered_html docutils container">
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>beta_time</th>
-      <th>p_time</th>
-      <th>n_units</th>
-      <th>FDR_time</th>
-    </tr>
-    <tr>
-      <th>feature</th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>ms_B_Cell_Response</th>
-      <td>-0.072536</td>
-      <td>0.437051</td>
-      <td>6</td>
-      <td>0.437051</td>
-    </tr>
-    <tr>
-      <th>ms_IFN_Signature</th>
-      <td>0.195660</td>
-      <td>0.000012</td>
-      <td>6</td>
-      <td>0.000036</td>
-    </tr>
-    <tr>
-      <th>ms_Inflammatory</th>
-      <td>-0.659615</td>
-      <td>0.097073</td>
-      <td>6</td>
-      <td>0.145610</td>
-    </tr>
-  </tbody>
-</table>
-</div></div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<img alt="../_images/examples_example_vaccine_immport_5_4.png" src="../_images/examples_example_vaccine_immport_5_4.png" />
 </div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_vaccine_immport_5_5.png" src="../_images/examples_example_vaccine_immport_5_5.png" />
+<div class="highlight"><pre>
+<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
+<span class="ansi-red-fg">NameError</span>                                 Traceback (most recent call last)
+Cell <span class="ansi-green-fg">In[5], line 2</span>
+<span class="ansi-green-intense-fg ansi-bold">      1</span> <span style="color: rgb(95,135,135)"># Ensure log1p CPM</span>
+<span class="ansi-green-fg">----&gt; 2</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">log1p_cpm</span><span style="color: rgb(175,0,0)">&#34;</span> <span class="ansi-bold" style="color: rgb(175,0,255)">not</span> <span class="ansi-bold" style="color: rgb(175,0,255)">in</span> <span class="ansi-yellow-bg">adata</span><span style="color: rgb(98,98,98)">.</span>layers:
+<span class="ansi-green-intense-fg ansi-bold">      3</span>     adata <span style="color: rgb(98,98,98)">=</span> st<span style="color: rgb(98,98,98)">.</span>add_log1p_cpm_layer(adata, counts_layer<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">counts</span><span style="color: rgb(175,0,0)">&#34;</span>, out_layer<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">log1p_cpm</span><span style="color: rgb(175,0,0)">&#34;</span>)
+<span class="ansi-green-intense-fg ansi-bold">      5</span> <span style="color: rgb(95,135,135)"># Standardize metadata</span>
+
+<span class="ansi-red-fg">NameError</span>: name &#39;adata&#39; is not defined
+</pre></div></div>
 </div>
+</section>
+</section>
+<section id="3.1-Exploratory-plots-of-cell-types-per-visit">
+<h2>3.1 Exploratory plots of cell types per visit<a class="headerlink" href="#3.1-Exploratory-plots-of-cell-types-per-visit" title="Link to this heading"></a></h2>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ct_visit</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">adata_analysis</span><span class="o">.</span><span class="n">obs</span>
+    <span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">],</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">size</span><span class="p">()</span>
+    <span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;n_cells&quot;</span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="n">top_ct</span> <span class="o">=</span> <span class="n">adata_analysis</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">]</span><span class="o">.</span><span class="n">value_counts</span><span class="p">()</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span><span class="o">.</span><span class="n">index</span>
+<span class="n">ct_visit_top</span> <span class="o">=</span> <span class="n">ct_visit</span><span class="p">[</span><span class="n">ct_visit</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">top_ct</span><span class="p">)]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+<span class="n">sns</span><span class="o">.</span><span class="n">barplot</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">ct_visit_top</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="s2">&quot;n_cells&quot;</span><span class="p">,</span> <span class="n">hue</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Top cell types by visit (paired participants)&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xticks</span><span class="p">(</span><span class="n">rotation</span><span class="o">=</span><span class="mi">45</span><span class="p">,</span> <span class="n">ha</span><span class="o">=</span><span class="s2">&quot;right&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">();</span> <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
+<span class="ansi-red-fg">NameError</span>                                 Traceback (most recent call last)
+Cell <span class="ansi-green-fg">In[6], line 2</span>
+<span class="ansi-green-intense-fg ansi-bold">      1</span> ct_visit <span style="color: rgb(98,98,98)">=</span> (
+<span class="ansi-green-fg">----&gt; 2</span>     <span class="ansi-yellow-bg">adata_analysis</span><span style="color: rgb(98,98,98)">.</span>obs
+<span class="ansi-green-intense-fg ansi-bold">      3</span>     <span style="color: rgb(98,98,98)">.</span>groupby([design<span style="color: rgb(98,98,98)">.</span>celltype_col, design<span style="color: rgb(98,98,98)">.</span>visit_col], observed<span style="color: rgb(98,98,98)">=</span><span class="ansi-bold" style="color: rgb(0,135,0)">True</span>)
+<span class="ansi-green-intense-fg ansi-bold">      4</span>     <span style="color: rgb(98,98,98)">.</span>size()
+<span class="ansi-green-intense-fg ansi-bold">      5</span>     <span style="color: rgb(98,98,98)">.</span>reset_index(name<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">n_cells</span><span style="color: rgb(175,0,0)">&#34;</span>)
+<span class="ansi-green-intense-fg ansi-bold">      6</span> )
+<span class="ansi-green-intense-fg ansi-bold">      8</span> top_ct <span style="color: rgb(98,98,98)">=</span> adata_analysis<span style="color: rgb(98,98,98)">.</span>obs[design<span style="color: rgb(98,98,98)">.</span>celltype_col]<span style="color: rgb(98,98,98)">.</span>value_counts()<span style="color: rgb(98,98,98)">.</span>head(<span style="color: rgb(98,98,98)">10</span>)<span style="color: rgb(98,98,98)">.</span>index
+<span class="ansi-green-intense-fg ansi-bold">      9</span> ct_visit_top <span style="color: rgb(98,98,98)">=</span> ct_visit[ct_visit[design<span style="color: rgb(98,98,98)">.</span>celltype_col]<span style="color: rgb(98,98,98)">.</span>isin(top_ct)]<span style="color: rgb(98,98,98)">.</span>copy()
+
+<span class="ansi-red-fg">NameError</span>: name &#39;adata_analysis&#39; is not defined
+</pre></div></div>
+</div>
+<section id="4.-UMAPs-of-All-Cell-Types">
+<h3>4. UMAPs of All Cell Types<a class="headerlink" href="#4.-UMAPs-of-All-Cell-Types" title="Link to this heading"></a></h3>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Compute UMAP on log1p CPM if missing</span>
+<span class="n">adata_umap</span> <span class="o">=</span> <span class="n">adata_analysis</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+<span class="n">adata_umap</span><span class="o">.</span><span class="n">X</span> <span class="o">=</span> <span class="n">adata_umap</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">&quot;log1p_cpm&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+<span class="k">if</span> <span class="s2">&quot;X_umap&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">adata_umap</span><span class="o">.</span><span class="n">obsm</span><span class="p">:</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">pca</span><span class="p">(</span><span class="n">adata_umap</span><span class="p">)</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">neighbors</span><span class="p">(</span><span class="n">adata_umap</span><span class="p">)</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">tl</span><span class="o">.</span><span class="n">umap</span><span class="p">(</span><span class="n">adata_umap</span><span class="p">)</span>
+
+<span class="n">sc</span><span class="o">.</span><span class="n">pl</span><span class="o">.</span><span class="n">umap</span><span class="p">(</span>
+    <span class="n">adata_umap</span><span class="p">,</span>
+    <span class="n">color</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">,</span>
+    <span class="n">legend_loc</span><span class="o">=</span><span class="s2">&quot;right margin&quot;</span><span class="p">,</span>
+    <span class="n">title</span><span class="o">=</span><span class="s2">&quot;All cell types (paired participants)&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># Stratified UMAPs by visit</span>
+<span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">visits</span><span class="p">),</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="mf">4.5</span><span class="p">))</span>
+<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">visits</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+    <span class="n">axes</span> <span class="o">=</span> <span class="p">[</span><span class="n">axes</span><span class="p">]</span>
+<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">vis</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">visits</span><span class="p">):</span>
+    <span class="n">sub</span> <span class="o">=</span> <span class="n">adata_umap</span><span class="p">[</span><span class="n">adata_umap</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span> <span class="o">==</span> <span class="n">vis</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">ax</span> <span class="o">=</span> <span class="n">axes</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">sub</span><span class="o">.</span><span class="n">n_obs</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">sc</span><span class="o">.</span><span class="n">pl</span><span class="o">.</span><span class="n">umap</span><span class="p">(</span><span class="n">sub</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">legend_loc</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">frameon</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Day </span><span class="si">{</span><span class="n">vis</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_aspect</span><span class="p">(</span><span class="s1">&#39;equal&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_axis_off</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">();</span> <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
+<span class="ansi-red-fg">NameError</span>                                 Traceback (most recent call last)
+Cell <span class="ansi-green-fg">In[7], line 2</span>
+<span class="ansi-green-intense-fg ansi-bold">      1</span> <span style="color: rgb(95,135,135)"># Compute UMAP on log1p CPM if missing</span>
+<span class="ansi-green-fg">----&gt; 2</span> adata_umap <span style="color: rgb(98,98,98)">=</span> <span class="ansi-yellow-bg">adata_analysis</span><span style="color: rgb(98,98,98)">.</span>copy()
+<span class="ansi-green-intense-fg ansi-bold">      3</span> adata_umap<span style="color: rgb(98,98,98)">.</span>X <span style="color: rgb(98,98,98)">=</span> adata_umap<span style="color: rgb(98,98,98)">.</span>layers[<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">log1p_cpm</span><span style="color: rgb(175,0,0)">&#34;</span>]<span style="color: rgb(98,98,98)">.</span>copy()
+<span class="ansi-green-intense-fg ansi-bold">      5</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">X_umap</span><span style="color: rgb(175,0,0)">&#34;</span> <span class="ansi-bold" style="color: rgb(175,0,255)">not</span> <span class="ansi-bold" style="color: rgb(175,0,255)">in</span> adata_umap<span style="color: rgb(98,98,98)">.</span>obsm:
+
+<span class="ansi-red-fg">NameError</span>: name &#39;adata_analysis&#39; is not defined
+</pre></div></div>
+</div>
+</section>
+<section id="5.-Module-Scoring-and-Gene-Panel">
+<h3>5. Module Scoring and Gene Panel<a class="headerlink" href="#5.-Module-Scoring-and-Gene-Panel" title="Link to this heading"></a></h3>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">available</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">adata_analysis</span><span class="o">.</span><span class="n">var_names</span><span class="p">)</span>
+
+<span class="c1"># Define immunologically relevant gene sets</span>
+<span class="n">raw_gene_sets</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;B_Cell_Response&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;CD79A&quot;</span><span class="p">,</span> <span class="s2">&quot;CD79B&quot;</span><span class="p">,</span> <span class="s2">&quot;MS4A1&quot;</span><span class="p">,</span> <span class="s2">&quot;MZB1&quot;</span><span class="p">,</span> <span class="s2">&quot;XBP1&quot;</span><span class="p">,</span> <span class="s2">&quot;JCHAIN&quot;</span><span class="p">],</span>
+    <span class="s2">&quot;IFN_Signature&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;ISG15&quot;</span><span class="p">,</span> <span class="s2">&quot;IFI6&quot;</span><span class="p">,</span> <span class="s2">&quot;IFIT1&quot;</span><span class="p">,</span> <span class="s2">&quot;IFIT3&quot;</span><span class="p">,</span> <span class="s2">&quot;MX1&quot;</span><span class="p">,</span> <span class="s2">&quot;STAT1&quot;</span><span class="p">,</span> <span class="s2">&quot;OAS1&quot;</span><span class="p">],</span>
+    <span class="s2">&quot;Inflammatory&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;S100A8&quot;</span><span class="p">,</span> <span class="s2">&quot;S100A9&quot;</span><span class="p">,</span> <span class="s2">&quot;LYZ&quot;</span><span class="p">,</span> <span class="s2">&quot;VCAN&quot;</span><span class="p">,</span> <span class="s2">&quot;IL1B&quot;</span><span class="p">,</span> <span class="s2">&quot;CXCL8&quot;</span><span class="p">],</span>
+<span class="p">}</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Gene set coverage:&quot;</span><span class="p">)</span>
+<span class="n">filtered</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">genes</span> <span class="ow">in</span> <span class="n">raw_gene_sets</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+    <span class="n">present</span> <span class="o">=</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">genes</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available</span><span class="p">]</span>
+    <span class="n">pct</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">present</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">genes</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span>
+    <span class="n">status</span> <span class="o">=</span> <span class="s2">&quot;OK&quot;</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">present</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">MIN_GENES_FOR_SCORE</span> <span class="k">else</span> <span class="s2">&quot;SKIP&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">present</span><span class="p">)</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">genes</span><span class="p">)</span><span class="si">}</span><span class="s2"> genes (</span><span class="si">{</span><span class="n">pct</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">%) [</span><span class="si">{</span><span class="n">status</span><span class="si">}</span><span class="s2">]&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">present</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">MIN_GENES_FOR_SCORE</span><span class="p">:</span>
+        <span class="n">filtered</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">present</span>
+
+<span class="k">if</span> <span class="n">filtered</span><span class="p">:</span>
+    <span class="n">adata_analysis</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">score_gene_sets</span><span class="p">(</span>
+        <span class="n">adata_analysis</span><span class="p">,</span> <span class="n">filtered</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;log1p_cpm&quot;</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;zmean&quot;</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;ms_&quot;</span>
+    <span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Scored </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">filtered</span><span class="p">)</span><span class="si">}</span><span class="s2"> gene sets using zmean.&quot;</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No gene sets matched (min_genes=</span><span class="si">{</span><span class="n">MIN_GENES_FOR_SCORE</span><span class="si">}</span><span class="s2">); skipping module scoring.&quot;</span><span class="p">)</span>
+
+<span class="n">features</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">adata_analysis</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span> <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;ms_&quot;</span><span class="p">)]</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Module score features:&quot;</span><span class="p">,</span> <span class="n">features</span><span class="p">)</span>
+
+<span class="n">panel_genes_all</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;CD79A&quot;</span><span class="p">,</span> <span class="s2">&quot;CD79B&quot;</span><span class="p">,</span> <span class="s2">&quot;MS4A1&quot;</span><span class="p">,</span> <span class="s2">&quot;MZB1&quot;</span><span class="p">,</span> <span class="s2">&quot;XBP1&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ISG15&quot;</span><span class="p">,</span> <span class="s2">&quot;IFI6&quot;</span><span class="p">,</span> <span class="s2">&quot;IFIT1&quot;</span><span class="p">,</span> <span class="s2">&quot;MX1&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;S100A8&quot;</span><span class="p">,</span> <span class="s2">&quot;S100A9&quot;</span><span class="p">,</span> <span class="s2">&quot;LYZ&quot;</span><span class="p">,</span> <span class="s2">&quot;VCAN&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+<span class="n">panel_genes</span> <span class="o">=</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">panel_genes_all</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">available</span><span class="p">]</span>
+<span class="n">missing_panel</span> <span class="o">=</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">panel_genes_all</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">available</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Panel genes (available):&quot;</span><span class="p">,</span> <span class="n">panel_genes</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">missing_panel</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Panel genes missing:&quot;</span><span class="p">,</span> <span class="n">missing_panel</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
+<span class="ansi-red-fg">NameError</span>                                 Traceback (most recent call last)
+Cell <span class="ansi-green-fg">In[8], line 1</span>
+<span class="ansi-green-fg">----&gt; 1</span> available <span style="color: rgb(98,98,98)">=</span> <span style="color: rgb(0,135,0)">set</span>(<span class="ansi-yellow-bg">adata_analysis</span><span style="color: rgb(98,98,98)">.</span>var_names)
+<span class="ansi-green-intense-fg ansi-bold">      3</span> <span style="color: rgb(95,135,135)"># Define immunologically relevant gene sets</span>
+<span class="ansi-green-intense-fg ansi-bold">      4</span> raw_gene_sets <span style="color: rgb(98,98,98)">=</span> {
+<span class="ansi-green-intense-fg ansi-bold">      5</span>     <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">B_Cell_Response</span><span style="color: rgb(175,0,0)">&#34;</span>: [<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">CD79A</span><span style="color: rgb(175,0,0)">&#34;</span>, <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">CD79B</span><span style="color: rgb(175,0,0)">&#34;</span>, <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">MS4A1</span><span style="color: rgb(175,0,0)">&#34;</span>, <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">MZB1</span><span style="color: rgb(175,0,0)">&#34;</span>, <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">XBP1</span><span style="color: rgb(175,0,0)">&#34;</span>, <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">JCHAIN</span><span style="color: rgb(175,0,0)">&#34;</span>],
+<span class="ansi-green-intense-fg ansi-bold">      6</span>     <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">IFN_Signature</span><span style="color: rgb(175,0,0)">&#34;</span>: [<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">ISG15</span><span style="color: rgb(175,0,0)">&#34;</span>, <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">IFI6</span><span style="color: rgb(175,0,0)">&#34;</span>, <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">IFIT1</span><span style="color: rgb(175,0,0)">&#34;</span>, <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">IFIT3</span><span style="color: rgb(175,0,0)">&#34;</span>, <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">MX1</span><span style="color: rgb(175,0,0)">&#34;</span>, <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">STAT1</span><span style="color: rgb(175,0,0)">&#34;</span>, <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">OAS1</span><span style="color: rgb(175,0,0)">&#34;</span>],
+<span class="ansi-green-intense-fg ansi-bold">      7</span>     <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">Inflammatory</span><span style="color: rgb(175,0,0)">&#34;</span>: [<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">S100A8</span><span style="color: rgb(175,0,0)">&#34;</span>, <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">S100A9</span><span style="color: rgb(175,0,0)">&#34;</span>, <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">LYZ</span><span style="color: rgb(175,0,0)">&#34;</span>, <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">VCAN</span><span style="color: rgb(175,0,0)">&#34;</span>, <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">IL1B</span><span style="color: rgb(175,0,0)">&#34;</span>, <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">CXCL8</span><span style="color: rgb(175,0,0)">&#34;</span>],
+<span class="ansi-green-intense-fg ansi-bold">      8</span> }
+
+<span class="ansi-red-fg">NameError</span>: name &#39;adata_analysis&#39; is not defined
+</pre></div></div>
+</div>
+</section>
+<section id="6.-Within‑Arm-Comparisons-(Participant‑Level)">
+<h3>6. Within‑Arm Comparisons (Participant‑Level)<a class="headerlink" href="#6.-Within‑Arm-Comparisons-(Participant‑Level)" title="Link to this heading"></a></h3>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">_ensure_fdr</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">p_col</span><span class="o">=</span><span class="s2">&quot;p_time&quot;</span><span class="p">,</span> <span class="n">fdr_col</span><span class="o">=</span><span class="s2">&quot;FDR_time&quot;</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">df</span>
+    <span class="k">if</span> <span class="n">fdr_col</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">df</span>
+    <span class="k">if</span> <span class="n">p_col</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">p_col</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span>
+        <span class="n">df</span><span class="p">[</span><span class="n">fdr_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+        <span class="k">if</span> <span class="n">mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="n">fdr_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">multipletests</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="n">p_col</span><span class="p">],</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;fdr_bh&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">df</span>
+
+<span class="k">if</span> <span class="n">features</span> <span class="ow">and</span> <span class="n">n_paired</span> <span class="o">&gt;=</span> <span class="n">MIN_PAIRED</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">visits</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+    <span class="n">res_within</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">within_arm_comparison</span><span class="p">(</span>
+        <span class="n">adata_analysis</span><span class="p">,</span>
+        <span class="n">arm</span><span class="o">=</span><span class="s2">&quot;Vaccinated&quot;</span><span class="p">,</span>
+        <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span>
+        <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+        <span class="n">visits</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">visits</span><span class="p">),</span>
+        <span class="n">aggregate</span><span class="o">=</span><span class="s2">&quot;participant_visit&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Within-arm (participant-level module scores):&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">res_within</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="n">res_within</span> <span class="o">=</span> <span class="n">_ensure_fdr</span><span class="p">(</span><span class="n">res_within</span><span class="p">)</span>
+        <span class="n">display</span><span class="p">(</span><span class="n">res_within</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s2">&quot;feature&quot;</span><span class="p">))</span>
+        <span class="k">if</span> <span class="s2">&quot;FDR_time&quot;</span> <span class="ow">in</span> <span class="n">res_within</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">sig</span> <span class="o">=</span> <span class="n">res_within</span><span class="p">[</span><span class="n">res_within</span><span class="p">[</span><span class="s2">&quot;FDR_time&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">FDR_ALPHA</span><span class="p">]</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">sig</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Significant (FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">):&quot;</span><span class="p">,</span> <span class="n">sig</span><span class="p">[</span><span class="s2">&quot;feature&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Insufficient paired participants for within-arm comparisons.&quot;</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
+<span class="ansi-red-fg">NameError</span>                                 Traceback (most recent call last)
+Cell <span class="ansi-green-fg">In[9], line 13</span>
+<span class="ansi-green-intense-fg ansi-bold">     10</span>             df<span style="color: rgb(98,98,98)">.</span>loc[mask, fdr_col] <span style="color: rgb(98,98,98)">=</span> multipletests(df<span style="color: rgb(98,98,98)">.</span>loc[mask, p_col], method<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">fdr_bh</span><span style="color: rgb(175,0,0)">&#34;</span>)[<span style="color: rgb(98,98,98)">1</span>]
+<span class="ansi-green-intense-fg ansi-bold">     11</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">return</span> df
+<span class="ansi-green-fg">---&gt; 13</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span class="ansi-yellow-bg">features</span> <span class="ansi-bold" style="color: rgb(175,0,255)">and</span> n_paired <span style="color: rgb(98,98,98)">&gt;</span><span style="color: rgb(98,98,98)">=</span> MIN_PAIRED <span class="ansi-bold" style="color: rgb(175,0,255)">and</span> <span style="color: rgb(0,135,0)">len</span>(visits) <span style="color: rgb(98,98,98)">==</span> <span style="color: rgb(98,98,98)">2</span>:
+<span class="ansi-green-intense-fg ansi-bold">     14</span>     res_within <span style="color: rgb(98,98,98)">=</span> st<span style="color: rgb(98,98,98)">.</span>within_arm_comparison(
+<span class="ansi-green-intense-fg ansi-bold">     15</span>         adata_analysis,
+<span class="ansi-green-intense-fg ansi-bold">     16</span>         arm<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">Vaccinated</span><span style="color: rgb(175,0,0)">&#34;</span>,
+<span class="ansi-green-fg">   (...)</span>
+<span class="ansi-green-intense-fg ansi-bold">     20</span>         aggregate<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">participant_visit</span><span style="color: rgb(175,0,0)">&#34;</span>,
+<span class="ansi-green-intense-fg ansi-bold">     21</span>     )
+<span class="ansi-green-intense-fg ansi-bold">     22</span>     <span style="color: rgb(0,135,0)">print</span>(<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">Within-arm (participant-level module scores):</span><span style="color: rgb(175,0,0)">&#34;</span>)
+
+<span class="ansi-red-fg">NameError</span>: name &#39;features&#39; is not defined
+</pre></div></div>
+</div>
+</section>
+<section id="7.-Gene-Expression-Within‑Arm-(Panel-Genes)">
+<h3>7. Gene Expression Within‑Arm (Panel Genes)<a class="headerlink" href="#7.-Gene-Expression-Within‑Arm-(Panel-Genes)" title="Link to this heading"></a></h3>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">_ensure_fdr</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">p_col</span><span class="o">=</span><span class="s2">&quot;p_time&quot;</span><span class="p">,</span> <span class="n">fdr_col</span><span class="o">=</span><span class="s2">&quot;FDR_time&quot;</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">df</span>
+    <span class="k">if</span> <span class="n">fdr_col</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">df</span>
+    <span class="k">if</span> <span class="n">p_col</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">p_col</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span>
+        <span class="n">df</span><span class="p">[</span><span class="n">fdr_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+        <span class="k">if</span> <span class="n">mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="n">fdr_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">multipletests</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="n">p_col</span><span class="p">],</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;fdr_bh&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">df</span>
+
+<span class="k">if</span> <span class="n">panel_genes</span> <span class="ow">and</span> <span class="n">n_paired</span> <span class="o">&gt;=</span> <span class="n">MIN_PAIRED</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">visits</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+    <span class="n">res_genes</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">within_arm_comparison</span><span class="p">(</span>
+        <span class="n">adata_analysis</span><span class="p">,</span>
+        <span class="n">arm</span><span class="o">=</span><span class="s2">&quot;Vaccinated&quot;</span><span class="p">,</span>
+        <span class="n">features</span><span class="o">=</span><span class="n">panel_genes</span><span class="p">,</span>
+        <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+        <span class="n">visits</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">visits</span><span class="p">),</span>
+        <span class="n">aggregate</span><span class="o">=</span><span class="s2">&quot;participant_visit&quot;</span><span class="p">,</span>
+        <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;log1p_cpm&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Within-arm (panel genes):&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">res_genes</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="n">res_genes</span> <span class="o">=</span> <span class="n">_ensure_fdr</span><span class="p">(</span><span class="n">res_genes</span><span class="p">)</span>
+        <span class="n">display</span><span class="p">(</span><span class="n">res_genes</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s2">&quot;feature&quot;</span><span class="p">))</span>
+        <span class="k">if</span> <span class="s2">&quot;FDR_time&quot;</span> <span class="ow">in</span> <span class="n">res_genes</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">sig</span> <span class="o">=</span> <span class="n">res_genes</span><span class="p">[</span><span class="n">res_genes</span><span class="p">[</span><span class="s2">&quot;FDR_time&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">FDR_ALPHA</span><span class="p">]</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">sig</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Significant (FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">):&quot;</span><span class="p">,</span> <span class="n">sig</span><span class="p">[</span><span class="s2">&quot;feature&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Insufficient paired participants for gene-level comparisons.&quot;</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
+<span class="ansi-red-fg">NameError</span>                                 Traceback (most recent call last)
+Cell <span class="ansi-green-fg">In[10], line 13</span>
+<span class="ansi-green-intense-fg ansi-bold">     10</span>             df<span style="color: rgb(98,98,98)">.</span>loc[mask, fdr_col] <span style="color: rgb(98,98,98)">=</span> multipletests(df<span style="color: rgb(98,98,98)">.</span>loc[mask, p_col], method<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">fdr_bh</span><span style="color: rgb(175,0,0)">&#34;</span>)[<span style="color: rgb(98,98,98)">1</span>]
+<span class="ansi-green-intense-fg ansi-bold">     11</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">return</span> df
+<span class="ansi-green-fg">---&gt; 13</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span class="ansi-yellow-bg">panel_genes</span> <span class="ansi-bold" style="color: rgb(175,0,255)">and</span> n_paired <span style="color: rgb(98,98,98)">&gt;</span><span style="color: rgb(98,98,98)">=</span> MIN_PAIRED <span class="ansi-bold" style="color: rgb(175,0,255)">and</span> <span style="color: rgb(0,135,0)">len</span>(visits) <span style="color: rgb(98,98,98)">==</span> <span style="color: rgb(98,98,98)">2</span>:
+<span class="ansi-green-intense-fg ansi-bold">     14</span>     res_genes <span style="color: rgb(98,98,98)">=</span> st<span style="color: rgb(98,98,98)">.</span>within_arm_comparison(
+<span class="ansi-green-intense-fg ansi-bold">     15</span>         adata_analysis,
+<span class="ansi-green-intense-fg ansi-bold">     16</span>         arm<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">Vaccinated</span><span style="color: rgb(175,0,0)">&#34;</span>,
+<span class="ansi-green-fg">   (...)</span>
+<span class="ansi-green-intense-fg ansi-bold">     21</span>         layer<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">log1p_cpm</span><span style="color: rgb(175,0,0)">&#34;</span>,
+<span class="ansi-green-intense-fg ansi-bold">     22</span>     )
+<span class="ansi-green-intense-fg ansi-bold">     23</span>     <span style="color: rgb(0,135,0)">print</span>(<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">Within-arm (panel genes):</span><span style="color: rgb(175,0,0)">&#34;</span>)
+
+<span class="ansi-red-fg">NameError</span>: name &#39;panel_genes&#39; is not defined
+</pre></div></div>
+</div>
+</section>
+<section id="8.-Pseudobulk-Within‑Arm-(Panel-Genes)">
+<h3>8. Pseudobulk Within‑Arm (Panel Genes)<a class="headerlink" href="#8.-Pseudobulk-Within‑Arm-(Panel-Genes)" title="Link to this heading"></a></h3>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">panel_genes</span> <span class="ow">and</span> <span class="n">n_paired</span> <span class="o">&gt;=</span> <span class="n">MIN_PAIRED</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">visits</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+    <span class="n">Xc</span> <span class="o">=</span> <span class="n">adata_analysis</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">&quot;counts&quot;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">sp</span><span class="o">.</span><span class="n">issparse</span><span class="p">(</span><span class="n">Xc</span><span class="p">):</span>
+        <span class="n">Xc</span> <span class="o">=</span> <span class="n">Xc</span><span class="o">.</span><span class="n">tocsr</span><span class="p">()</span>
+
+    <span class="n">total_counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">Xc</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+    <span class="n">gene_idx</span> <span class="o">=</span> <span class="p">[</span><span class="n">adata_analysis</span><span class="o">.</span><span class="n">var_names</span><span class="o">.</span><span class="n">get_loc</span><span class="p">(</span><span class="n">g</span><span class="p">)</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">panel_genes</span><span class="p">]</span>
+    <span class="n">X_panel</span> <span class="o">=</span> <span class="n">Xc</span><span class="p">[:,</span> <span class="n">gene_idx</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">sp</span><span class="o">.</span><span class="n">issparse</span><span class="p">(</span><span class="n">X_panel</span><span class="p">):</span>
+        <span class="n">X_panel</span> <span class="o">=</span> <span class="n">X_panel</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span>
+
+    <span class="n">df_expr</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">X_panel</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="n">panel_genes</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">adata_analysis</span><span class="o">.</span><span class="n">obs_names</span><span class="p">)</span>
+    <span class="n">df_meta</span> <span class="o">=</span> <span class="n">adata_analysis</span><span class="o">.</span><span class="n">obs</span><span class="p">[[</span><span class="s2">&quot;participant_id&quot;</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">]]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">df_meta</span><span class="p">[</span><span class="s2">&quot;total_counts&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">total_counts</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">df_meta</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">df_expr</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">)</span>
+
+    <span class="n">df_sum</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">&quot;participant_id&quot;</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">],</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+          <span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">numeric_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+          <span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+    <span class="p">)</span>
+
+    <span class="n">totals</span> <span class="o">=</span> <span class="n">df_sum</span><span class="p">[</span><span class="s2">&quot;total_counts&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">cpm</span> <span class="o">=</span> <span class="n">df_sum</span><span class="p">[</span><span class="n">panel_genes</span><span class="p">]</span><span class="o">.</span><span class="n">values</span> <span class="o">/</span> <span class="p">(</span><span class="n">totals</span> <span class="o">+</span> <span class="mf">1e-12</span><span class="p">)</span> <span class="o">*</span> <span class="mf">1e6</span>
+    <span class="n">df_sum</span><span class="p">[</span><span class="n">panel_genes</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log1p</span><span class="p">(</span><span class="n">cpm</span><span class="p">)</span>
+
+    <span class="c1"># compute paired deltas per cell type</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">ct</span> <span class="ow">in</span> <span class="n">df_sum</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">():</span>
+        <span class="n">sub</span> <span class="o">=</span> <span class="n">df_sum</span><span class="p">[</span><span class="n">df_sum</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">]</span> <span class="o">==</span> <span class="n">ct</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">wide</span> <span class="o">=</span> <span class="n">sub</span><span class="o">.</span><span class="n">pivot_table</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="s2">&quot;participant_id&quot;</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="n">aggfunc</span><span class="o">=</span><span class="s2">&quot;size&quot;</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">keep</span> <span class="o">=</span> <span class="n">wide</span><span class="p">[(</span><span class="n">wide</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">visits</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">wide</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">visits</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)]</span><span class="o">.</span><span class="n">index</span>
+        <span class="n">sub</span> <span class="o">=</span> <span class="n">sub</span><span class="p">[</span><span class="n">sub</span><span class="p">[</span><span class="s2">&quot;participant_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">keep</span><span class="p">)]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">sub</span><span class="p">[</span><span class="s2">&quot;participant_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">MIN_PAIRED</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">panel_genes</span><span class="p">:</span>
+            <span class="n">w</span> <span class="o">=</span> <span class="n">sub</span><span class="o">.</span><span class="n">pivot_table</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="s2">&quot;participant_id&quot;</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="n">g</span><span class="p">,</span> <span class="n">aggfunc</span><span class="o">=</span><span class="s2">&quot;mean&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">visits</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">w</span><span class="o">.</span><span class="n">columns</span> <span class="ow">or</span> <span class="n">visits</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">w</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">delta</span> <span class="o">=</span> <span class="p">(</span><span class="n">w</span><span class="p">[</span><span class="n">visits</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span> <span class="o">-</span> <span class="n">w</span><span class="p">[</span><span class="n">visits</span><span class="p">[</span><span class="mi">0</span><span class="p">]])</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+            <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                <span class="s2">&quot;celltype&quot;</span><span class="p">:</span> <span class="n">ct</span><span class="p">,</span>
+                <span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">g</span><span class="p">,</span>
+                <span class="s2">&quot;n_units&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">delta</span><span class="p">)),</span>
+                <span class="s2">&quot;mean_delta&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">delta</span><span class="o">.</span><span class="n">mean</span><span class="p">()),</span>
+                <span class="s2">&quot;median_delta&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">delta</span><span class="o">.</span><span class="n">median</span><span class="p">()),</span>
+            <span class="p">})</span>
+
+    <span class="n">pb</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Pseudobulk paired deltas (panel genes × cell type):&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">pb</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="n">display</span><span class="p">(</span><span class="n">pb</span><span class="o">.</span><span class="n">sort_values</span><span class="p">([</span><span class="s2">&quot;celltype&quot;</span><span class="p">,</span> <span class="s2">&quot;feature&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">50</span><span class="p">))</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Insufficient paired participants for pseudobulk.&quot;</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
+<span class="ansi-red-fg">NameError</span>                                 Traceback (most recent call last)
+Cell <span class="ansi-green-fg">In[11], line 1</span>
+<span class="ansi-green-fg">----&gt; 1</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span class="ansi-yellow-bg">panel_genes</span> <span class="ansi-bold" style="color: rgb(175,0,255)">and</span> n_paired <span style="color: rgb(98,98,98)">&gt;</span><span style="color: rgb(98,98,98)">=</span> MIN_PAIRED <span class="ansi-bold" style="color: rgb(175,0,255)">and</span> <span style="color: rgb(0,135,0)">len</span>(visits) <span style="color: rgb(98,98,98)">==</span> <span style="color: rgb(98,98,98)">2</span>:
+<span class="ansi-green-intense-fg ansi-bold">      2</span>     Xc <span style="color: rgb(98,98,98)">=</span> adata_analysis<span style="color: rgb(98,98,98)">.</span>layers[<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">counts</span><span style="color: rgb(175,0,0)">&#34;</span>]
+<span class="ansi-green-intense-fg ansi-bold">      3</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> sp<span style="color: rgb(98,98,98)">.</span>issparse(Xc):
+
+<span class="ansi-red-fg">NameError</span>: name &#39;panel_genes&#39; is not defined
+</pre></div></div>
+</div>
+</section>
+<section id="9.-Trial-Interaction-Plot-(Single-Arm)">
+<h3>9. Trial Interaction Plot (Single Arm)<a class="headerlink" href="#9.-Trial-Interaction-Plot-(Single-Arm)" title="Link to this heading"></a></h3>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">features</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">visits</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+    <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">plot_within_arm_comparison</span><span class="p">(</span>
+        <span class="n">adata_analysis</span><span class="p">,</span>
+        <span class="n">arm</span><span class="o">=</span><span class="s2">&quot;Vaccinated&quot;</span><span class="p">,</span>
+        <span class="n">feature</span><span class="o">=</span><span class="n">features</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+        <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+        <span class="n">visits</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">visits</span><span class="p">),</span>
+        <span class="n">plot_type</span><span class="o">=</span><span class="s2">&quot;paired&quot;</span><span class="p">,</span>
+        <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">();</span> <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
+<span class="ansi-red-fg">NameError</span>                                 Traceback (most recent call last)
+Cell <span class="ansi-green-fg">In[12], line 1</span>
+<span class="ansi-green-fg">----&gt; 1</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span class="ansi-yellow-bg">features</span> <span class="ansi-bold" style="color: rgb(175,0,255)">and</span> <span style="color: rgb(0,135,0)">len</span>(visits) <span style="color: rgb(98,98,98)">==</span> <span style="color: rgb(98,98,98)">2</span>:
+<span class="ansi-green-intense-fg ansi-bold">      2</span>     fig, ax <span style="color: rgb(98,98,98)">=</span> plt<span style="color: rgb(98,98,98)">.</span>subplots(<span style="color: rgb(98,98,98)">1</span>, <span style="color: rgb(98,98,98)">1</span>, figsize<span style="color: rgb(98,98,98)">=</span>(<span style="color: rgb(98,98,98)">5</span>, <span style="color: rgb(98,98,98)">4</span>))
+<span class="ansi-green-intense-fg ansi-bold">      3</span>     st<span style="color: rgb(98,98,98)">.</span>plot_within_arm_comparison(
+<span class="ansi-green-intense-fg ansi-bold">      4</span>         adata_analysis,
+<span class="ansi-green-intense-fg ansi-bold">      5</span>         arm<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">Vaccinated</span><span style="color: rgb(175,0,0)">&#34;</span>,
+<span class="ansi-green-fg">   (...)</span>
+<span class="ansi-green-intense-fg ansi-bold">     10</span>         ax<span style="color: rgb(98,98,98)">=</span>ax,
+<span class="ansi-green-intense-fg ansi-bold">     11</span>     )
+
+<span class="ansi-red-fg">NameError</span>: name &#39;features&#39; is not defined
+</pre></div></div>
+</div>
+</section>
+<section id="10.-Trial-UMAP-Panel-for-a-Module-Score">
+<h3>10. Trial UMAP Panel for a Module Score<a class="headerlink" href="#10.-Trial-UMAP-Panel-for-a-Module-Score" title="Link to this heading"></a></h3>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">features</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib.gridspec</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridSpec</span>
+
+    <span class="n">feature</span> <span class="o">=</span> <span class="n">features</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">ad</span> <span class="o">=</span> <span class="n">adata_analysis</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">ad</span><span class="o">.</span><span class="n">X</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">&quot;log1p_cpm&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="s2">&quot;X_umap&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ad</span><span class="o">.</span><span class="n">obsm</span><span class="p">:</span>
+        <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">pca</span><span class="p">(</span><span class="n">ad</span><span class="p">)</span>
+        <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">neighbors</span><span class="p">(</span><span class="n">ad</span><span class="p">)</span>
+        <span class="n">sc</span><span class="o">.</span><span class="n">tl</span><span class="o">.</span><span class="n">umap</span><span class="p">(</span><span class="n">ad</span><span class="p">)</span>
+
+    <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">18</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+    <span class="n">gs</span> <span class="o">=</span> <span class="n">GridSpec</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">figure</span><span class="o">=</span><span class="n">fig</span><span class="p">,</span> <span class="n">width_ratios</span><span class="o">=</span><span class="p">[</span><span class="mf">1.6</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">height_ratios</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+
+    <span class="c1"># Big cell type UMAP</span>
+    <span class="n">ax_big</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="n">gs</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">])</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">pl</span><span class="o">.</span><span class="n">umap</span><span class="p">(</span><span class="n">ad</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax_big</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">frameon</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Cell Types&quot;</span><span class="p">)</span>
+    <span class="n">ax_big</span><span class="o">.</span><span class="n">set_aspect</span><span class="p">(</span><span class="s1">&#39;equal&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Feature UMAPs by visit</span>
+    <span class="n">vals</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">feature</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">vmin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanpercentile</span><span class="p">(</span><span class="n">vals</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">vmax</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanpercentile</span><span class="p">(</span><span class="n">vals</span><span class="p">,</span> <span class="mi">99</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">vis</span><span class="p">,</span> <span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span> <span class="ow">in</span> <span class="p">[(</span><span class="n">visits</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)),</span> <span class="p">(</span><span class="n">visits</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">))]:</span>
+        <span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="n">gs</span><span class="p">[</span><span class="n">r</span><span class="p">,</span> <span class="n">c</span><span class="p">])</span>
+        <span class="n">sub</span> <span class="o">=</span> <span class="n">ad</span><span class="p">[</span><span class="n">ad</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span> <span class="o">==</span> <span class="n">vis</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">sub</span><span class="o">.</span><span class="n">n_obs</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">sc</span><span class="o">.</span><span class="n">pl</span><span class="o">.</span><span class="n">umap</span><span class="p">(</span><span class="n">sub</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">feature</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">frameon</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="n">vmin</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="n">vmax</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;magma&quot;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Day </span><span class="si">{</span><span class="n">vis</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_aspect</span><span class="p">(</span><span class="s1">&#39;equal&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_axis_off</span><span class="p">()</span>
+
+    <span class="c1"># leave bottom row blank to avoid vertical stretch</span>
+    <span class="n">ax_blank1</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="n">gs</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]);</span> <span class="n">ax_blank1</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s1">&#39;off&#39;</span><span class="p">)</span>
+    <span class="n">ax_blank2</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="n">gs</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]);</span> <span class="n">ax_blank2</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s1">&#39;off&#39;</span><span class="p">)</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">();</span> <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
+<span class="ansi-red-fg">NameError</span>                                 Traceback (most recent call last)
+Cell <span class="ansi-green-fg">In[13], line 1</span>
+<span class="ansi-green-fg">----&gt; 1</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span class="ansi-yellow-bg">features</span>:
+<span class="ansi-green-intense-fg ansi-bold">      2</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">from</span><span style="color: rgb(188,188,188)"> </span><span class="ansi-bold" style="color: rgb(0,0,255)">matplotlib</span><span class="ansi-bold" style="color: rgb(0,0,255)">.</span><span class="ansi-bold" style="color: rgb(0,0,255)">gridspec</span><span style="color: rgb(188,188,188)"> </span><span class="ansi-bold" style="color: rgb(0,135,0)">import</span> GridSpec
+<span class="ansi-green-intense-fg ansi-bold">      4</span>     feature <span style="color: rgb(98,98,98)">=</span> features[<span style="color: rgb(98,98,98)">0</span>]
+
+<span class="ansi-red-fg">NameError</span>: name &#39;features&#39; is not defined
+</pre></div></div>
+</div>
+</section>
+<section id="11.-Dotplot-of-Panel-Genes">
+<h3>11. Dotplot of Panel Genes<a class="headerlink" href="#11.-Dotplot-of-Panel-Genes" title="Link to this heading"></a></h3>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">panel_genes</span><span class="p">:</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">pl</span><span class="o">.</span><span class="n">dotplot</span><span class="p">(</span>
+        <span class="n">adata_analysis</span><span class="p">,</span>
+        <span class="n">panel_genes</span><span class="p">,</span>
+        <span class="n">groupby</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span>
+        <span class="n">standard_scale</span><span class="o">=</span><span class="s2">&quot;var&quot;</span><span class="p">,</span>
+        <span class="n">use_raw</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
+<span class="ansi-red-fg">NameError</span>                                 Traceback (most recent call last)
+Cell <span class="ansi-green-fg">In[14], line 1</span>
+<span class="ansi-green-fg">----&gt; 1</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span class="ansi-yellow-bg">panel_genes</span>:
+<span class="ansi-green-intense-fg ansi-bold">      2</span>     sc<span style="color: rgb(98,98,98)">.</span>pl<span style="color: rgb(98,98,98)">.</span>dotplot(
+<span class="ansi-green-intense-fg ansi-bold">      3</span>         adata_analysis,
+<span class="ansi-green-intense-fg ansi-bold">      4</span>         panel_genes,
+<span class="ansi-green-fg">   (...)</span>
+<span class="ansi-green-intense-fg ansi-bold">      7</span>         use_raw<span style="color: rgb(98,98,98)">=</span><span class="ansi-bold" style="color: rgb(0,135,0)">False</span>,
+<span class="ansi-green-intense-fg ansi-bold">      8</span>     )
+
+<span class="ansi-red-fg">NameError</span>: name &#39;panel_genes&#39; is not defined
+</pre></div></div>
 </div>
 </section>
 </section>
@@ -526,7 +1041,7 @@ Within-arm (cell-level, raw):
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="example_immunotherapy_sade_feldman.html" class="btn btn-neutral float-left" title="Example: Immunotherapy Response in Melanoma" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="example_immunotherapy_sade_feldman.html" class="btn btn-neutral float-left" title="Immunotherapy Response in Melanoma: Longitudinal Single-Cell Analysis" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
         <a href="stress_test_real_scale.html" class="btn btn-neutral float-right" title="sctrial: Scalability Analysis" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
