@@ -7,6 +7,14 @@ from .preprocessing import add_log1p_cpm_layer
 from .scoring import score_gene_sets
 from .adata_tools import subset_primary, subset_cells, profile_features
 from .utils import resolve_feature
+from .datasets import (
+    load_sade_feldman,
+    load_stephenson_data,
+    load_vaccine_gse171964,
+    count_paired,
+    categorize_celltype,
+    ensure_fdr,
+)
 from .stats.did import did_table, did_fit, did_table_by_celltype
 from .stats.abundance import abundance_did
 from .stats.gsea import run_gsea_did
@@ -33,6 +41,12 @@ __all__ = [
     "subset_cells",
     "profile_features",
     "resolve_feature",
+    "load_sade_feldman",
+    "load_stephenson_data",
+    "load_vaccine_gse171964",
+    "count_paired",
+    "categorize_celltype",
+    "ensure_fdr",
     "did_table",
     "did_fit",
     "did_table_by_celltype",

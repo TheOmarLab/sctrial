@@ -58,3 +58,9 @@ Utilities
 .. automodule:: sctrial.utils
    :members:
    :undoc-members:
+
+Datasets and Example Helpers
+----------------------------
+.. automodule:: sctrial.datasets
+   :members:
+   :undoc-members:
