@@ -14,8 +14,8 @@ AggregateMode = Literal["cell", "participant_visit", "participant_visit_celltype
 AggregateFunc = Literal["mean", "median", "pct_pos"]
 
 def _ensure_paired(df: pd.DataFrame, unit: str, time: str, visits: Tuple[str,str]) -> pd.DataFrame:
-    wide = df.pivot_table(index=unit, columns=time, aggfunc="size", fill_value=0, observed=True)
-    keep = wide[(wide.get(visits[0],0)>0) & (wide.get(visits[1],0)>0)].index
+    wide = df.groupby([unit, time], observed=True).size().unstack(fill_value=0)
+    keep = wide[(wide.get(visits[0], 0) > 0) & (wide.get(visits[1], 0) > 0)].index
     return df[df[unit].isin(keep)].copy()
 
 def did_fit(
@@ -124,7 +124,7 @@ def did_fit(
         p_boot = wild_cluster_bootstrap_t(
             fit,
             X=fit.model.exog,
-            clusters=tmp[unit].values,
+            clusters=np.asarray(tmp[unit].to_numpy()),
             term_name=term,
             B=n_boot,
             seed=seed
@@ -307,11 +307,11 @@ def did_table(
         df["n_cells"] = 1
         agg_features = list(final_features)
 
-        cov_agg = {}
+        cov_agg: dict[str, str] = {}
         if covariates:
             for c in covariates:
                 if pd.api.types.is_numeric_dtype(df[c]):
-                    cov_agg[c] = agg
+                    cov_agg[c] = str(agg)
                 else:
                     # Non-numeric covariates must be constant within participant-visit
                     nunique = df.groupby(grp_cols, observed=True)[c].nunique()
@@ -342,11 +342,11 @@ def did_table(
         df["n_cells"] = 1
         agg_features = list(final_features)
 
-        cov_agg = {}
+        cov_agg_ct: dict[str, str] = {}
         if covariates:
             for c in covariates:
                 if pd.api.types.is_numeric_dtype(df[c]):
-                    cov_agg[c] = agg
+                    cov_agg_ct[c] = str(agg)
                 else:
                     nunique = df.groupby(grp_cols, observed=True)[c].nunique()
                     if nunique.max() > 1:
@@ -354,11 +354,11 @@ def did_table(
                             f"Covariate '{c}' varies within participant-visit-celltype; "
                             "use numeric or constant covariates only."
                         )
-                    cov_agg[c] = "first"
+                    cov_agg_ct[c] = "first"
 
         df_use = df.groupby(grp_cols, observed=True).agg({
             **{f: agg for f in agg_features},
-            **cov_agg,
+            **cov_agg_ct,
             "n_cells": "sum",
             "arm_bin": "first"
         }).reset_index()
