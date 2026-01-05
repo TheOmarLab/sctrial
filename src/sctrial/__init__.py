@@ -12,9 +12,11 @@ from .datasets import (
     load_stephenson_data,
     load_vaccine_gse171964,
     count_paired,
+    verify_paired_participants,
     categorize_celltype,
     ensure_fdr,
 )
+from .stats._extract import extract_gene_vector
 from .stats.did import did_table, did_fit, did_table_by_celltype
 from .stats.abundance import abundance_did
 from .stats.gsea import run_gsea_did
@@ -45,8 +47,10 @@ __all__ = [
     "load_stephenson_data",
     "load_vaccine_gse171964",
     "count_paired",
+    "verify_paired_participants",
     "categorize_celltype",
     "ensure_fdr",
+    "extract_gene_vector",
     "did_table",
     "did_fit",
     "did_table_by_celltype",
