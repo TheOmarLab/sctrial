@@ -23,15 +23,42 @@ def score_gene_sets(
 
     Parameters
     ----------
+    adata
+        AnnData object containing expression data.
+    gene_sets
+        Dictionary mapping set names to lists of gene names.
     layer
         Expression matrix source. If None, uses `adata.X`.
         For log1p-CPM workflows, use layer="log1p_cpm".
     method
+        Scoring method:
+
         - "mean": mean expression across genes.
         - "zmean": z-score each gene across cells (within the current AnnData),
-          then average z across genes.
+          then average z-scores across genes. This is the recommended method
+          as it accounts for different expression scales across genes.
+    prefix
+        Prefix to add to column names (e.g., "ms_" for module scores).
     min_genes
-        Minimum overlap genes required; otherwise score is NaN.
+        Minimum number of genes from the set that must be present in the data.
+        If fewer genes overlap, the score is set to NaN.
+    overwrite
+        If False, skip gene sets that already have a column in adata.obs.
+
+    Returns
+    -------
+    AnnData
+        The input AnnData with new columns added to obs.
+
+    Notes
+    -----
+    **Zero-variance gene handling (zmean method):**
+    Genes with zero or near-zero variance (std < 1e-12) are excluded from
+    the z-mean calculation. If ALL genes in a set have zero variance, the
+    score is NaN. This prevents division by zero and ensures meaningful scores.
+
+    The zmean method computes: mean(z_i) where z_i = (x_i - mean(x_i)) / std(x_i)
+    for each gene i across all cells.
     """
     X = adata.layers[layer] if layer is not None else adata.X
     var_names = adata.var_names

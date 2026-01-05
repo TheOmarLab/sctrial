@@ -48,6 +48,17 @@ def wild_cluster_bootstrap_t(
 ) -> float:
     """Wild cluster bootstrap (Rademacher) for one coefficient.
 
+    Notes
+    -----
+    Implements a **wild cluster bootstrap-t** using Rademacher weights at the
+    cluster level. This is recommended when the number of clusters is small
+    and standard cluster-robust inference may be unreliable.
+
+    Reference:
+    Cameron, A.C., Gelbach, J.B., & Miller, D.L. (2008).
+    Bootstrap-based improvements for inference with clustered errors.
+    The Review of Economics and Statistics, 90(3), 414–427.
+
     Parameters
     ----------
     fit

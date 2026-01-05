@@ -31,7 +31,49 @@ def did_fit(
     n_boot: int = 999,
     seed: int = 42,
 ) -> dict:
-    """Fit FE DiD: y ~ time_num + time_num:arm_bin + covariates + C(unit)."""
+    """Fit fixed-effects DiD model: y ~ time + time:arm + covariates + C(unit).
+
+    Statistical Assumptions
+    -----------------------
+    - Requires at least 4 unique units (participants) to estimate fixed effects.
+      Returns NaN for all estimates if n_units < 4.
+    - Features with near-zero variance (std < 1e-8) return NaN to avoid
+      misleading standardized estimates.
+    - Cluster-robust standard errors are used by default to account for
+      within-participant correlation.
+    - If `n_cells` column is present in df, Weighted Least Squares (WLS) is
+      used with sqrt(n_cells) as weights.
+
+    Parameters
+    ----------
+    df : DataFrame
+        Long-format data with columns for unit, time, arm_bin, y, and covariates.
+    y : str
+        Name of the outcome column.
+    unit : str
+        Name of the participant/unit column.
+    time : str
+        Name of the time variable (numeric 0/1).
+    arm_bin : str
+        Name of the treatment indicator column (0/1).
+    covariates : list of str, optional
+        Additional covariate columns to include.
+    cov_type : str
+        Covariance type for standard errors ('cluster' recommended).
+    standardize : bool
+        If True, z-score the outcome before fitting.
+    use_bootstrap : bool
+        If True, use Wild Cluster Bootstrap for p-values.
+    n_boot : int
+        Number of bootstrap iterations.
+    seed : int
+        Random seed for reproducibility.
+
+    Returns
+    -------
+    dict
+        Contains beta_DiD, se_DiD, p_DiD, beta_time, p_time, n_units.
+    """
     cols = [unit, time, arm_bin, y]
     if covariates:
         cols.extend(covariates)
@@ -174,6 +216,9 @@ def did_table(
     covariates
         List of additional columns in `adata.obs` to include as fixed effects 
         in the model (e.g., ['age', 'sex', 'batch']).
+        Covariates must be **numeric** or **constant within each participant-visit**
+        group. Non-numeric covariates are aggregated with "first" and will raise
+        an error if they vary within a participant-visit (or participant-visit-celltype).
     use_bootstrap
         If True, uses Wild Cluster Bootstrap to calculate p-values. Recommended 
         for small sample sizes (e.g. < 15 participants per group).
@@ -258,14 +303,28 @@ def did_table(
     # aggregate if requested
     if aggregate == "participant_visit":
         grp_cols = [design.participant_col, design.visit_col, design.arm_col]
-        
+
         df["n_cells"] = 1
         agg_features = list(final_features)
+
+        cov_agg = {}
         if covariates:
-            agg_features.extend([c for c in covariates if c not in grp_cols])
-        
+            for c in covariates:
+                if pd.api.types.is_numeric_dtype(df[c]):
+                    cov_agg[c] = agg
+                else:
+                    # Non-numeric covariates must be constant within participant-visit
+                    nunique = df.groupby(grp_cols, observed=True)[c].nunique()
+                    if nunique.max() > 1:
+                        raise ValueError(
+                            f"Covariate '{c}' varies within participant-visit; "
+                            "use numeric or constant covariates only."
+                        )
+                    cov_agg[c] = "first"
+
         df_use = df.groupby(grp_cols, observed=True).agg({
             **{f: agg for f in agg_features},
+            **cov_agg,
             "n_cells": "sum",
             "arm_bin": "first"
         }).reset_index()
@@ -282,11 +341,24 @@ def did_table(
 
         df["n_cells"] = 1
         agg_features = list(final_features)
+
+        cov_agg = {}
         if covariates:
-            agg_features.extend([c for c in covariates if c not in grp_cols])
+            for c in covariates:
+                if pd.api.types.is_numeric_dtype(df[c]):
+                    cov_agg[c] = agg
+                else:
+                    nunique = df.groupby(grp_cols, observed=True)[c].nunique()
+                    if nunique.max() > 1:
+                        raise ValueError(
+                            f"Covariate '{c}' varies within participant-visit-celltype; "
+                            "use numeric or constant covariates only."
+                        )
+                    cov_agg[c] = "first"
 
         df_use = df.groupby(grp_cols, observed=True).agg({
             **{f: agg for f in agg_features},
+            **cov_agg,
             "n_cells": "sum",
             "arm_bin": "first"
         }).reset_index()

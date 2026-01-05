@@ -4,6 +4,8 @@ import os
 import tempfile
 from pathlib import Path
 
+__all__ = ["ensure_numba_cache_dir", "ensure_matplotlib_config_dir"]
+
 
 def _ensure_dir(env_var: str, subdir: str) -> str:
     """Ensure an environment variable points to a writable directory."""

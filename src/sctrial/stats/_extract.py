@@ -4,6 +4,8 @@ import numpy as np
 import scipy.sparse as sp
 from anndata import AnnData
 
+__all__ = ["extract_gene_vector"]
+
 def extract_gene_vector(adata: AnnData, gene: str, layer: Optional[str] = None) -> np.ndarray:
     if gene not in adata.var_names:
         raise KeyError(gene)

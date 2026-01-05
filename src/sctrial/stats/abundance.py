@@ -23,31 +23,44 @@ def abundance_did(
 ) -> pd.DataFrame:
     """Test treatment-induced cell-type abundance changes via DiD on proportions.
 
-    This function calculates cell-type proportions per participant-visit and 
+    This function calculates cell-type proportions per participant-visit and
     fits a DiD model to test for treatment-induced compositional shifts.
+
+    Statistical Assumptions
+    -----------------------
+    - Requires `min_units` paired participants (default 5) per cell type.
+    - Requires both treatment arms to be represented among paired participants.
+    - Cell types with no variation in the transformed outcome are skipped.
+    - Uses **cluster-robust standard errors** (clustered by participant) to
+      account for within-participant correlation across visits.
+    - The arcsin-sqrt transform is variance-stabilizing for proportions and
+      is recommended for compositional data.
 
     Parameters
     ----------
     adata
         AnnData object.
     design
-        A `TrialDesign` object.
+        A `TrialDesign` object. Must have `celltype_col` defined.
     visits
         Tuple of (baseline, followup) visit labels.
     exclude_crossovers
         Whether to exclude crossover cells.
     transform
         Mathematical transformation for proportions:
-        - 'arcsin_sqrt': arcsin(sqrt(p)), standard for proportions.
-        - 'logit': log(p / (1-p)).
-        - 'none': use raw proportions.
+
+        - 'arcsin_sqrt': arcsin(sqrt(p)), variance-stabilizing for proportions.
+        - 'logit': log(p / (1-p)), useful for extreme proportions.
+        - 'none': use raw proportions (not recommended).
     min_units
-        Minimum number of paired participants required for a cell type to be 
-        tested.
+        Minimum number of paired participants required for a cell type to be
+        tested. Cell types with fewer paired participants are skipped.
     covariates
         Additional columns in `adata.obs` to include as fixed effects.
+        Must be constant within participant-visit (e.g., age, sex).
     use_bootstrap
-        If True, uses Wild Cluster Bootstrap for p-values.
+        If True, uses Wild Cluster Bootstrap for p-values. Recommended for
+        small sample sizes (< 15 participants per arm).
     n_boot
         Number of bootstrap permutations.
     seed
@@ -56,7 +69,14 @@ def abundance_did(
     Returns
     -------
     pd.DataFrame
-        Table with one row per cell type containing beta_DiD and significance.
+        Table with one row per cell type containing:
+
+        - celltype: Cell type name
+        - n_participants: Number of paired participants
+        - beta_DiD: Treatment effect (interaction term)
+        - se_DiD: Cluster-robust standard error
+        - p_DiD: P-value for the treatment effect
+        - FDR_DiD: Benjamini-Hochberg FDR-corrected p-value
 
     Examples
     --------

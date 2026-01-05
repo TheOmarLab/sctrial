@@ -94,15 +94,45 @@ Gene set scoring (or module scoring) allows you to aggregate signals from multip
        prefix="ms_"
    )
 
-4. Difference-in-Differences (DiD) Analysis
+4. Verifying Paired Participants
+---------------------------------
+
+Before running DiD analysis, it's crucial to verify that participants have valid data at both visits. Not all participants may have cells at both timepoints, and some may have NaN values for certain features.
+
+.. code-block:: python
+
+   # Check which participants have data at both visits
+   visits = ("V1", "V2")
+   participant_visits = (
+       adata.obs
+       .groupby(["participant_id", "visit"])
+       .size()
+       .reset_index(name="n_cells")
+   )
+
+   # Pivot to see which participants have both visits
+   paired_check = participant_visits.pivot(
+       index="participant_id",
+       columns="visit",
+       values="n_cells"
+   )
+   paired_check = paired_check.dropna()
+   print(f"Paired participants: {len(paired_check)}")
+   print(paired_check.head())
+
+This verification is especially important when working with module scores that may have NaN values (e.g., if the gene set has no overlap with the data).
+
+5. Difference-in-Differences (DiD) Analysis
 -------------------------------------------
 
 The core of `sctrial` is the Difference-in-Differences (DiD) model. It tests whether the change over time (baseline to follow-up) differs between the treatment and control arms.
 
 Statistical highlights:
+
 - **Participant Fixed Effects**: By including `C(participant_id)`, we control for baseline heterogeneity between individuals.
 - **Cluster-Robust Standard Errors**: We cluster by participant to account for the non-independence of cells from the same person.
 - **Covariate Support**: You can include additional variables (like `age` or `batch`) to control for potential confounders.
+- **Automatic Pairing**: The function automatically filters to paired participants only.
 
 .. code-block:: python
 
@@ -121,7 +151,7 @@ Statistical highlights:
    summary_text = st.summarize_did_results(res)
    print(summary_text)
 
-5. Cell-Type Abundance Analysis
+6. Cell-Type Abundance Analysis
 -------------------------------
 
 Treatment effects can also manifest as changes in cell-type composition. `abundance_did` uses the same DiD logic but operates on cell-type proportions (e.g., via `arcsin-sqrt` transform).
@@ -136,7 +166,7 @@ Treatment effects can also manifest as changes in cell-type composition. `abunda
    )
    print(ab_res)
 
-6. Visualization
+7. Visualization
 ----------------
 
 `sctrial` provides plotting helpers to visualize these interactions.

@@ -19,6 +19,12 @@ Scoring
    :members:
    :undoc-members:
 
+AnnData Tools
+-------------
+.. automodule:: sctrial.adata_tools
+   :members:
+   :undoc-members:
+
 Statistics
 ----------
 .. automodule:: sctrial.stats.did

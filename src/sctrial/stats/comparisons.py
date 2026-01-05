@@ -87,14 +87,27 @@ def within_arm_comparison(
 
     rows = []
     for feat in features:
+        # Create a fresh copy for each feature to avoid cross-contamination
+        df_feat = df_use.copy()
+
         if standardize:
-            yy = df_use[feat].astype(float)
-            df_use["_y"] = (yy - yy.mean()) / (yy.std(ddof=1) + 1e-12)
+            yy = df_feat[feat].astype(float)
+            y_std = yy.std(ddof=1)
+            if y_std < 1e-12:
+                # Skip features with near-zero variance
+                rows.append({
+                    "feature": feat,
+                    "beta_time": np.nan,
+                    "p_time": np.nan,
+                    "n_units": int(df_feat[unit].nunique()),
+                })
+                continue
+            df_feat["_y"] = (yy - yy.mean()) / y_std
         else:
-            df_use["_y"] = df_use[feat].astype(float)
-            
-        model = smf.ols(f"_y ~ visit_num + C({unit})", data=df_use)
-        fit = model.fit(cov_type="cluster", cov_kwds={"groups": df_use[unit]})
+            df_feat["_y"] = df_feat[feat].astype(float)
+
+        model = smf.ols(f"_y ~ visit_num + C({unit})", data=df_feat)
+        fit = model.fit(cov_type="cluster", cov_kwds={"groups": df_feat[unit]})
         
         rows.append({
             "feature": feat,
@@ -174,20 +187,33 @@ def between_arm_comparison(
     rows = []
     for feat in features:
         if method == "ols":
+            # Create a fresh copy for each feature to avoid cross-contamination
+            df_feat = df_use.copy()
+
             if standardize:
-                yy = df_use[feat].astype(float)
-                df_use["_y"] = (yy - yy.mean()) / (yy.std(ddof=1) + 1e-12)
+                yy = df_feat[feat].astype(float)
+                y_std = yy.std(ddof=1)
+                if y_std < 1e-12:
+                    # Skip features with near-zero variance
+                    rows.append({
+                        "feature": feat,
+                        "beta_arm": np.nan,
+                        "p_arm": np.nan,
+                        "n_units": int(df_feat[design.participant_col].nunique()),
+                    })
+                    continue
+                df_feat["_y"] = (yy - yy.mean()) / y_std
             else:
-                df_use["_y"] = df_use[feat].astype(float)
-                
-            model = smf.ols("_y ~ arm_bin", data=df_use)
+                df_feat["_y"] = df_feat[feat].astype(float)
+
+            model = smf.ols("_y ~ arm_bin", data=df_feat)
             fit = model.fit()
             
             rows.append({
                 "feature": feat,
                 "beta_arm": float(fit.params.get("arm_bin", np.nan)),
                 "p_arm": float(fit.pvalues.get("arm_bin", np.nan)),
-                "n_units": int(df_use[design.participant_col].nunique()),
+                "n_units": int(df_feat[design.participant_col].nunique()),
             })
         elif method == "wilcoxon":
             from scipy.stats import mannwhitneyu

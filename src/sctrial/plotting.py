@@ -29,12 +29,12 @@ except ImportError:
     sns = None
 
 # type: ignore[no-redef]
-scanpy_import_error = None
+_scanpy_import_error = None
 try:
     import scanpy as sc
 except Exception as e:  # ImportError or runtime errors (e.g., numba cache)
     sc = None
-    scanpy_import_error = e
+    _scanpy_import_error = e
 
 def did_volcano_frame(
         df: pd.DataFrame,
@@ -356,7 +356,7 @@ def plot_trial_umap(
         raise ImportError(
             "matplotlib and scanpy are required for plotting. "
             "Install with: pip install sctrial[plots]"
-            + (f" (scanpy import failed: {scanpy_import_error})" if scanpy_import_error else "")
+            + (f" (scanpy import failed: {_scanpy_import_error})" if _scanpy_import_error else "")
         )
     if visits is None:
         visits = design.primary_visits()
@@ -485,7 +485,7 @@ def plot_trial_dotplot(
         raise ImportError(
             "scanpy is required for plotting. "
             "Install with: pip install sctrial[plots]"
-            + (f" (scanpy import failed: {scanpy_import_error})" if scanpy_import_error else "")
+            + (f" (scanpy import failed: {_scanpy_import_error})" if _scanpy_import_error else "")
         )
     ad = adata.copy()
     if visits:
@@ -589,7 +589,7 @@ def plot_trial_umap_panel(
         raise ImportError(
             "matplotlib and scanpy are required for plotting. "
             "Install with: pip install sctrial[plots]"
-            + (f" (scanpy import failed: {scanpy_import_error})" if scanpy_import_error else "")
+            + (f" (scanpy import failed: {_scanpy_import_error})" if _scanpy_import_error else "")
         )
     if visits is None:
         visits = design.primary_visits()

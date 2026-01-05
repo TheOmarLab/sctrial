@@ -24,6 +24,7 @@ def run_gsea_did(
     rank_by: str = "signed_confidence",
     use_bootstrap: bool = False,
     n_boot: int = 999,
+    min_units: int = 4,
     return_obj: bool = False,
     **kwargs
 ) -> Union[pd.DataFrame, "gp.Prerank"]:
@@ -58,10 +59,14 @@ def run_gsea_did(
         - 'beta': ranks genes solely by the DiD effect size.
         - 'tstat': ranks genes by the t-statistic (beta_DiD / se_DiD).
     use_bootstrap
-        Whether to use Wild Cluster Bootstrap for DiD p-values (used if 
+        Whether to use Wild Cluster Bootstrap for DiD p-values (used if
         rank_by is 'signed_confidence').
     n_boot
         Number of bootstrap permutations.
+    min_units
+        Minimum number of paired participants required for a gene to be
+        included in the ranking. Genes with fewer participants return NaN
+        and are filtered out before GSEA. Default is 4.
     return_obj
         Whether to return the full gseapy object. If False (default), 
         returns the results DataFrame (`res2d`).
@@ -97,17 +102,34 @@ def run_gsea_did(
         n_boot=n_boot
     )
     
-    # 2. Rank genes
+    # 2. Filter genes with insufficient data
+    # Genes with n_units < min_units will have NaN beta_DiD
+    valid_mask = res["n_units"] >= min_units
+    res_valid = res[valid_mask].copy()
+
+    if len(res_valid) == 0:
+        raise ValueError(
+            f"No genes have sufficient data (min_units={min_units}). "
+            f"Try reducing min_units or checking your data."
+        )
+
+    # 3. Rank genes
     if rank_by == "signed_confidence":
-        res["rank"] = np.sign(res["beta_DiD"].fillna(0)) * -np.log10(res["p_DiD"].fillna(1) + 1e-12)
+        res_valid["rank"] = (
+            np.sign(res_valid["beta_DiD"].fillna(0)) *
+            -np.log10(res_valid["p_DiD"].fillna(1) + 1e-12)
+        )
     elif rank_by == "beta":
-        res["rank"] = res["beta_DiD"].fillna(0)
+        res_valid["rank"] = res_valid["beta_DiD"].fillna(0)
     elif rank_by == "tstat":
-        res["rank"] = res["beta_DiD"].fillna(0) / (res["se_DiD"].fillna(1) + 1e-12)
+        res_valid["rank"] = (
+            res_valid["beta_DiD"].fillna(0) /
+            (res_valid["se_DiD"].fillna(1) + 1e-12)
+        )
     else:
         raise ValueError(f"Unknown rank_by: {rank_by}")
-        
-    ranking = res[["feature", "rank"]].dropna().sort_values("rank", ascending=False)
+
+    ranking = res_valid[["feature", "rank"]].dropna().sort_values("rank", ascending=False)
     
     # 3. Run GSEA Prerank
     pre_res = gp.prerank(
