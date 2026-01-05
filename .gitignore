@@ -33,3 +33,7 @@ examples/data/
 **/__pycache__/
 .DS_Store
 **/.DS_Store
+.vscode/
+.idea/
+.ruff_cache/
+docs/build/
