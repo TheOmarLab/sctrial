@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 import pytest
 from anndata import AnnData
-from scipy import sparse
 import sctrial as st
 
 
