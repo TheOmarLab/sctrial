@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from io import StringIO
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Dict, Optional, Sequence, Tuple
 import gzip
 import urllib.request
 
