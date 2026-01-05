@@ -22,6 +22,7 @@ from .stats.abundance import abundance_did
 from .stats.gsea import run_gsea_did
 from .stats.comparisons import within_arm_comparison, between_arm_comparison
 from .stats.summary import summarize_did_results
+from .stats.pseudobulk import pseudobulk_expression, pseudobulk_within_arm
 from .plotting import (
     plot_trial_interaction, 
     plot_abundance_interaction,
@@ -59,6 +60,8 @@ __all__ = [
     "within_arm_comparison",
     "between_arm_comparison",
     "summarize_did_results",
+    "pseudobulk_expression",
+    "pseudobulk_within_arm",
     "plot_trial_interaction",
     "plot_abundance_interaction",
     "plot_did_forest",
