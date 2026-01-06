@@ -81,6 +81,9 @@ def did_fit(
     cols = [unit, time, arm_bin, y]
     if covariates:
         cols.extend(covariates)
+    # Include n_cells for WLS weighting if available
+    if "n_cells" in df.columns:
+        cols.append("n_cells")
 
     tmp = df[cols].dropna().copy()
     if tmp[unit].nunique() < 4:
@@ -270,6 +273,10 @@ def did_table(
     # features can be genes (in var_names) or obs columns
     # Optimization: Extract all genes from X/layer at once if they are in var_names
     genes_to_extract = [f for f in features if f in ad.var_names and f not in ad.obs.columns]
+
+    # Build feature columns to add (avoid DataFrame fragmentation)
+    feature_data = {}
+
     if genes_to_extract:
         # subset var to requested genes
         ad_sub = ad[:, genes_to_extract]
@@ -282,7 +289,7 @@ def did_table(
             X = np.asarray(X)
 
         for i, gene in enumerate(genes_to_extract):
-            df[gene] = X[:, i]
+            feature_data[gene] = X[:, i]
 
     missing = []
     final_features = []
@@ -291,12 +298,16 @@ def did_table(
             val = ad.obs[feat]
             if not pd.api.types.is_numeric_dtype(val):
                 continue # skip non-numeric obs columns
-            df[feat] = val.values
+            feature_data[feat] = val.values
             final_features.append(feat)
         elif feat in genes_to_extract:
             final_features.append(feat)
         else:
             missing.append(feat)
+
+    # Add all feature columns at once to avoid DataFrame fragmentation
+    if feature_data:
+        df = pd.concat([df, pd.DataFrame(feature_data, index=df.index)], axis=1)
 
     if missing:
         raise KeyError(f"Features not found in obs or var_names: {missing[:5]}")

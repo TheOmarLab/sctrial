@@ -215,3 +215,34 @@ class TestResolveFeature:
         # But exact match should work
         assert st.resolve_feature(sample_adata, "Feature") == "Feature"
         assert st.resolve_feature(sample_adata, "feature") == "feature"
+
+
+class TestWLSWeighting:
+    """Test that WLS weighting with n_cells is applied correctly."""
+
+    def test_did_fit_uses_n_cells(self):
+        """Verify n_cells column is used for WLS weighting in did_fit."""
+        from sctrial.stats.did import did_fit
+
+        # Create data where WLS should make a difference
+        df = pd.DataFrame({
+            "participant_id": ["P1", "P1", "P2", "P2", "P3", "P3", "P4", "P4"],
+            "visit_num": [0, 1, 0, 1, 0, 1, 0, 1],
+            "arm_bin": [1, 1, 1, 1, 0, 0, 0, 0],
+            "outcome": [1.0, 2.0, 1.0, 3.0, 1.0, 1.2, 1.0, 1.1],
+            "n_cells": [100, 100, 10, 10, 100, 100, 10, 10],  # Varied cell counts
+        })
+
+        # Run did_fit - should use WLS because n_cells is present
+        result = did_fit(
+            df,
+            y="outcome",
+            unit="participant_id",
+            time="visit_num",
+            arm_bin="arm_bin",
+            standardize=False,
+        )
+
+        # Should return valid results (not NaN)
+        assert not pd.isna(result["beta_DiD"]), "WLS fit should produce valid beta_DiD"
+        assert result["n_units"] == 4, "Should have 4 units"

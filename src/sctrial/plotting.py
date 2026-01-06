@@ -716,8 +716,8 @@ def plot_gsea_heatmap(
     df_top = df[df[term_col].isin(top_terms)].copy()
     mat = df_top.pivot_table(index=term_col, columns=pool_col, values=nes_col, aggfunc="mean")
 
-    # Sort terms by original min FDR ranking
-    mat = mat.loc[top_terms]
+    # Sort terms by original min FDR ranking (use reindex to handle missing terms gracefully)
+    mat = mat.reindex(top_terms)
 
     # Ensure numeric
     mat = mat.astype(float)
