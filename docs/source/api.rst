@@ -47,6 +47,10 @@ Statistics
    :members:
    :undoc-members:
 
+.. automodule:: sctrial.stats.pseudobulk
+   :members:
+   :undoc-members:
+
 Plotting
 --------
 .. automodule:: sctrial.plotting

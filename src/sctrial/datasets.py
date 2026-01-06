@@ -19,6 +19,7 @@ __all__ = [
     "load_stephenson_data",
     "load_vaccine_gse171964",
     "count_paired",
+    "verify_paired_participants",
     "categorize_celltype",
     "ensure_fdr",
 ]
@@ -424,6 +425,59 @@ def count_paired(obs: pd.DataFrame, visit_col: str, visits: Sequence[str]) -> in
     )
     has_both = (wide.get(visits[0], 0) > 0) & (wide.get(visits[1], 0) > 0)
     return int(has_both.sum())
+
+
+def verify_paired_participants(
+    obs: pd.DataFrame,
+    visit_col: str,
+    visits: Sequence[str],
+    features: Optional[Sequence[str]] = None,
+    participant_col: str = "participant_id",
+) -> dict:
+    """Validate paired participants by visit presence and optional feature completeness.
+
+    Returns:
+      - paired_ids: set of participant IDs with both visits (and non-NaN features if provided)
+      - dropped_ids: list of participant IDs dropped by validation
+      - n_paired: count of paired_ids
+      - n_total: total unique participants
+    """
+    wide = obs.pivot_table(
+        index=participant_col,
+        columns=visit_col,
+        aggfunc="size",
+        fill_value=0,
+        observed=True,
+    )
+    paired_ids = set(
+        wide[(wide.get(visits[0], 0) > 0) & (wide.get(visits[1], 0) > 0)].index
+    )
+
+    if features:
+        df_pv = (
+            obs.groupby([participant_col, visit_col], observed=True)[list(features)]
+            .mean()
+            .reset_index()
+        )
+        valid_ids = None
+        for feat in features:
+            wide_feat = df_pv.pivot(index=participant_col, columns=visit_col, values=feat)
+            if visits[0] not in wide_feat.columns or visits[1] not in wide_feat.columns:
+                feat_valid = set()
+            else:
+                mask = wide_feat[visits[0]].notna() & wide_feat[visits[1]].notna()
+                feat_valid = set(wide_feat[mask].index)
+            valid_ids = feat_valid if valid_ids is None else (valid_ids & feat_valid)
+        if valid_ids is not None:
+            paired_ids = paired_ids & valid_ids
+
+    all_ids = set(obs[participant_col].unique())
+    return {
+        "paired_ids": paired_ids,
+        "dropped_ids": sorted(all_ids - paired_ids),
+        "n_paired": len(paired_ids),
+        "n_total": len(all_ids),
+    }
 
 
 def categorize_celltype(ct: str) -> str:
