@@ -1,39 +1,42 @@
 from __future__ import annotations
-from typing import Optional, Sequence, Tuple, Literal, Any
+
+from collections.abc import Sequence
+from typing import Any, Literal
+
 import numpy as np
 import pandas as pd
 from anndata import AnnData
+
+from ._env import ensure_matplotlib_config_dir, ensure_numba_cache_dir
 from .design import TrialDesign
 from .stats._extract import extract_gene_vector
-from ._env import ensure_numba_cache_dir, ensure_matplotlib_config_dir
 
 # Optional dependencies for plotting
 # Ensure caches/config go to writable temp dirs to avoid numba/matplotlib failures.
 ensure_matplotlib_config_dir()
 ensure_numba_cache_dir()
 
+# Initialize optional plotting dependencies to avoid type errors
 plt: Any = None
 GridSpec: Any = None
-# type: ignore[no-redef]
-try:
-    import matplotlib.pyplot as plt
-    from matplotlib.gridspec import GridSpec
-except ImportError:
-    plt = None
-    GridSpec = None
+sns: Any = None
+sc: Any = None
+_scanpy_import_error: Exception | None = None
 
-# type: ignore[no-redef]
 try:
-    import seaborn as sns
+    import matplotlib.pyplot as plt  # type: ignore[no-redef]
+    from matplotlib.gridspec import GridSpec  # type: ignore[no-redef]
 except ImportError:
-    sns = None
+    pass
 
-# type: ignore[no-redef]
-_scanpy_import_error = None
 try:
-    import scanpy as sc
+    import seaborn as sns  # type: ignore[no-redef]
+except ImportError:
+    pass
+
+try:
+    import scanpy as sc  # type: ignore[no-redef]
 except Exception as e:  # ImportError or runtime errors (e.g., numba cache)
-    sc = None
     _scanpy_import_error = e
 
 def did_volcano_frame(
@@ -78,14 +81,14 @@ def plot_trial_interaction(
     adata: AnnData,
     feature: str,
     design: TrialDesign,
-    visits: Optional[Tuple[str, str]] = None,
-    layer: Optional[str] = None,
-    color_palette: Optional[dict] = None,
-    ax: Optional["plt.Axes"] = None,
-) -> "plt.Axes":
+    visits: tuple[str, str] | None = None,
+    layer: str | None = None,
+    color_palette: dict | None = None,
+    ax: plt.Axes | None = None,
+) -> plt.Axes:
     """Plot mean expression (interaction plot) by arm and visit.
-    
-    This visualizes the DiD effect: the change from baseline to follow-up 
+
+    This visualizes the DiD effect: the change from baseline to follow-up
     across treatment arms.
     """
     if plt is None or sns is None:
@@ -135,8 +138,8 @@ def plot_did_forest(
     p_col: str = "p_DiD",
     alpha: float = 0.05,
     title: str = "DiD Effect Sizes",
-    ax: Optional["plt.Axes"] = None,
-) -> "plt.Axes":
+    ax: plt.Axes | None = None,
+) -> plt.Axes:
     """Plot a forest plot of DiD effect sizes with confidence intervals.
 
     Parameters
@@ -170,7 +173,7 @@ def plot_did_forest(
         ax.text(0.5, 0.5, "No data to plot", ha="center")
         ax.set_title(title)
         return ax
-    
+
     # Ensure necessary columns exist
     for col in [feature_col, beta_col, se_col]:
         if col not in df.columns:
@@ -201,7 +204,7 @@ def plot_did_forest(
 
     # Plot points and CIs
     y_pos = np.arange(len(df_plot))
-    
+
     # Identify significant ones
     sig: Any
     if p_col in df_plot.columns:
@@ -219,7 +222,7 @@ def plot_did_forest(
         label=f"p >= {alpha}" if sig.any() else None,
         capsize=3
     )
-    
+
     # Significant points
     if sig.any():
         ax.errorbar(
@@ -248,11 +251,11 @@ def plot_within_arm_comparison(
     arm: str,
     feature: str,
     design: TrialDesign,
-    visits: Tuple[str, str],
-    layer: Optional[str] = None,
+    visits: tuple[str, str],
+    layer: str | None = None,
     plot_type: Literal["box", "paired"] = "paired",
-    ax: Optional["plt.Axes"] = None,
-) -> "plt.Axes":
+    ax: plt.Axes | None = None,
+) -> plt.Axes:
     """Plot within-arm longitudinal change.
 
     Parameters
@@ -302,16 +305,16 @@ def plot_within_arm_comparison(
         # Group by participant and visit, then plot lines
         # First, aggregate to participant-visit mean if multiple cells
         df_paired = obs.groupby([design.participant_col, design.visit_col], observed=True)[feature].mean().reset_index()
-        
+
         # Plot lines
         for p in df_paired[design.participant_col].unique():
             tmp = df_paired[df_paired[design.participant_col] == p].sort_values(design.visit_col)
             if len(tmp) == 2:
                 ax.plot(tmp[design.visit_col], tmp[feature], color="gray", alpha=0.5, linewidth=1)
-        
+
         # Plot points
         sns.stripplot(data=df_paired, x=design.visit_col, y=feature, hue=design.visit_col, ax=ax, palette="Set2", size=6, legend=False)
-    
+
     ax.set_title(f"{arm}: {feature}")
     sns.despine(ax=ax)
     return ax
@@ -321,14 +324,14 @@ def plot_trial_umap(
     adata: AnnData,
     feature: str,
     design: TrialDesign,
-    visits: Optional[Tuple[str, str]] = None,
-    layer: Optional[str] = None,
+    visits: tuple[str, str] | None = None,
+    layer: str | None = None,
     cmap: str = "magma",
-    figsize: Tuple[float, float] = (12, 8),
-) -> "plt.Figure":
+    figsize: tuple[float, float] = (12, 8),
+) -> plt.Figure:
     """Create a panel of UMAPs stratified by arm and visit.
 
-    This creates a 2x2 panel (Treated/Control x Baseline/Followup) showing 
+    This creates a 2x2 panel (Treated/Control x Baseline/Followup) showing
     the expression of a feature on the UMAP embedding.
 
     Parameters
@@ -362,15 +365,15 @@ def plot_trial_umap(
         visits = design.primary_visits()
 
     arms = [design.arm_treated, design.arm_control]
-    
+
     fig, axes = plt.subplots(2, 2, figsize=figsize, sharex=True, sharey=True)
-    
+
     # Get global vmin/vmax for consistent scaling
     if feature in adata.obs.columns:
         vals = adata.obs[feature].values
     else:
         vals = extract_gene_vector(adata, feature, layer=layer)
-    
+
     vmin = np.nanpercentile(vals, 1)
     vmax = np.nanpercentile(vals, 99)
 
@@ -379,15 +382,15 @@ def plot_trial_umap(
             ax = axes[i, j]
             mask = (adata.obs[design.arm_col] == arm) & (adata.obs[design.visit_col] == visit)
             sub = adata[mask].copy()
-            
+
             if sub.n_obs > 0:
                 sc.pl.umap(
-                    sub, 
-                    color=feature, 
-                    ax=ax, 
-                    show=False, 
-                    vmin=vmin, 
-                    vmax=vmax, 
+                    sub,
+                    color=feature,
+                    ax=ax,
+                    show=False,
+                    vmin=vmin,
+                    vmax=vmax,
                     cmap=cmap,
                     title=f"{arm} - {visit}",
                     frameon=False
@@ -406,9 +409,9 @@ def plot_gsea_radar(
     term: str,
     pool_col: str = "pool",
     nes_col: str = "NES",
-    title: Optional[str] = None,
-    figsize: Tuple[float, float] = (6, 6),
-) -> "plt.Figure":
+    title: str | None = None,
+    figsize: tuple[float, float] = (6, 6),
+) -> plt.Figure:
     """Radar (spider) plot of GSEA NES across pools/cell types.
 
     Parameters
@@ -435,35 +438,35 @@ def plot_gsea_radar(
     df_term = gsea_results[gsea_results["Term"].str.contains(term, case=False, na=False)]
     if df_term.empty:
         raise ValueError(f"Term '{term}' not found in results.")
-    
+
     # If multiple matches, take the best one
     if df_term["Term"].nunique() > 1:
         best_term = df_term.groupby("Term")["FDR q-val"].min().idxmin()
         df_term = df_term[df_term["Term"] == best_term]
-    
+
     term_name = df_term["Term"].iloc[0]
-    
+
     vals = df_term.set_index(pool_col)[nes_col]
     categories = vals.index.tolist()
     N = len(categories)
-    
+
     angles = [n / float(N) * 2 * pi for n in range(N)]
     angles += angles[:1]
-    
+
     values = vals.values.tolist()
     values += values[:1]
-    
+
     fig, ax = plt.subplots(figsize=figsize, subplot_kw=dict(polar=True))
     ax.plot(angles, values, linewidth=2, linestyle='solid')
     ax.fill(angles, values, alpha=0.3)
-    
+
     ax.set_xticks(angles[:-1])
     ax.set_xticklabels(categories, fontsize=10)
-    
+
     if title is None:
         title = f"NES for {term_name}"
     ax.set_title(title, pad=20)
-    
+
     return fig
 
 
@@ -471,9 +474,9 @@ def plot_trial_dotplot(
     adata: AnnData,
     features: Sequence[str],
     design: TrialDesign,
-    visits: Optional[Tuple[str, str]] = None,
-    use_raw: Optional[bool] = None,
-    standard_scale: Optional[str] = None,
+    visits: tuple[str, str] | None = None,
+    use_raw: bool | None = None,
+    standard_scale: str | None = None,
     cmap: str = "Reds",
     **kwargs
 ):
@@ -490,14 +493,14 @@ def plot_trial_dotplot(
     ad = adata.copy()
     if visits:
         ad = ad[ad.obs[design.visit_col].isin(visits)].copy()
-    
+
     # Create combined variable
     ad.obs["_ct_arm"] = (
-        ad.obs[design.celltype_col].astype(str) + 
-        "_" + 
+        ad.obs[design.celltype_col].astype(str) +
+        "_" +
         ad.obs[design.arm_col].astype(str)
     )
-    
+
     # Sorting
     cts = sorted(ad.obs[design.celltype_col].unique())
     arms = [design.arm_control, design.arm_treated]
@@ -507,17 +510,17 @@ def plot_trial_dotplot(
             cat = f"{ct}_{arm}"
             if cat in ad.obs["_ct_arm"].values:
                 categories.append(cat)
-    
+
     ad.obs["_ct_arm"] = pd.Categorical(ad.obs["_ct_arm"], categories=categories, ordered=True)
-    
+
     if use_raw is None:
         use_raw = adata.raw is not None
 
     return sc.pl.dotplot(
-        ad, 
-        var_names=features, 
-        groupby="_ct_arm", 
-        use_raw=use_raw, 
+        ad,
+        var_names=features,
+        groupby="_ct_arm",
+        use_raw=use_raw,
         standard_scale=standard_scale,
         color_map=cmap,
         **kwargs
@@ -528,9 +531,9 @@ def plot_abundance_interaction(
     adata: AnnData,
     celltype: str,
     design: TrialDesign,
-    visits: Optional[Tuple[str, str]] = None,
-    ax: Optional["plt.Axes"] = None,
-) -> "plt.Axes":
+    visits: tuple[str, str] | None = None,
+    ax: plt.Axes | None = None,
+) -> plt.Axes:
     """Plot cell type abundance (proportion) by arm and visit."""
     if plt is None or sns is None:
         raise ImportError(
@@ -575,12 +578,12 @@ def plot_trial_umap_panel(
     adata: AnnData,
     feature: str,
     design: TrialDesign,
-    visits: Optional[Tuple[str, str]] = None,
-    layer: Optional[str] = None,
+    visits: tuple[str, str] | None = None,
+    layer: str | None = None,
     cmap: str = "magma",
-    figsize: Tuple[float, float] = (16, 8),
-    title: Optional[str] = None,
-) -> "plt.Figure":
+    figsize: tuple[float, float] = (16, 8),
+    title: str | None = None,
+) -> plt.Figure:
     """Combined UMAP panel: Cell Types + 4 Trial-stratified UMAPs.
 
     Replicates the layout: [Large Cell Type UMAP] [2x2 Grid of Feature UMAPs].
@@ -593,7 +596,7 @@ def plot_trial_umap_panel(
         )
     if visits is None:
         visits = design.primary_visits()
-    
+
     # Pre-extract feature
     from .stats._extract import extract_gene_vector
     ad = adata.copy()
@@ -629,10 +632,10 @@ def plot_trial_umap_panel(
     for (arm, visit), (r, c) in positions.items():
         ax = fig.add_subplot(gs[r, c])
         sub = ad[(ad.obs[design.arm_col] == arm) & (ad.obs[design.visit_col] == visit)]
-        
+
         if sub.n_obs > 0:
             sc.pl.umap(
-                sub, color=feature, ax=ax, show=False, frameon=False, 
+                sub, color=feature, ax=ax, show=False, frameon=False,
                 vmin=vmin, vmax=vmax, cmap=cmap, title=f"{arm} - {visit}"
             )
         else:
@@ -648,16 +651,16 @@ def plot_trial_umap_panel(
 
 def plot_gsea_heatmap(
     gsea_results: pd.DataFrame,
-    collection: Optional[str] = None,
+    collection: str | None = None,
     fdr_thresh: float = 0.25,
     top_n: int = 30,
     pool_col: str = "pool",
     term_col: str = "Term",
     nes_col: str = "NES",
     fdr_col: str = "FDR q-val",
-    figsize: Tuple[float, float] = (12, 10),
-    title: Optional[str] = None,
-) -> "plt.Axes":
+    figsize: tuple[float, float] = (12, 10),
+    title: str | None = None,
+) -> plt.Axes:
     """Heatmap of GSEA NES across pools (cell types).
 
     Parameters
@@ -686,15 +689,15 @@ def plot_gsea_heatmap(
         df = gsea_results.res2d.copy()
     else:
         df = gsea_results.copy()
-        
+
     if pool_col not in df.columns:
         # Assume global result if pool column is missing
         df[pool_col] = "Global"
-        
+
     if collection:
         if "collection" in df.columns:
             df = df[df["collection"] == collection]
-    
+
     # 1. Filter significant
     df_sig = df[df[fdr_col] <= fdr_thresh].copy()
     if df_sig.empty:
@@ -703,7 +706,7 @@ def plot_gsea_heatmap(
     else:
         # 2. Rank pathways by minimum FDR
         top_terms = df_sig.groupby(term_col)[fdr_col].min().sort_values().head(top_n).index.tolist()
-    
+
     if not top_terms:
         fig, ax = plt.subplots(figsize=(5, 2))
         ax.text(0.5, 0.5, "No pathways to plot", ha="center")
@@ -712,20 +715,20 @@ def plot_gsea_heatmap(
     # 3. Pivot
     df_top = df[df[term_col].isin(top_terms)].copy()
     mat = df_top.pivot_table(index=term_col, columns=pool_col, values=nes_col, aggfunc="mean")
-    
+
     # Sort terms by original min FDR ranking
     mat = mat.loc[top_terms]
-    
+
     # Ensure numeric
     mat = mat.astype(float)
 
     plt.figure(figsize=figsize)
     ax = sns.heatmap(mat, cmap="RdBu_r", center=0, linewidths=0.5, linecolor="gray", cbar_kws={"label": "NES"})
-    
+
     if title is None:
         title = f"GSEA NES Heatmap: {collection if collection else 'Top Pathways'}"
     plt.title(title)
-    
+
     plt.xlabel("Pool")
     plt.ylabel("Pathway")
     plt.tight_layout()

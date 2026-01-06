@@ -1,29 +1,34 @@
 from __future__ import annotations
-from typing import Optional, Sequence, Tuple, Literal
-import pandas as pd
+
+from collections.abc import Sequence
+from typing import Literal
+
 import numpy as np
+import pandas as pd
 import statsmodels.formula.api as smf
-from statsmodels.stats.multitest import multipletests
 from anndata import AnnData
-from ..design import TrialDesign
+from statsmodels.stats.multitest import multipletests
+
 from ..adata_tools import subset_cells
-from .did import _aggregate_features, _ensure_paired, AggregateMode, AggregateFunc
+from ..design import TrialDesign
+from .did import AggregateFunc, AggregateMode, _aggregate_features, _ensure_paired
+
 
 def within_arm_comparison(
     adata: AnnData,
     arm: str,
     features: Sequence[str],
     design: TrialDesign,
-    visits: Tuple[str, str],
+    visits: tuple[str, str],
     aggregate: AggregateMode = "participant_visit",
-    layer: Optional[str] = None,
+    layer: str | None = None,
     agg: AggregateFunc = "mean",
     standardize: bool = True,
 ) -> pd.DataFrame:
     """Paired within-arm pre->post contrast.
 
-    This function tests for longitudinal changes within a single treatment arm 
-    using a fixed-effects model (equivalent to a paired t-test but flexible 
+    This function tests for longitudinal changes within a single treatment arm
+    using a fixed-effects model (equivalent to a paired t-test but flexible
     for single-cell data).
 
     Parameters
@@ -55,15 +60,15 @@ def within_arm_comparison(
     # Subset to arm and visits
     ad = subset_cells(adata, design, arm=arm, exclude_crossovers=False)
     ad = ad[ad.obs[design.visit_col].isin(visits)].copy()
-    
+
     obs = ad.obs.copy()
     obs[design.visit_col] = pd.Categorical(obs[design.visit_col], categories=list(visits), ordered=True)
     obs["visit_num"] = obs[design.visit_col].map({visits[0]: 0, visits[1]: 1}).astype(float)
-    
+
     # build dataframe
     cols = [design.participant_col, design.visit_col, "visit_num"]
     df = obs[cols].copy()
-    
+
     for feat in features:
         if feat in ad.obs.columns:
             df[feat] = ad.obs[feat].values
@@ -108,14 +113,14 @@ def within_arm_comparison(
 
         model = smf.ols(f"_y ~ visit_num + C({unit})", data=df_feat)
         fit = model.fit(cov_type="cluster", cov_kwds={"groups": df_feat[unit]})
-        
+
         rows.append({
             "feature": feat,
             "beta_time": float(fit.params.get("visit_num", np.nan)),
             "p_time": float(fit.pvalues.get("visit_num", np.nan)),
             "n_units": int(df_use[unit].nunique()),
         })
-        
+
     res = pd.DataFrame(rows)
     mask = res["p_time"].notna()
     res["FDR_time"] = np.nan
@@ -129,14 +134,14 @@ def between_arm_comparison(
     features: Sequence[str],
     design: TrialDesign,
     aggregate: AggregateMode = "participant_visit",
-    layer: Optional[str] = None,
+    layer: str | None = None,
     agg: AggregateFunc = "mean",
     standardize: bool = True,
     method: Literal["ols", "wilcoxon"] = "ols",
 ) -> pd.DataFrame:
     """Between-arm contrast at a fixed visit.
 
-    This function tests if treatment arms differ at a specific visit. This 
+    This function tests if treatment arms differ at a specific visit. This
     is a cross-sectional comparison (no participant fixed effects).
 
     Parameters
@@ -162,13 +167,13 @@ def between_arm_comparison(
         - 'wilcoxon': Wilcoxon rank-sum test (Mann-Whitney U).
     """
     ad = subset_cells(adata, design, visit=visit, exclude_crossovers=False)
-    
+
     obs = ad.obs.copy()
     obs["arm_bin"] = (obs[design.arm_col] == design.arm_treated).astype(int)
-    
+
     cols = [design.participant_col, "arm_bin", design.arm_col]
     df = obs[cols].copy()
-    
+
     for feat in features:
         if feat in ad.obs.columns:
             df[feat] = ad.obs[feat].values
@@ -208,7 +213,7 @@ def between_arm_comparison(
 
             model = smf.ols("_y ~ arm_bin", data=df_feat)
             fit = model.fit()
-            
+
             rows.append({
                 "feature": feat,
                 "beta_arm": float(fit.params.get("arm_bin", np.nan)),
@@ -219,7 +224,7 @@ def between_arm_comparison(
             from scipy.stats import mannwhitneyu
             g1 = df_use[df_use["arm_bin"] == 1][feat].values
             g2 = df_use[df_use["arm_bin"] == 0][feat].values
-            
+
             if len(g1) > 0 and len(g2) > 0:
                 stat, p_val = mannwhitneyu(g1, g2, alternative="two-sided")
                 rows.append({
@@ -235,7 +240,7 @@ def between_arm_comparison(
                     "p_arm": np.nan,
                     "n_units": int(df_use[design.participant_col].nunique()),
                 })
-        
+
     res = pd.DataFrame(rows)
     mask = res["p_arm"].notna()
     res["FDR_arm"] = np.nan

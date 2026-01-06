@@ -1,7 +1,8 @@
 import numpy as np
 import pandas as pd
-import sctrial as st
 import pytest
+
+import sctrial as st
 
 try:
     import scanpy  # noqa: F401
@@ -16,7 +17,7 @@ def test_resolve_feature(sample_adata):
     assert st.resolve_feature(sample_adata, "PARTICIPANT_ID") == "participant_id"
     # var
     assert st.resolve_feature(sample_adata, "g0") == "G0"
-    
+
     with pytest.raises(KeyError):
         st.resolve_feature(sample_adata, "nonexistent")
 

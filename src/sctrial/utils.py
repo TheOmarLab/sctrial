@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import re
-from typing import Iterable, List, Sequence, TYPE_CHECKING
+from collections.abc import Iterable, Sequence
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
@@ -19,7 +20,7 @@ def safe_filename(s: str, maxlen: int = 180) -> str:
     return s[:maxlen] if len(s) > maxlen else s
 
 
-def intersect_preserve_order(items: Sequence[str], universe: Iterable[str]) -> List[str]:
+def intersect_preserve_order(items: Sequence[str], universe: Iterable[str]) -> list[str]:
     u = set(universe)
     return [x for x in items if x in u]
 
@@ -138,14 +139,14 @@ def permutation_pvalue(
     obs_diff = np.mean(group1) - np.mean(group2)
     combined = np.concatenate([group1, group2])
     n1 = len(group1)
-    
+
     count = 0
     for _ in range(n_perm):
         perm = rng.permutation(combined)
         p_diff = np.mean(perm[:n1]) - np.mean(perm[n1:])
         if abs(p_diff) >= abs(obs_diff):
             count += 1
-            
+
     return (count + 1) / (n_perm + 1)
 
 
@@ -162,14 +163,14 @@ def permutation_pvalue_paired(
     rng = np.random.default_rng(seed)
     diff = np.asarray(y) - np.asarray(x)
     obs_mean = np.mean(diff)
-    
+
     count = 0
     for _ in range(n_perm):
         signs = rng.choice([-1, 1], size=len(diff))
         p_mean = np.mean(diff * signs)
         if abs(p_mean) >= abs(obs_mean):
             count += 1
-            
+
     return (count + 1) / (n_perm + 1)
 
 

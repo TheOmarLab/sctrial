@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional, Sequence, Tuple
+from collections.abc import Sequence
 
 import numpy as np
 import pandas as pd
@@ -9,11 +9,10 @@ from anndata import AnnData
 from scipy.stats import wilcoxon
 from statsmodels.stats.multitest import multipletests
 
-
 __all__ = ["pseudobulk_expression", "pseudobulk_within_arm"]
 
 
-def _get_layer(adata: AnnData, layer: Optional[str]) -> np.ndarray:
+def _get_layer(adata: AnnData, layer: str | None):
     X = adata.layers[layer] if layer is not None else adata.X
     if sp.issparse(X):
         X = X.tocsr()
@@ -24,7 +23,7 @@ def pseudobulk_expression(
     adata: AnnData,
     genes: Sequence[str],
     groupby: Sequence[str],
-    counts_layer: Optional[str] = "counts",
+    counts_layer: str | None = "counts",
     scale: float = 1e6,
     log1p: bool = True,
 ) -> pd.DataFrame:
@@ -82,9 +81,9 @@ def pseudobulk_within_arm(
     visit_col: str,
     visits: Sequence[str],
     celltype_col: str,
-    counts_layer: Optional[str] = "counts",
+    counts_layer: str | None = "counts",
     min_paired: int = 3,
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Compute within-arm pseudobulk deltas and Wilcoxon tests.
 
     Returns (summary_df, delta_long_df).

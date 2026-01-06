@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 import sctrial as st
+
 
 def test_basic_workflow(sample_adata, trial_design):
     # preprocessing: add log1p(CPM)

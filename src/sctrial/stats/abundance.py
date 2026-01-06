@@ -1,22 +1,24 @@
 from __future__ import annotations
-from typing import List, Optional, Tuple
+
 import numpy as np
 import pandas as pd
 import statsmodels.formula.api as smf
-from statsmodels.stats.multitest import multipletests
 from anndata import AnnData
-from ..design import TrialDesign
+from statsmodels.stats.multitest import multipletests
+
 from ..adata_tools import subset_primary
+from ..design import TrialDesign
 from ..utils import wild_cluster_bootstrap_t
+
 
 def abundance_did(
     adata: AnnData,
     design: TrialDesign,
-    visits: Tuple[str,str],
+    visits: tuple[str,str],
     exclude_crossovers: bool = True,
     transform: str = "arcsin_sqrt",
     min_units: int = 5,
-    covariates: Optional[List[str]] = None,
+    covariates: list[str] | None = None,
     use_bootstrap: bool = False,
     n_boot: int = 999,
     seed: int = 42,
@@ -91,7 +93,7 @@ def abundance_did(
 
     # counts per unit×visit×arm×celltype
     grp_cols = [design.participant_col, design.visit_col, design.arm_col, design.celltype_col]
-    
+
     # We need to preserve covariates. Covariates are usually participant-level or participant-visit level.
     # If they are participant-level, they are constant for all cells of a participant.
     counts = (
@@ -105,7 +107,7 @@ def abundance_did(
     counts["prop"] = counts["n_cells"] / (counts["total_cells"] + 1e-12)
 
     if covariates:
-        # Merge covariates back into counts. 
+        # Merge covariates back into counts.
         # Assume covariates are constant per (participant, visit).
         cov_df = obs[[design.participant_col, design.visit_col] + covariates].drop_duplicates()
         counts = counts.merge(cov_df, on=[design.participant_col, design.visit_col], how="left")
@@ -138,7 +140,7 @@ def abundance_did(
         arm_counts = tmp.groupby("arm_bin")[design.participant_col].nunique()
         if (arm_counts>0).sum() < 2:
             continue
-        
+
         # Ensure there is at least some variation in the outcome
         if tmp["y"].nunique() < 2:
             continue
@@ -157,7 +159,7 @@ def abundance_did(
                 cov_kwds={"groups": tmp[design.participant_col]}
             )
             term = "visit_num:arm_bin"
-            
+
             # Check if interaction term was estimable
             if term not in fit.params or np.isnan(fit.params[term]):
                 continue
@@ -184,19 +186,19 @@ def abundance_did(
             })
         except Exception:
             continue
-            
+
     if not rows:
         return pd.DataFrame(columns=[
-            "celltype", "n_participants", "beta_DiD", "se_DiD", 
+            "celltype", "n_participants", "beta_DiD", "se_DiD",
             "p_DiD", "beta_time", "p_time", "FDR_DiD"
         ])
 
     res = pd.DataFrame(rows).sort_values("p_DiD")
-    
+
     # FDR correction
     mask = res["p_DiD"].notna()
     res["FDR_DiD"] = np.nan
     if mask.sum() > 0:
         res.loc[mask, "FDR_DiD"] = multipletests(res.loc[mask, "p_DiD"], method="fdr_bh")[1]
-        
+
     return res.reset_index(drop=True)

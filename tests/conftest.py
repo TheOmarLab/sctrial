@@ -1,8 +1,10 @@
-import pytest
 import numpy as np
 import pandas as pd
+import pytest
 from anndata import AnnData
+
 from sctrial.design import TrialDesign
+
 
 @pytest.fixture
 def sample_adata():
@@ -29,12 +31,12 @@ def sample_adata():
     obs = pd.DataFrame(obs_list)
     # Poisson counts with some dropout and treatment effect for G0-G4 in Treated-V2
     X = rng.poisson(1.5, size=(len(obs), n_g)).astype(float)
-    
+
     # Add a synthetic treatment effect
     # find indices of Treated arm at V2
     idx_v2_treated = obs[(obs["arm"] == "Treated") & (obs["visit"] == "V2")].index
     X[idx_v2_treated, :5] += 2.0  # Upregulate first 5 genes
-    
+
     # Convert to sparse as in real world single-cell data
     X_sparse = sparse.csr_matrix(X)
 
