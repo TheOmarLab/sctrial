@@ -23,7 +23,7 @@
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Example: Vaccine Response Analysis (GSE171964)" href="example_vaccine_immport.html" />
+    <link rel="next" title="Vaccine Response Analysis" href="example_vaccine_immport.html" />
     <link rel="prev" title="Immune Profiling of COVID-19 Severity: A Cross-Sectional Analysis" href="example_covid19_stephenson.html" /> 
 </head>
 
@@ -68,8 +68,6 @@
 <li class="toctree-l3"><a class="reference internal" href="#3.-Trial-Design-and-Timepoint-Strategy">3. Trial Design and Timepoint Strategy</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#4.-Immune-Signatures">4. Immune Signatures</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#5.-Cross-Sectional-Comparisons-by-Timepoint">5. Cross-Sectional Comparisons by Timepoint</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#6.-Within-Arm-Longitudinal-Comparisons">6. Within-Arm Longitudinal Comparisons</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#7.-Difference-in-Differences-(DiD)-Analysis">7. Difference-in-Differences (DiD) Analysis</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#8.-Visualizations">8. Visualizations</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#8.1-Signature-Distributions-by-Response-and-Visit">8.1 Signature Distributions by Response and Visit</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#8.2-Trial-Interaction-Plot">8.2 Trial Interaction Plot</a></li>
@@ -78,11 +76,18 @@
 <li class="toctree-l3"><a class="reference internal" href="#9.-Summary-and-Conclusions">9. Summary and Conclusions</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="example_vaccine_immport.html">Example: Vaccine Response Analysis (GSE171964)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="stress_test_real_scale.html">sctrial: Scalability Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example_vaccine_immport.html">Vaccine Response Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stress_test_real_scale.html">sctrial: Scalability Analysis (Real Data)</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../api.html">API Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">User Guides:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../best_practices.html">Best Practices Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../troubleshooting.html">Troubleshooting Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">Frequently Asked Questions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../performance.html">Performance Guide</a></li>
 </ul>
 
         </div>
@@ -196,198 +201,9 @@ sctrial version: 0.2.1.dev1
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">io</span><span class="w"> </span><span class="kn">import</span> <span class="n">StringIO</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">gzip</span>
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">_resolve_dir_with_files</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">required_files</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Find directory containing required files.&quot;&quot;&quot;</span>
-    <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">is_absolute</span><span class="p">():</span>
-        <span class="k">if</span> <span class="nb">all</span><span class="p">((</span><span class="n">path</span> <span class="o">/</span> <span class="n">f</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">required_files</span><span class="p">):</span>
-            <span class="k">return</span> <span class="n">path</span>
-    <span class="k">for</span> <span class="n">base</span> <span class="ow">in</span> <span class="p">[</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">(),</span> <span class="o">*</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">]:</span>
-        <span class="n">cand</span> <span class="o">=</span> <span class="n">base</span> <span class="o">/</span> <span class="n">path</span>
-        <span class="k">if</span> <span class="nb">all</span><span class="p">((</span><span class="n">cand</span> <span class="o">/</span> <span class="n">f</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">required_files</span><span class="p">):</span>
-            <span class="k">return</span> <span class="n">cand</span>
-    <span class="k">return</span> <span class="n">path</span>
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">_looks_log1p</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">sample</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10000</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Check if matrix appears to be log1p-transformed.&quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="n">X</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">return</span> <span class="kc">False</span>
-    <span class="k">if</span> <span class="n">sp</span><span class="o">.</span><span class="n">issparse</span><span class="p">(</span><span class="n">X</span><span class="p">):</span>
-        <span class="n">data</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">data</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">X</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
-    <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="k">return</span> <span class="kc">False</span>
-    <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">data</span><span class="p">)]</span>
-    <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="k">return</span> <span class="kc">False</span>
-    <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="n">sample</span><span class="p">:</span>
-        <span class="n">data</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">sample</span><span class="p">,</span> <span class="n">replace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-    <span class="c1"># Log1p data: non-negative, bounded, non-integer</span>
-    <span class="k">return</span> <span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">50</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">atol</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">))</span>
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">load_sade_feldman</span><span class="p">(</span>
-    <span class="n">data_dir</span><span class="o">=</span><span class="s2">&quot;data/sade_feldman&quot;</span><span class="p">,</span>
-    <span class="n">processed_name</span><span class="o">=</span><span class="s2">&quot;sade_feldman_processed_v5.h5ad&quot;</span><span class="p">,</span>
-    <span class="n">max_cells_per_participant_visit</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># None = use all cells (no subsampling)</span>
-    <span class="n">seed</span><span class="o">=</span><span class="n">SEED</span><span class="p">,</span>
-    <span class="n">force_reprocess</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-<span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Load and preprocess Sade-Feldman melanoma immunotherapy dataset.</span>
-
-<span class="sd">    Data source: GSE120575</span>
-<span class="sd">    Paper: Sade-Feldman et al., Cell 2018</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    data_dir : str</span>
-<span class="sd">        Directory containing raw data files</span>
-<span class="sd">    processed_name : str</span>
-<span class="sd">        Name for cached processed file</span>
-<span class="sd">    max_cells_per_participant_visit : int or None</span>
-<span class="sd">        Maximum cells per participant-visit combination. If None, uses all cells.</span>
-<span class="sd">        Stratified sampling preserves longitudinal pairing.</span>
-<span class="sd">    seed : int</span>
-<span class="sd">        Random seed for subsampling</span>
-<span class="sd">    force_reprocess : bool</span>
-<span class="sd">        If True, reprocess even if cached file exists</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">data_dir</span> <span class="o">=</span> <span class="n">_resolve_dir_with_files</span><span class="p">(</span>
-        <span class="n">data_dir</span><span class="p">,</span>
-        <span class="p">[</span>
-            <span class="s2">&quot;GSE120575_Sade_Feldman_melanoma_single_cells_TPM_GEO.txt.gz&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;GSE120575_patient_ID_single_cells.txt.gz&quot;</span><span class="p">,</span>
-        <span class="p">],</span>
-    <span class="p">)</span>
-    <span class="n">processed_path</span> <span class="o">=</span> <span class="n">data_dir</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span>
-
-    <span class="n">processing_params</span> <span class="o">=</span> <span class="p">{</span>
-        <span class="s2">&quot;version&quot;</span><span class="p">:</span> <span class="s2">&quot;v5&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;max_cells_per_participant_visit&quot;</span><span class="p">:</span> <span class="n">max_cells_per_participant_visit</span><span class="p">,</span>
-        <span class="s2">&quot;seed&quot;</span><span class="p">:</span> <span class="n">seed</span><span class="p">,</span>
-        <span class="s2">&quot;assay&quot;</span><span class="p">:</span> <span class="s2">&quot;TPM&quot;</span><span class="p">,</span>
-    <span class="p">}</span>
-
-    <span class="k">if</span> <span class="n">processed_path</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">force_reprocess</span><span class="p">:</span>
-        <span class="n">adata</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="n">processed_path</span><span class="p">)</span>
-        <span class="n">prev</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">uns</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;processing_params&quot;</span><span class="p">,</span> <span class="p">{})</span>
-        <span class="k">if</span> <span class="n">prev</span> <span class="o">==</span> <span class="n">processing_params</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded processed Sade-Feldman dataset: </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> genes&quot;</span><span class="p">)</span>
-            <span class="k">return</span> <span class="n">adata</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Processed file parameters differ; reprocessing.&quot;</span><span class="p">)</span>
-
-    <span class="n">tpm_path</span> <span class="o">=</span> <span class="n">data_dir</span> <span class="o">/</span> <span class="s2">&quot;GSE120575_Sade_Feldman_melanoma_single_cells_TPM_GEO.txt.gz&quot;</span>
-    <span class="n">meta_path</span> <span class="o">=</span> <span class="n">data_dir</span> <span class="o">/</span> <span class="s2">&quot;GSE120575_patient_ID_single_cells.txt.gz&quot;</span>
-
-    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="p">[</span><span class="n">tpm_path</span><span class="p">,</span> <span class="n">meta_path</span><span class="p">]:</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">p</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-            <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Missing file: </span><span class="si">{</span><span class="n">p</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;Download from GEO: https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE120575&quot;</span>
-            <span class="p">)</span>
-
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Processing raw data (this may take a minute)...&quot;</span><span class="p">)</span>
-
-    <span class="c1"># Parse TPM matrix - has two header rows (sample IDs and time labels)</span>
-    <span class="k">with</span> <span class="n">gzip</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">tpm_path</span><span class="p">,</span> <span class="s2">&quot;rt&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-        <span class="n">header1</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="n">header2</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">header1</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">header2</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;TPM file header rows have inconsistent lengths.&quot;</span><span class="p">)</span>
-        <span class="n">sample_ids</span> <span class="o">=</span> <span class="n">header1</span>
-        <span class="n">time_labels</span> <span class="o">=</span> <span class="n">header2</span>
-        <span class="n">data</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
-
-    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">StringIO</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
-        <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-
-    <span class="n">genes</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span><span class="o">.</span><span class="n">values</span>
-    <span class="n">mat</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">:]</span>
-    <span class="k">if</span> <span class="n">mat</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">sample_ids</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;TPM matrix columns (</span><span class="si">{</span><span class="n">mat</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">) != sample IDs (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">sample_ids</span><span class="p">)</span><span class="si">}</span><span class="s2">).&quot;</span><span class="p">)</span>
-    <span class="n">mat</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="n">sample_ids</span>
-
-    <span class="c1"># Parse metadata</span>
-    <span class="n">meta</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">meta_path</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">skiprows</span><span class="o">=</span><span class="mi">19</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;latin1&quot;</span><span class="p">)</span>
-    <span class="n">meta</span> <span class="o">=</span> <span class="n">meta</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span>
-        <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;sample_id&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;characteristics: patinet ID (Pre=baseline; Post= on treatment)&quot;</span><span class="p">:</span> <span class="s2">&quot;patient_raw&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;characteristics: response&quot;</span><span class="p">:</span> <span class="s2">&quot;response&quot;</span><span class="p">,</span>
-    <span class="p">})</span>
-    <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;sample_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;sample_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
-    <span class="n">meta</span> <span class="o">=</span> <span class="n">meta</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;sample_id&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-
-    <span class="c1"># Keep only real sample rows (format: Letter + digits + _P + digits + _M + digits)</span>
-    <span class="n">meta</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;sample_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;^[A-Z]\d+_P\d+_M\d+&quot;</span><span class="p">)]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-    <span class="n">meta</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;response&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">([</span><span class="s2">&quot;Responder&quot;</span><span class="p">,</span> <span class="s2">&quot;Non-responder&quot;</span><span class="p">])]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-
-    <span class="c1"># Extract visit (Pre/Post) and participant ID</span>
-    <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;visit&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;patient_raw&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">str</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-    <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;participant_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;patient_raw&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;(P\d+)&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
-
-    <span class="c1"># Map time labels from header</span>
-    <span class="n">time_map</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">sample_ids</span><span class="p">,</span> <span class="n">time_labels</span><span class="p">))</span>
-    <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;time_label&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;sample_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">time_map</span><span class="p">)</span>
-
-    <span class="n">meta</span> <span class="o">=</span> <span class="n">meta</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s2">&quot;sample_id&quot;</span><span class="p">)</span>
-    <span class="n">meta</span> <span class="o">=</span> <span class="n">meta</span><span class="o">.</span><span class="n">loc</span><span class="p">[[</span><span class="n">s</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">sample_ids</span> <span class="k">if</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">meta</span><span class="o">.</span><span class="n">index</span><span class="p">]]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-
-    <span class="c1"># Create AnnData</span>
-    <span class="n">adata</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">AnnData</span><span class="p">(</span><span class="n">X</span><span class="o">=</span><span class="n">mat</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">meta</span><span class="o">.</span><span class="n">index</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">))</span>
-    <span class="n">adata</span><span class="o">.</span><span class="n">obs</span> <span class="o">=</span> <span class="n">meta</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-    <span class="n">adata</span><span class="o">.</span><span class="n">var_names</span> <span class="o">=</span> <span class="n">genes</span>
-
-    <span class="c1"># Note: Original dataset doesn&#39;t include cell type annotations</span>
-    <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;cell_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Immune&quot;</span>  <span class="c1"># Placeholder</span>
-
-    <span class="c1"># Stratified subsampling (optional) to preserve longitudinal pairing</span>
-    <span class="k">if</span> <span class="n">max_cells_per_participant_visit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
-        <span class="n">keep_indices</span> <span class="o">=</span> <span class="p">[]</span>
-
-        <span class="k">for</span> <span class="p">(</span><span class="n">pid</span><span class="p">,</span> <span class="n">visit</span><span class="p">),</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">&quot;participant_id&quot;</span><span class="p">,</span> <span class="s2">&quot;visit&quot;</span><span class="p">],</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-            <span class="n">n_cells</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">group</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">n_cells</span> <span class="o">&gt;</span> <span class="n">max_cells_per_participant_visit</span><span class="p">:</span>
-                <span class="n">keep</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">group</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">max_cells_per_participant_visit</span><span class="p">,</span> <span class="n">replace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">keep</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">values</span>
-            <span class="n">keep_indices</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">keep</span><span class="p">)</span>
-
-        <span class="n">adata</span> <span class="o">=</span> <span class="n">adata</span><span class="p">[</span><span class="n">keep_indices</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Stratified sampling: </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> cells (max </span><span class="si">{</span><span class="n">max_cells_per_participant_visit</span><span class="si">}</span><span class="s2"> per participant-visit)&quot;</span><span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using full dataset: </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> cells (no subsampling)&quot;</span><span class="p">)</span>
-
-    <span class="c1"># Store TPM and log1p(TPM) layers</span>
-    <span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">&quot;tpm&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">X</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-    <span class="k">if</span> <span class="n">_looks_log1p</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">X</span><span class="p">):</span>
-        <span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">&quot;log1p_tpm&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">X</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">&quot;log1p_tpm&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log1p</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">X</span><span class="p">)</span>
-
-    <span class="n">adata</span><span class="o">.</span><span class="n">uns</span><span class="p">[</span><span class="s2">&quot;processing_params&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">processing_params</span>
-    <span class="n">adata</span><span class="o">.</span><span class="n">uns</span><span class="p">[</span><span class="s2">&quot;data_source&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;GSE120575&quot;</span>
-    <span class="n">adata</span><span class="o">.</span><span class="n">uns</span><span class="p">[</span><span class="s2">&quot;paper&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Sade-Feldman et al., Cell 2018&quot;</span>
-
-    <span class="c1"># Save processed</span>
-    <span class="n">processed_path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="n">adata</span><span class="o">.</span><span class="n">write_h5ad</span><span class="p">(</span><span class="n">processed_path</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Saved processed file: </span><span class="si">{</span><span class="n">processed_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded Sade-Feldman dataset: </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> genes&quot;</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">adata</span>
-</pre></div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Dataset loader (from sctrial)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sctrial.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_sade_feldman</span>
+<br/></pre></div>
 </div>
 </div>
 <section id="2.1-Load-processed-AnnData">
@@ -469,36 +285,116 @@ sctrial version: 0.2.1.dev1
 <br/></pre></div>
 </div>
 </div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Processed file parameters differ; reprocessing.
+Processing raw data (this may take a minute)...
+Using full dataset: 13,183 cells (no subsampling)
+Saved processed file: /Users/omarm/Documents/Research/projects/sc-trialdiff/data/processed/sade_feldman_processed_v5.h5ad
+Loaded Sade-Feldman dataset: 13,183 cells, 55,737 genes
+
+=== Dataset Summary ===
+Cells: 13,183
+Genes: 55,737
+Participants: 25
+Original response labels: [&#39;Responder&#39;, &#39;Non-responder&#39;]
+Harmonized response labels: [&#39;Responder&#39;, &#39;Non-responder&#39;]
+Visits: [&#39;Pre&#39;, &#39;Post&#39;]
+
+=== Response Label Consistency ===
+Participants with mixed response labels: 3
+Using participant-level majority response for analyses.
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>participant_id</th>
+      <th>response</th>
+      <th>n_cells</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>1</th>
+      <td>P1</td>
+      <td>Responder</td>
+      <td>519</td>
+    </tr>
+    <tr>
+      <th>0</th>
+      <td>P1</td>
+      <td>Non-responder</td>
+      <td>353</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>P4</td>
+      <td>Responder</td>
+      <td>675</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>P4</td>
+      <td>Non-responder</td>
+      <td>311</td>
+    </tr>
+    <tr>
+      <th>21</th>
+      <td>P28</td>
+      <td>Non-responder</td>
+      <td>741</td>
+    </tr>
+    <tr>
+      <th>22</th>
+      <td>P28</td>
+      <td>Responder</td>
+      <td>337</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
-<span class="ansi-red-fg">FileNotFoundError</span>                         Traceback (most recent call last)
-Cell <span class="ansi-green-fg">In[3], line 2</span>
-<span class="ansi-green-intense-fg ansi-bold">      1</span> <span style="color: rgb(95,135,135)"># Load data - using full dataset for reliable longitudinal analysis</span>
-<span class="ansi-green-fg">----&gt; 2</span> adata <span style="color: rgb(98,98,98)">=</span> <span class="ansi-yellow-bg">load_sade_feldman</span><span class="ansi-yellow-bg">(</span><span class="ansi-yellow-bg">max_cells_per_participant_visit</span><span class="ansi-yellow-bg" style="color: rgb(98,98,98)">=</span><span class="ansi-yellow-bg ansi-bold" style="color: rgb(0,135,0)">None</span><span class="ansi-yellow-bg">)</span>  <span style="color: rgb(95,135,135)"># No subsampling</span>
-<span class="ansi-green-intense-fg ansi-bold">      4</span> <span style="color: rgb(95,135,135)"># Harmonize response labels at participant level</span>
-<span class="ansi-green-intense-fg ansi-bold">      5</span> resp_counts <span style="color: rgb(98,98,98)">=</span> (
-<span class="ansi-green-intense-fg ansi-bold">      6</span>     adata<span style="color: rgb(98,98,98)">.</span>obs
-<span class="ansi-green-intense-fg ansi-bold">      7</span>     <span style="color: rgb(98,98,98)">.</span>groupby([<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">participant_id</span><span style="color: rgb(175,0,0)">&#34;</span>, <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">response</span><span style="color: rgb(175,0,0)">&#34;</span>], observed<span style="color: rgb(98,98,98)">=</span><span class="ansi-bold" style="color: rgb(0,135,0)">True</span>)
-<span class="ansi-green-intense-fg ansi-bold">      8</span>     <span style="color: rgb(98,98,98)">.</span>size()
-<span class="ansi-green-intense-fg ansi-bold">      9</span>     <span style="color: rgb(98,98,98)">.</span>reset_index(name<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">n_cells</span><span style="color: rgb(175,0,0)">&#34;</span>)
-<span class="ansi-green-intense-fg ansi-bold">     10</span> )
 
-Cell <span class="ansi-green-fg">In[2], line 96</span>, in <span class="ansi-cyan-fg">load_sade_feldman</span><span class="ansi-blue-fg">(data_dir, processed_name, max_cells_per_participant_visit, seed, force_reprocess)</span>
-<span class="ansi-green-intense-fg ansi-bold">     94</span> <span class="ansi-bold" style="color: rgb(0,135,0)">for</span> p <span class="ansi-bold" style="color: rgb(175,0,255)">in</span> [tpm_path, meta_path]:
-<span class="ansi-green-intense-fg ansi-bold">     95</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span class="ansi-bold" style="color: rgb(175,0,255)">not</span> p<span style="color: rgb(98,98,98)">.</span>exists():
-<span class="ansi-green-fg">---&gt; 96</span>         <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">FileNotFoundError</span>(
-<span class="ansi-green-intense-fg ansi-bold">     97</span>             <span style="color: rgb(175,0,0)">f</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">Missing file: </span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span>p<span class="ansi-bold" style="color: rgb(175,95,135)">}</span><span class="ansi-bold" style="color: rgb(175,95,0)">\n</span><span style="color: rgb(175,0,0)">&#34;</span>
-<span class="ansi-green-intense-fg ansi-bold">     98</span>             <span style="color: rgb(175,0,0)">f</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">Download from GEO: https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE120575</span><span style="color: rgb(175,0,0)">&#34;</span>
-<span class="ansi-green-intense-fg ansi-bold">     99</span>         )
-<span class="ansi-green-intense-fg ansi-bold">    101</span> <span style="color: rgb(0,135,0)">print</span>(<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">Processing raw data (this may take a minute)...</span><span style="color: rgb(175,0,0)">&#34;</span>)
-<span class="ansi-green-intense-fg ansi-bold">    103</span> <span style="color: rgb(95,135,135)"># Parse TPM matrix - has two header rows (sample IDs and time labels)</span>
+=== Longitudinal Pairing Analysis ===
 
-<span class="ansi-red-fg">FileNotFoundError</span>: Missing file: data/sade_feldman/GSE120575_Sade_Feldman_melanoma_single_cells_TPM_GEO.txt.gz
-Download from GEO: https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE120575
+Total participants: 25
+  Pre only: 8
+  Post only: 7
+  Both (paired): 10
+
+Paired participants by response (harmonized):
+  Non-responder: 7
+  Responder: 3
+
+Obs columns: [&#39;Sample name&#39;, &#39;Unnamed: 11&#39;, &#39;Unnamed: 12&#39;, &#39;Unnamed: 13&#39;, &#39;Unnamed: 14&#39;, &#39;Unnamed: 15&#39;, &#39;Unnamed: 16&#39;, &#39;Unnamed: 17&#39;, &#39;Unnamed: 18&#39;, &#39;Unnamed: 19&#39;, &#39;Unnamed: 20&#39;, &#39;Unnamed: 21&#39;, &#39;Unnamed: 22&#39;, &#39;Unnamed: 23&#39;, &#39;Unnamed: 24&#39;, &#39;Unnamed: 25&#39;, &#39;Unnamed: 26&#39;, &#39;Unnamed: 27&#39;, &#39;Unnamed: 28&#39;, &#39;Unnamed: 29&#39;, &#39;Unnamed: 30&#39;, &#39;Unnamed: 31&#39;, &#39;Unnamed: 32&#39;, &#39;Unnamed: 33&#39;, &#39;Unnamed: 34&#39;, &#39;cell_type&#39;, &#39;characteristics: therapy&#39;, &#39;description&#39;, &#39;molecule&#39;, &#39;organism&#39;, &#39;participant_id&#39;, &#39;patient_raw&#39;, &#39;processed data file &#39;, &#39;raw file&#39;, &#39;response&#39;, &#39;response_harmonized&#39;, &#39;source name&#39;, &#39;time_label&#39;, &#39;visit&#39;]
 </pre></div></div>
 </div>
 </section>
@@ -562,24 +458,116 @@ Download from GEO: https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE120575
 <div class="highlight"><pre>
 === Sample Sizes ===
 
+Cells per Response x Visit:
 </pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>visit</th>
+      <th>Post</th>
+      <th>Pre</th>
+    </tr>
+    <tr>
+      <th>response_harmonized</th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>Non-responder</th>
+      <td>5760</td>
+      <td>3229</td>
+    </tr>
+    <tr>
+      <th>Responder</th>
+      <td>1762</td>
+      <td>2432</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+Participants per Response x Visit:
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>visit</th>
+      <th>Post</th>
+      <th>Pre</th>
+    </tr>
+    <tr>
+      <th>response_harmonized</th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>Non-responder</th>
+      <td>13</td>
+      <td>10</td>
+    </tr>
+    <tr>
+      <th>Responder</th>
+      <td>4</td>
+      <td>8</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<div class="highlight"><pre>
-<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
-<span class="ansi-red-fg">NameError</span>                                 Traceback (most recent call last)
-Cell <span class="ansi-green-fg">In[4], line 6</span>
-<span class="ansi-green-intense-fg ansi-bold">      3</span> <span style="color: rgb(0,135,0)">print</span>(<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">&#34;</span>)
-<span class="ansi-green-intense-fg ansi-bold">      5</span> <span style="color: rgb(95,135,135)"># Cells per group</span>
-<span class="ansi-green-fg">----&gt; 6</span> cell_counts <span style="color: rgb(98,98,98)">=</span> <span class="ansi-yellow-bg">adata</span><span style="color: rgb(98,98,98)">.</span>obs<span style="color: rgb(98,98,98)">.</span>groupby([RESPONSE_COL, <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">visit</span><span style="color: rgb(175,0,0)">&#34;</span>], observed<span style="color: rgb(98,98,98)">=</span><span class="ansi-bold" style="color: rgb(0,135,0)">True</span>)<span style="color: rgb(98,98,98)">.</span>size()<span style="color: rgb(98,98,98)">.</span>unstack(fill_value<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(98,98,98)">0</span>)
-<span class="ansi-green-intense-fg ansi-bold">      7</span> <span style="color: rgb(0,135,0)">print</span>(<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">Cells per Response x Visit:</span><span style="color: rgb(175,0,0)">&#34;</span>)
-<span class="ansi-green-intense-fg ansi-bold">      8</span> display(cell_counts)
-
-<span class="ansi-red-fg">NameError</span>: name &#39;adata&#39; is not defined
-</pre></div></div>
+<img alt="../_images/examples_example_immunotherapy_sade_feldman_9_4.png" src="../_images/examples_example_immunotherapy_sade_feldman_9_4.png" />
+</div>
 </div>
 </section>
 </section>
@@ -671,16 +659,19 @@ Cell <span class="ansi-green-fg">In[4], line 6</span>
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
-<span class="ansi-red-fg">NameError</span>                                 Traceback (most recent call last)
-Cell <span class="ansi-green-fg">In[5], line 3</span>
-<span class="ansi-green-intense-fg ansi-bold">      1</span> <span style="color: rgb(95,135,135)"># Define study design</span>
-<span class="ansi-green-intense-fg ansi-bold">      2</span> visit_col <span style="color: rgb(98,98,98)">=</span> <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">visit</span><span style="color: rgb(175,0,0)">&#34;</span>
-<span class="ansi-green-fg">----&gt; 3</span> adata<span style="color: rgb(98,98,98)">.</span>obs[visit_col] <span style="color: rgb(98,98,98)">=</span> <span class="ansi-yellow-bg">adata</span><span style="color: rgb(98,98,98)">.</span>obs[visit_col]<span style="color: rgb(98,98,98)">.</span>astype(<span style="color: rgb(0,135,0)">str</span>)
-<span class="ansi-green-intense-fg ansi-bold">      4</span> visits <span style="color: rgb(98,98,98)">=</span> [v <span class="ansi-bold" style="color: rgb(0,135,0)">for</span> v <span class="ansi-bold" style="color: rgb(175,0,255)">in</span> [<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">Pre</span><span style="color: rgb(175,0,0)">&#34;</span>, <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">Post</span><span style="color: rgb(175,0,0)">&#34;</span>] <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> v <span class="ansi-bold" style="color: rgb(175,0,255)">in</span> adata<span style="color: rgb(98,98,98)">.</span>obs[visit_col]<span style="color: rgb(98,98,98)">.</span>unique()]
-<span class="ansi-green-intense-fg ansi-bold">      5</span> <span style="color: rgb(0,135,0)">print</span>(<span style="color: rgb(175,0,0)">f</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">Available visits: </span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span>visits<span class="ansi-bold" style="color: rgb(175,95,135)">}</span><span style="color: rgb(175,0,0)">&#34;</span>)
+Available visits: [&#39;Pre&#39;, &#39;Post&#39;]
 
-<span class="ansi-red-fg">NameError</span>: name &#39;adata&#39; is not defined
+Longitudinal pairing:
+  Total paired participants (Pre + Post): 10
+  Paired Responders: 3
+  Paired Non-responders: 7
+
+  DiD analysis is feasible (&gt;=3 paired per arm)
+
+Design configured:
+  Participant: participant_id
+  Visit: visit
+  Comparison: Responder vs Non-responder
 </pre></div></div>
 </div>
 </section>
@@ -776,20 +767,136 @@ Cell <span class="ansi-green-fg">In[5], line 3</span>
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
-<span class="ansi-red-fg">NameError</span>                                 Traceback (most recent call last)
-Cell <span class="ansi-green-fg">In[6], line 1</span>
-<span class="ansi-green-fg">----&gt; 1</span> available_genes <span style="color: rgb(98,98,98)">=</span> <span style="color: rgb(0,135,0)">set</span>(<span class="ansi-yellow-bg">adata</span><span style="color: rgb(98,98,98)">.</span>var_names)
-<span class="ansi-green-intense-fg ansi-bold">      3</span> <span style="color: rgb(95,135,135)"># Define immunotherapy-relevant gene signatures</span>
-<span class="ansi-green-intense-fg ansi-bold">      4</span> <span style="color: rgb(95,135,135)"># Based on Sade-Feldman et al. and broader immuno-oncology literature</span>
-<span class="ansi-green-intense-fg ansi-bold">      5</span> gene_signatures <span style="color: rgb(98,98,98)">=</span> {
-<span class="ansi-green-intense-fg ansi-bold">      6</span>     <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">Cytotoxicity</span><span style="color: rgb(175,0,0)">&#34;</span>: [
-<span class="ansi-green-intense-fg ansi-bold">      7</span>         <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">GZMB</span><span style="color: rgb(175,0,0)">&#34;</span>, <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">GZMA</span><span style="color: rgb(175,0,0)">&#34;</span>, <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">GZMH</span><span style="color: rgb(175,0,0)">&#34;</span>, <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">GZMK</span><span style="color: rgb(175,0,0)">&#34;</span>, <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">PRF1</span><span style="color: rgb(175,0,0)">&#34;</span>, <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">GNLY</span><span style="color: rgb(175,0,0)">&#34;</span>,
-<span class="ansi-green-fg">   (...)</span>
-<span class="ansi-green-intense-fg ansi-bold">     23</span>     ],
-<span class="ansi-green-intense-fg ansi-bold">     24</span> }
+Gene signature coverage:
+--------------------------------------------------
+Cytotoxicity: 11/11 genes (100%) [OK]
+Exhaustion: 9/9 genes (100%) [OK]
+IFN_Response: 10/10 genes (100%) [OK]
+Memory: 7/7 genes (100%) [OK]
+Activation: 6/6 genes (100%) [OK]
 
-<span class="ansi-red-fg">NameError</span>: name &#39;adata&#39; is not defined
+Scored 5 signatures using zmean method
+Signature scores: [&#39;sig_Cytotoxicity&#39;, &#39;sig_Exhaustion&#39;, &#39;sig_IFN_Response&#39;, &#39;sig_Memory&#39;, &#39;sig_Activation&#39;]
+
+Features for analysis: [&#39;sig_Cytotoxicity&#39;, &#39;sig_Exhaustion&#39;, &#39;sig_IFN_Response&#39;, &#39;sig_Memory&#39;, &#39;sig_Activation&#39;]
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># =============================================================================</span>
+<span class="c1"># VERIFICATION: Compute TRUE paired participants based on valid signature scores</span>
+<span class="c1"># =============================================================================</span>
+<span class="c1"># This ensures consistency between reported pairing and actual analysis</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;PAIRING VERIFICATION (based on valid signature scores)&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+
+<span class="c1"># Aggregate all signature scores to participant-visit level</span>
+<span class="n">df_pv</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">obs</span>
+    <span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">],</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="n">features_use</span><span class="p">]</span>
+    <span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+    <span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+<span class="p">)</span>
+
+<span class="c1"># For each feature, identify participants with valid (non-NaN) scores at BOTH visits</span>
+<span class="n">valid_paired</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># feature -&gt; set of participant IDs with valid Pre AND Post scores</span>
+
+<span class="k">for</span> <span class="n">feat</span> <span class="ow">in</span> <span class="n">features_use</span><span class="p">:</span>
+    <span class="n">wide</span> <span class="o">=</span> <span class="n">df_pv</span><span class="o">.</span><span class="n">pivot</span><span class="p">(</span>
+        <span class="n">index</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span>
+        <span class="n">columns</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span>
+        <span class="n">values</span><span class="o">=</span><span class="n">feat</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">visits</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">wide</span><span class="o">.</span><span class="n">columns</span> <span class="ow">or</span> <span class="n">visits</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">wide</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">valid_paired</span><span class="p">[</span><span class="n">feat</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="k">continue</span>
+
+    <span class="c1"># Participants with non-NaN at BOTH visits</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">wide</span><span class="p">[</span><span class="n">visits</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span> <span class="o">&amp;</span> <span class="n">wide</span><span class="p">[</span><span class="n">visits</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span>
+    <span class="n">valid_paired</span><span class="p">[</span><span class="n">feat</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">wide</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+<span class="c1"># Get intersection across all features (participants valid for ALL features)</span>
+<span class="k">if</span> <span class="n">features_use</span><span class="p">:</span>
+    <span class="n">all_features_valid</span> <span class="o">=</span> <span class="nb">set</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="o">*</span><span class="p">[</span><span class="n">valid_paired</span><span class="p">[</span><span class="n">f</span><span class="p">]</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">features_use</span><span class="p">])</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">all_features_valid</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+<span class="c1"># Add arm info to determine pairing by response</span>
+<span class="n">participant_arm</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">)[</span><span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
+
+<span class="n">valid_paired_by_response</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">arm</span><span class="p">:</span> <span class="p">{</span><span class="n">pid</span> <span class="k">for</span> <span class="n">pid</span> <span class="ow">in</span> <span class="n">all_features_valid</span> <span class="k">if</span> <span class="n">participant_arm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">pid</span><span class="p">)</span> <span class="o">==</span> <span class="n">arm</span><span class="p">}</span>
+    <span class="k">for</span> <span class="n">arm</span> <span class="ow">in</span> <span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">arm_treated</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_control</span><span class="p">]</span>
+<span class="p">}</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Participants with valid Pre+Post scores for ALL features:&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Total: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">all_features_valid</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">arm</span> <span class="ow">in</span> <span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">arm_treated</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_control</span><span class="p">]:</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid_paired_by_response</span><span class="p">[</span><span class="n">arm</span><span class="p">])</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">arm</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># Compare with cell-level pairing</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Comparison with cell-level pairing (from cell-11):&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">arm</span> <span class="ow">in</span> <span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">arm_treated</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_control</span><span class="p">]:</span>
+    <span class="n">cell_based</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">paired_ids_by_response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">arm</span><span class="p">,</span> <span class="nb">set</span><span class="p">()))</span>
+    <span class="n">score_based</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid_paired_by_response</span><span class="p">[</span><span class="n">arm</span><span class="p">])</span>
+    <span class="n">diff</span> <span class="o">=</span> <span class="n">cell_based</span> <span class="o">-</span> <span class="n">score_based</span>
+    <span class="k">if</span> <span class="n">diff</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">arm</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">cell_based</span><span class="si">}</span><span class="s2"> (cells) -&gt; </span><span class="si">{</span><span class="n">score_based</span><span class="si">}</span><span class="s2"> (valid scores) | </span><span class="si">{</span><span class="n">diff</span><span class="si">}</span><span class="s2"> dropped due to NaN scores&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">arm</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">cell_based</span><span class="si">}</span><span class="s2"> (cells) = </span><span class="si">{</span><span class="n">score_based</span><span class="si">}</span><span class="s2"> (valid scores) ✓&quot;</span><span class="p">)</span>
+
+<span class="c1"># Show which participants were dropped (for debugging)</span>
+<span class="k">for</span> <span class="n">arm</span> <span class="ow">in</span> <span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">arm_treated</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_control</span><span class="p">]:</span>
+    <span class="n">dropped</span> <span class="o">=</span> <span class="n">paired_ids_by_response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">arm</span><span class="p">,</span> <span class="nb">set</span><span class="p">())</span> <span class="o">-</span> <span class="n">valid_paired_by_response</span><span class="p">[</span><span class="n">arm</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">dropped</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Dropped </span><span class="si">{</span><span class="n">arm</span><span class="si">}</span><span class="s2"> participants: </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">dropped</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="c1"># Check why they were dropped</span>
+        <span class="k">for</span> <span class="n">pid</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">dropped</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">feat</span> <span class="ow">in</span> <span class="n">features_use</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">pid</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">valid_paired</span><span class="p">[</span><span class="n">feat</span><span class="p">]:</span>
+                    <span class="n">sub</span> <span class="o">=</span> <span class="n">df_pv</span><span class="p">[</span><span class="n">df_pv</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]</span> <span class="o">==</span> <span class="n">pid</span><span class="p">][[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="n">feat</span><span class="p">]]</span>
+                    <span class="n">pre_val</span> <span class="o">=</span> <span class="n">sub</span><span class="p">[</span><span class="n">sub</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span> <span class="o">==</span> <span class="n">visits</span><span class="p">[</span><span class="mi">0</span><span class="p">]][</span><span class="n">feat</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+                    <span class="n">post_val</span> <span class="o">=</span> <span class="n">sub</span><span class="p">[</span><span class="n">sub</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span> <span class="o">==</span> <span class="n">visits</span><span class="p">[</span><span class="mi">1</span><span class="p">]][</span><span class="n">feat</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    </span><span class="si">{</span><span class="n">pid</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">feat</span><span class="si">}</span><span class="s2"> Pre=</span><span class="si">{</span><span class="n">pre_val</span><span class="si">}</span><span class="s2">, Post=</span><span class="si">{</span><span class="n">post_val</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="k">break</span>
+
+<span class="c1"># Store for use in subsequent cells</span>
+<span class="n">VALID_PAIRED_BY_RESPONSE</span> <span class="o">=</span> <span class="n">valid_paired_by_response</span>
+<span class="n">VALID_PAIRED_ALL</span> <span class="o">=</span> <span class="n">all_features_valid</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Using VALID_PAIRED_BY_RESPONSE for all subsequent analyses.&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+============================================================
+PAIRING VERIFICATION (based on valid signature scores)
+============================================================
+
+Participants with valid Pre+Post scores for ALL features:
+  Total: 10
+  Responder: 3
+  Non-responder: 7
+
+Comparison with cell-level pairing (from cell-11):
+  Responder: 3 (cells) = 3 (valid scores) ✓
+  Non-responder: 7 (cells) = 7 (valid scores) ✓
+
+Using VALID_PAIRED_BY_RESPONSE for all subsequent analyses.
 </pre></div></div>
 </div>
 </section>
@@ -802,7 +909,7 @@ Cell <span class="ansi-green-fg">In[6], line 1</span>
 <li><p>Negative beta = higher in Non-responders</p></li>
 </ul>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
@@ -870,33 +977,487 @@ Cell <span class="ansi-green-fg">In[6], line 1</span>
 ============================================================
 CROSS-SECTIONAL ANALYSIS: Responder vs Non-responder
 ============================================================
+
+Pre: Responders=8, Non-responders=10 participants
+
+Results at Pre:
 </pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>feature</th>
+      <th>beta_arm</th>
+      <th>p_arm</th>
+      <th>FDR_arm</th>
+      <th>n_units</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>sig_Cytotoxicity</td>
+      <td>-1.1110</td>
+      <td>0.0139</td>
+      <td>0.0348</td>
+      <td>18</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>sig_Exhaustion</td>
+      <td>-0.7932</td>
+      <td>0.0949</td>
+      <td>0.1582</td>
+      <td>18</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>sig_IFN_Response</td>
+      <td>-0.2070</td>
+      <td>0.6759</td>
+      <td>0.6759</td>
+      <td>18</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>sig_Memory</td>
+      <td>1.1822</td>
+      <td>0.0079</td>
+      <td>0.0348</td>
+      <td>18</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>sig_Activation</td>
+      <td>0.5133</td>
+      <td>0.2927</td>
+      <td>0.3659</td>
+      <td>18</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+  Significant (FDR&lt;0.25): [&#39;sig_Cytotoxicity&#39;, &#39;sig_Exhaustion&#39;, &#39;sig_Memory&#39;]
+
+Post: Responders=4, Non-responders=13 participants
+
+Results at Post:
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>feature</th>
+      <th>beta_arm</th>
+      <th>p_arm</th>
+      <th>FDR_arm</th>
+      <th>n_units</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>sig_Cytotoxicity</td>
+      <td>-0.5520</td>
+      <td>0.3507</td>
+      <td>0.4482</td>
+      <td>17</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>sig_Exhaustion</td>
+      <td>-0.5433</td>
+      <td>0.3586</td>
+      <td>0.4482</td>
+      <td>17</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>sig_IFN_Response</td>
+      <td>-1.1500</td>
+      <td>0.0397</td>
+      <td>0.1888</td>
+      <td>17</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>sig_Memory</td>
+      <td>0.3657</td>
+      <td>0.5399</td>
+      <td>0.5399</td>
+      <td>17</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>sig_Activation</td>
+      <td>-1.0114</td>
+      <td>0.0755</td>
+      <td>0.1888</td>
+      <td>17</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
-<span class="ansi-red-fg">NameError</span>                                 Traceback (most recent call last)
-Cell <span class="ansi-green-fg">In[7], line 7</span>
-<span class="ansi-green-intense-fg ansi-bold">      3</span> <span style="color: rgb(0,135,0)">print</span>(<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">=</span><span style="color: rgb(175,0,0)">&#34;</span> <span style="color: rgb(98,98,98)">*</span> <span style="color: rgb(98,98,98)">60</span>)
-<span class="ansi-green-intense-fg ansi-bold">      5</span> cross_sectional_results <span style="color: rgb(98,98,98)">=</span> []
-<span class="ansi-green-fg">----&gt; 7</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span class="ansi-yellow-bg">features_use</span>:
-<span class="ansi-green-intense-fg ansi-bold">      8</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">for</span> v <span class="ansi-bold" style="color: rgb(175,0,255)">in</span> visits:
-<span class="ansi-green-intense-fg ansi-bold">      9</span>         <span style="color: rgb(95,135,135)"># Check sample sizes</span>
-<span class="ansi-green-intense-fg ansi-bold">     10</span>         sub <span style="color: rgb(98,98,98)">=</span> adata[adata<span style="color: rgb(98,98,98)">.</span>obs[design<span style="color: rgb(98,98,98)">.</span>visit_col] <span style="color: rgb(98,98,98)">==</span> v]
-
-<span class="ansi-red-fg">NameError</span>: name &#39;features_use&#39; is not defined
+  Significant (FDR&lt;0.25): [&#39;sig_IFN_Response&#39;, &#39;sig_Activation&#39;]
 </pre></div></div>
 </div>
-</section>
-<section id="6.-Within-Arm-Longitudinal-Comparisons">
-<h2>6. Within-Arm Longitudinal Comparisons<a class="headerlink" href="#6.-Within-Arm-Longitudinal-Comparisons" title="Link to this heading"></a></h2>
-<p>Test whether signatures change from Pre to Post <strong>within each response group</strong>.</p>
-<p>This answers: “Do Responders show changes over time?” and “Do Non-responders show changes?”</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;WITHIN-ARM LONGITUDINAL ANALYSIS: Pre → Post changes&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Using paired Wilcoxon signed-rank test (appropriate for small samples)&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Using VALID_PAIRED_BY_RESPONSE (accounts for NaN signature scores)&quot;</span><span class="p">)</span>
+
+<span class="n">within_arm_results</span> <span class="o">=</span> <span class="p">[]</span>
+
+<span class="k">if</span> <span class="n">features_use</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">visits</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">arm</span> <span class="ow">in</span> <span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">arm_treated</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_control</span><span class="p">]:</span>
+        <span class="c1"># Use the verified paired participants (with valid scores at both visits)</span>
+        <span class="n">paired_ids_arm</span> <span class="o">=</span> <span class="n">VALID_PAIRED_BY_RESPONSE</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">arm</span><span class="p">,</span> <span class="nb">set</span><span class="p">())</span>
+        <span class="n">n_paired_arm</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">paired_ids_arm</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">arm</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">n_paired_arm</span><span class="si">}</span><span class="s2"> paired participants (valid scores)&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">n_paired_arm</span> <span class="o">&lt;</span> <span class="n">MIN_PARTICIPANTS_FOR_COMPARISON</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Skipping: need &gt;= </span><span class="si">{</span><span class="n">MIN_PARTICIPANTS_FOR_COMPARISON</span><span class="si">}</span><span class="s2"> paired participants&quot;</span><span class="p">)</span>
+            <span class="k">continue</span>
+
+        <span class="c1"># Subset to this arm and paired participants</span>
+        <span class="n">ad_arm</span> <span class="o">=</span> <span class="n">adata</span><span class="p">[</span>
+            <span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span> <span class="o">==</span> <span class="n">arm</span><span class="p">)</span> <span class="o">&amp;</span>
+            <span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">paired_ids_arm</span><span class="p">))</span>
+        <span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">ad_arm</span> <span class="o">=</span> <span class="n">ad_arm</span><span class="p">[</span><span class="n">ad_arm</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">visits</span><span class="p">)]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="c1"># Aggregate to participant-visit level</span>
+        <span class="n">df_agg</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">ad_arm</span><span class="o">.</span><span class="n">obs</span>
+            <span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">],</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="n">features_use</span><span class="p">]</span>
+            <span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Pivot to wide format for paired testing</span>
+        <span class="n">arm_rows</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">feat</span> <span class="ow">in</span> <span class="n">features_use</span><span class="p">:</span>
+            <span class="n">wide</span> <span class="o">=</span> <span class="n">df_agg</span><span class="o">.</span><span class="n">pivot</span><span class="p">(</span>
+                <span class="n">index</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span>
+                <span class="n">columns</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span>
+                <span class="n">values</span><span class="o">=</span><span class="n">feat</span>
+            <span class="p">)</span>
+
+            <span class="c1"># Keep only paired (have both Pre and Post)</span>
+            <span class="k">if</span> <span class="n">visits</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">wide</span><span class="o">.</span><span class="n">columns</span> <span class="ow">or</span> <span class="n">visits</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">wide</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">wide</span> <span class="o">=</span> <span class="n">wide</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">wide</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+                <span class="n">arm_rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                    <span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
+                    <span class="s2">&quot;n_paired&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">wide</span><span class="p">),</span>
+                    <span class="s2">&quot;mean_Pre&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                    <span class="s2">&quot;mean_Post&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                    <span class="s2">&quot;mean_delta&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                    <span class="s2">&quot;p_time&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                <span class="p">})</span>
+                <span class="k">continue</span>
+
+            <span class="n">pre_vals</span> <span class="o">=</span> <span class="n">wide</span><span class="p">[</span><span class="n">visits</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">.</span><span class="n">values</span>
+            <span class="n">post_vals</span> <span class="o">=</span> <span class="n">wide</span><span class="p">[</span><span class="n">visits</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span><span class="o">.</span><span class="n">values</span>
+            <span class="n">delta</span> <span class="o">=</span> <span class="n">post_vals</span> <span class="o">-</span> <span class="n">pre_vals</span>
+
+            <span class="c1"># Wilcoxon signed-rank test (paired, non-parametric)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">stat</span><span class="p">,</span> <span class="n">p_val</span> <span class="o">=</span> <span class="n">wilcoxon</span><span class="p">(</span><span class="n">delta</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="n">p_val</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+            <span class="n">arm_rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                <span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
+                <span class="s2">&quot;n_paired&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">wide</span><span class="p">),</span>
+                <span class="s2">&quot;mean_Pre&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">pre_vals</span><span class="o">.</span><span class="n">mean</span><span class="p">()),</span>
+                <span class="s2">&quot;mean_Post&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">post_vals</span><span class="o">.</span><span class="n">mean</span><span class="p">()),</span>
+                <span class="s2">&quot;mean_delta&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">delta</span><span class="o">.</span><span class="n">mean</span><span class="p">()),</span>
+                <span class="s2">&quot;p_time&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">p_val</span><span class="p">),</span>
+            <span class="p">})</span>
+
+        <span class="k">if</span> <span class="n">arm_rows</span><span class="p">:</span>
+            <span class="n">df_arm</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">arm_rows</span><span class="p">)</span>
+
+            <span class="c1"># FDR correction</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="n">df_arm</span><span class="p">[</span><span class="s2">&quot;p_time&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span>
+            <span class="n">df_arm</span><span class="p">[</span><span class="s2">&quot;FDR_time&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+            <span class="k">if</span> <span class="n">mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">df_arm</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="s2">&quot;FDR_time&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">multipletests</span><span class="p">(</span>
+                    <span class="n">df_arm</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="s2">&quot;p_time&quot;</span><span class="p">],</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;fdr_bh&quot;</span>
+                <span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+
+            <span class="n">df_arm</span><span class="p">[</span><span class="s2">&quot;arm&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">arm</span>
+            <span class="n">within_arm_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">df_arm</span><span class="p">)</span>
+
+            <span class="c1"># Display</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Pre→Post changes in </span><span class="si">{</span><span class="n">arm</span><span class="si">}</span><span class="s2">:&quot;</span><span class="p">)</span>
+            <span class="n">display_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;feature&quot;</span><span class="p">,</span> <span class="s2">&quot;n_paired&quot;</span><span class="p">,</span> <span class="s2">&quot;mean_delta&quot;</span><span class="p">,</span> <span class="s2">&quot;p_time&quot;</span><span class="p">,</span> <span class="s2">&quot;FDR_time&quot;</span><span class="p">]</span>
+            <span class="n">display</span><span class="p">(</span><span class="n">df_arm</span><span class="p">[</span><span class="n">display_cols</span><span class="p">]</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">4</span><span class="p">))</span>
+
+            <span class="c1"># Highlight significant</span>
+            <span class="n">sig</span> <span class="o">=</span> <span class="n">df_arm</span><span class="p">[(</span><span class="n">df_arm</span><span class="p">[</span><span class="s2">&quot;FDR_time&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">())</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">df_arm</span><span class="p">[</span><span class="s2">&quot;FDR_time&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">FDR_ALPHA</span><span class="p">)]</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">sig</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">sig</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+                    <span class="n">direction</span> <span class="o">=</span> <span class="s2">&quot;↑&quot;</span> <span class="k">if</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;mean_delta&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;↓&quot;</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;feature&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">direction</span><span class="si">}</span><span class="s2"> (delta=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;mean_delta&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, FDR=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;FDR_time&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Insufficient visits or features for within-arm comparison.&quot;</span><span class="p">)</span>
+
+<span class="c1"># Combine results</span>
+<span class="k">if</span> <span class="n">within_arm_results</span><span class="p">:</span>
+    <span class="n">all_within</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">within_arm_results</span><span class="p">,</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">all_within</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+============================================================
+WITHIN-ARM LONGITUDINAL ANALYSIS: Pre → Post changes
+============================================================
+
+Using paired Wilcoxon signed-rank test (appropriate for small samples)
+Using VALID_PAIRED_BY_RESPONSE (accounts for NaN signature scores)
+
+Responder: 3 paired participants (valid scores)
+
+Pre→Post changes in Responder:
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>feature</th>
+      <th>n_paired</th>
+      <th>mean_delta</th>
+      <th>p_time</th>
+      <th>FDR_time</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>sig_Cytotoxicity</td>
+      <td>3</td>
+      <td>0.0373</td>
+      <td>1.00</td>
+      <td>1.0</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>sig_Exhaustion</td>
+      <td>3</td>
+      <td>-0.0056</td>
+      <td>1.00</td>
+      <td>1.0</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>sig_IFN_Response</td>
+      <td>3</td>
+      <td>-0.4269</td>
+      <td>0.50</td>
+      <td>1.0</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>sig_Memory</td>
+      <td>3</td>
+      <td>-0.1986</td>
+      <td>0.75</td>
+      <td>1.0</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>sig_Activation</td>
+      <td>3</td>
+      <td>-0.0805</td>
+      <td>0.50</td>
+      <td>1.0</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+Non-responder: 7 paired participants (valid scores)
+
+Pre→Post changes in Non-responder:
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>feature</th>
+      <th>n_paired</th>
+      <th>mean_delta</th>
+      <th>p_time</th>
+      <th>FDR_time</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>sig_Cytotoxicity</td>
+      <td>7</td>
+      <td>0.1006</td>
+      <td>0.5781</td>
+      <td>0.6875</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>sig_Exhaustion</td>
+      <td>7</td>
+      <td>0.1602</td>
+      <td>0.1094</td>
+      <td>0.2734</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>sig_IFN_Response</td>
+      <td>7</td>
+      <td>-0.0008</td>
+      <td>0.6875</td>
+      <td>0.6875</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>sig_Memory</td>
+      <td>7</td>
+      <td>0.0379</td>
+      <td>0.2969</td>
+      <td>0.4948</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>sig_Activation</td>
+      <td>7</td>
+      <td>0.1725</td>
+      <td>0.0156</td>
+      <td>0.0781</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+  sig_Activation: ↑ (delta=0.173, FDR=0.078)
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
@@ -1025,38 +1586,451 @@ WITHIN-ARM LONGITUDINAL ANALYSIS: Pre → Post changes
 ============================================================
 
 Using paired Wilcoxon signed-rank test (appropriate for small samples)
+
+Responder: 3 paired participants
+
+Pre→Post changes in Responder:
 </pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>feature</th>
+      <th>n_paired</th>
+      <th>mean_delta</th>
+      <th>p_time</th>
+      <th>FDR_time</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>sig_Cytotoxicity</td>
+      <td>3</td>
+      <td>0.0373</td>
+      <td>1.00</td>
+      <td>1.0</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>sig_Exhaustion</td>
+      <td>3</td>
+      <td>-0.0056</td>
+      <td>1.00</td>
+      <td>1.0</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>sig_IFN_Response</td>
+      <td>3</td>
+      <td>-0.4269</td>
+      <td>0.50</td>
+      <td>1.0</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>sig_Memory</td>
+      <td>3</td>
+      <td>-0.1986</td>
+      <td>0.75</td>
+      <td>1.0</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>sig_Activation</td>
+      <td>3</td>
+      <td>-0.0805</td>
+      <td>0.50</td>
+      <td>1.0</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+Non-responder: 7 paired participants
+
+Pre→Post changes in Non-responder:
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>feature</th>
+      <th>n_paired</th>
+      <th>mean_delta</th>
+      <th>p_time</th>
+      <th>FDR_time</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>sig_Cytotoxicity</td>
+      <td>7</td>
+      <td>0.1006</td>
+      <td>0.5781</td>
+      <td>0.6875</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>sig_Exhaustion</td>
+      <td>7</td>
+      <td>0.1602</td>
+      <td>0.1094</td>
+      <td>0.2734</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>sig_IFN_Response</td>
+      <td>7</td>
+      <td>-0.0008</td>
+      <td>0.6875</td>
+      <td>0.6875</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>sig_Memory</td>
+      <td>7</td>
+      <td>0.0379</td>
+      <td>0.2969</td>
+      <td>0.4948</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>sig_Activation</td>
+      <td>7</td>
+      <td>0.1725</td>
+      <td>0.0156</td>
+      <td>0.0781</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
-<span class="ansi-red-fg">NameError</span>                                 Traceback (most recent call last)
-Cell <span class="ansi-green-fg">In[8], line 9</span>
-<span class="ansi-green-intense-fg ansi-bold">      5</span> <span style="color: rgb(0,135,0)">print</span>(<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">Using paired Wilcoxon signed-rank test (appropriate for small samples)</span><span style="color: rgb(175,0,0)">&#34;</span>)
-<span class="ansi-green-intense-fg ansi-bold">      7</span> within_arm_results <span style="color: rgb(98,98,98)">=</span> []
-<span class="ansi-green-fg">----&gt; 9</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span class="ansi-yellow-bg">features_use</span> <span class="ansi-bold" style="color: rgb(175,0,255)">and</span> <span style="color: rgb(0,135,0)">len</span>(visits) <span style="color: rgb(98,98,98)">==</span> <span style="color: rgb(98,98,98)">2</span>:
-<span class="ansi-green-intense-fg ansi-bold">     10</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">for</span> arm <span class="ansi-bold" style="color: rgb(175,0,255)">in</span> [design<span style="color: rgb(98,98,98)">.</span>arm_treated, design<span style="color: rgb(98,98,98)">.</span>arm_control]:
-<span class="ansi-green-intense-fg ansi-bold">     11</span>         <span style="color: rgb(95,135,135)"># Check pairing for this arm</span>
-<span class="ansi-green-intense-fg ansi-bold">     12</span>         paired_ids_arm <span style="color: rgb(98,98,98)">=</span> paired_ids_by_response<span style="color: rgb(98,98,98)">.</span>get(arm, <span style="color: rgb(0,135,0)">set</span>())
-
-<span class="ansi-red-fg">NameError</span>: name &#39;features_use&#39; is not defined
+  sig_Activation: ↑ (delta=0.173, FDR=0.078)
 </pre></div></div>
 </div>
-</section>
-<section id="7.-Difference-in-Differences-(DiD)-Analysis">
-<h2>7. Difference-in-Differences (DiD) Analysis<a class="headerlink" href="#7.-Difference-in-Differences-(DiD)-Analysis" title="Link to this heading"></a></h2>
-<p>The key question: <strong>Do Responders change differently than Non-responders?</strong></p>
-<p>DiD tests whether the Pre→Post change differs between response groups:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">beta_DiD</span> <span class="pre">&gt;</span> <span class="pre">0</span></code>: Responders increase more (or decrease less) than Non-responders</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">beta_DiD</span> <span class="pre">&lt;</span> <span class="pre">0</span></code>: Non-responders increase more (or decrease less) than Responders</p></li>
-</ul>
-<p>This is the interaction effect: <code class="docutils literal notranslate"><span class="pre">(Post</span> <span class="pre">-</span> <span class="pre">Pre)_Responder</span> <span class="pre">-</span> <span class="pre">(Post</span> <span class="pre">-</span> <span class="pre">Pre)_Non-responder</span></code></p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;DIFFERENCE-IN-DIFFERENCES ANALYSIS&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Using participant-level deltas with Mann-Whitney U test&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;(More robust for small samples than fixed-effects models)&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Using VALID_PAIRED_BY_RESPONSE (accounts for NaN signature scores)&quot;</span><span class="p">)</span>
+
+<span class="n">did_results</span> <span class="o">=</span> <span class="kc">None</span>
+
+<span class="k">if</span> <span class="n">features_use</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">visits</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+    <span class="c1"># Use verified pairing</span>
+    <span class="n">n_resp_valid</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">VALID_PAIRED_BY_RESPONSE</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">arm_treated</span><span class="p">,</span> <span class="nb">set</span><span class="p">()))</span>
+    <span class="n">n_nonresp_valid</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">VALID_PAIRED_BY_RESPONSE</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">arm_control</span><span class="p">,</span> <span class="nb">set</span><span class="p">()))</span>
+    <span class="n">total_valid</span> <span class="o">=</span> <span class="n">n_resp_valid</span> <span class="o">+</span> <span class="n">n_nonresp_valid</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Paired participants with valid scores:&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Responders: </span><span class="si">{</span><span class="n">n_resp_valid</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Non-responders: </span><span class="si">{</span><span class="n">n_nonresp_valid</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Total: </span><span class="si">{</span><span class="n">total_valid</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">n_resp_valid</span> <span class="o">&lt;</span> <span class="mi">3</span> <span class="ow">or</span> <span class="n">n_nonresp_valid</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;⚠️  DiD requires &gt;= 3 paired participants per arm with valid scores.&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;   Insufficient pairing for reliable DiD analysis.&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Calculating DiD...&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Use only validated paired participants</span>
+        <span class="n">valid_paired_all</span> <span class="o">=</span> <span class="n">VALID_PAIRED_ALL</span>
+
+        <span class="c1"># Aggregate to participant-visit level (validated paired participants only)</span>
+        <span class="n">df_agg</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">valid_paired_all</span><span class="p">)]</span>
+            <span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">],</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="n">features_use</span><span class="p">]</span>
+            <span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+        <span class="p">)</span>
+
+        <span class="n">did_rows</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">feat</span> <span class="ow">in</span> <span class="n">features_use</span><span class="p">:</span>
+            <span class="c1"># Pivot to get Pre/Post for each participant</span>
+            <span class="n">wide</span> <span class="o">=</span> <span class="n">df_agg</span><span class="o">.</span><span class="n">pivot_table</span><span class="p">(</span>
+                <span class="n">index</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span>
+                <span class="n">columns</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span>
+                <span class="n">values</span><span class="o">=</span><span class="n">feat</span><span class="p">,</span>
+                <span class="n">aggfunc</span><span class="o">=</span><span class="s2">&quot;mean&quot;</span>
+            <span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">visits</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">wide</span><span class="o">.</span><span class="n">columns</span> <span class="ow">or</span> <span class="n">visits</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">wide</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># Calculate deltas</span>
+            <span class="n">wide</span><span class="p">[</span><span class="s2">&quot;delta&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">wide</span><span class="p">[</span><span class="n">visits</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span> <span class="o">-</span> <span class="n">wide</span><span class="p">[</span><span class="n">visits</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+            <span class="n">wide</span> <span class="o">=</span> <span class="n">wide</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;delta&quot;</span><span class="p">])</span>
+
+            <span class="c1"># Get arm for each participant (harmonized)</span>
+            <span class="n">wide</span><span class="p">[</span><span class="s2">&quot;arm&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">wide</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">participant_response</span><span class="p">)</span>
+
+            <span class="c1"># Split by arm</span>
+            <span class="n">delta_resp</span> <span class="o">=</span> <span class="n">wide</span><span class="p">[</span><span class="n">wide</span><span class="p">[</span><span class="s2">&quot;arm&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_treated</span><span class="p">][</span><span class="s2">&quot;delta&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+            <span class="n">delta_nonresp</span> <span class="o">=</span> <span class="n">wide</span><span class="p">[</span><span class="n">wide</span><span class="p">[</span><span class="s2">&quot;arm&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_control</span><span class="p">][</span><span class="s2">&quot;delta&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">delta_resp</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">delta_nonresp</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+                <span class="n">did_rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                    <span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
+                    <span class="s2">&quot;n_resp&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">delta_resp</span><span class="p">),</span>
+                    <span class="s2">&quot;n_nonresp&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">delta_nonresp</span><span class="p">),</span>
+                    <span class="s2">&quot;delta_resp&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                    <span class="s2">&quot;delta_nonresp&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                    <span class="s2">&quot;beta_DiD&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                    <span class="s2">&quot;p_DiD&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                <span class="p">})</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># DiD estimate: (Post-Pre)_Resp - (Post-Pre)_NonResp</span>
+            <span class="n">beta_did</span> <span class="o">=</span> <span class="n">delta_resp</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">-</span> <span class="n">delta_nonresp</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+
+            <span class="c1"># Mann-Whitney U test on the deltas</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">stat</span><span class="p">,</span> <span class="n">p_val</span> <span class="o">=</span> <span class="n">mannwhitneyu</span><span class="p">(</span><span class="n">delta_resp</span><span class="p">,</span> <span class="n">delta_nonresp</span><span class="p">,</span> <span class="n">alternative</span><span class="o">=</span><span class="s2">&quot;two-sided&quot;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="n">p_val</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+            <span class="n">did_rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                <span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
+                <span class="s2">&quot;n_resp&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">delta_resp</span><span class="p">),</span>
+                <span class="s2">&quot;n_nonresp&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">delta_nonresp</span><span class="p">),</span>
+                <span class="s2">&quot;delta_resp&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">delta_resp</span><span class="o">.</span><span class="n">mean</span><span class="p">()),</span>
+                <span class="s2">&quot;delta_nonresp&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">delta_nonresp</span><span class="o">.</span><span class="n">mean</span><span class="p">()),</span>
+                <span class="s2">&quot;beta_DiD&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">beta_did</span><span class="p">),</span>
+                <span class="s2">&quot;p_DiD&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">p_val</span><span class="p">),</span>
+            <span class="p">})</span>
+
+        <span class="k">if</span> <span class="n">did_rows</span><span class="p">:</span>
+            <span class="n">did_results</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">did_rows</span><span class="p">)</span>
+
+            <span class="c1"># FDR correction</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="n">did_results</span><span class="p">[</span><span class="s2">&quot;p_DiD&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span>
+            <span class="n">did_results</span><span class="p">[</span><span class="s2">&quot;FDR_DiD&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+            <span class="k">if</span> <span class="n">mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">did_results</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="s2">&quot;FDR_DiD&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">multipletests</span><span class="p">(</span>
+                    <span class="n">did_results</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="s2">&quot;p_DiD&quot;</span><span class="p">],</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;fdr_bh&quot;</span>
+                <span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+
+            <span class="c1"># Sort by p-value</span>
+            <span class="n">did_results</span> <span class="o">=</span> <span class="n">did_results</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s2">&quot;p_DiD&quot;</span><span class="p">)</span>
+
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;DiD Results:&quot;</span><span class="p">)</span>
+            <span class="n">display_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;feature&quot;</span><span class="p">,</span> <span class="s2">&quot;n_resp&quot;</span><span class="p">,</span> <span class="s2">&quot;n_nonresp&quot;</span><span class="p">,</span> <span class="s2">&quot;delta_resp&quot;</span><span class="p">,</span> <span class="s2">&quot;delta_nonresp&quot;</span><span class="p">,</span> <span class="s2">&quot;beta_DiD&quot;</span><span class="p">,</span> <span class="s2">&quot;p_DiD&quot;</span><span class="p">,</span> <span class="s2">&quot;FDR_DiD&quot;</span><span class="p">]</span>
+            <span class="n">display</span><span class="p">(</span><span class="n">did_results</span><span class="p">[</span><span class="n">display_cols</span><span class="p">]</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">4</span><span class="p">))</span>
+
+            <span class="c1"># Interpretation</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Interpretation:&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  beta_DiD &gt; 0: Responders increase MORE (or decrease less) than Non-responders&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  beta_DiD &lt; 0: Non-responders increase MORE (or decrease less) than Responders&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Highlight significant</span>
+            <span class="n">sig</span> <span class="o">=</span> <span class="n">did_results</span><span class="p">[(</span><span class="n">did_results</span><span class="p">[</span><span class="s2">&quot;FDR_DiD&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">())</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">did_results</span><span class="p">[</span><span class="s2">&quot;FDR_DiD&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">FDR_ALPHA</span><span class="p">)]</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">sig</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Significant DiD effects (FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">):&quot;</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">sig</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+                    <span class="n">direction</span> <span class="o">=</span> <span class="s2">&quot;Responders ↑ more&quot;</span> <span class="k">if</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;beta_DiD&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;Non-responders ↑ more&quot;</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;feature&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">direction</span><span class="si">}</span><span class="s2"> (β=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;beta_DiD&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No signatures showed significant differential change (FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;DiD analysis skipped: insufficient visits or features&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+============================================================
+DIFFERENCE-IN-DIFFERENCES ANALYSIS
+============================================================
+
+Using participant-level deltas with Mann-Whitney U test
+(More robust for small samples than fixed-effects models)
+Using VALID_PAIRED_BY_RESPONSE (accounts for NaN signature scores)
+
+Paired participants with valid scores:
+  Responders: 3
+  Non-responders: 7
+  Total: 10
+
+Calculating DiD...
+
+DiD Results:
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>feature</th>
+      <th>n_resp</th>
+      <th>n_nonresp</th>
+      <th>delta_resp</th>
+      <th>delta_nonresp</th>
+      <th>beta_DiD</th>
+      <th>p_DiD</th>
+      <th>FDR_DiD</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>4</th>
+      <td>sig_Activation</td>
+      <td>3</td>
+      <td>7</td>
+      <td>-0.0805</td>
+      <td>0.1725</td>
+      <td>-0.2530</td>
+      <td>0.0167</td>
+      <td>0.0833</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>sig_IFN_Response</td>
+      <td>3</td>
+      <td>7</td>
+      <td>-0.4269</td>
+      <td>-0.0008</td>
+      <td>-0.4261</td>
+      <td>0.2667</td>
+      <td>0.6667</td>
+    </tr>
+    <tr>
+      <th>0</th>
+      <td>sig_Cytotoxicity</td>
+      <td>3</td>
+      <td>7</td>
+      <td>0.0373</td>
+      <td>0.1006</td>
+      <td>-0.0634</td>
+      <td>0.6667</td>
+      <td>0.8333</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>sig_Memory</td>
+      <td>3</td>
+      <td>7</td>
+      <td>-0.1986</td>
+      <td>0.0379</td>
+      <td>-0.2365</td>
+      <td>0.6667</td>
+      <td>0.8333</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>sig_Exhaustion</td>
+      <td>3</td>
+      <td>7</td>
+      <td>-0.0056</td>
+      <td>0.1602</td>
+      <td>-0.1659</td>
+      <td>0.8333</td>
+      <td>0.8333</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+Interpretation:
+  beta_DiD &gt; 0: Responders increase MORE (or decrease less) than Non-responders
+  beta_DiD &lt; 0: Non-responders increase MORE (or decrease less) than Responders
+
+Significant DiD effects (FDR &lt; 0.25):
+  sig_Activation: Non-responders ↑ more (β=-0.253)
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
@@ -1200,23 +2174,121 @@ DIFFERENCE-IN-DIFFERENCES ANALYSIS
 
 Using participant-level deltas with Mann-Whitney U test
 (More robust for small samples than fixed-effects models)
+
+Paired participants available:
+  Responders: 3
+  Non-responders: 7
+  Total: 10
+
+Calculating DiD...
+
+DiD Results:
 </pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>feature</th>
+      <th>n_resp</th>
+      <th>n_nonresp</th>
+      <th>delta_resp</th>
+      <th>delta_nonresp</th>
+      <th>beta_DiD</th>
+      <th>p_DiD</th>
+      <th>FDR_DiD</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>4</th>
+      <td>sig_Activation</td>
+      <td>3</td>
+      <td>7</td>
+      <td>-0.0805</td>
+      <td>0.1725</td>
+      <td>-0.2530</td>
+      <td>0.0167</td>
+      <td>0.0833</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>sig_IFN_Response</td>
+      <td>3</td>
+      <td>7</td>
+      <td>-0.4269</td>
+      <td>-0.0008</td>
+      <td>-0.4261</td>
+      <td>0.2667</td>
+      <td>0.6667</td>
+    </tr>
+    <tr>
+      <th>0</th>
+      <td>sig_Cytotoxicity</td>
+      <td>3</td>
+      <td>7</td>
+      <td>0.0373</td>
+      <td>0.1006</td>
+      <td>-0.0634</td>
+      <td>0.6667</td>
+      <td>0.8333</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>sig_Memory</td>
+      <td>3</td>
+      <td>7</td>
+      <td>-0.1986</td>
+      <td>0.0379</td>
+      <td>-0.2365</td>
+      <td>0.6667</td>
+      <td>0.8333</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>sig_Exhaustion</td>
+      <td>3</td>
+      <td>7</td>
+      <td>-0.0056</td>
+      <td>0.1602</td>
+      <td>-0.1659</td>
+      <td>0.8333</td>
+      <td>0.8333</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
-<span class="ansi-red-fg">NameError</span>                                 Traceback (most recent call last)
-Cell <span class="ansi-green-fg">In[9], line 10</span>
-<span class="ansi-green-intense-fg ansi-bold">      6</span> <span style="color: rgb(0,135,0)">print</span>(<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">(More robust for small samples than fixed-effects models)</span><span style="color: rgb(175,0,0)">&#34;</span>)
-<span class="ansi-green-intense-fg ansi-bold">      8</span> did_results <span style="color: rgb(98,98,98)">=</span> <span class="ansi-bold" style="color: rgb(0,135,0)">None</span>
-<span class="ansi-green-fg">---&gt; 10</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span class="ansi-yellow-bg">features_use</span> <span class="ansi-bold" style="color: rgb(175,0,255)">and</span> <span style="color: rgb(0,135,0)">len</span>(visits) <span style="color: rgb(98,98,98)">==</span> <span style="color: rgb(98,98,98)">2</span>:
-<span class="ansi-green-intense-fg ansi-bold">     11</span>     total_paired <span style="color: rgb(98,98,98)">=</span> paired_by_response<span style="color: rgb(98,98,98)">.</span>get(<span style="color: rgb(175,0,0)">&#39;</span><span style="color: rgb(175,0,0)">Responder</span><span style="color: rgb(175,0,0)">&#39;</span>, <span style="color: rgb(98,98,98)">0</span>) <span style="color: rgb(98,98,98)">+</span> paired_by_response<span style="color: rgb(98,98,98)">.</span>get(<span style="color: rgb(175,0,0)">&#39;</span><span style="color: rgb(175,0,0)">Non-responder</span><span style="color: rgb(175,0,0)">&#39;</span>, <span style="color: rgb(98,98,98)">0</span>)
-<span class="ansi-green-intense-fg ansi-bold">     13</span>     <span style="color: rgb(0,135,0)">print</span>(<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">&#34;</span>)
 
-<span class="ansi-red-fg">NameError</span>: name &#39;features_use&#39; is not defined
+Interpretation:
+  beta_DiD &gt; 0: Responders increase MORE (or decrease less) than Non-responders
+  beta_DiD &lt; 0: Non-responders increase MORE (or decrease less) than Responders
+
+Significant DiD effects (FDR &lt; 0.25):
+  sig_Activation: Non-responders ↑ more (β=-0.253)
 </pre></div></div>
 </div>
 </section>
@@ -1225,7 +2297,7 @@ Cell <span class="ansi-green-fg">In[9], line 10</span>
 <section id="8.1-Signature-Distributions-by-Response-and-Visit">
 <h3>8.1 Signature Distributions by Response and Visit<a class="headerlink" href="#8.1-Signature-Distributions-by-Response-and-Visit" title="Link to this heading"></a></h3>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Visualize signature distributions</span>
@@ -1276,24 +2348,15 @@ Cell <span class="ansi-green-fg">In[9], line 10</span>
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<div class="highlight"><pre>
-<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
-<span class="ansi-red-fg">NameError</span>                                 Traceback (most recent call last)
-Cell <span class="ansi-green-fg">In[10], line 2</span>
-<span class="ansi-green-intense-fg ansi-bold">      1</span> <span style="color: rgb(95,135,135)"># Visualize signature distributions</span>
-<span class="ansi-green-fg">----&gt; 2</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span class="ansi-yellow-bg">features_use</span>:
-<span class="ansi-green-intense-fg ansi-bold">      3</span>     n_features <span style="color: rgb(98,98,98)">=</span> <span style="color: rgb(0,135,0)">len</span>(features_use)
-<span class="ansi-green-intense-fg ansi-bold">      4</span>     n_cols <span style="color: rgb(98,98,98)">=</span> <span style="color: rgb(0,135,0)">min</span>(<span style="color: rgb(98,98,98)">3</span>, n_features)
-
-<span class="ansi-red-fg">NameError</span>: name &#39;features_use&#39; is not defined
-</pre></div></div>
+<img alt="../_images/examples_example_immunotherapy_sade_feldman_22_0.png" src="../_images/examples_example_immunotherapy_sade_feldman_22_0.png" />
+</div>
 </div>
 </section>
 <section id="8.2-Trial-Interaction-Plot">
 <h3>8.2 Trial Interaction Plot<a class="headerlink" href="#8.2-Trial-Interaction-Plot" title="Link to this heading"></a></h3>
 <p>Shows mean trajectories for each response group from Pre to Post.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Interaction plots for top features</span>
@@ -1346,33 +2409,36 @@ Cell <span class="ansi-green-fg">In[10], line 2</span>
 <br/></pre></div>
 </div>
 </div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/examples_example_immunotherapy_sade_feldman_24_0.png" src="../_images/examples_example_immunotherapy_sade_feldman_24_0.png" />
+</div>
+</div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<div class="highlight"><pre>
-<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
-<span class="ansi-red-fg">NameError</span>                                 Traceback (most recent call last)
-Cell <span class="ansi-green-fg">In[11], line 2</span>
-<span class="ansi-green-intense-fg ansi-bold">      1</span> <span style="color: rgb(95,135,135)"># Interaction plots for top features</span>
-<span class="ansi-green-fg">----&gt; 2</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span class="ansi-yellow-bg">features_use</span> <span class="ansi-bold" style="color: rgb(175,0,255)">and</span> <span style="color: rgb(0,135,0)">len</span>(visits) <span style="color: rgb(98,98,98)">==</span> <span style="color: rgb(98,98,98)">2</span>:
-<span class="ansi-green-intense-fg ansi-bold">      3</span>     n_plots <span style="color: rgb(98,98,98)">=</span> <span style="color: rgb(0,135,0)">min</span>(<span style="color: rgb(0,135,0)">len</span>(features_use), <span style="color: rgb(98,98,98)">4</span>)
-<span class="ansi-green-intense-fg ansi-bold">      4</span>     fig, axes <span style="color: rgb(98,98,98)">=</span> plt<span style="color: rgb(98,98,98)">.</span>subplots(<span style="color: rgb(98,98,98)">1</span>, n_plots, figsize<span style="color: rgb(98,98,98)">=</span>(<span style="color: rgb(98,98,98)">4</span><span style="color: rgb(98,98,98)">*</span>n_plots, <span style="color: rgb(98,98,98)">4</span>))
-
-<span class="ansi-red-fg">NameError</span>: name &#39;features_use&#39; is not defined
-</pre></div></div>
+<img alt="../_images/examples_example_immunotherapy_sade_feldman_24_1.png" src="../_images/examples_example_immunotherapy_sade_feldman_24_1.png" />
+</div>
 </div>
 </section>
 </section>
 <section id="9.-Summary-and-Conclusions">
 <h2>9. Summary and Conclusions<a class="headerlink" href="#9.-Summary-and-Conclusions" title="Link to this heading"></a></h2>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;ANALYSIS SUMMARY&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+
+<span class="c1"># Use validated paired counts for summary</span>
+<span class="n">n_resp_valid</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">VALID_PAIRED_BY_RESPONSE</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">arm_treated</span><span class="p">,</span> <span class="nb">set</span><span class="p">()))</span>
+<span class="n">n_nonresp_valid</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">VALID_PAIRED_BY_RESPONSE</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">arm_control</span><span class="p">,</span> <span class="nb">set</span><span class="p">()))</span>
+<span class="n">n_valid_total</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">VALID_PAIRED_ALL</span><span class="p">)</span>
 
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
 <span class="s2">Dataset: Sade-Feldman et al. (Cell 2018) - Melanoma Immunotherapy</span>
@@ -1381,10 +2447,10 @@ Cell <span class="ansi-green-fg">In[11], line 2</span>
 <span class="s2">  - Response groups: Responder vs Non-responder (participant-level harmonized)</span>
 <span class="s2">  - Time points: Pre-treatment, Post-treatment (on therapy)</span>
 
-<span class="s2">Longitudinal pairing:</span>
-<span class="s2">  - Paired participants: </span><span class="si">{</span><span class="n">n_paired</span><span class="si">}</span>
-<span class="s2">  - Paired Responders: </span><span class="si">{</span><span class="n">paired_by_response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Responder&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">}</span>
-<span class="s2">  - Paired Non-responders: </span><span class="si">{</span><span class="n">paired_by_response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Non-responder&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">}</span>
+<span class="s2">Longitudinal pairing (validated for valid signature scores):</span>
+<span class="s2">  - Paired participants: </span><span class="si">{</span><span class="n">n_valid_total</span><span class="si">}</span>
+<span class="s2">  - Paired Responders: </span><span class="si">{</span><span class="n">n_resp_valid</span><span class="si">}</span>
+<span class="s2">  - Paired Non-responders: </span><span class="si">{</span><span class="n">n_nonresp_valid</span><span class="si">}</span>
 
 <span class="s2">Analysis approach:</span>
 <span class="s2">  1. Cross-sectional: Responder vs Non-responder at each timepoint (OLS)</span>
@@ -1444,10 +2510,10 @@ Cell <span class="ansi-green-fg">In[11], line 2</span>
 
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
-<br/></pre></div>
+</pre></div>
 </div>
 </div>
-<div class="nboutput docutils container">
+<div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
@@ -1455,44 +2521,47 @@ Cell <span class="ansi-green-fg">In[11], line 2</span>
 ============================================================
 ANALYSIS SUMMARY
 ============================================================
-</pre></div></div>
-</div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
-<span class="ansi-red-fg">NameError</span>                                 Traceback (most recent call last)
-Cell <span class="ansi-green-fg">In[12], line 7</span>
-<span class="ansi-green-intense-fg ansi-bold">      2</span> <span style="color: rgb(0,135,0)">print</span>(<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">ANALYSIS SUMMARY</span><span style="color: rgb(175,0,0)">&#34;</span>)
-<span class="ansi-green-intense-fg ansi-bold">      3</span> <span style="color: rgb(0,135,0)">print</span>(<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">=</span><span style="color: rgb(175,0,0)">&#34;</span> <span style="color: rgb(98,98,98)">*</span> <span style="color: rgb(98,98,98)">60</span>)
-<span class="ansi-green-intense-fg ansi-bold">      5</span> <span style="color: rgb(0,135,0)">print</span>(<span style="color: rgb(175,0,0)">f</span><span style="color: rgb(175,0,0)">&#34;&#34;&#34;</span>
-<span class="ansi-green-intense-fg ansi-bold">      6</span> <span style="color: rgb(175,0,0)">Dataset: Sade-Feldman et al. (Cell 2018) - Melanoma Immunotherapy</span>
-<span class="ansi-green-fg">----&gt; 7</span> <span style="color: rgb(175,0,0)">  - Total cells: </span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span><span class="ansi-yellow-bg">adata</span><span style="color: rgb(98,98,98)">.</span>n_obs<span class="ansi-bold" style="color: rgb(175,95,135)">:</span><span style="color: rgb(175,0,0)">,</span><span class="ansi-bold" style="color: rgb(175,95,135)">}</span>
-<span class="ansi-green-intense-fg ansi-bold">      8</span> <span style="color: rgb(175,0,0)">  - Participants: </span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span>adata<span style="color: rgb(98,98,98)">.</span>obs[<span style="color: rgb(175,0,0)">&#39;</span><span style="color: rgb(175,0,0)">participant_id</span><span style="color: rgb(175,0,0)">&#39;</span>]<span style="color: rgb(98,98,98)">.</span>nunique()<span class="ansi-bold" style="color: rgb(175,95,135)">}</span>
-<span class="ansi-green-intense-fg ansi-bold">      9</span> <span style="color: rgb(175,0,0)">  - Response groups: Responder vs Non-responder (participant-level harmonized)</span>
-<span class="ansi-green-intense-fg ansi-bold">     10</span> <span style="color: rgb(175,0,0)">  - Time points: Pre-treatment, Post-treatment (on therapy)</span>
-<span class="ansi-green-intense-fg ansi-bold">     11</span>
-<span class="ansi-green-intense-fg ansi-bold">     12</span> <span style="color: rgb(175,0,0)">Longitudinal pairing:</span>
-<span class="ansi-green-intense-fg ansi-bold">     13</span> <span style="color: rgb(175,0,0)">  - Paired participants: </span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span>n_paired<span class="ansi-bold" style="color: rgb(175,95,135)">}</span>
-<span class="ansi-green-intense-fg ansi-bold">     14</span> <span style="color: rgb(175,0,0)">  - Paired Responders: </span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span>paired_by_response<span style="color: rgb(98,98,98)">.</span>get(<span style="color: rgb(175,0,0)">&#39;</span><span style="color: rgb(175,0,0)">Responder</span><span style="color: rgb(175,0,0)">&#39;</span>,<span style="color: rgb(188,188,188)"> </span><span style="color: rgb(98,98,98)">0</span>)<span class="ansi-bold" style="color: rgb(175,95,135)">}</span>
-<span class="ansi-green-intense-fg ansi-bold">     15</span> <span style="color: rgb(175,0,0)">  - Paired Non-responders: </span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span>paired_by_response<span style="color: rgb(98,98,98)">.</span>get(<span style="color: rgb(175,0,0)">&#39;</span><span style="color: rgb(175,0,0)">Non-responder</span><span style="color: rgb(175,0,0)">&#39;</span>,<span style="color: rgb(188,188,188)"> </span><span style="color: rgb(98,98,98)">0</span>)<span class="ansi-bold" style="color: rgb(175,95,135)">}</span>
-<span class="ansi-green-intense-fg ansi-bold">     16</span>
-<span class="ansi-green-intense-fg ansi-bold">     17</span> <span style="color: rgb(175,0,0)">Analysis approach:</span>
-<span class="ansi-green-intense-fg ansi-bold">     18</span> <span style="color: rgb(175,0,0)">  1. Cross-sectional: Responder vs Non-responder at each timepoint (OLS)</span>
-<span class="ansi-green-intense-fg ansi-bold">     19</span> <span style="color: rgb(175,0,0)">  2. Within-arm longitudinal: Pre→Post changes (Wilcoxon signed-rank)</span>
-<span class="ansi-green-intense-fg ansi-bold">     20</span> <span style="color: rgb(175,0,0)">  3. Difference-in-Differences: Differential changes (Mann-Whitney U on deltas)</span>
-<span class="ansi-green-intense-fg ansi-bold">     21</span>
-<span class="ansi-green-intense-fg ansi-bold">     22</span> <span style="color: rgb(175,0,0)">Statistical methods:</span>
-<span class="ansi-green-intense-fg ansi-bold">     23</span> <span style="color: rgb(175,0,0)">  - Participant-level aggregation (avoids pseudoreplication)</span>
-<span class="ansi-green-intense-fg ansi-bold">     24</span> <span style="color: rgb(175,0,0)">  - FDR correction for multiple testing (alpha=</span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span>FDR_ALPHA<span class="ansi-bold" style="color: rgb(175,95,135)">}</span><span style="color: rgb(175,0,0)">)</span>
-<span class="ansi-green-intense-fg ansi-bold">     25</span> <span style="color: rgb(175,0,0)">  - Non-parametric tests for robustness with small samples</span>
-<span class="ansi-green-intense-fg ansi-bold">     26</span> <span style="color: rgb(175,0,0)">&#34;&#34;&#34;</span>)
-<span class="ansi-green-intense-fg ansi-bold">     28</span> <span style="color: rgb(95,135,135)"># Summary of key findings</span>
-<span class="ansi-green-intense-fg ansi-bold">     29</span> <span style="color: rgb(0,135,0)">print</span>(<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">&#34;</span>)
 
-<span class="ansi-red-fg">NameError</span>: name &#39;adata&#39; is not defined
+Dataset: Sade-Feldman et al. (Cell 2018) - Melanoma Immunotherapy
+  - Total cells: 13,183
+  - Participants: 25
+  - Response groups: Responder vs Non-responder (participant-level harmonized)
+  - Time points: Pre-treatment, Post-treatment (on therapy)
+
+Longitudinal pairing (validated for valid signature scores):
+  - Paired participants: 10
+  - Paired Responders: 3
+  - Paired Non-responders: 7
+
+Analysis approach:
+  1. Cross-sectional: Responder vs Non-responder at each timepoint (OLS)
+  2. Within-arm longitudinal: Pre→Post changes (Wilcoxon signed-rank)
+  3. Difference-in-Differences: Differential changes (Mann-Whitney U on deltas)
+
+Statistical methods:
+  - Participant-level aggregation (avoids pseudoreplication)
+  - FDR correction for multiple testing (alpha=0.25)
+  - Non-parametric tests for robustness with small samples
+
+
+============================================================
+KEY FINDINGS
+============================================================
+
+Cross-sectional (FDR &lt; 0.25):
+  sig_Cytotoxicity at Pre: ↑ Non-responder (p=0.014)
+  sig_Exhaustion at Pre: ↑ Non-responder (p=0.095)
+  sig_Memory at Pre: ↑ Responder (p=0.008)
+  sig_IFN_Response at Post: ↑ Non-responder (p=0.040)
+  sig_Activation at Post: ↑ Non-responder (p=0.076)
+
+Within-arm changes (FDR &lt; 0.25):
+  sig_Activation in Non-responder: ↑ (delta=0.173)
+
+Differential changes (DiD, FDR &lt; 0.25):
+  sig_Activation: Non-responders ↑ more (β=-0.253)
+
+============================================================
 </pre></div></div>
 </div>
 </section>
@@ -1503,7 +2572,7 @@ Cell <span class="ansi-green-fg">In[12], line 7</span>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="example_covid19_stephenson.html" class="btn btn-neutral float-left" title="Immune Profiling of COVID-19 Severity: A Cross-Sectional Analysis" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="example_vaccine_immport.html" class="btn btn-neutral float-right" title="Example: Vaccine Response Analysis (GSE171964)" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="example_vaccine_immport.html" class="btn btn-neutral float-right" title="Vaccine Response Analysis" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

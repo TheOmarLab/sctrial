@@ -78,6 +78,13 @@
 <li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api.html">API Reference</a></li>
 </ul>
+<p class="caption" role="heading"><span class="caption-text">User Guides:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../best_practices.html">Best Practices Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../troubleshooting.html">Troubleshooting Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">Frequently Asked Questions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../performance.html">Performance Guide</a></li>
+</ul>
 
         </div>
       </div>
@@ -273,11 +280,13 @@
 </section>
 <section id="gsea-heatmaps">
 <h3>GSEA Heatmaps<a class="headerlink" href="#gsea-heatmaps" title="Link to this heading"></a></h3>
-<p>Visualize NES values for multiple terms across multiple cell types.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Heatmap of NES for several terms</span>
+<p>Visualize NES values for top terms across multiple cell types.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Heatmap of top significant pathways across cell types</span>
+<span class="c1"># The function automatically selects pathways with FDR &lt; fdr_thresh</span>
 <span class="n">st</span><span class="o">.</span><span class="n">plot_gsea_heatmap</span><span class="p">(</span>
     <span class="n">merged_res</span><span class="p">,</span>
-    <span class="n">terms</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;OXPHOS&quot;</span><span class="p">,</span> <span class="s2">&quot;IFN_GAMMA&quot;</span><span class="p">,</span> <span class="s2">&quot;T_CELL_ACTIVATION&quot;</span><span class="p">],</span>
+    <span class="n">fdr_thresh</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span>  <span class="c1"># Include pathways significant in at least one pool</span>
+    <span class="n">top_n</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>         <span class="c1"># Show top 20 pathways by minimum FDR</span>
     <span class="n">pool_col</span><span class="o">=</span><span class="s2">&quot;celltype&quot;</span>
 <span class="p">)</span>
 </pre></div>

@@ -52,9 +52,10 @@
 <li class="toctree-l3"><a class="reference internal" href="#setup-and-data-generation">1. Setup and Data Generation</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#defining-the-trial-design">2. Defining the Trial Design</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#preprocessing-and-scoring">3. Preprocessing and Scoring</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#difference-in-differences-did-analysis">4. Difference-in-Differences (DiD) Analysis</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#cell-type-abundance-analysis">5. Cell-Type Abundance Analysis</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#visualization">6. Visualization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#verifying-paired-participants">4. Verifying Paired Participants</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#difference-in-differences-did-analysis">5. Difference-in-Differences (DiD) Analysis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#cell-type-abundance-analysis">6. Cell-Type Abundance Analysis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#visualization">7. Visualization</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#next-steps">Next Steps</a></li>
 </ul>
 </li>
@@ -64,6 +65,13 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api.html">API Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">User Guides:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../best_practices.html">Best Practices Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../troubleshooting.html">Troubleshooting Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">Frequently Asked Questions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../performance.html">Performance Guide</a></li>
 </ul>
 
         </div>
@@ -177,13 +185,41 @@
 </pre></div>
 </div>
 </section>
+<section id="verifying-paired-participants">
+<h2>4. Verifying Paired Participants<a class="headerlink" href="#verifying-paired-participants" title="Link to this heading"></a></h2>
+<p>Before running DiD analysis, it’s crucial to verify that participants have valid data at both visits. Not all participants may have cells at both timepoints, and some may have NaN values for certain features.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Check which participants have data at both visits</span>
+<span class="n">visits</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">)</span>
+<span class="n">participant_visits</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">obs</span>
+    <span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">&quot;participant_id&quot;</span><span class="p">,</span> <span class="s2">&quot;visit&quot;</span><span class="p">])</span>
+    <span class="o">.</span><span class="n">size</span><span class="p">()</span>
+    <span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;n_cells&quot;</span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="c1"># Pivot to see which participants have both visits</span>
+<span class="n">paired_check</span> <span class="o">=</span> <span class="n">participant_visits</span><span class="o">.</span><span class="n">pivot</span><span class="p">(</span>
+    <span class="n">index</span><span class="o">=</span><span class="s2">&quot;participant_id&quot;</span><span class="p">,</span>
+    <span class="n">columns</span><span class="o">=</span><span class="s2">&quot;visit&quot;</span><span class="p">,</span>
+    <span class="n">values</span><span class="o">=</span><span class="s2">&quot;n_cells&quot;</span>
+<span class="p">)</span>
+<span class="n">paired_check</span> <span class="o">=</span> <span class="n">paired_check</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Paired participants: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">paired_check</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">paired_check</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>This verification is especially important when working with module scores that may have NaN values (e.g., if the gene set has no overlap with the data).</p>
+</section>
 <section id="difference-in-differences-did-analysis">
-<h2>4. Difference-in-Differences (DiD) Analysis<a class="headerlink" href="#difference-in-differences-did-analysis" title="Link to this heading"></a></h2>
+<h2>5. Difference-in-Differences (DiD) Analysis<a class="headerlink" href="#difference-in-differences-did-analysis" title="Link to this heading"></a></h2>
 <p>The core of <cite>sctrial</cite> is the Difference-in-Differences (DiD) model. It tests whether the change over time (baseline to follow-up) differs between the treatment and control arms.</p>
-<p>Statistical highlights:
-- <strong>Participant Fixed Effects</strong>: By including <cite>C(participant_id)</cite>, we control for baseline heterogeneity between individuals.
-- <strong>Cluster-Robust Standard Errors</strong>: We cluster by participant to account for the non-independence of cells from the same person.
-- <strong>Covariate Support</strong>: You can include additional variables (like <cite>age</cite> or <cite>batch</cite>) to control for potential confounders.</p>
+<p>Statistical highlights:</p>
+<ul class="simple">
+<li><p><strong>Participant Fixed Effects</strong>: By including <cite>C(participant_id)</cite>, we control for baseline heterogeneity between individuals.</p></li>
+<li><p><strong>Cluster-Robust Standard Errors</strong>: We cluster by participant to account for the non-independence of cells from the same person.</p></li>
+<li><p><strong>Covariate Support</strong>: You can include additional variables (like <cite>age</cite> or <cite>batch</cite>) to control for potential confounders.</p></li>
+<li><p><strong>Automatic Pairing</strong>: The function automatically filters to paired participants only.</p></li>
+</ul>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Run DiD on the module score</span>
 <span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">,</span>
@@ -202,7 +238,7 @@
 </div>
 </section>
 <section id="cell-type-abundance-analysis">
-<h2>5. Cell-Type Abundance Analysis<a class="headerlink" href="#cell-type-abundance-analysis" title="Link to this heading"></a></h2>
+<h2>6. Cell-Type Abundance Analysis<a class="headerlink" href="#cell-type-abundance-analysis" title="Link to this heading"></a></h2>
 <p>Treatment effects can also manifest as changes in cell-type composition. <cite>abundance_did</cite> uses the same DiD logic but operates on cell-type proportions (e.g., via <cite>arcsin-sqrt</cite> transform).</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">ab_res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">abundance_did</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">,</span>
@@ -215,7 +251,7 @@
 </div>
 </section>
 <section id="visualization">
-<h2>6. Visualization<a class="headerlink" href="#visualization" title="Link to this heading"></a></h2>
+<h2>7. Visualization<a class="headerlink" href="#visualization" title="Link to this heading"></a></h2>
 <p><cite>sctrial</cite> provides plotting helpers to visualize these interactions.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
 

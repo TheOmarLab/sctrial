@@ -48,6 +48,13 @@
 <li class="toctree-l1"><a class="reference internal" href="../../examples/index.html">Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../api.html">API Reference</a></li>
 </ul>
+<p class="caption" role="heading"><span class="caption-text">User Guides:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../best_practices.html">Best Practices Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../troubleshooting.html">Troubleshooting Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq.html">Frequently Asked Questions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../performance.html">Performance Guide</a></li>
+</ul>
 
         </div>
       </div>
@@ -76,8 +83,8 @@
   <h1>Source code for sctrial.design</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sequence</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Tuple</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">anndata</span><span class="w"> </span><span class="kn">import</span> <span class="n">AnnData</span>
@@ -89,8 +96,8 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">TrialDesign</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Describe the trial-design columns and metadata labels in `adata.obs`.</span>
 
-<span class="sd">    The `TrialDesign` object centralizes the mapping of your study design to </span>
-<span class="sd">    the AnnData object. It is used by almost all statistical and plotting </span>
+<span class="sd">    The `TrialDesign` object centralizes the mapping of your study design to</span>
+<span class="sd">    the AnnData object. It is used by almost all statistical and plotting</span>
 <span class="sd">    functions in `sctrial`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
@@ -109,25 +116,25 @@
     <span class="n">arm_control</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Control&quot;</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;The label in `arm_col` representing the control/placebo group.&quot;&quot;&quot;</span>
 
-    <span class="n">celltype_col</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;celltype&quot;</span>
+    <span class="n">celltype_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="s2">&quot;celltype&quot;</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Optional name of the column containing cell-type annotations.&quot;&quot;&quot;</span>
 
-    <span class="n">crossover_col</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">crossover_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Optional name of the column containing boolean-like indicators for crossover cells.&quot;&quot;&quot;</span>
 
-    <span class="n">baseline_visit</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">baseline_visit</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Optional default baseline visit label (e.g., &#39;Baseline&#39;, &#39;V1&#39;).&quot;&quot;&quot;</span>
 
-    <span class="n">followup_visit</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">followup_visit</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Optional default follow-up visit label (e.g., &#39;Follow-up&#39;, &#39;V2&#39;).&quot;&quot;&quot;</span>
 
 <div class="viewcode-block" id="TrialDesign.primary_visits">
 <a class="viewcode-back" href="../../api.html#sctrial.design.TrialDesign.primary_visits">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">primary_visits</span><span class="p">(</span>
             <span class="bp">self</span><span class="p">,</span>
-            <span class="n">baseline</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-            <span class="n">followup</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+            <span class="n">baseline</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">followup</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
         <span class="n">b</span> <span class="o">=</span> <span class="n">baseline</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">baseline_visit</span>
         <span class="n">f</span> <span class="o">=</span> <span class="n">followup</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">followup_visit</span>
         <span class="k">if</span> <span class="n">b</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">f</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>

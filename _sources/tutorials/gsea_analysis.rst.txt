@@ -28,7 +28,7 @@ The `run_gsea_did` function automates this process. It performs the following st
    
    # Run GSEA using a standard library (e.g., KEGG)
    # 'rank_by' can be:
-   # - "signed_confidence": sign(beta) * -log10(p). Highlights genes that are both 
+   # - "signed_confidence": sign(beta) * -log10(p). Highlights genes that are both
    #   highly significant AND have a large effect.
    # - "beta": uses raw beta_DiD values.
    res_gsea = st.run_gsea_did(
@@ -42,9 +42,10 @@ The `run_gsea_did` function automates this process. It performs the following st
        min_size=15,
        max_size=500
    )
-   
-   # The result is a gseapy Prerank object
-   print(res_gsea.res2d.head())
+
+   # By default, run_gsea_did returns a DataFrame (res2d) directly
+   # Use return_obj=True to get the full gseapy Prerank object instead
+   print(res_gsea.head())
 
 3. Interpreting Results
 -----------------------
@@ -53,14 +54,20 @@ The rankings reflect the "Trial Effect". A high positive Normalized Enrichment S
 
 .. code-block:: python
 
-   # View top enriched pathways
-   top_pathways = res_gsea.res2d.sort_values("NES", ascending=False).head(10)
+   # View top enriched pathways (res_gsea is already a DataFrame)
+   top_pathways = res_gsea.sort_values("NES", ascending=False).head(10)
    print(top_pathways)
+
+   # To access the full gseapy object for plotting, use return_obj=True:
+   gsea_obj = st.run_gsea_did(
+       adata, gene_sets="KEGG_2021_Human", design=design,
+       visits=("V1", "V2"), return_obj=True
+   )
 
    # Plot the enrichment plot for the top pathway
    from gseapy import gseaplot
-   terms = res_gsea.res2d.index
-   gseaplot(rank_metric=res_gsea.ranking, term=terms[0], **res_gsea.results[terms[0]])
+   terms = gsea_obj.res2d.index
+   gseaplot(rank_metric=gsea_obj.ranking, term=terms[0], **gsea_obj.results[terms[0]])
    plt.show()
 
 4. Custom Gene Sets

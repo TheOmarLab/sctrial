@@ -197,14 +197,16 @@ Visualize GSEA Normalized Enrichment Scores (NES) for a specific term across mul
 GSEA Heatmaps
 ~~~~~~~~~~~~~
 
-Visualize NES values for multiple terms across multiple cell types.
+Visualize NES values for top terms across multiple cell types.
 
 .. code-block:: python
 
-   # Heatmap of NES for several terms
+   # Heatmap of top significant pathways across cell types
+   # The function automatically selects pathways with FDR < fdr_thresh
    st.plot_gsea_heatmap(
-       merged_res, 
-       terms=["OXPHOS", "IFN_GAMMA", "T_CELL_ACTIVATION"],
+       merged_res,
+       fdr_thresh=0.25,  # Include pathways significant in at least one pool
+       top_n=20,         # Show top 20 pathways by minimum FDR
        pool_col="celltype"
    )
 

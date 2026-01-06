@@ -48,6 +48,13 @@
 <li class="toctree-l1"><a class="reference internal" href="examples/index.html">Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
 </ul>
+<p class="caption" role="heading"><span class="caption-text">User Guides:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="best_practices.html">Best Practices Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="faq.html">Frequently Asked Questions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="performance.html">Performance Guide</a></li>
+</ul>
 
         </div>
       </div>
@@ -83,6 +90,7 @@
  | <a href="#E"><strong>E</strong></a>
  | <a href="#F"><strong>F</strong></a>
  | <a href="#I"><strong>I</strong></a>
+ | <a href="#L"><strong>L</strong></a>
  | <a href="#M"><strong>M</strong></a>
  | <a href="#P"><strong>P</strong></a>
  | <a href="#R"><strong>R</strong></a>
@@ -127,10 +135,14 @@
 <h2 id="C">C</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api.html#sctrial.datasets.categorize_celltype">categorize_celltype() (in module sctrial.datasets)</a>
+</li>
       <li><a href="api.html#sctrial.design.TrialDesign.celltype_col">celltype_col (sctrial.design.TrialDesign attribute)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api.html#sctrial.datasets.count_paired">count_paired() (in module sctrial.datasets)</a>
+</li>
       <li><a href="api.html#sctrial.design.TrialDesign.crossover_col">crossover_col (sctrial.design.TrialDesign attribute)</a>
 </li>
   </ul></td>
@@ -155,6 +167,10 @@
 <h2 id="E">E</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api.html#sctrial.datasets.ensure_fdr">ensure_fdr() (in module sctrial.datasets)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api.html#sctrial.utils.ensure_unique_index">ensure_unique_index() (in module sctrial.utils)</a>
 </li>
   </ul></td>
@@ -176,6 +192,20 @@
   </ul></td>
 </tr></table>
 
+<h2 id="L">L</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api.html#sctrial.datasets.load_sade_feldman">load_sade_feldman() (in module sctrial.datasets)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api.html#sctrial.datasets.load_stephenson_data">load_stephenson_data() (in module sctrial.datasets)</a>
+</li>
+      <li><a href="api.html#sctrial.datasets.load_vaccine_gse171964">load_vaccine_gse171964() (in module sctrial.datasets)</a>
+</li>
+  </ul></td>
+</tr></table>
+
 <h2 id="M">M</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
@@ -183,6 +213,10 @@
     module
 
       <ul>
+        <li><a href="api.html#module-sctrial.adata_tools">sctrial.adata_tools</a>
+</li>
+        <li><a href="api.html#module-sctrial.datasets">sctrial.datasets</a>
+</li>
         <li><a href="api.html#module-sctrial.plotting">sctrial.plotting</a>
 </li>
         <li><a href="api.html#module-sctrial.preprocessing">sctrial.preprocessing</a>
@@ -196,6 +230,8 @@
         <li><a href="api.html#module-sctrial.stats.did">sctrial.stats.did</a>
 </li>
         <li><a href="api.html#module-sctrial.stats.gsea">sctrial.stats.gsea</a>
+</li>
+        <li><a href="api.html#module-sctrial.stats.pseudobulk">sctrial.stats.pseudobulk</a>
 </li>
         <li><a href="api.html#module-sctrial.stats.summary">sctrial.stats.summary</a>
 </li>
@@ -220,12 +256,12 @@
 </li>
       <li><a href="api.html#sctrial.plotting.plot_gsea_heatmap">plot_gsea_heatmap() (in module sctrial.plotting)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api.html#sctrial.plotting.plot_gsea_radar">plot_gsea_radar() (in module sctrial.plotting)</a>
 </li>
       <li><a href="api.html#sctrial.plotting.plot_trial_dotplot">plot_trial_dotplot() (in module sctrial.plotting)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api.html#sctrial.plotting.plot_trial_interaction">plot_trial_interaction() (in module sctrial.plotting)</a>
 </li>
       <li><a href="api.html#sctrial.plotting.plot_trial_umap">plot_trial_umap() (in module sctrial.plotting)</a>
@@ -235,6 +271,12 @@
       <li><a href="api.html#sctrial.plotting.plot_within_arm_comparison">plot_within_arm_comparison() (in module sctrial.plotting)</a>
 </li>
       <li><a href="api.html#sctrial.design.TrialDesign.primary_visits">primary_visits() (sctrial.design.TrialDesign method)</a>
+</li>
+      <li><a href="api.html#sctrial.adata_tools.profile_features">profile_features() (in module sctrial.adata_tools)</a>
+</li>
+      <li><a href="api.html#sctrial.stats.pseudobulk.pseudobulk_expression">pseudobulk_expression() (in module sctrial.stats.pseudobulk)</a>
+</li>
+      <li><a href="api.html#sctrial.stats.pseudobulk.pseudobulk_within_arm">pseudobulk_within_arm() (in module sctrial.stats.pseudobulk)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -260,6 +302,20 @@
 </li>
       <li><a href="api.html#sctrial.scoring.score_gene_sets">score_gene_sets() (in module sctrial.scoring)</a>
 </li>
+      <li>
+    sctrial.adata_tools
+
+      <ul>
+        <li><a href="api.html#module-sctrial.adata_tools">module</a>
+</li>
+      </ul></li>
+      <li>
+    sctrial.datasets
+
+      <ul>
+        <li><a href="api.html#module-sctrial.datasets">module</a>
+</li>
+      </ul></li>
       <li>
     sctrial.plotting
 
@@ -312,6 +368,13 @@
 </li>
       </ul></li>
       <li>
+    sctrial.stats.pseudobulk
+
+      <ul>
+        <li><a href="api.html#module-sctrial.stats.pseudobulk">module</a>
+</li>
+      </ul></li>
+      <li>
     sctrial.stats.summary
 
       <ul>
@@ -326,6 +389,10 @@
 </li>
       </ul></li>
       <li><a href="api.html#sctrial.plotting.signed_logp">signed_logp() (in module sctrial.plotting)</a>
+</li>
+      <li><a href="api.html#sctrial.adata_tools.subset_cells">subset_cells() (in module sctrial.adata_tools)</a>
+</li>
+      <li><a href="api.html#sctrial.adata_tools.subset_primary">subset_primary() (in module sctrial.adata_tools)</a>
 </li>
       <li><a href="api.html#sctrial.stats.summary.summarize_did_results">summarize_did_results() (in module sctrial.stats.summary)</a>
 </li>
@@ -347,6 +414,8 @@
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api.html#sctrial.datasets.verify_paired_participants">verify_paired_participants() (in module sctrial.datasets)</a>
+</li>
       <li><a href="api.html#sctrial.design.TrialDesign.visit_col">visit_col (sctrial.design.TrialDesign attribute)</a>
 </li>
   </ul></td>

@@ -19,6 +19,12 @@ Scoring
    :members:
    :undoc-members:
 
+AnnData Tools
+-------------
+.. automodule:: sctrial.adata_tools
+   :members:
+   :undoc-members:
+
 Statistics
 ----------
 .. automodule:: sctrial.stats.did
@@ -41,6 +47,10 @@ Statistics
    :members:
    :undoc-members:
 
+.. automodule:: sctrial.stats.pseudobulk
+   :members:
+   :undoc-members:
+
 Plotting
 --------
 .. automodule:: sctrial.plotting
@@ -50,5 +60,11 @@ Plotting
 Utilities
 ---------
 .. automodule:: sctrial.utils
+   :members:
+   :undoc-members:
+
+Datasets and Example Helpers
+----------------------------
+.. automodule:: sctrial.datasets
    :members:
    :undoc-members:

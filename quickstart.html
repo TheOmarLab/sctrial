@@ -51,6 +51,13 @@
 <li class="toctree-l1"><a class="reference internal" href="examples/index.html">Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
 </ul>
+<p class="caption" role="heading"><span class="caption-text">User Guides:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="best_practices.html">Best Practices Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="faq.html">Frequently Asked Questions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="performance.html">Performance Guide</a></li>
+</ul>
 
         </div>
       </div>
@@ -83,16 +90,23 @@
 
 <span class="c1"># 1. Define Design</span>
 <span class="n">design</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">TrialDesign</span><span class="p">(</span>
-    <span class="n">participant_col</span><span class="o">=</span><span class="s2">&quot;pid&quot;</span><span class="p">,</span> <span class="n">visit_col</span><span class="o">=</span><span class="s2">&quot;visit&quot;</span><span class="p">,</span> <span class="n">arm_col</span><span class="o">=</span><span class="s2">&quot;arm&quot;</span>
+    <span class="n">participant_col</span><span class="o">=</span><span class="s2">&quot;pid&quot;</span><span class="p">,</span> <span class="n">visit_col</span><span class="o">=</span><span class="s2">&quot;visit&quot;</span><span class="p">,</span> <span class="n">arm_col</span><span class="o">=</span><span class="s2">&quot;arm&quot;</span><span class="p">,</span>
+    <span class="n">arm_treated</span><span class="o">=</span><span class="s2">&quot;Treated&quot;</span><span class="p">,</span> <span class="n">arm_control</span><span class="o">=</span><span class="s2">&quot;Control&quot;</span>
 <span class="p">)</span>
 
-<span class="c1"># 2. Score Gene Sets</span>
-<span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">score_gene_sets</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;SET&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;G1&quot;</span><span class="p">,</span> <span class="s2">&quot;G2&quot;</span><span class="p">]},</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;zmean&quot;</span><span class="p">)</span>
+<span class="c1"># 2. Preprocess (add log1p-CPM layer)</span>
+<span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">add_log1p_cpm_layer</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">counts_layer</span><span class="o">=</span><span class="s2">&quot;counts&quot;</span><span class="p">)</span>
 
-<span class="c1"># 3. Run DiD</span>
-<span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;SET&quot;</span><span class="p">],</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">))</span>
+<span class="c1"># 3. Score Gene Sets (use prefix to avoid name collisions)</span>
+<span class="n">gene_sets</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;Signature1&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;GENE1&quot;</span><span class="p">,</span> <span class="s2">&quot;GENE2&quot;</span><span class="p">,</span> <span class="s2">&quot;GENE3&quot;</span><span class="p">]}</span>
+<span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">score_gene_sets</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">gene_sets</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;log1p_cpm&quot;</span><span class="p">,</span>
+                            <span class="n">method</span><span class="o">=</span><span class="s2">&quot;zmean&quot;</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;ms_&quot;</span><span class="p">)</span>
 
-<span class="c1"># 4. Summarize</span>
+<span class="c1"># 4. Run DiD</span>
+<span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ms_Signature1&quot;</span><span class="p">],</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+                    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">))</span>
+
+<span class="c1"># 5. Summarize</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">st</span><span class="o">.</span><span class="n">summarize_did_results</span><span class="p">(</span><span class="n">res</span><span class="p">))</span>
 </pre></div>
 </div>
