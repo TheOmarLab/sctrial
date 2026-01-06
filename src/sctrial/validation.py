@@ -1,16 +1,14 @@
 """Data validation utilities for trial analysis."""
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Sequence, Tuple, Any
-import warnings
+from collections.abc import Sequence
+from typing import Any
 
 import numpy as np
-import pandas as pd
 from anndata import AnnData
 
-from .design import TrialDesign
 from .datasets import count_paired
-
+from .design import TrialDesign
 
 __all__ = [
     "TrialDataValidator",
@@ -28,7 +26,7 @@ class TrialDataValidator:
         adata: AnnData,
         design: TrialDesign,
         strict: bool = False,
-    ) -> List[str]:
+    ) -> list[str]:
         """Validate AnnData object for trial analysis.
 
         Parameters
@@ -118,7 +116,7 @@ class TrialDataValidator:
         adata: AnnData,
         features: Sequence[str],
         allow_missing: bool = False,
-    ) -> Tuple[List[str], List[str]]:
+    ) -> tuple[list[str], list[str]]:
         """Validate feature names.
 
         Parameters
@@ -165,7 +163,7 @@ def validate_adata(
     adata: AnnData,
     design: TrialDesign,
     strict: bool = False,
-) -> List[str]:
+) -> list[str]:
     """Validate AnnData object for trial analysis.
 
     Convenience wrapper around TrialDataValidator.validate_adata().
@@ -190,7 +188,7 @@ def validate_features(
     adata: AnnData,
     features: Sequence[str],
     allow_missing: bool = False,
-) -> Tuple[List[str], List[str]]:
+) -> tuple[list[str], list[str]]:
     """Validate feature names.
 
     Convenience wrapper around TrialDataValidator.validate_features().
@@ -215,7 +213,7 @@ def diagnose_trial_data(
     adata: AnnData,
     design: TrialDesign,
     verbose: bool = True,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Comprehensive diagnostic report for trial data.
 
     Parameters
@@ -246,9 +244,9 @@ def diagnose_trial_data(
     ...     for w in diagnostics['warnings']:
     ...         print(f"  - {w}")
     """
-    report: Dict[str, Any] = {}
-    warnings_list: List[str] = []
-    recommendations: List[str] = []
+    report: dict[str, Any] = {}
+    warnings_list: list[str] = []
+    recommendations: list[str] = []
 
     # Basic counts
     report["n_cells"] = adata.n_obs
@@ -277,7 +275,7 @@ def diagnose_trial_data(
             paired_counts = {}
             for i, v1 in enumerate(visits):
                 for v2 in visits[i + 1 :]:
-                    n_paired = count_paired(adata.obs, design.visit_col, [v1, v2])
+                    n_paired = count_paired(adata.obs, design.visit_col, [v1, v2], design.participant_col)
                     paired_counts[(v1, v2)] = n_paired
 
                     if n_paired < 4:
@@ -349,13 +347,13 @@ def _looks_like_counts(X: Any, sample_size: int = 1000) -> bool:
     return (data >= 0).all() and np.allclose(data, np.round(data), atol=1e-3)
 
 
-def _print_diagnostic_report(report: Dict[str, Any]) -> None:
+def _print_diagnostic_report(report: dict[str, Any]) -> None:
     """Print formatted diagnostic report."""
     print("=" * 60)
     print("TRIAL DATA DIAGNOSTIC REPORT")
     print("=" * 60)
 
-    print(f"\n📊 DATA SUMMARY")
+    print("\n📊 DATA SUMMARY")
     print(f"  Cells:        {report.get('n_cells', 'N/A'):,}")
     print(f"  Genes:        {report.get('n_genes', 'N/A'):,}")
     print(f"  Participants: {report.get('n_participants', 'N/A')}")
@@ -369,19 +367,19 @@ def _print_diagnostic_report(report: Dict[str, Any]) -> None:
         print(f"    Arm labels: {', '.join(map(str, report['arms']))}")
 
     if "paired_participants" in report:
-        print(f"\n🔗 PAIRED PARTICIPANTS")
+        print("\n🔗 PAIRED PARTICIPANTS")
         for (v1, v2), count in report["paired_participants"].items():
             status = "✓" if count >= 4 else "⚠️"
             print(f"  {status} {v1} <-> {v2}: {count} paired")
 
     if "cells_per_participant_visit_mean" in report:
-        print(f"\n📈 CELLS PER PARTICIPANT-VISIT")
+        print("\n📈 CELLS PER PARTICIPANT-VISIT")
         print(f"  Mean:   {report['cells_per_participant_visit_mean']:.1f}")
         print(f"  Median: {report['cells_per_participant_visit_median']:.1f}")
         print(f"  Min:    {report['cells_per_participant_visit_min']}")
 
     if "celltype_distribution" in report:
-        print(f"\n🧬 CELL TYPE DISTRIBUTION")
+        print("\n🧬 CELL TYPE DISTRIBUTION")
         for ct, count in list(report["celltype_distribution"].items())[:10]:
             print(f"  {ct}: {count:,}")
 
@@ -391,7 +389,7 @@ def _print_diagnostic_report(report: Dict[str, Any]) -> None:
             print(f"  • {w}")
 
     if report.get("recommendations"):
-        print(f"\n💡 RECOMMENDATIONS")
+        print("\n💡 RECOMMENDATIONS")
         for r in report["recommendations"]:
             print(f"  • {r}")
 

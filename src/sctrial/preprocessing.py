@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Optional
-
 import numpy as np
 import scipy.sparse as sp
 from anndata import AnnData
@@ -10,9 +8,9 @@ from anndata import AnnData
 def add_log1p_cpm_layer(
         adata: AnnData,
         *,
-        counts_layer: Optional[str] = "counts",
+        counts_layer: str | None = "counts",
         out_layer: str = "log1p_cpm",
-        layer_out: Optional[str] = None,  # alias for out_layer
+        layer_out: str | None = None,  # alias for out_layer
         scale: float = 1e6,
         overwrite: bool = False,
         inplace: bool = True,

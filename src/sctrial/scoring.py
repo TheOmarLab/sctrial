@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List, Literal, Optional
+from typing import Literal
 
 import numpy as np
 import scipy.sparse as sp
@@ -11,9 +11,9 @@ ScoreMethod = Literal["zmean", "mean"]
 
 def score_gene_sets(
         adata: AnnData,
-        gene_sets: Dict[str, List[str]],
+        gene_sets: dict[str, list[str]],
         *,
-        layer: Optional[str] = None,
+        layer: str | None = None,
         method: ScoreMethod = "zmean",
         prefix: str = "",
         min_genes: int = 3,

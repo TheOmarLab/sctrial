@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 import pandas as pd
+
 
 def summarize_did_results(
     df: pd.DataFrame,
@@ -33,7 +35,7 @@ def summarize_did_results(
     n_total = len(df)
     n_sig_p = (df[p_col] < alpha).sum()
     n_sig_fdr = (df[fdr_col] < alpha).sum() if fdr_col in df.columns else 0
-    
+
     top_up = df[df[effect_col] > 0].sort_values(p_col).head(3)
     top_down = df[df[effect_col] < 0].sort_values(p_col).head(3)
 
@@ -44,7 +46,7 @@ def summarize_did_results(
     ]
     if fdr_col in df.columns:
         summary.append(f"Significant (FDR < {alpha}): {n_sig_fdr}")
-    
+
     summary.append("\n### Top Upregulated Features (by p-value):")
     if top_up.empty:
         summary.append("- None")

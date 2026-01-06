@@ -1,19 +1,23 @@
 from __future__ import annotations
-from typing import List, Literal, Optional, Sequence, Tuple
+
+from collections.abc import Sequence
+from typing import Literal
+
 import numpy as np
 import pandas as pd
 import scipy.sparse as sp
 import statsmodels.formula.api as smf
-from statsmodels.stats.multitest import multipletests
 from anndata import AnnData
-from ..design import TrialDesign
+from statsmodels.stats.multitest import multipletests
+
 from ..adata_tools import subset_primary
+from ..design import TrialDesign
 from ..utils import wild_cluster_bootstrap_t
 
 AggregateMode = Literal["cell", "participant_visit", "participant_visit_celltype"]
 AggregateFunc = Literal["mean", "median", "pct_pos"]
 
-def _ensure_paired(df: pd.DataFrame, unit: str, time: str, visits: Tuple[str,str]) -> pd.DataFrame:
+def _ensure_paired(df: pd.DataFrame, unit: str, time: str, visits: tuple[str,str]) -> pd.DataFrame:
     wide = df.groupby([unit, time], observed=True).size().unstack(fill_value=0)
     keep = wide[(wide.get(visits[0], 0) > 0) & (wide.get(visits[1], 0) > 0)].index
     return df[df[unit].isin(keep)].copy()
@@ -24,7 +28,7 @@ def did_fit(
     unit: str,
     time: str,
     arm_bin: str,
-    covariates: Optional[List[str]] = None,
+    covariates: list[str] | None = None,
     cov_type: str = "cluster",
     standardize: bool = True,
     use_bootstrap: bool = False,
@@ -77,11 +81,11 @@ def did_fit(
     cols = [unit, time, arm_bin, y]
     if covariates:
         cols.extend(covariates)
-    
+
     tmp = df[cols].dropna().copy()
     if tmp[unit].nunique() < 4:
         return {"beta_DiD": np.nan, "se_DiD": np.nan, "p_DiD": np.nan, "n_units": tmp[unit].nunique()}
-    
+
     # time is assumed numeric 0/1 already
     if standardize:
         yy = tmp[y].astype(float)
@@ -110,7 +114,7 @@ def did_fit(
 
     fit = model.fit(cov_type=cov_type, cov_kwds={"groups": tmp[unit]} if cov_type=="cluster" else None)
     term = f"{time}:{arm_bin}"
-    
+
     res = {
         "beta_DiD": float(fit.params.get(term, np.nan)),
         "se_DiD": float(fit.bse.get(term, np.nan)),
@@ -132,12 +136,12 @@ def did_fit(
         res["p_DiD_boot"] = p_boot
         # Use bootstrap p-value as primary if requested
         res["p_DiD"] = p_boot
-    
+
     return res
 
 def _aggregate_features(
         df: pd.DataFrame,
-        grp_cols: List[str],
+        grp_cols: list[str],
         features: Sequence[str],
         agg: str,
 ) -> pd.DataFrame:
@@ -160,22 +164,22 @@ def did_table(
     adata: AnnData,
     features: Sequence[str],
     design: TrialDesign,
-    visits: Tuple[str,str],
+    visits: tuple[str,str],
     exclude_crossovers: bool = True,
-    celltype: Optional[str] = None,
+    celltype: str | None = None,
     aggregate: AggregateMode = "participant_visit",
-    layer: Optional[str] = None,
+    layer: str | None = None,
     standardize: bool = True,
     agg: AggregateFunc = "mean",
-    covariates: Optional[List[str]] = None,
+    covariates: list[str] | None = None,
     use_bootstrap: bool = False,
     n_boot: int = 999,
     seed: int = 42,
 ) -> pd.DataFrame:
     """Run Difference-in-Differences (DiD) for a list of features.
 
-    This function implements a fixed-effects DiD model to test for treatment-induced 
-    longitudinal changes. It is optimized for 'panels' of features (tens to hundreds), 
+    This function implements a fixed-effects DiD model to test for treatment-induced
+    longitudinal changes. It is optimized for 'panels' of features (tens to hundreds),
     such as module scores or selected gene sets.
 
     Statistical Model:
@@ -187,40 +191,40 @@ def did_table(
     adata
         AnnData object containing expression data and metadata.
     features
-        List of features to test. Can be gene names in `adata.var_names` or 
+        List of features to test. Can be gene names in `adata.var_names` or
         observation-level scores in `adata.obs.columns`.
     design
         A `TrialDesign` object specifying the metadata columns.
     visits
         A tuple of (baseline, followup) visit labels.
     exclude_crossovers
-        If True, excludes observations where `design.crossover_col` is True. 
+        If True, excludes observations where `design.crossover_col` is True.
         Recommended for primary randomized analysis.
     celltype
         If provided, subsets the analysis to a specific cell type.
     aggregate
         Aggregation mode:
 
-        - 'cell': Fit model on individual cells (not recommended for p-values, 
+        - 'cell': Fit model on individual cells (not recommended for p-values,
           as it treats cells as independent).
-        - 'participant_visit': Average features per participant-visit before fitting. 
+        - 'participant_visit': Average features per participant-visit before fitting.
           This is the recommended approach for clinical inference.
         - 'participant_visit_celltype': Average per participant-visit-celltype.
     layer
         Layer to extract gene expression from. If None, uses `adata.X`.
     standardize
-        If True, z-scores the outcome variable before fitting to provide 
+        If True, z-scores the outcome variable before fitting to provide
         standardized effect sizes.
     agg
         Aggregation function: 'mean', 'median', or 'pct_pos'.
     covariates
-        List of additional columns in `adata.obs` to include as fixed effects 
+        List of additional columns in `adata.obs` to include as fixed effects
         in the model (e.g., ['age', 'sex', 'batch']).
         Covariates must be **numeric** or **constant within each participant-visit**
         group. Non-numeric covariates are aggregated with "first" and will raise
         an error if they vary within a participant-visit (or participant-visit-celltype).
     use_bootstrap
-        If True, uses Wild Cluster Bootstrap to calculate p-values. Recommended 
+        If True, uses Wild Cluster Bootstrap to calculate p-values. Recommended
         for small sample sizes (e.g. < 15 participants per group).
     n_boot
         Number of bootstrap permutations.
@@ -230,7 +234,7 @@ def did_table(
     Returns
     -------
     pd.DataFrame
-        Table with one row per feature containing beta_DiD, p_DiD, and 
+        Table with one row per feature containing beta_DiD, p_DiD, and
         FDR-corrected significance.
 
     Examples
@@ -254,7 +258,7 @@ def did_table(
     cols = [design.participant_col, design.visit_col, design.arm_col, "visit_num", "arm_bin"]
     if design.celltype_col and design.celltype_col in obs.columns:
         cols.append(design.celltype_col)
-    
+
     if covariates:
         for c in covariates:
             if c not in obs.columns:
@@ -276,7 +280,7 @@ def did_table(
             X = X.toarray()
         else:
             X = np.asarray(X)
-        
+
         for i, gene in enumerate(genes_to_extract):
             df[gene] = X[:, i]
 
@@ -293,10 +297,10 @@ def did_table(
             final_features.append(feat)
         else:
             missing.append(feat)
-    
+
     if missing:
         raise KeyError(f"Features not found in obs or var_names: {missing[:5]}")
-    
+
     if not final_features:
         raise ValueError("No numeric features found to analyze.")
 
@@ -380,12 +384,12 @@ def did_table(
     rows=[]
     for feat in final_features:
         out = did_fit(
-            df_use, 
-            y=feat, 
-            unit=unit, 
-            time=time, 
-            arm_bin=arm_bin, 
-            covariates=covariates, 
+            df_use,
+            y=feat,
+            unit=unit,
+            time=time,
+            arm_bin=arm_bin,
+            covariates=covariates,
             standardize=standardize,
             use_bootstrap=use_bootstrap,
             n_boot=n_boot,
@@ -406,14 +410,14 @@ def did_table_by_celltype(
     adata: AnnData,
     features: Sequence[str],
     design: TrialDesign,
-    visits: Tuple[str, str],
-    celltypes: Optional[Sequence[str]] = None,
+    visits: tuple[str, str],
+    celltypes: Sequence[str] | None = None,
     exclude_crossovers: bool = True,
     aggregate: AggregateMode = "participant_visit",
-    layer: Optional[str] = None,
+    layer: str | None = None,
     standardize: bool = True,
     agg: AggregateFunc = "mean",
-    covariates: Optional[List[str]] = None,
+    covariates: list[str] | None = None,
     use_bootstrap: bool = False,
     n_boot: int = 999,
     seed: int = 42,
@@ -458,7 +462,7 @@ def did_table_by_celltype(
     """
     if design.celltype_col is None:
         raise ValueError("design.celltype_col must be set for stratified analysis.")
-    
+
     if celltypes is None:
         celltypes = sorted(adata.obs[design.celltype_col].dropna().unique())
 
@@ -493,7 +497,7 @@ def did_table_by_celltype(
         return pd.DataFrame()
 
     full_res = pd.concat(all_res, ignore_index=True)
-    
+
     # Recalculate FDR across all tests if possible
     mask = full_res["p_DiD"].notna()
     if mask.sum() > 0:
@@ -501,5 +505,5 @@ def did_table_by_celltype(
         full_res.loc[mask, "FDR_DiD_stratified"] = multipletests(
             full_res.loc[mask, "p_DiD"], method="fdr_bh"
         )[1]
-    
+
     return full_res

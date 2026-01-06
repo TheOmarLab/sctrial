@@ -256,7 +256,7 @@ class TestEndToEndGSEAWorkflow:
     def test_gsea_did_workflow(self, trial_adata_large):
         """Test GSEA on DiD rankings."""
         try:
-            import gseapy
+            import gseapy  # noqa: F401
         except ImportError:
             pytest.skip("gseapy not installed")
 

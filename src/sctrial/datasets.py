@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-from pathlib import Path
-from io import StringIO
-from typing import Any, Dict, Optional, Sequence, Tuple
 import gzip
 import urllib.request
+from collections.abc import Sequence
+from io import StringIO
+from pathlib import Path
+from typing import Any
 
+import anndata as ad
 import numpy as np
 import pandas as pd
 import scipy.sparse as sp
-import anndata as ad
 from scipy.io import mmread
 from statsmodels.stats.multitest import multipletests
-
 
 __all__ = [
     "load_sade_feldman",
@@ -81,7 +81,7 @@ def _counts_like(X, sample: int = 10000, seed: int = 0) -> bool:
     return np.allclose(data, np.round(data), atol=1e-3)
 
 
-def _get_counts_matrix(adata: ad.AnnData) -> Tuple[Optional[np.ndarray], Optional[str]]:
+def _get_counts_matrix(adata: ad.AnnData) -> tuple[np.ndarray | None, str | None]:
     if "counts" in adata.layers and _counts_like(adata.layers["counts"]):
         return adata.layers["counts"], "layers['counts']"
     if getattr(adata, "raw", None) is not None:
@@ -94,7 +94,7 @@ def _get_counts_matrix(adata: ad.AnnData) -> Tuple[Optional[np.ndarray], Optiona
     return None, None
 
 
-def _params_match(prev: Dict, curr: Dict) -> bool:
+def _params_match(prev: dict, curr: dict) -> bool:
     for k, v in curr.items():
         pv = prev.get(k, None)
         pv_normalized: Any
@@ -116,7 +116,7 @@ def _params_match(prev: Dict, curr: Dict) -> bool:
 def load_sade_feldman(
     data_dir: str = "data/sade_feldman",
     processed_name: str = "sade_feldman_processed_v5.h5ad",
-    max_cells_per_participant_visit: Optional[int] = None,
+    max_cells_per_participant_visit: int | None = None,
     seed: int = 42,
     force_reprocess: bool = False,
 ) -> ad.AnnData:
@@ -203,7 +203,7 @@ def load_sade_feldman(
 
     if max_cells_per_participant_visit is not None:
         rng = np.random.default_rng(seed)
-        keep_indices = []
+        keep_indices: list = []
         for (pid, visit), group in adata.obs.groupby(["participant_id", "visit"], observed=True):
             n_cells = len(group)
             if n_cells > max_cells_per_participant_visit:
@@ -303,7 +303,7 @@ def load_vaccine_gse171964(
     data_dir: str = "data/vaccine_gse171964",
     processed_name: str = "vaccine_gse171964_day0_day7.h5ad",
     max_participants: int = 30,
-    max_cells_per_group: Optional[int] = 200,
+    max_cells_per_group: int | None = 200,
     seed: int = 42,
     force_reprocess: bool = False,
 ) -> ad.AnnData:
@@ -414,10 +414,15 @@ def load_vaccine_gse171964(
     return adata
 
 
-def count_paired(obs: pd.DataFrame, visit_col: str, visits: Sequence[str]) -> int:
+def count_paired(
+    obs: pd.DataFrame,
+    visit_col: str,
+    visits: Sequence[str],
+    participant_col: str = "participant_id"
+) -> int:
     """Count participants with data at both visits."""
     wide = obs.pivot_table(
-        index="participant_id",
+        index=participant_col,
         columns=visit_col,
         aggfunc="size",
         fill_value=0,
@@ -431,7 +436,7 @@ def verify_paired_participants(
     obs: pd.DataFrame,
     visit_col: str,
     visits: Sequence[str],
-    features: Optional[Sequence[str]] = None,
+    features: Sequence[str] | None = None,
     participant_col: str = "participant_id",
 ) -> dict:
     """Validate paired participants by visit presence and optional feature completeness.

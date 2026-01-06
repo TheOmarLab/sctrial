@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Optional, Sequence, Tuple
 
 import pandas as pd
 from anndata import AnnData
@@ -11,8 +11,8 @@ from anndata import AnnData
 class TrialDesign:
     """Describe the trial-design columns and metadata labels in `adata.obs`.
 
-    The `TrialDesign` object centralizes the mapping of your study design to 
-    the AnnData object. It is used by almost all statistical and plotting 
+    The `TrialDesign` object centralizes the mapping of your study design to
+    the AnnData object. It is used by almost all statistical and plotting
     functions in `sctrial`.
     """
 
@@ -31,23 +31,23 @@ class TrialDesign:
     arm_control: str = "Control"
     """The label in `arm_col` representing the control/placebo group."""
 
-    celltype_col: Optional[str] = "celltype"
+    celltype_col: str | None = "celltype"
     """Optional name of the column containing cell-type annotations."""
 
-    crossover_col: Optional[str] = None
+    crossover_col: str | None = None
     """Optional name of the column containing boolean-like indicators for crossover cells."""
 
-    baseline_visit: Optional[str] = None
+    baseline_visit: str | None = None
     """Optional default baseline visit label (e.g., 'Baseline', 'V1')."""
 
-    followup_visit: Optional[str] = None
+    followup_visit: str | None = None
     """Optional default follow-up visit label (e.g., 'Follow-up', 'V2')."""
 
     def primary_visits(
             self,
-            baseline: Optional[str] = None,
-            followup: Optional[str] = None,
-    ) -> Tuple[str, str]:
+            baseline: str | None = None,
+            followup: str | None = None,
+    ) -> tuple[str, str]:
         b = baseline or self.baseline_visit
         f = followup or self.followup_visit
         if b is None or f is None:

@@ -1,7 +1,7 @@
 """Convenience functions for quick trial analysis workflows."""
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Literal
 
 import pandas as pd
 from anndata import AnnData
@@ -11,7 +11,6 @@ from .preprocessing import add_log1p_cpm_layer
 from .scoring import score_gene_sets
 from .stats.did import did_table
 
-
 __all__ = [
     "quick_did",
     "auto_detect_design",
@@ -20,17 +19,17 @@ __all__ = [
 
 def quick_did(
     adata: AnnData,
-    module_scores: Dict[str, List[str]],
+    module_scores: dict[str, list[str]],
     participant_col: str = "participant_id",
     visit_col: str = "visit",
     arm_col: str = "arm",
     arm_treated: str = "Treated",
     arm_control: str = "Control",
-    visits: Optional[Tuple[str, str]] = None,
-    celltype_col: Optional[str] = None,
+    visits: tuple[str, str] | None = None,
+    celltype_col: str | None = None,
     layer: str = "log1p_cpm",
     counts_layer: str = "counts",
-    score_method: str = "zmean",
+    score_method: Literal["zmean", "mean"] = "zmean",
     **kwargs,
 ) -> pd.DataFrame:
     """One-line wrapper for the most common DiD workflow.
@@ -127,8 +126,8 @@ def quick_did(
 
 def auto_detect_design(
     adata: AnnData,
-    arm_treated: Optional[str] = None,
-    arm_control: Optional[str] = None,
+    arm_treated: str | None = None,
+    arm_control: str | None = None,
 ) -> TrialDesign:
     """Auto-detect trial design from common column naming patterns.
 
@@ -249,6 +248,20 @@ def auto_detect_design(
         else:
             print(f"⚠️  Found only 1 arm: {unique_arms[0]}")
 
+    # Validate required columns were detected
+    if participant_col is None:
+        raise ValueError(
+            "Could not detect participant column. Please specify manually or rename column."
+        )
+    if visit_col is None:
+        raise ValueError(
+            "Could not detect visit column. Please specify manually or rename column."
+        )
+    if arm_col is None:
+        raise ValueError(
+            "Could not detect arm column. Please specify manually or rename column."
+        )
+
     # Create design
     design = TrialDesign(
         participant_col=participant_col,
@@ -280,11 +293,11 @@ def auto_detect_design(
 
 
 def _find_column(
-    columns: List[str],
-    columns_lower: List[str],
-    patterns: List[str],
+    columns: list[str],
+    columns_lower: list[str],
+    patterns: list[str],
     required: bool = True,
-) -> Optional[str]:
+) -> str | None:
     """Find column matching one of the patterns."""
     for pattern in patterns:
         # First try exact match (case-insensitive)

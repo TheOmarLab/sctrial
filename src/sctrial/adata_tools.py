@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-from typing import Optional, Tuple, Sequence, List
+from collections.abc import Sequence
+
 import numpy as np
 import pandas as pd
 from anndata import AnnData
+
 from .design import TrialDesign
 
 
-def _require_cols(obs: pd.DataFrame, cols: List[str]) -> None:
+def _require_cols(obs: pd.DataFrame, cols: list[str]) -> None:
     missing = [c for c in cols if c not in obs.columns]
     if missing:
         raise KeyError(f"Missing required obs columns: {missing}. Available: {list(obs.columns)}")
@@ -33,7 +35,7 @@ def _to_bool_series(s: pd.Series) -> pd.Series:
 def subset_primary(
         adata: AnnData,
         design: TrialDesign,
-        visits: Tuple[str, str],
+        visits: tuple[str, str],
         exclude_crossovers: bool = True,
 ) -> AnnData:
     """Subset AnnData to the primary (baseline, followup) visits.
@@ -61,9 +63,9 @@ def subset_primary(
 def subset_cells(
         adata: AnnData,
         design: TrialDesign,
-        arm: Optional[str] = None,
-        visit: Optional[str] = None,
-        celltype: Optional[str] = None,
+        arm: str | None = None,
+        visit: str | None = None,
+        celltype: str | None = None,
         exclude_crossovers: bool = False,
 ) -> AnnData:
     """General-purpose subsetting helper by arm/visit/celltype (+ optional crossover exclusion)."""
@@ -104,7 +106,7 @@ def profile_features(
     adata: AnnData,
     features: Sequence[str],
     groupby: str,
-    layer: Optional[str] = None,
+    layer: str | None = None,
     agg: str = "mean",
 ) -> pd.DataFrame:
     """Calculate aggregate expression of features across groups.
@@ -130,9 +132,9 @@ def profile_features(
         Table with index `groupby` and columns `features`.
     """
     from .stats._extract import extract_gene_vector
-    
+
     _require_cols(adata.obs, [groupby])
-    
+
     res = {}
     for feat in features:
         if feat in adata.obs.columns:
@@ -141,8 +143,8 @@ def profile_features(
             res[feat] = extract_gene_vector(adata, feat, layer=layer)
         else:
             raise KeyError(f"Feature '{feat}' not found in obs or var_names.")
-            
+
     df = pd.DataFrame(res, index=adata.obs_names)
     df[groupby] = adata.obs[groupby].values
-    
+
     return df.groupby(groupby, observed=True).agg(agg)

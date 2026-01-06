@@ -1,7 +1,9 @@
 import numpy as np
 import pandas as pd
 from anndata import AnnData
+
 import sctrial as st
+
 
 def test_abundance_did_basic():
     """Verify that abundance_did detects engineered shifts in cell proportions."""
