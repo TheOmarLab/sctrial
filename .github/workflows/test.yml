@@ -44,7 +44,7 @@ jobs:
       run: |
         pip install -e .[plots,gsea]
         pip install sphinx sphinx_rtd_theme nbsphinx
-        cd docs && sphinx-build -b html source build/html
+        cd docs && sphinx-build -b html -d build/doctrees source build/html
         touch build/html/.nojekyll
 
   deploy-docs:
@@ -65,7 +65,7 @@ jobs:
         python -m ipykernel install --user --name python3
     - name: Build documentation
       run: |
-        cd docs && sphinx-build -b html source build/html
+        cd docs && sphinx-build -b html -d build/doctrees source build/html
         touch build/html/.nojekyll
     - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v3
