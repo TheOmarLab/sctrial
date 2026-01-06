@@ -78,7 +78,7 @@ target-version = "py39"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP"]
-ignore = []
+ignore = ["E501"]  # Ignore line-too-long errors
 
 [tool.coverage.run]
 branch = true
