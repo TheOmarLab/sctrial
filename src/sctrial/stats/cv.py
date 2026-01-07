@@ -245,7 +245,7 @@ def kfold_cv_did(
     full_betas = full_res.set_index("feature")["beta_DiD"].to_dict()
 
     # Collect CV estimates
-    cv_estimates = {feat: [] for feat in features}
+    cv_estimates: dict[str, list[float]] = {feat: [] for feat in features}
 
     for _ in range(n_repeats):
         # Shuffle participants

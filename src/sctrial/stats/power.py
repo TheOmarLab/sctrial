@@ -278,7 +278,7 @@ def sample_size_did(
     >>> print(f"With Bonferroni: {n} per arm")
     """
     if effect_size == 0:
-        return np.inf
+        raise ValueError("effect_size must be non-zero for sample size calculation.")
 
     # Critical values
     if two_sided:

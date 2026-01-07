@@ -421,14 +421,14 @@ def count_paired(
     participant_col: str = "participant_id"
 ) -> int:
     """Count participants with data at both visits."""
-    wide = obs.pivot_table(
-        index=participant_col,
-        columns=visit_col,
-        aggfunc="size",
-        fill_value=0,
-        observed=True,
+    wide = (
+        obs.groupby([participant_col, visit_col], observed=True)
+        .size()
+        .unstack(fill_value=0)
     )
-    has_both = (wide.get(visits[0], 0) > 0) & (wide.get(visits[1], 0) > 0)
+    if visits[0] not in wide.columns or visits[1] not in wide.columns:
+        return 0
+    has_both = (wide[visits[0]] > 0) & (wide[visits[1]] > 0)
     return int(has_both.sum())
 
 
@@ -447,16 +447,15 @@ def verify_paired_participants(
       - n_paired: count of paired_ids
       - n_total: total unique participants
     """
-    wide = obs.pivot_table(
-        index=participant_col,
-        columns=visit_col,
-        aggfunc="size",
-        fill_value=0,
-        observed=True,
+    wide = (
+        obs.groupby([participant_col, visit_col], observed=True)
+        .size()
+        .unstack(fill_value=0)
     )
-    paired_ids = set(
-        wide[(wide.get(visits[0], 0) > 0) & (wide.get(visits[1], 0) > 0)].index
-    )
+    if visits[0] not in wide.columns or visits[1] not in wide.columns:
+        paired_ids = set()
+    else:
+        paired_ids = set(wide[(wide[visits[0]] > 0) & (wide[visits[1]] > 0)].index)
 
     if features:
         df_pv = (

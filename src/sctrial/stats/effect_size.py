@@ -483,4 +483,4 @@ def bootstrap_effect_size_ci(
     lower = np.nanpercentile(boot_d, 100 * alpha / 2)
     upper = np.nanpercentile(boot_d, 100 * (1 - alpha / 2))
 
-    return (d_obs, lower, upper)
+    return (float(d_obs), float(lower), float(upper))

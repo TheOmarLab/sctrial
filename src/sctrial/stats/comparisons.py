@@ -222,8 +222,8 @@ def between_arm_comparison(
             })
         elif method == "wilcoxon":
             from scipy.stats import mannwhitneyu
-            g1 = df_use[df_use["arm_bin"] == 1][feat].values
-            g2 = df_use[df_use["arm_bin"] == 0][feat].values
+            g1 = np.asarray(df_use[df_use["arm_bin"] == 1][feat].values, dtype=float)
+            g2 = np.asarray(df_use[df_use["arm_bin"] == 0][feat].values, dtype=float)
 
             if len(g1) > 0 and len(g2) > 0:
                 stat, p_val = mannwhitneyu(g1, g2, alternative="two-sided")
