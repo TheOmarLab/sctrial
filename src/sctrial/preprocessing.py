@@ -4,6 +4,8 @@ import numpy as np
 import scipy.sparse as sp
 from anndata import AnnData
 
+__all__ = ["add_log1p_cpm_layer"]
+
 
 def add_log1p_cpm_layer(
         adata: AnnData,

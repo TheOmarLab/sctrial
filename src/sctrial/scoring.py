@@ -6,6 +6,8 @@ import numpy as np
 import scipy.sparse as sp
 from anndata import AnnData
 
+__all__ = ["score_gene_sets", "ScoreMethod"]
+
 ScoreMethod = Literal["zmean", "mean"]
 
 

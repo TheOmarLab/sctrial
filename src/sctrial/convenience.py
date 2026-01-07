@@ -155,9 +155,10 @@ def auto_detect_design(
     --------
     >>> design = auto_detect_design(adata)
     >>> print(f"Detected design: {design}")
-    >>> # Verify and adjust if needed
-    >>> design.arm_treated = "Drug_A"
-    >>> design.arm_control = "Placebo"
+    >>> # Verify the detected design. If arm labels need adjustment,
+    >>> # create a new TrialDesign with corrected values:
+    >>> from dataclasses import replace
+    >>> design = replace(design, arm_treated="Drug_A", arm_control="Placebo")
 
     Raises
     ------

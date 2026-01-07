@@ -11,6 +11,20 @@ from ._env import ensure_matplotlib_config_dir, ensure_numba_cache_dir
 from .design import TrialDesign
 from .stats._extract import extract_gene_vector
 
+__all__ = [
+    "did_volcano_frame",
+    "signed_logp",
+    "plot_trial_interaction",
+    "plot_did_forest",
+    "plot_within_arm_comparison",
+    "plot_trial_umap",
+    "plot_gsea_radar",
+    "plot_trial_dotplot",
+    "plot_abundance_interaction",
+    "plot_trial_umap_panel",
+    "plot_gsea_heatmap",
+]
+
 # Optional dependencies for plotting
 # Ensure caches/config go to writable temp dirs to avoid numba/matplotlib failures.
 ensure_matplotlib_config_dir()
