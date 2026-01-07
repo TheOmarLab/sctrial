@@ -58,7 +58,6 @@ Optional random slopes:
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Literal
 
 import numpy as np
 import pandas as pd
@@ -301,8 +300,8 @@ def did_table_mixed(
     did_table : Fixed effects version (recommended for most applications).
     compare_fixed_vs_mixed : Compare both approaches.
     """
-    from ..adata_tools import subset_primary
     from .._extract import extract_gene_vector
+    from ..adata_tools import subset_primary
 
     # Subset to analysis population
     ad = subset_primary(adata, design, visits, exclude_crossovers=exclude_crossovers)

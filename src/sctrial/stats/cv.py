@@ -45,13 +45,14 @@ Interpretation Guidelines
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Literal
 
 import numpy as np
 import pandas as pd
 from anndata import AnnData
 
+from ..adata_tools import subset_primary
 from ..design import TrialDesign
+from .did import did_table
 
 __all__ = [
     "loo_cv_did",
@@ -107,9 +108,6 @@ def loo_cv_did(
     >>> influential = loo[loo["influence"] > 1.0]
     >>> print(f"Influential participants: {influential['excluded_participant'].unique()}")
     """
-    from .did import did_table
-    from ..adata_tools import subset_primary
-
     # Get paired participants
     ad = subset_primary(adata, design, visits, exclude_crossovers=exclude_crossovers)
     participants = ad.obs[design.participant_col].unique().tolist()
@@ -229,9 +227,6 @@ def kfold_cv_did(
     >>> stable = cv[cv["sign_consistency"] > 0.9]
     >>> print(f"Stable effects: {len(stable)} / {len(cv)}")
     """
-    from .did import did_table
-    from ..adata_tools import subset_primary
-
     rng = np.random.default_rng(seed)
 
     # Get paired participants

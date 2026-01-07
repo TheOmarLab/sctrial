@@ -32,54 +32,54 @@ from .scoring import score_gene_sets
 from .stats._extract import extract_gene_vector
 from .stats.abundance import abundance_did
 from .stats.comparisons import between_arm_comparison, within_arm_comparison
+
+# New: Cross-validation
+from .stats.cv import (
+    cv_summary,
+    influence_diagnostics,
+    kfold_cv_did,
+    loo_cv_did,
+)
 from .stats.did import did_fit, did_table, did_table_by_celltype
+
+# New: Effect sizes
+from .stats.effect_size import (
+    add_effect_sizes_to_did,
+    bootstrap_effect_size_ci,
+    cohens_d,
+    hedges_g,
+)
 from .stats.gsea import run_gsea_did
+
+# New: Mixed effects
+from .stats.mixed_effects import (
+    compare_fixed_vs_mixed,
+    did_table_mixed,
+)
+
+# New: Power analysis
+from .stats.power import (
+    design_effect,
+    effective_sample_size,
+    power_curve,
+    power_did,
+    sample_size_did,
+)
 from .stats.pseudobulk import pseudobulk_expression, pseudobulk_within_arm
 from .stats.summary import summarize_did_results
+
+# New: Time series
+from .stats.timeseries import (
+    event_study_did,
+    test_parallel_trends,
+    trend_interaction,
+)
 from .utils import resolve_feature
 from .validation import (
     TrialDataValidator,
     diagnose_trial_data,
     validate_adata,
     validate_features,
-)
-
-# New: Effect sizes
-from .stats.effect_size import (
-    cohens_d,
-    hedges_g,
-    add_effect_sizes_to_did,
-    bootstrap_effect_size_ci,
-)
-
-# New: Power analysis
-from .stats.power import (
-    power_did,
-    sample_size_did,
-    power_curve,
-    design_effect,
-    effective_sample_size,
-)
-
-# New: Mixed effects
-from .stats.mixed_effects import (
-    did_table_mixed,
-    compare_fixed_vs_mixed,
-)
-
-# New: Time series
-from .stats.timeseries import (
-    trend_interaction,
-    event_study_did,
-    test_parallel_trends,
-)
-
-# New: Cross-validation
-from .stats.cv import (
-    loo_cv_did,
-    kfold_cv_did,
-    influence_diagnostics,
-    cv_summary,
 )
 
 __all__ = [

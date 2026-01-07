@@ -75,7 +75,6 @@ def _prepare_longitudinal_data(
     exclude_crossovers: bool = True,
 ) -> pd.DataFrame:
     """Prepare data for longitudinal analysis."""
-    from ..adata_tools import subset_primary
     from .._extract import extract_gene_vector
 
     # Filter to specified visits
@@ -458,7 +457,7 @@ def polynomial_trend(
     pred_df = pd.DataFrame(pred_data)
     try:
         pred_df["predicted"] = fit.predict(pred_df)
-    except:
+    except Exception:
         pred_df["predicted"] = np.nan
 
     pred_df["arm"] = pred_df["_treat"].map({0: design.arm_control, 1: design.arm_treated})

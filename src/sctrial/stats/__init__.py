@@ -26,51 +26,51 @@ Effect Sizes & Power
 """
 from .abundance import abundance_did
 from .comparisons import between_arm_comparison, within_arm_comparison
+
+# Cross-validation
+from .cv import (
+    cv_summary,
+    influence_diagnostics,
+    kfold_cv_did,
+    loo_cv_did,
+)
 from .did import did_fit, did_table, did_table_by_celltype
-from .gsea import run_gsea_did
-from .pseudobulk import pseudobulk_expression, pseudobulk_within_arm
-from .summary import summarize_did_results
 
 # Effect size calculations
 from .effect_size import (
-    cohens_d,
-    hedges_g,
-    cohens_d_from_did,
-    effect_size_ci,
     add_effect_sizes_to_did,
     bootstrap_effect_size_ci,
+    cohens_d,
+    cohens_d_from_did,
+    effect_size_ci,
+    hedges_g,
+)
+from .gsea import run_gsea_did
+
+# Mixed effects models
+from .mixed_effects import (
+    compare_fixed_vs_mixed,
+    did_mixed,
+    did_table_mixed,
 )
 
 # Power analysis
 from .power import (
-    power_did,
-    sample_size_did,
-    power_curve,
     design_effect,
     effective_sample_size,
+    power_curve,
+    power_did,
+    sample_size_did,
 )
-
-# Mixed effects models
-from .mixed_effects import (
-    did_mixed,
-    did_table_mixed,
-    compare_fixed_vs_mixed,
-)
+from .pseudobulk import pseudobulk_expression, pseudobulk_within_arm
+from .summary import summarize_did_results
 
 # Time series analysis
 from .timeseries import (
-    trend_interaction,
     event_study_did,
     polynomial_trend,
     test_parallel_trends,
-)
-
-# Cross-validation
-from .cv import (
-    loo_cv_did,
-    kfold_cv_did,
-    influence_diagnostics,
-    cv_summary,
+    trend_interaction,
 )
 
 __all__ = [
