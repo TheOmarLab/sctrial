@@ -120,18 +120,46 @@
     <span class="n">n_boot</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">999</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">42</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fit fixed-effects DiD model: y ~ time + time:arm + covariates + C(unit).</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fit fixed-effects Difference-in-Differences (DiD) model.</span>
+
+<span class="sd">    Mathematical Model</span>
+<span class="sd">    ------------------</span>
+<span class="sd">    The DiD model with participant fixed effects:</span>
+
+<span class="sd">    .. math::</span>
+
+<span class="sd">        Y_{it} = \\alpha_i + \\beta_1 \\cdot \\text{Post}_t + \\beta_2 \\cdot (\\text{Treat}_i \\times \\text{Post}_t) + \\epsilon_{it}</span>
+
+<span class="sd">    where:</span>
+<span class="sd">        - :math:`Y_{it}`: outcome for participant i at time t</span>
+<span class="sd">        - :math:`\\alpha_i`: participant-specific intercept (fixed effect)</span>
+<span class="sd">        - :math:`\\text{Post}_t`: indicator for follow-up visit (0=baseline, 1=followup)</span>
+<span class="sd">        - :math:`\\text{Treat}_i`: treatment arm indicator (0=control, 1=treated)</span>
+<span class="sd">        - :math:`\\beta_2`: **DiD coefficient** (the causal estimand of interest)</span>
+<span class="sd">        - :math:`\\epsilon_{it}`: residual error</span>
+
+<span class="sd">    Null Hypothesis</span>
+<span class="sd">    ---------------</span>
+<span class="sd">    H₀: β₂ = 0 (no differential treatment effect over time)</span>
+<span class="sd">    H₁: β₂ ≠ 0 (treatment causes different change than control)</span>
+
+<span class="sd">    The DiD estimator:</span>
+
+<span class="sd">    .. math::</span>
+
+<span class="sd">        \\hat{\\beta}_2 = (\\bar{Y}_{T,post} - \\bar{Y}_{T,pre}) - (\\bar{Y}_{C,post} - \\bar{Y}_{C,pre})</span>
 
 <span class="sd">    Statistical Assumptions</span>
 <span class="sd">    -----------------------</span>
+<span class="sd">    - **Parallel trends**: In absence of treatment, both groups would follow</span>
+<span class="sd">      same trajectory. Cannot be tested directly but can check pre-trends.</span>
+<span class="sd">    - **No anticipation**: Treatment effect only after treatment starts.</span>
+<span class="sd">    - **SUTVA**: No spillover between participants.</span>
 <span class="sd">    - Requires at least 4 unique units (participants) to estimate fixed effects.</span>
 <span class="sd">      Returns NaN for all estimates if n_units &lt; 4.</span>
-<span class="sd">    - Features with near-zero variance (std &lt; 1e-8) return NaN to avoid</span>
-<span class="sd">      misleading standardized estimates.</span>
-<span class="sd">    - Cluster-robust standard errors are used by default to account for</span>
-<span class="sd">      within-participant correlation.</span>
-<span class="sd">    - If `n_cells` column is present in df, Weighted Least Squares (WLS) is</span>
-<span class="sd">      used with sqrt(n_cells) as weights.</span>
+<span class="sd">    - Features with near-zero variance (std &lt; 1e-8) return NaN.</span>
+<span class="sd">    - Cluster-robust standard errors account for within-participant correlation.</span>
+<span class="sd">    - If `n_cells` column is present, Weighted Least Squares (WLS) is used.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -146,22 +174,30 @@
 <span class="sd">    arm_bin : str</span>
 <span class="sd">        Name of the treatment indicator column (0/1).</span>
 <span class="sd">    covariates : list of str, optional</span>
-<span class="sd">        Additional covariate columns to include.</span>
+<span class="sd">        Additional covariate columns to include as fixed effects.</span>
 <span class="sd">    cov_type : str</span>
 <span class="sd">        Covariance type for standard errors (&#39;cluster&#39; recommended).</span>
 <span class="sd">    standardize : bool</span>
-<span class="sd">        If True, z-score the outcome before fitting.</span>
+<span class="sd">        If True, z-score the outcome before fitting (recommended for</span>
+<span class="sd">        interpretable effect sizes).</span>
 <span class="sd">    use_bootstrap : bool</span>
-<span class="sd">        If True, use Wild Cluster Bootstrap for p-values.</span>
+<span class="sd">        If True, use Wild Cluster Bootstrap for p-values (recommended</span>
+<span class="sd">        when n_participants &lt; 15).</span>
 <span class="sd">    n_boot : int</span>
-<span class="sd">        Number of bootstrap iterations.</span>
+<span class="sd">        Number of bootstrap iterations (999 or 1999 for publication).</span>
 <span class="sd">    seed : int</span>
 <span class="sd">        Random seed for reproducibility.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    dict</span>
-<span class="sd">        Contains beta_DiD, se_DiD, p_DiD, beta_time, p_time, n_units.</span>
+<span class="sd">        Dictionary with keys:</span>
+<span class="sd">        - beta_DiD: DiD coefficient (β₂)</span>
+<span class="sd">        - se_DiD: Standard error of β₂</span>
+<span class="sd">        - p_DiD: P-value for H₀: β₂ = 0</span>
+<span class="sd">        - beta_time: Main time effect (β₁)</span>
+<span class="sd">        - p_time: P-value for time effect</span>
+<span class="sd">        - n_units: Number of participants used</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">unit</span><span class="p">,</span> <span class="n">time</span><span class="p">,</span> <span class="n">arm_bin</span><span class="p">,</span> <span class="n">y</span><span class="p">]</span>
     <span class="k">if</span> <span class="n">covariates</span><span class="p">:</span>

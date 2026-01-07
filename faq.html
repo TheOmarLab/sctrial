@@ -17,6 +17,8 @@
       <script src="_static/doctools.js?v=9bcbadda"></script>
       <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -70,6 +72,9 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#statistical-questions">Statistical Questions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#when-should-i-use-bootstrap-vs-standard-errors">When should I use bootstrap vs. standard errors?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#what-are-the-minimum-sample-size-recommendations">What are the minimum sample size recommendations?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#how-should-i-handle-missing-data">How should I handle missing data?</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#what-is-difference-in-differences-did">What is Difference-in-Differences (DiD)?</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#should-i-use-cell-level-or-participant-level-aggregation">Should I use cell-level or participant-level aggregation?</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#what-are-wild-cluster-bootstrap-p-values">What are Wild Cluster Bootstrap p-values?</a></li>
@@ -219,6 +224,156 @@
 </section>
 <section id="statistical-questions">
 <h2>Statistical Questions<a class="headerlink" href="#statistical-questions" title="Link to this heading"></a></h2>
+<section id="when-should-i-use-bootstrap-vs-standard-errors">
+<h3>When should I use bootstrap vs. standard errors?<a class="headerlink" href="#when-should-i-use-bootstrap-vs-standard-errors" title="Link to this heading"></a></h3>
+<p><strong>Use cluster-robust standard errors (default)</strong> when:</p>
+<ul class="simple">
+<li><p>You have ≥15 paired participants per arm</p></li>
+<li><p>Sample sizes are balanced across arms</p></li>
+<li><p>Variance is approximately equal across groups</p></li>
+</ul>
+<p><strong>Use Wild Cluster Bootstrap</strong> (<code class="docutils literal notranslate"><span class="pre">use_bootstrap=True</span></code>) when:</p>
+<ul class="simple">
+<li><p>Few clusters (&lt; 15 participants per arm)</p></li>
+<li><p>Unbalanced sample sizes</p></li>
+<li><p>Concerned about finite-sample bias</p></li>
+<li><p>Need more accurate p-values for publication</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Default: Cluster-robust SEs (fast, adequate for larger samples)</span>
+<span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="n">visits</span><span class="p">)</span>
+
+<span class="c1"># Bootstrap: More accurate for small samples (slower)</span>
+<span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">,</span>
+    <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span>
+    <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+    <span class="n">visits</span><span class="o">=</span><span class="n">visits</span><span class="p">,</span>
+    <span class="n">use_bootstrap</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">n_boot</span><span class="o">=</span><span class="mi">999</span><span class="p">,</span>  <span class="c1"># Use 999 or 1999 for publication</span>
+    <span class="n">seed</span><span class="o">=</span><span class="mi">42</span>      <span class="c1"># For reproducibility</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Mathematical note</strong>: Bootstrap resamples at the participant level:</p>
+<div class="math notranslate nohighlight">
+\[\hat{t}_b^* = \frac{\hat{\beta}^* - \hat{\beta}}{\text{SE}(\hat{\beta}^*)}\]</div>
+<p>where <span class="math notranslate nohighlight">\(\hat{\beta}^*\)</span> is the bootstrap estimate.</p>
+</section>
+<section id="what-are-the-minimum-sample-size-recommendations">
+<h3>What are the minimum sample size recommendations?<a class="headerlink" href="#what-are-the-minimum-sample-size-recommendations" title="Link to this heading"></a></h3>
+<p><strong>Statistical minimums</strong>:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Scenario</p></th>
+<th class="head"><p>Per Arm</p></th>
+<th class="head"><p>Total Participants</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Absolute minimum</p></td>
+<td><p>4 paired</p></td>
+<td><p>8</p></td>
+</tr>
+<tr class="row-odd"><td><p>Adequate for bootstrap</p></td>
+<td><p>6-8 paired</p></td>
+<td><p>12-16</p></td>
+</tr>
+<tr class="row-even"><td><p>Recommended</p></td>
+<td><p>10-15 paired</p></td>
+<td><p>20-30</p></td>
+</tr>
+<tr class="row-odd"><td><p>Well-powered (d=0.5)</p></td>
+<td><p>20+ paired</p></td>
+<td><p>40+</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Power calculation example</strong>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">sctrial</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
+
+<span class="c1"># How many participants for 80% power to detect d=0.5?</span>
+<span class="n">n_needed</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">sample_size_did</span><span class="p">(</span><span class="n">effect_size</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="mf">0.80</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Need </span><span class="si">{</span><span class="n">n_needed</span><span class="si">}</span><span class="s2"> per arm (</span><span class="si">{</span><span class="mi">2</span><span class="o">*</span><span class="n">n_needed</span><span class="si">}</span><span class="s2"> total)&quot;</span><span class="p">)</span>
+
+<span class="c1"># What power do I have with 15 per arm?</span>
+<span class="n">power</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">power_did</span><span class="p">(</span><span class="n">n_per_group</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">effect_size</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Power with 15/arm: </span><span class="si">{</span><span class="n">power</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># Generate power curve</span>
+<span class="n">ns</span><span class="p">,</span> <span class="n">powers</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">power_curve</span><span class="p">(</span><span class="n">n_range</span><span class="o">=</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">50</span><span class="p">),</span> <span class="n">effect_size</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Practical considerations</strong>:</p>
+<ul class="simple">
+<li><p>Single-cell data doesn’t increase statistical power (participants do)</p></li>
+<li><p>Cell counts help reduce noise, but n_participants drives inference</p></li>
+<li><p>Small samples → use bootstrap and report effect sizes with CIs</p></li>
+<li><p>Consider mixed effects models for partial pooling with small n</p></li>
+</ul>
+</section>
+<section id="how-should-i-handle-missing-data">
+<h3>How should I handle missing data?<a class="headerlink" href="#how-should-i-handle-missing-data" title="Link to this heading"></a></h3>
+<p><strong>Types of missingness in trials</strong>:</p>
+<ol class="arabic simple">
+<li><p><strong>Missing visits</strong> (participant dropout)</p></li>
+<li><p><strong>Missing cells</strong> (technical failure)</p></li>
+<li><p><strong>Missing annotations</strong> (cell type not assigned)</p></li>
+</ol>
+<p><strong>For missing visits (most critical)</strong>:</p>
+<p>DiD requires data at BOTH visits. Participants with missing visits are dropped:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Check pairing before analysis</span>
+<span class="n">n_paired</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">count_paired</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">,</span> <span class="s2">&quot;visit&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Paired participants: </span><span class="si">{</span><span class="n">n_paired</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># Diagnose issues</span>
+<span class="n">diag</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">diagnose_trial_data</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Options for missing data</strong>:</p>
+<ol class="arabic simple">
+<li><p><strong>Complete case analysis</strong> (default, recommended for trials)</p>
+<ul class="simple">
+<li><p>Uses only participants with data at both visits</p></li>
+<li><p>Valid if missingness is independent of treatment effect (MCAR/MAR)</p></li>
+</ul>
+</li>
+<li><p><strong>Multiple imputation</strong> (advanced)</p>
+<ul class="simple">
+<li><p>Not built into sctrial; use external packages</p></li>
+<li><p>Only if missingness mechanism is well-understood</p></li>
+</ul>
+</li>
+<li><p><strong>Last observation carried forward</strong> (NOT recommended)</p>
+<ul class="simple">
+<li><p>Biases results; avoid in clinical trials</p></li>
+</ul>
+</li>
+</ol>
+<p><strong>For missing cell-type annotations</strong>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Option 1: Exclude unassigned cells</span>
+<span class="n">adata</span> <span class="o">=</span> <span class="n">adata</span><span class="p">[</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;celltype&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;Unknown&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+<span class="c1"># Option 2: Include as separate category</span>
+<span class="c1"># (if &quot;Unknown&quot; cells are biologically meaningful)</span>
+</pre></div>
+</div>
+<p><strong>Diagnosing missingness patterns</strong>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Check for systematic missingness</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="n">missing</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">obs</span>
+    <span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">&quot;arm&quot;</span><span class="p">,</span> <span class="s2">&quot;visit&quot;</span><span class="p">])[</span><span class="s2">&quot;participant_id&quot;</span><span class="p">]</span>
+    <span class="o">.</span><span class="n">nunique</span><span class="p">()</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Participants per arm × visit:&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">missing</span><span class="o">.</span><span class="n">unstack</span><span class="p">())</span>
+
+<span class="c1"># Check if dropout differs by arm (potential bias!)</span>
+<span class="n">dropout_by_arm</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;arm&quot;</span><span class="p">)[</span><span class="s2">&quot;participant_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
 <section id="what-is-difference-in-differences-did">
 <h3>What is Difference-in-Differences (DiD)?<a class="headerlink" href="#what-is-difference-in-differences-did" title="Link to this heading"></a></h3>
 <p>DiD tests whether the <em>change</em> from baseline to follow-up differs between treatment arms. This accounts for:</p>
@@ -243,9 +398,9 @@
 <h3>How do I interpret beta_DiD?<a class="headerlink" href="#how-do-i-interpret-beta-did" title="Link to this heading"></a></h3>
 <p>If <code class="docutils literal notranslate"><span class="pre">standardize=True</span></code> (default), <code class="docutils literal notranslate"><span class="pre">beta_DiD</span></code> is in standard deviation units (like Cohen’s d).</p>
 <ul class="simple">
-<li><p><a href="#id1"><span class="problematic" id="id2">|beta_DiD|</span></a> &gt; 0.2: Small effect</p></li>
-<li><p><a href="#id3"><span class="problematic" id="id4">|beta_DiD|</span></a> &gt; 0.5: Medium effect</p></li>
-<li><p><a href="#id5"><span class="problematic" id="id6">|beta_DiD|</span></a> &gt; 0.8: Large effect</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">|beta_DiD|</span></code> &gt; 0.2: Small effect</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">|beta_DiD|</span></code> &gt; 0.5: Medium effect</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">|beta_DiD|</span></code> &gt; 0.8: Large effect</p></li>
 </ul>
 <p>Positive beta_DiD = feature increased more (or decreased less) in treated vs. control.</p>
 </section>

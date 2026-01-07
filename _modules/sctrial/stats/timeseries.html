@@ -1,0 +1,681 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>sctrial.stats.timeseries &mdash; sctrial 0.2.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=938c9ccc"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            sctrial
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">API Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">User Guides:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../best_practices.html">Best Practices Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../troubleshooting.html">Troubleshooting Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../faq.html">Frequently Asked Questions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../performance.html">Performance Guide</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">sctrial</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">sctrial.stats.timeseries</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for sctrial.stats.timeseries</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Time series analysis for multi-timepoint trials.</span>
+
+<span class="sd">This module extends sctrial&#39;s capabilities beyond 2-timepoint DiD to handle</span>
+<span class="sd">longitudinal studies with 3+ timepoints.</span>
+
+<span class="sd">Mathematical Background</span>
+<span class="sd">-----------------------</span>
+<span class="sd">For studies with &gt;2 timepoints, several approaches are available:</span>
+
+<span class="sd">1. **Generalized DiD (Event Study)**:</span>
+<span class="sd">   Compare each post-treatment timepoint to baseline:</span>
+
+<span class="sd">       Y_it = α_i + Σ_k β_k × D_it^k + ε_it</span>
+
+<span class="sd">   where D_it^k = 1 if participant i is treated and at timepoint k.</span>
+
+<span class="sd">2. **Linear Trend Interaction**:</span>
+<span class="sd">   Test if treatment changes the slope over time:</span>
+
+<span class="sd">       Y_it = α_i + β₁×Time + β₂×Treat×Time + ε_it</span>
+
+<span class="sd">   H₀: β₂ = 0 (treatment doesn&#39;t change trajectory)</span>
+
+<span class="sd">3. **Quadratic/Polynomial Trends**:</span>
+<span class="sd">   Allow for non-linear trajectories:</span>
+
+<span class="sd">       Y_it = α_i + β₁×Time + β₂×Time² + β₃×Treat×Time + β₄×Treat×Time² + ε_it</span>
+
+<span class="sd">4. **Spline Models**:</span>
+<span class="sd">   Flexible non-parametric trend modeling using basis splines.</span>
+
+<span class="sd">Model Selection Guidance</span>
+<span class="sd">------------------------</span>
+<span class="sd">- 3-4 timepoints: Linear trend interaction is usually sufficient</span>
+<span class="sd">- 5+ timepoints: Consider polynomial or spline models</span>
+<span class="sd">- Irregular intervals: Use actual time values, not ordinal indices</span>
+<span class="sd">- Treatment onset varies: Use time relative to treatment start</span>
+
+<span class="sd">Key Assumptions</span>
+<span class="sd">---------------</span>
+<span class="sd">1. Parallel trends in pre-treatment period (for causal inference)</span>
+<span class="sd">2. No anticipation effects</span>
+<span class="sd">3. Treatment effect timing is correctly specified</span>
+<span class="sd">4. Panel is balanced or missingness is random (MCAR)</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sequence</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Literal</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">anndata</span><span class="w"> </span><span class="kn">import</span> <span class="n">AnnData</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">statsmodels.stats.multitest</span><span class="w"> </span><span class="kn">import</span> <span class="n">multipletests</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">..design</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrialDesign</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;trend_interaction&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;event_study_did&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;polynomial_trend&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;test_parallel_trends&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;TrendModel&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="n">TrendModel</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;linear&quot;</span><span class="p">,</span> <span class="s2">&quot;quadratic&quot;</span><span class="p">,</span> <span class="s2">&quot;cubic&quot;</span><span class="p">]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_prepare_longitudinal_data</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
+    <span class="n">design</span><span class="p">:</span> <span class="n">TrialDesign</span><span class="p">,</span>
+    <span class="n">visits</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="n">features</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="n">layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">exclude_crossovers</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Prepare data for longitudinal analysis.&quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.._extract</span><span class="w"> </span><span class="kn">import</span> <span class="n">extract_gene_vector</span>
+
+    <span class="c1"># Filter to specified visits</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">visits</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">exclude_crossovers</span> <span class="ow">and</span> <span class="n">design</span><span class="o">.</span><span class="n">crossover_col</span><span class="p">:</span>
+        <span class="n">mask</span> <span class="o">&amp;=</span> <span class="o">~</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">crossover_col</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">bool</span><span class="p">)</span>
+
+    <span class="n">ad</span> <span class="o">=</span> <span class="n">adata</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="c1"># Build dataframe</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">obs</span><span class="p">[[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="c1"># Add features</span>
+    <span class="k">for</span> <span class="n">feat</span> <span class="ow">in</span> <span class="n">features</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">feat</span> <span class="ow">in</span> <span class="n">ad</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">df</span><span class="p">[</span><span class="n">feat</span><span class="p">]</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">feat</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+        <span class="k">elif</span> <span class="n">feat</span> <span class="ow">in</span> <span class="n">ad</span><span class="o">.</span><span class="n">var_names</span><span class="p">:</span>
+            <span class="n">df</span><span class="p">[</span><span class="n">feat</span><span class="p">]</span> <span class="o">=</span> <span class="n">extract_gene_vector</span><span class="p">(</span><span class="n">ad</span><span class="p">,</span> <span class="n">feat</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="n">layer</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">df</span>
+
+
+<div class="viewcode-block" id="trend_interaction">
+<a class="viewcode-back" href="../../../api.html#sctrial.stats.timeseries.trend_interaction">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">trend_interaction</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
+    <span class="n">features</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="n">design</span><span class="p">:</span> <span class="n">TrialDesign</span><span class="p">,</span>
+    <span class="n">visits</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="n">time_values</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">model</span><span class="p">:</span> <span class="n">TrendModel</span> <span class="o">=</span> <span class="s2">&quot;linear&quot;</span><span class="p">,</span>
+    <span class="n">aggregate</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;participant_visit&quot;</span><span class="p">,</span> <span class="s2">&quot;cell&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;participant_visit&quot;</span><span class="p">,</span>
+    <span class="n">layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">exclude_crossovers</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Test treatment × time trend interactions for multi-timepoint data.</span>
+
+<span class="sd">    This function fits a model where treatment modifies the trajectory</span>
+<span class="sd">    over time:</span>
+
+<span class="sd">    Linear model:</span>
+<span class="sd">        Y_it = α_i + β₁×Time + β₂×Treat×Time + ε_it</span>
+
+<span class="sd">        H₀: β₂ = 0 (treatment doesn&#39;t change the slope)</span>
+
+<span class="sd">    Quadratic model:</span>
+<span class="sd">        Y_it = α_i + β₁×Time + β₂×Time² + β₃×Treat×Time + β₄×Treat×Time² + ε_it</span>
+
+<span class="sd">        H₀: β₃ = β₄ = 0 (no treatment effect on trajectory)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    adata</span>
+<span class="sd">        AnnData object with longitudinal data.</span>
+<span class="sd">    features</span>
+<span class="sd">        Features to test.</span>
+<span class="sd">    design</span>
+<span class="sd">        TrialDesign object.</span>
+<span class="sd">    visits</span>
+<span class="sd">        Ordered list of visit labels (3+ visits).</span>
+<span class="sd">    time_values</span>
+<span class="sd">        Numeric time values corresponding to visits.</span>
+<span class="sd">        If None, uses ordinal indices (0, 1, 2, ...).</span>
+<span class="sd">    model</span>
+<span class="sd">        &quot;linear&quot;, &quot;quadratic&quot;, or &quot;cubic&quot;.</span>
+<span class="sd">    aggregate</span>
+<span class="sd">        Aggregation mode.</span>
+<span class="sd">    layer</span>
+<span class="sd">        Expression layer.</span>
+<span class="sd">    exclude_crossovers</span>
+<span class="sd">        Exclude crossover participants.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.DataFrame</span>
+<span class="sd">        Results with columns:</span>
+<span class="sd">        - feature: Feature name</span>
+<span class="sd">        - beta_trend: Main time effect (in control)</span>
+<span class="sd">        - beta_treat_trend: Treatment × time interaction (linear)</span>
+<span class="sd">        - p_treat_trend: P-value for linear interaction</span>
+<span class="sd">        - beta_treat_trend2: Treatment × time² interaction (if quadratic)</span>
+<span class="sd">        - p_treat_trend2: P-value for quadratic interaction</span>
+<span class="sd">        - n_units: Number of participants</span>
+<span class="sd">        - n_timepoints: Number of visits</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; # 4-timepoint study: Day 0, 7, 14, 28</span>
+<span class="sd">    &gt;&gt;&gt; res = trend_interaction(</span>
+<span class="sd">    ...     adata, features=genes, design=design,</span>
+<span class="sd">    ...     visits=[&quot;D0&quot;, &quot;D7&quot;, &quot;D14&quot;, &quot;D28&quot;],</span>
+<span class="sd">    ...     time_values=[0, 7, 14, 28],</span>
+<span class="sd">    ...     model=&quot;linear&quot;</span>
+<span class="sd">    ... )</span>
+<span class="sd">    &gt;&gt;&gt; print(res[res[&quot;p_treat_trend&quot;] &lt; 0.05])</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">statsmodels.formula.api</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">smf</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">visits</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;trend_interaction requires 3+ timepoints. Use did_table for 2.&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Prepare time values</span>
+    <span class="k">if</span> <span class="n">time_values</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">time_values</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">visits</span><span class="p">)))</span>
+    <span class="n">time_map</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">visits</span><span class="p">,</span> <span class="n">time_values</span><span class="p">))</span>
+
+    <span class="c1"># Prepare data</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">_prepare_longitudinal_data</span><span class="p">(</span>
+        <span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="n">layer</span><span class="p">,</span> <span class="n">exclude_crossovers</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Add numeric time</span>
+    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;_time&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">time_map</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;_treat&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span> <span class="o">==</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_treated</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+    <span class="c1"># Aggregate to participant-visit level</span>
+    <span class="k">if</span> <span class="n">aggregate</span> <span class="o">==</span> <span class="s2">&quot;participant_visit&quot;</span><span class="p">:</span>
+        <span class="n">grp_cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">,</span> <span class="s2">&quot;_time&quot;</span><span class="p">,</span> <span class="s2">&quot;_treat&quot;</span><span class="p">]</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">grp_cols</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="nb">list</span><span class="p">(</span><span class="n">features</span><span class="p">)]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+
+    <span class="n">n_units</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span>
+    <span class="n">n_timepoints</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">visits</span><span class="p">)</span>
+
+    <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">feat</span> <span class="ow">in</span> <span class="n">features</span><span class="p">:</span>
+        <span class="n">df_feat</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">df_feat</span><span class="p">[</span><span class="s2">&quot;_y&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df_feat</span><span class="p">[</span><span class="n">feat</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+
+        <span class="c1"># Standardize</span>
+        <span class="n">y_std</span> <span class="o">=</span> <span class="n">df_feat</span><span class="p">[</span><span class="s2">&quot;_y&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">y_std</span> <span class="o">&lt;</span> <span class="mf">1e-12</span><span class="p">:</span>
+            <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span> <span class="s2">&quot;n_units&quot;</span><span class="p">:</span> <span class="n">n_units</span><span class="p">,</span> <span class="s2">&quot;n_timepoints&quot;</span><span class="p">:</span> <span class="n">n_timepoints</span><span class="p">})</span>
+            <span class="k">continue</span>
+        <span class="n">df_feat</span><span class="p">[</span><span class="s2">&quot;_y&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">df_feat</span><span class="p">[</span><span class="s2">&quot;_y&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">df_feat</span><span class="p">[</span><span class="s2">&quot;_y&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span> <span class="o">/</span> <span class="n">y_std</span>
+
+        <span class="c1"># Build formula based on model</span>
+        <span class="k">if</span> <span class="n">model</span> <span class="o">==</span> <span class="s2">&quot;linear&quot;</span><span class="p">:</span>
+            <span class="n">formula</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;_y ~ _time + _treat:_time + C(</span><span class="si">{</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="si">}</span><span class="s2">)&quot;</span>
+        <span class="k">elif</span> <span class="n">model</span> <span class="o">==</span> <span class="s2">&quot;quadratic&quot;</span><span class="p">:</span>
+            <span class="n">df_feat</span><span class="p">[</span><span class="s2">&quot;_time2&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df_feat</span><span class="p">[</span><span class="s2">&quot;_time&quot;</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span>
+            <span class="n">formula</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;_y ~ _time + _time2 + _treat:_time + _treat:_time2 + C(</span><span class="si">{</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="si">}</span><span class="s2">)&quot;</span>
+        <span class="k">elif</span> <span class="n">model</span> <span class="o">==</span> <span class="s2">&quot;cubic&quot;</span><span class="p">:</span>
+            <span class="n">df_feat</span><span class="p">[</span><span class="s2">&quot;_time2&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df_feat</span><span class="p">[</span><span class="s2">&quot;_time&quot;</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span>
+            <span class="n">df_feat</span><span class="p">[</span><span class="s2">&quot;_time3&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df_feat</span><span class="p">[</span><span class="s2">&quot;_time&quot;</span><span class="p">]</span> <span class="o">**</span> <span class="mi">3</span>
+            <span class="n">formula</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;_y ~ _time + _time2 + _time3 + _treat:_time + _treat:_time2 + _treat:_time3 + C(</span><span class="si">{</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="si">}</span><span class="s2">)&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown model: </span><span class="si">{</span><span class="n">model</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">fit</span> <span class="o">=</span> <span class="n">smf</span><span class="o">.</span><span class="n">ols</span><span class="p">(</span><span class="n">formula</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">df_feat</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span>
+                <span class="n">cov_type</span><span class="o">=</span><span class="s2">&quot;cluster&quot;</span><span class="p">,</span>
+                <span class="n">cov_kwds</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;groups&quot;</span><span class="p">:</span> <span class="n">df_feat</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]}</span>
+            <span class="p">)</span>
+
+            <span class="n">result</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
+                <span class="s2">&quot;beta_trend&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;_time&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)),</span>
+                <span class="s2">&quot;beta_treat_trend&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;_treat:_time&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)),</span>
+                <span class="s2">&quot;se_treat_trend&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">bse</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;_treat:_time&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)),</span>
+                <span class="s2">&quot;p_treat_trend&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">pvalues</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;_treat:_time&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)),</span>
+                <span class="s2">&quot;n_units&quot;</span><span class="p">:</span> <span class="n">n_units</span><span class="p">,</span>
+                <span class="s2">&quot;n_timepoints&quot;</span><span class="p">:</span> <span class="n">n_timepoints</span><span class="p">,</span>
+            <span class="p">}</span>
+
+            <span class="k">if</span> <span class="n">model</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;quadratic&quot;</span><span class="p">,</span> <span class="s2">&quot;cubic&quot;</span><span class="p">]:</span>
+                <span class="n">result</span><span class="p">[</span><span class="s2">&quot;beta_treat_trend2&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;_treat:_time2&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">))</span>
+                <span class="n">result</span><span class="p">[</span><span class="s2">&quot;p_treat_trend2&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">pvalues</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;_treat:_time2&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">))</span>
+
+            <span class="k">if</span> <span class="n">model</span> <span class="o">==</span> <span class="s2">&quot;cubic&quot;</span><span class="p">:</span>
+                <span class="n">result</span><span class="p">[</span><span class="s2">&quot;beta_treat_trend3&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;_treat:_time3&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">))</span>
+                <span class="n">result</span><span class="p">[</span><span class="s2">&quot;p_treat_trend3&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">pvalues</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;_treat:_time3&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">))</span>
+
+            <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                <span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
+                <span class="s2">&quot;n_units&quot;</span><span class="p">:</span> <span class="n">n_units</span><span class="p">,</span>
+                <span class="s2">&quot;n_timepoints&quot;</span><span class="p">:</span> <span class="n">n_timepoints</span><span class="p">,</span>
+                <span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">),</span>
+            <span class="p">})</span>
+
+    <span class="n">res</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
+
+    <span class="c1"># FDR correction for linear trend</span>
+    <span class="k">if</span> <span class="s2">&quot;p_treat_trend&quot;</span> <span class="ow">in</span> <span class="n">res</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">res</span><span class="p">[</span><span class="s2">&quot;p_treat_trend&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span>
+        <span class="n">res</span><span class="p">[</span><span class="s2">&quot;FDR_treat_trend&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+        <span class="k">if</span> <span class="n">mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">res</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="s2">&quot;FDR_treat_trend&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">multipletests</span><span class="p">(</span>
+                <span class="n">res</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="s2">&quot;p_treat_trend&quot;</span><span class="p">],</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;fdr_bh&quot;</span>
+            <span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">res</span></div>
+
+
+
+<div class="viewcode-block" id="event_study_did">
+<a class="viewcode-back" href="../../../api.html#sctrial.stats.timeseries.event_study_did">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">event_study_did</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
+    <span class="n">features</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="n">design</span><span class="p">:</span> <span class="n">TrialDesign</span><span class="p">,</span>
+    <span class="n">visits</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="n">reference_visit</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">exclude_crossovers</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Run event study DiD comparing each visit to a reference baseline.</span>
+
+<span class="sd">    This is a generalization of 2-period DiD to multiple periods.</span>
+<span class="sd">    For each post-baseline visit, we estimate a separate DiD effect.</span>
+
+<span class="sd">    Model:</span>
+<span class="sd">        Y_it = α_i + Σ_k (γ_k × Visit_k) + Σ_k (β_k × Treat × Visit_k) + ε_it</span>
+
+<span class="sd">    β_k captures the DiD effect at visit k relative to baseline.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    adata</span>
+<span class="sd">        AnnData object.</span>
+<span class="sd">    features</span>
+<span class="sd">        Features to test.</span>
+<span class="sd">    design</span>
+<span class="sd">        TrialDesign object.</span>
+<span class="sd">    visits</span>
+<span class="sd">        Ordered visit labels.</span>
+<span class="sd">    reference_visit</span>
+<span class="sd">        Baseline visit for comparison. If None, uses first visit.</span>
+<span class="sd">    layer</span>
+<span class="sd">        Expression layer.</span>
+<span class="sd">    exclude_crossovers</span>
+<span class="sd">        Exclude crossover participants.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.DataFrame</span>
+<span class="sd">        Long-format results with columns:</span>
+<span class="sd">        - feature: Feature name</span>
+<span class="sd">        - visit: Post-baseline visit</span>
+<span class="sd">        - beta_DiD: DiD effect vs reference</span>
+<span class="sd">        - se_DiD: Standard error</span>
+<span class="sd">        - p_DiD: P-value</span>
+<span class="sd">        - n_units: Sample size</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; # Compare each follow-up to baseline</span>
+<span class="sd">    &gt;&gt;&gt; res = event_study_did(</span>
+<span class="sd">    ...     adata, features=genes, design=design,</span>
+<span class="sd">    ...     visits=[&quot;Baseline&quot;, &quot;Week4&quot;, &quot;Week8&quot;, &quot;Week12&quot;],</span>
+<span class="sd">    ...     reference_visit=&quot;Baseline&quot;</span>
+<span class="sd">    ... )</span>
+<span class="sd">    &gt;&gt;&gt; # Visualize event study plot</span>
+<span class="sd">    &gt;&gt;&gt; for feat in genes[:3]:</span>
+<span class="sd">    ...     sub = res[res[&quot;feature&quot;] == feat]</span>
+<span class="sd">    ...     plt.errorbar(sub[&quot;visit&quot;], sub[&quot;beta_DiD&quot;], yerr=1.96*sub[&quot;se_DiD&quot;])</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.did</span><span class="w"> </span><span class="kn">import</span> <span class="n">did_table</span>
+
+    <span class="k">if</span> <span class="n">reference_visit</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">reference_visit</span> <span class="o">=</span> <span class="n">visits</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">reference_visit</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">visits</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Reference visit &#39;</span><span class="si">{</span><span class="n">reference_visit</span><span class="si">}</span><span class="s2">&#39; not in visits list&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Run DiD for each post-baseline visit</span>
+    <span class="n">all_results</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">post_visits</span> <span class="o">=</span> <span class="p">[</span><span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">visits</span> <span class="k">if</span> <span class="n">v</span> <span class="o">!=</span> <span class="n">reference_visit</span><span class="p">]</span>
+
+    <span class="k">for</span> <span class="n">post_visit</span> <span class="ow">in</span> <span class="n">post_visits</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="n">did_table</span><span class="p">(</span>
+                <span class="n">adata</span><span class="p">,</span>
+                <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span>
+                <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+                <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="n">reference_visit</span><span class="p">,</span> <span class="n">post_visit</span><span class="p">),</span>
+                <span class="n">exclude_crossovers</span><span class="o">=</span><span class="n">exclude_crossovers</span><span class="p">,</span>
+                <span class="n">layer</span><span class="o">=</span><span class="n">layer</span><span class="p">,</span>
+                <span class="n">aggregate</span><span class="o">=</span><span class="s2">&quot;participant_visit&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">res</span><span class="p">[</span><span class="s2">&quot;visit&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">post_visit</span>
+            <span class="n">res</span><span class="p">[</span><span class="s2">&quot;reference&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">reference_visit</span>
+            <span class="n">all_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="c1"># Create empty result for this visit</span>
+            <span class="n">empty</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">features</span><span class="p">})</span>
+            <span class="n">empty</span><span class="p">[</span><span class="s2">&quot;visit&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">post_visit</span>
+            <span class="n">empty</span><span class="p">[</span><span class="s2">&quot;reference&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">reference_visit</span>
+            <span class="n">empty</span><span class="p">[</span><span class="s2">&quot;error&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+            <span class="n">all_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">empty</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">all_results</span><span class="p">:</span>
+        <span class="n">combined</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">all_results</span><span class="p">,</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">combined</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">combined</span></div>
+
+
+
+<div class="viewcode-block" id="polynomial_trend">
+<a class="viewcode-back" href="../../../api.html#sctrial.stats.timeseries.polynomial_trend">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">polynomial_trend</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
+    <span class="n">feature</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">design</span><span class="p">:</span> <span class="n">TrialDesign</span><span class="p">,</span>
+    <span class="n">visits</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="n">time_values</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">degree</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="n">layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fit polynomial trend model for a single feature.</span>
+
+<span class="sd">    This function fits a polynomial model and returns detailed diagnostics</span>
+<span class="sd">    including predicted trajectories.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    adata</span>
+<span class="sd">        AnnData object.</span>
+<span class="sd">    feature</span>
+<span class="sd">        Single feature to model.</span>
+<span class="sd">    design</span>
+<span class="sd">        TrialDesign object.</span>
+<span class="sd">    visits</span>
+<span class="sd">        Ordered visit labels.</span>
+<span class="sd">    time_values</span>
+<span class="sd">        Numeric time values (or None for ordinal).</span>
+<span class="sd">    degree</span>
+<span class="sd">        Polynomial degree (1=linear, 2=quadratic, 3=cubic).</span>
+<span class="sd">    layer</span>
+<span class="sd">        Expression layer.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict</span>
+<span class="sd">        Model results including:</span>
+<span class="sd">        - coefficients: All model coefficients</span>
+<span class="sd">        - predictions: Predicted values per arm×time</span>
+<span class="sd">        - aic, bic: Model fit statistics</span>
+<span class="sd">        - residuals: Model residuals</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">statsmodels.formula.api</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">smf</span>
+
+    <span class="k">if</span> <span class="n">time_values</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">time_values</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">visits</span><span class="p">)))</span>
+    <span class="n">time_map</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">visits</span><span class="p">,</span> <span class="n">time_values</span><span class="p">))</span>
+
+    <span class="n">df</span> <span class="o">=</span> <span class="n">_prepare_longitudinal_data</span><span class="p">(</span>
+        <span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="p">,</span> <span class="p">[</span><span class="n">feature</span><span class="p">],</span> <span class="n">layer</span><span class="p">,</span> <span class="n">exclude_crossovers</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Aggregate</span>
+    <span class="n">grp_cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">grp_cols</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[[</span><span class="n">feature</span><span class="p">]]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+
+    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;_time&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">time_map</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;_treat&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span> <span class="o">==</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_treated</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;_y&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">feature</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+
+    <span class="c1"># Build polynomial terms</span>
+    <span class="n">terms</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;_time&quot;</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">degree</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="n">df</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;_time</span><span class="si">{</span><span class="n">d</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;_time&quot;</span><span class="p">]</span> <span class="o">**</span> <span class="n">d</span>
+        <span class="n">terms</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;_time</span><span class="si">{</span><span class="n">d</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Build formula with interactions</span>
+    <span class="n">fixed</span> <span class="o">=</span> <span class="s2">&quot; + &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">terms</span><span class="p">)</span>
+    <span class="n">interact</span> <span class="o">=</span> <span class="s2">&quot; + &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="sa">f</span><span class="s2">&quot;_treat:</span><span class="si">{</span><span class="n">t</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">terms</span><span class="p">])</span>
+    <span class="n">formula</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;_y ~ </span><span class="si">{</span><span class="n">fixed</span><span class="si">}</span><span class="s2"> + </span><span class="si">{</span><span class="n">interact</span><span class="si">}</span><span class="s2"> + C(</span><span class="si">{</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="si">}</span><span class="s2">)&quot;</span>
+
+    <span class="n">fit</span> <span class="o">=</span> <span class="n">smf</span><span class="o">.</span><span class="n">ols</span><span class="p">(</span><span class="n">formula</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">df</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
+
+    <span class="c1"># Generate predictions</span>
+    <span class="n">time_grid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">time_values</span><span class="p">),</span> <span class="nb">max</span><span class="p">(</span><span class="n">time_values</span><span class="p">),</span> <span class="mi">50</span><span class="p">)</span>
+    <span class="n">pred_data</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">treat</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]:</span>
+        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">time_grid</span><span class="p">:</span>
+            <span class="n">row</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;_time&quot;</span><span class="p">:</span> <span class="n">t</span><span class="p">,</span> <span class="s2">&quot;_treat&quot;</span><span class="p">:</span> <span class="n">treat</span><span class="p">}</span>
+            <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">degree</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+                <span class="n">row</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;_time</span><span class="si">{</span><span class="n">d</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">t</span> <span class="o">**</span> <span class="n">d</span>
+            <span class="c1"># Use mean participant (approximate)</span>
+            <span class="n">row</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">pred_data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+
+    <span class="n">pred_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">pred_data</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">pred_df</span><span class="p">[</span><span class="s2">&quot;predicted&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">fit</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">pred_df</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="n">pred_df</span><span class="p">[</span><span class="s2">&quot;predicted&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+    <span class="n">pred_df</span><span class="p">[</span><span class="s2">&quot;arm&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pred_df</span><span class="p">[</span><span class="s2">&quot;_treat&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">({</span><span class="mi">0</span><span class="p">:</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_control</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_treated</span><span class="p">})</span>
+
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;coefficients&quot;</span><span class="p">:</span> <span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">to_dict</span><span class="p">(),</span>
+        <span class="s2">&quot;pvalues&quot;</span><span class="p">:</span> <span class="n">fit</span><span class="o">.</span><span class="n">pvalues</span><span class="o">.</span><span class="n">to_dict</span><span class="p">(),</span>
+        <span class="s2">&quot;predictions&quot;</span><span class="p">:</span> <span class="n">pred_df</span><span class="p">[[</span><span class="s2">&quot;_time&quot;</span><span class="p">,</span> <span class="s2">&quot;arm&quot;</span><span class="p">,</span> <span class="s2">&quot;predicted&quot;</span><span class="p">]],</span>
+        <span class="s2">&quot;aic&quot;</span><span class="p">:</span> <span class="n">fit</span><span class="o">.</span><span class="n">aic</span><span class="p">,</span>
+        <span class="s2">&quot;bic&quot;</span><span class="p">:</span> <span class="n">fit</span><span class="o">.</span><span class="n">bic</span><span class="p">,</span>
+        <span class="s2">&quot;rsquared&quot;</span><span class="p">:</span> <span class="n">fit</span><span class="o">.</span><span class="n">rsquared</span><span class="p">,</span>
+        <span class="s2">&quot;residuals&quot;</span><span class="p">:</span> <span class="n">fit</span><span class="o">.</span><span class="n">resid</span><span class="o">.</span><span class="n">values</span><span class="p">,</span>
+    <span class="p">}</span></div>
+
+
+
+<div class="viewcode-block" id="test_parallel_trends">
+<a class="viewcode-back" href="../../../api.html#sctrial.stats.timeseries.test_parallel_trends">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">test_parallel_trends</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
+    <span class="n">features</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="n">design</span><span class="p">:</span> <span class="n">TrialDesign</span><span class="p">,</span>
+    <span class="n">pre_visits</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="n">layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Test the parallel trends assumption using pre-treatment data.</span>
+
+<span class="sd">    A key assumption of DiD is that treatment and control groups would</span>
+<span class="sd">    have followed parallel trajectories in the absence of treatment.</span>
+<span class="sd">    This can be partially tested using pre-treatment data.</span>
+
+<span class="sd">    Model:</span>
+<span class="sd">        Y_it = α_i + β₁×Time + β₂×Treat×Time + ε_it  (pre-treatment only)</span>
+
+<span class="sd">    H₀: β₂ = 0 (parallel pre-trends)</span>
+
+<span class="sd">    A significant β₂ suggests the parallel trends assumption may be violated.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    adata</span>
+<span class="sd">        AnnData object.</span>
+<span class="sd">    features</span>
+<span class="sd">        Features to test.</span>
+<span class="sd">    design</span>
+<span class="sd">        TrialDesign object.</span>
+<span class="sd">    pre_visits</span>
+<span class="sd">        List of pre-treatment visits (2+ visits).</span>
+<span class="sd">    layer</span>
+<span class="sd">        Expression layer.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.DataFrame</span>
+<span class="sd">        Results with:</span>
+<span class="sd">        - feature: Feature name</span>
+<span class="sd">        - beta_pretrend: Pre-treatment trend difference</span>
+<span class="sd">        - p_pretrend: P-value for non-parallel trends</span>
+<span class="sd">        - warning: &quot;Violation&quot; if p &lt; 0.10</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; # Check parallel trends in screening visits</span>
+<span class="sd">    &gt;&gt;&gt; pre_test = test_parallel_trends(</span>
+<span class="sd">    ...     adata, features=genes, design=design,</span>
+<span class="sd">    ...     pre_visits=[&quot;Screen1&quot;, &quot;Screen2&quot;, &quot;Baseline&quot;]</span>
+<span class="sd">    ... )</span>
+<span class="sd">    &gt;&gt;&gt; violations = pre_test[pre_test[&quot;warning&quot;] == &quot;Violation&quot;]</span>
+<span class="sd">    &gt;&gt;&gt; print(f&quot;Features with potential violations: {len(violations)}&quot;)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">pre_visits</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Need at least 2 pre-treatment visits to test parallel trends&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Use linear trend interaction on pre-treatment data only</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">trend_interaction</span><span class="p">(</span>
+        <span class="n">adata</span><span class="p">,</span>
+        <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span>
+        <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+        <span class="n">visits</span><span class="o">=</span><span class="n">pre_visits</span><span class="p">,</span>
+        <span class="n">model</span><span class="o">=</span><span class="s2">&quot;linear&quot;</span><span class="p">,</span>
+        <span class="n">layer</span><span class="o">=</span><span class="n">layer</span><span class="p">,</span>
+        <span class="n">exclude_crossovers</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Rename columns for clarity</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;beta_treat_trend&quot;</span><span class="p">:</span> <span class="s2">&quot;beta_pretrend&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;p_treat_trend&quot;</span><span class="p">:</span> <span class="s2">&quot;p_pretrend&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;FDR_treat_trend&quot;</span><span class="p">:</span> <span class="s2">&quot;FDR_pretrend&quot;</span><span class="p">,</span>
+    <span class="p">})</span>
+
+    <span class="c1"># Flag potential violations</span>
+    <span class="n">res</span><span class="p">[</span><span class="s2">&quot;warning&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+        <span class="n">res</span><span class="p">[</span><span class="s2">&quot;p_pretrend&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mf">0.10</span><span class="p">,</span>
+        <span class="s2">&quot;Potential violation&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;OK&quot;</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">res</span><span class="p">[[</span><span class="s2">&quot;feature&quot;</span><span class="p">,</span> <span class="s2">&quot;beta_pretrend&quot;</span><span class="p">,</span> <span class="s2">&quot;p_pretrend&quot;</span><span class="p">,</span> <span class="s2">&quot;FDR_pretrend&quot;</span><span class="p">,</span> <span class="s2">&quot;warning&quot;</span><span class="p">,</span> <span class="s2">&quot;n_units&quot;</span><span class="p">]]</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
