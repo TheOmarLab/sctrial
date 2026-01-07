@@ -8,6 +8,8 @@ from anndata import AnnData
 
 from .design import TrialDesign
 
+__all__ = ["subset_primary", "subset_cells", "profile_features"]
+
 
 def _require_cols(obs: pd.DataFrame, cols: list[str]) -> None:
     missing = [c for c in cols if c not in obs.columns]

@@ -48,11 +48,11 @@ from sctrial.stats.abundance import abundance_did
 design = TrialDesign(
     participant_col="participant_id",
     visit_col="visit",
-    arm_col="recet",
-    arm_treated="RECeT",
-    arm_control="Sham",
+    arm_col="arm",
+    arm_treated="Treated",
+    arm_control="Control",
     celltype_col="celltype",
-    crossover_col="sham_crossover",   # optional
+    crossover_col="is_crossover",   # optional
 )
 
 adata = add_log1p_cpm_layer(adata, counts_layer="counts", out_layer="log1p_cpm")

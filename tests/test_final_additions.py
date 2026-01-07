@@ -10,6 +10,12 @@ try:
 except Exception:
     HAS_SCANPY = False
 
+try:
+    import matplotlib.pyplot as plt  # noqa: F401
+    HAS_MATPLOTLIB = True
+except ImportError:
+    HAS_MATPLOTLIB = False
+
 def test_resolve_feature(sample_adata):
     # exact
     assert st.resolve_feature(sample_adata, "participant_id") == "participant_id"
@@ -41,6 +47,7 @@ def test_plot_trial_umap_panel(sample_adata, trial_design):
     assert isinstance(fig, plt.Figure)
     plt.close(fig)
 
+@pytest.mark.skipif(not HAS_MATPLOTLIB, reason="matplotlib not installed")
 def test_plot_gsea_heatmap():
     import matplotlib.pyplot as plt
     df = pd.DataFrame({

@@ -10,6 +10,16 @@ import pandas as pd
 if TYPE_CHECKING:
     from anndata import AnnData
 
+__all__ = [
+    "safe_filename",
+    "intersect_preserve_order",
+    "ensure_unique_index",
+    "wild_cluster_bootstrap_t",
+    "permutation_pvalue",
+    "permutation_pvalue_paired",
+    "resolve_feature",
+]
+
 
 def safe_filename(s: str, maxlen: int = 180) -> str:
     s = str(s)

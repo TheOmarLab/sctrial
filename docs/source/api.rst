@@ -63,6 +63,18 @@ Utilities
    :members:
    :undoc-members:
 
+Validation
+----------
+.. automodule:: sctrial.validation
+   :members:
+   :undoc-members:
+
+Convenience Functions
+---------------------
+.. automodule:: sctrial.convenience
+   :members:
+   :undoc-members:
+
 Datasets and Example Helpers
 ----------------------------
 .. automodule:: sctrial.datasets

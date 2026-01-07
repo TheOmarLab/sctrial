@@ -6,6 +6,8 @@ from dataclasses import dataclass
 import pandas as pd
 from anndata import AnnData
 
+__all__ = ["TrialDesign"]
+
 
 @dataclass(frozen=True)
 class TrialDesign:
