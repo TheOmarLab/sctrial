@@ -89,9 +89,9 @@ def cohens_d(
     Notes
     -----
     Interpretation guidelines (Cohen, 1988):
-    - |d| ≈ 0.2: small effect
-    - |d| ≈ 0.5: medium effect
-    - |d| ≈ 0.8: large effect
+    - ``|d|`` ≈ 0.2: small effect
+    - ``|d|`` ≈ 0.5: medium effect
+    - ``|d|`` ≈ 0.8: large effect
 
     These are rough guidelines; practical significance depends on context.
     """

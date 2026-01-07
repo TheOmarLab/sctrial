@@ -7,10 +7,10 @@ Mathematical Background
 -----------------------
 For a DiD design with equal group sizes n per arm×time cell:
 
-    Power = Φ(|δ|/SE - z_{1-α/2})
+    Power = Φ(``|delta|``/SE - z_{1-α/2})
 
 where:
-    - δ = expected DiD effect size
+    - delta = expected DiD effect size
     - SE = σ × √(4/n) for equal groups
     - σ = within-group standard deviation
     - Φ = standard normal CDF
@@ -18,7 +18,7 @@ where:
 
 Solving for n given desired power (1-β):
 
-    n = 4σ²(z_{1-α/2} + z_{1-β})² / δ²
+    n = 4σ²(z_{1-α/2} + z_{1-β})² / delta²
 
 For cluster-robust inference with ICC (intraclass correlation):
 

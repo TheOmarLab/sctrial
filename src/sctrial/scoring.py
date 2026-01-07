@@ -40,7 +40,7 @@ def score_gene_sets(
           then average z-scores across genes. This is the recommended method
           as it accounts for different expression scales across genes.
     prefix
-        Prefix to add to column names (e.g., "ms_" for module scores).
+        Prefix to add to column names (e.g., ``ms_`` for module scores).
     min_genes
         Minimum number of genes from the set that must be present in the data.
         If fewer genes overlap, the score is set to NaN.

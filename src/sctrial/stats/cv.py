@@ -21,11 +21,11 @@ Leave-One-Out (LOO)
 -------------------
 For each participant i:
     1. Fit DiD model excluding participant i
-    2. Record β_DiD^(-i)
-    3. Compare to full-sample β_DiD
+    2. Record beta_DiD^(-i)
+    3. Compare to full-sample beta_DiD
 
 Metrics:
-- Influence: |β_DiD - β_DiD^(-i)| / SE(β_DiD)
+- Influence: ``|beta_DiD - beta_DiD^(-i)| / SE(beta_DiD)``
 - Cook's D analog for DiD
 
 K-Fold Cross-Validation
@@ -98,7 +98,7 @@ def loo_cv_did(
         - excluded_participant: ID of excluded participant
         - beta_DiD: DiD estimate without this participant
         - se_DiD: Standard error
-        - influence: |β_full - β_loo| / SE
+        - influence: ``|beta_full - beta_loo| / SE``
 
     Examples
     --------

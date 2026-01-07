@@ -270,9 +270,9 @@ How do I interpret beta_DiD?
 
 If ``standardize=True`` (default), ``beta_DiD`` is in standard deviation units (like Cohen's d).
 
-- |beta_DiD| > 0.2: Small effect
-- |beta_DiD| > 0.5: Medium effect
-- |beta_DiD| > 0.8: Large effect
+- ``|beta_DiD|`` > 0.2: Small effect
+- ``|beta_DiD|`` > 0.5: Medium effect
+- ``|beta_DiD|`` > 0.8: Large effect
 
 Positive beta_DiD = feature increased more (or decreased less) in treated vs. control.
 
