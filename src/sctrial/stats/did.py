@@ -35,18 +35,46 @@ def did_fit(
     n_boot: int = 999,
     seed: int = 42,
 ) -> dict:
-    """Fit fixed-effects DiD model: y ~ time + time:arm + covariates + C(unit).
+    """Fit fixed-effects Difference-in-Differences (DiD) model.
+
+    Mathematical Model
+    ------------------
+    The DiD model with participant fixed effects:
+
+    .. math::
+
+        Y_{it} = \\alpha_i + \\beta_1 \\cdot \\text{Post}_t + \\beta_2 \\cdot (\\text{Treat}_i \\times \\text{Post}_t) + \\epsilon_{it}
+
+    where:
+        - :math:`Y_{it}`: outcome for participant i at time t
+        - :math:`\\alpha_i`: participant-specific intercept (fixed effect)
+        - :math:`\\text{Post}_t`: indicator for follow-up visit (0=baseline, 1=followup)
+        - :math:`\\text{Treat}_i`: treatment arm indicator (0=control, 1=treated)
+        - :math:`\\beta_2`: **DiD coefficient** (the causal estimand of interest)
+        - :math:`\\epsilon_{it}`: residual error
+
+    Null Hypothesis
+    ---------------
+    H₀: β₂ = 0 (no differential treatment effect over time)
+    H₁: β₂ ≠ 0 (treatment causes different change than control)
+
+    The DiD estimator:
+
+    .. math::
+
+        \\hat{\\beta}_2 = (\\bar{Y}_{T,post} - \\bar{Y}_{T,pre}) - (\\bar{Y}_{C,post} - \\bar{Y}_{C,pre})
 
     Statistical Assumptions
     -----------------------
+    - **Parallel trends**: In absence of treatment, both groups would follow
+      same trajectory. Cannot be tested directly but can check pre-trends.
+    - **No anticipation**: Treatment effect only after treatment starts.
+    - **SUTVA**: No spillover between participants.
     - Requires at least 4 unique units (participants) to estimate fixed effects.
       Returns NaN for all estimates if n_units < 4.
-    - Features with near-zero variance (std < 1e-8) return NaN to avoid
-      misleading standardized estimates.
-    - Cluster-robust standard errors are used by default to account for
-      within-participant correlation.
-    - If `n_cells` column is present in df, Weighted Least Squares (WLS) is
-      used with sqrt(n_cells) as weights.
+    - Features with near-zero variance (std < 1e-8) return NaN.
+    - Cluster-robust standard errors account for within-participant correlation.
+    - If `n_cells` column is present, Weighted Least Squares (WLS) is used.
 
     Parameters
     ----------
@@ -61,22 +89,30 @@ def did_fit(
     arm_bin : str
         Name of the treatment indicator column (0/1).
     covariates : list of str, optional
-        Additional covariate columns to include.
+        Additional covariate columns to include as fixed effects.
     cov_type : str
         Covariance type for standard errors ('cluster' recommended).
     standardize : bool
-        If True, z-score the outcome before fitting.
+        If True, z-score the outcome before fitting (recommended for
+        interpretable effect sizes).
     use_bootstrap : bool
-        If True, use Wild Cluster Bootstrap for p-values.
+        If True, use Wild Cluster Bootstrap for p-values (recommended
+        when n_participants < 15).
     n_boot : int
-        Number of bootstrap iterations.
+        Number of bootstrap iterations (999 or 1999 for publication).
     seed : int
         Random seed for reproducibility.
 
     Returns
     -------
     dict
-        Contains beta_DiD, se_DiD, p_DiD, beta_time, p_time, n_units.
+        Dictionary with keys:
+        - beta_DiD: DiD coefficient (β₂)
+        - se_DiD: Standard error of β₂
+        - p_DiD: P-value for H₀: β₂ = 0
+        - beta_time: Main time effect (β₁)
+        - p_time: P-value for time effect
+        - n_units: Number of participants used
     """
     cols = [unit, time, arm_bin, y]
     if covariates:
