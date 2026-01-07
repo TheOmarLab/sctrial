@@ -95,6 +95,150 @@ No, DiD requires longitudinal (paired) data. For cross-sectional comparisons, us
 Statistical Questions
 ---------------------
 
+When should I use bootstrap vs. standard errors?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Use cluster-robust standard errors (default)** when:
+
+- You have ≥15 paired participants per arm
+- Sample sizes are balanced across arms
+- Variance is approximately equal across groups
+
+**Use Wild Cluster Bootstrap** (``use_bootstrap=True``) when:
+
+- Few clusters (< 15 participants per arm)
+- Unbalanced sample sizes
+- Concerned about finite-sample bias
+- Need more accurate p-values for publication
+
+.. code-block:: python
+
+   # Default: Cluster-robust SEs (fast, adequate for larger samples)
+   res = st.did_table(adata, features=features, design=design, visits=visits)
+
+   # Bootstrap: More accurate for small samples (slower)
+   res = st.did_table(
+       adata,
+       features=features,
+       design=design,
+       visits=visits,
+       use_bootstrap=True,
+       n_boot=999,  # Use 999 or 1999 for publication
+       seed=42      # For reproducibility
+   )
+
+**Mathematical note**: Bootstrap resamples at the participant level:
+
+.. math::
+
+   \hat{t}_b^* = \frac{\hat{\beta}^* - \hat{\beta}}{\text{SE}(\hat{\beta}^*)}
+
+where :math:`\hat{\beta}^*` is the bootstrap estimate.
+
+What are the minimum sample size recommendations?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Statistical minimums**:
+
+=========================  ==============  =======================
+Scenario                   Per Arm         Total Participants
+=========================  ==============  =======================
+Absolute minimum           4 paired        8
+Adequate for bootstrap     6-8 paired      12-16
+Recommended                10-15 paired    20-30
+Well-powered (d=0.5)       20+ paired      40+
+=========================  ==============  =======================
+
+**Power calculation example**:
+
+.. code-block:: python
+
+   import sctrial as st
+
+   # How many participants for 80% power to detect d=0.5?
+   n_needed = st.sample_size_did(effect_size=0.5, power=0.80)
+   print(f"Need {n_needed} per arm ({2*n_needed} total)")
+
+   # What power do I have with 15 per arm?
+   power = st.power_did(n_per_group=15, effect_size=0.5)
+   print(f"Power with 15/arm: {power:.1%}")
+
+   # Generate power curve
+   ns, powers = st.power_curve(n_range=(5, 50), effect_size=0.5)
+
+**Practical considerations**:
+
+- Single-cell data doesn't increase statistical power (participants do)
+- Cell counts help reduce noise, but n_participants drives inference
+- Small samples → use bootstrap and report effect sizes with CIs
+- Consider mixed effects models for partial pooling with small n
+
+How should I handle missing data?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Types of missingness in trials**:
+
+1. **Missing visits** (participant dropout)
+2. **Missing cells** (technical failure)
+3. **Missing annotations** (cell type not assigned)
+
+**For missing visits (most critical)**:
+
+DiD requires data at BOTH visits. Participants with missing visits are dropped:
+
+.. code-block:: python
+
+   # Check pairing before analysis
+   n_paired = st.count_paired(adata.obs, "visit", ["V1", "V2"])
+   print(f"Paired participants: {n_paired}")
+
+   # Diagnose issues
+   diag = st.diagnose_trial_data(adata, design, verbose=True)
+
+**Options for missing data**:
+
+1. **Complete case analysis** (default, recommended for trials)
+
+   - Uses only participants with data at both visits
+   - Valid if missingness is independent of treatment effect (MCAR/MAR)
+
+2. **Multiple imputation** (advanced)
+
+   - Not built into sctrial; use external packages
+   - Only if missingness mechanism is well-understood
+
+3. **Last observation carried forward** (NOT recommended)
+
+   - Biases results; avoid in clinical trials
+
+**For missing cell-type annotations**:
+
+.. code-block:: python
+
+   # Option 1: Exclude unassigned cells
+   adata = adata[adata.obs["celltype"] != "Unknown"].copy()
+
+   # Option 2: Include as separate category
+   # (if "Unknown" cells are biologically meaningful)
+
+**Diagnosing missingness patterns**:
+
+.. code-block:: python
+
+   # Check for systematic missingness
+   import pandas as pd
+
+   missing = (
+       adata.obs
+       .groupby(["arm", "visit"])["participant_id"]
+       .nunique()
+   )
+   print("Participants per arm × visit:")
+   print(missing.unstack())
+
+   # Check if dropout differs by arm (potential bias!)
+   dropout_by_arm = adata.obs.groupby("arm")["participant_id"].nunique()
+
 What is Difference-in-Differences (DiD)?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -126,9 +270,9 @@ How do I interpret beta_DiD?
 
 If ``standardize=True`` (default), ``beta_DiD`` is in standard deviation units (like Cohen's d).
 
-- |beta_DiD| > 0.2: Small effect
-- |beta_DiD| > 0.5: Medium effect
-- |beta_DiD| > 0.8: Large effect
+- ``|beta_DiD|`` > 0.2: Small effect
+- ``|beta_DiD|`` > 0.5: Medium effect
+- ``|beta_DiD|`` > 0.8: Large effect
 
 Positive beta_DiD = feature increased more (or decreased less) in treated vs. control.
 

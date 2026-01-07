@@ -27,6 +27,9 @@ AnnData Tools
 
 Statistics
 ----------
+
+Core DiD Methods
+~~~~~~~~~~~~~~~~
 .. automodule:: sctrial.stats.did
    :members:
    :undoc-members:
@@ -35,19 +38,55 @@ Statistics
    :members:
    :undoc-members:
 
-.. automodule:: sctrial.stats.gsea
-   :members:
-   :undoc-members:
-
 .. automodule:: sctrial.stats.comparisons
    :members:
    :undoc-members:
 
-.. automodule:: sctrial.stats.summary
+Effect Sizes
+~~~~~~~~~~~~
+.. automodule:: sctrial.stats.effect_size
    :members:
    :undoc-members:
 
+Power Analysis
+~~~~~~~~~~~~~~
+.. automodule:: sctrial.stats.power
+   :members:
+   :undoc-members:
+
+Mixed Effects Models
+~~~~~~~~~~~~~~~~~~~~
+.. automodule:: sctrial.stats.mixed_effects
+   :members:
+   :undoc-members:
+
+Time Series Analysis
+~~~~~~~~~~~~~~~~~~~~
+.. automodule:: sctrial.stats.timeseries
+   :members:
+   :undoc-members:
+
+Cross-Validation
+~~~~~~~~~~~~~~~~
+.. automodule:: sctrial.stats.cv
+   :members:
+   :undoc-members:
+
+GSEA Integration
+~~~~~~~~~~~~~~~~
+.. automodule:: sctrial.stats.gsea
+   :members:
+   :undoc-members:
+
+Pseudobulk Methods
+~~~~~~~~~~~~~~~~~~
 .. automodule:: sctrial.stats.pseudobulk
+   :members:
+   :undoc-members:
+
+Summary Utilities
+~~~~~~~~~~~~~~~~~
+.. automodule:: sctrial.stats.summary
    :members:
    :undoc-members:
 

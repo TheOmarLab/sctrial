@@ -44,14 +44,56 @@ from .validation import (
     validate_features,
 )
 
+# New: Effect sizes
+from .stats.effect_size import (
+    cohens_d,
+    hedges_g,
+    add_effect_sizes_to_did,
+    bootstrap_effect_size_ci,
+)
+
+# New: Power analysis
+from .stats.power import (
+    power_did,
+    sample_size_did,
+    power_curve,
+    design_effect,
+    effective_sample_size,
+)
+
+# New: Mixed effects
+from .stats.mixed_effects import (
+    did_table_mixed,
+    compare_fixed_vs_mixed,
+)
+
+# New: Time series
+from .stats.timeseries import (
+    trend_interaction,
+    event_study_did,
+    test_parallel_trends,
+)
+
+# New: Cross-validation
+from .stats.cv import (
+    loo_cv_did,
+    kfold_cv_did,
+    influence_diagnostics,
+    cv_summary,
+)
+
 __all__ = [
+    # Core design
     "TrialDesign",
+    # Preprocessing
     "add_log1p_cpm_layer",
     "score_gene_sets",
+    # Data tools
     "subset_primary",
     "subset_cells",
     "profile_features",
     "resolve_feature",
+    # Datasets
     "load_sade_feldman",
     "load_stephenson_data",
     "load_vaccine_gse171964",
@@ -60,6 +102,7 @@ __all__ = [
     "categorize_celltype",
     "ensure_fdr",
     "extract_gene_vector",
+    # Core statistics
     "did_table",
     "did_fit",
     "did_table_by_celltype",
@@ -70,6 +113,30 @@ __all__ = [
     "summarize_did_results",
     "pseudobulk_expression",
     "pseudobulk_within_arm",
+    # Effect sizes
+    "cohens_d",
+    "hedges_g",
+    "add_effect_sizes_to_did",
+    "bootstrap_effect_size_ci",
+    # Power analysis
+    "power_did",
+    "sample_size_did",
+    "power_curve",
+    "design_effect",
+    "effective_sample_size",
+    # Mixed effects
+    "did_table_mixed",
+    "compare_fixed_vs_mixed",
+    # Time series
+    "trend_interaction",
+    "event_study_did",
+    "test_parallel_trends",
+    # Cross-validation
+    "loo_cv_did",
+    "kfold_cv_did",
+    "influence_diagnostics",
+    "cv_summary",
+    # Plotting
     "plot_trial_interaction",
     "plot_abundance_interaction",
     "plot_did_forest",
@@ -79,10 +146,12 @@ __all__ = [
     "plot_gsea_radar",
     "plot_gsea_heatmap",
     "plot_trial_dotplot",
+    # Validation
     "validate_adata",
     "validate_features",
     "diagnose_trial_data",
     "TrialDataValidator",
+    # Convenience
     "quick_did",
     "auto_detect_design",
 ]
