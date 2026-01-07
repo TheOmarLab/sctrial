@@ -93,6 +93,7 @@
  | <a href="#L"><strong>L</strong></a>
  | <a href="#M"><strong>M</strong></a>
  | <a href="#P"><strong>P</strong></a>
+ | <a href="#Q"><strong>Q</strong></a>
  | <a href="#R"><strong>R</strong></a>
  | <a href="#S"><strong>S</strong></a>
  | <a href="#T"><strong>T</strong></a>
@@ -116,6 +117,8 @@
       <li><a href="api.html#sctrial.design.TrialDesign.arm_control">arm_control (sctrial.design.TrialDesign attribute)</a>
 </li>
       <li><a href="api.html#sctrial.design.TrialDesign.arm_treated">arm_treated (sctrial.design.TrialDesign attribute)</a>
+</li>
+      <li><a href="api.html#sctrial.convenience.auto_detect_design">auto_detect_design() (in module sctrial.convenience)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -151,12 +154,14 @@
 <h2 id="D">D</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api.html#sctrial.stats.did.did_fit">did_fit() (in module sctrial.stats.did)</a>
+      <li><a href="api.html#sctrial.validation.diagnose_trial_data">diagnose_trial_data() (in module sctrial.validation)</a>
 </li>
-      <li><a href="api.html#sctrial.stats.did.did_table">did_table() (in module sctrial.stats.did)</a>
+      <li><a href="api.html#sctrial.stats.did.did_fit">did_fit() (in module sctrial.stats.did)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api.html#sctrial.stats.did.did_table">did_table() (in module sctrial.stats.did)</a>
+</li>
       <li><a href="api.html#sctrial.stats.did.did_table_by_celltype">did_table_by_celltype() (in module sctrial.stats.did)</a>
 </li>
       <li><a href="api.html#sctrial.plotting.did_volcano_frame">did_volcano_frame() (in module sctrial.plotting)</a>
@@ -215,6 +220,8 @@
       <ul>
         <li><a href="api.html#module-sctrial.adata_tools">sctrial.adata_tools</a>
 </li>
+        <li><a href="api.html#module-sctrial.convenience">sctrial.convenience</a>
+</li>
         <li><a href="api.html#module-sctrial.datasets">sctrial.datasets</a>
 </li>
         <li><a href="api.html#module-sctrial.plotting">sctrial.plotting</a>
@@ -236,6 +243,8 @@
         <li><a href="api.html#module-sctrial.stats.summary">sctrial.stats.summary</a>
 </li>
         <li><a href="api.html#module-sctrial.utils">sctrial.utils</a>
+</li>
+        <li><a href="api.html#module-sctrial.validation">sctrial.validation</a>
 </li>
       </ul></li>
   </ul></td>
@@ -281,6 +290,14 @@
   </ul></td>
 </tr></table>
 
+<h2 id="Q">Q</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api.html#sctrial.convenience.quick_did">quick_did() (in module sctrial.convenience)</a>
+</li>
+  </ul></td>
+</tr></table>
+
 <h2 id="R">R</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
@@ -307,6 +324,13 @@
 
       <ul>
         <li><a href="api.html#module-sctrial.adata_tools">module</a>
+</li>
+      </ul></li>
+      <li>
+    sctrial.convenience
+
+      <ul>
+        <li><a href="api.html#module-sctrial.convenience">module</a>
 </li>
       </ul></li>
       <li>
@@ -388,6 +412,13 @@
         <li><a href="api.html#module-sctrial.utils">module</a>
 </li>
       </ul></li>
+      <li>
+    sctrial.validation
+
+      <ul>
+        <li><a href="api.html#module-sctrial.validation">module</a>
+</li>
+      </ul></li>
       <li><a href="api.html#sctrial.plotting.signed_logp">signed_logp() (in module sctrial.plotting)</a>
 </li>
       <li><a href="api.html#sctrial.adata_tools.subset_cells">subset_cells() (in module sctrial.adata_tools)</a>
@@ -402,6 +433,10 @@
 <h2 id="T">T</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api.html#sctrial.validation.TrialDataValidator">TrialDataValidator (class in sctrial.validation)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api.html#sctrial.design.TrialDesign">TrialDesign (class in sctrial.design)</a>
 </li>
   </ul></td>
@@ -412,8 +447,20 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api.html#sctrial.design.TrialDesign.validate">validate() (sctrial.design.TrialDesign method)</a>
 </li>
+      <li><a href="api.html#sctrial.validation.validate_adata">validate_adata() (in module sctrial.validation)</a>
+
+      <ul>
+        <li><a href="api.html#sctrial.validation.TrialDataValidator.validate_adata">(sctrial.validation.TrialDataValidator static method)</a>
+</li>
+      </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api.html#sctrial.validation.validate_features">validate_features() (in module sctrial.validation)</a>
+
+      <ul>
+        <li><a href="api.html#sctrial.validation.TrialDataValidator.validate_features">(sctrial.validation.TrialDataValidator static method)</a>
+</li>
+      </ul></li>
       <li><a href="api.html#sctrial.datasets.verify_paired_participants">verify_paired_participants() (in module sctrial.datasets)</a>
 </li>
       <li><a href="api.html#sctrial.design.TrialDesign.visit_col">visit_col (sctrial.design.TrialDesign attribute)</a>
