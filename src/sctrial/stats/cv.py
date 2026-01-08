@@ -45,7 +45,6 @@ Interpretation Guidelines
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Literal
 
 import numpy as np
 import pandas as pd
@@ -53,7 +52,7 @@ from anndata import AnnData
 
 from ..adata_tools import subset_primary
 from ..design import TrialDesign
-from .did import did_table
+from .did import AggregateMode, did_table
 
 __all__ = [
     "loo_cv_did",
@@ -70,7 +69,7 @@ def loo_cv_did(
     visits: tuple[str, str],
     layer: str | None = None,
     exclude_crossovers: bool = True,
-    aggregate: Literal["cell", "participant_visit", "participant_visit_celltype"] = "participant_visit",
+    aggregate: AggregateMode = "participant_visit",
     standardize: bool = True,
 ) -> pd.DataFrame:
     """Leave-one-out cross-validation for DiD analysis.

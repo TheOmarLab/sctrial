@@ -54,6 +54,7 @@ from anndata import AnnData
 from statsmodels.stats.multitest import multipletests
 
 from ..design import TrialDesign
+from .did import AggregateMode
 
 __all__ = [
     "trend_interaction",
@@ -104,7 +105,7 @@ def trend_interaction(
     visits: Sequence[str],
     time_values: Sequence[float] | None = None,
     model: TrendModel = "linear",
-    aggregate: Literal["participant_visit", "cell"] = "participant_visit",
+    aggregate: AggregateMode = "participant_visit",
     layer: str | None = None,
     exclude_crossovers: bool = True,
 ) -> pd.DataFrame:
