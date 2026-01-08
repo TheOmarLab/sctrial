@@ -137,6 +137,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">statsmodels.stats.multitest</span><span class="w"> </span><span class="kn">import</span> <span class="n">multipletests</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..design</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrialDesign</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.did</span><span class="w"> </span><span class="kn">import</span> <span class="n">AggregateMode</span>
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
     <span class="s2">&quot;trend_interaction&quot;</span><span class="p">,</span>
@@ -189,7 +190,7 @@
     <span class="n">visits</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
     <span class="n">time_values</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">model</span><span class="p">:</span> <span class="n">TrendModel</span> <span class="o">=</span> <span class="s2">&quot;linear&quot;</span><span class="p">,</span>
-    <span class="n">aggregate</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;participant_visit&quot;</span><span class="p">,</span> <span class="s2">&quot;cell&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;participant_visit&quot;</span><span class="p">,</span>
+    <span class="n">aggregate</span><span class="p">:</span> <span class="n">AggregateMode</span> <span class="o">=</span> <span class="s2">&quot;participant_visit&quot;</span><span class="p">,</span>
     <span class="n">layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">exclude_crossovers</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
