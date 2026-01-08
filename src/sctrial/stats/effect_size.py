@@ -18,7 +18,7 @@ AND confidence intervals (for statistical inference). Bootstrap CI on Cohen's d
 provides the best of both worlds.
 
 **Hedge's g vs Cohen's d**: Hedge's g applies a small-sample correction factor
-(J = 1 - 3/(4n-9)) that reduces upward bias in small samples. Use Hedge's g when
+(J = 1 - 3/(4(n₁+n₂-2)-1) = 1 - 3/(4*df - 1)) that reduces upward bias in small samples. Use Hedge's g when
 n < 20 per group; for larger samples they are nearly identical.
 
 Mathematical Definitions
@@ -31,7 +31,7 @@ Cohen's d for DiD:
 Hedge's g:
     g = d × J
 
-    where J = 1 - 3/(4(n₁+n₂)-9)  (Hedges' correction factor)
+    where J = 1 - 3/(4(n₁+n₂-2)-1) = 1 - 3/(4*df - 1)  (Hedges' correction factor)
 
 95% CI via noncentral t-distribution:
     SE(d) ≈ sqrt(n₁+n₂/(n₁×n₂) + d²/(2(n₁+n₂)))
@@ -133,7 +133,7 @@ def hedges_g(
     upward bias in small samples:
 
         g = d × J
-        J = 1 - 3/(4(n₁+n₂) - 9)
+        J = 1 - 3/(4(n₁+n₂-2) - 1)  (equivalently 1 - 3/(4*df - 1))
 
     Parameters
     ----------
@@ -384,7 +384,8 @@ def add_effect_sizes_to_did(
 
         # Apply Hedge's correction
         if method == "hedges_g" and not np.isnan(d) and n > 2:
-            j = 1 - 3 / (4 * n - 9) if n > 3 else 1.0
+            df = n - 2
+            j = 1 - 3 / (4 * df - 1) if df > 1 else 1.0
             d = d * j
 
         # CI via approximate SE
