@@ -1742,12 +1742,12 @@ Pseudobulk paired deltas with Wilcoxon signed-rank test (panel genes × cell typ
             <span class="n">d_groups</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">cohens_d</span><span class="p">(</span><span class="n">post_vals</span><span class="p">,</span> <span class="n">pre_vals</span><span class="p">)</span>
             <span class="n">g_groups</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">hedges_g</span><span class="p">(</span><span class="n">post_vals</span><span class="p">,</span> <span class="n">pre_vals</span><span class="p">)</span>
 
-            <span class="c1"># Bootstrap CI for effect size</span>
+            <span class="c1"># Bootstrap CI for effect size (returns: effect_size, ci_lower, ci_upper)</span>
             <span class="k">try</span><span class="p">:</span>
-                <span class="n">ci_low</span><span class="p">,</span> <span class="n">ci_high</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">bootstrap_effect_size_ci</span><span class="p">(</span>
+                <span class="n">_</span><span class="p">,</span> <span class="n">ci_low</span><span class="p">,</span> <span class="n">ci_high</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">bootstrap_effect_size_ci</span><span class="p">(</span>
                     <span class="n">post_vals</span><span class="p">,</span> <span class="n">pre_vals</span><span class="p">,</span>
-                    <span class="n">n_bootstrap</span><span class="o">=</span><span class="mi">999</span><span class="p">,</span>
-                    <span class="n">ci</span><span class="o">=</span><span class="mf">0.95</span><span class="p">,</span>
+                    <span class="n">n_boot</span><span class="o">=</span><span class="mi">999</span><span class="p">,</span>
+                    <span class="n">alpha</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
                     <span class="n">seed</span><span class="o">=</span><span class="n">SEED</span>
                 <span class="p">)</span>
             <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
@@ -1853,8 +1853,8 @@ Effect sizes for Day 0 → Day 7 changes:
       <td>0.075</td>
       <td>0.106</td>
       <td>0.098</td>
-      <td>NaN</td>
-      <td>NaN</td>
+      <td>-1.146</td>
+      <td>1.233</td>
       <td>6</td>
     </tr>
     <tr>
@@ -1864,8 +1864,8 @@ Effect sizes for Day 0 → Day 7 changes:
       <td>0.583</td>
       <td>0.603</td>
       <td>0.557</td>
-      <td>NaN</td>
-      <td>NaN</td>
+      <td>-0.418</td>
+      <td>2.035</td>
       <td>6</td>
     </tr>
     <tr>
@@ -1875,8 +1875,8 @@ Effect sizes for Day 0 → Day 7 changes:
       <td>-0.071</td>
       <td>-0.117</td>
       <td>-0.108</td>
-      <td>NaN</td>
-      <td>NaN</td>
+      <td>-2.004</td>
+      <td>0.777</td>
       <td>6</td>
     </tr>
     <tr>
@@ -1886,8 +1886,8 @@ Effect sizes for Day 0 → Day 7 changes:
       <td>0.682</td>
       <td>0.784</td>
       <td>0.724</td>
-      <td>NaN</td>
-      <td>NaN</td>
+      <td>-0.231</td>
+      <td>2.070</td>
       <td>6</td>
     </tr>
     <tr>
@@ -1897,8 +1897,8 @@ Effect sizes for Day 0 → Day 7 changes:
       <td>0.600</td>
       <td>0.978</td>
       <td>0.903</td>
-      <td>NaN</td>
-      <td>NaN</td>
+      <td>0.161</td>
+      <td>2.181</td>
       <td>6</td>
     </tr>
     <tr>
@@ -1908,8 +1908,8 @@ Effect sizes for Day 0 → Day 7 changes:
       <td>-0.292</td>
       <td>-0.460</td>
       <td>-0.424</td>
-      <td>NaN</td>
-      <td>NaN</td>
+      <td>-1.854</td>
+      <td>0.587</td>
       <td>6</td>
     </tr>
   </tbody>

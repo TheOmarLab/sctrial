@@ -1318,12 +1318,12 @@ Analyzing 12 COVID-relevant genes
                 <span class="n">d</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">cohens_d</span><span class="p">(</span><span class="n">severe_vals</span><span class="p">,</span> <span class="n">mild_vals</span><span class="p">)</span>  <span class="c1"># Positive = higher in Severe</span>
                 <span class="n">g</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">hedges_g</span><span class="p">(</span><span class="n">severe_vals</span><span class="p">,</span> <span class="n">mild_vals</span><span class="p">)</span>
 
-                <span class="c1"># Bootstrap CI</span>
+                <span class="c1"># Bootstrap CI (returns: effect_size, ci_lower, ci_upper)</span>
                 <span class="k">try</span><span class="p">:</span>
-                    <span class="n">ci_low</span><span class="p">,</span> <span class="n">ci_high</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">bootstrap_effect_size_ci</span><span class="p">(</span>
+                    <span class="n">_</span><span class="p">,</span> <span class="n">ci_low</span><span class="p">,</span> <span class="n">ci_high</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">bootstrap_effect_size_ci</span><span class="p">(</span>
                         <span class="n">severe_vals</span><span class="p">,</span> <span class="n">mild_vals</span><span class="p">,</span>
-                        <span class="n">n_bootstrap</span><span class="o">=</span><span class="mi">999</span><span class="p">,</span>
-                        <span class="n">ci</span><span class="o">=</span><span class="mf">0.95</span><span class="p">,</span>
+                        <span class="n">n_boot</span><span class="o">=</span><span class="mi">999</span><span class="p">,</span>
+                        <span class="n">alpha</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
                         <span class="n">seed</span><span class="o">=</span><span class="n">SEED</span>
                     <span class="p">)</span>
                 <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
@@ -1440,8 +1440,8 @@ Effect sizes (Severe vs Mild):
       <td>sig_IFN_Response</td>
       <td>0.453</td>
       <td>0.394</td>
-      <td>NaN</td>
-      <td>NaN</td>
+      <td>-0.731</td>
+      <td>4.216</td>
       <td>4</td>
       <td>4</td>
     </tr>
@@ -1451,8 +1451,8 @@ Effect sizes (Severe vs Mild):
       <td>sig_Inflammation</td>
       <td>1.787</td>
       <td>1.554</td>
-      <td>NaN</td>
-      <td>NaN</td>
+      <td>0.528</td>
+      <td>5.787</td>
       <td>4</td>
       <td>4</td>
     </tr>
@@ -1462,8 +1462,8 @@ Effect sizes (Severe vs Mild):
       <td>sig_Cytotoxicity</td>
       <td>0.649</td>
       <td>0.565</td>
-      <td>NaN</td>
-      <td>NaN</td>
+      <td>-1.609</td>
+      <td>5.722</td>
       <td>4</td>
       <td>4</td>
     </tr>
@@ -1473,8 +1473,8 @@ Effect sizes (Severe vs Mild):
       <td>sig_T_Cell_Exhaustion</td>
       <td>0.195</td>
       <td>0.170</td>
-      <td>NaN</td>
-      <td>NaN</td>
+      <td>-1.177</td>
+      <td>2.275</td>
       <td>4</td>
       <td>4</td>
     </tr>
@@ -1484,8 +1484,8 @@ Effect sizes (Severe vs Mild):
       <td>sig_Myeloid_Activation</td>
       <td>0.627</td>
       <td>0.546</td>
-      <td>NaN</td>
-      <td>NaN</td>
+      <td>-0.631</td>
+      <td>12.724</td>
       <td>4</td>
       <td>4</td>
     </tr>
@@ -1495,8 +1495,8 @@ Effect sizes (Severe vs Mild):
       <td>sig_B_Cell_Activation</td>
       <td>-1.185</td>
       <td>-1.030</td>
-      <td>NaN</td>
-      <td>NaN</td>
+      <td>-5.001</td>
+      <td>0.038</td>
       <td>4</td>
       <td>4</td>
     </tr>
@@ -1506,8 +1506,8 @@ Effect sizes (Severe vs Mild):
       <td>sig_IFN_Response</td>
       <td>-0.066</td>
       <td>-0.063</td>
-      <td>NaN</td>
-      <td>NaN</td>
+      <td>-0.772</td>
+      <td>1.212</td>
       <td>11</td>
       <td>5</td>
     </tr>
@@ -1517,8 +1517,8 @@ Effect sizes (Severe vs Mild):
       <td>sig_Inflammation</td>
       <td>-0.056</td>
       <td>-0.053</td>
-      <td>NaN</td>
-      <td>NaN</td>
+      <td>-0.884</td>
+      <td>1.051</td>
       <td>11</td>
       <td>5</td>
     </tr>
@@ -1528,8 +1528,8 @@ Effect sizes (Severe vs Mild):
       <td>sig_Cytotoxicity</td>
       <td>0.138</td>
       <td>0.131</td>
-      <td>NaN</td>
-      <td>NaN</td>
+      <td>-0.791</td>
+      <td>1.334</td>
       <td>11</td>
       <td>5</td>
     </tr>
@@ -1539,8 +1539,8 @@ Effect sizes (Severe vs Mild):
       <td>sig_T_Cell_Exhaustion</td>
       <td>0.734</td>
       <td>0.694</td>
-      <td>NaN</td>
-      <td>NaN</td>
+      <td>-0.150</td>
+      <td>1.942</td>
       <td>11</td>
       <td>5</td>
     </tr>
@@ -1550,8 +1550,8 @@ Effect sizes (Severe vs Mild):
       <td>sig_Myeloid_Activation</td>
       <td>0.020</td>
       <td>0.019</td>
-      <td>NaN</td>
-      <td>NaN</td>
+      <td>-0.785</td>
+      <td>1.063</td>
       <td>11</td>
       <td>5</td>
     </tr>
@@ -1561,8 +1561,8 @@ Effect sizes (Severe vs Mild):
       <td>sig_B_Cell_Activation</td>
       <td>1.211</td>
       <td>1.145</td>
-      <td>NaN</td>
-      <td>NaN</td>
+      <td>0.164</td>
+      <td>3.559</td>
       <td>11</td>
       <td>5</td>
     </tr>

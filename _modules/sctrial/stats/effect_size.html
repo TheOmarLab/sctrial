@@ -526,6 +526,9 @@
     <span class="n">n_boot</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
     <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">42</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">n_bootstrap</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">ci</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute effect size with bootstrap confidence interval.</span>
 
@@ -541,15 +544,24 @@
 <span class="sd">    n_boot</span>
 <span class="sd">        Number of bootstrap resamples.</span>
 <span class="sd">    alpha</span>
-<span class="sd">        Significance level for CI.</span>
+<span class="sd">        Significance level for CI (e.g., 0.05 for 95% CI).</span>
 <span class="sd">    seed</span>
 <span class="sd">        Random seed for reproducibility.</span>
+<span class="sd">    n_bootstrap</span>
+<span class="sd">        Deprecated alias for n_boot.</span>
+<span class="sd">    ci</span>
+<span class="sd">        Deprecated alias for confidence level. If provided, alpha = 1 - ci.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    tuple[float, float, float]</span>
 <span class="sd">        (effect_size, ci_lower, ci_upper)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Handle deprecated parameter aliases</span>
+    <span class="k">if</span> <span class="n">n_bootstrap</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">n_boot</span> <span class="o">=</span> <span class="n">n_bootstrap</span>
+    <span class="k">if</span> <span class="n">ci</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">alpha</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">ci</span>
     <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
 
     <span class="n">g1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">group1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
