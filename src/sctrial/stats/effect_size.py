@@ -428,6 +428,9 @@ def bootstrap_effect_size_ci(
     n_boot: int = 1000,
     alpha: float = 0.05,
     seed: int = 42,
+    *,
+    n_bootstrap: int | None = None,
+    ci: float | None = None,
 ) -> tuple[float, float, float]:
     """Compute effect size with bootstrap confidence interval.
 
@@ -443,15 +446,24 @@ def bootstrap_effect_size_ci(
     n_boot
         Number of bootstrap resamples.
     alpha
-        Significance level for CI.
+        Significance level for CI (e.g., 0.05 for 95% CI).
     seed
         Random seed for reproducibility.
+    n_bootstrap
+        Deprecated alias for n_boot.
+    ci
+        Deprecated alias for confidence level. If provided, alpha = 1 - ci.
 
     Returns
     -------
     tuple[float, float, float]
         (effect_size, ci_lower, ci_upper)
     """
+    # Handle deprecated parameter aliases
+    if n_bootstrap is not None:
+        n_boot = n_bootstrap
+    if ci is not None:
+        alpha = 1 - ci
     rng = np.random.default_rng(seed)
 
     g1 = np.asarray(group1, dtype=float)

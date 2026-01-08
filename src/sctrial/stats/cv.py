@@ -95,14 +95,14 @@ def loo_cv_did(
     aggregate
         Aggregation mode passed to did_table (default "participant_visit").
     standardize
-        Whether to z-score the outcome within did_table (default True).
+        Whether to z-score the outcome variable before fitting (default True).
 
     Returns
     -------
     pd.DataFrame
         Long-format results with columns:
         - feature: Feature name
-        - excluded_participant: ID of excluded participant
+        - excluded: ID of excluded participant
         - beta_DiD: DiD estimate without this participant
         - se_DiD: Standard error
         - influence: ``|beta_full - beta_loo| / SE``
@@ -112,7 +112,7 @@ def loo_cv_did(
     >>> loo = loo_cv_did(adata, features=["sig_IFN"], design=design, visits=visits)
     >>> # Find influential participants
     >>> influential = loo[loo["influence"] > 1.0]
-    >>> print(f"Influential participants: {influential['excluded_participant'].unique()}")
+    >>> print(f"Influential participants: {influential['excluded'].unique()}")
     """
     # Get paired participants
     ad = subset_primary(adata, design, visits, exclude_crossovers=exclude_crossovers)
@@ -156,7 +156,7 @@ def loo_cv_did(
 
                 rows.append({
                     "feature": feat,
-                    "excluded_participant": pid,
+                    "excluded": pid,
                     "beta_DiD": beta_loo,
                     "se_DiD": se_loo,
                     "beta_full": beta_full,
@@ -168,7 +168,7 @@ def loo_cv_did(
             for feat in features:
                 rows.append({
                     "feature": feat,
-                    "excluded_participant": pid,
+                    "excluded": pid,
                     "beta_DiD": np.nan,
                     "se_DiD": np.nan,
                     "beta_full": full_betas.get(feat, np.nan),
@@ -343,94 +343,85 @@ def influence_diagnostics(
     Returns
     -------
     pd.DataFrame
-        Summary with:
+        Per-participant influence with columns:
         - feature: Feature name
-        - max_influence: Maximum influence score
-        - influential_participant: Participant with max influence
-        - n_influential: Count of participants with influence > threshold
-        - stability: 1 - (max_influence / median_influence)
+        - excluded: ID of excluded participant
+        - influence: Influence score for this participant
+        - beta_DiD: DiD estimate without this participant
+        - is_influential: Whether influence > threshold
     """
-    rows = []
-    for feat, group in loo_results.groupby("feature"):
-        influences = group["influence"].dropna()
+    if loo_results.empty:
+        return pd.DataFrame()
 
-        if len(influences) == 0:
-            rows.append({"feature": feat})
-            continue
-
-        max_inf = influences.max()
-        max_idx = influences.idxmax()
-        max_participant = group.loc[max_idx, "excluded_participant"]
-        n_influential = (influences > threshold).sum()
-        median_inf = influences.median()
-
-        stability = 1 - (max_inf / median_inf) if median_inf > 0 else np.nan
-
-        rows.append({
-            "feature": feat,
-            "max_influence": max_inf,
-            "influential_participant": max_participant,
-            "n_influential": int(n_influential),
-            "mean_influence": influences.mean(),
-            "stability_score": stability,
-        })
-
-    return pd.DataFrame(rows)
+    # Return per-participant results with influence flag
+    result = loo_results.copy()
+    result["is_influential"] = result["influence"].abs() > threshold
+    return result[["feature", "excluded", "influence", "beta_DiD", "beta_full", "is_influential"]]
 
 
 def cv_summary(
-    kfold_results: pd.DataFrame,
+    cv_results: pd.DataFrame,
     alpha: float = 0.05,
-) -> dict:
-    """Generate a summary of k-fold CV results.
+) -> pd.DataFrame:
+    """Generate a summary of CV results (works with both LOO and k-fold).
 
     Parameters
     ----------
-    kfold_results
-        Output from kfold_cv_did.
+    cv_results
+        Output from loo_cv_did or kfold_cv_did.
     alpha
         Significance level for classification.
 
     Returns
     -------
-    dict
-        Summary statistics:
-        - n_features: Total features tested
-        - n_stable: Features with sign_consistency > 0.9
-        - n_significant_stable: Stable features with CI excluding 0
-        - mean_cv_sd: Mean CV standard deviation
-        - recommendations: List of recommendations
+    pd.DataFrame
+        Summary per feature with:
+        - feature: Feature name
+        - mean_estimate: Full-sample estimate (or mean LOO estimate)
+        - mean_loo: Mean of LOO estimates
+        - std_loo: Standard deviation of LOO estimates
+        - cv: Coefficient of variation (std/mean)
     """
-    df = kfold_results.copy()
+    df = cv_results.copy()
 
-    n_features = len(df)
-    n_stable = (df["sign_consistency"] > 0.9).sum()
+    # Detect LOO vs kfold format
+    is_loo = "excluded" in df.columns
 
-    # Check if CV CI excludes 0
-    excludes_zero = (df["beta_cv_lower"] > 0) | (df["beta_cv_upper"] < 0)
-    n_significant_stable = (excludes_zero & (df["sign_consistency"] > 0.9)).sum()
+    if is_loo:
+        # LOO format: one row per feature-participant
+        rows = []
+        for feat, group in df.groupby("feature"):
+            betas = group["beta_DiD"].dropna()
+            beta_full = group["beta_full"].iloc[0] if "beta_full" in group.columns else np.nan
 
-    mean_cv_sd = df["beta_cv_sd"].mean()
+            if len(betas) >= 2:
+                mean_loo = betas.mean()
+                std_loo = betas.std(ddof=1)
+                cv = abs(std_loo / mean_loo) if abs(mean_loo) > 1e-12 else np.nan
+            else:
+                mean_loo = std_loo = cv = np.nan
 
-    recommendations = []
-    if n_stable < n_features * 0.5:
-        recommendations.append(
-            "Less than 50% of effects are stable. Consider larger sample size."
+            rows.append({
+                "feature": feat,
+                "mean_estimate": beta_full,
+                "mean_loo": mean_loo,
+                "std_loo": std_loo,
+                "cv": cv,
+                "n_loo": len(betas),
+            })
+        return pd.DataFrame(rows)
+
+    else:
+        # kfold format: one row per feature
+        result = df[["feature"]].copy()
+        result["mean_estimate"] = df.get("beta_full", np.nan)
+        result["mean_loo"] = df.get("beta_cv_mean", np.nan)
+        result["std_loo"] = df.get("beta_cv_sd", np.nan)
+
+        # Calculate CV
+        result["cv"] = np.where(
+            result["mean_loo"].abs() > 1e-12,
+            result["std_loo"].abs() / result["mean_loo"].abs(),
+            np.nan
         )
-    if mean_cv_sd > 0.5:
-        recommendations.append(
-            "High CV variability. Effects may not replicate reliably."
-        )
-    if n_significant_stable > 0:
-        recommendations.append(
-            f"{n_significant_stable} features show stable, significant effects."
-        )
-
-    return {
-        "n_features": n_features,
-        "n_stable": int(n_stable),
-        "n_significant_stable": int(n_significant_stable),
-        "mean_cv_sd": mean_cv_sd,
-        "prop_stable": n_stable / n_features if n_features > 0 else np.nan,
-        "recommendations": recommendations,
-    }
+        return result
