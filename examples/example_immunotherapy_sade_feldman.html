@@ -73,7 +73,6 @@
 <li class="toctree-l4"><a class="reference internal" href="#8.2-Trial-Interaction-Plot">8.2 Trial Interaction Plot</a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="#9.-Summary-and-Conclusions">9. Summary and Conclusions</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#10.-Advanced-Statistical-Analyses">10. Advanced Statistical Analyses</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#10.1-Effect-Sizes-with-Confidence-Intervals">10.1 Effect Sizes with Confidence Intervals</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#10.2-Power-Analysis">10.2 Power Analysis</a></li>
@@ -2432,146 +2431,6 @@ Significant DiD effects (FDR &lt; 0.25):
 </div>
 </section>
 </section>
-<section id="9.-Summary-and-Conclusions">
-<h2>9. Summary and Conclusions<a class="headerlink" href="#9.-Summary-and-Conclusions" title="Link to this heading"></a></h2>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;ANALYSIS SUMMARY&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
-
-<span class="c1"># Use validated paired counts for summary</span>
-<span class="n">n_resp_valid</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">VALID_PAIRED_BY_RESPONSE</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">arm_treated</span><span class="p">,</span> <span class="nb">set</span><span class="p">()))</span>
-<span class="n">n_nonresp_valid</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">VALID_PAIRED_BY_RESPONSE</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">arm_control</span><span class="p">,</span> <span class="nb">set</span><span class="p">()))</span>
-<span class="n">n_valid_total</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">VALID_PAIRED_ALL</span><span class="p">)</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
-<span class="s2">Dataset: Sade-Feldman et al. (Cell 2018) - Melanoma Immunotherapy</span>
-<span class="s2">  - Total cells: </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span>
-<span class="s2">  - Participants: </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s1">&#39;participant_id&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span><span class="si">}</span>
-<span class="s2">  - Response groups: Responder vs Non-responder (participant-level harmonized)</span>
-<span class="s2">  - Time points: Pre-treatment, Post-treatment (on therapy)</span>
-
-<span class="s2">Longitudinal pairing (validated for valid signature scores):</span>
-<span class="s2">  - Paired participants: </span><span class="si">{</span><span class="n">n_valid_total</span><span class="si">}</span>
-<span class="s2">  - Paired Responders: </span><span class="si">{</span><span class="n">n_resp_valid</span><span class="si">}</span>
-<span class="s2">  - Paired Non-responders: </span><span class="si">{</span><span class="n">n_nonresp_valid</span><span class="si">}</span>
-
-<span class="s2">Analysis approach:</span>
-<span class="s2">  1. Cross-sectional: Responder vs Non-responder at each timepoint (OLS)</span>
-<span class="s2">  2. Within-arm longitudinal: Pre→Post changes (Wilcoxon signed-rank)</span>
-<span class="s2">  3. Difference-in-Differences: Differential changes (Mann-Whitney U on deltas)</span>
-
-<span class="s2">Statistical methods:</span>
-<span class="s2">  - Participant-level aggregation (avoids pseudoreplication)</span>
-<span class="s2">  - FDR correction for multiple testing (alpha=</span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">)</span>
-<span class="s2">  - Non-parametric tests for robustness with small samples</span>
-<span class="s2">&quot;&quot;&quot;</span><span class="p">)</span>
-
-<span class="c1"># Summary of key findings</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;KEY FINDINGS&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
-
-<span class="c1"># Cross-sectional</span>
-<span class="k">if</span> <span class="ow">not</span> <span class="n">all_cross</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
-    <span class="n">sig_cross</span> <span class="o">=</span> <span class="n">all_cross</span><span class="p">[</span><span class="n">all_cross</span><span class="p">[</span><span class="s2">&quot;FDR_arm&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">FDR_ALPHA</span><span class="p">]</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">sig_cross</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cross-sectional (FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">):&quot;</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">sig_cross</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
-            <span class="n">direction</span> <span class="o">=</span> <span class="s2">&quot;↑ Responder&quot;</span> <span class="k">if</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;beta_arm&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;↑ Non-responder&quot;</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;feature&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> at </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;visit&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">direction</span><span class="si">}</span><span class="s2"> (p=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;p_arm&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cross-sectional: No significant differences (FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
-
-<span class="c1"># Within-arm</span>
-<span class="k">if</span> <span class="ow">not</span> <span class="n">all_within</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
-    <span class="n">sig_within</span> <span class="o">=</span> <span class="n">all_within</span><span class="p">[(</span><span class="n">all_within</span><span class="p">[</span><span class="s2">&quot;FDR_time&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">())</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">all_within</span><span class="p">[</span><span class="s2">&quot;FDR_time&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">FDR_ALPHA</span><span class="p">)]</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">sig_within</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Within-arm changes (FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">):&quot;</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">sig_within</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
-            <span class="n">direction</span> <span class="o">=</span> <span class="s2">&quot;↑&quot;</span> <span class="k">if</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;mean_delta&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;↓&quot;</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;feature&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> in </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;arm&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">direction</span><span class="si">}</span><span class="s2"> (delta=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;mean_delta&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Within-arm: No significant changes (FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
-
-<span class="c1"># DiD</span>
-<span class="k">if</span> <span class="n">did_results</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">did_results</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
-    <span class="n">sig_did</span> <span class="o">=</span> <span class="n">did_results</span><span class="p">[(</span><span class="n">did_results</span><span class="p">[</span><span class="s2">&quot;FDR_DiD&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">())</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">did_results</span><span class="p">[</span><span class="s2">&quot;FDR_DiD&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">FDR_ALPHA</span><span class="p">)]</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">sig_did</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Differential changes (DiD, FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">):&quot;</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">sig_did</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
-            <span class="n">direction</span> <span class="o">=</span> <span class="s2">&quot;Responders ↑ more&quot;</span> <span class="k">if</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;beta_DiD&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;Non-responders ↑ more&quot;</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;feature&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">direction</span><span class="si">}</span><span class="s2"> (β=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;beta_DiD&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;DiD: No significant differential changes (FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
-</pre></div>
-</div>
-</div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-============================================================
-ANALYSIS SUMMARY
-============================================================
-
-Dataset: Sade-Feldman et al. (Cell 2018) - Melanoma Immunotherapy
-  - Total cells: 13,183
-  - Participants: 25
-  - Response groups: Responder vs Non-responder (participant-level harmonized)
-  - Time points: Pre-treatment, Post-treatment (on therapy)
-
-Longitudinal pairing (validated for valid signature scores):
-  - Paired participants: 10
-  - Paired Responders: 3
-  - Paired Non-responders: 7
-
-Analysis approach:
-  1. Cross-sectional: Responder vs Non-responder at each timepoint (OLS)
-  2. Within-arm longitudinal: Pre→Post changes (Wilcoxon signed-rank)
-  3. Difference-in-Differences: Differential changes (Mann-Whitney U on deltas)
-
-Statistical methods:
-  - Participant-level aggregation (avoids pseudoreplication)
-  - FDR correction for multiple testing (alpha=0.25)
-  - Non-parametric tests for robustness with small samples
-
-
-============================================================
-KEY FINDINGS
-============================================================
-
-Cross-sectional (FDR &lt; 0.25):
-  sig_Cytotoxicity at Pre: ↑ Non-responder (p=0.014)
-  sig_Exhaustion at Pre: ↑ Non-responder (p=0.095)
-  sig_Memory at Pre: ↑ Responder (p=0.008)
-  sig_IFN_Response at Post: ↑ Non-responder (p=0.040)
-  sig_Activation at Post: ↑ Non-responder (p=0.076)
-
-Within-arm changes (FDR &lt; 0.25):
-  sig_Activation in Non-responder: ↑ (delta=0.173)
-
-Differential changes (DiD, FDR &lt; 0.25):
-  sig_Activation: Non-responders ↑ more (β=-0.253)
-
-============================================================
-</pre></div></div>
-</div>
-</section>
 <section id="10.-Advanced-Statistical-Analyses">
 <h2>10. Advanced Statistical Analyses<a class="headerlink" href="#10.-Advanced-Statistical-Analyses" title="Link to this heading"></a></h2>
 <p>In this section, we demonstrate the new statistical modules added to sctrial:</p>
@@ -2586,7 +2445,7 @@ Differential changes (DiD, FDR &lt; 0.25):
 <h3>10.1 Effect Sizes with Confidence Intervals<a class="headerlink" href="#10.1-Effect-Sizes-with-Confidence-Intervals" title="Link to this heading"></a></h3>
 <p>Effect sizes (Cohen’s d, Hedge’s g) provide standardized measures of treatment effects that are independent of sample size and complement p-values.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
@@ -2770,7 +2629,7 @@ Effect sizes for DiD (Responder vs Non-responder change):
 <h3>10.2 Power Analysis<a class="headerlink" href="#10.2-Power-Analysis" title="Link to this heading"></a></h3>
 <p>Power analysis helps understand the statistical power of the current study and plan future studies.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
@@ -2896,7 +2755,7 @@ Sample size needed for 80% power:
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_immunotherapy_sade_feldman_31_1.png" src="../_images/examples_example_immunotherapy_sade_feldman_31_1.png" />
+<img alt="../_images/examples_example_immunotherapy_sade_feldman_29_1.png" src="../_images/examples_example_immunotherapy_sade_feldman_29_1.png" />
 </div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -2932,7 +2791,7 @@ is already accounted for. Cell counts help reduce within-participant noise.
 <li><p>Better handling of unbalanced designs</p></li>
 </ul>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
@@ -3057,7 +2916,7 @@ This may occur with very small samples or convergence issues.
 <h3>10.4 Cross-Validation for Effect Stability<a class="headerlink" href="#10.4-Cross-Validation-for-Effect-Stability" title="Link to this heading"></a></h3>
 <p>Leave-one-out cross-validation (LOO-CV) helps assess the stability of DiD estimates and identify influential participants.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>

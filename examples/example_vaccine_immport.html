@@ -74,7 +74,6 @@
 <li class="toctree-l3"><a class="reference internal" href="#9.-Trial-Interaction-Plot-(Single-Arm)">9. Trial Interaction Plot (Single Arm)</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#10.-Trial-UMAP-Panel-for-a-Module-Score">10. Trial UMAP Panel for a Module Score</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#11.-Dotplot-of-Panel-Genes">11. Dotplot of Panel Genes</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#12.-Summary-and-Conclusions">12. Summary and Conclusions</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#13.-Advanced-Statistical-Analyses">13. Advanced Statistical Analyses</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#13.1-Effect-Sizes-for-Within-Arm-Changes">13.1 Effect Sizes for Within-Arm Changes</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#13.2-Power-Analysis">13.2 Power Analysis</a></li>
@@ -1694,145 +1693,6 @@ Pseudobulk paired deltas with Wilcoxon signed-rank test (panel genes × cell typ
 </div>
 </div>
 </section>
-<section id="12.-Summary-and-Conclusions">
-<h2>12. Summary and Conclusions<a class="headerlink" href="#12.-Summary-and-Conclusions" title="Link to this heading"></a></h2>
-<p>Here, we synthesize key findings and highlight the main biological takeaways.</p>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;ANALYSIS SUMMARY&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
-<span class="s2">Dataset: BNT162b2 Vaccine Response (GSE171964)</span>
-<span class="s2">  - Total cells: </span><span class="si">{</span><span class="n">adata_analysis</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span>
-<span class="s2">  - Participants: </span><span class="si">{</span><span class="n">adata_analysis</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s1">&#39;participant_id&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span><span class="si">}</span>
-<span class="s2">  - Cell types: </span><span class="si">{</span><span class="n">adata_analysis</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s1">&#39;cell_type&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span><span class="si">}</span>
-<span class="s2">  - Time points: Day 0 (baseline), Day 7 (post-vaccination)</span>
-
-<span class="s2">Study design:</span>
-<span class="s2">  - Single-arm longitudinal (no unvaccinated control)</span>
-<span class="s2">  - All analyses are within-participant paired comparisons</span>
-
-<span class="s2">Longitudinal pairing:</span>
-<span class="s2">  - Paired participants: </span><span class="si">{</span><span class="n">N_VALID_PAIRED</span><span class="si">}</span>
-
-<span class="s2">Analysis approach:</span>
-<span class="s2">  1. Module scoring (zmean method) for gene signatures</span>
-<span class="s2">  2. Within-arm longitudinal comparisons (Day 0 vs Day 7)</span>
-<span class="s2">  3. Pseudobulk analysis per cell type</span>
-
-<span class="s2">Statistical methods:</span>
-<span class="s2">  - Participant-level aggregation (avoids pseudoreplication)</span>
-<span class="s2">  - Wilcoxon signed-rank test for paired comparisons</span>
-<span class="s2">  - FDR correction for multiple testing (alpha=</span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">)</span>
-<span class="s2">&quot;&quot;&quot;</span><span class="p">)</span>
-
-<span class="c1"># Summary of key findings</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;KEY FINDINGS&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
-
-<span class="c1"># Module scores</span>
-<span class="k">if</span> <span class="s1">&#39;res_within&#39;</span> <span class="ow">in</span> <span class="nb">dir</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">res_within</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
-    <span class="n">sig_within</span> <span class="o">=</span> <span class="n">res_within</span><span class="p">[(</span><span class="n">res_within</span><span class="p">[</span><span class="s2">&quot;FDR_time&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">())</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">res_within</span><span class="p">[</span><span class="s2">&quot;FDR_time&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">FDR_ALPHA</span><span class="p">)]</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">sig_within</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Module score changes (FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">):&quot;</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">sig_within</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
-            <span class="n">direction</span> <span class="o">=</span> <span class="s2">&quot;increased&quot;</span> <span class="k">if</span> <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;beta_time&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;decreased&quot;</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;feature&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">direction</span><span class="si">}</span><span class="s2"> (p=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;p_time&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Module scores: No significant changes (FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
-
-<span class="c1"># Panel genes</span>
-<span class="k">if</span> <span class="s1">&#39;res_genes&#39;</span> <span class="ow">in</span> <span class="nb">dir</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">res_genes</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
-    <span class="n">sig_genes</span> <span class="o">=</span> <span class="n">res_genes</span><span class="p">[(</span><span class="n">res_genes</span><span class="p">[</span><span class="s2">&quot;FDR_time&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">())</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">res_genes</span><span class="p">[</span><span class="s2">&quot;FDR_time&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">FDR_ALPHA</span><span class="p">)]</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">sig_genes</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Panel gene changes (FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">):&quot;</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">sig_genes</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
-            <span class="n">direction</span> <span class="o">=</span> <span class="s2">&quot;increased&quot;</span> <span class="k">if</span> <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;beta_time&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;decreased&quot;</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;feature&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">direction</span><span class="si">}</span><span class="s2"> (p=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;p_time&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Panel genes: No significant changes (FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
-
-<span class="c1"># Pseudobulk</span>
-<span class="k">if</span> <span class="s1">&#39;pb&#39;</span> <span class="ow">in</span> <span class="nb">dir</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">pb</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
-    <span class="n">sig_pb</span> <span class="o">=</span> <span class="n">pb</span><span class="p">[(</span><span class="n">pb</span><span class="p">[</span><span class="s2">&quot;FDR_time&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">())</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">pb</span><span class="p">[</span><span class="s2">&quot;FDR_time&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">FDR_ALPHA</span><span class="p">)]</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">sig_pb</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Pseudobulk changes by cell type (FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">):&quot;</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">ct</span> <span class="ow">in</span> <span class="n">sig_pb</span><span class="p">[</span><span class="s2">&quot;celltype&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">():</span>
-            <span class="n">ct_sig</span> <span class="o">=</span> <span class="n">sig_pb</span><span class="p">[</span><span class="n">sig_pb</span><span class="p">[</span><span class="s2">&quot;celltype&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">ct</span><span class="p">]</span>
-            <span class="n">genes_up</span> <span class="o">=</span> <span class="n">ct_sig</span><span class="p">[</span><span class="n">ct_sig</span><span class="p">[</span><span class="s2">&quot;mean_delta&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">][</span><span class="s2">&quot;feature&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
-            <span class="n">genes_dn</span> <span class="o">=</span> <span class="n">ct_sig</span><span class="p">[</span><span class="n">ct_sig</span><span class="p">[</span><span class="s2">&quot;mean_delta&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">][</span><span class="s2">&quot;feature&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
-            <span class="k">if</span> <span class="n">genes_up</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">ct</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">genes_up</span><span class="p">)</span><span class="si">}</span><span class="s2"> increased&quot;</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">genes_dn</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">ct</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">genes_dn</span><span class="p">)</span><span class="si">}</span><span class="s2"> decreased&quot;</span><span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Pseudobulk: No significant changes (FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
-</pre></div>
-</div>
-</div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-============================================================
-ANALYSIS SUMMARY
-============================================================
-
-Dataset: BNT162b2 Vaccine Response (GSE171964)
-  - Total cells: 21,331
-  - Participants: 6
-  - Cell types: 18
-  - Time points: Day 0 (baseline), Day 7 (post-vaccination)
-
-Study design:
-  - Single-arm longitudinal (no unvaccinated control)
-  - All analyses are within-participant paired comparisons
-
-Longitudinal pairing:
-  - Paired participants: 6
-
-Analysis approach:
-  1. Module scoring (zmean method) for gene signatures
-  2. Within-arm longitudinal comparisons (Day 0 vs Day 7)
-  3. Pseudobulk analysis per cell type
-
-Statistical methods:
-  - Participant-level aggregation (avoids pseudoreplication)
-  - Wilcoxon signed-rank test for paired comparisons
-  - FDR correction for multiple testing (alpha=0.25)
-
-
-============================================================
-KEY FINDINGS
-============================================================
-
-Module scores: No significant changes (FDR &lt; 0.25)
-
-Panel gene changes (FDR &lt; 0.25):
-  IFI6: increased (p=0.000)
-
-Pseudobulk: No significant changes (FDR &lt; 0.25)
-
-============================================================
-</pre></div></div>
-</div>
-</section>
 <section id="13.-Advanced-Statistical-Analyses">
 <h2>13. Advanced Statistical Analyses<a class="headerlink" href="#13.-Advanced-Statistical-Analyses" title="Link to this heading"></a></h2>
 <p>This section demonstrates the new statistical modules for within-arm longitudinal studies:</p>
@@ -1845,7 +1705,7 @@ Pseudobulk: No significant changes (FDR &lt; 0.25)
 <h3>13.1 Effect Sizes for Within-Arm Changes<a class="headerlink" href="#13.1-Effect-Sizes-for-Within-Arm-Changes" title="Link to this heading"></a></h3>
 <p>For within-arm studies without a control group, effect sizes quantify the magnitude of change from baseline.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
@@ -2060,7 +1920,7 @@ Effect sizes for Day 0 → Day 7 changes:
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_vaccine_immport_35_2.png" class="no-scaled-link" src="../_images/examples_example_vaccine_immport_35_2.png" style="width: 933px; height: 570px;" />
+<img alt="../_images/examples_example_vaccine_immport_33_2.png" class="no-scaled-link" src="../_images/examples_example_vaccine_immport_33_2.png" style="width: 933px; height: 570px;" />
 </div>
 </div>
 </section>
@@ -2068,7 +1928,7 @@ Effect sizes for Day 0 → Day 7 changes:
 <h3>13.2 Power Analysis<a class="headerlink" href="#13.2-Power-Analysis" title="Link to this heading"></a></h3>
 <p>Power analysis for within-arm studies helps plan future studies and understand current study limitations.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
@@ -2185,7 +2045,7 @@ Sample size needed for 80% power (paired design):
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_vaccine_immport_37_1.png" class="no-scaled-link" src="../_images/examples_example_vaccine_immport_37_1.png" style="width: 1412px; height: 570px;" />
+<img alt="../_images/examples_example_vaccine_immport_35_1.png" class="no-scaled-link" src="../_images/examples_example_vaccine_immport_35_1.png" style="width: 1412px; height: 570px;" />
 </div>
 </div>
 <div class="nboutput nblast docutils container">

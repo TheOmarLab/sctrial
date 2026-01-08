@@ -65,7 +65,6 @@
 <li class="toctree-l3"><a class="reference internal" href="#6.-Difference‑in‑Differences-(signatures-+-genome‑wide-benchmark)">6. Difference‑in‑Differences (signatures + genome‑wide benchmark)</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#7.-Abundance-DiD-(cell‑type-proportions)">7. Abundance DiD (cell‑type proportions)</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#8.-Gene‑set-enrichment-(real-gene-sets)">8. Gene‑set enrichment (real gene sets)</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#10.-Conclusions">10. Conclusions</a></li>
 </ul>
 </li>
 </ul>
@@ -1038,7 +1037,7 @@ Within-arm comparison for Non-responder:
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-Genome‑wide DiD on 2000 genes took 5.73 seconds
+Genome‑wide DiD on 2000 genes took 6.05 seconds
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -1298,7 +1297,7 @@ GSEA gene sets available: 13
   return np.sqrt(np.diag(self.cov_params()))
 /Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/statsmodels/regression/linear_model.py:1884: RuntimeWarning: invalid value encountered in sqrt
   return np.sqrt(np.diag(self.cov_params()))
-2026-01-07 09:54:00,013 [WARNING] Duplicated values found in preranked stats: 24.76% of genes
+2026-01-07 17:05:49,356 [WARNING] Duplicated values found in preranked stats: 24.76% of genes
 The order of those genes will be arbitrary, which may produce unexpected results.
 </pre></div></div>
 </div>
@@ -1380,14 +1379,14 @@ Timing summary (seconds):
   abundance_did: 0.00
   cross_sectional_Post: 0.28
   cross_sectional_Pre: 0.22
-  did_genomewide: 5.73
-  did_signatures: 0.50
-  gsea_did: 144.41
+  did_genomewide: 6.05
+  did_signatures: 0.60
+  gsea_did: 141.91
   load_data: 1.34
-  within_arm_Non-responder: 0.67
+  within_arm_Non-responder: 0.73
   within_arm_Responder: 0.28
 
-  TOTAL: 153.44 seconds
+  TOTAL: 151.42 seconds
 
 ============================================================
 SCALABILITY METRICS
@@ -1400,8 +1399,8 @@ Dataset size:
   - Signatures tested: 5
 
 Performance:
-  - Cells per second (load): 5259
-  - Genes per second (DiD): 349
+  - Cells per second (load): 5272
+  - Genes per second (DiD): 330
 
 </pre></div></div>
 </div>
@@ -1412,29 +1411,6 @@ Performance:
 <img alt="../_images/examples_stress_test_real_scale_21_1.png" src="../_images/examples_stress_test_real_scale_21_1.png" />
 </div>
 </div>
-</section>
-<section id="10.-Conclusions">
-<h2>10. Conclusions<a class="headerlink" href="#10.-Conclusions" title="Link to this heading"></a></h2>
-<p>This scalability analysis demonstrates that <code class="docutils literal notranslate"><span class="pre">sctrial</span></code> can efficiently process real single-cell trial data:</p>
-<p><strong>Key Observations:</strong></p>
-<ol class="arabic simple">
-<li><p><strong>Data loading</strong>: Efficient parsing of GEO expression matrices with stratified subsampling</p></li>
-<li><p><strong>Signature scoring</strong>: Fast z-mean scoring across multiple gene signatures</p></li>
-<li><p><strong>Statistical analyses</strong>: Cross-sectional, within-arm, and DiD comparisons complete in seconds</p></li>
-<li><p><strong>Genome-wide testing</strong>: DiD analysis on thousands of genes is tractable</p></li>
-</ol>
-<p><strong>Scalability Guidelines:</strong></p>
-<ul class="simple">
-<li><p>For exploratory analysis: Use all cells with participant-level aggregation</p></li>
-<li><p>For large datasets (&gt;100k cells): Consider subsampling per participant-visit</p></li>
-<li><p>For genome-wide DiD: Limit to top variable genes or pre-filtered gene lists</p></li>
-</ul>
-<p><strong>Limitations of this benchmark:</strong></p>
-<ul class="simple">
-<li><p>Single cell type annotation (all “Immune”) limits abundance analysis</p></li>
-<li><p>Small sample size (few paired participants) affects statistical power</p></li>
-<li><p>Subsampling affects within-cell-type heterogeneity estimates</p></li>
-</ul>
 </section>
 </section>
 
