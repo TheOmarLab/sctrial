@@ -69,6 +69,7 @@ def loo_cv_did(
     visits: tuple[str, str],
     layer: str | None = None,
     exclude_crossovers: bool = True,
+    aggregate: str = "participant_visit",
 ) -> pd.DataFrame:
     """Leave-one-out cross-validation for DiD analysis.
 
@@ -90,6 +91,8 @@ def loo_cv_did(
         Expression layer.
     exclude_crossovers
         Exclude crossover participants.
+    aggregate
+        Aggregation mode passed to did_table (default "participant_visit").
 
     Returns
     -------
@@ -115,7 +118,7 @@ def loo_cv_did(
     # Full-sample estimates for comparison
     full_res = did_table(
         adata, features, design, visits,
-        exclude_crossovers=exclude_crossovers, layer=layer
+        exclude_crossovers=exclude_crossovers, layer=layer, aggregate=aggregate
     )
     full_betas = full_res.set_index("feature")["beta_DiD"].to_dict()
     full_ses = full_res.set_index("feature")["se_DiD"].to_dict()
@@ -130,7 +133,7 @@ def loo_cv_did(
         try:
             res_loo = did_table(
                 ad_loo, features, design, visits,
-                exclude_crossovers=exclude_crossovers, layer=layer
+                exclude_crossovers=exclude_crossovers, layer=layer, aggregate=aggregate
             )
 
             for _, row in res_loo.iterrows():

@@ -300,7 +300,7 @@ def did_table_mixed(
     did_table : Fixed effects version (recommended for most applications).
     compare_fixed_vs_mixed : Compare both approaches.
     """
-    from .._extract import extract_gene_vector
+    from ._extract import extract_gene_vector
     from ..adata_tools import subset_primary
 
     # Subset to analysis population

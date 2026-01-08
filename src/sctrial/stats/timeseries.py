@@ -75,7 +75,7 @@ def _prepare_longitudinal_data(
     exclude_crossovers: bool = True,
 ) -> pd.DataFrame:
     """Prepare data for longitudinal analysis."""
-    from .._extract import extract_gene_vector
+    from ._extract import extract_gene_vector
 
     # Filter to specified visits
     mask = adata.obs[design.visit_col].isin(visits)
