@@ -1037,7 +1037,7 @@ Within-arm comparison for Non-responder:
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-Genome‑wide DiD on 2000 genes took 6.05 seconds
+Genome‑wide DiD on 2000 genes took 6.08 seconds
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -1297,7 +1297,7 @@ GSEA gene sets available: 13
   return np.sqrt(np.diag(self.cov_params()))
 /Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/statsmodels/regression/linear_model.py:1884: RuntimeWarning: invalid value encountered in sqrt
   return np.sqrt(np.diag(self.cov_params()))
-2026-01-07 17:05:49,356 [WARNING] Duplicated values found in preranked stats: 24.76% of genes
+2026-01-07 17:53:29,086 [WARNING] Duplicated values found in preranked stats: 24.76% of genes
 The order of those genes will be arbitrary, which may produce unexpected results.
 </pre></div></div>
 </div>
@@ -1377,16 +1377,16 @@ BENCHMARK SUMMARY
 
 Timing summary (seconds):
   abundance_did: 0.00
-  cross_sectional_Post: 0.28
-  cross_sectional_Pre: 0.22
-  did_genomewide: 6.05
-  did_signatures: 0.60
-  gsea_did: 141.91
+  cross_sectional_Post: 0.27
+  cross_sectional_Pre: 0.21
+  did_genomewide: 6.08
+  did_signatures: 0.58
+  gsea_did: 137.06
   load_data: 1.34
   within_arm_Non-responder: 0.73
   within_arm_Responder: 0.28
 
-  TOTAL: 151.42 seconds
+  TOTAL: 146.56 seconds
 
 ============================================================
 SCALABILITY METRICS
@@ -1399,8 +1399,8 @@ Dataset size:
   - Signatures tested: 5
 
 Performance:
-  - Cells per second (load): 5272
-  - Genes per second (DiD): 330
+  - Cells per second (load): 5269
+  - Genes per second (DiD): 329
 
 </pre></div></div>
 </div>
