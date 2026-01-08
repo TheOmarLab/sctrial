@@ -111,10 +111,6 @@ If you use **sctrial** in your research, please cite:
 }
 ```
 
-## Authors
-
-- **Mohamed Omar** - *Lead Developer* - [TheOmarLab](https://github.com/TheOmarLab)
-
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.

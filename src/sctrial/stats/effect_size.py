@@ -220,7 +220,7 @@ def effect_size_ci(
 
     if method == "nct":
         # Approximate SE using Hedges & Olkin (1985) formula
-        se_d = np.sqrt((n1 + n2) / (n1 * n2) + (d ** 2) / (2 * (n1 + n2)))
+        se_d = np.sqrt((n1 + n2) / (n1 * n2) + (d ** 2) / (2 * (n1 + n2 - 2)))
         df = n1 + n2 - 2
 
         t_crit = stats.t.ppf(1 - alpha / 2, df)
