@@ -7,12 +7,10 @@
   <a href="https://github.com/TheOmarLab/sctrial/actions/workflows/test.yml">
     <img src="https://github.com/TheOmarLab/sctrial/actions/workflows/test.yml/badge.svg?branch=main" alt="Test Status">
   </a>
-  <a href="https://pypi.org/project/sctrial/">
-    <img src="https://img.shields.io/pypi/v/sctrial.svg" alt="PyPI Version">
+  <a href="https://github.com/TheOmarLab/sctrial/releases">
+    <img src="https://img.shields.io/github/v/release/TheOmarLab/sctrial?label=version" alt="Release Version">
   </a>
-  <a href="https://pypi.org/project/sctrial/">
-    <img src="https://img.shields.io/pypi/pyversions/sctrial.svg" alt="Python Versions">
-  </a>
+  <img src="https://img.shields.io/badge/python-3.9%2B-blue" alt="Python Versions">
   <a href="https://opensource.org/licenses/MIT">
     <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT">
   </a>

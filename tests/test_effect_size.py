@@ -4,9 +4,9 @@ import numpy as np
 import pytest
 
 from sctrial.stats.effect_size import (
+    bootstrap_effect_size_ci,
     cohens_d,
     hedges_g,
-    bootstrap_effect_size_ci,
 )
 
 

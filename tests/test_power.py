@@ -1,13 +1,12 @@
 """Tests for power analysis functions."""
 
-import numpy as np
 import pytest
 
 from sctrial.stats.power import (
-    power_did,
-    sample_size_did,
     design_effect,
     effective_sample_size,
+    power_did,
+    sample_size_did,
 )
 
 
