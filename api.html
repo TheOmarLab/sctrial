@@ -824,7 +824,7 @@ across studies with different scales.</p>
 AND confidence intervals (for statistical inference). Bootstrap CI on Cohen’s d
 provides the best of both worlds.</p>
 <p><strong>Hedge’s g vs Cohen’s d</strong>: Hedge’s g applies a small-sample correction factor
-(J = 1 - 3/(4n-9)) that reduces upward bias in small samples. Use Hedge’s g when
+(J = 1 - 3/(4(n₁+n₂-2)-1) = 1 - 3/(4*df - 1)) that reduces upward bias in small samples. Use Hedge’s g when
 n &lt; 20 per group; for larger samples they are nearly identical.</p>
 </section>
 <section id="mathematical-definitions">
@@ -834,7 +834,7 @@ n &lt; 20 per group; for larger samples they are nearly identical.</p>
 <p>where s_pooled = sqrt(((n₁-1)s₁² + (n₂-1)s₂²) / (n₁+n₂-2))</p>
 </dd>
 <dt>Hedge’s g:</dt><dd><p>g = d × J</p>
-<p>where J = 1 - 3/(4(n₁+n₂)-9)  (Hedges’ correction factor)</p>
+<p>where J = 1 - 3/(4(n₁+n₂-2)-1) = 1 - 3/(4*df - 1)  (Hedges’ correction factor)</p>
 </dd>
 <dt>95% CI via noncentral t-distribution:</dt><dd><p>SE(d) ≈ sqrt(n₁+n₂/(n₁×n₂) + d²/(2(n₁+n₂)))</p>
 </dd>
@@ -979,7 +979,7 @@ P(t &lt; t_obs | λ=λ_U) = α/2</p>
 upward bias in small samples:</p>
 <blockquote>
 <div><p>g = d × J
-J = 1 - 3/(4(n₁+n₂) - 9)</p>
+J = 1 - 3/(4(n₁+n₂-2) - 1)  (equivalently 1 - 3/(4*df - 1))</p>
 </div></blockquote>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>

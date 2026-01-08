@@ -101,7 +101,7 @@
 <span class="sd">provides the best of both worlds.</span>
 
 <span class="sd">**Hedge&#39;s g vs Cohen&#39;s d**: Hedge&#39;s g applies a small-sample correction factor</span>
-<span class="sd">(J = 1 - 3/(4n-9)) that reduces upward bias in small samples. Use Hedge&#39;s g when</span>
+<span class="sd">(J = 1 - 3/(4(n₁+n₂-2)-1) = 1 - 3/(4*df - 1)) that reduces upward bias in small samples. Use Hedge&#39;s g when</span>
 <span class="sd">n &lt; 20 per group; for larger samples they are nearly identical.</span>
 
 <span class="sd">Mathematical Definitions</span>
@@ -114,7 +114,7 @@
 <span class="sd">Hedge&#39;s g:</span>
 <span class="sd">    g = d × J</span>
 
-<span class="sd">    where J = 1 - 3/(4(n₁+n₂)-9)  (Hedges&#39; correction factor)</span>
+<span class="sd">    where J = 1 - 3/(4(n₁+n₂-2)-1) = 1 - 3/(4*df - 1)  (Hedges&#39; correction factor)</span>
 
 <span class="sd">95% CI via noncentral t-distribution:</span>
 <span class="sd">    SE(d) ≈ sqrt(n₁+n₂/(n₁×n₂) + d²/(2(n₁+n₂)))</span>
@@ -221,7 +221,7 @@
 <span class="sd">    upward bias in small samples:</span>
 
 <span class="sd">        g = d × J</span>
-<span class="sd">        J = 1 - 3/(4(n₁+n₂) - 9)</span>
+<span class="sd">        J = 1 - 3/(4(n₁+n₂-2) - 1)  (equivalently 1 - 3/(4*df - 1))</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -481,7 +481,8 @@
 
         <span class="c1"># Apply Hedge&#39;s correction</span>
         <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;hedges_g&quot;</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="ow">and</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
-            <span class="n">j</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="mi">3</span> <span class="o">/</span> <span class="p">(</span><span class="mi">4</span> <span class="o">*</span> <span class="n">n</span> <span class="o">-</span> <span class="mi">9</span><span class="p">)</span> <span class="k">if</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mi">3</span> <span class="k">else</span> <span class="mf">1.0</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">n</span> <span class="o">-</span> <span class="mi">2</span>
+            <span class="n">j</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="mi">3</span> <span class="o">/</span> <span class="p">(</span><span class="mi">4</span> <span class="o">*</span> <span class="n">df</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="k">if</span> <span class="n">df</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="mf">1.0</span>
             <span class="n">d</span> <span class="o">=</span> <span class="n">d</span> <span class="o">*</span> <span class="n">j</span>
 
         <span class="c1"># CI via approximate SE</span>

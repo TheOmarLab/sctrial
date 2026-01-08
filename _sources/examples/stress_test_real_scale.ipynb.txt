@@ -30,10 +30,10 @@
    "id": "300359b3",
    "metadata": {
     "execution": {
-     "iopub.execute_input": "2026-01-08T04:31:43.869265Z",
-     "iopub.status.busy": "2026-01-08T04:31:43.869074Z",
-     "iopub.status.idle": "2026-01-08T04:31:44.987870Z",
-     "shell.execute_reply": "2026-01-08T04:31:44.987265Z"
+     "iopub.execute_input": "2026-01-08T04:52:31.357131Z",
+     "iopub.status.busy": "2026-01-08T04:52:31.356926Z",
+     "iopub.status.idle": "2026-01-08T04:52:32.449705Z",
+     "shell.execute_reply": "2026-01-08T04:52:32.449282Z"
     }
    },
    "outputs": [],
@@ -81,10 +81,10 @@
    "id": "5cd5d56d",
    "metadata": {
     "execution": {
-     "iopub.execute_input": "2026-01-08T04:31:44.989534Z",
-     "iopub.status.busy": "2026-01-08T04:31:44.989378Z",
-     "iopub.status.idle": "2026-01-08T04:31:44.991066Z",
-     "shell.execute_reply": "2026-01-08T04:31:44.990668Z"
+     "iopub.execute_input": "2026-01-08T04:52:32.451804Z",
+     "iopub.status.busy": "2026-01-08T04:52:32.451653Z",
+     "iopub.status.idle": "2026-01-08T04:52:32.453706Z",
+     "shell.execute_reply": "2026-01-08T04:52:32.453170Z"
     }
    },
    "outputs": [],
@@ -107,10 +107,10 @@
    "id": "8e70db63",
    "metadata": {
     "execution": {
-     "iopub.execute_input": "2026-01-08T04:31:44.992287Z",
-     "iopub.status.busy": "2026-01-08T04:31:44.992199Z",
-     "iopub.status.idle": "2026-01-08T04:31:46.778413Z",
-     "shell.execute_reply": "2026-01-08T04:31:46.777937Z"
+     "iopub.execute_input": "2026-01-08T04:52:32.455151Z",
+     "iopub.status.busy": "2026-01-08T04:52:32.455065Z",
+     "iopub.status.idle": "2026-01-08T04:52:34.238674Z",
+     "shell.execute_reply": "2026-01-08T04:52:34.238182Z"
     }
    },
    "outputs": [
@@ -211,10 +211,10 @@
    "id": "4e54b219",
    "metadata": {
     "execution": {
-     "iopub.execute_input": "2026-01-08T04:31:46.779996Z",
-     "iopub.status.busy": "2026-01-08T04:31:46.779913Z",
-     "iopub.status.idle": "2026-01-08T04:31:46.869090Z",
-     "shell.execute_reply": "2026-01-08T04:31:46.868757Z"
+     "iopub.execute_input": "2026-01-08T04:52:34.240317Z",
+     "iopub.status.busy": "2026-01-08T04:52:34.240242Z",
+     "iopub.status.idle": "2026-01-08T04:52:34.330637Z",
+     "shell.execute_reply": "2026-01-08T04:52:34.330216Z"
     }
    },
    "outputs": [
@@ -382,10 +382,10 @@
    "id": "8d7cf12e",
    "metadata": {
     "execution": {
-     "iopub.execute_input": "2026-01-08T04:31:46.870534Z",
-     "iopub.status.busy": "2026-01-08T04:31:46.870441Z",
-     "iopub.status.idle": "2026-01-08T04:31:46.886448Z",
-     "shell.execute_reply": "2026-01-08T04:31:46.885996Z"
+     "iopub.execute_input": "2026-01-08T04:52:34.332161Z",
+     "iopub.status.busy": "2026-01-08T04:52:34.332067Z",
+     "iopub.status.idle": "2026-01-08T04:52:34.351960Z",
+     "shell.execute_reply": "2026-01-08T04:52:34.351619Z"
     }
    },
    "outputs": [
@@ -447,10 +447,10 @@
    "id": "h7en7dcgp9h",
    "metadata": {
     "execution": {
-     "iopub.execute_input": "2026-01-08T04:31:46.887645Z",
-     "iopub.status.busy": "2026-01-08T04:31:46.887569Z",
-     "iopub.status.idle": "2026-01-08T04:31:46.896328Z",
-     "shell.execute_reply": "2026-01-08T04:31:46.895911Z"
+     "iopub.execute_input": "2026-01-08T04:52:34.353259Z",
+     "iopub.status.busy": "2026-01-08T04:52:34.353183Z",
+     "iopub.status.idle": "2026-01-08T04:52:34.361999Z",
+     "shell.execute_reply": "2026-01-08T04:52:34.361667Z"
     }
    },
    "outputs": [
@@ -545,10 +545,10 @@
    "id": "f3276a29",
    "metadata": {
     "execution": {
-     "iopub.execute_input": "2026-01-08T04:31:46.897558Z",
-     "iopub.status.busy": "2026-01-08T04:31:46.897492Z",
-     "iopub.status.idle": "2026-01-08T04:31:47.376419Z",
-     "shell.execute_reply": "2026-01-08T04:31:47.376067Z"
+     "iopub.execute_input": "2026-01-08T04:52:34.363458Z",
+     "iopub.status.busy": "2026-01-08T04:52:34.363384Z",
+     "iopub.status.idle": "2026-01-08T04:52:34.845687Z",
+     "shell.execute_reply": "2026-01-08T04:52:34.845190Z"
     }
    },
    "outputs": [
@@ -755,10 +755,10 @@
    "id": "f4e628be",
    "metadata": {
     "execution": {
-     "iopub.execute_input": "2026-01-08T04:31:47.377914Z",
-     "iopub.status.busy": "2026-01-08T04:31:47.377821Z",
-     "iopub.status.idle": "2026-01-08T04:31:48.392632Z",
-     "shell.execute_reply": "2026-01-08T04:31:48.392136Z"
+     "iopub.execute_input": "2026-01-08T04:52:34.847040Z",
+     "iopub.status.busy": "2026-01-08T04:52:34.846948Z",
+     "iopub.status.idle": "2026-01-08T04:52:35.799970Z",
+     "shell.execute_reply": "2026-01-08T04:52:35.799543Z"
     }
    },
    "outputs": [
@@ -1001,10 +1001,10 @@
    "id": "fc6a5c3b",
    "metadata": {
     "execution": {
-     "iopub.execute_input": "2026-01-08T04:31:48.393984Z",
-     "iopub.status.busy": "2026-01-08T04:31:48.393909Z",
-     "iopub.status.idle": "2026-01-08T04:31:54.623467Z",
-     "shell.execute_reply": "2026-01-08T04:31:54.622970Z"
+     "iopub.execute_input": "2026-01-08T04:52:35.801355Z",
+     "iopub.status.busy": "2026-01-08T04:52:35.801273Z",
+     "iopub.status.idle": "2026-01-08T04:52:41.936979Z",
+     "shell.execute_reply": "2026-01-08T04:52:41.936546Z"
     }
    },
    "outputs": [
@@ -1097,7 +1097,7 @@
      "name": "stdout",
      "output_type": "stream",
      "text": [
-      "Genome‑wide DiD on 2000 genes took 5.66 seconds\n"
+      "Genome‑wide DiD on 2000 genes took 5.58 seconds\n"
      ]
     },
     {
@@ -1258,10 +1258,10 @@
    "id": "1831905a",
    "metadata": {
     "execution": {
-     "iopub.execute_input": "2026-01-08T04:31:54.624893Z",
-     "iopub.status.busy": "2026-01-08T04:31:54.624803Z",
-     "iopub.status.idle": "2026-01-08T04:31:54.627377Z",
-     "shell.execute_reply": "2026-01-08T04:31:54.626958Z"
+     "iopub.execute_input": "2026-01-08T04:52:41.938358Z",
+     "iopub.status.busy": "2026-01-08T04:52:41.938283Z",
+     "iopub.status.idle": "2026-01-08T04:52:41.940708Z",
+     "shell.execute_reply": "2026-01-08T04:52:41.940243Z"
     }
    },
    "outputs": [
@@ -1314,10 +1314,10 @@
    "id": "5f40ecc5",
    "metadata": {
     "execution": {
-     "iopub.execute_input": "2026-01-08T04:31:54.628516Z",
-     "iopub.status.busy": "2026-01-08T04:31:54.628451Z",
-     "iopub.status.idle": "2026-01-08T04:34:12.035612Z",
-     "shell.execute_reply": "2026-01-08T04:34:12.035267Z"
+     "iopub.execute_input": "2026-01-08T04:52:41.941850Z",
+     "iopub.status.busy": "2026-01-08T04:52:41.941781Z",
+     "iopub.status.idle": "2026-01-08T04:54:57.898967Z",
+     "shell.execute_reply": "2026-01-08T04:54:57.898614Z"
     }
    },
    "outputs": [
@@ -1520,7 +1520,7 @@
      "name": "stderr",
      "output_type": "stream",
      "text": [
-      "2026-01-07 18:34:10,327 [WARNING] Duplicated values found in preranked stats: 24.76% of genes\n",
+      "2026-01-07 18:54:56,196 [WARNING] Duplicated values found in preranked stats: 24.76% of genes\n",
       "The order of those genes will be arbitrary, which may produce unexpected results.\n"
      ]
     },
@@ -1594,10 +1594,10 @@
    "id": "55dae07a",
    "metadata": {
     "execution": {
-     "iopub.execute_input": "2026-01-08T04:34:12.037005Z",
-     "iopub.status.busy": "2026-01-08T04:34:12.036909Z",
-     "iopub.status.idle": "2026-01-08T04:34:12.087501Z",
-     "shell.execute_reply": "2026-01-08T04:34:12.087153Z"
+     "iopub.execute_input": "2026-01-08T04:54:57.900363Z",
+     "iopub.status.busy": "2026-01-08T04:54:57.900270Z",
+     "iopub.status.idle": "2026-01-08T04:54:57.951815Z",
+     "shell.execute_reply": "2026-01-08T04:54:57.951403Z"
     }
    },
    "outputs": [
@@ -1611,16 +1611,16 @@
       "\n",
       "Timing summary (seconds):\n",
       "  abundance_did: 0.00\n",
-      "  cross_sectional_Post: 0.26\n",
+      "  cross_sectional_Post: 0.27\n",
       "  cross_sectional_Pre: 0.21\n",
-      "  did_genomewide: 5.66\n",
-      "  did_signatures: 0.57\n",
-      "  gsea_did: 137.36\n",
+      "  did_genomewide: 5.58\n",
+      "  did_signatures: 0.55\n",
+      "  gsea_did: 135.91\n",
       "  load_data: 1.34\n",
-      "  within_arm_Non-responder: 0.74\n",
-      "  within_arm_Responder: 0.26\n",
+      "  within_arm_Non-responder: 0.68\n",
+      "  within_arm_Responder: 0.27\n",
       "\n",
-      "  TOTAL: 146.40 seconds\n",
+      "  TOTAL: 144.80 seconds\n",
       "\n",
       "============================================================\n",
       "SCALABILITY METRICS\n",
@@ -1633,8 +1633,8 @@
       "  - Signatures tested: 5\n",
       "\n",
       "Performance:\n",
-      "  - Cells per second (load): 5274\n",
-      "  - Genes per second (DiD): 354\n",
+      "  - Cells per second (load): 5276\n",
+      "  - Genes per second (DiD): 359\n",
       "\n"
      ]
     },
