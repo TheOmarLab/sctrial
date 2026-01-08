@@ -45,6 +45,7 @@ Interpretation Guidelines
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import Literal
 
 import numpy as np
 import pandas as pd
@@ -69,7 +70,7 @@ def loo_cv_did(
     visits: tuple[str, str],
     layer: str | None = None,
     exclude_crossovers: bool = True,
-    aggregate: str = "participant_visit",
+    aggregate: Literal["cell", "participant_visit", "participant_visit_celltype"] = "participant_visit",
     standardize: bool = True,
 ) -> pd.DataFrame:
     """Leave-one-out cross-validation for DiD analysis.
