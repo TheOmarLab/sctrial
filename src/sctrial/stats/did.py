@@ -313,6 +313,8 @@ def did_fit(
             "p_time": np.nan,
             "n_units": n_units,
         }
+    # mypy: tmp is guaranteed non-None beyond this point
+    assert tmp is not None
 
     formula = _build_did_formula(time, arm_bin, unit, covariates)
 
