@@ -76,6 +76,7 @@ from .pseudobulk import (
     pseudobulk_expression,
     pseudobulk_within_arm,
 )
+from .module_scores import module_score_did_by_pool, module_score_pseudobulk
 from .summary import summarize_did_results
 
 # Time series analysis
@@ -102,6 +103,8 @@ __all__ = [
     "pseudobulk_expression",
     "pseudobulk_within_arm",
     "pseudobulk_did",
+    "module_score_pseudobulk",
+    "module_score_did_by_pool",
     "compare_gene_in_celltype",
     # Effect sizes
     "cohens_d",

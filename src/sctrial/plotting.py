@@ -23,6 +23,7 @@ __all__ = [
     "plot_trial_dotplot",
     "plot_abundance_interaction",
     "plot_trial_umap_panel",
+    "plot_module_umap_panel",
     "plot_gsea_heatmap",
 ]
 
@@ -702,6 +703,78 @@ def plot_trial_umap_panel(
         title = f"Trial UMAP Panel: {feature}"
     plt.suptitle(title, fontsize=16)
     plt.tight_layout(rect=(0, 0, 1, 0.96))
+    return fig
+
+
+def plot_module_umap_panel(
+    adata: AnnData,
+    module_cols: Sequence[str],
+    celltype_col: str = "celltype",
+    umap_key: str = "X_umap",
+    n_cols: int = 2,
+    cmap: str = "magma",
+    figsize: tuple[float, float] = (12, 10),
+    point_size: float = 6,
+    alpha: float = 0.7,
+    label_fontsize: int = 8,
+) -> Figure:
+    """Plot cell-type UMAP plus module score UMAP panels.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        The figure containing the UMAP panel.
+    """
+    if plt is None:
+        raise ImportError("matplotlib is required for plotting.")
+    if umap_key not in adata.obsm:
+        raise KeyError(f"{umap_key} not found in adata.obsm")
+    for m in module_cols:
+        if m not in adata.obs.columns:
+            raise KeyError(f"Module score '{m}' not found in adata.obs")
+    if celltype_col not in adata.obs.columns:
+        raise KeyError(f"{celltype_col} not found in adata.obs")
+
+    coords = adata.obsm[umap_key]
+    x = coords[:, 0]
+    y = coords[:, 1]
+
+    n_panels = 1 + len(module_cols)
+    n_rows = int(np.ceil(n_panels / n_cols))
+
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=figsize)
+    axes = np.array(axes).reshape(-1)
+
+    # Panel 1: cell types with labels
+    ax0 = axes[0]
+    celltypes = pd.Categorical(adata.obs[celltype_col])
+    cats = list(celltypes.categories)
+    colors = plt.get_cmap("tab20")(np.linspace(0, 1, max(1, len(cats))))
+    color_map = {c: colors[i % len(colors)] for i, c in enumerate(cats)}
+    for c in cats:
+        mask = adata.obs[celltype_col] == c
+        ax0.scatter(x[mask], y[mask], s=point_size, alpha=alpha, color=color_map[c], label=c)
+        # label at centroid
+        ax0.text(np.median(x[mask]), np.median(y[mask]), str(c), fontsize=label_fontsize)
+    ax0.set_title("Cell Types")
+    ax0.set_axis_off()
+
+    # Module panels
+    for i, m in enumerate(module_cols, start=1):
+        ax = axes[i]
+        vals = adata.obs[m].values
+        vmin = np.nanpercentile(vals, 1)
+        vmax = np.nanpercentile(vals, 99)
+        sca = ax.scatter(x, y, c=vals, s=point_size, alpha=alpha, cmap=cmap, vmin=vmin, vmax=vmax)
+        ax.set_title(m)
+        ax.set_axis_off()
+        fig.colorbar(sca, ax=ax, fraction=0.046, pad=0.04)
+
+    # Hide extra axes
+    for j in range(n_panels, len(axes)):
+        axes[j].axis("off")
+
+    plt.tight_layout()
     return fig
 
 
