@@ -3,10 +3,10 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Literal
 
-from anndata import AnnData
 import numpy as np
 import pandas as pd
 import statsmodels.formula.api as smf
+from anndata import AnnData
 from statsmodels.stats.multitest import multipletests
 
 from ..adata_tools import subset_cells
