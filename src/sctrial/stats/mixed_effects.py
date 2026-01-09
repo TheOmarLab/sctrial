@@ -65,9 +65,9 @@ from anndata import AnnData
 from statsmodels.stats.multitest import multipletests
 from statsmodels.tools.sm_exceptions import ConvergenceWarning
 
-from ..design import TrialDesign
-from .did import AggregateFunc, AggregateMode, _ensure_paired
 from ._utils import aggregate_features
+from .did import AggregateFunc, AggregateMode, _ensure_paired
+from ..design import TrialDesign
 
 __all__ = [
     "did_mixed",

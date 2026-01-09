@@ -3,8 +3,6 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from typing import Any
-
-import numpy as np
 from anndata import AnnData
 
 from .datasets import count_paired
