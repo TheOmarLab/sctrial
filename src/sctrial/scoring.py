@@ -62,6 +62,8 @@ def score_gene_sets(
     The zmean method computes: mean(z_i) where z_i = (x_i - mean(x_i)) / std(x_i)
     for each gene i across all cells.
     """
+    if method not in ("zmean", "mean"):
+        raise ValueError(f"Unknown method '{method}'. Use 'zmean' or 'mean'.")
     X = adata.layers[layer] if layer is not None else adata.X
     var_names = adata.var_names
     idx = {g: i for i, g in enumerate(var_names)}

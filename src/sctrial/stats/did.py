@@ -118,6 +118,9 @@ def did_fit(
     cols = [unit, time, arm_bin, y]
     if covariates:
         cols.extend(covariates)
+    missing = [c for c in cols if c not in df.columns]
+    if missing:
+        raise KeyError(f"Missing required columns for did_fit: {missing}")
     # Include n_cells for WLS weighting if available
     if "n_cells" in df.columns:
         cols.append("n_cells")

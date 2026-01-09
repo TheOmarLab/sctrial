@@ -195,6 +195,18 @@ def power_did(
 
     where n is the total number of participants (not cells).
     """
+    if not np.isfinite(n_per_group) or n_per_group < 1:
+        raise ValueError("n_per_group must be a finite integer >= 1.")
+    if not np.isfinite(effect_size):
+        raise ValueError("effect_size must be finite.")
+    if not np.isfinite(sigma) or sigma <= 0:
+        raise ValueError("sigma must be a finite value > 0.")
+    if not (0 < alpha < 1):
+        raise ValueError("alpha must be between 0 and 1.")
+    if not (0 <= icc <= 1):
+        raise ValueError("icc must be between 0 and 1.")
+    if not np.isfinite(cluster_size) or cluster_size < 1:
+        raise ValueError("cluster_size must be >= 1.")
     if n_per_group < 2:
         return 0.0
 
@@ -277,8 +289,18 @@ def sample_size_did(
     >>> n = sample_size_did(effect_size=0.5, alpha=0.05/10, power=0.80)
     >>> print(f"With Bonferroni: {n} per arm")
     """
-    if effect_size == 0:
+    if not np.isfinite(effect_size) or effect_size == 0:
         raise ValueError("effect_size must be non-zero for sample size calculation.")
+    if not np.isfinite(sigma) or sigma <= 0:
+        raise ValueError("sigma must be a finite value > 0.")
+    if not (0 < power < 1):
+        raise ValueError("power must be between 0 and 1.")
+    if not (0 < alpha < 1):
+        raise ValueError("alpha must be between 0 and 1.")
+    if not (0 <= icc <= 1):
+        raise ValueError("icc must be between 0 and 1.")
+    if not np.isfinite(cluster_size) or cluster_size < 1:
+        raise ValueError("cluster_size must be >= 1.")
 
     # Critical values
     if two_sided:

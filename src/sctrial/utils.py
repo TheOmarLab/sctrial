@@ -210,6 +210,8 @@ def resolve_feature(adata: AnnData, query: str) -> str:
 
     Returns the exact name string to use. Raises KeyError if not found.
     """
+    if query is None or (isinstance(query, str) and query.strip() == ""):
+        raise ValueError("Feature query must be a non-empty string.")
     # 1. Exact matches
     if query in adata.obs.columns:
         return query
