@@ -66,7 +66,7 @@ def looks_like_counts(X, sample: int = 10000, seed: int = 0) -> bool:
         return False
     if data.size > sample:
         data = rng.choice(data, size=sample, replace=False)
-    return np.all(data >= 0) and np.allclose(data, np.round(data), atol=1e-6)
+    return bool(np.all(data >= 0) and np.allclose(data, np.round(data), atol=1e-6))
 
 
 def wild_cluster_bootstrap_t(
