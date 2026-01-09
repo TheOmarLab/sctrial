@@ -49,7 +49,12 @@ from .effect_size import (
     effect_size_ci,
     hedges_g,
 )
-from .gsea import run_gsea_did
+from .gsea import (
+    run_gsea_did,
+    run_gsea_did_by_celltype,
+    run_gsea_did_multi,
+    run_gsea_pseudobulk,
+)
 
 # Mixed effects models
 from .mixed_effects import (
@@ -88,6 +93,9 @@ __all__ = [
     "did_table_by_celltype",
     "abundance_did",
     "run_gsea_did",
+    "run_gsea_did_multi",
+    "run_gsea_did_by_celltype",
+    "run_gsea_pseudobulk",
     "within_arm_comparison",
     "between_arm_comparison",
     "summarize_did_results",

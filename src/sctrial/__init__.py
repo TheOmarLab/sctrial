@@ -45,7 +45,12 @@ from .stats.effect_size import (
     cohens_d,
     hedges_g,
 )
-from .stats.gsea import run_gsea_did
+from .stats.gsea import (
+    run_gsea_did,
+    run_gsea_did_by_celltype,
+    run_gsea_did_multi,
+    run_gsea_pseudobulk,
+)
 from .stats.mixed_effects import compare_fixed_vs_mixed, did_table_mixed
 from .stats.power import (
     design_effect,
@@ -95,6 +100,9 @@ __all__ = [
     "did_table_by_celltype",
     "abundance_did",
     "run_gsea_did",
+    "run_gsea_did_multi",
+    "run_gsea_did_by_celltype",
+    "run_gsea_pseudobulk",
     "within_arm_comparison",
     "between_arm_comparison",
     "summarize_did_results",

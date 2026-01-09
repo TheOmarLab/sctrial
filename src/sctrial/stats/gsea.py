@@ -8,6 +8,7 @@ from anndata import AnnData
 
 from ..design import TrialDesign
 from .did import did_table
+from .pseudobulk import pseudobulk_did
 
 if TYPE_CHECKING:
     import gseapy as gp
@@ -17,6 +18,48 @@ try:
 except ImportError:
     gp = None
 
+__all__ = [
+    "run_gsea_did",
+    "run_gsea_did_multi",
+    "run_gsea_did_by_celltype",
+    "run_gsea_pseudobulk",
+]
+
+
+def _ensure_gseapy() -> None:
+    if gp is None:
+        raise ImportError("gseapy is required for GSEA functions. Install with 'pip install gseapy'.")
+
+
+def _rank_did_results(
+    res: pd.DataFrame,
+    rank_by: str,
+    min_units: int,
+) -> pd.DataFrame:
+    valid = res[res["n_units"] >= min_units].copy()
+    if len(valid) == 0:
+        raise ValueError(
+            f"No genes have sufficient data (min_units={min_units}). "
+            f"Try reducing min_units or checking your data."
+        )
+
+    if rank_by == "signed_confidence":
+        valid["rank"] = (
+            np.sign(valid["beta_DiD"].fillna(0)) *
+            -np.log10(valid["p_DiD"].fillna(1) + 1e-12)
+        )
+    elif rank_by == "beta":
+        valid["rank"] = valid["beta_DiD"].fillna(0)
+    elif rank_by == "tstat":
+        valid["rank"] = (
+            valid["beta_DiD"].fillna(0) /
+            (valid["se_DiD"].fillna(1) + 1e-12)
+        )
+    else:
+        raise ValueError(f"Unknown rank_by: {rank_by}")
+
+    return valid[["feature", "rank"]].dropna().sort_values("rank", ascending=False)
+
 def run_gsea_did(
     adata: AnnData,
     gene_sets: str | dict[str, list[str]],
@@ -24,6 +67,7 @@ def run_gsea_did(
     visits: tuple[str, str],
     layer: str | None = None,
     exclude_crossovers: bool = True,
+    celltype: str | None = None,
     rank_by: str = "signed_confidence",
     use_bootstrap: bool = False,
     n_boot: int = 999,
@@ -88,8 +132,7 @@ def run_gsea_did(
     >>> res = run_gsea_did(adata, gene_sets="KEGG_2021_Human", design=design, visits=("V1", "V2"))
     >>> print(res.head())
     """
-    if gp is None:
-        raise ImportError("gseapy is required for run_gsea_did. Install with 'pip install gseapy'.")
+    _ensure_gseapy()
 
     # 1. Run DiD for all genes
     genes = adata.var_names.tolist()
@@ -98,6 +141,7 @@ def run_gsea_did(
         features=genes,
         design=design,
         visits=visits,
+        celltype=celltype,
         exclude_crossovers=exclude_crossovers,
         layer=layer,
         aggregate="participant_visit",
@@ -107,32 +151,7 @@ def run_gsea_did(
 
     # 2. Filter genes with insufficient data
     # Genes with n_units < min_units will have NaN beta_DiD
-    valid_mask = res["n_units"] >= min_units
-    res_valid = res[valid_mask].copy()
-
-    if len(res_valid) == 0:
-        raise ValueError(
-            f"No genes have sufficient data (min_units={min_units}). "
-            f"Try reducing min_units or checking your data."
-        )
-
-    # 3. Rank genes
-    if rank_by == "signed_confidence":
-        res_valid["rank"] = (
-            np.sign(res_valid["beta_DiD"].fillna(0)) *
-            -np.log10(res_valid["p_DiD"].fillna(1) + 1e-12)
-        )
-    elif rank_by == "beta":
-        res_valid["rank"] = res_valid["beta_DiD"].fillna(0)
-    elif rank_by == "tstat":
-        res_valid["rank"] = (
-            res_valid["beta_DiD"].fillna(0) /
-            (res_valid["se_DiD"].fillna(1) + 1e-12)
-        )
-    else:
-        raise ValueError(f"Unknown rank_by: {rank_by}")
-
-    ranking = res_valid[["feature", "rank"]].dropna().sort_values("rank", ascending=False)
+    ranking = _rank_did_results(res, rank_by=rank_by, min_units=min_units)
 
     # 3. Run GSEA Prerank
     pre_res = gp.prerank(
@@ -145,6 +164,96 @@ def run_gsea_did(
         return pre_res
 
     # Handle both gseapy >= 1.0 (has .res2d) and potentially older versions
+    if hasattr(pre_res, "res2d"):
+        return pre_res.res2d
+    return pre_res
+
+
+def run_gsea_did_multi(
+    adata: AnnData,
+    gene_sets: dict[str, str | dict[str, list[str]]],
+    design: TrialDesign,
+    visits: tuple[str, str],
+    **kwargs,
+) -> dict[str, pd.DataFrame | gp.Prerank]:
+    """Run GSEA across multiple gene-set collections."""
+    _ensure_gseapy()
+    results: dict[str, pd.DataFrame | gp.Prerank] = {}
+    for label, gs in gene_sets.items():
+        results[label] = run_gsea_did(
+            adata,
+            gene_sets=gs,
+            design=design,
+            visits=visits,
+            **kwargs,
+        )
+    return results
+
+
+def run_gsea_did_by_celltype(
+    adata: AnnData,
+    gene_sets: str | dict[str, list[str]],
+    design: TrialDesign,
+    visits: tuple[str, str],
+    celltypes: list[str] | None = None,
+    **kwargs,
+) -> dict[str, pd.DataFrame | gp.Prerank]:
+    """Run GSEA on DiD rankings separately for each cell type."""
+    _ensure_gseapy()
+    if design.celltype_col is None:
+        raise ValueError("design.celltype_col must be set for celltype GSEA.")
+    if celltypes is None:
+        celltypes = sorted(adata.obs[design.celltype_col].dropna().unique())
+
+    results: dict[str, pd.DataFrame | gp.Prerank] = {}
+    for ct in celltypes:
+        results[ct] = run_gsea_did(
+            adata,
+            gene_sets=gene_sets,
+            design=design,
+            visits=visits,
+            celltype=ct,
+            **kwargs,
+        )
+    return results
+
+
+def run_gsea_pseudobulk(
+    adata: AnnData,
+    gene_sets: str | dict[str, list[str]],
+    design: TrialDesign,
+    visits: tuple[str, str],
+    *,
+    celltype_col: str | None = None,
+    rank_by: str = "signed_confidence",
+    min_units: int = 4,
+    return_obj: bool = False,
+    **kwargs,
+) -> pd.DataFrame | gp.Prerank:
+    """Run GSEA using pseudobulk DiD results."""
+    _ensure_gseapy()
+
+    res = pseudobulk_did(
+        adata,
+        genes=adata.var_names.tolist(),
+        design=design,
+        visits=visits,
+        celltype_col=celltype_col,
+    )
+    if celltype_col is not None and "celltype" in res.columns:
+        # For pseudobulk GSEA per celltype, caller should filter externally
+        pass
+
+    ranking = _rank_did_results(res, rank_by=rank_by, min_units=min_units)
+
+    pre_res = gp.prerank(
+        rnk=ranking,
+        gene_sets=gene_sets,
+        **kwargs,
+    )
+
+    if return_obj:
+        return pre_res
     if hasattr(pre_res, "res2d"):
         return pre_res.res2d
     return pre_res
