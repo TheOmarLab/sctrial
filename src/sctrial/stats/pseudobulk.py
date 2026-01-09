@@ -6,8 +6,12 @@ import numpy as np
 import pandas as pd
 import scipy.sparse as sp
 from anndata import AnnData
+from sctrial.design import TrialDesign
 from scipy.stats import wilcoxon
 from statsmodels.stats.multitest import multipletests
+
+from ._utils import encode_visit
+from .did import did_fit
 
 __all__ = ["pseudobulk_expression", "pseudobulk_within_arm", "pseudobulk_did"]
 
@@ -83,7 +87,7 @@ def pseudobulk_expression(
 def pseudobulk_did(
     adata: AnnData,
     genes: Sequence[str],
-    design: "TrialDesign",
+    design: TrialDesign,
     visits: tuple[str, str],
     *,
     celltype_col: str | None = None,
@@ -99,9 +103,6 @@ def pseudobulk_did(
     This mirrors subject-level pseudobulk DiD workflows where each participant×visit
     (optionally per cell type) is one observation.
     """
-    from .did import did_fit
-    from ._utils import encode_visit
-
     genes = [g for g in genes if g in adata.var_names]
     if not genes:
         return pd.DataFrame()
