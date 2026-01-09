@@ -49,15 +49,18 @@ def pseudobulk_expression(
         return pd.DataFrame()
 
     X = _get_layer(adata, counts_layer)
-    if sp.issparse(X):
-        X = X.toarray()
-
     gene_idx = [int(adata.var_names.get_loc(g)) for g in genes]
-    X_panel = X[:, gene_idx]
+
+    if sp.issparse(X):
+        X_panel = X[:, gene_idx].toarray()
+        total_counts = np.asarray(X.sum(axis=1)).ravel()
+    else:
+        X_panel = np.asarray(X[:, gene_idx])
+        total_counts = np.asarray(X.sum(axis=1)).ravel()
 
     df_expr = pd.DataFrame(X_panel, columns=genes, index=adata.obs_names)
     df_meta = adata.obs[list(groupby)].copy()
-    df_meta["total_counts"] = X.sum(axis=1)
+    df_meta["total_counts"] = total_counts
     df = df_meta.join(df_expr, how="left")
 
     df_sum = (

@@ -76,7 +76,7 @@ def _prepare_longitudinal_data(
     exclude_crossovers: bool = True,
 ) -> pd.DataFrame:
     """Prepare data for longitudinal analysis."""
-    from ._extract import extract_gene_vector
+    from ._extract import extract_gene_matrix
 
     # Filter to specified visits
     mask = adata.obs[design.visit_col].isin(visits)
@@ -89,11 +89,19 @@ def _prepare_longitudinal_data(
     df = ad.obs[[design.participant_col, design.visit_col, design.arm_col]].copy()
 
     # Add features
-    for feat in features:
-        if feat in ad.obs.columns:
-            df[feat] = ad.obs[feat].values
-        elif feat in ad.var_names:
-            df[feat] = extract_gene_vector(ad, feat, layer=layer)
+    obs_feats = [f for f in features if f in ad.obs.columns]
+    gene_feats = [f for f in features if f in ad.var_names and f not in ad.obs.columns]
+    missing = [f for f in features if f not in ad.obs.columns and f not in ad.var_names]
+    if missing:
+        raise KeyError(f"Features not found in obs or var_names: {missing[:5]}")
+
+    for feat in obs_feats:
+        df[feat] = ad.obs[feat].values
+
+    if gene_feats:
+        mat = extract_gene_matrix(ad, gene_feats, layer=layer)
+        df_genes = pd.DataFrame(mat, columns=gene_feats, index=df.index)
+        df = pd.concat([df, df_genes], axis=1)
 
     return df
 

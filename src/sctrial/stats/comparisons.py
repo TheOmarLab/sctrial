@@ -15,6 +15,30 @@ from ._utils import aggregate_features, encode_visit, standardize_series
 from .did import AggregateFunc, AggregateMode, _ensure_paired
 
 
+def _add_feature_columns(
+    df: pd.DataFrame,
+    ad: AnnData,
+    features: Sequence[str],
+    layer: str | None,
+) -> pd.DataFrame:
+    obs_feats = [f for f in features if f in ad.obs.columns]
+    gene_feats = [f for f in features if f in ad.var_names and f not in ad.obs.columns]
+    missing = [f for f in features if f not in ad.obs.columns and f not in ad.var_names]
+    if missing:
+        raise KeyError(f"Features not found in obs or var_names: {missing[:5]}")
+
+    for feat in obs_feats:
+        df[feat] = ad.obs[feat].values
+
+    if gene_feats:
+        from ._extract import extract_gene_matrix
+
+        mat = extract_gene_matrix(ad, gene_feats, layer=layer)
+        df_genes = pd.DataFrame(mat, columns=gene_feats, index=df.index)
+        df = pd.concat([df, df_genes], axis=1)
+    return df
+
+
 def _prepare_between_arm_df(
     adata: AnnData,
     features: Sequence[str],
@@ -31,14 +55,7 @@ def _prepare_between_arm_df(
     cols = [design.participant_col, "arm_bin", design.arm_col]
     df = obs[cols].copy()
 
-    for feat in features:
-        if feat in ad.obs.columns:
-            df[feat] = ad.obs[feat].values
-        elif feat in ad.var_names:
-            from ._extract import extract_gene_vector
-            df[feat] = extract_gene_vector(ad, feat, layer=layer)
-        else:
-            raise KeyError(f"Feature {feat} not found.")
+    df = _add_feature_columns(df, ad, features, layer)
 
     if aggregate == "participant_visit":
         grp_cols = [design.participant_col, "arm_bin", design.arm_col]
@@ -130,14 +147,7 @@ def within_arm_comparison(
     cols = [design.participant_col, design.visit_col, "visit_num"]
     df = obs[cols].copy()
 
-    for feat in features:
-        if feat in ad.obs.columns:
-            df[feat] = ad.obs[feat].values
-        elif feat in ad.var_names:
-            from ._extract import extract_gene_vector
-            df[feat] = extract_gene_vector(ad, feat, layer=layer)
-        else:
-            raise KeyError(f"Feature {feat} not found.")
+    df = _add_feature_columns(df, ad, features, layer)
 
     # Aggregate
     if aggregate == "participant_visit":
