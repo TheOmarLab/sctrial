@@ -15,6 +15,68 @@ from ._utils import aggregate_features, encode_visit, standardize_series
 from .did import AggregateFunc, AggregateMode, _ensure_paired
 
 
+def _prepare_between_arm_df(
+    adata: AnnData,
+    features: Sequence[str],
+    design: TrialDesign,
+    visit: str,
+    aggregate: AggregateMode,
+    layer: str | None,
+    agg: AggregateFunc,
+) -> pd.DataFrame:
+    ad = subset_cells(adata, design, visit=visit, exclude_crossovers=False)
+    obs = ad.obs.copy()
+    obs["arm_bin"] = (obs[design.arm_col] == design.arm_treated).astype(int)
+
+    cols = [design.participant_col, "arm_bin", design.arm_col]
+    df = obs[cols].copy()
+
+    for feat in features:
+        if feat in ad.obs.columns:
+            df[feat] = ad.obs[feat].values
+        elif feat in ad.var_names:
+            from ._extract import extract_gene_vector
+            df[feat] = extract_gene_vector(ad, feat, layer=layer)
+        else:
+            raise KeyError(f"Feature {feat} not found.")
+
+    if aggregate == "participant_visit":
+        grp_cols = [design.participant_col, "arm_bin", design.arm_col]
+        df = aggregate_features(df, grp_cols=grp_cols, features=features, agg=agg)
+
+    return df
+
+
+def _ols_between_arm(
+    df_use: pd.DataFrame,
+    feat: str,
+    design: TrialDesign,
+    standardize: bool,
+) -> dict:
+    df_feat = df_use.copy()
+    if standardize:
+        y_std, ok = standardize_series(df_feat, feat, min_std=1e-12)
+        if not ok:
+            return {
+                "feature": feat,
+                "beta_arm": np.nan,
+                "p_arm": np.nan,
+                "n_units": int(df_feat[design.participant_col].nunique()),
+            }
+        df_feat["_y"] = y_std
+    else:
+        df_feat["_y"] = df_feat[feat].astype(float)
+
+    model = smf.ols("_y ~ arm_bin", data=df_feat)
+    fit = model.fit()
+    return {
+        "feature": feat,
+        "beta_arm": float(fit.params.get("arm_bin", np.nan)),
+        "p_arm": float(fit.pvalues.get("arm_bin", np.nan)),
+        "n_units": int(df_feat[design.participant_col].nunique()),
+    }
+
+
 def within_arm_comparison(
     adata: AnnData,
     arm: str,
@@ -164,59 +226,20 @@ def between_arm_comparison(
         - 'ols': Ordinary Least Squares.
         - 'wilcoxon': Wilcoxon rank-sum test (Mann-Whitney U).
     """
-    ad = subset_cells(adata, design, visit=visit, exclude_crossovers=False)
-
-    obs = ad.obs.copy()
-    obs["arm_bin"] = (obs[design.arm_col] == design.arm_treated).astype(int)
-
-    cols = [design.participant_col, "arm_bin", design.arm_col]
-    df = obs[cols].copy()
-
-    for feat in features:
-        if feat in ad.obs.columns:
-            df[feat] = ad.obs[feat].values
-        elif feat in ad.var_names:
-            from ._extract import extract_gene_vector
-            df[feat] = extract_gene_vector(ad, feat, layer=layer)
-        else:
-            raise KeyError(f"Feature {feat} not found.")
-
-    if aggregate == "participant_visit":
-        grp_cols = [design.participant_col, "arm_bin", design.arm_col]
-        df_use = aggregate_features(df, grp_cols=grp_cols, features=features, agg=agg)
-    else:
-        df_use = df.copy()
+    df_use = _prepare_between_arm_df(
+        adata=adata,
+        features=features,
+        design=design,
+        visit=visit,
+        aggregate=aggregate,
+        layer=layer,
+        agg=agg,
+    )
 
     rows = []
     for feat in features:
         if method == "ols":
-            # Create a fresh copy for each feature to avoid cross-contamination
-            df_feat = df_use.copy()
-
-            if standardize:
-                y_std, ok = standardize_series(df_feat, feat, min_std=1e-12)
-                if not ok:
-                    # Skip features with near-zero variance
-                    rows.append({
-                        "feature": feat,
-                        "beta_arm": np.nan,
-                        "p_arm": np.nan,
-                        "n_units": int(df_feat[design.participant_col].nunique()),
-                    })
-                    continue
-                df_feat["_y"] = y_std
-            else:
-                df_feat["_y"] = df_feat[feat].astype(float)
-
-            model = smf.ols("_y ~ arm_bin", data=df_feat)
-            fit = model.fit()
-
-            rows.append({
-                "feature": feat,
-                "beta_arm": float(fit.params.get("arm_bin", np.nan)),
-                "p_arm": float(fit.pvalues.get("arm_bin", np.nan)),
-                "n_units": int(df_feat[design.participant_col].nunique()),
-            })
+            rows.append(_ols_between_arm(df_use, feat, design, standardize))
         elif method == "wilcoxon":
             from scipy.stats import mannwhitneyu
             g1 = np.asarray(df_use[df_use["arm_bin"] == 1][feat].values, dtype=float)

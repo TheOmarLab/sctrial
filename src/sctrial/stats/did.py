@@ -15,6 +15,179 @@ from ..design import TrialDesign
 from ..utils import wild_cluster_bootstrap_t
 from ._utils import encode_visit, standardize_series
 
+
+def _validate_did_fit_inputs(df: pd.DataFrame, cols: list[str]) -> None:
+    missing = [c for c in cols if c not in df.columns]
+    if missing:
+        raise KeyError(f"Missing required columns for did_fit: {missing}")
+
+
+def _standardize_outcome(
+    tmp: pd.DataFrame,
+    y: str,
+    standardize: bool,
+) -> pd.DataFrame | None:
+    if not standardize:
+        tmp["_y"] = tmp[y].astype(float)
+        return tmp
+    y_std, ok = standardize_series(tmp, y, min_std=1e-8)
+    if not ok:
+        return None
+    tmp["_y"] = y_std
+    return tmp
+
+
+def _build_did_formula(
+    time: str,
+    arm_bin: str,
+    unit: str,
+    covariates: list[str] | None,
+) -> str:
+    formula = f"_y ~ {time} + {time}:{arm_bin} + C({unit})"
+    if covariates:
+        formula += " + " + " + ".join(covariates)
+    return formula
+
+
+def _prepare_did_obs(
+    adata: AnnData,
+    design: TrialDesign,
+    visits: tuple[str, str],
+    celltype: str | None,
+    exclude_crossovers: bool,
+) -> tuple[AnnData, pd.DataFrame]:
+    ad = subset_primary(adata, design, visits=visits, exclude_crossovers=exclude_crossovers)
+    if celltype is not None and design.celltype_col:
+        ad = ad[ad.obs[design.celltype_col] == celltype].copy()
+    obs = encode_visit(ad.obs.copy(), design.visit_col, visits)
+    obs["arm_bin"] = (obs[design.arm_col] == design.arm_treated).astype(int)
+    return ad, obs
+
+
+def _add_feature_columns(
+    df: pd.DataFrame,
+    ad: AnnData,
+    features: Sequence[str],
+    layer: str | None,
+) -> tuple[pd.DataFrame, list[str]]:
+    # features can be genes (in var_names) or obs columns
+    # Optimization: Extract all genes from X/layer at once if they are in var_names
+    genes_to_extract = [f for f in features if f in ad.var_names and f not in ad.obs.columns]
+    feature_data: dict[str, np.ndarray] = {}
+    final_features: list[str] = []
+    missing: list[str] = []
+
+    if genes_to_extract:
+        ad_sub = ad[:, genes_to_extract]
+        X = ad_sub.layers[layer] if layer is not None else ad_sub.X
+        if sp.issparse(X):
+            if isinstance(X, sp.coo_matrix):
+                X = X.tocsr()
+            X = X.toarray()
+        else:
+            X = np.asarray(X)
+        for i, g in enumerate(genes_to_extract):
+            feature_data[g] = X[:, i]
+
+    for feat in features:
+        if feat in ad.obs.columns:
+            feature_data[feat] = ad.obs[feat].values
+            final_features.append(feat)
+        elif feat in genes_to_extract:
+            final_features.append(feat)
+        else:
+            missing.append(feat)
+
+    if feature_data:
+        df = pd.concat([df, pd.DataFrame(feature_data, index=df.index)], axis=1)
+
+    if missing:
+        raise KeyError(f"Features not found in obs or var_names: {missing[:5]}")
+    if not final_features:
+        raise ValueError("No numeric features found to analyze.")
+    return df, final_features
+
+
+def _aggregate_for_did(
+    df: pd.DataFrame,
+    final_features: list[str],
+    design: TrialDesign,
+    visits: tuple[str, str],
+    aggregate: AggregateMode,
+    agg: AggregateFunc,
+    covariates: list[str] | None,
+) -> tuple[pd.DataFrame, str, str, str]:
+    if aggregate == "participant_visit":
+        grp_cols = [design.participant_col, design.visit_col, design.arm_col]
+        df["n_cells"] = 1
+        cov_agg: dict[str, str] = {}
+        if covariates:
+            for c in covariates:
+                if pd.api.types.is_numeric_dtype(df[c]):
+                    cov_agg[c] = str(agg)
+                else:
+                    nunique = df.groupby(grp_cols, observed=True)[c].nunique()
+                    if nunique.max() > 1:
+                        raise ValueError(
+                            f"Covariate '{c}' varies within participant-visit; "
+                            "use numeric or constant covariates only."
+                        )
+                    cov_agg[c] = "first"
+
+        df_use = df.groupby(grp_cols, observed=True).agg({
+            **{f: agg for f in final_features},
+            **cov_agg,
+            "n_cells": "sum",
+            "arm_bin": "first",
+        }).reset_index()
+        unit = design.participant_col
+        time = "visit_num"
+        arm_bin = "arm_bin"
+        df_use = _ensure_paired(df_use, unit=unit, time=design.visit_col, visits=visits)
+        df_use = encode_visit(df_use, design.visit_col, visits)
+        return df_use, unit, time, arm_bin
+
+    if aggregate == "participant_visit_celltype":
+        if design.celltype_col is None:
+            raise ValueError("celltype_col is None; cannot use participant_visit_celltype")
+        grp_cols = [design.participant_col, design.visit_col, design.arm_col, design.celltype_col]
+        df["n_cells"] = 1
+        cov_agg_ct: dict[str, str] = {}
+        if covariates:
+            for c in covariates:
+                if pd.api.types.is_numeric_dtype(df[c]):
+                    cov_agg_ct[c] = str(agg)
+                else:
+                    nunique = df.groupby(grp_cols, observed=True)[c].nunique()
+                    if nunique.max() > 1:
+                        raise ValueError(
+                            f"Covariate '{c}' varies within participant-visit-celltype; "
+                            "use numeric or constant covariates only."
+                        )
+                    cov_agg_ct[c] = "first"
+
+        df_use = df.groupby(grp_cols, observed=True).agg({
+            **{f: agg for f in final_features},
+            **cov_agg_ct,
+            "n_cells": "sum",
+            "arm_bin": "first",
+        }).reset_index()
+        unit = design.participant_col
+        time = "visit_num"
+        arm_bin = "arm_bin"
+        df_use = _ensure_paired(df_use, unit=unit, time=design.visit_col, visits=visits)
+        df_use = encode_visit(df_use, design.visit_col, visits)
+        return df_use, unit, time, arm_bin
+
+    # cell-level
+    df_use = df.copy()
+    unit = design.participant_col
+    time = "visit_num"
+    arm_bin = "arm_bin"
+    df_use = _ensure_paired(df_use, unit=unit, time=design.visit_col, visits=visits)
+    df_use = encode_visit(df_use, design.visit_col, visits)
+    return df_use, unit, time, arm_bin
+
 AggregateMode = Literal["cell", "participant_visit", "participant_visit_celltype"]
 AggregateFunc = Literal["mean", "median", "pct_pos"]
 
@@ -118,37 +291,29 @@ def did_fit(
     cols = [unit, time, arm_bin, y]
     if covariates:
         cols.extend(covariates)
-    missing = [c for c in cols if c not in df.columns]
-    if missing:
-        raise KeyError(f"Missing required columns for did_fit: {missing}")
     # Include n_cells for WLS weighting if available
     if "n_cells" in df.columns:
         cols.append("n_cells")
+
+    _validate_did_fit_inputs(df, cols)
 
     tmp = df[cols].dropna().copy()
     if tmp[unit].nunique() < 4:
         return {"beta_DiD": np.nan, "se_DiD": np.nan, "p_DiD": np.nan, "n_units": tmp[unit].nunique()}
 
     # time is assumed numeric 0/1 already
-    if standardize:
-        y_std, ok = standardize_series(tmp, y, min_std=1e-8)
-        # Skip features with near-zero variance to avoid misleading standardized estimates
-        if not ok:
-            return {
-                "beta_DiD": np.nan,
-                "se_DiD": np.nan,
-                "p_DiD": np.nan,
-                "beta_time": np.nan,
-                "p_time": np.nan,
-                "n_units": tmp[unit].nunique(),
-            }
-        tmp["_y"] = y_std
-    else:
-        tmp["_y"] = tmp[y].astype(float)
+    tmp = _standardize_outcome(tmp, y, standardize)
+    if tmp is None:
+        return {
+            "beta_DiD": np.nan,
+            "se_DiD": np.nan,
+            "p_DiD": np.nan,
+            "beta_time": np.nan,
+            "p_time": np.nan,
+            "n_units": tmp[unit].nunique(),
+        }
 
-    formula = f"_y ~ {time} + {time}:{arm_bin} + C({unit})"
-    if covariates:
-        formula += " + " + " + ".join(covariates)
+    formula = _build_did_formula(time, arm_bin, unit, covariates)
 
     # detection of aggregation for weighting
     weights = None
@@ -269,13 +434,8 @@ def did_table(
     >>> res = did_table(adata, features=["ms_OXPHOS"], design=design, visits=("V1", "V2"))
     >>> print(res[["feature", "beta_DiD", "p_DiD"]])
     """
-    # subset
-    ad = subset_primary(adata, design, visits=visits, exclude_crossovers=exclude_crossovers)
-    if celltype is not None and design.celltype_col:
-        ad = ad[ad.obs[design.celltype_col] == celltype].copy()
-
-    obs = encode_visit(ad.obs.copy(), design.visit_col, visits)
-    obs["arm_bin"] = (obs[design.arm_col] == design.arm_treated).astype(int)
+    # subset and prepare
+    ad, obs = _prepare_did_obs(adata, design, visits, celltype, exclude_crossovers)
 
     # build dataframe with features and all possible grouping columns
     cols = [design.participant_col, design.visit_col, design.arm_col, "visit_num", "arm_bin"]
@@ -289,128 +449,17 @@ def did_table(
             cols.append(c)
 
     df = obs[cols].copy()
+    df, final_features = _add_feature_columns(df, ad, features, layer)
 
-    # features can be genes (in var_names) or obs columns
-    # Optimization: Extract all genes from X/layer at once if they are in var_names
-    genes_to_extract = [f for f in features if f in ad.var_names and f not in ad.obs.columns]
-
-    # Build feature columns to add (avoid DataFrame fragmentation)
-    feature_data = {}
-
-    if genes_to_extract:
-        # subset var to requested genes
-        ad_sub = ad[:, genes_to_extract]
-        X = ad_sub.layers[layer] if layer is not None else ad_sub.X
-        if sp.issparse(X):
-            if isinstance(X, sp.coo_matrix):
-                X = X.tocsr()
-            X = X.toarray()
-        else:
-            X = np.asarray(X)
-
-        for i, gene in enumerate(genes_to_extract):
-            feature_data[gene] = X[:, i]
-
-    missing = []
-    final_features = []
-    for feat in features:
-        if feat in ad.obs.columns:
-            val = ad.obs[feat]
-            if not pd.api.types.is_numeric_dtype(val):
-                continue # skip non-numeric obs columns
-            feature_data[feat] = val.values
-            final_features.append(feat)
-        elif feat in genes_to_extract:
-            final_features.append(feat)
-        else:
-            missing.append(feat)
-
-    # Add all feature columns at once to avoid DataFrame fragmentation
-    if feature_data:
-        df = pd.concat([df, pd.DataFrame(feature_data, index=df.index)], axis=1)
-
-    if missing:
-        raise KeyError(f"Features not found in obs or var_names: {missing[:5]}")
-
-    if not final_features:
-        raise ValueError("No numeric features found to analyze.")
-
-    # aggregate if requested
-    if aggregate == "participant_visit":
-        grp_cols = [design.participant_col, design.visit_col, design.arm_col]
-
-        df["n_cells"] = 1
-        agg_features = list(final_features)
-
-        cov_agg: dict[str, str] = {}
-        if covariates:
-            for c in covariates:
-                if pd.api.types.is_numeric_dtype(df[c]):
-                    cov_agg[c] = str(agg)
-                else:
-                    # Non-numeric covariates must be constant within participant-visit
-                    nunique = df.groupby(grp_cols, observed=True)[c].nunique()
-                    if nunique.max() > 1:
-                        raise ValueError(
-                            f"Covariate '{c}' varies within participant-visit; "
-                            "use numeric or constant covariates only."
-                        )
-                    cov_agg[c] = "first"
-
-        df_use = df.groupby(grp_cols, observed=True).agg({
-            **{f: agg for f in agg_features},
-            **cov_agg,
-            "n_cells": "sum",
-            "arm_bin": "first"
-        }).reset_index()
-
-        unit = design.participant_col
-        time = "visit_num"
-        arm_bin = "arm_bin"
-        df_use = _ensure_paired(df_use, unit=unit, time=design.visit_col, visits=visits)
-        df_use = encode_visit(df_use, design.visit_col, visits)
-    elif aggregate == "participant_visit_celltype":
-        if design.celltype_col is None:
-            raise ValueError("celltype_col is None; cannot use participant_visit_celltype")
-        grp_cols = [design.participant_col, design.visit_col, design.arm_col, design.celltype_col]
-
-        df["n_cells"] = 1
-        agg_features = list(final_features)
-
-        cov_agg_ct: dict[str, str] = {}
-        if covariates:
-            for c in covariates:
-                if pd.api.types.is_numeric_dtype(df[c]):
-                    cov_agg_ct[c] = str(agg)
-                else:
-                    nunique = df.groupby(grp_cols, observed=True)[c].nunique()
-                    if nunique.max() > 1:
-                        raise ValueError(
-                            f"Covariate '{c}' varies within participant-visit-celltype; "
-                            "use numeric or constant covariates only."
-                        )
-                    cov_agg_ct[c] = "first"
-
-        df_use = df.groupby(grp_cols, observed=True).agg({
-            **{f: agg for f in agg_features},
-            **cov_agg_ct,
-            "n_cells": "sum",
-            "arm_bin": "first"
-        }).reset_index()
-
-        unit = design.participant_col
-        time = "visit_num"
-        arm_bin = "arm_bin"
-        df_use = _ensure_paired(df_use, unit=unit, time=design.visit_col, visits=visits)
-        df_use = encode_visit(df_use, design.visit_col, visits)
-    else:
-        # cell-level
-        df_use = df.copy()
-        unit = design.participant_col
-        time = "visit_num"
-        arm_bin = "arm_bin"
-        df_use = _ensure_paired(df_use, unit=unit, time=design.visit_col, visits=visits)
-        df_use = encode_visit(df_use, design.visit_col, visits)
+    df_use, unit, time, arm_bin = _aggregate_for_did(
+        df,
+        final_features,
+        design,
+        visits,
+        aggregate,
+        agg,
+        covariates,
+    )
 
     rows=[]
     for feat in final_features:

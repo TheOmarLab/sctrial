@@ -124,6 +124,89 @@ def quick_did(
     return did_table(adata, features=features, design=design, visits=visits, **kwargs)
 
 
+def _detect_column_patterns() -> dict[str, list[str]]:
+    return {
+        "participant": [
+            "participant_id",
+            "participant",
+            "patient_id",
+            "patient",
+            "donor_id",
+            "donor",
+            "subject_id",
+            "subject",
+            "sample_id",
+        ],
+        "visit": [
+            "visit",
+            "timepoint",
+            "time_point",
+            "time",
+            "day",
+            "week",
+            "collection_day",
+        ],
+        "arm": [
+            "arm",
+            "treatment",
+            "group",
+            "condition",
+            "arm_id",
+            "treatment_arm",
+        ],
+        "celltype": [
+            "celltype",
+            "cell_type",
+            "cluster",
+            "annotation",
+            "cell_annotation",
+            "celltype_major",
+        ],
+    }
+
+
+def _auto_detect_arm_labels(
+    arms: list[str],
+    arm_treated: str | None,
+    arm_control: str | None,
+) -> tuple[str | None, str | None]:
+    treated_keywords = ["treat", "drug", "active", "intervention"]
+    control_keywords = ["control", "placebo", "sham", "vehicle"]
+
+    for arm in arms:
+        arm_lower = str(arm).lower()
+        if arm_treated is None and any(kw in arm_lower for kw in treated_keywords):
+            arm_treated = str(arm)
+        if arm_control is None and any(kw in arm_lower for kw in control_keywords):
+            arm_control = str(arm)
+    return arm_treated, arm_control
+
+
+def _print_design_summary(
+    participant_col: str,
+    visit_col: str,
+    arm_col: str,
+    arm_treated: str | None,
+    arm_control: str | None,
+    celltype_col: str | None,
+) -> None:
+    print("\n" + "=" * 60)
+    print("AUTO-DETECTED TRIAL DESIGN")
+    print("=" * 60)
+    print(f"Participant column: {participant_col}")
+    print(f"Visit column:       {visit_col}")
+    print(f"Arm column:         {arm_col}")
+    print(f"  Treated arm:      {arm_treated}")
+    print(f"  Control arm:      {arm_control}")
+    if celltype_col:
+        print(f"Cell type column:   {celltype_col}")
+    else:
+        print("Cell type column:   (not detected)")
+    print("=" * 60)
+    print("⚠️  Please verify this design is correct before using!")
+    print("=" * 60 + "\n")
+
+
 def auto_detect_design(
     adata: AnnData,
     arm_treated: str | None = None,
@@ -168,70 +251,20 @@ def auto_detect_design(
     obs_cols = adata.obs.columns.tolist()
     obs_cols_lower = [c.lower() for c in obs_cols]
 
-    # Detect participant column
-    participant_patterns = [
-        "participant_id",
-        "participant",
-        "patient_id",
-        "patient",
-        "donor_id",
-        "donor",
-        "subject_id",
-        "subject",
-        "sample_id",
-    ]
-    participant_col = _find_column(obs_cols, obs_cols_lower, participant_patterns)
-
-    # Detect visit column
-    visit_patterns = [
-        "visit",
-        "timepoint",
-        "time_point",
-        "time",
-        "day",
-        "week",
-        "collection_day",
-    ]
-    visit_col = _find_column(obs_cols, obs_cols_lower, visit_patterns)
-
-    # Detect arm column
-    arm_patterns = [
-        "arm",
-        "treatment",
-        "group",
-        "condition",
-        "arm_id",
-        "treatment_arm",
-    ]
-    arm_col = _find_column(obs_cols, obs_cols_lower, arm_patterns)
-
-    # Detect celltype column (optional)
-    celltype_patterns = [
-        "celltype",
-        "cell_type",
-        "cluster",
-        "annotation",
-        "cell_annotation",
-        "celltype_major",
-    ]
-    celltype_col = _find_column(
-        obs_cols, obs_cols_lower, celltype_patterns, required=False
-    )
+    patterns = _detect_column_patterns()
+    participant_col = _find_column(obs_cols, obs_cols_lower, patterns["participant"])
+    visit_col = _find_column(obs_cols, obs_cols_lower, patterns["visit"])
+    arm_col = _find_column(obs_cols, obs_cols_lower, patterns["arm"])
+    celltype_col = _find_column(obs_cols, obs_cols_lower, patterns["celltype"], required=False)
 
     # Auto-detect arm labels if not provided
     if arm_col and (arm_treated is None or arm_control is None):
         unique_arms = adata.obs[arm_col].unique()
         if len(unique_arms) == 2:
             # Try to guess which is treated/control based on common names
-            treated_keywords = ["treat", "drug", "active", "intervention"]
-            control_keywords = ["control", "placebo", "sham", "vehicle"]
-
-            for arm in unique_arms:
-                arm_lower = str(arm).lower()
-                if arm_treated is None and any(kw in arm_lower for kw in treated_keywords):
-                    arm_treated = str(arm)
-                if arm_control is None and any(kw in arm_lower for kw in control_keywords):
-                    arm_control = str(arm)
+            arm_treated, arm_control = _auto_detect_arm_labels(
+                [str(a) for a in unique_arms], arm_treated, arm_control
+            )
 
             # If still not detected, just use the two arms
             if arm_treated is None:
@@ -274,21 +307,14 @@ def auto_detect_design(
     )
 
     # Print summary
-    print("\n" + "=" * 60)
-    print("AUTO-DETECTED TRIAL DESIGN")
-    print("=" * 60)
-    print(f"Participant column: {participant_col}")
-    print(f"Visit column:       {visit_col}")
-    print(f"Arm column:         {arm_col}")
-    print(f"  Treated arm:      {arm_treated}")
-    print(f"  Control arm:      {arm_control}")
-    if celltype_col:
-        print(f"Cell type column:   {celltype_col}")
-    else:
-        print("Cell type column:   (not detected)")
-    print("=" * 60)
-    print("⚠️  Please verify this design is correct before using!")
-    print("=" * 60 + "\n")
+    _print_design_summary(
+        participant_col,
+        visit_col,
+        arm_col,
+        arm_treated,
+        arm_control,
+        celltype_col,
+    )
 
     return design
 
