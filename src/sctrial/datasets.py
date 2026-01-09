@@ -14,6 +14,8 @@ import scipy.sparse as sp
 from scipy.io import mmread
 from statsmodels.stats.multitest import multipletests
 
+from .utils import looks_like_counts
+
 __all__ = [
     "load_sade_feldman",
     "load_stephenson_data",
@@ -66,30 +68,15 @@ def _looks_log1p(X, sample: int = 10000, seed: int = 0) -> bool:
     return (data.min() >= 0) and (data.max() < 50) and (not np.allclose(data, np.round(data), atol=1e-3))
 
 
-def _counts_like(X, sample: int = 10000, seed: int = 0) -> bool:
-    if X is None:
-        return False
-    data = X.data if sp.issparse(X) else np.asarray(X).ravel()
-    if data.size == 0:
-        return False
-    data = data[np.isfinite(data)]
-    if data.size == 0 or data.min() < 0:
-        return False
-    rng = np.random.default_rng(seed)
-    if data.size > sample:
-        data = rng.choice(data, size=sample, replace=False)
-    return np.allclose(data, np.round(data), atol=1e-3)
-
-
 def _get_counts_matrix(adata: ad.AnnData) -> tuple[np.ndarray | None, str | None]:
-    if "counts" in adata.layers and _counts_like(adata.layers["counts"]):
+    if "counts" in adata.layers and looks_like_counts(adata.layers["counts"]):
         return adata.layers["counts"], "layers['counts']"
     if getattr(adata, "raw", None) is not None:
-        if list(adata.raw.var_names) == list(adata.var_names) and _counts_like(adata.raw.X):
+        if list(adata.raw.var_names) == list(adata.var_names) and looks_like_counts(adata.raw.X):
             return adata.raw.X, "adata.raw.X"
-    if "raw" in adata.layers and _counts_like(adata.layers["raw"]):
+    if "raw" in adata.layers and looks_like_counts(adata.layers["raw"]):
         return adata.layers["raw"], "layers['raw']"
-    if _counts_like(adata.X):
+    if looks_like_counts(adata.X):
         return adata.X, "adata.X"
     return None, None
 

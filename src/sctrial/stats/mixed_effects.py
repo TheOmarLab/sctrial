@@ -66,7 +66,8 @@ from statsmodels.stats.multitest import multipletests
 from statsmodels.tools.sm_exceptions import ConvergenceWarning
 
 from ..design import TrialDesign
-from .did import AggregateFunc, AggregateMode, _aggregate_features, _ensure_paired
+from .did import AggregateFunc, AggregateMode, _ensure_paired
+from ._utils import aggregate_features
 
 __all__ = [
     "did_mixed",
@@ -327,7 +328,7 @@ def did_table_mixed(
     # Aggregate if requested
     if aggregate == "participant_visit":
         grp_cols = [design.participant_col, design.visit_col, design.arm_col]
-        df = _aggregate_features(df, grp_cols=grp_cols, features=list(features), agg=agg)
+        df = aggregate_features(df, grp_cols=grp_cols, features=list(features), agg=agg)
 
     # Ensure paired data
     df = _ensure_paired(

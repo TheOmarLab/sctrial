@@ -9,6 +9,7 @@ from statsmodels.stats.multitest import multipletests
 from ..adata_tools import subset_primary
 from ..design import TrialDesign
 from ..utils import wild_cluster_bootstrap_t
+from ._utils import encode_visit
 
 
 def abundance_did(
@@ -121,8 +122,7 @@ def abundance_did(
     else:
         counts["y"] = counts["prop"]
 
-    counts[design.visit_col] = pd.Categorical(counts[design.visit_col], categories=list(visits), ordered=True)
-    counts["visit_num"] = counts[design.visit_col].map({visits[0]:0, visits[1]:1}).astype(float)
+    counts = encode_visit(counts, design.visit_col, visits)
     counts["arm_bin"] = design.arm_bin(counts)
 
     rows=[]

@@ -11,7 +11,8 @@ from statsmodels.stats.multitest import multipletests
 
 from ..adata_tools import subset_cells
 from ..design import TrialDesign
-from .did import AggregateFunc, AggregateMode, _aggregate_features, _ensure_paired
+from .did import AggregateFunc, AggregateMode, _ensure_paired
+from ._utils import aggregate_features, encode_visit, standardize_series
 
 
 def within_arm_comparison(
@@ -61,9 +62,7 @@ def within_arm_comparison(
     ad = subset_cells(adata, design, arm=arm, exclude_crossovers=False)
     ad = ad[ad.obs[design.visit_col].isin(visits)].copy()
 
-    obs = ad.obs.copy()
-    obs[design.visit_col] = pd.Categorical(obs[design.visit_col], categories=list(visits), ordered=True)
-    obs["visit_num"] = obs[design.visit_col].map({visits[0]: 0, visits[1]: 1}).astype(float)
+    obs = encode_visit(ad.obs.copy(), design.visit_col, visits)
 
     # build dataframe
     cols = [design.participant_col, design.visit_col, "visit_num"]
@@ -81,14 +80,14 @@ def within_arm_comparison(
     # Aggregate
     if aggregate == "participant_visit":
         grp_cols = [design.participant_col, design.visit_col]
-        df_use = _aggregate_features(df, grp_cols=grp_cols, features=features, agg=agg)
+        df_use = aggregate_features(df, grp_cols=grp_cols, features=features, agg=agg)
         unit = design.participant_col
     else:
         df_use = df.copy()
         unit = design.participant_col
 
     df_use = _ensure_paired(df_use, unit=unit, time=design.visit_col, visits=visits)
-    df_use["visit_num"] = df_use[design.visit_col].map({visits[0]: 0, visits[1]: 1}).astype(float)
+    df_use = encode_visit(df_use, design.visit_col, visits)
 
     rows = []
     for feat in features:
@@ -96,18 +95,17 @@ def within_arm_comparison(
         df_feat = df_use.copy()
 
         if standardize:
-            yy = df_feat[feat].astype(float)
-            y_std = yy.std(ddof=1)
-            if y_std < 1e-12:
-                # Skip features with near-zero variance
-                rows.append({
-                    "feature": feat,
-                    "beta_time": np.nan,
-                    "p_time": np.nan,
-                    "n_units": int(df_feat[unit].nunique()),
-                })
-                continue
-            df_feat["_y"] = (yy - yy.mean()) / y_std
+                y_std, ok = standardize_series(df_feat, feat, min_std=1e-12)
+                if not ok:
+                    # Skip features with near-zero variance
+                    rows.append({
+                        "feature": feat,
+                        "beta_time": np.nan,
+                        "p_time": np.nan,
+                        "n_units": int(df_feat[unit].nunique()),
+                    })
+                    continue
+                df_feat["_y"] = y_std
         else:
             df_feat["_y"] = df_feat[feat].astype(float)
 
@@ -185,7 +183,7 @@ def between_arm_comparison(
 
     if aggregate == "participant_visit":
         grp_cols = [design.participant_col, "arm_bin", design.arm_col]
-        df_use = _aggregate_features(df, grp_cols=grp_cols, features=features, agg=agg)
+        df_use = aggregate_features(df, grp_cols=grp_cols, features=features, agg=agg)
     else:
         df_use = df.copy()
 
@@ -196,9 +194,8 @@ def between_arm_comparison(
             df_feat = df_use.copy()
 
             if standardize:
-                yy = df_feat[feat].astype(float)
-                y_std = yy.std(ddof=1)
-                if y_std < 1e-12:
+                y_std, ok = standardize_series(df_feat, feat, min_std=1e-12)
+                if not ok:
                     # Skip features with near-zero variance
                     rows.append({
                         "feature": feat,
@@ -207,7 +204,7 @@ def between_arm_comparison(
                         "n_units": int(df_feat[design.participant_col].nunique()),
                     })
                     continue
-                df_feat["_y"] = (yy - yy.mean()) / y_std
+                df_feat["_y"] = y_std
             else:
                 df_feat["_y"] = df_feat[feat].astype(float)
 

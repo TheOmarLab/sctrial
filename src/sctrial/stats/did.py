@@ -13,6 +13,7 @@ from statsmodels.stats.multitest import multipletests
 from ..adata_tools import subset_primary
 from ..design import TrialDesign
 from ..utils import wild_cluster_bootstrap_t
+from ._utils import encode_visit, standardize_series
 
 AggregateMode = Literal["cell", "participant_visit", "participant_visit_celltype"]
 AggregateFunc = Literal["mean", "median", "pct_pos"]
@@ -127,13 +128,18 @@ def did_fit(
 
     # time is assumed numeric 0/1 already
     if standardize:
-        yy = tmp[y].astype(float)
-        y_std = yy.std(ddof=1)
+        y_std, ok = standardize_series(tmp, y, min_std=1e-8)
         # Skip features with near-zero variance to avoid misleading standardized estimates
-        if y_std < 1e-8:
-            return {"beta_DiD": np.nan, "se_DiD": np.nan, "p_DiD": np.nan,
-                    "beta_time": np.nan, "p_time": np.nan, "n_units": tmp[unit].nunique()}
-        tmp["_y"] = (yy - yy.mean()) / y_std
+        if not ok:
+            return {
+                "beta_DiD": np.nan,
+                "se_DiD": np.nan,
+                "p_DiD": np.nan,
+                "beta_time": np.nan,
+                "p_time": np.nan,
+                "n_units": tmp[unit].nunique(),
+            }
+        tmp["_y"] = y_std
     else:
         tmp["_y"] = tmp[y].astype(float)
 
@@ -177,27 +183,6 @@ def did_fit(
         res["p_DiD"] = p_boot
 
     return res
-
-def _aggregate_features(
-        df: pd.DataFrame,
-        grp_cols: list[str],
-        features: Sequence[str],
-        agg: str,
-) -> pd.DataFrame:
-    """Aggregate features within grp_cols using agg."""
-    if agg == "mean":
-        return df.groupby(grp_cols, observed=True).mean(numeric_only=True).reset_index()
-    if agg == "median":
-        return df.groupby(grp_cols, observed=True).median(numeric_only=True).reset_index()
-    if agg == "pct_pos":
-        # percent of observations with feature > 0
-        out = (
-            df.groupby(grp_cols, observed=True)[list(features)]
-            .apply(lambda x: (x > 0).mean() * 100.0)
-            .reset_index()
-        )
-        return out
-    raise ValueError(f"Unsupported agg='{agg}'. Use 'mean', 'median', or 'pct_pos'.")
 
 def did_table(
     adata: AnnData,
@@ -286,11 +271,7 @@ def did_table(
     if celltype is not None and design.celltype_col:
         ad = ad[ad.obs[design.celltype_col] == celltype].copy()
 
-    obs = ad.obs.copy()
-
-    # create time numeric
-    obs[design.visit_col] = pd.Categorical(obs[design.visit_col], categories=list(visits), ordered=True)
-    obs["visit_num"] = obs[design.visit_col].map({visits[0]:0, visits[1]:1}).astype(float)
+    obs = encode_visit(ad.obs.copy(), design.visit_col, visits)
     obs["arm_bin"] = (obs[design.arm_col] == design.arm_treated).astype(int)
 
     # build dataframe with features and all possible grouping columns
@@ -384,7 +365,7 @@ def did_table(
         time = "visit_num"
         arm_bin = "arm_bin"
         df_use = _ensure_paired(df_use, unit=unit, time=design.visit_col, visits=visits)
-        df_use["visit_num"] = df_use[design.visit_col].map({visits[0]:0, visits[1]:1}).astype(float)
+        df_use = encode_visit(df_use, design.visit_col, visits)
     elif aggregate == "participant_visit_celltype":
         if design.celltype_col is None:
             raise ValueError("celltype_col is None; cannot use participant_visit_celltype")
@@ -418,7 +399,7 @@ def did_table(
         time = "visit_num"
         arm_bin = "arm_bin"
         df_use = _ensure_paired(df_use, unit=unit, time=design.visit_col, visits=visits)
-        df_use["visit_num"] = df_use[design.visit_col].map({visits[0]:0, visits[1]:1}).astype(float)
+        df_use = encode_visit(df_use, design.visit_col, visits)
     else:
         # cell-level
         df_use = df.copy()
@@ -426,7 +407,7 @@ def did_table(
         time = "visit_num"
         arm_bin = "arm_bin"
         df_use = _ensure_paired(df_use, unit=unit, time=design.visit_col, visits=visits)
-        df_use["visit_num"] = df_use[design.visit_col].map({visits[0]:0, visits[1]:1}).astype(float)
+        df_use = encode_visit(df_use, design.visit_col, visits)
 
     rows=[]
     for feat in final_features:

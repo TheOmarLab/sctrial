@@ -14,6 +14,7 @@ __all__ = [
     "safe_filename",
     "intersect_preserve_order",
     "ensure_unique_index",
+    "looks_like_counts",
     "wild_cluster_bootstrap_t",
     "permutation_pvalue",
     "permutation_pvalue_paired",
@@ -47,6 +48,25 @@ def ensure_unique_index(df: pd.DataFrame, *, agg: str = "mean") -> pd.DataFrame:
     if agg == "sum":
         return df.groupby(level=0).sum(numeric_only=True)
     raise ValueError(f"Unsupported agg='{agg}'. Use 'mean' or 'sum'.")
+
+
+def looks_like_counts(X, sample: int = 10000, seed: int = 0) -> bool:
+    """Check if matrix appears to be raw counts."""
+    rng = np.random.default_rng(seed)
+    if X is None:
+        return False
+    if hasattr(X, "toarray"):
+        data = X.data if hasattr(X, "data") else np.asarray(X).ravel()
+    else:
+        data = np.asarray(X).ravel()
+    if data.size == 0:
+        return False
+    data = data[np.isfinite(data)]
+    if data.size == 0:
+        return False
+    if data.size > sample:
+        data = rng.choice(data, size=sample, replace=False)
+    return np.all(data >= 0) and np.allclose(data, np.round(data), atol=1e-6)
 
 
 def wild_cluster_bootstrap_t(

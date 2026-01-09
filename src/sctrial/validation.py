@@ -9,6 +9,7 @@ from anndata import AnnData
 
 from .datasets import count_paired
 from .design import TrialDesign
+from .utils import looks_like_counts
 
 __all__ = [
     "TrialDataValidator",
@@ -95,7 +96,7 @@ class TrialDataValidator:
                 issues.append(msg)
 
         # Check for counts layer
-        if "counts" not in adata.layers and not _looks_like_counts(adata.X):
+        if "counts" not in adata.layers and not looks_like_counts(adata.X):
             issues.append(
                 "No 'counts' layer found and adata.X doesn't appear to contain raw counts. "
                 "For best results, provide raw counts in adata.layers['counts']"
@@ -322,29 +323,6 @@ def diagnose_trial_data(
         _print_diagnostic_report(report)
 
     return report
-
-
-def _looks_like_counts(X: Any, sample_size: int = 1000) -> bool:
-    """Check if matrix looks like raw counts."""
-    if X is None:
-        return False
-
-    import scipy.sparse as sp
-
-    if sp.issparse(X):
-        data = X.data
-    else:
-        data = np.asarray(X).ravel()
-
-    if data.size == 0:
-        return False
-
-    # Sample for efficiency
-    if data.size > sample_size:
-        data = np.random.choice(data[np.isfinite(data)], size=sample_size, replace=False)
-
-    # Check if values are non-negative integers
-    return (data >= 0).all() and np.allclose(data, np.round(data), atol=1e-3)
 
 
 def _print_diagnostic_report(report: dict[str, Any]) -> None:
