@@ -149,7 +149,8 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">statsmodels.tools.sm_exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConvergenceWarning</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..design</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrialDesign</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">.did</span><span class="w"> </span><span class="kn">import</span> <span class="n">AggregateFunc</span><span class="p">,</span> <span class="n">AggregateMode</span><span class="p">,</span> <span class="n">_aggregate_features</span><span class="p">,</span> <span class="n">_ensure_paired</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">aggregate_features</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.did</span><span class="w"> </span><span class="kn">import</span> <span class="n">AggregateFunc</span><span class="p">,</span> <span class="n">AggregateMode</span><span class="p">,</span> <span class="n">_ensure_paired</span>
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
     <span class="s2">&quot;did_mixed&quot;</span><span class="p">,</span>
@@ -415,7 +416,7 @@
     <span class="c1"># Aggregate if requested</span>
     <span class="k">if</span> <span class="n">aggregate</span> <span class="o">==</span> <span class="s2">&quot;participant_visit&quot;</span><span class="p">:</span>
         <span class="n">grp_cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span>
-        <span class="n">df</span> <span class="o">=</span> <span class="n">_aggregate_features</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">grp_cols</span><span class="o">=</span><span class="n">grp_cols</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">features</span><span class="p">),</span> <span class="n">agg</span><span class="o">=</span><span class="n">agg</span><span class="p">)</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">aggregate_features</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">grp_cols</span><span class="o">=</span><span class="n">grp_cols</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">features</span><span class="p">),</span> <span class="n">agg</span><span class="o">=</span><span class="n">agg</span><span class="p">)</span>
 
     <span class="c1"># Ensure paired data</span>
     <span class="n">df</span> <span class="o">=</span> <span class="n">_ensure_paired</span><span class="p">(</span>
