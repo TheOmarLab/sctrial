@@ -203,6 +203,9 @@
     <span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">unit</span><span class="p">,</span> <span class="n">time</span><span class="p">,</span> <span class="n">arm_bin</span><span class="p">,</span> <span class="n">y</span><span class="p">]</span>
     <span class="k">if</span> <span class="n">covariates</span><span class="p">:</span>
         <span class="n">cols</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">covariates</span><span class="p">)</span>
+    <span class="n">missing</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cols</span> <span class="k">if</span> <span class="n">c</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing required columns for did_fit: </span><span class="si">{</span><span class="n">missing</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="c1"># Include n_cells for WLS weighting if available</span>
     <span class="k">if</span> <span class="s2">&quot;n_cells&quot;</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
         <span class="n">cols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;n_cells&quot;</span><span class="p">)</span>
