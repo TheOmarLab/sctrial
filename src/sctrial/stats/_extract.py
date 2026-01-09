@@ -7,6 +7,7 @@ from anndata import AnnData
 __all__ = ["extract_gene_vector"]
 
 def extract_gene_vector(adata: AnnData, gene: str, layer: str | None = None) -> np.ndarray:
+    """Return a 1D numpy array of gene expression (length = n_obs)."""
     if gene not in adata.var_names:
         raise KeyError(gene)
     j = int(adata.var_names.get_loc(gene))

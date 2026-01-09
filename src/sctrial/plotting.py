@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Literal
+from types import ModuleType
+from typing import Any, Literal, TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
@@ -30,11 +31,14 @@ __all__ = [
 ensure_matplotlib_config_dir()
 ensure_numba_cache_dir()
 
+if TYPE_CHECKING:
+    from matplotlib.gridspec import GridSpec as GridSpecType
+
 # Initialize optional plotting dependencies to avoid type errors
-plt: Any = None
-GridSpec: Any = None
-sns: Any = None
-sc: Any = None
+plt: ModuleType | None = None
+GridSpec: type["GridSpecType"] | None = None
+sns: ModuleType | None = None
+sc: ModuleType | None = None
 _scanpy_import_error: Exception | None = None
 
 try:
