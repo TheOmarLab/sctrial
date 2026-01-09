@@ -398,6 +398,8 @@
             <span class="s2">&quot;p_time&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
             <span class="s2">&quot;n_units&quot;</span><span class="p">:</span> <span class="n">n_units</span><span class="p">,</span>
         <span class="p">}</span>
+    <span class="c1"># mypy: tmp is guaranteed non-None beyond this point</span>
+    <span class="k">assert</span> <span class="n">tmp</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
 
     <span class="n">formula</span> <span class="o">=</span> <span class="n">_build_did_formula</span><span class="p">(</span><span class="n">time</span><span class="p">,</span> <span class="n">arm_bin</span><span class="p">,</span> <span class="n">unit</span><span class="p">,</span> <span class="n">covariates</span><span class="p">)</span>
 
