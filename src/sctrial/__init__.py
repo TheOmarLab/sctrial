@@ -158,5 +158,5 @@ __all__ = [
 
 try:
     __version__ = _pkg_version("sctrial")
-except Exception:  # pragma: no cover
+except (PackageNotFoundError, ValueError):  # pragma: no cover
     __version__ = "0.2.1.dev1"

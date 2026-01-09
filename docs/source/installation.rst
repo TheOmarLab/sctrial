@@ -6,7 +6,7 @@ You can install `sctrial` from source:
 .. code-block:: bash
 
    git clone https://github.com/TheOmarLab/sctrial.git
-   cd sctrial/sc_trial_inference
+   cd sctrial
    pip install .
 
 Or with optional dependencies:

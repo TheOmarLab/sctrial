@@ -163,7 +163,7 @@ def loo_cv_did(
                     "influence": influence,
                 })
 
-        except Exception:
+        except (ValueError, np.linalg.LinAlgError, KeyError):
             # If model fails, record NaN
             for feat in features:
                 rows.append({
@@ -286,7 +286,7 @@ def kfold_cv_did(
                     if feat in cv_estimates:
                         cv_estimates[feat].append(row["beta_DiD"])
 
-            except Exception:
+            except (ValueError, np.linalg.LinAlgError, KeyError):
                 pass
 
     # Summarize CV estimates

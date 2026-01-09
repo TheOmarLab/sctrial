@@ -184,7 +184,7 @@ def abundance_did(
                 "beta_time": float(fit.params.get("visit_num", np.nan)),
                 "p_time": float(fit.pvalues.get("visit_num", np.nan)),
             })
-        except Exception:
+        except (ValueError, np.linalg.LinAlgError, KeyError):
             continue
 
     if not rows:
