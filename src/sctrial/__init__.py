@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _pkg_version
 
 from .adata_tools import profile_features, subset_cells, subset_primary
@@ -32,17 +33,8 @@ from .scoring import score_gene_sets
 from .stats._extract import extract_gene_vector
 from .stats.abundance import abundance_did
 from .stats.comparisons import between_arm_comparison, within_arm_comparison
-
-# New: Cross-validation
-from .stats.cv import (
-    cv_summary,
-    influence_diagnostics,
-    kfold_cv_did,
-    loo_cv_did,
-)
+from .stats.cv import cv_summary, influence_diagnostics, kfold_cv_did, loo_cv_did
 from .stats.did import did_fit, did_table, did_table_by_celltype
-
-# New: Effect sizes
 from .stats.effect_size import (
     add_effect_sizes_to_did,
     bootstrap_effect_size_ci,
@@ -50,14 +42,7 @@ from .stats.effect_size import (
     hedges_g,
 )
 from .stats.gsea import run_gsea_did
-
-# New: Mixed effects
-from .stats.mixed_effects import (
-    compare_fixed_vs_mixed,
-    did_table_mixed,
-)
-
-# New: Power analysis
+from .stats.mixed_effects import compare_fixed_vs_mixed, did_table_mixed
 from .stats.power import (
     design_effect,
     effective_sample_size,
@@ -67,13 +52,7 @@ from .stats.power import (
 )
 from .stats.pseudobulk import pseudobulk_expression, pseudobulk_within_arm
 from .stats.summary import summarize_did_results
-
-# New: Time series
-from .stats.timeseries import (
-    event_study_did,
-    test_parallel_trends,
-    trend_interaction,
-)
+from .stats.timeseries import event_study_did, test_parallel_trends, trend_interaction
 from .utils import resolve_feature
 from .validation import (
     TrialDataValidator,
@@ -158,5 +137,5 @@ __all__ = [
 
 try:
     __version__ = _pkg_version("sctrial")
-except Exception:  # pragma: no cover
+except (PackageNotFoundError, ValueError):  # pragma: no cover
     __version__ = "0.2.1.dev1"

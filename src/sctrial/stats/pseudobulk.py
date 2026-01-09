@@ -124,7 +124,7 @@ def pseudobulk_within_arm(
             else:
                 try:
                     _, p_val = wilcoxon(delta.values)
-                except Exception:
+                except (ValueError, TypeError):
                     p_val = np.nan
             rows.append({
                 "celltype": ct,

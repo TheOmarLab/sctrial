@@ -34,7 +34,7 @@ Hedge's g:
     where J = 1 - 3/(4(n₁+n₂-2)-1) = 1 - 3/(4*df - 1)  (Hedges' correction factor)
 
 95% CI via noncentral t-distribution:
-    SE(d) ≈ sqrt(n₁+n₂/(n₁×n₂) + d²/(2(n₁+n₂)))
+    SE(d) ≈ sqrt((n₁+n₂)/(n₁×n₂) + d²/(2(n₁+n₂-2)))
 """
 from __future__ import annotations
 
@@ -302,9 +302,10 @@ def _compute_effect_size_from_fit(
             j = 1 - 3 / (4 * df - 1)
             d = d * j
 
-    # Approximate CI using delta method
+    # Approximate CI using delta method (Hedges & Olkin 1985)
     n = fit.nobs
-    se_d = np.sqrt(2 / n + (d ** 2) / (2 * n)) if not np.isnan(d) else np.nan
+    df_resid = max(n - 2, 1)
+    se_d = np.sqrt(2 / n + (d ** 2) / (2 * df_resid)) if not np.isnan(d) else np.nan
 
     if not np.isnan(se_d):
         t_crit = stats.t.ppf(0.975, fit.df_resid)
@@ -388,10 +389,11 @@ def add_effect_sizes_to_did(
             j = 1 - 3 / (4 * df - 1) if df > 1 else 1.0
             d = d * j
 
-        # CI via approximate SE
+        # CI via approximate SE (Hedges & Olkin 1985)
         if not np.isnan(d) and n > 2:
-            se_d = np.sqrt(4 / n + (d ** 2) / (2 * n))
-            t_crit = stats.t.ppf(0.975, max(n - 2, 1))
+            df_ci = n - 2
+            se_d = np.sqrt(4 / n + (d ** 2) / (2 * df_ci))
+            t_crit = stats.t.ppf(0.975, df_ci)
             lower = d - t_crit * se_d
             upper = d + t_crit * se_d
         else:

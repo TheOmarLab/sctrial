@@ -50,7 +50,7 @@ except ImportError:
 
 try:
     import scanpy as sc  # type: ignore[no-redef]
-except Exception as e:  # ImportError or runtime errors (e.g., numba cache)
+except (ImportError, RuntimeError, OSError) as e:  # ImportError or runtime errors (e.g., numba cache)
     _scanpy_import_error = e
 
 def did_volcano_frame(

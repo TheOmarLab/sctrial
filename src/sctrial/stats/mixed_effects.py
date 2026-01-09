@@ -63,6 +63,7 @@ import numpy as np
 import pandas as pd
 from anndata import AnnData
 from statsmodels.stats.multitest import multipletests
+from statsmodels.tools.sm_exceptions import ConvergenceWarning
 
 from ..design import TrialDesign
 from .did import AggregateFunc, AggregateMode, _aggregate_features, _ensure_paired
@@ -177,7 +178,7 @@ def did_mixed(
         )
         fit = model.fit(method="powell", maxiter=500, full_output=False)
         converged = fit.converged
-    except Exception as e:
+    except (ValueError, np.linalg.LinAlgError, ConvergenceWarning) as e:
         return {
             "beta_DiD": np.nan,
             "se_DiD": np.nan,

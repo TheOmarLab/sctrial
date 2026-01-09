@@ -534,7 +534,7 @@ def did_table_by_celltype(
             )
             res_ct["celltype"] = ct
             all_res.append(res_ct)
-        except Exception as e:
+        except (ValueError, np.linalg.LinAlgError, KeyError) as e:
             # Common to fail if celltype has too few cells/participants
             import warnings
             warnings.warn(f"Failed DiD for celltype '{ct}': {e}")

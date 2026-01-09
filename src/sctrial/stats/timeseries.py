@@ -248,7 +248,7 @@ def trend_interaction(
 
             rows.append(result)
 
-        except Exception as e:
+        except (ValueError, np.linalg.LinAlgError, KeyError) as e:
             rows.append({
                 "feature": feat,
                 "n_units": n_units,
@@ -356,7 +356,7 @@ def event_study_did(
             res["visit"] = post_visit
             res["reference"] = reference_visit
             all_results.append(res)
-        except Exception as e:
+        except (ValueError, np.linalg.LinAlgError, KeyError) as e:
             # Create empty result for this visit
             empty = pd.DataFrame({"feature": features})
             empty["visit"] = post_visit
@@ -458,7 +458,7 @@ def polynomial_trend(
     pred_df = pd.DataFrame(pred_data)
     try:
         pred_df["predicted"] = fit.predict(pred_df)
-    except Exception:
+    except (ValueError, KeyError, TypeError):
         pred_df["predicted"] = np.nan
 
     pred_df["arm"] = pred_df["_treat"].map({0: design.arm_control, 1: design.arm_treated})
