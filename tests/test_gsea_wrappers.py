@@ -2,7 +2,6 @@ import types
 
 import numpy as np
 import pandas as pd
-import pytest
 from anndata import AnnData
 
 import sctrial.stats.gsea as gsea

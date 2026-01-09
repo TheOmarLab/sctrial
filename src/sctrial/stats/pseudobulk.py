@@ -6,10 +6,10 @@ import numpy as np
 import pandas as pd
 import scipy.sparse as sp
 from anndata import AnnData
-from sctrial.design import TrialDesign
 from scipy.stats import wilcoxon
 from statsmodels.stats.multitest import multipletests
 
+from ..design import TrialDesign
 from ._utils import encode_visit
 from .did import did_fit
 
