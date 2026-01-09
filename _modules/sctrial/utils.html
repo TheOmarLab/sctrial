@@ -89,6 +89,7 @@
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">statsmodels.regression.linear_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">RegressionResultsWrapper</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">anndata</span><span class="w"> </span><span class="kn">import</span> <span class="n">AnnData</span>
@@ -167,7 +168,7 @@
 <div class="viewcode-block" id="wild_cluster_bootstrap_t">
 <a class="viewcode-back" href="../../api.html#sctrial.utils.wild_cluster_bootstrap_t">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">wild_cluster_bootstrap_t</span><span class="p">(</span>
-    <span class="n">fit</span><span class="p">,</span>
+    <span class="n">fit</span><span class="p">:</span> <span class="n">RegressionResultsWrapper</span><span class="p">,</span>
     <span class="n">X</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="n">clusters</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="n">term_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
