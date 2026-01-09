@@ -165,9 +165,6 @@
 
 
 <span class="c1"># Backward-compatible alias for tests/internal use</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">_counts_like</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">sample</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10000</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-    <span class="k">return</span> <span class="n">looks_like_counts</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">sample</span><span class="o">=</span><span class="n">sample</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">)</span>
-
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_params_match</span><span class="p">(</span><span class="n">prev</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">curr</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
     <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">curr</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
