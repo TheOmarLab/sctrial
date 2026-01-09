@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
+from statsmodels.regression.linear_model import RegressionResultsWrapper
 
 if TYPE_CHECKING:
     from anndata import AnnData
@@ -70,7 +71,7 @@ def looks_like_counts(X, sample: int = 10000, seed: int = 0) -> bool:
 
 
 def wild_cluster_bootstrap_t(
-    fit,
+    fit: "RegressionResultsWrapper",
     X: np.ndarray,
     clusters: np.ndarray,
     term_name: str,
