@@ -131,7 +131,8 @@ def profile_features(
     Returns
     -------
     pd.DataFrame
-        Table with index `groupby` and columns `features`.
+        Table with index `groupby` and columns `features`, containing
+        aggregated feature values.
     """
     from .stats._extract import extract_gene_vector
 

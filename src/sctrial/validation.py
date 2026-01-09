@@ -227,14 +227,13 @@ def diagnose_trial_data(
 
     Returns
     -------
-    dict with keys:
-        - n_participants: int
-        - n_visits: int
-        - n_arms: int
-        - paired_participants: Dict[Tuple[str,str], int]
-        - cells_per_participant: pd.Series
-        - warnings: List[str]
-        - recommendations: List[str]
+    dict
+        Diagnostic summary with keys including:
+        - n_cells, n_genes, n_participants, n_visits, n_arms
+        - paired_participants (dict of visit pairs -> counts)
+        - cells_per_participant (pd.Series)
+        - warnings (list of strings)
+        - recommendations (list of strings)
 
     Examples
     --------
