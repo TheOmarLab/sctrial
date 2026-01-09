@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 
 # Initialize optional plotting dependencies to avoid type errors
 plt: ModuleType | None = None
-GridSpec: type["GridSpecType"] | None = None
+GridSpec: type[GridSpecType] | None = None
 sns: ModuleType | None = None
 sc: ModuleType | None = None
 _scanpy_import_error: Exception | None = None

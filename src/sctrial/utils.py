@@ -71,7 +71,7 @@ def looks_like_counts(X, sample: int = 10000, seed: int = 0) -> bool:
 
 
 def wild_cluster_bootstrap_t(
-    fit: "RegressionResultsWrapper",
+    fit: RegressionResultsWrapper,
     X: np.ndarray,
     clusters: np.ndarray,
     term_name: str,
