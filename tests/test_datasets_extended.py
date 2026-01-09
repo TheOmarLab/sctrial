@@ -7,7 +7,6 @@ import scipy.sparse as sp
 from anndata import AnnData
 
 from sctrial.datasets import (
-    _counts_like,
     _get_counts_matrix,
     _looks_log1p,
     _params_match,
@@ -15,6 +14,7 @@ from sctrial.datasets import (
     count_paired,
     ensure_fdr,
 )
+from sctrial.utils import looks_like_counts
 
 
 class TestCountsDetection:
@@ -23,27 +23,27 @@ class TestCountsDetection:
     def test_counts_like_with_integers(self):
         """Test that integer arrays are detected as counts."""
         data = np.array([0, 1, 2, 5, 10, 100])
-        assert _counts_like(data)
+        assert looks_like_counts(data)
 
     def test_counts_like_with_floats(self):
         """Test that float arrays are not detected as counts."""
         data = np.array([0.5, 1.2, 2.7, 5.1])
-        assert not _counts_like(data)
+        assert not looks_like_counts(data)
 
     def test_counts_like_with_negative(self):
         """Test that arrays with negative values are not detected as counts."""
         data = np.array([0, 1, -2, 5])
-        assert not _counts_like(data)
+        assert not looks_like_counts(data)
 
     def test_counts_like_sparse(self):
         """Test counts detection with sparse matrices."""
         data = sp.csr_matrix(np.array([[0, 1, 2], [3, 0, 5]]))
-        assert _counts_like(data)
+        assert looks_like_counts(data)
 
     def test_counts_like_empty(self):
         """Test counts detection with empty arrays."""
         data = np.array([])
-        assert not _counts_like(data)
+        assert not looks_like_counts(data)
 
 
 class TestLog1pDetection:

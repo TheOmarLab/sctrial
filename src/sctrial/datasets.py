@@ -82,9 +82,6 @@ def _get_counts_matrix(adata: ad.AnnData) -> tuple[np.ndarray | None, str | None
 
 
 # Backward-compatible alias for tests/internal use
-def _counts_like(X, sample: int = 10000, seed: int = 0) -> bool:
-    return looks_like_counts(X, sample=sample, seed=seed)
-
 
 def _params_match(prev: dict, curr: dict) -> bool:
     for k, v in curr.items():
