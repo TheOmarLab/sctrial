@@ -32,6 +32,8 @@ ensure_matplotlib_config_dir()
 ensure_numba_cache_dir()
 
 if TYPE_CHECKING:
+    from matplotlib.axes import Axes
+    from matplotlib.figure import Figure
     from matplotlib.gridspec import GridSpec as GridSpecType
 
 # Initialize optional plotting dependencies to avoid type errors
@@ -102,8 +104,8 @@ def plot_trial_interaction(
     visits: tuple[str, str] | None = None,
     layer: str | None = None,
     color_palette: dict | None = None,
-    ax: plt.Axes | None = None,
-) -> plt.Axes:
+    ax: Axes | None = None,
+) -> Axes:
     """Plot mean expression (interaction plot) by arm and visit.
 
     This visualizes the DiD effect: the change from baseline to follow-up
@@ -156,8 +158,8 @@ def plot_did_forest(
     p_col: str = "p_DiD",
     alpha: float = 0.05,
     title: str = "DiD Effect Sizes",
-    ax: plt.Axes | None = None,
-) -> plt.Axes:
+    ax: Axes | None = None,
+) -> Axes:
     """Plot a forest plot of DiD effect sizes with confidence intervals.
 
     Parameters
@@ -272,8 +274,8 @@ def plot_within_arm_comparison(
     visits: tuple[str, str],
     layer: str | None = None,
     plot_type: Literal["box", "paired"] = "paired",
-    ax: plt.Axes | None = None,
-) -> plt.Axes:
+    ax: Axes | None = None,
+) -> Axes:
     """Plot within-arm longitudinal change.
 
     Parameters
@@ -346,7 +348,7 @@ def plot_trial_umap(
     layer: str | None = None,
     cmap: str = "magma",
     figsize: tuple[float, float] = (12, 8),
-) -> plt.Figure:
+) -> Figure:
     """Create a panel of UMAPs stratified by arm and visit.
 
     This creates a 2x2 panel (Treated/Control x Baseline/Followup) showing
@@ -429,7 +431,7 @@ def plot_gsea_radar(
     nes_col: str = "NES",
     title: str | None = None,
     figsize: tuple[float, float] = (6, 6),
-) -> plt.Figure:
+) -> Figure:
     """Radar (spider) plot of GSEA NES across pools/cell types.
 
     Parameters
@@ -550,8 +552,8 @@ def plot_abundance_interaction(
     celltype: str,
     design: TrialDesign,
     visits: tuple[str, str] | None = None,
-    ax: plt.Axes | None = None,
-) -> plt.Axes:
+    ax: Axes | None = None,
+) -> Axes:
     """Plot cell type abundance (proportion) by arm and visit."""
     if plt is None or sns is None:
         raise ImportError(
@@ -601,7 +603,7 @@ def plot_trial_umap_panel(
     cmap: str = "magma",
     figsize: tuple[float, float] = (16, 8),
     title: str | None = None,
-) -> plt.Figure:
+) -> Figure:
     """Combined UMAP panel: Cell Types + 4 Trial-stratified UMAPs.
 
     Replicates the layout: [Large Cell Type UMAP] [2x2 Grid of Feature UMAPs].
@@ -678,7 +680,7 @@ def plot_gsea_heatmap(
     fdr_col: str = "FDR q-val",
     figsize: tuple[float, float] = (12, 10),
     title: str | None = None,
-) -> plt.Axes:
+) -> Axes:
     """Heatmap of GSEA NES across pools (cell types).
 
     Parameters
