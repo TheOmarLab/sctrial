@@ -298,8 +298,9 @@ def did_fit(
     _validate_did_fit_inputs(df, cols)
 
     tmp = df[cols].dropna().copy()
-    if tmp[unit].nunique() < 4:
-        return {"beta_DiD": np.nan, "se_DiD": np.nan, "p_DiD": np.nan, "n_units": tmp[unit].nunique()}
+    n_units = tmp[unit].nunique()
+    if n_units < 4:
+        return {"beta_DiD": np.nan, "se_DiD": np.nan, "p_DiD": np.nan, "n_units": n_units}
 
     # time is assumed numeric 0/1 already
     tmp = _standardize_outcome(tmp, y, standardize)
@@ -310,7 +311,7 @@ def did_fit(
             "p_DiD": np.nan,
             "beta_time": np.nan,
             "p_time": np.nan,
-            "n_units": tmp[unit].nunique(),
+            "n_units": n_units,
         }
 
     formula = _build_did_formula(time, arm_bin, unit, covariates)
