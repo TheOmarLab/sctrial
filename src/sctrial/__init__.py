@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from importlib.metadata import version as _pkg_version
+from importlib.metadata import PackageNotFoundError, version as _pkg_version
 
 from .adata_tools import profile_features, subset_cells, subset_primary
 from .convenience import auto_detect_design, quick_did
