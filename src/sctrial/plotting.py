@@ -4,9 +4,9 @@ from collections.abc import Sequence
 from types import ModuleType
 from typing import Any, Literal, TYPE_CHECKING
 
+from anndata import AnnData
 import numpy as np
 import pandas as pd
-from anndata import AnnData
 
 from ._env import ensure_matplotlib_config_dir, ensure_numba_cache_dir
 from .design import TrialDesign
