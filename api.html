@@ -417,7 +417,8 @@ for each gene i across all cells.</p>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Table with index <cite>groupby</cite> and columns <cite>features</cite>.</p>
+<dd class="field-even"><p>Table with index <cite>groupby</cite> and columns <cite>features</cite>, containing
+aggregated feature values.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>pd.DataFrame</p>
@@ -2326,19 +2327,15 @@ The Review of Economics and Statistics, 90(3), 414–427.</p>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p><ul class="simple">
-<li><p>n_participants: int</p></li>
-<li><p>n_visits: int</p></li>
-<li><p>n_arms: int</p></li>
-<li><p>paired_participants: Dict[Tuple[str,str], int]</p></li>
-<li><p>cells_per_participant: pd.Series</p></li>
-<li><p>warnings: List[str]</p></li>
-<li><p>recommendations: List[str]</p></li>
-</ul>
-</p>
+<dd class="field-even"><p>Diagnostic summary with keys including:
+- n_cells, n_genes, n_participants, n_visits, n_arms
+- paired_participants (dict of visit pairs -&gt; counts)
+- cells_per_participant (pd.Series)
+- warnings (list of strings)
+- recommendations (list of strings)</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>dict with keys</p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a></p>
 </dd>
 </dl>
 <p class="rubric">Examples</p>
