@@ -110,6 +110,11 @@ def plot_trial_interaction(
 
     This visualizes the DiD effect: the change from baseline to follow-up
     across treatment arms.
+
+    Returns
+    -------
+    matplotlib.axes.Axes
+        The axes containing the interaction plot.
     """
     if plt is None or sns is None:
         raise ImportError(
@@ -180,6 +185,11 @@ def plot_did_forest(
         Plot title.
     ax
         Optional matplotlib axes.
+
+    Returns
+    -------
+    matplotlib.axes.Axes
+        The axes containing the forest plot.
     """
     if plt is None or sns is None:
         raise ImportError(
@@ -297,6 +307,11 @@ def plot_within_arm_comparison(
         - 'paired': lines connecting pre/post values for each participant.
     ax
         Optional matplotlib axes.
+
+    Returns
+    -------
+    matplotlib.axes.Axes
+        The axes containing the within-arm comparison plot.
     """
     if plt is None or sns is None:
         raise ImportError(
@@ -448,6 +463,11 @@ def plot_gsea_radar(
         Plot title.
     figsize
         Figure size.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        The figure containing the radar plot.
     """
     if plt is None:
         raise ImportError(
@@ -503,6 +523,11 @@ def plot_trial_dotplot(
     """Dotplot of features across cell types and trial arms.
 
     Replicates the 'celltype_treatment' dotplot pattern.
+
+    Returns
+    -------
+    scanpy.pl.DotPlot
+        The Scanpy dotplot object (allows further customization).
     """
     if sc is None:
         raise ImportError(
@@ -554,7 +579,13 @@ def plot_abundance_interaction(
     visits: tuple[str, str] | None = None,
     ax: Axes | None = None,
 ) -> Axes:
-    """Plot cell type abundance (proportion) by arm and visit."""
+    """Plot cell type abundance (proportion) by arm and visit.
+
+    Returns
+    -------
+    matplotlib.axes.Axes
+        The axes containing the abundance plot.
+    """
     if plt is None or sns is None:
         raise ImportError(
             "matplotlib and seaborn are required for plotting. "
@@ -607,6 +638,11 @@ def plot_trial_umap_panel(
     """Combined UMAP panel: Cell Types + 4 Trial-stratified UMAPs.
 
     Replicates the layout: [Large Cell Type UMAP] [2x2 Grid of Feature UMAPs].
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        The figure containing the UMAP panel.
     """
     if plt is None or sc is None or GridSpec is None:
         raise ImportError(
@@ -697,6 +733,11 @@ def plot_gsea_heatmap(
         Figure size.
     title
         Optional title.
+
+    Returns
+    -------
+    matplotlib.axes.Axes
+        The axes containing the heatmap.
     """
     if plt is None or sns is None:
         raise ImportError(
