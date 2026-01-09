@@ -25,7 +25,11 @@ Effect Sizes & Power
 - **sample_size_did**: Sample size determination
 """
 from .abundance import abundance_did
-from .comparisons import between_arm_comparison, within_arm_comparison
+from .comparisons import (
+    between_arm_comparison,
+    compare_gene_in_celltype,
+    within_arm_comparison,
+)
 
 # Cross-validation
 from .cv import (
@@ -62,7 +66,11 @@ from .power import (
     power_did,
     sample_size_did,
 )
-from .pseudobulk import pseudobulk_expression, pseudobulk_within_arm
+from .pseudobulk import (
+    pseudobulk_did,
+    pseudobulk_expression,
+    pseudobulk_within_arm,
+)
 from .summary import summarize_did_results
 
 # Time series analysis
@@ -85,6 +93,8 @@ __all__ = [
     "summarize_did_results",
     "pseudobulk_expression",
     "pseudobulk_within_arm",
+    "pseudobulk_did",
+    "compare_gene_in_celltype",
     # Effect sizes
     "cohens_d",
     "hedges_g",

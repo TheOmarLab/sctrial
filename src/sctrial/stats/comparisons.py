@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import statsmodels.formula.api as smf
 from anndata import AnnData
+from scipy.stats import mannwhitneyu
 from statsmodels.stats.multitest import multipletests
 
 from ..adata_tools import subset_cells
@@ -37,6 +38,18 @@ def _add_feature_columns(
         df_genes = pd.DataFrame(mat, columns=gene_feats, index=df.index)
         df = pd.concat([df, df_genes], axis=1)
     return df
+
+
+def resolve_gene_name(adata: AnnData, gene_query: str) -> str:
+    """Resolve a gene name in var_names, case-insensitive if needed."""
+    if gene_query in adata.var_names:
+        return gene_query
+    candidates = [g for g in adata.var_names if g.upper() == gene_query.upper()]
+    if len(candidates) == 1:
+        return candidates[0]
+    if not candidates:
+        raise ValueError(f"Gene '{gene_query}' not found in adata.var_names.")
+    raise ValueError(f"Gene '{gene_query}' is ambiguous: {candidates}")
 
 
 def _prepare_between_arm_df(
@@ -277,3 +290,109 @@ def between_arm_comparison(
     if mask.sum() > 0:
         res.loc[mask, "FDR_arm"] = multipletests(res.loc[mask, "p_arm"], method="fdr_bh")[1]
     return res
+
+
+def compare_gene_in_celltype(
+    adata: AnnData,
+    gene: str,
+    celltypes: str | Sequence[str],
+    *,
+    group_col: str,
+    group1: str,
+    group2: str,
+    participant_col: str = "participant_id",
+    celltype_col: str = "celltype",
+    layer: str | None = "counts",
+    log1p: bool = True,
+    expr_threshold: float = 0.0,
+    min_cells_per_patient: int = 10,
+    min_patients_per_group: int = 3,
+) -> tuple[dict, pd.DataFrame]:
+    """Compare one gene between two groups within specified cell types.
+
+    This aggregates expression per participant (avoids pseudoreplication) and
+    tests group differences using Mann-Whitney U on participant-level means.
+
+    Returns
+    -------
+    result : dict
+        Summary stats including p-value and group means.
+    df_patient : pd.DataFrame
+        Participant-level summaries (mean, median, % expressing, n_cells).
+    """
+    if isinstance(celltypes, str):
+        celltypes = [celltypes]
+
+    if celltype_col not in adata.obs.columns:
+        raise KeyError(f"{celltype_col} not found in adata.obs")
+    if participant_col not in adata.obs.columns:
+        raise KeyError(f"{participant_col} not found in adata.obs")
+    if group_col not in adata.obs.columns:
+        raise KeyError(f"{group_col} not found in adata.obs")
+
+    adata_sub = adata[adata.obs[celltype_col].isin(celltypes)].copy()
+    if adata_sub.n_obs == 0:
+        raise ValueError("No cells found for the requested celltypes.")
+
+    gene_name = resolve_gene_name(adata_sub, gene)
+    from ._extract import extract_gene_vector
+
+    expr = extract_gene_vector(adata_sub, gene_name, layer=layer)
+    if log1p:
+        expr = np.log1p(expr)
+
+    df = pd.DataFrame({
+        participant_col: adata_sub.obs[participant_col].values,
+        "group": adata_sub.obs[group_col].values,
+        "expr": expr,
+    })
+    df = df.dropna(subset=[participant_col, "group"])
+
+    def _summarize(group_df: pd.DataFrame) -> pd.Series:
+        vals = group_df["expr"].values
+        return pd.Series({
+            "mean_expr": float(np.mean(vals)),
+            "median_expr": float(np.median(vals)),
+            "pct_expressing": float(np.mean(vals > expr_threshold) * 100.0),
+            "n_cells": int(len(vals)),
+        })
+
+    df_patient = (
+        df.groupby([participant_col, "group"], observed=True)
+        .apply(_summarize)
+        .reset_index()
+    )
+    df_patient = df_patient[df_patient["n_cells"] >= min_cells_per_patient].copy()
+
+    g1 = df_patient[df_patient["group"] == group1]["mean_expr"]
+    g2 = df_patient[df_patient["group"] == group2]["mean_expr"]
+
+    if len(g1) < min_patients_per_group or len(g2) < min_patients_per_group:
+        result = {
+            "gene": gene_name,
+            "celltypes": list(celltypes),
+            "group1": group1,
+            "group2": group2,
+            "n_group1": int(len(g1)),
+            "n_group2": int(len(g2)),
+            "mean_group1": float(g1.mean()) if len(g1) else np.nan,
+            "mean_group2": float(g2.mean()) if len(g2) else np.nan,
+            "p_value": np.nan,
+            "note": "Insufficient participants per group",
+        }
+        return result, df_patient
+
+    _, p_val = mannwhitneyu(g1.values, g2.values, alternative="two-sided")
+    result = {
+        "gene": gene_name,
+        "celltypes": list(celltypes),
+        "group1": group1,
+        "group2": group2,
+        "n_group1": int(len(g1)),
+        "n_group2": int(len(g2)),
+        "mean_group1": float(g1.mean()),
+        "mean_group2": float(g2.mean()),
+        "delta": float(g1.mean() - g2.mean()),
+        "p_value": float(p_val),
+    }
+    return result, df_patient

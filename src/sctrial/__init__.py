@@ -32,7 +32,11 @@ from .preprocessing import add_log1p_cpm_layer
 from .scoring import score_gene_sets
 from .stats._extract import extract_gene_vector
 from .stats.abundance import abundance_did
-from .stats.comparisons import between_arm_comparison, within_arm_comparison
+from .stats.comparisons import (
+    between_arm_comparison,
+    compare_gene_in_celltype,
+    within_arm_comparison,
+)
 from .stats.cv import cv_summary, influence_diagnostics, kfold_cv_did, loo_cv_did
 from .stats.did import did_fit, did_table, did_table_by_celltype
 from .stats.effect_size import (
@@ -50,7 +54,11 @@ from .stats.power import (
     power_did,
     sample_size_did,
 )
-from .stats.pseudobulk import pseudobulk_expression, pseudobulk_within_arm
+from .stats.pseudobulk import (
+    pseudobulk_did,
+    pseudobulk_expression,
+    pseudobulk_within_arm,
+)
 from .stats.summary import summarize_did_results
 from .stats.timeseries import event_study_did, test_parallel_trends, trend_interaction
 from .utils import resolve_feature
@@ -92,6 +100,8 @@ __all__ = [
     "summarize_did_results",
     "pseudobulk_expression",
     "pseudobulk_within_arm",
+    "pseudobulk_did",
+    "compare_gene_in_celltype",
     # Effect sizes
     "cohens_d",
     "hedges_g",

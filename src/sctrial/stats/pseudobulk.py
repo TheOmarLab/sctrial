@@ -9,7 +9,7 @@ from anndata import AnnData
 from scipy.stats import wilcoxon
 from statsmodels.stats.multitest import multipletests
 
-__all__ = ["pseudobulk_expression", "pseudobulk_within_arm"]
+__all__ = ["pseudobulk_expression", "pseudobulk_within_arm", "pseudobulk_did"]
 
 
 def _get_layer(adata: AnnData, layer: str | None):
@@ -26,6 +26,7 @@ def pseudobulk_expression(
     counts_layer: str | None = "counts",
     scale: float = 1e6,
     log1p: bool = True,
+    include_n_cells: bool = True,
 ) -> pd.DataFrame:
     """Compute pseudobulk log1p-CPM for a gene panel per group.
 
@@ -68,6 +69,8 @@ def pseudobulk_expression(
         .sum(numeric_only=True)
         .reset_index()
     )
+    if include_n_cells:
+        df_sum["n_cells"] = df.groupby(list(groupby), observed=True).size().values
 
     totals = df_sum["total_counts"].values.reshape(-1, 1)
     cpm = df_sum[genes].values / (totals + 1e-12) * scale
@@ -75,6 +78,119 @@ def pseudobulk_expression(
         cpm = np.log1p(cpm)
     df_sum[genes] = cpm
     return df_sum
+
+
+def pseudobulk_did(
+    adata: AnnData,
+    genes: Sequence[str],
+    design: "TrialDesign",
+    visits: tuple[str, str],
+    *,
+    celltype_col: str | None = None,
+    counts_layer: str | None = "counts",
+    min_cells_per_group: int = 5,
+    min_paired: int = 4,
+    use_bootstrap: bool = False,
+    n_boot: int = 999,
+    seed: int = 42,
+) -> pd.DataFrame:
+    """Run DiD on pseudobulk expression (participant-level aggregates).
+
+    This mirrors subject-level pseudobulk DiD workflows where each participant×visit
+    (optionally per cell type) is one observation.
+    """
+    from .did import did_fit
+    from ._utils import encode_visit
+
+    genes = [g for g in genes if g in adata.var_names]
+    if not genes:
+        return pd.DataFrame()
+
+    groupby = [design.participant_col, design.visit_col, design.arm_col]
+    if celltype_col is not None:
+        groupby.append(celltype_col)
+
+    pb = pseudobulk_expression(
+        adata,
+        genes=genes,
+        groupby=groupby,
+        counts_layer=counts_layer,
+        log1p=True,
+        include_n_cells=True,
+    )
+    if pb.empty:
+        return pd.DataFrame()
+
+    if "n_cells" in pb.columns:
+        pb = pb[pb["n_cells"] >= min_cells_per_group].copy()
+
+    pb = pb[pb[design.visit_col].isin(visits)].copy()
+    pb["arm_bin"] = (pb[design.arm_col] == design.arm_treated).astype(int)
+    pb = encode_visit(pb, design.visit_col, visits)
+
+    rows = []
+    if celltype_col is None:
+        pools = [None]
+    else:
+        pools = sorted(pb[celltype_col].dropna().unique())
+
+    for pool in pools:
+        if pool is not None:
+            df_pool = pb[pb[celltype_col] == pool].copy()
+        else:
+            df_pool = pb.copy()
+
+        # paired participants
+        wide = df_pool.pivot_table(
+            index=design.participant_col,
+            columns=design.visit_col,
+            values=genes[0],
+            aggfunc="size",
+        )
+        keep = wide[(wide.get(visits[0], 0) > 0) & (wide.get(visits[1], 0) > 0)].index
+        df_pool = df_pool[df_pool[design.participant_col].isin(keep)].copy()
+
+        if df_pool[design.participant_col].nunique() < min_paired:
+            continue
+
+        for g in genes:
+            out = did_fit(
+                df_pool,
+                y=g,
+                unit=design.participant_col,
+                time="visit_num",
+                arm_bin="arm_bin",
+                covariates=None,
+                standardize=True,
+                use_bootstrap=use_bootstrap,
+                n_boot=n_boot,
+                seed=seed,
+            )
+            out["feature"] = g
+            out["n_units"] = int(df_pool[design.participant_col].nunique())
+            if pool is not None:
+                out["celltype"] = pool
+            rows.append(out)
+
+    res = pd.DataFrame(rows)
+    if res.empty:
+        return res
+
+    mask = res["p_DiD"].notna()
+    res["FDR_DiD"] = np.nan
+    if mask.sum() > 0:
+        res.loc[mask, "FDR_DiD"] = multipletests(res.loc[mask, "p_DiD"], method="fdr_bh")[1]
+
+    if celltype_col is not None:
+        res["FDR_DiD_celltype"] = np.nan
+        for ct, sub in res.groupby("celltype", observed=True):
+            m = sub["p_DiD"].notna()
+            if m.sum() > 0:
+                res.loc[sub.index[m], "FDR_DiD_celltype"] = multipletests(
+                    sub.loc[m, "p_DiD"], method="fdr_bh"
+                )[1]
+
+    return res.reset_index(drop=True)
 
 
 def pseudobulk_within_arm(
