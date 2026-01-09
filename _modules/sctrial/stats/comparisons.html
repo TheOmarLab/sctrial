@@ -90,6 +90,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">statsmodels.formula.api</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">smf</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">anndata</span><span class="w"> </span><span class="kn">import</span> <span class="n">AnnData</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.stats</span><span class="w"> </span><span class="kn">import</span> <span class="n">mannwhitneyu</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">statsmodels.stats.multitest</span><span class="w"> </span><span class="kn">import</span> <span class="n">multipletests</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..adata_tools</span><span class="w"> </span><span class="kn">import</span> <span class="n">subset_cells</span>
@@ -120,6 +121,21 @@
         <span class="n">df_genes</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">mat</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="n">gene_feats</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
         <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">df</span><span class="p">,</span> <span class="n">df_genes</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">df</span>
+
+
+<div class="viewcode-block" id="resolve_gene_name">
+<a class="viewcode-back" href="../../../api.html#sctrial.stats.comparisons.resolve_gene_name">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">resolve_gene_name</span><span class="p">(</span><span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span> <span class="n">gene_query</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve a gene name in var_names, case-insensitive if needed.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">gene_query</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">gene_query</span>
+    <span class="n">candidates</span> <span class="o">=</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">var_names</span> <span class="k">if</span> <span class="n">g</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="n">gene_query</span><span class="o">.</span><span class="n">upper</span><span class="p">()]</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">candidates</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">candidates</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">candidates</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Gene &#39;</span><span class="si">{</span><span class="n">gene_query</span><span class="si">}</span><span class="s2">&#39; not found in adata.var_names.&quot;</span><span class="p">)</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Gene &#39;</span><span class="si">{</span><span class="n">gene_query</span><span class="si">}</span><span class="s2">&#39; is ambiguous: </span><span class="si">{</span><span class="n">candidates</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_prepare_between_arm_df</span><span class="p">(</span>
@@ -365,6 +381,115 @@
     <span class="k">if</span> <span class="n">mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
         <span class="n">res</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="s2">&quot;FDR_arm&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">multipletests</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="s2">&quot;p_arm&quot;</span><span class="p">],</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;fdr_bh&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
     <span class="k">return</span> <span class="n">res</span></div>
+
+
+
+<div class="viewcode-block" id="compare_gene_in_celltype">
+<a class="viewcode-back" href="../../../api.html#sctrial.stats.comparisons.compare_gene_in_celltype">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">compare_gene_in_celltype</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
+    <span class="n">gene</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">celltypes</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">group_col</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">group1</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">group2</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">participant_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;participant_id&quot;</span><span class="p">,</span>
+    <span class="n">celltype_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;celltype&quot;</span><span class="p">,</span>
+    <span class="n">layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="s2">&quot;counts&quot;</span><span class="p">,</span>
+    <span class="n">log1p</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">expr_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
+    <span class="n">min_cells_per_patient</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+    <span class="n">min_patients_per_group</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">dict</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compare one gene between two groups within specified cell types.</span>
+
+<span class="sd">    This aggregates expression per participant (avoids pseudoreplication) and</span>
+<span class="sd">    tests group differences using Mann-Whitney U on participant-level means.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    result : dict</span>
+<span class="sd">        Summary stats including p-value and group means.</span>
+<span class="sd">    df_patient : pd.DataFrame</span>
+<span class="sd">        Participant-level summaries (mean, median, % expressing, n_cells).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">celltypes</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">celltypes</span> <span class="o">=</span> <span class="p">[</span><span class="n">celltypes</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">celltype_col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">celltype_col</span><span class="si">}</span><span class="s2"> not found in adata.obs&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">participant_col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">participant_col</span><span class="si">}</span><span class="s2"> not found in adata.obs&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">group_col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">group_col</span><span class="si">}</span><span class="s2"> not found in adata.obs&quot;</span><span class="p">)</span>
+
+    <span class="n">adata_sub</span> <span class="o">=</span> <span class="n">adata</span><span class="p">[</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">celltype_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">celltypes</span><span class="p">)]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">adata_sub</span><span class="o">.</span><span class="n">n_obs</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;No cells found for the requested celltypes.&quot;</span><span class="p">)</span>
+
+    <span class="n">gene_name</span> <span class="o">=</span> <span class="n">resolve_gene_name</span><span class="p">(</span><span class="n">adata_sub</span><span class="p">,</span> <span class="n">gene</span><span class="p">)</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">._extract</span><span class="w"> </span><span class="kn">import</span> <span class="n">extract_gene_vector</span>
+
+    <span class="n">expr</span> <span class="o">=</span> <span class="n">extract_gene_vector</span><span class="p">(</span><span class="n">adata_sub</span><span class="p">,</span> <span class="n">gene_name</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="n">layer</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">log1p</span><span class="p">:</span>
+        <span class="n">expr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log1p</span><span class="p">(</span><span class="n">expr</span><span class="p">)</span>
+
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+        <span class="n">participant_col</span><span class="p">:</span> <span class="n">adata_sub</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">participant_col</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span>
+        <span class="s2">&quot;group&quot;</span><span class="p">:</span> <span class="n">adata_sub</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">group_col</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span>
+        <span class="s2">&quot;expr&quot;</span><span class="p">:</span> <span class="n">expr</span><span class="p">,</span>
+    <span class="p">})</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="n">participant_col</span><span class="p">,</span> <span class="s2">&quot;group&quot;</span><span class="p">])</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_summarize</span><span class="p">(</span><span class="n">group_df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+        <span class="n">vals</span> <span class="o">=</span> <span class="n">group_df</span><span class="p">[</span><span class="s2">&quot;expr&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">({</span>
+            <span class="s2">&quot;mean_expr&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">vals</span><span class="p">)),</span>
+            <span class="s2">&quot;median_expr&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">vals</span><span class="p">)),</span>
+            <span class="s2">&quot;pct_expressing&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">vals</span> <span class="o">&gt;</span> <span class="n">expr_threshold</span><span class="p">)</span> <span class="o">*</span> <span class="mf">100.0</span><span class="p">),</span>
+            <span class="s2">&quot;n_cells&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">vals</span><span class="p">)),</span>
+        <span class="p">})</span>
+
+    <span class="n">df_patient</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="n">participant_col</span><span class="p">,</span> <span class="s2">&quot;group&quot;</span><span class="p">],</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">_summarize</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+    <span class="p">)</span>
+    <span class="n">df_patient</span> <span class="o">=</span> <span class="n">df_patient</span><span class="p">[</span><span class="n">df_patient</span><span class="p">[</span><span class="s2">&quot;n_cells&quot;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">min_cells_per_patient</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="n">g1</span> <span class="o">=</span> <span class="n">df_patient</span><span class="p">[</span><span class="n">df_patient</span><span class="p">[</span><span class="s2">&quot;group&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">group1</span><span class="p">][</span><span class="s2">&quot;mean_expr&quot;</span><span class="p">]</span>
+    <span class="n">g2</span> <span class="o">=</span> <span class="n">df_patient</span><span class="p">[</span><span class="n">df_patient</span><span class="p">[</span><span class="s2">&quot;group&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">group2</span><span class="p">][</span><span class="s2">&quot;mean_expr&quot;</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">g1</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">min_patients_per_group</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">g2</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">min_patients_per_group</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;gene&quot;</span><span class="p">:</span> <span class="n">gene_name</span><span class="p">,</span>
+            <span class="s2">&quot;celltypes&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">celltypes</span><span class="p">),</span>
+            <span class="s2">&quot;group1&quot;</span><span class="p">:</span> <span class="n">group1</span><span class="p">,</span>
+            <span class="s2">&quot;group2&quot;</span><span class="p">:</span> <span class="n">group2</span><span class="p">,</span>
+            <span class="s2">&quot;n_group1&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">g1</span><span class="p">)),</span>
+            <span class="s2">&quot;n_group2&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">g2</span><span class="p">)),</span>
+            <span class="s2">&quot;mean_group1&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">g1</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">g1</span><span class="p">)</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+            <span class="s2">&quot;mean_group2&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">g2</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">g2</span><span class="p">)</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+            <span class="s2">&quot;p_value&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+            <span class="s2">&quot;note&quot;</span><span class="p">:</span> <span class="s2">&quot;Insufficient participants per group&quot;</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="n">result</span><span class="p">,</span> <span class="n">df_patient</span>
+
+    <span class="n">_</span><span class="p">,</span> <span class="n">p_val</span> <span class="o">=</span> <span class="n">mannwhitneyu</span><span class="p">(</span><span class="n">g1</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">g2</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">alternative</span><span class="o">=</span><span class="s2">&quot;two-sided&quot;</span><span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;gene&quot;</span><span class="p">:</span> <span class="n">gene_name</span><span class="p">,</span>
+        <span class="s2">&quot;celltypes&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">celltypes</span><span class="p">),</span>
+        <span class="s2">&quot;group1&quot;</span><span class="p">:</span> <span class="n">group1</span><span class="p">,</span>
+        <span class="s2">&quot;group2&quot;</span><span class="p">:</span> <span class="n">group2</span><span class="p">,</span>
+        <span class="s2">&quot;n_group1&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">g1</span><span class="p">)),</span>
+        <span class="s2">&quot;n_group2&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">g2</span><span class="p">)),</span>
+        <span class="s2">&quot;mean_group1&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">g1</span><span class="o">.</span><span class="n">mean</span><span class="p">()),</span>
+        <span class="s2">&quot;mean_group2&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">g2</span><span class="o">.</span><span class="n">mean</span><span class="p">()),</span>
+        <span class="s2">&quot;delta&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">g1</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">-</span> <span class="n">g2</span><span class="o">.</span><span class="n">mean</span><span class="p">()),</span>
+        <span class="s2">&quot;p_value&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">p_val</span><span class="p">),</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">result</span><span class="p">,</span> <span class="n">df_patient</span></div>
 
 </pre></div>
 
