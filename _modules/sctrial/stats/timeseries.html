@@ -333,7 +333,7 @@
 
             <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
 
-        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">LinAlgError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
                 <span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
                 <span class="s2">&quot;n_units&quot;</span><span class="p">:</span> <span class="n">n_units</span><span class="p">,</span>
@@ -444,7 +444,7 @@
             <span class="n">res</span><span class="p">[</span><span class="s2">&quot;visit&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">post_visit</span>
             <span class="n">res</span><span class="p">[</span><span class="s2">&quot;reference&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">reference_visit</span>
             <span class="n">all_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
-        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">LinAlgError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="c1"># Create empty result for this visit</span>
             <span class="n">empty</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">features</span><span class="p">})</span>
             <span class="n">empty</span><span class="p">[</span><span class="s2">&quot;visit&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">post_visit</span>
@@ -549,7 +549,7 @@
     <span class="n">pred_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">pred_data</span><span class="p">)</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">pred_df</span><span class="p">[</span><span class="s2">&quot;predicted&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">fit</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">pred_df</span><span class="p">)</span>
-    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
         <span class="n">pred_df</span><span class="p">[</span><span class="s2">&quot;predicted&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
 
     <span class="n">pred_df</span><span class="p">[</span><span class="s2">&quot;arm&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pred_df</span><span class="p">[</span><span class="s2">&quot;_treat&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">({</span><span class="mi">0</span><span class="p">:</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_control</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_treated</span><span class="p">})</span>

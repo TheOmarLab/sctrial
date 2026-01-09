@@ -212,7 +212,7 @@
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">try</span><span class="p">:</span>
                     <span class="n">_</span><span class="p">,</span> <span class="n">p_val</span> <span class="o">=</span> <span class="n">wilcoxon</span><span class="p">(</span><span class="n">delta</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
-                <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
                     <span class="n">p_val</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
             <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
                 <span class="s2">&quot;celltype&quot;</span><span class="p">:</span> <span class="n">ct</span><span class="p">,</span>

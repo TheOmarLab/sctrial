@@ -248,7 +248,7 @@
                     <span class="s2">&quot;influence&quot;</span><span class="p">:</span> <span class="n">influence</span><span class="p">,</span>
                 <span class="p">})</span>
 
-        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">LinAlgError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
             <span class="c1"># If model fails, record NaN</span>
             <span class="k">for</span> <span class="n">feat</span> <span class="ow">in</span> <span class="n">features</span><span class="p">:</span>
                 <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
@@ -374,7 +374,7 @@
                     <span class="k">if</span> <span class="n">feat</span> <span class="ow">in</span> <span class="n">cv_estimates</span><span class="p">:</span>
                         <span class="n">cv_estimates</span><span class="p">[</span><span class="n">feat</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s2">&quot;beta_DiD&quot;</span><span class="p">])</span>
 
-            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">LinAlgError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
                 <span class="k">pass</span>
 
     <span class="c1"># Summarize CV estimates</span>

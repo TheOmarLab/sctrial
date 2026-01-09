@@ -269,7 +269,7 @@
                 <span class="s2">&quot;beta_time&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;visit_num&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)),</span>
                 <span class="s2">&quot;p_time&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">pvalues</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;visit_num&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)),</span>
             <span class="p">})</span>
-        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">LinAlgError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
             <span class="k">continue</span>
 
     <span class="k">if</span> <span class="ow">not</span> <span class="n">rows</span><span class="p">:</span>
