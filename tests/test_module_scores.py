@@ -57,6 +57,7 @@ def test_module_score_pseudobulk_and_did():
         pb,
         design,
         visits=("V1", "V2"),
+        min_paired=2,
         n_perm=200,
         seed=0,
     )

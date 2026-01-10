@@ -135,6 +135,7 @@ def module_score_did_by_pool(
     design: TrialDesign,
     visits: tuple[str, str],
     *,
+    min_paired: int = 2,
     n_perm: int = 1000,
     seed: int = 42,
     fdr_within: str | None = "module",
@@ -170,7 +171,7 @@ def module_score_did_by_pool(
         if visits[0] not in wide.columns or visits[1] not in wide.columns:
             continue
         wide = wide.dropna()
-        if len(wide) < 4:
+        if len(wide) < min_paired:
             continue
 
         # attach arm labels
