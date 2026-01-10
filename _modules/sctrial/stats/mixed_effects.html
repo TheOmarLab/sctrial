@@ -149,7 +149,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">statsmodels.tools.sm_exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConvergenceWarning</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..design</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrialDesign</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">aggregate_features</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">aggregate_features</span><span class="p">,</span> <span class="n">standardize_series</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.did</span><span class="w"> </span><span class="kn">import</span> <span class="n">AggregateFunc</span><span class="p">,</span> <span class="n">AggregateMode</span><span class="p">,</span> <span class="n">_ensure_paired</span>
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
@@ -437,9 +437,8 @@
         <span class="n">df_feat</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
         <span class="k">if</span> <span class="n">standardize</span><span class="p">:</span>
-            <span class="n">yy</span> <span class="o">=</span> <span class="n">df_feat</span><span class="p">[</span><span class="n">feat</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
-            <span class="n">y_std</span> <span class="o">=</span> <span class="n">yy</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">y_std</span> <span class="o">&lt;</span> <span class="mf">1e-12</span><span class="p">:</span>
+            <span class="n">y_std</span><span class="p">,</span> <span class="n">ok</span> <span class="o">=</span> <span class="n">standardize_series</span><span class="p">(</span><span class="n">df_feat</span><span class="p">,</span> <span class="n">feat</span><span class="p">,</span> <span class="n">min_std</span><span class="o">=</span><span class="mf">1e-12</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">ok</span><span class="p">:</span>
                 <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
                     <span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
                     <span class="s2">&quot;beta_DiD&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
@@ -454,7 +453,7 @@
                     <span class="s2">&quot;converged&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
                 <span class="p">})</span>
                 <span class="k">continue</span>
-            <span class="n">df_feat</span><span class="p">[</span><span class="s2">&quot;_y&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">yy</span> <span class="o">-</span> <span class="n">yy</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span> <span class="o">/</span> <span class="n">y_std</span>
+            <span class="n">df_feat</span><span class="p">[</span><span class="s2">&quot;_y&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">y_std</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">df_feat</span><span class="p">[</span><span class="s2">&quot;_y&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df_feat</span><span class="p">[</span><span class="n">feat</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
 
