@@ -22,11 +22,11 @@ from .plotting import (
     plot_did_forest,
     plot_gsea_heatmap,
     plot_gsea_radar,
+    plot_module_umap_panel,
     plot_trial_dotplot,
     plot_trial_interaction,
     plot_trial_umap,
     plot_trial_umap_panel,
-    plot_module_umap_panel,
     plot_within_arm_comparison,
 )
 from .preprocessing import add_log1p_cpm_layer
@@ -53,6 +53,11 @@ from .stats.gsea import (
     run_gsea_pseudobulk,
 )
 from .stats.mixed_effects import compare_fixed_vs_mixed, did_table_mixed
+from .stats.module_scores import (
+    module_score_did_by_pool,
+    module_score_pseudobulk,
+    module_score_within_arm_by_pool,
+)
 from .stats.power import (
     design_effect,
     effective_sample_size,
@@ -64,11 +69,6 @@ from .stats.pseudobulk import (
     pseudobulk_did,
     pseudobulk_expression,
     pseudobulk_within_arm,
-)
-from .stats.module_scores import (
-    module_score_did_by_pool,
-    module_score_pseudobulk,
-    module_score_within_arm_by_pool,
 )
 from .stats.summary import summarize_did_results
 from .stats.timeseries import event_study_did, test_parallel_trends, trend_interaction
