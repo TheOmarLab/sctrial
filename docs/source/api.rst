@@ -19,12 +19,6 @@ Scoring
    :members:
    :undoc-members:
 
-AUCell Scoring
---------------
-.. automodule:: sctrial.scoring
-   :members:
-   :undoc-members:
-
 AnnData Tools
 -------------
 .. automodule:: sctrial.adata_tools
