@@ -225,6 +225,21 @@ A high-impact visualization that shows a feature's expression on UMAP, stratifie
        visits=("V1", "V2")
    )
 
+Additional visualizations
+-------------------------
+
+.. code-block:: python
+
+   # DiD forest plot for top signatures
+   st.plot_did_forest(res, title="Top DiD Effects")
+
+   # GSEA radar chart (requires gseapy)
+   st.plot_gsea_radar(
+       gsea_results=res_gsea,
+       top_n=8,
+       title="Top Enriched Pathways"
+   )
+
 Conclusion
 ----------
 

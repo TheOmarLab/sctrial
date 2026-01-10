@@ -73,6 +73,7 @@
 <li class="toctree-l4"><a class="reference internal" href="#14.1-Effect-Sizes-for-Cross-Sectional-Comparisons">14.1 Effect Sizes for Cross-Sectional Comparisons</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#14.2-Power-Analysis">14.2 Power Analysis</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#Single-Gene-Cross-Sectional-Check-(Participant-Level)">Single-Gene Cross-Sectional Check (Participant-Level)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#Module-Score-Pseudobulk-DiD-by-Lineage">Module-Score Pseudobulk DiD by Lineage</a></li>
 </ul>
 </li>
 </ul>
@@ -165,6 +166,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">urllib.request</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">sctrial</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">itertools</span>
 
 <span class="c1"># Configuration constants</span>
 <span class="n">MIN_GENES_FOR_SCORE</span> <span class="o">=</span> <span class="mi">5</span>
@@ -175,7 +177,7 @@
 
 <span class="n">pd</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">mode</span><span class="o">.</span><span class="n">chained_assignment</span> <span class="o">=</span> <span class="kc">None</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;sctrial version: </span><span class="si">{</span><span class="n">st</span><span class="o">.</span><span class="n">__version__</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="nb">hasattr</span><span class="p">(</span><span class="n">st</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;__version__&#39;</span><span class="p">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;dev&#39;</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</pre></div>
+<br/></pre></div>
 </div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -2053,6 +2055,527 @@ KEY INSIGHTS
 </div>
 <div class="output_area docutils container">
 <img alt="../_images/examples_example_covid19_stephenson_33_3.png" src="../_images/examples_example_covid19_stephenson_33_3.png" />
+</div>
+</div>
+</section>
+<section id="Module-Score-Pseudobulk-DiD-by-Lineage">
+<h3>Module-Score Pseudobulk DiD by Lineage<a class="headerlink" href="#Module-Score-Pseudobulk-DiD-by-Lineage" title="Link to this heading"></a></h3>
+<p>Here, we collapse each participant×visit×lineage into a pseudobulk mean of module scores, then compute DiD per lineage. This highlights which lineages drive the severity-associated changes.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">signature_cols</span><span class="p">:</span>
+    <span class="c1"># Choose visit pair with best paired coverage across arms</span>
+    <span class="n">visit_levels</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;dfo_bin&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">unique</span><span class="p">())</span>
+    <span class="n">best_pair</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">best_score</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+    <span class="n">min_per_arm</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="k">for</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span> <span class="ow">in</span> <span class="n">itertools</span><span class="o">.</span><span class="n">combinations</span><span class="p">(</span><span class="n">visit_levels</span><span class="p">,</span> <span class="mi">2</span><span class="p">):</span>
+        <span class="n">wide</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">adata</span><span class="o">.</span><span class="n">obs</span>
+            <span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">&quot;participant_id&quot;</span><span class="p">,</span> <span class="s2">&quot;dfo_bin&quot;</span><span class="p">],</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">size</span><span class="p">()</span>
+            <span class="o">.</span><span class="n">unstack</span><span class="p">(</span><span class="n">fill_value</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">paired_ids</span> <span class="o">=</span> <span class="n">wide</span><span class="p">[(</span><span class="n">wide</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">v1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">wide</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">v2</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)]</span><span class="o">.</span><span class="n">index</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">paired_ids</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">arm_counts</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;participant_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">paired_ids</span><span class="p">)]</span>
+            <span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;severity&quot;</span><span class="p">)[</span><span class="s2">&quot;participant_id&quot;</span><span class="p">]</span>
+            <span class="o">.</span><span class="n">nunique</span><span class="p">()</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">arm_counts</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">min_arm</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">arm_counts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Severe&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">arm_counts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Mild&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">min_arm</span> <span class="o">&lt;</span> <span class="n">min_per_arm</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">min_arm</span> <span class="o">&gt;</span> <span class="n">best_score</span><span class="p">:</span>
+            <span class="n">best_score</span> <span class="o">=</span> <span class="n">min_arm</span>
+            <span class="n">best_pair</span> <span class="o">=</span> <span class="p">(</span><span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">)</span>
+
+    <span class="n">allow_unpaired</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">if</span> <span class="n">best_pair</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No visit pair has &gt;=2 paired participants per arm. DiD may be underpowered.&quot;</span><span class="p">)</span>
+        <span class="n">visits_pair</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">visit_levels</span><span class="p">[:</span><span class="mi">2</span><span class="p">])</span>
+        <span class="n">allow_unpaired</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">visits_pair</span> <span class="o">=</span> <span class="n">best_pair</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Using visits:&quot;</span><span class="p">,</span> <span class="n">visits_pair</span><span class="p">)</span>
+
+    <span class="c1"># Filter lineages with enough paired participants for the chosen pair</span>
+    <span class="n">paired_counts</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;dfo_bin&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">visits_pair</span><span class="p">)]</span>
+        <span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">&quot;participant_id&quot;</span><span class="p">,</span> <span class="s2">&quot;lineage&quot;</span><span class="p">])[</span><span class="s2">&quot;dfo_bin&quot;</span><span class="p">]</span>
+        <span class="o">.</span><span class="n">nunique</span><span class="p">()</span>
+        <span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;n_visits&quot;</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">paired_lineages</span> <span class="o">=</span> <span class="n">paired_counts</span><span class="p">[</span><span class="n">paired_counts</span><span class="p">[</span><span class="s2">&quot;n_visits&quot;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">][</span><span class="s2">&quot;lineage&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">value_counts</span><span class="p">()</span>
+    <span class="n">keep_lineages</span> <span class="o">=</span> <span class="n">paired_lineages</span><span class="p">[</span><span class="n">paired_lineages</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">keep_lineages</span><span class="p">:</span>
+        <span class="n">keep_lineages</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;lineage&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">unique</span><span class="p">())</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Lineages with paired participants:&quot;</span><span class="p">,</span> <span class="n">keep_lineages</span><span class="p">)</span>
+
+    <span class="n">adata_use</span> <span class="o">=</span> <span class="n">adata</span><span class="p">[</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;lineage&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">keep_lineages</span><span class="p">)]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">pb_mod</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">module_score_pseudobulk</span><span class="p">(</span>
+        <span class="n">adata_use</span><span class="p">,</span>
+        <span class="n">module_cols</span><span class="o">=</span><span class="n">signature_cols</span><span class="p">,</span>
+        <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+        <span class="n">visits</span><span class="o">=</span><span class="n">visits_pair</span><span class="p">,</span>
+        <span class="n">pool_col</span><span class="o">=</span><span class="s2">&quot;lineage&quot;</span><span class="p">,</span>
+        <span class="n">min_cells_per_group</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">display</span><span class="p">(</span><span class="n">pb_mod</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
+
+    <span class="n">res_mod</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">module_score_did_by_pool</span><span class="p">(</span>
+        <span class="n">pb_mod</span><span class="p">,</span>
+        <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+        <span class="n">visits</span><span class="o">=</span><span class="n">visits_pair</span><span class="p">,</span>
+        <span class="n">min_paired</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="n">n_perm</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
+        <span class="n">seed</span><span class="o">=</span><span class="n">SEED</span><span class="p">,</span>
+        <span class="n">fdr_within</span><span class="o">=</span><span class="s2">&quot;module&quot;</span><span class="p">,</span>
+        <span class="n">allow_unpaired</span><span class="o">=</span><span class="n">allow_unpaired</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="n">res_mod</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No valid lineage-level DiD results. Falling back to pooled lineage.&quot;</span><span class="p">)</span>
+        <span class="n">pb_all</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">module_score_pseudobulk</span><span class="p">(</span>
+            <span class="n">adata_use</span><span class="p">,</span>
+            <span class="n">module_cols</span><span class="o">=</span><span class="n">signature_cols</span><span class="p">,</span>
+            <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+            <span class="n">visits</span><span class="o">=</span><span class="n">visits_pair</span><span class="p">,</span>
+            <span class="n">pool_map</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;All_Lineages&quot;</span><span class="p">:</span> <span class="n">keep_lineages</span><span class="p">},</span>
+            <span class="n">celltype_col</span><span class="o">=</span><span class="s2">&quot;lineage&quot;</span><span class="p">,</span>
+            <span class="n">min_cells_per_group</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">res_mod</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">module_score_did_by_pool</span><span class="p">(</span>
+            <span class="n">pb_all</span><span class="p">,</span>
+            <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+            <span class="n">visits</span><span class="o">=</span><span class="n">visits_pair</span><span class="p">,</span>
+            <span class="n">min_paired</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="n">n_perm</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
+            <span class="n">seed</span><span class="o">=</span><span class="n">SEED</span><span class="p">,</span>
+            <span class="n">fdr_within</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">allow_unpaired</span><span class="o">=</span><span class="n">allow_unpaired</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">res_mod</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="n">display</span><span class="p">(</span><span class="n">res_mod</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s2">&quot;p_DiD&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">20</span><span class="p">))</span>
+        <span class="n">pivot</span> <span class="o">=</span> <span class="n">res_mod</span><span class="o">.</span><span class="n">pivot</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="s2">&quot;module&quot;</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="s2">&quot;pool&quot;</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="s2">&quot;beta_DiD&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+        <span class="n">sns</span><span class="o">.</span><span class="n">heatmap</span><span class="p">(</span><span class="n">pivot</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;RdBu_r&quot;</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Module-Score DiD by Lineage&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No valid module-score DiD results after fallback.&quot;</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No module scores available for pseudobulk DiD.&quot;</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+No visit pair has &gt;=2 paired participants per arm. DiD may be underpowered.
+Using visits: (&#39;DFO_0-7&#39;, &#39;DFO_15+&#39;)
+Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8_T&#39;, &#39;DCs&#39;, &#39;Monocytes&#39;, &#39;NK&#39;, &#39;Other&#39;]
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>participant_id</th>
+      <th>dfo_bin</th>
+      <th>severity</th>
+      <th>pool</th>
+      <th>module</th>
+      <th>module_score</th>
+      <th>n_cells</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>AP1</td>
+      <td>DFO_15+</td>
+      <td>Severe</td>
+      <td>B_cells</td>
+      <td>sig_B_Cell_Activation</td>
+      <td>0.899707</td>
+      <td>65</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>AP1</td>
+      <td>DFO_15+</td>
+      <td>Severe</td>
+      <td>B_cells</td>
+      <td>sig_Cytotoxicity</td>
+      <td>-0.434216</td>
+      <td>65</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>AP1</td>
+      <td>DFO_15+</td>
+      <td>Severe</td>
+      <td>B_cells</td>
+      <td>sig_IFN_Response</td>
+      <td>-0.220464</td>
+      <td>65</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>AP1</td>
+      <td>DFO_15+</td>
+      <td>Severe</td>
+      <td>B_cells</td>
+      <td>sig_Inflammation</td>
+      <td>-0.356539</td>
+      <td>65</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>AP1</td>
+      <td>DFO_15+</td>
+      <td>Severe</td>
+      <td>B_cells</td>
+      <td>sig_Myeloid_Activation</td>
+      <td>-0.215178</td>
+      <td>65</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>pool</th>
+      <th>module</th>
+      <th>mean_delta_treated</th>
+      <th>mean_delta_control</th>
+      <th>beta_DiD</th>
+      <th>p_DiD</th>
+      <th>p_treated</th>
+      <th>p_control</th>
+      <th>n_units</th>
+      <th>FDR_DiD</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>10</th>
+      <td>CD4_T</td>
+      <td>sig_Myeloid_Activation</td>
+      <td>0.033535</td>
+      <td>-0.022402</td>
+      <td>0.055937</td>
+      <td>0.005882</td>
+      <td>1.449762e-02</td>
+      <td>1.434237e-01</td>
+      <td>18</td>
+      <td>0.041172</td>
+    </tr>
+    <tr>
+      <th>39</th>
+      <td>Other</td>
+      <td>sig_Inflammation</td>
+      <td>0.063717</td>
+      <td>-0.031188</td>
+      <td>0.094905</td>
+      <td>0.060225</td>
+      <td>9.329306e-02</td>
+      <td>3.733759e-01</td>
+      <td>18</td>
+      <td>0.421574</td>
+    </tr>
+    <tr>
+      <th>0</th>
+      <td>B_cells</td>
+      <td>sig_B_Cell_Activation</td>
+      <td>0.023329</td>
+      <td>0.316794</td>
+      <td>-0.293465</td>
+      <td>0.088894</td>
+      <td>7.926669e-01</td>
+      <td>3.061661e-02</td>
+      <td>18</td>
+      <td>0.287393</td>
+    </tr>
+    <tr>
+      <th>12</th>
+      <td>CD8_T</td>
+      <td>sig_B_Cell_Activation</td>
+      <td>0.084310</td>
+      <td>-0.041164</td>
+      <td>0.125474</td>
+      <td>0.090422</td>
+      <td>1.523519e-01</td>
+      <td>3.957648e-01</td>
+      <td>18</td>
+      <td>0.287393</td>
+    </tr>
+    <tr>
+      <th>36</th>
+      <td>Other</td>
+      <td>sig_B_Cell_Activation</td>
+      <td>-0.062262</td>
+      <td>0.331850</td>
+      <td>-0.394112</td>
+      <td>0.123168</td>
+      <td>7.676010e-01</td>
+      <td>3.764963e-02</td>
+      <td>18</td>
+      <td>0.287393</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>CD4_T</td>
+      <td>sig_Inflammation</td>
+      <td>0.025533</td>
+      <td>-0.057082</td>
+      <td>0.082616</td>
+      <td>0.148379</td>
+      <td>5.668223e-01</td>
+      <td>1.351592e-01</td>
+      <td>18</td>
+      <td>0.454896</td>
+    </tr>
+    <tr>
+      <th>22</th>
+      <td>DCs</td>
+      <td>sig_Myeloid_Activation</td>
+      <td>0.342057</td>
+      <td>0.152192</td>
+      <td>0.189865</td>
+      <td>0.163751</td>
+      <td>4.232195e-03</td>
+      <td>4.771629e-02</td>
+      <td>18</td>
+      <td>0.306489</td>
+    </tr>
+    <tr>
+      <th>40</th>
+      <td>Other</td>
+      <td>sig_Myeloid_Activation</td>
+      <td>0.032736</td>
+      <td>-0.017218</td>
+      <td>0.049954</td>
+      <td>0.177815</td>
+      <td>2.537165e-01</td>
+      <td>4.908473e-01</td>
+      <td>18</td>
+      <td>0.306489</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>B_cells</td>
+      <td>sig_T_Cell_Exhaustion</td>
+      <td>0.161459</td>
+      <td>-0.061516</td>
+      <td>0.222974</td>
+      <td>0.186234</td>
+      <td>2.114484e-01</td>
+      <td>5.923986e-01</td>
+      <td>18</td>
+      <td>0.906928</td>
+    </tr>
+    <tr>
+      <th>33</th>
+      <td>NK</td>
+      <td>sig_Inflammation</td>
+      <td>0.108501</td>
+      <td>0.020546</td>
+      <td>0.087955</td>
+      <td>0.194956</td>
+      <td>2.098208e-02</td>
+      <td>6.829833e-01</td>
+      <td>18</td>
+      <td>0.454896</td>
+    </tr>
+    <tr>
+      <th>16</th>
+      <td>CD8_T</td>
+      <td>sig_Myeloid_Activation</td>
+      <td>0.125033</td>
+      <td>-0.265537</td>
+      <td>0.390571</td>
+      <td>0.204754</td>
+      <td>6.135455e-01</td>
+      <td>1.815146e-01</td>
+      <td>18</td>
+      <td>0.306489</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>B_cells</td>
+      <td>sig_Myeloid_Activation</td>
+      <td>0.051385</td>
+      <td>-0.035334</td>
+      <td>0.086719</td>
+      <td>0.218921</td>
+      <td>3.390866e-01</td>
+      <td>4.643997e-01</td>
+      <td>18</td>
+      <td>0.306489</td>
+    </tr>
+    <tr>
+      <th>15</th>
+      <td>CD8_T</td>
+      <td>sig_Inflammation</td>
+      <td>0.158560</td>
+      <td>-0.197558</td>
+      <td>0.356118</td>
+      <td>0.291181</td>
+      <td>6.090837e-01</td>
+      <td>2.486603e-01</td>
+      <td>18</td>
+      <td>0.509567</td>
+    </tr>
+    <tr>
+      <th>14</th>
+      <td>CD8_T</td>
+      <td>sig_IFN_Response</td>
+      <td>-0.576169</td>
+      <td>-0.744328</td>
+      <td>0.168159</td>
+      <td>0.305052</td>
+      <td>7.526322e-08</td>
+      <td>3.597705e-09</td>
+      <td>18</td>
+      <td>0.735324</td>
+    </tr>
+    <tr>
+      <th>38</th>
+      <td>Other</td>
+      <td>sig_IFN_Response</td>
+      <td>-0.369377</td>
+      <td>-0.517288</td>
+      <td>0.147911</td>
+      <td>0.305084</td>
+      <td>4.895593e-09</td>
+      <td>4.882568e-05</td>
+      <td>18</td>
+      <td>0.735324</td>
+    </tr>
+    <tr>
+      <th>23</th>
+      <td>DCs</td>
+      <td>sig_T_Cell_Exhaustion</td>
+      <td>0.103681</td>
+      <td>0.183520</td>
+      <td>-0.079840</td>
+      <td>0.316942</td>
+      <td>1.868072e-01</td>
+      <td>7.134282e-09</td>
+      <td>18</td>
+      <td>0.906928</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>B_cells</td>
+      <td>sig_Inflammation</td>
+      <td>-0.011176</td>
+      <td>-0.056984</td>
+      <td>0.045808</td>
+      <td>0.405408</td>
+      <td>7.452527e-01</td>
+      <td>1.890818e-01</td>
+      <td>18</td>
+      <td>0.567571</td>
+    </tr>
+    <tr>
+      <th>25</th>
+      <td>Monocytes</td>
+      <td>sig_Cytotoxicity</td>
+      <td>-0.039192</td>
+      <td>-0.010548</td>
+      <td>-0.028644</td>
+      <td>0.410010</td>
+      <td>1.600545e-01</td>
+      <td>6.390095e-01</td>
+      <td>18</td>
+      <td>0.967153</td>
+    </tr>
+    <tr>
+      <th>13</th>
+      <td>CD8_T</td>
+      <td>sig_Cytotoxicity</td>
+      <td>-0.280620</td>
+      <td>0.020920</td>
+      <td>-0.301540</td>
+      <td>0.429192</td>
+      <td>4.224492e-01</td>
+      <td>9.144025e-01</td>
+      <td>18</td>
+      <td>0.967153</td>
+    </tr>
+    <tr>
+      <th>11</th>
+      <td>CD4_T</td>
+      <td>sig_T_Cell_Exhaustion</td>
+      <td>0.049776</td>
+      <td>0.007541</td>
+      <td>0.042235</td>
+      <td>0.440004</td>
+      <td>2.531422e-01</td>
+      <td>8.327001e-01</td>
+      <td>18</td>
+      <td>0.906928</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/examples_example_covid19_stephenson_35_3.png" src="../_images/examples_example_covid19_stephenson_35_3.png" />
 </div>
 </div>
 </section>

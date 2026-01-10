@@ -46,7 +46,12 @@
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Quickstart</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Quickstart</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#minimal-endtoend-example">Minimal end‑to‑end example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#common-addons">Common add‑ons</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#next-steps">Next steps</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="tutorials/index.html">Tutorials</a></li>
 <li class="toctree-l1"><a class="reference internal" href="examples/index.html">Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
@@ -85,32 +90,95 @@
              
   <section id="quickstart">
 <h1>Quickstart<a class="headerlink" href="#quickstart" title="Link to this heading"></a></h1>
-<p><cite>sctrial</cite> provides a streamlined API for trial-aware single-cell analysis.</p>
+<p><cite>sctrial</cite> provides a streamlined, trial‑aware API for single‑cell clinical studies.</p>
+<section id="minimal-endtoend-example">
+<h2>Minimal end‑to‑end example<a class="headerlink" href="#minimal-endtoend-example" title="Link to this heading"></a></h2>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">sctrial</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
 
 <span class="c1"># 1. Define Design</span>
 <span class="n">design</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">TrialDesign</span><span class="p">(</span>
-    <span class="n">participant_col</span><span class="o">=</span><span class="s2">&quot;pid&quot;</span><span class="p">,</span> <span class="n">visit_col</span><span class="o">=</span><span class="s2">&quot;visit&quot;</span><span class="p">,</span> <span class="n">arm_col</span><span class="o">=</span><span class="s2">&quot;arm&quot;</span><span class="p">,</span>
-    <span class="n">arm_treated</span><span class="o">=</span><span class="s2">&quot;Treated&quot;</span><span class="p">,</span> <span class="n">arm_control</span><span class="o">=</span><span class="s2">&quot;Control&quot;</span>
+    <span class="n">participant_col</span><span class="o">=</span><span class="s2">&quot;pid&quot;</span><span class="p">,</span>
+    <span class="n">visit_col</span><span class="o">=</span><span class="s2">&quot;visit&quot;</span><span class="p">,</span>
+    <span class="n">arm_col</span><span class="o">=</span><span class="s2">&quot;arm&quot;</span><span class="p">,</span>
+    <span class="n">arm_treated</span><span class="o">=</span><span class="s2">&quot;Treated&quot;</span><span class="p">,</span>
+    <span class="n">arm_control</span><span class="o">=</span><span class="s2">&quot;Control&quot;</span><span class="p">,</span>
+    <span class="n">celltype_col</span><span class="o">=</span><span class="s2">&quot;cell_type&quot;</span><span class="p">,</span>
 <span class="p">)</span>
 
-<span class="c1"># 2. Preprocess (add log1p-CPM layer)</span>
+<span class="c1"># 2. Preprocess (add log1p‑CPM layer)</span>
 <span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">add_log1p_cpm_layer</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">counts_layer</span><span class="o">=</span><span class="s2">&quot;counts&quot;</span><span class="p">)</span>
 
-<span class="c1"># 3. Score Gene Sets (use prefix to avoid name collisions)</span>
+<span class="c1"># 3. Score Gene Sets (module scores)</span>
 <span class="n">gene_sets</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;Signature1&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;GENE1&quot;</span><span class="p">,</span> <span class="s2">&quot;GENE2&quot;</span><span class="p">,</span> <span class="s2">&quot;GENE3&quot;</span><span class="p">]}</span>
-<span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">score_gene_sets</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">gene_sets</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;log1p_cpm&quot;</span><span class="p">,</span>
-                            <span class="n">method</span><span class="o">=</span><span class="s2">&quot;zmean&quot;</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;ms_&quot;</span><span class="p">)</span>
+<span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">score_gene_sets</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">,</span>
+    <span class="n">gene_sets</span><span class="p">,</span>
+    <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;log1p_cpm&quot;</span><span class="p">,</span>
+    <span class="n">method</span><span class="o">=</span><span class="s2">&quot;zmean&quot;</span><span class="p">,</span>
+    <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;ms_&quot;</span><span class="p">,</span>
+<span class="p">)</span>
 
 <span class="c1"># 4. Run DiD</span>
-<span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ms_Signature1&quot;</span><span class="p">],</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
-                    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">))</span>
+<span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">,</span>
+    <span class="n">features</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ms_Signature1&quot;</span><span class="p">],</span>
+    <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">),</span>
+<span class="p">)</span>
 
-<span class="c1"># 5. Summarize</span>
+<span class="c1"># 5. Summarize &amp; visualize</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">st</span><span class="o">.</span><span class="n">summarize_did_results</span><span class="p">(</span><span class="n">res</span><span class="p">))</span>
+<span class="n">st</span><span class="o">.</span><span class="n">plot_did_forest</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>For more details, see the <a class="reference internal" href="tutorials/basic_workflow.html"><span class="doc">Basic Workflow Tutorial</span></a>.</p>
+</section>
+<section id="common-addons">
+<h2>Common add‑ons<a class="headerlink" href="#common-addons" title="Link to this heading"></a></h2>
+<p><strong>Pairing diagnostics</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Count paired participants before longitudinal analysis</span>
+<span class="n">paired</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">count_paired</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">paired</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>AUCell scoring (optional)</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Requires: pip install pyscenic</span>
+<span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">score_gene_sets_aucell</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">,</span>
+    <span class="n">gene_sets</span><span class="p">,</span>
+    <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;log1p_cpm&quot;</span><span class="p">,</span>
+    <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;aucell_&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Cross‑sectional comparisons</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">cross</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">between_arm_comparison</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">,</span>
+    <span class="n">visit</span><span class="o">=</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span>
+    <span class="n">features</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ms_Signature1&quot;</span><span class="p">],</span>
+    <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+    <span class="n">aggregate</span><span class="o">=</span><span class="s2">&quot;participant_visit&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>GSEA on DiD results</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">gsea</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">run_gsea_did</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">,</span>
+    <span class="n">gene_sets</span><span class="o">=</span><span class="s2">&quot;KEGG_2021_Human&quot;</span><span class="p">,</span>
+    <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">),</span>
+<span class="p">)</span>
+<span class="n">st</span><span class="o">.</span><span class="n">plot_gsea_heatmap</span><span class="p">(</span><span class="n">gsea</span><span class="p">,</span> <span class="n">fdr_thresh</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span> <span class="n">top_n</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="next-steps">
+<h2>Next steps<a class="headerlink" href="#next-steps" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="tutorials/basic_workflow.html"><span class="doc">Basic Workflow Tutorial</span></a> for a full pipeline.</p></li>
+<li><p><a class="reference internal" href="tutorials/celltype_did_gsea.html"><span class="doc">Celltype‑specific DiD + GSEA</span></a> for cell‑type‑specific DiD + GSEA.</p></li>
+<li><p><a class="reference internal" href="tutorials/module_score_did_pipeline.html"><span class="doc">Module Score DiD Pipeline</span></a> for module‑score workflows.</p></li>
+</ul>
+</section>
 </section>
 
 

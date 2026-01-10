@@ -99,6 +99,7 @@
     <span class="s2">&quot;intersect_preserve_order&quot;</span><span class="p">,</span>
     <span class="s2">&quot;ensure_unique_index&quot;</span><span class="p">,</span>
     <span class="s2">&quot;looks_like_counts&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;get_counts_matrix&quot;</span><span class="p">,</span>
     <span class="s2">&quot;wild_cluster_bootstrap_t&quot;</span><span class="p">,</span>
     <span class="s2">&quot;permutation_pvalue&quot;</span><span class="p">,</span>
     <span class="s2">&quot;permutation_pvalue_paired&quot;</span><span class="p">,</span>
@@ -162,6 +163,23 @@
     <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="n">sample</span><span class="p">:</span>
         <span class="n">data</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">sample</span><span class="p">,</span> <span class="n">replace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
     <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">data</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">atol</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="get_counts_matrix">
+<a class="viewcode-back" href="../../api.html#sctrial.utils.get_counts_matrix">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_counts_matrix</span><span class="p">(</span><span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a raw-counts matrix and its source label, if available.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="s2">&quot;counts&quot;</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">layers</span> <span class="ow">and</span> <span class="n">looks_like_counts</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">&quot;counts&quot;</span><span class="p">]):</span>
+        <span class="k">return</span> <span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">&quot;counts&quot;</span><span class="p">],</span> <span class="s2">&quot;layers[&#39;counts&#39;]&quot;</span>
+    <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="s2">&quot;raw&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">list</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">raw</span><span class="o">.</span><span class="n">var_names</span><span class="p">)</span> <span class="o">==</span> <span class="nb">list</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="p">)</span> <span class="ow">and</span> <span class="n">looks_like_counts</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">raw</span><span class="o">.</span><span class="n">X</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">adata</span><span class="o">.</span><span class="n">raw</span><span class="o">.</span><span class="n">X</span><span class="p">,</span> <span class="s2">&quot;adata.raw.X&quot;</span>
+    <span class="k">if</span> <span class="s2">&quot;raw&quot;</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">layers</span> <span class="ow">and</span> <span class="n">looks_like_counts</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">&quot;raw&quot;</span><span class="p">]):</span>
+        <span class="k">return</span> <span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">&quot;raw&quot;</span><span class="p">],</span> <span class="s2">&quot;layers[&#39;raw&#39;]&quot;</span>
+    <span class="k">if</span> <span class="n">looks_like_counts</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">X</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">adata</span><span class="o">.</span><span class="n">X</span><span class="p">,</span> <span class="s2">&quot;adata.X&quot;</span>
+    <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span></div>
 
 
 

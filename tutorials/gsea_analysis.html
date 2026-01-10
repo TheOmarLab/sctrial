@@ -20,7 +20,7 @@
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Advanced Trial Analysis" href="advanced_designs.html" />
+    <link rel="next" title="Celltype‑specific DiD + GSEA" href="celltype_did_gsea.html" />
     <link rel="prev" title="Basic Workflow Tutorial" href="basic_workflow.html" /> 
 </head>
 
@@ -56,8 +56,12 @@
 <li class="toctree-l3"><a class="reference internal" href="#custom-gene-sets">4. Custom Gene Sets</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#visualization-of-rankings">5. Visualization of Rankings</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#multi-celltype-gsea-heatmap">6. Multi-Celltype GSEA Heatmap</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#additional-visual-summaries">Additional visual summaries</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="celltype_did_gsea.html">Celltype‑specific DiD + GSEA</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pseudobulk_did_bootstrap.html">Pseudobulk DiD + Bootstrap</a></li>
+<li class="toctree-l2"><a class="reference internal" href="module_score_did_pipeline.html">Module Score DiD Pipeline</a></li>
 <li class="toctree-l2"><a class="reference internal" href="advanced_designs.html">Advanced Trial Analysis</a></li>
 </ul>
 </li>
@@ -238,6 +242,20 @@
 </pre></div>
 </div>
 </section>
+<section id="additional-visual-summaries">
+<h2>Additional visual summaries<a class="headerlink" href="#additional-visual-summaries" title="Link to this heading"></a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Radar plot of orbital pathway groups (requires gseapy)</span>
+<span class="n">st</span><span class="o">.</span><span class="n">plot_gsea_radar</span><span class="p">(</span>
+    <span class="n">res_gsea</span><span class="p">,</span>
+    <span class="n">top_n</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+    <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Top Enriched Pathways&quot;</span>
+<span class="p">)</span>
+
+<span class="c1"># Forest plot of DiD results alongside GSEA</span>
+<span class="n">st</span><span class="o">.</span><span class="n">plot_did_forest</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;DiD Effect Sizes&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
 </section>
 
 
@@ -245,7 +263,7 @@
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="basic_workflow.html" class="btn btn-neutral float-left" title="Basic Workflow Tutorial" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="advanced_designs.html" class="btn btn-neutral float-right" title="Advanced Trial Analysis" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="celltype_did_gsea.html" class="btn btn-neutral float-right" title="Celltype‑specific DiD + GSEA" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

@@ -84,6 +84,12 @@ Pseudobulk Methods
    :members:
    :undoc-members:
 
+Module Score Analysis
+~~~~~~~~~~~~~~~~~~~~~
+.. automodule:: sctrial.stats.module_scores
+   :members:
+   :undoc-members:
+
 Summary Utilities
 ~~~~~~~~~~~~~~~~~
 .. automodule:: sctrial.stats.summary

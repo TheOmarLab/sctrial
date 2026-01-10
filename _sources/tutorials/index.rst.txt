@@ -6,4 +6,7 @@ Tutorials
 
    basic_workflow
    gsea_analysis
+   celltype_did_gsea
+   pseudobulk_did_bootstrap
+   module_score_did_pipeline
    advanced_designs

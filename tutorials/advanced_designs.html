@@ -21,7 +21,7 @@
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Examples" href="../examples/index.html" />
-    <link rel="prev" title="GSEA and Pathway Analysis" href="gsea_analysis.html" /> 
+    <link rel="prev" title="Module Score DiD Pipeline" href="module_score_did_pipeline.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -50,6 +50,9 @@
 <li class="toctree-l1 current"><a class="reference internal" href="index.html">Tutorials</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="basic_workflow.html">Basic Workflow Tutorial</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gsea_analysis.html">GSEA and Pathway Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="celltype_did_gsea.html">Celltype‑specific DiD + GSEA</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pseudobulk_did_bootstrap.html">Pseudobulk DiD + Bootstrap</a></li>
+<li class="toctree-l2"><a class="reference internal" href="module_score_did_pipeline.html">Module Score DiD Pipeline</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Advanced Trial Analysis</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#crossover-designs">1. Crossover Designs</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#robust-inference-with-wild-cluster-bootstrap">2. Robust Inference with Wild Cluster Bootstrap</a></li>
@@ -70,6 +73,7 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#trial-umap-panels">9. Trial UMAP Panels</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#additional-visualizations">Additional visualizations</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#conclusion">Conclusion</a></li>
 </ul>
 </li>
@@ -306,6 +310,20 @@
 </pre></div>
 </div>
 </section>
+<section id="additional-visualizations">
+<h2>Additional visualizations<a class="headerlink" href="#additional-visualizations" title="Link to this heading"></a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># DiD forest plot for top signatures</span>
+<span class="n">st</span><span class="o">.</span><span class="n">plot_did_forest</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Top DiD Effects&quot;</span><span class="p">)</span>
+
+<span class="c1"># GSEA radar chart (requires gseapy)</span>
+<span class="n">st</span><span class="o">.</span><span class="n">plot_gsea_radar</span><span class="p">(</span>
+    <span class="n">gsea_results</span><span class="o">=</span><span class="n">res_gsea</span><span class="p">,</span>
+    <span class="n">top_n</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+    <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Top Enriched Pathways&quot;</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
 <section id="conclusion">
 <h2>Conclusion<a class="headerlink" href="#conclusion" title="Link to this heading"></a></h2>
 <p><cite>sctrial</cite> provides a comprehensive toolkit—from robust bootstrapping and weighted aggregation to stratified analysis and specialized trial visualizations—ensuring that your clinical single-cell analysis is statistically rigorous and easily interpretable.</p>
@@ -316,7 +334,7 @@
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="gsea_analysis.html" class="btn btn-neutral float-left" title="GSEA and Pathway Analysis" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="module_score_did_pipeline.html" class="btn btn-neutral float-left" title="Module Score DiD Pipeline" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
         <a href="../examples/index.html" class="btn btn-neutral float-right" title="Examples" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 

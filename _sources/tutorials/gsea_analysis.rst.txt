@@ -152,3 +152,18 @@ When analyzing multiple cell types or cell pools, a heatmap is the best way to c
        title="Pathway Enrichment Across Cell Types"
    )
    plt.show()
+
+Additional visual summaries
+---------------------------
+
+.. code-block:: python
+
+   # Radar plot of orbital pathway groups (requires gseapy)
+   st.plot_gsea_radar(
+       res_gsea,
+       top_n=10,
+       title="Top Enriched Pathways"
+   )
+
+   # Forest plot of DiD results alongside GSEA
+   st.plot_did_forest(res, title="DiD Effect Sizes")

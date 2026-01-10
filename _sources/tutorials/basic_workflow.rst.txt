@@ -195,6 +195,27 @@ Treatment effects can also manifest as changes in cell-type composition. `abunda
    )
    plt.show()
 
+   # Forest plot of DiD effects
+   st.plot_did_forest(res, title="Module‑Score DiD Effects")
+   plt.show()
+
+   # UMAP panel (cell types + a module score)
+   st.plot_trial_umap_panel(
+       adata,
+       features=["ms_Antigen_Presentation"],
+       design=design,
+       visits=("V1", "V2"),
+   )
+   plt.show()
+
+   # Dotplot of marker genes across cell types
+   st.plot_trial_dotplot(
+       adata,
+       genes=["CD3D", "MS4A1", "LYZ"],
+       groupby=design.celltype_col,
+   )
+   plt.show()
+
 Next Steps
 ----------
 

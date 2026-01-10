@@ -60,6 +60,9 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="gsea_analysis.html">GSEA and Pathway Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="celltype_did_gsea.html">Celltype‑specific DiD + GSEA</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pseudobulk_did_bootstrap.html">Pseudobulk DiD + Bootstrap</a></li>
+<li class="toctree-l2"><a class="reference internal" href="module_score_did_pipeline.html">Module Score DiD Pipeline</a></li>
 <li class="toctree-l2"><a class="reference internal" href="advanced_designs.html">Advanced Trial Analysis</a></li>
 </ul>
 </li>
@@ -272,6 +275,27 @@
     <span class="n">celltype</span><span class="o">=</span><span class="s2">&quot;TypeA&quot;</span><span class="p">,</span>
     <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
     <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">)</span>
+<span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+<span class="c1"># Forest plot of DiD effects</span>
+<span class="n">st</span><span class="o">.</span><span class="n">plot_did_forest</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Module‑Score DiD Effects&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+<span class="c1"># UMAP panel (cell types + a module score)</span>
+<span class="n">st</span><span class="o">.</span><span class="n">plot_trial_umap_panel</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">,</span>
+    <span class="n">features</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ms_Antigen_Presentation&quot;</span><span class="p">],</span>
+    <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">),</span>
+<span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+<span class="c1"># Dotplot of marker genes across cell types</span>
+<span class="n">st</span><span class="o">.</span><span class="n">plot_trial_dotplot</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">,</span>
+    <span class="n">genes</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;CD3D&quot;</span><span class="p">,</span> <span class="s2">&quot;MS4A1&quot;</span><span class="p">,</span> <span class="s2">&quot;LYZ&quot;</span><span class="p">],</span>
+    <span class="n">groupby</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
