@@ -10,6 +10,7 @@ from scipy.stats import wilcoxon
 from statsmodels.stats.multitest import multipletests
 
 from ..design import TrialDesign
+from ._utils import encode_visit
 
 __all__ = [
     "module_score_pseudobulk",
@@ -175,8 +176,7 @@ def module_score_did_by_pool(
             continue
 
         if allow_unpaired:
-            df = sub.copy()
-            df["visit_num"] = df[design.visit_col].map({visits[0]: 0, visits[1]: 1})
+            df = encode_visit(sub.copy(), design.visit_col, visits)
             df["arm_bin"] = (df[design.arm_col] == design.arm_treated).astype(int)
             model = smf.ols("module_score ~ visit_num + arm_bin + visit_num:arm_bin", data=df)
             fit = model.fit(cov_type="HC1")

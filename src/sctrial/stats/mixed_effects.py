@@ -66,7 +66,7 @@ from statsmodels.stats.multitest import multipletests
 from statsmodels.tools.sm_exceptions import ConvergenceWarning
 
 from ..design import TrialDesign
-from ._utils import aggregate_features
+from ._utils import aggregate_features, standardize_series
 from .did import AggregateFunc, AggregateMode, _ensure_paired
 
 __all__ = [
@@ -349,9 +349,8 @@ def did_table_mixed(
         df_feat = df.copy()
 
         if standardize:
-            yy = df_feat[feat].astype(float)
-            y_std = yy.std(ddof=1)
-            if y_std < 1e-12:
+            y_std, ok = standardize_series(df_feat, feat, min_std=1e-12)
+            if not ok:
                 rows.append({
                     "feature": feat,
                     "beta_DiD": np.nan,
@@ -366,7 +365,7 @@ def did_table_mixed(
                     "converged": False,
                 })
                 continue
-            df_feat["_y"] = (yy - yy.mean()) / y_std
+            df_feat["_y"] = y_std
         else:
             df_feat["_y"] = df_feat[feat].astype(float)
 
