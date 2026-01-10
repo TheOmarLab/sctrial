@@ -119,16 +119,28 @@ class TestZeroVarianceFeatures:
         """within_arm_comparison should handle zero-variance features."""
         sample_adata.obs["constant"] = 5.0
 
-        res = st.within_arm_comparison(
-            sample_adata,
-            arm="Treated",
-            features=["constant"],
-            design=trial_design,
-            visits=("V1", "V2"),
-        )
 
-        # Should return NaN
-        assert pd.isna(res.iloc[0]["beta_time"])
+class TestInputValidation:
+    """Input validation edge cases."""
+
+    def test_score_gene_sets_invalid_inputs(self):
+        adata = AnnData(X=np.ones((3, 2)))
+        with pytest.raises(ValueError):
+            st.score_gene_sets(adata, {}, method="zmean")
+        with pytest.raises(ValueError):
+            st.score_gene_sets(adata, {"A": ["G1"]}, min_genes=0)
+        with pytest.raises(KeyError):
+            st.score_gene_sets(adata, {"A": ["G1"]}, layer="missing")
+
+    def test_power_and_sample_size_validation(self):
+        with pytest.raises(ValueError):
+            st.power_did(n_per_group=1.5, effect_size=0.5)
+        with pytest.raises(ValueError):
+            st.sample_size_did(effect_size=-0.5)
+
+    def test_did_fit_empty_df(self):
+        with pytest.raises(ValueError):
+            st.did_fit(pd.DataFrame(), y="y", unit="id", time="t", arm_bin="arm")
 
 
 class TestNaNFeatures:

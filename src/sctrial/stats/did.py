@@ -288,6 +288,10 @@ def did_fit(
         - p_time: P-value for time effect
         - n_units: Number of participants used
     """
+    if df is None or df.empty:
+        raise ValueError("df must be a non-empty DataFrame.")
+    if n_boot < 1:
+        raise ValueError("n_boot must be >= 1.")
     cols = [unit, time, arm_bin, y]
     if covariates:
         cols.extend(covariates)

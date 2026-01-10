@@ -197,6 +197,8 @@ def power_did(
     """
     if not np.isfinite(n_per_group) or n_per_group < 1:
         raise ValueError("n_per_group must be a finite integer >= 1.")
+    if int(n_per_group) != n_per_group:
+        raise ValueError("n_per_group must be an integer.")
     if not np.isfinite(effect_size):
         raise ValueError("effect_size must be finite.")
     if not np.isfinite(sigma) or sigma <= 0:
@@ -291,6 +293,8 @@ def sample_size_did(
     """
     if not np.isfinite(effect_size) or effect_size == 0:
         raise ValueError("effect_size must be non-zero for sample size calculation.")
+    if effect_size < 0:
+        raise ValueError("effect_size must be > 0.")
     if not np.isfinite(sigma) or sigma <= 0:
         raise ValueError("sigma must be a finite value > 0.")
     if not (0 < power < 1):

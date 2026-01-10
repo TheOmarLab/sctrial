@@ -74,6 +74,14 @@ def score_gene_sets(
     """
     if method not in ("zmean", "mean"):
         raise ValueError(f"Unknown method '{method}'. Use 'zmean' or 'mean'.")
+    if not isinstance(gene_sets, dict) or len(gene_sets) == 0:
+        raise ValueError("gene_sets must be a non-empty dict of name -> gene list.")
+    if not isinstance(prefix, str):
+        raise ValueError("prefix must be a string.")
+    if min_genes < 1:
+        raise ValueError("min_genes must be >= 1.")
+    if layer is not None and layer not in adata.layers:
+        raise KeyError(f"Layer '{layer}' not found in adata.layers.")
     X = adata.layers[layer] if layer is not None else adata.X
     var_names = adata.var_names
     idx = {g: i for i, g in enumerate(var_names)}
