@@ -31,6 +31,7 @@ from .plotting import (
 )
 from .preprocessing import add_log1p_cpm_layer
 from .scoring import score_gene_sets
+from .scoring_aucell import score_gene_sets_aucell
 from .stats._extract import extract_gene_vector
 from .stats.abundance import abundance_did
 from .stats.comparisons import (
@@ -82,6 +83,7 @@ __all__ = [
     # Preprocessing
     "add_log1p_cpm_layer",
     "score_gene_sets",
+    "score_gene_sets_aucell",
     # Data tools
     "subset_primary",
     "subset_cells",
