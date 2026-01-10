@@ -25,22 +25,9 @@ Effect Sizes & Power
 - **sample_size_did**: Sample size determination
 """
 from .abundance import abundance_did
-from .comparisons import (
-    between_arm_comparison,
-    compare_gene_in_celltype,
-    within_arm_comparison,
-)
-
-# Cross-validation
-from .cv import (
-    cv_summary,
-    influence_diagnostics,
-    kfold_cv_did,
-    loo_cv_did,
-)
+from .comparisons import between_arm_comparison, compare_gene_in_celltype, within_arm_comparison
+from .cv import cv_summary, influence_diagnostics, kfold_cv_did, loo_cv_did
 from .did import did_fit, did_table, did_table_by_celltype
-
-# Effect size calculations
 from .effect_size import (
     add_effect_sizes_to_did,
     bootstrap_effect_size_ci,
@@ -49,43 +36,13 @@ from .effect_size import (
     effect_size_ci,
     hedges_g,
 )
-from .gsea import (
-    run_gsea_did,
-    run_gsea_did_by_celltype,
-    run_gsea_did_multi,
-    run_gsea_pseudobulk,
-)
-
-# Mixed effects models
-from .mixed_effects import (
-    compare_fixed_vs_mixed,
-    did_mixed,
-    did_table_mixed,
-)
-
-# Power analysis
-from .power import (
-    design_effect,
-    effective_sample_size,
-    power_curve,
-    power_did,
-    sample_size_did,
-)
-from .pseudobulk import (
-    pseudobulk_did,
-    pseudobulk_expression,
-    pseudobulk_within_arm,
-)
+from .gsea import run_gsea_did, run_gsea_did_by_celltype, run_gsea_did_multi, run_gsea_pseudobulk
+from .mixed_effects import compare_fixed_vs_mixed, did_mixed, did_table_mixed
 from .module_scores import module_score_did_by_pool, module_score_pseudobulk
+from .power import design_effect, effective_sample_size, power_curve, power_did, sample_size_did
+from .pseudobulk import pseudobulk_did, pseudobulk_expression, pseudobulk_within_arm
 from .summary import summarize_did_results
-
-# Time series analysis
-from .timeseries import (
-    event_study_did,
-    polynomial_trend,
-    test_parallel_trends,
-    trend_interaction,
-)
+from .timeseries import event_study_did, polynomial_trend, test_parallel_trends, trend_interaction
 
 __all__ = [
     # Core DiD
