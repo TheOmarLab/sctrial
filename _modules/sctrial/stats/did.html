@@ -373,6 +373,10 @@
 <span class="sd">        - p_time: P-value for time effect</span>
 <span class="sd">        - n_units: Number of participants used</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">df</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;df must be a non-empty DataFrame.&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">n_boot</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;n_boot must be &gt;= 1.&quot;</span><span class="p">)</span>
     <span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">unit</span><span class="p">,</span> <span class="n">time</span><span class="p">,</span> <span class="n">arm_bin</span><span class="p">,</span> <span class="n">y</span><span class="p">]</span>
     <span class="k">if</span> <span class="n">covariates</span><span class="p">:</span>
         <span class="n">cols</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">covariates</span><span class="p">)</span>
