@@ -134,7 +134,7 @@ def did_mixed(
     df = df.copy()
 
     # Encode binary variables
-    df["_treat"] = (df[arm_col] == arm_treated).astype(int)
+    df["arm_bin"] = (df[arm_col] == arm_treated).astype(int)
 
     # Ensure time is numeric
     time_vals = df[time_col].unique()
@@ -154,10 +154,10 @@ def did_mixed(
 
     # Map time to 0/1 (pre=0, post=1)
     time_sorted = sorted(time_vals)
-    df["_post"] = df[time_col].map({time_sorted[0]: 0, time_sorted[1]: 1}).astype(float)
+    df["post_num"] = df[time_col].map({time_sorted[0]: 0, time_sorted[1]: 1}).astype(float)
 
     # Build formula
-    fixed_part = f"{outcome} ~ _treat + _post + _treat:_post"
+    fixed_part = f"{outcome} ~ arm_bin + post_num + arm_bin:post_num"
     if covariates:
         for cov in covariates:
             if cov in df.columns:
@@ -165,7 +165,7 @@ def did_mixed(
 
     # Random effects specification
     if random_slope:
-        re_formula = "1 + _post"
+        re_formula = "1 + post_num"
     else:
         re_formula = "1"
 
@@ -194,9 +194,9 @@ def did_mixed(
         }
 
     # Extract DiD coefficient
-    did_term = "_treat:_post"
+    did_term = "arm_bin:post_num"
     if did_term not in fit.params.index:
-        did_term = "_post:_treat"  # Alternative ordering
+        did_term = "post_num:arm_bin"  # Alternative ordering
 
     if did_term in fit.params.index:
         beta = float(fit.params[did_term])
@@ -365,13 +365,13 @@ def did_table_mixed(
                     "converged": False,
                 })
                 continue
-            df_feat["_y"] = y_std
+            df_feat["outcome_std"] = y_std
         else:
-            df_feat["_y"] = df_feat[feat].astype(float)
+            df_feat["outcome_std"] = df_feat[feat].astype(float)
 
         result = did_mixed(
             df_feat,
-            outcome="_y",
+            outcome="outcome_std",
             participant_col=design.participant_col,
             time_col=design.visit_col,
             arm_col=design.arm_col,

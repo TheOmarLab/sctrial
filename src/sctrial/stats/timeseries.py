@@ -194,12 +194,12 @@ def trend_interaction(
     )
 
     # Add numeric time
-    df["_time"] = df[design.visit_col].map(time_map).astype(float)
-    df["_treat"] = (df[design.arm_col] == design.arm_treated).astype(int)
+    df["time_num"] = df[design.visit_col].map(time_map).astype(float)
+    df["arm_bin"] = (df[design.arm_col] == design.arm_treated).astype(int)
 
     # Aggregate to participant-visit level
     if aggregate == "participant_visit":
-        grp_cols = [design.participant_col, design.visit_col, design.arm_col, "_time", "_treat"]
+        grp_cols = [design.participant_col, design.visit_col, design.arm_col, "time_num", "arm_bin"]
         df = df.groupby(grp_cols, observed=True)[list(features)].mean().reset_index()
 
     n_units = df[design.participant_col].nunique()
@@ -208,25 +208,25 @@ def trend_interaction(
     rows = []
     for feat in features:
         df_feat = df.copy()
-        df_feat["_y"] = df_feat[feat].astype(float)
+        df_feat["outcome_std"] = df_feat[feat].astype(float)
 
         # Standardize
-        y_std = df_feat["_y"].std(ddof=1)
+        y_std = df_feat["outcome_std"].std(ddof=1)
         if y_std < 1e-12:
             rows.append({"feature": feat, "n_units": n_units, "n_timepoints": n_timepoints})
             continue
-        df_feat["_y"] = (df_feat["_y"] - df_feat["_y"].mean()) / y_std
+        df_feat["outcome_std"] = (df_feat["outcome_std"] - df_feat["outcome_std"].mean()) / y_std
 
         # Build formula based on model
         if model == "linear":
-            formula = f"_y ~ _time + _treat:_time + C({design.participant_col})"
+            formula = f"outcome_std ~ time_num + arm_bin:time_num + C({design.participant_col})"
         elif model == "quadratic":
-            df_feat["_time2"] = df_feat["_time"] ** 2
-            formula = f"_y ~ _time + _time2 + _treat:_time + _treat:_time2 + C({design.participant_col})"
+            df_feat["time_num2"] = df_feat["time_num"] ** 2
+            formula = f"outcome_std ~ time_num + time_num2 + arm_bin:time_num + arm_bin:time_num2 + C({design.participant_col})"
         elif model == "cubic":
-            df_feat["_time2"] = df_feat["_time"] ** 2
-            df_feat["_time3"] = df_feat["_time"] ** 3
-            formula = f"_y ~ _time + _time2 + _time3 + _treat:_time + _treat:_time2 + _treat:_time3 + C({design.participant_col})"
+            df_feat["time_num2"] = df_feat["time_num"] ** 2
+            df_feat["time_num3"] = df_feat["time_num"] ** 3
+            formula = f"outcome_std ~ time_num + time_num2 + time_num3 + arm_bin:time_num + arm_bin:time_num2 + arm_bin:time_num3 + C({design.participant_col})"
         else:
             raise ValueError(f"Unknown model: {model}")
 
@@ -238,21 +238,21 @@ def trend_interaction(
 
             result = {
                 "feature": feat,
-                "beta_trend": float(fit.params.get("_time", np.nan)),
-                "beta_treat_trend": float(fit.params.get("_treat:_time", np.nan)),
-                "se_treat_trend": float(fit.bse.get("_treat:_time", np.nan)),
-                "p_treat_trend": float(fit.pvalues.get("_treat:_time", np.nan)),
+                "beta_trend": float(fit.params.get("time_num", np.nan)),
+                "beta_treat_trend": float(fit.params.get("arm_bin:time_num", np.nan)),
+                "se_treat_trend": float(fit.bse.get("arm_bin:time_num", np.nan)),
+                "p_treat_trend": float(fit.pvalues.get("arm_bin:time_num", np.nan)),
                 "n_units": n_units,
                 "n_timepoints": n_timepoints,
             }
 
             if model in ["quadratic", "cubic"]:
-                result["beta_treat_trend2"] = float(fit.params.get("_treat:_time2", np.nan))
-                result["p_treat_trend2"] = float(fit.pvalues.get("_treat:_time2", np.nan))
+                result["beta_treat_trend2"] = float(fit.params.get("arm_bin:time_num2", np.nan))
+                result["p_treat_trend2"] = float(fit.pvalues.get("arm_bin:time_num2", np.nan))
 
             if model == "cubic":
-                result["beta_treat_trend3"] = float(fit.params.get("_treat:_time3", np.nan))
-                result["p_treat_trend3"] = float(fit.pvalues.get("_treat:_time3", np.nan))
+                result["beta_treat_trend3"] = float(fit.params.get("arm_bin:time_num3", np.nan))
+                result["p_treat_trend3"] = float(fit.pvalues.get("arm_bin:time_num3", np.nan))
 
             rows.append(result)
 
@@ -434,20 +434,20 @@ def polynomial_trend(
     grp_cols = [design.participant_col, design.visit_col, design.arm_col]
     df = df.groupby(grp_cols, observed=True)[[feature]].mean().reset_index()
 
-    df["_time"] = df[design.visit_col].map(time_map).astype(float)
-    df["_treat"] = (df[design.arm_col] == design.arm_treated).astype(int)
-    df["_y"] = df[feature].astype(float)
+    df["time_num"] = df[design.visit_col].map(time_map).astype(float)
+    df["arm_bin"] = (df[design.arm_col] == design.arm_treated).astype(int)
+    df["outcome_std"] = df[feature].astype(float)
 
     # Build polynomial terms
-    terms = ["_time"]
+    terms = ["time_num"]
     for d in range(2, degree + 1):
-        df[f"_time{d}"] = df["_time"] ** d
-        terms.append(f"_time{d}")
+        df[f"time_num{d}"] = df["time_num"] ** d
+        terms.append(f"time_num{d}")
 
     # Build formula with interactions
     fixed = " + ".join(terms)
-    interact = " + ".join([f"_treat:{t}" for t in terms])
-    formula = f"_y ~ {fixed} + {interact} + C({design.participant_col})"
+    interact = " + ".join([f"arm_bin:{t}" for t in terms])
+    formula = f"outcome_std ~ {fixed} + {interact} + C({design.participant_col})"
 
     fit = smf.ols(formula, data=df).fit()
 
@@ -456,9 +456,9 @@ def polynomial_trend(
     pred_data = []
     for treat in [0, 1]:
         for t in time_grid:
-            row = {"_time": t, "_treat": treat}
+            row = {"time_num": t, "arm_bin": treat}
             for d in range(2, degree + 1):
-                row[f"_time{d}"] = t ** d
+                row[f"time_num{d}"] = t ** d
             # Use mean participant (approximate)
             row[design.participant_col] = df[design.participant_col].iloc[0]
             pred_data.append(row)
@@ -469,12 +469,12 @@ def polynomial_trend(
     except (ValueError, KeyError, TypeError):
         pred_df["predicted"] = np.nan
 
-    pred_df["arm"] = pred_df["_treat"].map({0: design.arm_control, 1: design.arm_treated})
+    pred_df["arm"] = pred_df["arm_bin"].map({0: design.arm_control, 1: design.arm_treated})
 
     return {
         "coefficients": fit.params.to_dict(),
         "pvalues": fit.pvalues.to_dict(),
-        "predictions": pred_df[["_time", "arm", "predicted"]],
+        "predictions": pred_df[["time_num", "arm", "predicted"]],
         "aic": fit.aic,
         "bic": fit.bic,
         "rsquared": fit.rsquared,

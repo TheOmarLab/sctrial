@@ -26,14 +26,15 @@ def _standardize_outcome(
     tmp: pd.DataFrame,
     y: str,
     standardize: bool,
+    outcome_col: str = "outcome_std",
 ) -> pd.DataFrame | None:
     if not standardize:
-        tmp["_y"] = tmp[y].astype(float)
+        tmp[outcome_col] = tmp[y].astype(float)
         return tmp
     y_std, ok = standardize_series(tmp, y, min_std=1e-8)
     if not ok:
         return None
-    tmp["_y"] = y_std
+    tmp[outcome_col] = y_std
     return tmp
 
 
@@ -42,8 +43,9 @@ def _build_did_formula(
     arm_bin: str,
     unit: str,
     covariates: list[str] | None,
+    outcome_col: str = "outcome_std",
 ) -> str:
-    formula = f"_y ~ {time} + {time}:{arm_bin} + C({unit})"
+    formula = f"{outcome_col} ~ {time} + {time}:{arm_bin} + C({unit})"
     if covariates:
         formula += " + " + " + ".join(covariates)
     return formula
@@ -307,8 +309,8 @@ def did_fit(
         return {"beta_DiD": np.nan, "se_DiD": np.nan, "p_DiD": np.nan, "n_units": n_units}
 
     # time is assumed numeric 0/1 already
-    tmp = _standardize_outcome(tmp, y, standardize)
-    if tmp is None:
+    tmp_opt = _standardize_outcome(tmp, y, standardize, outcome_col="outcome_std")
+    if tmp_opt is None:
         return {
             "beta_DiD": np.nan,
             "se_DiD": np.nan,
@@ -317,10 +319,11 @@ def did_fit(
             "p_time": np.nan,
             "n_units": n_units,
         }
+    tmp = tmp_opt
     # mypy: tmp is guaranteed non-None beyond this point
     assert tmp is not None
 
-    formula = _build_did_formula(time, arm_bin, unit, covariates)
+    formula = _build_did_formula(time, arm_bin, unit, covariates, outcome_col="outcome_std")
 
     # detection of aggregation for weighting
     weights = None

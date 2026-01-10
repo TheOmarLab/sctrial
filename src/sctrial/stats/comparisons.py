@@ -93,11 +93,11 @@ def _ols_between_arm(
                 "p_arm": np.nan,
                 "n_units": int(df_feat[design.participant_col].nunique()),
             }
-        df_feat["_y"] = y_std
-    else:
-        df_feat["_y"] = df_feat[feat].astype(float)
+            df_feat["outcome_std"] = y_std
+        else:
+            df_feat["outcome_std"] = df_feat[feat].astype(float)
 
-    model = smf.ols("_y ~ arm_bin", data=df_feat)
+        model = smf.ols("outcome_std ~ arm_bin", data=df_feat)
     fit = model.fit()
     return {
         "feature": feat,
@@ -180,21 +180,21 @@ def within_arm_comparison(
         df_feat = df_use.copy()
 
         if standardize:
-                y_std, ok = standardize_series(df_feat, feat, min_std=1e-12)
-                if not ok:
-                    # Skip features with near-zero variance
-                    rows.append({
-                        "feature": feat,
-                        "beta_time": np.nan,
-                        "p_time": np.nan,
-                        "n_units": int(df_feat[unit].nunique()),
-                    })
-                    continue
-                df_feat["_y"] = y_std
+            y_std, ok = standardize_series(df_feat, feat, min_std=1e-12)
+            if not ok:
+                # Skip features with near-zero variance
+                rows.append({
+                    "feature": feat,
+                    "beta_time": np.nan,
+                    "p_time": np.nan,
+                    "n_units": int(df_feat[unit].nunique()),
+                })
+                continue
+            df_feat["outcome_std"] = y_std
         else:
-            df_feat["_y"] = df_feat[feat].astype(float)
+            df_feat["outcome_std"] = df_feat[feat].astype(float)
 
-        model = smf.ols(f"_y ~ visit_num + C({unit})", data=df_feat)
+        model = smf.ols(f"outcome_std ~ visit_num + C({unit})", data=df_feat)
         fit = model.fit(cov_type="cluster", cov_kwds={"groups": df_feat[unit]})
 
         rows.append({
@@ -349,7 +349,7 @@ def compare_gene_in_celltype(
     df = df.dropna(subset=[participant_col, "group"])
 
     def _summarize(group_df: pd.DataFrame) -> pd.Series:
-        vals = group_df["expr"].values
+        vals = np.asarray(group_df["expr"].values, dtype=float)
         return pd.Series({
             "mean_expr": float(np.mean(vals)),
             "median_expr": float(np.median(vals)),
