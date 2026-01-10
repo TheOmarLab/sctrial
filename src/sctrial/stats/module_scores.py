@@ -14,6 +14,7 @@ from ..design import TrialDesign
 __all__ = [
     "module_score_pseudobulk",
     "module_score_did_by_pool",
+    "module_score_within_arm_by_pool",
 ]
 
 
@@ -179,19 +180,42 @@ def module_score_did_by_pool(
             df["arm_bin"] = (df[design.arm_col] == design.arm_treated).astype(int)
             model = smf.ols("module_score ~ visit_num + arm_bin + visit_num:arm_bin", data=df)
             fit = model.fit(cov_type="HC1")
+
+            # Compute mean deltas from unpaired group means
+            treated = df[df["arm_bin"] == 1]
+            control = df[df["arm_bin"] == 0]
+            treated_means = treated.groupby(design.visit_col)["module_score"].mean()
+            control_means = control.groupby(design.visit_col)["module_score"].mean()
+            if visits[0] not in treated_means or visits[1] not in treated_means:
+                continue
+            if visits[0] not in control_means or visits[1] not in control_means:
+                continue
+            mean_delta_treated = float(treated_means.get(visits[1]) - treated_means.get(visits[0]))
+            mean_delta_control = float(control_means.get(visits[1]) - control_means.get(visits[0]))
+
+            # Within-arm visit effect (unpaired OLS) for reporting p-values
+            p_treated = np.nan
+            p_control = np.nan
+            try:
+                fit_t = smf.ols("module_score ~ visit_num", data=treated).fit(cov_type="HC1")
+                p_treated = float(fit_t.pvalues.get("visit_num", np.nan))
+            except (ValueError, TypeError):
+                p_treated = np.nan
+            try:
+                fit_c = smf.ols("module_score ~ visit_num", data=control).fit(cov_type="HC1")
+                p_control = float(fit_c.pvalues.get("visit_num", np.nan))
+            except (ValueError, TypeError):
+                p_control = np.nan
+
             rows.append({
                 "pool": pool,
                 "module": module,
-                "mean_delta_treated": float(
-                    df[df["arm_bin"] == 1].groupby(design.visit_col)["module_score"].mean().diff().iloc[-1]
-                ),
-                "mean_delta_control": float(
-                    df[df["arm_bin"] == 0].groupby(design.visit_col)["module_score"].mean().diff().iloc[-1]
-                ),
+                "mean_delta_treated": mean_delta_treated,
+                "mean_delta_control": mean_delta_control,
                 "beta_DiD": float(fit.params.get("visit_num:arm_bin", np.nan)),
                 "p_DiD": float(fit.pvalues.get("visit_num:arm_bin", np.nan)),
-                "p_treated": np.nan,
-                "p_control": np.nan,
+                "p_treated": p_treated,
+                "p_control": p_control,
                 "n_units": int(df[design.participant_col].nunique()),
             })
             continue
@@ -265,6 +289,83 @@ def module_score_did_by_pool(
             if mask.sum() > 0:
                 res.loc[sub.index[mask], "FDR_DiD"] = multipletests(
                     sub.loc[mask, "p_DiD"], method="fdr_bh"
+                )[1]
+
+    return res
+
+
+def module_score_within_arm_by_pool(
+    pb: pd.DataFrame,
+    design: TrialDesign,
+    visits: tuple[str, str],
+    *,
+    min_paired: int = 3,
+    fdr_within: str | None = "module",
+) -> pd.DataFrame:
+    """Within-arm paired tests on module scores by pool.
+
+    Parameters
+    ----------
+    pb
+        Output of module_score_pseudobulk().
+    design
+        TrialDesign object.
+    visits
+        Tuple of (baseline, followup) visit labels.
+    min_paired
+        Minimum paired participants per pool/module.
+    fdr_within
+        If "module", FDR is computed within each module across pools.
+        If "pool", FDR is computed within each pool across modules.
+        If None, global FDR.
+    """
+    rows: list[dict[str, Any]] = []
+
+    for (pool, module), sub in pb.groupby(["pool", "module"], observed=True):
+        wide = sub.pivot_table(
+            index=design.participant_col,
+            columns=design.visit_col,
+            values="module_score",
+            aggfunc="mean",
+        )
+        if visits[0] not in wide.columns or visits[1] not in wide.columns:
+            continue
+        wide = wide.dropna()
+        if len(wide) < min_paired:
+            continue
+
+        pre = wide[visits[0]].values
+        post = wide[visits[1]].values
+        delta = post - pre
+        try:
+            _, p_val = wilcoxon(delta)
+        except (ValueError, TypeError):
+            p_val = np.nan
+
+        rows.append({
+            "pool": pool,
+            "module": module,
+            "mean_delta": float(delta.mean()),
+            "p_time": float(p_val),
+            "n_units": int(len(wide)),
+        })
+
+    res = pd.DataFrame(rows)
+    if res.empty:
+        return res
+
+    if fdr_within is None:
+        mask = res["p_time"].notna()
+        res["FDR_time"] = np.nan
+        if mask.sum() > 0:
+            res.loc[mask, "FDR_time"] = multipletests(res.loc[mask, "p_time"], method="fdr_bh")[1]
+    else:
+        res["FDR_time"] = np.nan
+        for key, sub in res.groupby(fdr_within, observed=True):
+            mask = sub["p_time"].notna()
+            if mask.sum() > 0:
+                res.loc[sub.index[mask], "FDR_time"] = multipletests(
+                    sub.loc[mask, "p_time"], method="fdr_bh"
                 )[1]
 
     return res

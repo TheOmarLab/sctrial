@@ -65,3 +65,16 @@ def test_module_score_pseudobulk_and_did():
     # Expect positive DiD for ms_A
     res_a = res[res["module"] == "ms_A"]
     assert (res_a["beta_DiD"] > 0).all()
+
+    # Within-arm pseudobulk (treated only)
+    pb_treated = pb[pb["arm"] == "Treated"].copy()
+    res_within = st.module_score_within_arm_by_pool(
+        pb_treated,
+        design,
+        visits=("V1", "V2"),
+        min_paired=2,
+        fdr_within=None,
+    )
+    assert not res_within.empty
+    res_within_a = res_within[res_within["module"] == "ms_A"]
+    assert (res_within_a["mean_delta"] > 0).all()

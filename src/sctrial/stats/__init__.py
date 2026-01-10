@@ -38,7 +38,11 @@ from .effect_size import (
 )
 from .gsea import run_gsea_did, run_gsea_did_by_celltype, run_gsea_did_multi, run_gsea_pseudobulk
 from .mixed_effects import compare_fixed_vs_mixed, did_mixed, did_table_mixed
-from .module_scores import module_score_did_by_pool, module_score_pseudobulk
+from .module_scores import (
+    module_score_did_by_pool,
+    module_score_pseudobulk,
+    module_score_within_arm_by_pool,
+)
 from .power import design_effect, effective_sample_size, power_curve, power_did, sample_size_did
 from .pseudobulk import pseudobulk_did, pseudobulk_expression, pseudobulk_within_arm
 from .summary import summarize_did_results
@@ -62,6 +66,7 @@ __all__ = [
     "pseudobulk_did",
     "module_score_pseudobulk",
     "module_score_did_by_pool",
+    "module_score_within_arm_by_pool",
     "compare_gene_in_celltype",
     # Effect sizes
     "cohens_d",

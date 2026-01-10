@@ -66,7 +66,11 @@ from .stats.pseudobulk import (
     pseudobulk_expression,
     pseudobulk_within_arm,
 )
-from .stats.module_scores import module_score_did_by_pool, module_score_pseudobulk
+from .stats.module_scores import (
+    module_score_did_by_pool,
+    module_score_pseudobulk,
+    module_score_within_arm_by_pool,
+)
 from .stats.summary import summarize_did_results
 from .stats.timeseries import event_study_did, test_parallel_trends, trend_interaction
 from .utils import resolve_feature
@@ -115,6 +119,7 @@ __all__ = [
     "pseudobulk_did",
     "module_score_pseudobulk",
     "module_score_did_by_pool",
+    "module_score_within_arm_by_pool",
     "compare_gene_in_celltype",
     # Effect sizes
     "cohens_d",
