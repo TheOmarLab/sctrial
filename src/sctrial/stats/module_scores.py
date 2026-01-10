@@ -6,6 +6,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 from scipy.stats import wilcoxon
+import statsmodels.formula.api as smf
 from statsmodels.stats.multitest import multipletests
 
 from ..design import TrialDesign
@@ -139,6 +140,7 @@ def module_score_did_by_pool(
     n_perm: int = 1000,
     seed: int = 42,
     fdr_within: str | None = "module",
+    allow_unpaired: bool = False,
 ) -> pd.DataFrame:
     """Compute DiD on module scores by pool with permutation p-values.
 
@@ -158,10 +160,42 @@ def module_score_did_by_pool(
         If "module", FDR is computed within each module across pools.
         If "pool", FDR is computed within each pool across modules.
         If None, global FDR.
+    allow_unpaired
+        If True, fit an unpaired OLS DiD (module_score ~ visit + arm + visit×arm)
+        using all available participant-visit observations. This is a fallback
+        when no paired participants exist and should be interpreted cautiously.
     """
     rows: list[dict[str, Any]] = []
 
     for (pool, module), sub in pb.groupby(["pool", "module"], observed=True):
+        sub = sub[sub[design.visit_col].isin(visits)].copy()
+        sub = sub[sub[design.arm_col].isin([design.arm_treated, design.arm_control])].copy()
+        if sub[design.visit_col].nunique() < 2 or sub[design.arm_col].nunique() < 2:
+            continue
+
+        if allow_unpaired:
+            df = sub.copy()
+            df["visit_num"] = df[design.visit_col].map({visits[0]: 0, visits[1]: 1})
+            df["arm_bin"] = (df[design.arm_col] == design.arm_treated).astype(int)
+            model = smf.ols("module_score ~ visit_num + arm_bin + visit_num:arm_bin", data=df)
+            fit = model.fit(cov_type="HC1")
+            rows.append({
+                "pool": pool,
+                "module": module,
+                "mean_delta_treated": float(
+                    df[df["arm_bin"] == 1].groupby(design.visit_col)["module_score"].mean().diff().iloc[-1]
+                ),
+                "mean_delta_control": float(
+                    df[df["arm_bin"] == 0].groupby(design.visit_col)["module_score"].mean().diff().iloc[-1]
+                ),
+                "beta_DiD": float(fit.params.get("visit_num:arm_bin", np.nan)),
+                "p_DiD": float(fit.pvalues.get("visit_num:arm_bin", np.nan)),
+                "p_treated": np.nan,
+                "p_control": np.nan,
+                "n_units": int(df[design.participant_col].nunique()),
+            })
+            continue
+
         wide = sub.pivot_table(
             index=design.participant_col,
             columns=design.visit_col,
