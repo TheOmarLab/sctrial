@@ -237,11 +237,11 @@ def plot_did_forest(
     y_pos = np.arange(len(df_plot))
 
     # Identify significant ones
-    sig: Any
+    sig: pd.Series
     if p_col in df_plot.columns:
         sig = df_plot[p_col] < alpha
     else:
-        sig = np.zeros(len(df_plot), dtype=bool)
+        sig = pd.Series(np.zeros(len(df_plot), dtype=bool), index=df_plot.index)
 
     # Standard points
     ax.errorbar(
@@ -779,7 +779,7 @@ def plot_module_umap_panel(
 
 
 def plot_gsea_heatmap(
-    gsea_results: pd.DataFrame,
+    gsea_results: Any,
     collection: str | None = None,
     fdr_thresh: float = 0.25,
     top_n: int = 30,
@@ -818,11 +818,11 @@ def plot_gsea_heatmap(
             "Install with: pip install sctrial[plots]"
         )
     # If it's a gseapy Prerank object, extract res2d
-    df: Any
+    df: pd.DataFrame
     if hasattr(gsea_results, "res2d"):
         df = gsea_results.res2d.copy()
     else:
-        df = gsea_results.copy()
+        df = pd.DataFrame(gsea_results).copy()
 
     if pool_col not in df.columns:
         # Assume global result if pool column is missing
