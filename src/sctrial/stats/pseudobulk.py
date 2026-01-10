@@ -56,25 +56,46 @@ def pseudobulk_expression(
     X = _get_layer(adata, counts_layer)
     gene_idx = [int(adata.var_names.get_loc(g)) for g in genes]
 
+    # Group encoding (vectorized aggregation)
+    group_df = adata.obs[list(groupby)].copy()
+    group_index = pd.MultiIndex.from_frame(group_df)
+    group_index.names = list(groupby)
+    group_codes, groups = pd.factorize(group_index)
+    n_groups = len(groups)
+
+    # Total counts per cell
     if sp.issparse(X):
-        X_panel = X[:, gene_idx].toarray()
+        X_panel = X[:, gene_idx].tocsr()
         total_counts = np.asarray(X.sum(axis=1)).ravel()
+
+        # Sparse group aggregation: G @ X_panel
+        rows = group_codes
+        cols = np.arange(X_panel.shape[0], dtype=int)
+        data = np.ones(X_panel.shape[0], dtype=float)
+        G = sp.csr_matrix((data, (rows, cols)), shape=(n_groups, X_panel.shape[0]))
+
+        sums = (G @ X_panel).toarray()
+        totals = np.asarray(G @ total_counts).ravel()
+        n_cells = np.asarray(G @ np.ones(X_panel.shape[0], dtype=float)).ravel()
     else:
         X_panel = np.asarray(X[:, gene_idx])
         total_counts = np.asarray(X.sum(axis=1)).ravel()
 
-    df_expr = pd.DataFrame(X_panel, columns=genes, index=adata.obs_names)
-    df_meta = adata.obs[list(groupby)].copy()
-    df_meta["total_counts"] = total_counts
-    df = df_meta.join(df_expr, how="left")
+        sums = np.zeros((n_groups, len(genes)), dtype=float)
+        totals = np.zeros(n_groups, dtype=float)
+        n_cells = np.zeros(n_groups, dtype=float)
+        np.add.at(sums, group_codes, X_panel)
+        np.add.at(totals, group_codes, total_counts)
+        np.add.at(n_cells, group_codes, 1.0)
 
-    df_sum = (
-        df.groupby(list(groupby), observed=True)
-        .sum(numeric_only=True)
-        .reset_index()
-    )
+    # Build group summary dataframe
+    df_sum = groups.to_frame(index=False)
+    df_sum.columns = list(groupby)
+    for i, g in enumerate(genes):
+        df_sum[g] = sums[:, i]
+    df_sum["total_counts"] = totals
     if include_n_cells:
-        df_sum["n_cells"] = df.groupby(list(groupby), observed=True).size().values
+        df_sum["n_cells"] = n_cells.astype(int)
 
     totals = df_sum["total_counts"].values.reshape(-1, 1)
     cpm = df_sum[genes].values / (totals + 1e-12) * scale
