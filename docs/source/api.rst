@@ -21,7 +21,7 @@ Scoring
 
 AUCell Scoring
 --------------
-.. automodule:: sctrial.scoring_aucell
+.. automodule:: sctrial.scoring
    :members:
    :undoc-members:
 

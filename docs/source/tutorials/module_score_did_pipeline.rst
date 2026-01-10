@@ -23,3 +23,27 @@ This tutorial demonstrates a module‑score pseudobulk DiD workflow.
    )
 
    display(res.sort_values("p_DiD").head())
+
+Visualization
+-------------
+
+.. code-block:: python
+
+   # Heatmap of module‑score DiD by cell type
+   pivot = res.pivot(index="module", columns="pool", values="beta_DiD")
+   plt.figure(figsize=(10, max(4, 0.35 * len(pivot))))
+   sns.heatmap(pivot, cmap="RdBu_r", center=0)
+   plt.title("Module‑Score DiD by Cell Type")
+   plt.tight_layout()
+   plt.show()
+
+   # Module‑score UMAP panel for a selected signature
+   st.plot_module_umap_panel(
+       adata,
+       module_cols=[module_cols[0]],
+       celltype_col=design.celltype_col,
+       umap_key=\"X_umap\",
+       n_cols=1,
+       figsize=(6, 5),
+   )
+   plt.show()

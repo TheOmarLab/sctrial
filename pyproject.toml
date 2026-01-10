@@ -40,7 +40,8 @@ Issues = "https://github.com/TheOmarLab/sctrial/issues"
 [project.optional-dependencies]
 plots = ["matplotlib>=3.6", "seaborn>=0.12", "scanpy>=1.9"]
 gsea = ["gseapy>=1.0"]
-all = ["matplotlib>=3.6", "seaborn>=0.12", "scanpy>=1.9", "gseapy>=1.0"]
+aucell = ["pyscenic>=0.12"]
+all = ["matplotlib>=3.6", "seaborn>=0.12", "scanpy>=1.9", "gseapy>=1.0", "pyscenic>=0.12"]
 dev = [
   "pytest>=7.0",
   "pytest-cov>=4.0",

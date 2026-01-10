@@ -22,3 +22,24 @@ Here, we run DiD stratified by cell type and then perform GSEA per cell type.
 
    # Inspect a single cell type
    display(gsea_ct["CD8_T"].head())
+
+Visualization
+-------------
+
+.. code-block:: python
+
+   # Heatmap of pathway enrichment across cell types
+   merged = st.run_gsea_did_multi(gsea_ct)
+   st.plot_gsea_heatmap(
+       merged,
+       pool_col="celltype",
+       fdr_thresh=0.25,
+       top_n=20,
+       title="Celltype‑Specific GSEA Heatmap"
+   )
+
+   # Forest plot for a chosen cell type
+   st.plot_did_forest(
+       res_ct[res_ct["celltype"] == "CD8_T"],
+       title="DiD Effects in CD8 T"
+   )
