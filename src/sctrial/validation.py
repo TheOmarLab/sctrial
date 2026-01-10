@@ -8,7 +8,7 @@ from anndata import AnnData
 
 from .datasets import count_paired
 from .design import TrialDesign
-from .utils import looks_like_counts
+from .utils import get_counts_matrix
 
 __all__ = [
     "TrialDataValidator",
@@ -95,9 +95,10 @@ class TrialDataValidator:
                 issues.append(msg)
 
         # Check for counts layer
-        if "counts" not in adata.layers and not looks_like_counts(adata.X):
+        counts, _source = get_counts_matrix(adata)
+        if counts is None:
             issues.append(
-                "No 'counts' layer found and adata.X doesn't appear to contain raw counts. "
+                "No raw counts found in adata.layers['counts'], adata.raw.X, adata.layers['raw'], or adata.X. "
                 "For best results, provide raw counts in adata.layers['counts']"
             )
 

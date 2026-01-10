@@ -120,16 +120,16 @@ def module_score_pseudobulk(
 
 def _perm_test_diff(delta: pd.Series, arms: pd.Series, n_perm: int, seed: int) -> float:
     rng = np.random.default_rng(seed)
-    values = delta.values
-    labels = arms.values
+    values = delta.to_numpy()
+    labels = arms.to_numpy()
     treated_label = labels[0]
     obs = values[labels == treated_label].mean() - values[labels != treated_label].mean()
-    perm_vals = []
+    perm_vals: list[float] = []
     for _ in range(n_perm):
-        perm = rng.permutation(labels)
+        perm = rng.permutation(np.asarray(labels))
         perm_vals.append(values[perm == treated_label].mean() - values[perm != treated_label].mean())
-    perm_vals = np.asarray(perm_vals)
-    return float((np.abs(perm_vals) >= np.abs(obs)).mean())
+    perm_vals_arr = np.asarray(perm_vals)
+    return float((np.abs(perm_vals_arr) >= np.abs(obs)).mean())
 
 
 def module_score_did_by_pool(
@@ -190,8 +190,8 @@ def module_score_did_by_pool(
                 continue
             if visits[0] not in control_means or visits[1] not in control_means:
                 continue
-            mean_delta_treated = float(treated_means.get(visits[1]) - treated_means.get(visits[0]))
-            mean_delta_control = float(control_means.get(visits[1]) - control_means.get(visits[0]))
+            mean_delta_treated = float(treated_means.loc[visits[1]] - treated_means.loc[visits[0]])
+            mean_delta_control = float(control_means.loc[visits[1]] - control_means.loc[visits[0]])
 
             # Within-arm visit effect (unpaired OLS) for reporting p-values
             p_treated = np.nan
@@ -233,7 +233,7 @@ def module_score_did_by_pool(
             continue
 
         # attach arm labels
-        pid_arm = sub.groupby(design.participant_col)[design.arm_col].first()
+        pid_arm = sub.groupby(design.participant_col)[design.arm_col].first().to_dict()
         wide["arm"] = wide.index.map(pid_arm)
 
         # compute deltas
@@ -334,8 +334,8 @@ def module_score_within_arm_by_pool(
         if len(wide) < min_paired:
             continue
 
-        pre = wide[visits[0]].values
-        post = wide[visits[1]].values
+        pre = wide[visits[0]].to_numpy(dtype=float)
+        post = wide[visits[1]].to_numpy(dtype=float)
         delta = post - pre
         try:
             _, p_val = wilcoxon(delta)

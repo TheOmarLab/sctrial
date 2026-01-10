@@ -14,7 +14,7 @@ import scipy.sparse as sp
 from scipy.io import mmread
 from statsmodels.stats.multitest import multipletests
 
-from .utils import looks_like_counts
+from .utils import get_counts_matrix
 
 __all__ = [
     "load_sade_feldman",
@@ -69,16 +69,7 @@ def _looks_log1p(X, sample: int = 10000, seed: int = 0) -> bool:
 
 
 def _get_counts_matrix(adata: ad.AnnData) -> tuple[np.ndarray | None, str | None]:
-    if "counts" in adata.layers and looks_like_counts(adata.layers["counts"]):
-        return adata.layers["counts"], "layers['counts']"
-    if getattr(adata, "raw", None) is not None:
-        if list(adata.raw.var_names) == list(adata.var_names) and looks_like_counts(adata.raw.X):
-            return adata.raw.X, "adata.raw.X"
-    if "raw" in adata.layers and looks_like_counts(adata.layers["raw"]):
-        return adata.layers["raw"], "layers['raw']"
-    if looks_like_counts(adata.X):
-        return adata.X, "adata.X"
-    return None, None
+    return get_counts_matrix(adata)
 
 
 # Backward-compatible alias for tests/internal use

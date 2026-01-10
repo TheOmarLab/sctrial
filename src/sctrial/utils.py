@@ -16,6 +16,7 @@ __all__ = [
     "intersect_preserve_order",
     "ensure_unique_index",
     "looks_like_counts",
+    "get_counts_matrix",
     "wild_cluster_bootstrap_t",
     "permutation_pvalue",
     "permutation_pvalue_paired",
@@ -68,6 +69,20 @@ def looks_like_counts(X, sample: int = 10000, seed: int = 0) -> bool:
     if data.size > sample:
         data = rng.choice(data, size=sample, replace=False)
     return bool(np.all(data >= 0) and np.allclose(data, np.round(data), atol=1e-6))
+
+
+def get_counts_matrix(adata: AnnData) -> tuple[np.ndarray | None, str | None]:
+    """Return a raw-counts matrix and its source label, if available."""
+    if "counts" in adata.layers and looks_like_counts(adata.layers["counts"]):
+        return adata.layers["counts"], "layers['counts']"
+    if getattr(adata, "raw", None) is not None:
+        if list(adata.raw.var_names) == list(adata.var_names) and looks_like_counts(adata.raw.X):
+            return adata.raw.X, "adata.raw.X"
+    if "raw" in adata.layers and looks_like_counts(adata.layers["raw"]):
+        return adata.layers["raw"], "layers['raw']"
+    if looks_like_counts(adata.X):
+        return adata.X, "adata.X"
+    return None, None
 
 
 def wild_cluster_bootstrap_t(
