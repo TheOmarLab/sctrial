@@ -5,8 +5,8 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from scipy.stats import wilcoxon
 import statsmodels.formula.api as smf
+from scipy.stats import wilcoxon
 from statsmodels.stats.multitest import multipletests
 
 from ..design import TrialDesign

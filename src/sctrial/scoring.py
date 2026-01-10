@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal, TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 import pandas as pd
@@ -8,14 +8,14 @@ import scipy.sparse as sp
 from anndata import AnnData
 
 if TYPE_CHECKING:
-    from pyscenic.aucell import aucell
+    from ctxcore.genesig import GeneSignature
 
 __all__ = ["score_gene_sets", "score_gene_sets_aucell", "ScoreMethod"]
 
 ScoreMethod = Literal["zmean", "mean"]
 
 try:
-    from pyscenic.aucell import create_rankings, aucell
+    from pyscenic.aucell import aucell, create_rankings
 except ImportError:  # pragma: no cover
     create_rankings = None
     aucell = None
@@ -131,7 +131,7 @@ def score_gene_sets(
 
 def score_gene_sets_aucell(
     adata: AnnData,
-    gene_sets: dict[str, list[str]] | dict[str, "GeneSignature"],
+    gene_sets: dict[str, list[str]] | dict[str, GeneSignature],
     *,
     layer: str | None = None,
     prefix: str = "aucell_",
@@ -140,6 +140,24 @@ def score_gene_sets_aucell(
     """Score gene sets using AUCell (pySCENIC).
 
     Requires pyscenic to be installed.
+
+    Parameters
+    ----------
+    adata
+        AnnData object containing expression data.
+    gene_sets
+        Dictionary mapping set names to lists of genes (or GeneSignature objects).
+    layer
+        Expression layer to use. If None, uses `adata.X`.
+    prefix
+        Prefix to add to output columns (default: ``aucell_``).
+    overwrite
+        If False, skip sets that already exist in `adata.obs`.
+
+    Returns
+    -------
+    AnnData
+        The input AnnData with AUCell scores added to `adata.obs`.
     """
     if create_rankings is None or aucell is None:
         raise ImportError("pyscenic is required for AUCell scoring. Install with 'pip install pyscenic'.")
