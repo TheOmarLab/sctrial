@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Pseudobulk DiD + Bootstrap &mdash; sctrial 0.2.0 documentation</title>
+  <title>Mixed Effects Models &mdash; sctrial 0.2.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
@@ -20,8 +20,8 @@
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Module Score DiD Pipeline" href="module_score_did_pipeline.html" />
-    <link rel="prev" title="Celltype‑specific DiD + GSEA" href="celltype_did_gsea.html" /> 
+    <link rel="next" title="Multi-Timepoint Analysis" href="multi_timepoint_analysis.html" />
+    <link rel="prev" title="Cross-Validation and Robustness" href="cross_validation.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -52,13 +52,15 @@
 <li class="toctree-l2"><a class="reference internal" href="validation_workflow.html">Validation Workflow</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gsea_analysis.html">GSEA and Pathway Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="celltype_did_gsea.html">Celltype‑specific DiD + GSEA</a></li>
-<li class="toctree-l2 current"><a class="current reference internal" href="#">Pseudobulk DiD + Bootstrap</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#visualization">Visualization</a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="pseudobulk_did_bootstrap.html">Pseudobulk DiD + Bootstrap</a></li>
 <li class="toctree-l2"><a class="reference internal" href="module_score_did_pipeline.html">Module Score DiD Pipeline</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cross_validation.html">Cross-Validation and Robustness</a></li>
-<li class="toctree-l2"><a class="reference internal" href="mixed_effects_models.html">Mixed Effects Models</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Mixed Effects Models</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#run-mixed-effects-did">1. Run mixed-effects DiD</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#compare-fixed-vs-mixed-effects">2. Compare fixed vs mixed effects</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#interpretation">Interpretation</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="multi_timepoint_analysis.html">Multi-Timepoint Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="advanced_designs.html">Advanced Trial Analysis</a></li>
 </ul>
@@ -89,9 +91,9 @@
   <ul class="wy-breadcrumbs">
       <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
           <li class="breadcrumb-item"><a href="index.html">Tutorials</a></li>
-      <li class="breadcrumb-item active">Pseudobulk DiD + Bootstrap</li>
+      <li class="breadcrumb-item active">Mixed Effects Models</li>
       <li class="wy-breadcrumbs-aside">
-            <a href="../_sources/tutorials/pseudobulk_did_bootstrap.rst.txt" rel="nofollow"> View page source</a>
+            <a href="../_sources/tutorials/mixed_effects_models.rst.txt" rel="nofollow"> View page source</a>
       </li>
   </ul>
   <hr/>
@@ -99,40 +101,47 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="pseudobulk-did-bootstrap">
-<h1>Pseudobulk DiD + Bootstrap<a class="headerlink" href="#pseudobulk-did-bootstrap" title="Link to this heading"></a></h1>
-<p>This tutorial shows pseudobulk DiD with wild‑cluster bootstrap p‑values.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">res_pb</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">pseudobulk_did</span><span class="p">(</span>
+  <section id="mixed-effects-models">
+<h1>Mixed Effects Models<a class="headerlink" href="#mixed-effects-models" title="Link to this heading"></a></h1>
+<p>Mixed effects models can be a useful sensitivity analysis when fixed-effects DiD may
+be unstable or over-parameterized. This tutorial compares fixed-effects and mixed-effects
+DiD results.</p>
+<section id="run-mixed-effects-did">
+<h2>1. Run mixed-effects DiD<a class="headerlink" href="#run-mixed-effects-did" title="Link to this heading"></a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">sctrial</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
+
+<span class="n">res_mixed</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table_mixed</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">,</span>
-    <span class="n">genes</span><span class="o">=</span><span class="n">panel_genes</span><span class="p">,</span>
+    <span class="n">features</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;sig_IFN_Response&quot;</span><span class="p">,</span> <span class="s2">&quot;sig_Cytotoxicity&quot;</span><span class="p">],</span>
     <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
-    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">),</span>
-    <span class="n">celltype_col</span><span class="o">=</span><span class="s2">&quot;celltype&quot;</span><span class="p">,</span>
-    <span class="n">min_cells_per_group</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
-    <span class="n">use_bootstrap</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-    <span class="n">n_boot</span><span class="o">=</span><span class="mi">999</span><span class="p">,</span>
+    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;Pre&quot;</span><span class="p">,</span> <span class="s2">&quot;Post&quot;</span><span class="p">),</span>
+    <span class="n">aggregate</span><span class="o">=</span><span class="s2">&quot;participant_visit&quot;</span><span class="p">,</span>
 <span class="p">)</span>
-
-<span class="n">display</span><span class="p">(</span><span class="n">res_pb</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s2">&quot;p_DiD&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">res_mixed</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
 </pre></div>
 </div>
-<section id="visualization">
-<h2>Visualization<a class="headerlink" href="#visualization" title="Link to this heading"></a></h2>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Heatmap of pseudobulk DiD effects (genes × cell types)</span>
-<span class="n">pivot</span> <span class="o">=</span> <span class="n">res_pb</span><span class="o">.</span><span class="n">pivot</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="s2">&quot;feature&quot;</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="s2">&quot;celltype&quot;</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="s2">&quot;beta_DiD&quot;</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="nb">max</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mf">0.35</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">pivot</span><span class="p">))))</span>
-<span class="n">sns</span><span class="o">.</span><span class="n">heatmap</span><span class="p">(</span><span class="n">pivot</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;RdBu_r&quot;</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Pseudobulk DiD Effects&quot;</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-
-<span class="c1"># Forest plot for a selected gene</span>
-<span class="n">st</span><span class="o">.</span><span class="n">plot_did_forest</span><span class="p">(</span>
-    <span class="n">res_pb</span><span class="p">[</span><span class="n">res_pb</span><span class="p">[</span><span class="s2">&quot;feature&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;IL7R&quot;</span><span class="p">],</span>
-    <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Pseudobulk DiD: IL7R&quot;</span>
+</section>
+<section id="compare-fixed-vs-mixed-effects">
+<h2>2. Compare fixed vs mixed effects<a class="headerlink" href="#compare-fixed-vs-mixed-effects" title="Link to this heading"></a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">comparison</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">compare_fixed_vs_mixed</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">,</span>
+    <span class="n">features</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;sig_IFN_Response&quot;</span><span class="p">],</span>
+    <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;Pre&quot;</span><span class="p">,</span> <span class="s2">&quot;Post&quot;</span><span class="p">),</span>
+    <span class="n">aggregate</span><span class="o">=</span><span class="s2">&quot;participant_visit&quot;</span><span class="p">,</span>
 <span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">comparison</span><span class="p">)</span>
 </pre></div>
 </div>
+</section>
+<section id="interpretation">
+<h2>Interpretation<a class="headerlink" href="#interpretation" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Fixed effects control for all time-invariant participant differences.</p></li>
+<li><p>Mixed effects estimate participant variability via random intercepts.</p></li>
+<li><p>If fixed- and mixed-effects results diverge strongly, report both as a sensitivity
+analysis and discuss model assumptions.</p></li>
+</ul>
 </section>
 </section>
 
@@ -140,8 +149,8 @@
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="celltype_did_gsea.html" class="btn btn-neutral float-left" title="Celltype‑specific DiD + GSEA" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="module_score_did_pipeline.html" class="btn btn-neutral float-right" title="Module Score DiD Pipeline" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="cross_validation.html" class="btn btn-neutral float-left" title="Cross-Validation and Robustness" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="multi_timepoint_analysis.html" class="btn btn-neutral float-right" title="Multi-Timepoint Analysis" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
