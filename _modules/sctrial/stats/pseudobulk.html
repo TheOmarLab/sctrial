@@ -96,7 +96,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">._utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">encode_visit</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.did</span><span class="w"> </span><span class="kn">import</span> <span class="n">did_fit</span>
 
-<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;pseudobulk_expression&quot;</span><span class="p">,</span> <span class="s2">&quot;pseudobulk_within_arm&quot;</span><span class="p">,</span> <span class="s2">&quot;pseudobulk_did&quot;</span><span class="p">]</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;pseudobulk_expression&quot;</span><span class="p">,</span> <span class="s2">&quot;pseudobulk_within_arm&quot;</span><span class="p">,</span> <span class="s2">&quot;pseudobulk_did&quot;</span><span class="p">,</span> <span class="s2">&quot;pseudobulk_export&quot;</span><span class="p">]</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_get_layer</span><span class="p">(</span><span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span> <span class="n">layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">):</span>
@@ -115,6 +115,7 @@
     <span class="n">counts_layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="s2">&quot;counts&quot;</span><span class="p">,</span>
     <span class="n">scale</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e6</span><span class="p">,</span>
     <span class="n">log1p</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">min_cells_per_group</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
     <span class="n">include_n_cells</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute pseudobulk log1p-CPM for a gene panel per group.</span>
@@ -143,6 +144,18 @@
 
     <span class="c1"># Group encoding (vectorized aggregation)</span>
     <span class="n">group_df</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="n">groupby</span><span class="p">)]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">min_cells_per_group</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">counts</span> <span class="o">=</span> <span class="n">group_df</span><span class="o">.</span><span class="n">value_counts</span><span class="p">()</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s2">&quot;n_cells&quot;</span><span class="p">)</span>
+        <span class="n">keep_groups</span> <span class="o">=</span> <span class="n">counts</span><span class="p">[</span><span class="n">counts</span> <span class="o">&gt;=</span> <span class="n">min_cells_per_group</span><span class="p">]</span><span class="o">.</span><span class="n">index</span>
+        <span class="n">group_df</span> <span class="o">=</span> <span class="n">group_df</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+            <span class="n">keep_groups</span><span class="o">.</span><span class="n">to_frame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+            <span class="n">on</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">groupby</span><span class="p">),</span>
+            <span class="n">how</span><span class="o">=</span><span class="s2">&quot;inner&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">adata</span> <span class="o">=</span> <span class="n">adata</span><span class="p">[</span><span class="n">group_df</span><span class="o">.</span><span class="n">index</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">group_df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
     <span class="n">group_index</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">MultiIndex</span><span class="o">.</span><span class="n">from_frame</span><span class="p">(</span><span class="n">group_df</span><span class="p">)</span>
     <span class="n">group_index</span><span class="o">.</span><span class="n">names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">groupby</span><span class="p">)</span>
     <span class="n">group_codes</span><span class="p">,</span> <span class="n">groups</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">factorize</span><span class="p">(</span><span class="n">group_index</span><span class="p">)</span>
@@ -188,6 +201,71 @@
         <span class="n">cpm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log1p</span><span class="p">(</span><span class="n">cpm</span><span class="p">)</span>
     <span class="n">df_sum</span><span class="p">[</span><span class="n">genes</span><span class="p">]</span> <span class="o">=</span> <span class="n">cpm</span>
     <span class="k">return</span> <span class="n">df_sum</span></div>
+
+
+
+<div class="viewcode-block" id="pseudobulk_export">
+<a class="viewcode-back" href="../../../api.html#sctrial.stats.pseudobulk.pseudobulk_export">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">pseudobulk_export</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
+    <span class="n">genes</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="n">design</span><span class="p">:</span> <span class="n">TrialDesign</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">visits</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">celltype_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">counts_layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="s2">&quot;counts&quot;</span><span class="p">,</span>
+    <span class="n">min_cells_per_group</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="n">log1p</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AnnData</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Export pseudobulk expression as a new AnnData object.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    adata</span>
+<span class="sd">        Input AnnData.</span>
+<span class="sd">    genes</span>
+<span class="sd">        List of genes to include.</span>
+<span class="sd">    design</span>
+<span class="sd">        TrialDesign object.</span>
+<span class="sd">    visits</span>
+<span class="sd">        Optional (baseline, followup) visits to subset.</span>
+<span class="sd">    celltype_col</span>
+<span class="sd">        If provided, aggregate per participant-visit-celltype.</span>
+<span class="sd">    counts_layer</span>
+<span class="sd">        Layer to use for counts (default: &quot;counts&quot;).</span>
+<span class="sd">    min_cells_per_group</span>
+<span class="sd">        Minimum cells per group to include.</span>
+<span class="sd">    log1p</span>
+<span class="sd">        Whether to log1p-transform CPM values.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    AnnData</span>
+<span class="sd">        AnnData with pseudobulk expression in .X and group metadata in .obs.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">groupby</span> <span class="o">=</span> <span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_col</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">groupby</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">celltype_col</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">groupby</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">celltype_col</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">visits</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">adata</span> <span class="o">=</span> <span class="n">adata</span><span class="p">[</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">visits</span><span class="p">)]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="n">df_sum</span> <span class="o">=</span> <span class="n">pseudobulk_expression</span><span class="p">(</span>
+        <span class="n">adata</span><span class="p">,</span>
+        <span class="n">genes</span><span class="o">=</span><span class="n">genes</span><span class="p">,</span>
+        <span class="n">groupby</span><span class="o">=</span><span class="n">groupby</span><span class="p">,</span>
+        <span class="n">counts_layer</span><span class="o">=</span><span class="n">counts_layer</span><span class="p">,</span>
+        <span class="n">min_cells_per_group</span><span class="o">=</span><span class="n">min_cells_per_group</span><span class="p">,</span>
+        <span class="n">log1p</span><span class="o">=</span><span class="n">log1p</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">X</span> <span class="o">=</span> <span class="n">df_sum</span><span class="p">[</span><span class="n">genes</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">obs</span> <span class="o">=</span> <span class="n">df_sum</span><span class="p">[</span><span class="n">groupby</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">pb</span> <span class="o">=</span> <span class="n">AnnData</span><span class="p">(</span><span class="n">X</span><span class="o">=</span><span class="n">X</span><span class="p">,</span> <span class="n">obs</span><span class="o">=</span><span class="n">obs</span><span class="p">)</span>
+    <span class="n">pb</span><span class="o">.</span><span class="n">var_names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">genes</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">pb</span></div>
 
 
 

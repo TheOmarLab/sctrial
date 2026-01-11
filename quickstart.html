@@ -181,6 +181,16 @@
 <span class="n">st</span><span class="o">.</span><span class="n">plot_gsea_heatmap</span><span class="p">(</span><span class="n">gsea</span><span class="p">,</span> <span class="n">fdr_thresh</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span> <span class="n">top_n</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
 </pre></div>
 </div>
+<p><strong>Pseudobulk export</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">pb</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">pseudobulk_export</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">,</span>
+    <span class="n">genes</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;IFNG&quot;</span><span class="p">,</span> <span class="s2">&quot;GZMB&quot;</span><span class="p">,</span> <span class="s2">&quot;NKG7&quot;</span><span class="p">],</span>
+    <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">),</span>
+    <span class="n">celltype_col</span><span class="o">=</span><span class="s2">&quot;cell_type&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
 </section>
 <section id="next-steps">
 <h2>Next steps<a class="headerlink" href="#next-steps" title="Link to this heading"></a></h2>

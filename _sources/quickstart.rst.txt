@@ -105,6 +105,18 @@ Common add‑ons
    )
    st.plot_gsea_heatmap(gsea, fdr_thresh=0.25, top_n=20)
 
+**Pseudobulk export**
+
+.. code-block:: python
+
+   pb = st.pseudobulk_export(
+       adata,
+       genes=["IFNG", "GZMB", "NKG7"],
+       design=design,
+       visits=("V1", "V2"),
+       celltype_col="cell_type",
+   )
+
 Next steps
 ----------
 
