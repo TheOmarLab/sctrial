@@ -52,6 +52,7 @@ from .pseudobulk import (
     pseudobulk_expression,
     pseudobulk_within_arm,
 )
+from .sensitivity import e_value_rr
 from .summary import summarize_did_results
 from .timeseries import event_study_did, polynomial_trend, test_parallel_trends, trend_interaction
 
@@ -95,6 +96,7 @@ __all__ = [
     "did_table_mixed",
     "compare_fixed_vs_mixed",
     "test_treatment_heterogeneity",
+    "e_value_rr",
     # Time series
     "trend_interaction",
     "event_study_did",

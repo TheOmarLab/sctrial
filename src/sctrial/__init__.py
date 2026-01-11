@@ -75,6 +75,7 @@ from .stats.pseudobulk import (
     pseudobulk_expression,
     pseudobulk_within_arm,
 )
+from .stats.sensitivity import e_value_rr
 from .stats.summary import summarize_did_results
 from .stats.timeseries import event_study_did, test_parallel_trends, trend_interaction
 from .utils import resolve_feature
@@ -175,6 +176,8 @@ __all__ = [
     "diagnose_trial_data",
     # Heterogeneity
     "test_treatment_heterogeneity",
+    # Sensitivity
+    "e_value_rr",
     "TrialDataValidator",
     # Convenience
     "quick_did",
