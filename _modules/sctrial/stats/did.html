@@ -633,6 +633,129 @@
 
 
 
+<div class="viewcode-block" id="did_table_parallel">
+<a class="viewcode-back" href="../../../api.html#sctrial.stats.did.did_table_parallel">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">did_table_parallel</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
+    <span class="n">features</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="n">design</span><span class="p">:</span> <span class="n">TrialDesign</span><span class="p">,</span>
+    <span class="n">visits</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
+    <span class="n">exclude_crossovers</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">celltype</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">aggregate</span><span class="p">:</span> <span class="n">AggregateMode</span> <span class="o">=</span> <span class="s2">&quot;participant_visit&quot;</span><span class="p">,</span>
+    <span class="n">layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">standardize</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">agg</span><span class="p">:</span> <span class="n">AggregateFunc</span> <span class="o">=</span> <span class="s2">&quot;mean&quot;</span><span class="p">,</span>
+    <span class="n">covariates</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">use_bootstrap</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">n_boot</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">999</span><span class="p">,</span>
+    <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">42</span><span class="p">,</span>
+    <span class="n">n_jobs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">backend</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;loky&quot;</span><span class="p">,</span>
+    <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">config</span><span class="p">:</span> <span class="n">DiDConfig</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Parallelized DiD across features using joblib.</span>
+
+<span class="sd">    This mirrors `did_table` but parallelizes feature-level model fits. It is</span>
+<span class="sd">    most useful for large feature panels (hundreds to thousands of genes).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    n_jobs</span>
+<span class="sd">        Number of parallel jobs (joblib convention). Use -1 for all cores.</span>
+<span class="sd">    backend</span>
+<span class="sd">        Joblib backend (&quot;loky&quot;, &quot;multiprocessing&quot;, or &quot;threading&quot;).</span>
+<span class="sd">    batch_size</span>
+<span class="sd">        Optional joblib batch size. If None, joblib chooses.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">n_jobs</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">did_table</span><span class="p">(</span>
+            <span class="n">adata</span><span class="o">=</span><span class="n">adata</span><span class="p">,</span>
+            <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span>
+            <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+            <span class="n">visits</span><span class="o">=</span><span class="n">visits</span><span class="p">,</span>
+            <span class="n">exclude_crossovers</span><span class="o">=</span><span class="n">exclude_crossovers</span><span class="p">,</span>
+            <span class="n">celltype</span><span class="o">=</span><span class="n">celltype</span><span class="p">,</span>
+            <span class="n">aggregate</span><span class="o">=</span><span class="n">aggregate</span><span class="p">,</span>
+            <span class="n">layer</span><span class="o">=</span><span class="n">layer</span><span class="p">,</span>
+            <span class="n">standardize</span><span class="o">=</span><span class="n">standardize</span><span class="p">,</span>
+            <span class="n">agg</span><span class="o">=</span><span class="n">agg</span><span class="p">,</span>
+            <span class="n">covariates</span><span class="o">=</span><span class="n">covariates</span><span class="p">,</span>
+            <span class="n">use_bootstrap</span><span class="o">=</span><span class="n">use_bootstrap</span><span class="p">,</span>
+            <span class="n">n_boot</span><span class="o">=</span><span class="n">n_boot</span><span class="p">,</span>
+            <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span>
+            <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">joblib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Parallel</span><span class="p">,</span> <span class="n">delayed</span>
+    <span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>  <span class="c1"># pragma: no cover</span>
+        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span><span class="s2">&quot;joblib is required for did_table_parallel&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+
+    <span class="k">if</span> <span class="n">config</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">aggregate</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">aggregate</span>
+        <span class="n">layer</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">layer</span>
+        <span class="n">standardize</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">standardize</span>
+        <span class="n">agg</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">agg</span>
+        <span class="n">covariates</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">covariates</span>
+        <span class="n">use_bootstrap</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">use_bootstrap</span>
+        <span class="n">n_boot</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">n_boot</span>
+        <span class="n">seed</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">seed</span>
+        <span class="n">exclude_crossovers</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">exclude_crossovers</span>
+
+    <span class="n">ad</span><span class="p">,</span> <span class="n">obs</span> <span class="o">=</span> <span class="n">_prepare_did_obs</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="p">,</span> <span class="n">celltype</span><span class="p">,</span> <span class="n">exclude_crossovers</span><span class="p">)</span>
+
+    <span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">,</span> <span class="s2">&quot;visit_num&quot;</span><span class="p">,</span> <span class="s2">&quot;arm_bin&quot;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span> <span class="ow">and</span> <span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span> <span class="ow">in</span> <span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">cols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">covariates</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">covariates</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">c</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Covariate &#39;</span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s2">&#39; not found in adata.obs&quot;</span><span class="p">)</span>
+            <span class="n">cols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+
+    <span class="n">df</span> <span class="o">=</span> <span class="n">obs</span><span class="p">[</span><span class="n">cols</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">df</span><span class="p">,</span> <span class="n">final_features</span> <span class="o">=</span> <span class="n">_add_feature_columns</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">ad</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="n">layer</span><span class="p">)</span>
+
+    <span class="n">df_use</span><span class="p">,</span> <span class="n">unit</span><span class="p">,</span> <span class="n">time</span><span class="p">,</span> <span class="n">arm_bin</span> <span class="o">=</span> <span class="n">_aggregate_for_did</span><span class="p">(</span>
+        <span class="n">df</span><span class="p">,</span>
+        <span class="n">final_features</span><span class="p">,</span>
+        <span class="n">design</span><span class="p">,</span>
+        <span class="n">visits</span><span class="p">,</span>
+        <span class="n">aggregate</span><span class="p">,</span>
+        <span class="n">agg</span><span class="p">,</span>
+        <span class="n">covariates</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_fit_feature</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">feat</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="n">did_fit</span><span class="p">(</span>
+            <span class="n">df_use</span><span class="p">,</span>
+            <span class="n">y</span><span class="o">=</span><span class="n">feat</span><span class="p">,</span>
+            <span class="n">unit</span><span class="o">=</span><span class="n">unit</span><span class="p">,</span>
+            <span class="n">time</span><span class="o">=</span><span class="n">time</span><span class="p">,</span>
+            <span class="n">arm_bin</span><span class="o">=</span><span class="n">arm_bin</span><span class="p">,</span>
+            <span class="n">covariates</span><span class="o">=</span><span class="n">covariates</span><span class="p">,</span>
+            <span class="n">standardize</span><span class="o">=</span><span class="n">standardize</span><span class="p">,</span>
+            <span class="n">use_bootstrap</span><span class="o">=</span><span class="n">use_bootstrap</span><span class="p">,</span>
+            <span class="n">n_boot</span><span class="o">=</span><span class="n">n_boot</span><span class="p">,</span>
+            <span class="n">seed</span><span class="o">=</span><span class="n">seed</span> <span class="o">+</span> <span class="n">idx</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">out</span><span class="p">[</span><span class="s2">&quot;feature&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">feat</span>
+        <span class="k">return</span> <span class="n">out</span>
+
+    <span class="n">job_batch</span> <span class="o">=</span> <span class="s2">&quot;auto&quot;</span> <span class="k">if</span> <span class="n">batch_size</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">batch_size</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="n">Parallel</span><span class="p">(</span><span class="n">n_jobs</span><span class="o">=</span><span class="n">n_jobs</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="n">backend</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="n">job_batch</span><span class="p">)(</span>
+        <span class="n">delayed</span><span class="p">(</span><span class="n">_fit_feature</span><span class="p">)(</span><span class="n">i</span><span class="p">,</span> <span class="n">feat</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">feat</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">final_features</span><span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="n">res</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s2">&quot;p_DiD&quot;</span><span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">apply_fdr</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="n">p_col</span><span class="o">=</span><span class="s2">&quot;p_DiD&quot;</span><span class="p">,</span> <span class="n">fdr_col</span><span class="o">=</span><span class="s2">&quot;FDR_DiD&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">res</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+
+
 <div class="viewcode-block" id="did_table_by_celltype">
 <a class="viewcode-back" href="../../../api.html#sctrial.stats.did.did_table_by_celltype">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">did_table_by_celltype</span><span class="p">(</span>
