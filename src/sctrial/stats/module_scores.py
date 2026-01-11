@@ -6,6 +6,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import statsmodels.formula.api as smf
+from anndata import AnnData
 from scipy.stats import wilcoxon
 from statsmodels.stats.multitest import multipletests
 
@@ -29,7 +30,7 @@ def _map_pool(celltype: str, pool_map: dict[str, Sequence[str]] | None) -> str |
 
 
 def module_score_pseudobulk(
-    adata,
+    adata: AnnData,
     module_cols: Sequence[str],
     design: TrialDesign,
     visits: tuple[str, str],

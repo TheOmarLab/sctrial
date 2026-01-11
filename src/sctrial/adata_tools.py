@@ -30,7 +30,7 @@ def _to_bool_series(s: pd.Series) -> pd.Series:
     ss = s.astype(str).str.strip().str.lower()
     true_vals = {"1", "true", "t", "yes", "y"}
     false_vals = {"0", "false", "f", "no", "n", "nan", "none"}
-    out = ss.map(lambda x: True if x in true_vals else (False if x in false_vals else False))
+    out = ss.map(lambda x: x in true_vals)
     return out.fillna(False).astype(bool)
 
 
