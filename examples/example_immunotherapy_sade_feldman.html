@@ -82,6 +82,7 @@
 <li class="toctree-l4"><a class="reference internal" href="#Model-Diagnostics-(Residual-Checks)">Model Diagnostics (Residual Checks)</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#Treatment-Heterogeneity-Example">Treatment Heterogeneity Example</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#Sensitivity-to-Unmeasured-Confounding-(E-value)">Sensitivity to Unmeasured Confounding (E-value)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#Interactive-DiD-Plot-(Plotly)">Interactive DiD Plot (Plotly)</a></li>
 </ul>
 </li>
 </ul>
@@ -3636,6 +3637,31 @@ Influence Diagnostics:
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 E-value (RR≈exp(beta)): 1.897
+</pre></div></div>
+</div>
+</section>
+<section id="Interactive-DiD-Plot-(Plotly)">
+<h3>Interactive DiD Plot (Plotly)<a class="headerlink" href="#Interactive-DiD-Plot-(Plotly)" title="Link to this heading"></a></h3>
+<p>If Plotly is available, we render an interactive forest plot of DiD effects.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[23]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">did_results</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">did_results</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">plot_did_forest_interactive</span><span class="p">(</span><span class="n">did_results</span><span class="p">)</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Plotly not available: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Plotly not available: [&#39;se_DiD&#39;]
 </pre></div></div>
 </div>
 </section>
