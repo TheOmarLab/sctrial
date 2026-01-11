@@ -13,7 +13,7 @@ from scipy.stats import mannwhitneyu
 from ..adata_tools import subset_cells
 from ..design import TrialDesign
 from ._utils import aggregate_features, apply_fdr, encode_visit, standardize_series
-from .did import AggregateFunc, AggregateMode, MIN_CLUSTERS_FOR_ROBUST_SE, _ensure_paired
+from .did import MIN_CLUSTERS_FOR_ROBUST_SE, AggregateFunc, AggregateMode, _ensure_paired
 
 
 def _add_feature_columns(

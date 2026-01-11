@@ -62,7 +62,6 @@ from collections.abc import Sequence
 import numpy as np
 import pandas as pd
 from anndata import AnnData
-
 from statsmodels.tools.sm_exceptions import ConvergenceWarning
 
 from ..design import TrialDesign

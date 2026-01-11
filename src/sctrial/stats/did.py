@@ -11,15 +11,14 @@ import scipy.sparse as sp
 import statsmodels.formula.api as smf
 from anndata import AnnData
 
-
-# Minimum number of clusters for reliable cluster-robust standard errors
-# Cameron & Miller (2015) recommend 42+, with 10 as absolute minimum
-MIN_CLUSTERS_FOR_ROBUST_SE = 10
-
 from ..adata_tools import subset_primary
 from ..design import TrialDesign
 from ..utils import wild_cluster_bootstrap_t
 from ._utils import apply_fdr, encode_visit, standardize_series
+
+# Minimum number of clusters for reliable cluster-robust standard errors
+# Cameron & Miller (2015) recommend 42+, with 10 as absolute minimum
+MIN_CLUSTERS_FOR_ROBUST_SE = 10
 
 
 @dataclass(frozen=True)

@@ -53,10 +53,9 @@ import numpy as np
 import pandas as pd
 from anndata import AnnData
 
-
 from ..design import TrialDesign
 from ._utils import apply_fdr
-from .did import AggregateMode, MIN_CLUSTERS_FOR_ROBUST_SE
+from .did import MIN_CLUSTERS_FOR_ROBUST_SE, AggregateMode
 
 __all__ = [
     "trend_interaction",
