@@ -80,6 +80,7 @@
 <li class="toctree-l4"><a class="reference internal" href="#10.4-Cross-Validation-for-Effect-Stability">10.4 Cross-Validation for Effect Stability</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#DiDAnalyzer-Example">DiDAnalyzer Example</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#Model-Diagnostics-(Residual-Checks)">Model Diagnostics (Residual Checks)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#Treatment-Heterogeneity-Example">Treatment Heterogeneity Example</a></li>
 </ul>
 </li>
 </ul>
@@ -3541,6 +3542,74 @@ Influence Diagnostics:
 <div class="output_area docutils container">
 <img alt="../_images/examples_example_immunotherapy_sade_feldman_37_2.png" src="../_images/examples_example_immunotherapy_sade_feldman_37_2.png" />
 </div>
+</div>
+</section>
+<section id="Treatment-Heterogeneity-Example">
+<h3>Treatment Heterogeneity Example<a class="headerlink" href="#Treatment-Heterogeneity-Example" title="Link to this heading"></a></h3>
+<p>Here we test whether the DiD effect differs by a baseline biomarker (median split at baseline).</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">features_use</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">visits</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+    <span class="n">feat</span> <span class="o">=</span> <span class="n">features_use</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">base</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span> <span class="o">==</span> <span class="n">visits</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">biomarker</span> <span class="o">=</span> <span class="n">base</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">)[</span><span class="n">feat</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s1">&#39;biomarker_base&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">biomarker</span><span class="p">)</span>
+    <span class="n">res_het</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">test_treatment_heterogeneity</span><span class="p">(</span>
+        <span class="n">adata</span><span class="p">,</span>
+        <span class="n">features</span><span class="o">=</span><span class="p">[</span><span class="n">feat</span><span class="p">],</span>
+        <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+        <span class="n">visits</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">visits</span><span class="p">),</span>
+        <span class="n">biomarker_col</span><span class="o">=</span><span class="s1">&#39;biomarker_base&#39;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">display</span><span class="p">(</span><span class="n">res_het</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>feature</th>
+      <th>beta_heterogeneity</th>
+      <th>p_heterogeneity</th>
+      <th>n_units</th>
+      <th>threshold</th>
+      <th>FDR_heterogeneity</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>sig_Cytotoxicity</td>
+      <td>0.134612</td>
+      <td>0.977693</td>
+      <td>25</td>
+      <td>-0.043731</td>
+      <td>0.977693</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
 </div>
 </section>
 </section>

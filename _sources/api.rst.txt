@@ -72,6 +72,12 @@ Mixed Effects Models
    :members:
    :undoc-members:
 
+Heterogeneity
+~~~~~~~~~~~~~
+.. automodule:: sctrial.stats.heterogeneity
+   :members:
+   :undoc-members:
+
 Diagnostics
 ~~~~~~~~~~~
 .. automodule:: sctrial.stats.diagnostics
