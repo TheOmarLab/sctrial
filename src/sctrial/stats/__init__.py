@@ -25,6 +25,7 @@ Effect Sizes & Power
 - **sample_size_did**: Sample size determination
 """
 from .abundance import abundance_did
+from .bayes import did_table_bayes
 from .comparisons import between_arm_comparison, compare_gene_in_celltype, within_arm_comparison
 from .cv import cv_summary, influence_diagnostics, kfold_cv_did, loo_cv_did
 from .diagnostics import check_did_assumptions
@@ -63,6 +64,7 @@ __all__ = [
     "did_fit",
     "did_table_by_celltype",
     "did_table_parallel",
+    "did_table_bayes",
     "DiDConfig",
     "abundance_did",
     "run_gsea_did",

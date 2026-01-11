@@ -43,6 +43,7 @@ plots = ["matplotlib>=3.6", "seaborn>=0.12", "scanpy>=1.9"]
 gsea = ["gseapy>=1.0"]
 aucell = ["pyscenic>=0.12"]
 survival = ["lifelines>=0.27"]
+bayes = ["pymc>=5.0"]
 all = [
   "matplotlib>=3.6",
   "seaborn>=0.12",
@@ -50,6 +51,7 @@ all = [
   "gseapy>=1.0",
   "pyscenic>=0.12",
   "lifelines>=0.27",
+  "pymc>=5.0",
 ]
 dev = [
   "pytest>=7.0",

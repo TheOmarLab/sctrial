@@ -37,6 +37,7 @@ from .preprocessing import add_log1p_cpm_layer
 from .scoring import score_gene_sets, score_gene_sets_aucell
 from .stats._extract import extract_gene_vector
 from .stats.abundance import abundance_did
+from .stats.bayes import did_table_bayes
 from .stats.comparisons import (
     between_arm_comparison,
     compare_gene_in_celltype,
@@ -118,6 +119,7 @@ __all__ = [
     "did_fit",
     "did_table_by_celltype",
     "did_table_parallel",
+    "did_table_bayes",
     "abundance_did",
     "run_gsea_did",
     "run_gsea_did_multi",

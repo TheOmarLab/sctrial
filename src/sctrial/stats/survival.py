@@ -126,8 +126,8 @@ def hazard_regression_with_features(
         coef = cph.params_[feat]
         hr = float(np.exp(coef))
         ci = cph.confidence_intervals_.loc[feat]
-        hr_low = float(np.exp(ci[0]))
-        hr_high = float(np.exp(ci[1]))
+        hr_low = float(np.exp(ci.iloc[0]))
+        hr_high = float(np.exp(ci.iloc[1]))
         p_val = float(cph.summary.loc[feat, "p"])
 
         results.append(
