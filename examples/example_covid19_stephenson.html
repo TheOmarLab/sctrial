@@ -74,6 +74,7 @@
 <li class="toctree-l4"><a class="reference internal" href="#14.2-Power-Analysis">14.2 Power Analysis</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#Single-Gene-Cross-Sectional-Check-(Participant-Level)">Single-Gene Cross-Sectional Check (Participant-Level)</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#Module-Score-Pseudobulk-DiD-by-Lineage">Module-Score Pseudobulk DiD by Lineage</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#Parallel-Trends-Visualization-(Early-Visits)">Parallel Trends Visualization (Early Visits)</a></li>
 </ul>
 </li>
 </ul>
@@ -2576,6 +2577,36 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
 </div>
 <div class="output_area docutils container">
 <img alt="../_images/examples_example_covid19_stephenson_35_3.png" src="../_images/examples_example_covid19_stephenson_35_3.png" />
+</div>
+</div>
+</section>
+<section id="Parallel-Trends-Visualization-(Early-Visits)">
+<h3>Parallel Trends Visualization (Early Visits)<a class="headerlink" href="#Parallel-Trends-Visualization-(Early-Visits)" title="Link to this heading"></a></h3>
+<p>Here we visualize pre-treatment trends across early visits to assess whether arms move in parallel before divergence. This is a diagnostic, not a formal test.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">signature_cols</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">plot_parallel_trends</span><span class="p">(</span>
+            <span class="n">adata</span><span class="p">,</span>
+            <span class="n">feature</span><span class="o">=</span><span class="n">signature_cols</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+            <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+            <span class="n">visits</span><span class="o">=</span><span class="n">visits_pair</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Parallel trends plot skipped: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/examples_example_covid19_stephenson_37_0.png" src="../_images/examples_example_covid19_stephenson_37_0.png" />
 </div>
 </div>
 </section>

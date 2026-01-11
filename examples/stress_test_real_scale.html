@@ -66,7 +66,10 @@
 <li class="toctree-l3"><a class="reference internal" href="#4.-Scaling-Benchmarks">4. Scaling Benchmarks</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#5.-Memory-Profiling-&amp;-DiD-Analysis">5. Memory Profiling &amp; DiD Analysis</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#6.-Statistical-Validation">6. Statistical Validation</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#7.-GSEA-Benchmark">7. GSEA Benchmark</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#7.-GSEA-Benchmark">7. GSEA Benchmark</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#Workflow-API-Example">Workflow API Example</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -257,7 +260,7 @@ Benchmark repeats: 3
 <div class="highlight"><pre>
 Loading dataset...
 Loaded processed Sade-Feldman dataset: 12,187 cells, 55,737 genes
-  Load time: 600.9ms
+  Load time: 1.27s
 </pre></div></div>
 </div>
 <section id="Data-Harmonization-&amp;-Trial-Design-Setup">
@@ -515,49 +518,49 @@ DATASET SUMMARY
 <div class="output_area rendered_html docutils container">
 <style type="text/css">
 </style>
-<table id="T_b2143">
+<table id="T_4853e">
   <thead>
     <tr>
-      <th id="T_b2143_level0_col0" class="col_heading level0 col0" >Metric</th>
-      <th id="T_b2143_level0_col1" class="col_heading level0 col1" >Value</th>
+      <th id="T_4853e_level0_col0" class="col_heading level0 col0" >Metric</th>
+      <th id="T_4853e_level0_col1" class="col_heading level0 col1" >Value</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td id="T_b2143_row0_col0" class="data row0 col0" >Full Dataset - Cells</td>
-      <td id="T_b2143_row0_col1" class="data row0 col1" >12,187</td>
+      <td id="T_4853e_row0_col0" class="data row0 col0" >Full Dataset - Cells</td>
+      <td id="T_4853e_row0_col1" class="data row0 col1" >12,187</td>
     </tr>
     <tr>
-      <td id="T_b2143_row1_col0" class="data row1 col0" >Full Dataset - Genes</td>
-      <td id="T_b2143_row1_col1" class="data row1 col1" >55,737</td>
+      <td id="T_4853e_row1_col0" class="data row1 col0" >Full Dataset - Genes</td>
+      <td id="T_4853e_row1_col1" class="data row1 col1" >55,737</td>
     </tr>
     <tr>
-      <td id="T_b2143_row2_col0" class="data row2 col0" >Full Dataset - Participants</td>
-      <td id="T_b2143_row2_col1" class="data row2 col1" >25</td>
+      <td id="T_4853e_row2_col0" class="data row2 col0" >Full Dataset - Participants</td>
+      <td id="T_4853e_row2_col1" class="data row2 col1" >25</td>
     </tr>
     <tr>
-      <td id="T_b2143_row3_col0" class="data row3 col0" >Paired Dataset - Cells</td>
-      <td id="T_b2143_row3_col1" class="data row3 col1" >7,068</td>
+      <td id="T_4853e_row3_col0" class="data row3 col0" >Paired Dataset - Cells</td>
+      <td id="T_4853e_row3_col1" class="data row3 col1" >7,068</td>
     </tr>
     <tr>
-      <td id="T_b2143_row4_col0" class="data row4 col0" >Paired Dataset - Participants</td>
-      <td id="T_b2143_row4_col1" class="data row4 col1" >10</td>
+      <td id="T_4853e_row4_col0" class="data row4 col0" >Paired Dataset - Participants</td>
+      <td id="T_4853e_row4_col1" class="data row4 col1" >10</td>
     </tr>
     <tr>
-      <td id="T_b2143_row5_col0" class="data row5 col0" >  Responders (paired)</td>
-      <td id="T_b2143_row5_col1" class="data row5 col1" >3</td>
+      <td id="T_4853e_row5_col0" class="data row5 col0" >  Responders (paired)</td>
+      <td id="T_4853e_row5_col1" class="data row5 col1" >3</td>
     </tr>
     <tr>
-      <td id="T_b2143_row6_col0" class="data row6 col0" >  Non-responders (paired)</td>
-      <td id="T_b2143_row6_col1" class="data row6 col1" >7</td>
+      <td id="T_4853e_row6_col0" class="data row6 col0" >  Non-responders (paired)</td>
+      <td id="T_4853e_row6_col1" class="data row6 col1" >7</td>
     </tr>
     <tr>
-      <td id="T_b2143_row7_col0" class="data row7 col0" >Visits</td>
-      <td id="T_b2143_row7_col1" class="data row7 col1" >['Pre', 'Post']</td>
+      <td id="T_4853e_row7_col0" class="data row7 col0" >Visits</td>
+      <td id="T_4853e_row7_col1" class="data row7 col1" >['Pre', 'Post']</td>
     </tr>
     <tr>
-      <td id="T_b2143_row8_col0" class="data row8 col0" >Mixed-response participants</td>
-      <td id="T_b2143_row8_col1" class="data row8 col1" >3</td>
+      <td id="T_4853e_row8_col0" class="data row8 col0" >Mixed-response participants</td>
+      <td id="T_4853e_row8_col1" class="data row8 col1" >3</td>
     </tr>
   </tbody>
 </table></div>
@@ -578,41 +581,41 @@ BENCHMARK CONFIGURATION
 <div class="output_area rendered_html docutils container">
 <style type="text/css">
 </style>
-<table id="T_a23a5">
+<table id="T_7299b">
   <thead>
     <tr>
-      <th id="T_a23a5_level0_col0" class="col_heading level0 col0" >Parameter</th>
-      <th id="T_a23a5_level0_col1" class="col_heading level0 col1" >Value</th>
+      <th id="T_7299b_level0_col0" class="col_heading level0 col0" >Parameter</th>
+      <th id="T_7299b_level0_col1" class="col_heading level0 col1" >Value</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td id="T_a23a5_row0_col0" class="data row0 col0" >Scaling gene counts</td>
-      <td id="T_a23a5_row0_col1" class="data row0 col1" >[100, 500, 1000, 2000, 5000]</td>
+      <td id="T_7299b_row0_col0" class="data row0 col0" >Scaling gene counts</td>
+      <td id="T_7299b_row0_col1" class="data row0 col1" >[100, 500, 1000, 2000, 5000]</td>
     </tr>
     <tr>
-      <td id="T_a23a5_row1_col0" class="data row1 col0" >Cell fractions</td>
-      <td id="T_a23a5_row1_col1" class="data row1 col1" >[0.25, 0.5, 0.75, 1.0]</td>
+      <td id="T_7299b_row1_col0" class="data row1 col0" >Cell fractions</td>
+      <td id="T_7299b_row1_col1" class="data row1 col1" >[0.25, 0.5, 0.75, 1.0]</td>
     </tr>
     <tr>
-      <td id="T_a23a5_row2_col0" class="data row2 col0" >Repeats per test</td>
-      <td id="T_a23a5_row2_col1" class="data row2 col1" >3</td>
+      <td id="T_7299b_row2_col0" class="data row2 col0" >Repeats per test</td>
+      <td id="T_7299b_row2_col1" class="data row2 col1" >3</td>
     </tr>
     <tr>
-      <td id="T_a23a5_row3_col0" class="data row3 col0" >Min genes for scoring</td>
-      <td id="T_a23a5_row3_col1" class="data row3 col1" >5</td>
+      <td id="T_7299b_row3_col0" class="data row3 col0" >Min genes for scoring</td>
+      <td id="T_7299b_row3_col1" class="data row3 col1" >5</td>
     </tr>
     <tr>
-      <td id="T_a23a5_row4_col0" class="data row4 col0" >Min paired per arm</td>
-      <td id="T_a23a5_row4_col1" class="data row4 col1" >3</td>
+      <td id="T_7299b_row4_col0" class="data row4 col0" >Min paired per arm</td>
+      <td id="T_7299b_row4_col1" class="data row4 col1" >3</td>
     </tr>
     <tr>
-      <td id="T_a23a5_row5_col0" class="data row5 col0" >FDR threshold</td>
-      <td id="T_a23a5_row5_col1" class="data row5 col1" >0.25</td>
+      <td id="T_7299b_row5_col0" class="data row5 col0" >FDR threshold</td>
+      <td id="T_7299b_row5_col1" class="data row5 col1" >0.25</td>
     </tr>
     <tr>
-      <td id="T_a23a5_row6_col0" class="data row6 col0" >Max cells/participant‑visit</td>
-      <td id="T_a23a5_row6_col1" class="data row6 col1" >500</td>
+      <td id="T_7299b_row6_col0" class="data row6 col0" >Max cells/participant‑visit</td>
+      <td id="T_7299b_row6_col1" class="data row6 col1" >500</td>
     </tr>
   </tbody>
 </table></div>
@@ -739,51 +742,51 @@ Signature Gene Coverage:
 <div class="output_area rendered_html docutils container">
 <style type="text/css">
 </style>
-<table id="T_61a61">
+<table id="T_b4a1a">
   <thead>
     <tr>
-      <th id="T_61a61_level0_col0" class="col_heading level0 col0" >Signature</th>
-      <th id="T_61a61_level0_col1" class="col_heading level0 col1" >Found</th>
-      <th id="T_61a61_level0_col2" class="col_heading level0 col2" >Total</th>
-      <th id="T_61a61_level0_col3" class="col_heading level0 col3" >Coverage</th>
-      <th id="T_61a61_level0_col4" class="col_heading level0 col4" >Status</th>
+      <th id="T_b4a1a_level0_col0" class="col_heading level0 col0" >Signature</th>
+      <th id="T_b4a1a_level0_col1" class="col_heading level0 col1" >Found</th>
+      <th id="T_b4a1a_level0_col2" class="col_heading level0 col2" >Total</th>
+      <th id="T_b4a1a_level0_col3" class="col_heading level0 col3" >Coverage</th>
+      <th id="T_b4a1a_level0_col4" class="col_heading level0 col4" >Status</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td id="T_61a61_row0_col0" class="data row0 col0" >Cytotoxicity</td>
-      <td id="T_61a61_row0_col1" class="data row0 col1" >11</td>
-      <td id="T_61a61_row0_col2" class="data row0 col2" >11</td>
-      <td id="T_61a61_row0_col3" class="data row0 col3" >100%</td>
-      <td id="T_61a61_row0_col4" class="data row0 col4" >OK</td>
+      <td id="T_b4a1a_row0_col0" class="data row0 col0" >Cytotoxicity</td>
+      <td id="T_b4a1a_row0_col1" class="data row0 col1" >11</td>
+      <td id="T_b4a1a_row0_col2" class="data row0 col2" >11</td>
+      <td id="T_b4a1a_row0_col3" class="data row0 col3" >100%</td>
+      <td id="T_b4a1a_row0_col4" class="data row0 col4" >OK</td>
     </tr>
     <tr>
-      <td id="T_61a61_row1_col0" class="data row1 col0" >Exhaustion</td>
-      <td id="T_61a61_row1_col1" class="data row1 col1" >9</td>
-      <td id="T_61a61_row1_col2" class="data row1 col2" >9</td>
-      <td id="T_61a61_row1_col3" class="data row1 col3" >100%</td>
-      <td id="T_61a61_row1_col4" class="data row1 col4" >OK</td>
+      <td id="T_b4a1a_row1_col0" class="data row1 col0" >Exhaustion</td>
+      <td id="T_b4a1a_row1_col1" class="data row1 col1" >9</td>
+      <td id="T_b4a1a_row1_col2" class="data row1 col2" >9</td>
+      <td id="T_b4a1a_row1_col3" class="data row1 col3" >100%</td>
+      <td id="T_b4a1a_row1_col4" class="data row1 col4" >OK</td>
     </tr>
     <tr>
-      <td id="T_61a61_row2_col0" class="data row2 col0" >IFN_Response</td>
-      <td id="T_61a61_row2_col1" class="data row2 col1" >10</td>
-      <td id="T_61a61_row2_col2" class="data row2 col2" >10</td>
-      <td id="T_61a61_row2_col3" class="data row2 col3" >100%</td>
-      <td id="T_61a61_row2_col4" class="data row2 col4" >OK</td>
+      <td id="T_b4a1a_row2_col0" class="data row2 col0" >IFN_Response</td>
+      <td id="T_b4a1a_row2_col1" class="data row2 col1" >10</td>
+      <td id="T_b4a1a_row2_col2" class="data row2 col2" >10</td>
+      <td id="T_b4a1a_row2_col3" class="data row2 col3" >100%</td>
+      <td id="T_b4a1a_row2_col4" class="data row2 col4" >OK</td>
     </tr>
     <tr>
-      <td id="T_61a61_row3_col0" class="data row3 col0" >Memory</td>
-      <td id="T_61a61_row3_col1" class="data row3 col1" >7</td>
-      <td id="T_61a61_row3_col2" class="data row3 col2" >7</td>
-      <td id="T_61a61_row3_col3" class="data row3 col3" >100%</td>
-      <td id="T_61a61_row3_col4" class="data row3 col4" >OK</td>
+      <td id="T_b4a1a_row3_col0" class="data row3 col0" >Memory</td>
+      <td id="T_b4a1a_row3_col1" class="data row3 col1" >7</td>
+      <td id="T_b4a1a_row3_col2" class="data row3 col2" >7</td>
+      <td id="T_b4a1a_row3_col3" class="data row3 col3" >100%</td>
+      <td id="T_b4a1a_row3_col4" class="data row3 col4" >OK</td>
     </tr>
     <tr>
-      <td id="T_61a61_row4_col0" class="data row4 col0" >Activation</td>
-      <td id="T_61a61_row4_col1" class="data row4 col1" >6</td>
-      <td id="T_61a61_row4_col2" class="data row4 col2" >6</td>
-      <td id="T_61a61_row4_col3" class="data row4 col3" >100%</td>
-      <td id="T_61a61_row4_col4" class="data row4 col4" >OK</td>
+      <td id="T_b4a1a_row4_col0" class="data row4 col0" >Activation</td>
+      <td id="T_b4a1a_row4_col1" class="data row4 col1" >6</td>
+      <td id="T_b4a1a_row4_col2" class="data row4 col2" >6</td>
+      <td id="T_b4a1a_row4_col3" class="data row4 col3" >100%</td>
+      <td id="T_b4a1a_row4_col4" class="data row4 col4" >OK</td>
     </tr>
   </tbody>
 </table></div>
@@ -794,7 +797,7 @@ Signature Gene Coverage:
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 
-Signature scoring time: 8.0ms ± 1.8ms
+Signature scoring time: 7.2ms ± 1.8ms
 Signatures scored: 5
 </pre></div></div>
 </div>
@@ -1026,21 +1029,21 @@ Participants with valid Pre+Post scores: 10
 GENE SCALING BENCHMARK
 ======================================================================
 Testing DiD performance across 5 gene counts...
-  100 genes: 730.6ms ± 1.1ms (137 genes/sec)
-  500 genes: 1.77s ± 6.2ms (282 genes/sec)
-  1,000 genes: 3.06s ± 3.3ms (327 genes/sec)
-  2,000 genes: 5.65s ± 10.8ms (354 genes/sec)
-  5,000 genes: 13.56s ± 68.4ms (369 genes/sec)
+  100 genes: 857.5ms ± 14.4ms (117 genes/sec)
+  500 genes: 1.90s ± 3.5ms (263 genes/sec)
+  1,000 genes: 3.22s ± 15.2ms (311 genes/sec)
+  2,000 genes: 5.85s ± 18.9ms (342 genes/sec)
+  5,000 genes: 13.91s ± 30.1ms (360 genes/sec)
 
 ======================================================================
 CELL SCALING BENCHMARK
 ======================================================================
 Testing DiD performance across 4 cell fractions...
 Cell fractions keep a fixed proportion of cells per participant‑visit (stratified), preserving pairing.
-  25% (1,767 cells): 1.37s ± 10.4ms
-  50% (3,534 cells): 1.55s ± 1.1ms
-  75% (5,301 cells): 1.68s ± 28.0ms
-  100% (7,068 cells): 1.80s ± 1.9ms
+  25% (1,767 cells): 1.39s ± 28.0ms
+  50% (3,534 cells): 1.66s ± 28.4ms
+  75% (5,301 cells): 1.79s ± 25.7ms
+  100% (7,068 cells): 1.90s ± 2.2ms
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -1186,18 +1189,18 @@ and (3) within‑arm paired changes. All use the same trial design and feature s
 
 Aggregation Mode Comparison:
 --------------------------------------------------
-  participant_visit: 509.8ms ± 2.3ms
-  cell: 556.7ms ± 4.4ms
+  participant_visit: 618.4ms ± 21.1ms
+  cell: 679.5ms ± 29.4ms
 
 Cross-sectional Comparison:
 --------------------------------------------------
-  Pre: 214.9ms ± 0.4ms
-  Post: 276.9ms ± 0.7ms
+  Pre: 273.1ms ± 1.3ms
+  Post: 344.5ms ± 3.3ms
 
 Within-arm Comparison:
 --------------------------------------------------
-  Responder: 257.9ms ± 10.6ms
-  Non-responder: 870.8ms ± 3.1ms
+  Responder: 294.1ms ± 16.4ms
+  Non-responder: 927.2ms ± 49.5ms
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -1435,8 +1438,8 @@ Significance summary:
 ======================================================================
 DID BENCHMARK: GENOME-WIDE
 ======================================================================
-Genome-wide DiD (2000 genes): 5.81s ± 20.9ms
-Throughput: 344 genes/second
+Genome-wide DiD (2000 genes): 5.89s ± 21.3ms
+Throughput: 340 genes/second
 
 Top 10 significant genes (by p-value):
 </pre></div></div>
@@ -1921,11 +1924,11 @@ Total gene sets for GSEA:
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-2026-01-10 11:01:09,584 [WARNING] Duplicated values found in preranked stats: 24.76% of genes
+2026-01-10 20:06:07,941 [WARNING] Duplicated values found in preranked stats: 24.76% of genes
 The order of those genes will be arbitrary, which may produce unexpected results.
-2026-01-10 11:03:27,341 [WARNING] Duplicated values found in preranked stats: 24.76% of genes
+2026-01-10 20:08:27,764 [WARNING] Duplicated values found in preranked stats: 24.76% of genes
 The order of those genes will be arbitrary, which may produce unexpected results.
-2026-01-10 11:05:44,676 [WARNING] Duplicated values found in preranked stats: 24.76% of genes
+2026-01-10 20:10:46,337 [WARNING] Duplicated values found in preranked stats: 24.76% of genes
 The order of those genes will be arbitrary, which may produce unexpected results.
 </pre></div></div>
 </div>
@@ -1935,7 +1938,7 @@ The order of those genes will be arbitrary, which may produce unexpected results
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 
-GSEA runtime: 2.3min ± 652.5ms
+GSEA runtime: 2.3min ± 1.87s
 Gene sets per second: 0.1
 
 GSEA Results:
@@ -2163,6 +2166,73 @@ GSEA Results:
 <img alt="../_images/examples_stress_test_real_scale_19_5.png" src="../_images/examples_stress_test_real_scale_19_5.png" />
 </div>
 </div>
+<section id="Workflow-API-Example">
+<h3>Workflow API Example<a class="headerlink" href="#Workflow-API-Example" title="Link to this heading"></a></h3>
+<p>Here we run DiD using the fluent workflow API with a DiDConfig object.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">signature_cols</span><span class="p">:</span>
+    <span class="n">cfg</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">DiDConfig</span><span class="p">(</span><span class="n">aggregate</span><span class="o">=</span><span class="s1">&#39;participant_visit&#39;</span><span class="p">,</span> <span class="n">standardize</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">use_bootstrap</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">wf_res</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">workflow</span><span class="p">(</span><span class="n">adata_paired</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">did_table</span><span class="p">(</span><span class="n">features</span><span class="o">=</span><span class="n">signature_cols</span><span class="p">[:</span><span class="mi">1</span><span class="p">],</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">visits</span><span class="p">),</span> <span class="n">config</span><span class="o">=</span><span class="n">cfg</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">result</span><span class="p">()</span>
+    <span class="p">)</span>
+    <span class="n">display</span><span class="p">(</span><span class="n">wf_res</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>beta_DiD</th>
+      <th>se_DiD</th>
+      <th>p_DiD</th>
+      <th>beta_time</th>
+      <th>p_time</th>
+      <th>n_units</th>
+      <th>feature</th>
+      <th>FDR_DiD</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>-0.320679</td>
+      <td>1.504524</td>
+      <td>0.831215</td>
+      <td>0.387928</td>
+      <td>0.608434</td>
+      <td>10</td>
+      <td>sig_Cytotoxicity</td>
+      <td>0.831215</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+</section>
 </section>
 </section>
 

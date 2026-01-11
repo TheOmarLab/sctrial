@@ -145,11 +145,10 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">anndata</span><span class="w"> </span><span class="kn">import</span> <span class="n">AnnData</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">statsmodels.stats.multitest</span><span class="w"> </span><span class="kn">import</span> <span class="n">multipletests</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">statsmodels.tools.sm_exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConvergenceWarning</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..design</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrialDesign</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">aggregate_features</span><span class="p">,</span> <span class="n">standardize_series</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">aggregate_features</span><span class="p">,</span> <span class="n">apply_fdr</span><span class="p">,</span> <span class="n">standardize_series</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.did</span><span class="w"> </span><span class="kn">import</span> <span class="n">AggregateFunc</span><span class="p">,</span> <span class="n">AggregateMode</span><span class="p">,</span> <span class="n">_ensure_paired</span>
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
@@ -294,25 +293,39 @@
 
     <span class="c1"># Variance components</span>
     <span class="n">var_resid</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">scale</span><span class="p">)</span>
-    <span class="n">var_re</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">cov_re</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">fit</span><span class="p">,</span> <span class="s2">&quot;cov_re&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+    <span class="n">var_intercept</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+    <span class="n">var_slope</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
 
-    <span class="c1"># ICC</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">var_re</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">var_re</span> <span class="o">+</span> <span class="n">var_resid</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="n">icc</span> <span class="o">=</span> <span class="n">var_re</span> <span class="o">/</span> <span class="p">(</span><span class="n">var_re</span> <span class="o">+</span> <span class="n">var_resid</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">fit</span><span class="p">,</span> <span class="s2">&quot;cov_re&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">fit</span><span class="o">.</span><span class="n">cov_re</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">cov_re</span> <span class="o">=</span> <span class="n">fit</span><span class="o">.</span><span class="n">cov_re</span>
+        <span class="n">var_intercept</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">cov_re</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+        <span class="c1"># Extract slope variance if random slopes were fitted (2x2 matrix)</span>
+        <span class="k">if</span> <span class="n">cov_re</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">cov_re</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">var_slope</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">cov_re</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+
+    <span class="c1"># ICC (based on intercept variance only - standard definition)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">var_intercept</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">var_intercept</span> <span class="o">+</span> <span class="n">var_resid</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">icc</span> <span class="o">=</span> <span class="n">var_intercept</span> <span class="o">/</span> <span class="p">(</span><span class="n">var_intercept</span> <span class="o">+</span> <span class="n">var_resid</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">icc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
 
-    <span class="k">return</span> <span class="p">{</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;beta_DiD&quot;</span><span class="p">:</span> <span class="n">beta</span><span class="p">,</span>
         <span class="s2">&quot;se_DiD&quot;</span><span class="p">:</span> <span class="n">se</span><span class="p">,</span>
         <span class="s2">&quot;p_DiD&quot;</span><span class="p">:</span> <span class="n">pval</span><span class="p">,</span>
         <span class="s2">&quot;ci_lower&quot;</span><span class="p">:</span> <span class="n">ci_lower</span><span class="p">,</span>
         <span class="s2">&quot;ci_upper&quot;</span><span class="p">:</span> <span class="n">ci_upper</span><span class="p">,</span>
-        <span class="s2">&quot;var_participant&quot;</span><span class="p">:</span> <span class="n">var_re</span><span class="p">,</span>
+        <span class="s2">&quot;var_participant&quot;</span><span class="p">:</span> <span class="n">var_intercept</span><span class="p">,</span>
         <span class="s2">&quot;var_residual&quot;</span><span class="p">:</span> <span class="n">var_resid</span><span class="p">,</span>
         <span class="s2">&quot;icc&quot;</span><span class="p">:</span> <span class="n">icc</span><span class="p">,</span>
         <span class="s2">&quot;converged&quot;</span><span class="p">:</span> <span class="n">converged</span><span class="p">,</span>
-    <span class="p">}</span></div>
+    <span class="p">}</span>
+
+    <span class="c1"># Add slope variance if available (when random_slope=True)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">var_slope</span><span class="p">):</span>
+        <span class="n">result</span><span class="p">[</span><span class="s2">&quot;var_slope&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">var_slope</span>
+
+    <span class="k">return</span> <span class="n">result</span></div>
 
 
 
@@ -483,13 +496,7 @@
         <span class="p">})</span>
 
     <span class="n">res</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
-
-    <span class="c1"># FDR correction</span>
-    <span class="n">mask</span> <span class="o">=</span> <span class="n">res</span><span class="p">[</span><span class="s2">&quot;p_DiD&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span>
-    <span class="n">res</span><span class="p">[</span><span class="s2">&quot;FDR_DiD&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
-    <span class="k">if</span> <span class="n">mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="n">res</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="s2">&quot;FDR_DiD&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">multipletests</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="s2">&quot;p_DiD&quot;</span><span class="p">],</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;fdr_bh&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
-
+    <span class="n">res</span> <span class="o">=</span> <span class="n">apply_fdr</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="n">p_col</span><span class="o">=</span><span class="s2">&quot;p_DiD&quot;</span><span class="p">,</span> <span class="n">fdr_col</span><span class="o">=</span><span class="s2">&quot;FDR_DiD&quot;</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">res</span></div>
 
 
