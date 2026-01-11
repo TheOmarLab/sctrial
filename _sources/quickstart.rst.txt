@@ -48,6 +48,19 @@ Minimal end‑to‑end example
 Common add‑ons
 -------------
 
+**Fluent workflow API**
+
+.. code-block:: python
+
+   # Chain common steps in a single workflow
+   res = (
+       st.workflow(adata)
+       .add_log1p_cpm_layer(counts_layer="counts")
+       .score_gene_sets(gene_sets, layer="log1p_cpm", prefix="ms_")
+       .did_table(features=["ms_Signature1"], design=design, visits=("V1", "V2"))
+       .result()
+   )
+
 **Pairing diagnostics**
 
 .. code-block:: python

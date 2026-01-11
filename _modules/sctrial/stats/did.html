@@ -84,6 +84,7 @@
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sequence</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Literal</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
@@ -97,6 +98,27 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">..design</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrialDesign</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">wild_cluster_bootstrap_t</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">encode_visit</span><span class="p">,</span> <span class="n">standardize_series</span>
+
+
+<div class="viewcode-block" id="DiDConfig">
+<a class="viewcode-back" href="../../../api.html#sctrial.stats.did.DiDConfig">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">DiDConfig</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Configuration for DiD analysis.</span>
+
+<span class="sd">    Use this dataclass to bundle common DiD settings and pass to did_table.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">aggregate</span><span class="p">:</span> <span class="n">AggregateMode</span> <span class="o">=</span> <span class="s2">&quot;participant_visit&quot;</span>
+    <span class="n">layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">standardize</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">agg</span><span class="p">:</span> <span class="n">AggregateFunc</span> <span class="o">=</span> <span class="s2">&quot;mean&quot;</span>
+    <span class="n">covariates</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">use_bootstrap</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">n_boot</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">999</span>
+    <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">42</span>
+    <span class="n">exclude_crossovers</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span></div>
+
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_validate_did_fit_inputs</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">cols</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -454,7 +476,7 @@
     <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
     <span class="n">features</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
     <span class="n">design</span><span class="p">:</span> <span class="n">TrialDesign</span><span class="p">,</span>
-    <span class="n">visits</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span><span class="nb">str</span><span class="p">],</span>
+    <span class="n">visits</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
     <span class="n">exclude_crossovers</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
     <span class="n">celltype</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">aggregate</span><span class="p">:</span> <span class="n">AggregateMode</span> <span class="o">=</span> <span class="s2">&quot;participant_visit&quot;</span><span class="p">,</span>
@@ -465,6 +487,7 @@
     <span class="n">use_bootstrap</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="n">n_boot</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">999</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">42</span><span class="p">,</span>
+    <span class="n">config</span><span class="p">:</span> <span class="n">DiDConfig</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Run Difference-in-Differences (DiD) for a list of features.</span>
 
@@ -490,6 +513,10 @@
 <span class="sd">    exclude_crossovers</span>
 <span class="sd">        If True, excludes observations where `design.crossover_col` is True.</span>
 <span class="sd">        Recommended for primary randomized analysis.</span>
+<span class="sd">    config</span>
+<span class="sd">        Optional DiDConfig object. If provided, its values override the corresponding</span>
+<span class="sd">        keyword arguments (aggregate, layer, standardize, agg, covariates, bootstrap,</span>
+<span class="sd">        seed, and exclude_crossovers).</span>
 <span class="sd">    celltype</span>
 <span class="sd">        If provided, subsets the analysis to a specific cell type.</span>
 <span class="sd">    aggregate</span>
@@ -533,6 +560,17 @@
 <span class="sd">    &gt;&gt;&gt; print(res[[&quot;feature&quot;, &quot;beta_DiD&quot;, &quot;p_DiD&quot;]])</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># subset and prepare</span>
+    <span class="k">if</span> <span class="n">config</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">aggregate</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">aggregate</span>
+        <span class="n">layer</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">layer</span>
+        <span class="n">standardize</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">standardize</span>
+        <span class="n">agg</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">agg</span>
+        <span class="n">covariates</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">covariates</span>
+        <span class="n">use_bootstrap</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">use_bootstrap</span>
+        <span class="n">n_boot</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">n_boot</span>
+        <span class="n">seed</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">seed</span>
+        <span class="n">exclude_crossovers</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">exclude_crossovers</span>
+
     <span class="n">ad</span><span class="p">,</span> <span class="n">obs</span> <span class="o">=</span> <span class="n">_prepare_did_obs</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="p">,</span> <span class="n">celltype</span><span class="p">,</span> <span class="n">exclude_crossovers</span><span class="p">)</span>
 
     <span class="c1"># build dataframe with features and all possible grouping columns</span>

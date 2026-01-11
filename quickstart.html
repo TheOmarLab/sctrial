@@ -134,6 +134,17 @@
 </section>
 <section id="common-addons">
 <h2>Common add‑ons<a class="headerlink" href="#common-addons" title="Link to this heading"></a></h2>
+<p><strong>Fluent workflow API</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Chain common steps in a single workflow</span>
+<span class="n">res</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">workflow</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">add_log1p_cpm_layer</span><span class="p">(</span><span class="n">counts_layer</span><span class="o">=</span><span class="s2">&quot;counts&quot;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">score_gene_sets</span><span class="p">(</span><span class="n">gene_sets</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;log1p_cpm&quot;</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;ms_&quot;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">did_table</span><span class="p">(</span><span class="n">features</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ms_Signature1&quot;</span><span class="p">],</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">))</span>
+    <span class="o">.</span><span class="n">result</span><span class="p">()</span>
+<span class="p">)</span>
+</pre></div>
+</div>
 <p><strong>Pairing diagnostics</strong></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Count paired participants before longitudinal analysis</span>
 <span class="n">paired</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">count_paired</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">))</span>

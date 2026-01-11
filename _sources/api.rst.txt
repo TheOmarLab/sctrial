@@ -7,6 +7,18 @@ Trial Design
    :members:
    :undoc-members:
 
+Analysis Interfaces
+-------------------
+.. automodule:: sctrial.analysis
+   :members:
+   :undoc-members:
+
+Workflow API
+------------
+.. automodule:: sctrial.workflow
+   :members:
+   :undoc-members:
+
 Preprocessing
 -------------
 .. automodule:: sctrial.preprocessing
