@@ -931,3 +931,84 @@ def plot_gsea_heatmap(
     plt.ylabel("Pathway")
     plt.tight_layout()
     return ax
+
+
+def plot_did_forest_interactive(
+    df: pd.DataFrame,
+    *,
+    feature_col: str = "feature",
+    beta_col: str = "beta_DiD",
+    se_col: str = "se_DiD",
+    p_col: str = "p_DiD",
+    alpha: float = 0.05,
+    title: str = "DiD Effect Sizes",
+):
+    """Interactive forest plot using Plotly.
+
+    Returns
+    -------
+    plotly.graph_objects.Figure
+        Interactive forest plot.
+    """
+    try:
+        import plotly.graph_objects as go
+    except Exception as e:  # pragma: no cover
+        raise ImportError("plotly is required for interactive plots") from e
+
+    if df.empty:
+        raise ValueError("Empty DataFrame provided.")
+    if feature_col not in df.columns:
+        raise KeyError(f"Missing column '{feature_col}'")
+
+    df_plot = df.dropna(subset=[beta_col, se_col]).copy()
+    df_plot["ci"] = 1.96 * df_plot[se_col]
+    df_plot = df_plot.sort_values(beta_col)
+
+    sig = df_plot[p_col] < alpha if p_col in df_plot.columns else False
+    color = np.where(sig, "crimson", "gray")
+
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=df_plot[beta_col],
+            y=df_plot[feature_col],
+            error_x=dict(type="data", array=df_plot["ci"], visible=True),
+            mode="markers",
+            marker=dict(color=color),
+        )
+    )
+    fig.update_layout(title=title, xaxis_title="Effect (beta)", yaxis_title="Feature")
+    return fig
+
+
+def plot_did_volcano_interactive(
+    df: pd.DataFrame,
+    *,
+    beta_col: str = "beta_DiD",
+    p_col: str = "p_DiD",
+    title: str = "DiD Volcano Plot",
+):
+    """Interactive volcano plot using Plotly.
+
+    Returns
+    -------
+    plotly.graph_objects.Figure
+        Interactive volcano plot.
+    """
+    try:
+        import plotly.graph_objects as go
+    except Exception as e:  # pragma: no cover
+        raise ImportError("plotly is required for interactive plots") from e
+
+    df_plot = df.dropna(subset=[beta_col, p_col]).copy()
+    df_plot["neglog10p"] = -np.log10(df_plot[p_col].clip(lower=1e-12))
+
+    fig = go.Figure(
+        data=go.Scatter(
+            x=df_plot[beta_col],
+            y=df_plot["neglog10p"],
+            mode="markers",
+        )
+    )
+    fig.update_layout(title=title, xaxis_title="Effect (beta)", yaxis_title="-log10(p)")
+    return fig

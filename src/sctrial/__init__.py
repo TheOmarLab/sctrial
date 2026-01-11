@@ -21,6 +21,8 @@ from .design import TrialDesign
 from .plotting import (
     plot_abundance_interaction,
     plot_did_forest,
+    plot_did_forest_interactive,
+    plot_did_volcano_interactive,
     plot_gsea_heatmap,
     plot_gsea_radar,
     plot_module_umap_panel,
@@ -163,6 +165,8 @@ __all__ = [
     "plot_parallel_trends",
     "plot_abundance_interaction",
     "plot_did_forest",
+    "plot_did_forest_interactive",
+    "plot_did_volcano_interactive",
     "plot_within_arm_comparison",
     "plot_trial_umap",
     "plot_trial_umap_panel",
