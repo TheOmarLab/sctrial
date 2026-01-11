@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal
@@ -10,6 +11,10 @@ import scipy.sparse as sp
 import statsmodels.formula.api as smf
 from anndata import AnnData
 from statsmodels.stats.multitest import multipletests
+
+# Minimum number of clusters for reliable cluster-robust standard errors
+# Cameron & Miller (2015) recommend 42+, with 10 as absolute minimum
+MIN_CLUSTERS_FOR_ROBUST_SE = 10
 
 from ..adata_tools import subset_primary
 from ..design import TrialDesign
@@ -353,6 +358,16 @@ def did_fit(
         model = smf.wls(formula, data=tmp, weights=weights)
     else:
         model = smf.ols(formula, data=tmp)
+
+    # Warn if using cluster-robust SE with few clusters (unreliable inference)
+    if cov_type == "cluster" and n_units < MIN_CLUSTERS_FOR_ROBUST_SE:
+        warnings.warn(
+            f"Only {n_units} clusters (participants) available. Cluster-robust standard "
+            f"errors are unreliable with fewer than {MIN_CLUSTERS_FOR_ROBUST_SE} clusters. "
+            f"Consider using use_bootstrap=True for more reliable p-values.",
+            UserWarning,
+            stacklevel=2,
+        )
 
     fit = model.fit(cov_type=cov_type, cov_kwds={"groups": tmp[unit]} if cov_type=="cluster" else None)
     term = f"{time}:{arm_bin}"

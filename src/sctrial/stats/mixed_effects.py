@@ -209,25 +209,39 @@ def did_mixed(
 
     # Variance components
     var_resid = float(fit.scale)
-    var_re = float(fit.cov_re.iloc[0, 0]) if hasattr(fit, "cov_re") else np.nan
+    var_intercept = np.nan
+    var_slope = np.nan
 
-    # ICC
-    if not np.isnan(var_re) and (var_re + var_resid) > 0:
-        icc = var_re / (var_re + var_resid)
+    if hasattr(fit, "cov_re") and fit.cov_re is not None:
+        cov_re = fit.cov_re
+        var_intercept = float(cov_re.iloc[0, 0])
+        # Extract slope variance if random slopes were fitted (2x2 matrix)
+        if cov_re.shape[0] > 1 and cov_re.shape[1] > 1:
+            var_slope = float(cov_re.iloc[1, 1])
+
+    # ICC (based on intercept variance only - standard definition)
+    if not np.isnan(var_intercept) and (var_intercept + var_resid) > 0:
+        icc = var_intercept / (var_intercept + var_resid)
     else:
         icc = np.nan
 
-    return {
+    result = {
         "beta_DiD": beta,
         "se_DiD": se,
         "p_DiD": pval,
         "ci_lower": ci_lower,
         "ci_upper": ci_upper,
-        "var_participant": var_re,
+        "var_participant": var_intercept,
         "var_residual": var_resid,
         "icc": icc,
         "converged": converged,
     }
+
+    # Add slope variance if available (when random_slope=True)
+    if not np.isnan(var_slope):
+        result["var_slope"] = var_slope
+
+    return result
 
 
 def did_table_mixed(

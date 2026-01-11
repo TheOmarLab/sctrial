@@ -45,6 +45,7 @@ Key Assumptions
 """
 from __future__ import annotations
 
+import warnings
 from collections.abc import Sequence
 from typing import Literal
 
@@ -54,7 +55,7 @@ from anndata import AnnData
 from statsmodels.stats.multitest import multipletests
 
 from ..design import TrialDesign
-from .did import AggregateMode
+from .did import AggregateMode, MIN_CLUSTERS_FOR_ROBUST_SE
 
 __all__ = [
     "trend_interaction",
@@ -231,6 +232,14 @@ def trend_interaction(
             raise ValueError(f"Unknown model: {model}")
 
         try:
+            if n_units < MIN_CLUSTERS_FOR_ROBUST_SE:
+                warnings.warn(
+                    f"Only {n_units} clusters (participants) available. Cluster-robust "
+                    f"standard errors are unreliable with fewer than {MIN_CLUSTERS_FOR_ROBUST_SE} "
+                    f"clusters.",
+                    UserWarning,
+                    stacklevel=2,
+                )
             fit = smf.ols(formula, data=df_feat).fit(
                 cov_type="cluster",
                 cov_kwds={"groups": df_feat[design.participant_col]}

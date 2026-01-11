@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from collections.abc import Sequence
 from typing import Literal
 
@@ -9,6 +10,8 @@ import statsmodels.formula.api as smf
 from anndata import AnnData
 from scipy.stats import mannwhitneyu
 from statsmodels.stats.multitest import multipletests
+
+from .did import MIN_CLUSTERS_FOR_ROBUST_SE
 
 from ..adata_tools import subset_cells
 from ..design import TrialDesign
@@ -195,6 +198,15 @@ def within_arm_comparison(
             df_feat["outcome_std"] = df_feat[feat].astype(float)
 
         model = smf.ols(f"outcome_std ~ visit_num + C({unit})", data=df_feat)
+        n_units_feat = df_feat[unit].nunique()
+        if n_units_feat < MIN_CLUSTERS_FOR_ROBUST_SE:
+            warnings.warn(
+                f"Only {n_units_feat} clusters (participants) available. Cluster-robust "
+                f"standard errors are unreliable with fewer than {MIN_CLUSTERS_FOR_ROBUST_SE} "
+                f"clusters.",
+                UserWarning,
+                stacklevel=2,
+            )
         fit = model.fit(cov_type="cluster", cov_kwds={"groups": df_feat[unit]})
 
         rows.append({
