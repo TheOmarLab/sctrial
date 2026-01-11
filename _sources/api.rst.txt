@@ -78,6 +78,12 @@ Heterogeneity
    :members:
    :undoc-members:
 
+Sensitivity
+~~~~~~~~~~~
+.. automodule:: sctrial.stats.sensitivity
+   :members:
+   :undoc-members:
+
 Diagnostics
 ~~~~~~~~~~~
 .. automodule:: sctrial.stats.diagnostics

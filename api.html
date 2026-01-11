@@ -156,6 +156,10 @@
 <li class="toctree-l4"><a class="reference internal" href="#sctrial.stats.heterogeneity.test_treatment_heterogeneity"><code class="docutils literal notranslate"><span class="pre">test_treatment_heterogeneity()</span></code></a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="#module-sctrial.stats.sensitivity">Sensitivity</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#sctrial.stats.sensitivity.e_value_rr"><code class="docutils literal notranslate"><span class="pre">e_value_rr()</span></code></a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="#module-sctrial.stats.diagnostics">Diagnostics</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#sctrial.stats.diagnostics.check_did_assumptions"><code class="docutils literal notranslate"><span class="pre">check_did_assumptions()</span></code></a></li>
 </ul>
@@ -1719,6 +1723,30 @@ biomarkers (0/1 or True/False), values are used directly.</p></li>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-sctrial.stats.sensitivity">
+<span id="sensitivity"></span><h3>Sensitivity<a class="headerlink" href="#module-sctrial.stats.sensitivity" title="Link to this heading"></a></h3>
+<dl class="py function">
+<dt class="sig sig-object py" id="sctrial.stats.sensitivity.e_value_rr">
+<span class="sig-prename descclassname"><span class="pre">sctrial.stats.sensitivity.</span></span><span class="sig-name descname"><span class="pre">e_value_rr</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">estimate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ci_lower</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ci_upper</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/sctrial/stats/sensitivity.html#e_value_rr"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.stats.sensitivity.e_value_rr" title="Link to this definition"></a></dt>
+<dd><p>Compute the E-value for a risk ratio estimate (VanderWeele &amp; Ding).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>estimate</strong> – Risk ratio (RR) estimate (&gt;0).</p></li>
+<li><p><strong>ci_lower</strong> – Optional confidence interval bounds on the RR scale.</p></li>
+<li><p><strong>ci_upper</strong> – Optional confidence interval bounds on the RR scale.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>E-value for the point estimate and for the confidence limit closest to 1.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(e_value, e_value_ci)</p>
 </dd>
 </dl>
 </dd></dl>
