@@ -84,6 +84,7 @@
 <li class="toctree-l4"><a class="reference internal" href="#Sensitivity-to-Unmeasured-Confounding-(E-value)">Sensitivity to Unmeasured Confounding (E-value)</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#Interactive-DiD-Plot-(Plotly)">Interactive DiD Plot (Plotly)</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#Survival-Analysis-(Cox-Model)">Survival Analysis (Cox Model)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#Bayesian-DiD-(PyMC)">Bayesian DiD (PyMC)</a></li>
 </ul>
 </li>
 </ul>
@@ -3756,8 +3757,41 @@ No survival columns found; created demo time_to_event/event from cell counts.
 </table>
 </div></div>
 </div>
+</section>
+<section id="Bayesian-DiD-(PyMC)">
+<h3>Bayesian DiD (PyMC)<a class="headerlink" href="#Bayesian-DiD-(PyMC)" title="Link to this heading"></a></h3>
+<p>This optional section fits a Bayesian DiD model with participant random intercepts. It provides posterior means and 95% credible intervals for the DiD effect.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[24]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">pymc</span>  <span class="c1"># noqa: F401</span>
+    <span class="n">bayes_res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table_bayes</span><span class="p">(</span>
+        <span class="n">adata</span><span class="p">,</span>
+        <span class="n">features</span><span class="o">=</span><span class="n">features_use</span><span class="p">[:</span><span class="mi">3</span><span class="p">],</span>
+        <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+        <span class="n">visits</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">visits</span><span class="p">),</span>
+        <span class="n">draws</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
+        <span class="n">tune</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
+        <span class="n">seed</span><span class="o">=</span><span class="n">SEED</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">display</span><span class="p">(</span><span class="n">bayes_res</span><span class="p">)</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;PyMC not installed; skip Bayesian DiD. Install with: pip install &#39;sctrial[bayes]&#39;&quot;</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+PyMC not installed; skip Bayesian DiD. Install with: pip install &#39;sctrial[bayes]&#39;
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[25]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">did_results</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">did_results</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>

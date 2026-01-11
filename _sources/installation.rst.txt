@@ -22,6 +22,9 @@ Optional dependencies
    # survival analysis (lifelines)
    pip install "sctrial[survival]"
 
+   # Bayesian DiD (PyMC)
+   pip install "sctrial[bayes]"
+
 From source
 -----------
 
@@ -36,7 +39,7 @@ Development setup
 
 .. code-block:: bash
 
-   pip install -e ".[dev,plots,gsea,aucell,survival]"
+   pip install -e ".[dev,plots,gsea,aucell,survival,bayes]"
    pre-commit install
 
 Notes

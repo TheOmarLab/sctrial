@@ -46,6 +46,12 @@ Core DiD Methods
    :members:
    :undoc-members:
 
+Bayesian DiD
+~~~~~~~~~~~~
+.. automodule:: sctrial.stats.bayes
+   :members:
+   :undoc-members:
+
 .. automodule:: sctrial.stats.abundance
    :members:
    :undoc-members:
