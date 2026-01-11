@@ -19,6 +19,9 @@ Optional dependencies
    # AUCell scoring (pySCENIC)
    pip install "sctrial[aucell]"
 
+   # survival analysis (lifelines)
+   pip install "sctrial[survival]"
+
 From source
 -----------
 
@@ -33,7 +36,7 @@ Development setup
 
 .. code-block:: bash
 
-   pip install -e ".[dev,plots,gsea,aucell]"
+   pip install -e ".[dev,plots,gsea,aucell,survival]"
    pre-commit install
 
 Notes

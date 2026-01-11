@@ -83,6 +83,7 @@
 <li class="toctree-l4"><a class="reference internal" href="#Treatment-Heterogeneity-Example">Treatment Heterogeneity Example</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#Sensitivity-to-Unmeasured-Confounding-(E-value)">Sensitivity to Unmeasured Confounding (E-value)</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#Interactive-DiD-Plot-(Plotly)">Interactive DiD Plot (Plotly)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#Survival-Analysis-(Cox-Model)">Survival Analysis (Cox Model)</a></li>
 </ul>
 </li>
 </ul>
@@ -3643,8 +3644,120 @@ E-value (RR≈exp(beta)): 1.897
 <section id="Interactive-DiD-Plot-(Plotly)">
 <h3>Interactive DiD Plot (Plotly)<a class="headerlink" href="#Interactive-DiD-Plot-(Plotly)" title="Link to this heading"></a></h3>
 <p>If Plotly is available, we render an interactive forest plot of DiD effects.</p>
+</section>
+<section id="Survival-Analysis-(Cox-Model)">
+<h3>Survival Analysis (Cox Model)<a class="headerlink" href="#Survival-Analysis-(Cox-Model)" title="Link to this heading"></a></h3>
+<p>Here we demonstrate how to run a Cox proportional hazards model on participant‑level features. The Sade‑Feldman dataset does not include survival outcomes, so we derive a <strong>demo</strong> time‑to‑event variable from participant‑level cell counts. Replace this with real survival data in practice.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[23]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="p">{</span><span class="s2">&quot;time_to_event&quot;</span><span class="p">,</span> <span class="s2">&quot;event&quot;</span><span class="p">}</span><span class="o">.</span><span class="n">issubset</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">):</span>
+    <span class="n">time_col</span> <span class="o">=</span> <span class="s2">&quot;time_to_event&quot;</span>
+    <span class="n">event_col</span> <span class="o">=</span> <span class="s2">&quot;event&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Using existing survival columns in adata.obs&quot;</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="c1"># Demo survival outcomes from participant-level cell counts</span>
+    <span class="n">pt_counts</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;participant_id&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">size</span><span class="p">()</span>
+    <span class="n">time_col</span> <span class="o">=</span> <span class="s2">&quot;time_to_event&quot;</span>
+    <span class="n">event_col</span> <span class="o">=</span> <span class="s2">&quot;event&quot;</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">time_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;participant_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">pt_counts</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">-</span> <span class="n">pt_counts</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">pt_series</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;participant_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">pt_counts</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">event_col</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pt_series</span> <span class="o">&gt;</span> <span class="nb">float</span><span class="p">(</span><span class="n">pt_counts</span><span class="o">.</span><span class="n">median</span><span class="p">()))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No survival columns found; created demo time_to_event/event from cell counts.&quot;</span><span class="p">)</span>
+
+<span class="c1"># Run Cox regression on selected features at baseline visit</span>
+<span class="k">if</span> <span class="n">features_use</span> <span class="ow">and</span> <span class="n">visits</span><span class="p">:</span>
+    <span class="n">surv_res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">hazard_regression_with_features</span><span class="p">(</span>
+        <span class="n">adata</span><span class="p">,</span>
+        <span class="n">features</span><span class="o">=</span><span class="n">features_use</span><span class="p">[:</span><span class="mi">3</span><span class="p">],</span>
+        <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+        <span class="n">time_col</span><span class="o">=</span><span class="n">time_col</span><span class="p">,</span>
+        <span class="n">event_col</span><span class="o">=</span><span class="n">event_col</span><span class="p">,</span>
+        <span class="n">visit</span><span class="o">=</span><span class="n">visits</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+    <span class="p">)</span>
+    <span class="n">display</span><span class="p">(</span><span class="n">surv_res</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No features or visits available for survival analysis.&quot;</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+No survival columns found; created demo time_to_event/event from cell counts.
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>feature</th>
+      <th>HR</th>
+      <th>HR_low</th>
+      <th>HR_high</th>
+      <th>p</th>
+      <th>n</th>
+      <th>FDR</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>sig_IFN_Response</td>
+      <td>1.358017</td>
+      <td>0.730667</td>
+      <td>2.524010</td>
+      <td>0.333197</td>
+      <td>18</td>
+      <td>0.658066</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>sig_Cytotoxicity</td>
+      <td>1.285296</td>
+      <td>0.680945</td>
+      <td>2.426022</td>
+      <td>0.438711</td>
+      <td>18</td>
+      <td>0.658066</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>sig_Exhaustion</td>
+      <td>1.107510</td>
+      <td>0.594950</td>
+      <td>2.061649</td>
+      <td>0.747390</td>
+      <td>18</td>
+      <td>0.747390</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[24]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">did_results</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">did_results</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
