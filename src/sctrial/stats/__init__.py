@@ -28,7 +28,7 @@ from .abundance import abundance_did
 from .comparisons import between_arm_comparison, compare_gene_in_celltype, within_arm_comparison
 from .cv import cv_summary, influence_diagnostics, kfold_cv_did, loo_cv_did
 from .diagnostics import check_did_assumptions
-from .did import DiDConfig, did_fit, did_table, did_table_by_celltype
+from .did import DiDConfig, did_fit, did_table, did_table_by_celltype, did_table_parallel
 from .effect_size import (
     add_effect_sizes_to_did,
     bootstrap_effect_size_ci,
@@ -61,6 +61,7 @@ __all__ = [
     "did_table",
     "did_fit",
     "did_table_by_celltype",
+    "did_table_parallel",
     "DiDConfig",
     "abundance_did",
     "run_gsea_did",

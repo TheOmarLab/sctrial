@@ -541,6 +541,126 @@ def did_table(
     return res.reset_index(drop=True)
 
 
+def did_table_parallel(
+    adata: AnnData,
+    features: Sequence[str],
+    design: TrialDesign,
+    visits: tuple[str, str],
+    exclude_crossovers: bool = True,
+    celltype: str | None = None,
+    aggregate: AggregateMode = "participant_visit",
+    layer: str | None = None,
+    standardize: bool = True,
+    agg: AggregateFunc = "mean",
+    covariates: list[str] | None = None,
+    use_bootstrap: bool = False,
+    n_boot: int = 999,
+    seed: int = 42,
+    n_jobs: int = -1,
+    backend: str = "loky",
+    batch_size: int | None = None,
+    config: DiDConfig | None = None,
+) -> pd.DataFrame:
+    """Parallelized DiD across features using joblib.
+
+    This mirrors `did_table` but parallelizes feature-level model fits. It is
+    most useful for large feature panels (hundreds to thousands of genes).
+
+    Parameters
+    ----------
+    n_jobs
+        Number of parallel jobs (joblib convention). Use -1 for all cores.
+    backend
+        Joblib backend ("loky", "multiprocessing", or "threading").
+    batch_size
+        Optional joblib batch size. If None, joblib chooses.
+    """
+    if n_jobs == 1:
+        return did_table(
+            adata=adata,
+            features=features,
+            design=design,
+            visits=visits,
+            exclude_crossovers=exclude_crossovers,
+            celltype=celltype,
+            aggregate=aggregate,
+            layer=layer,
+            standardize=standardize,
+            agg=agg,
+            covariates=covariates,
+            use_bootstrap=use_bootstrap,
+            n_boot=n_boot,
+            seed=seed,
+            config=config,
+        )
+
+    try:
+        from joblib import Parallel, delayed
+    except ImportError as exc:  # pragma: no cover
+        raise ImportError("joblib is required for did_table_parallel") from exc
+
+    if config is not None:
+        aggregate = config.aggregate
+        layer = config.layer
+        standardize = config.standardize
+        agg = config.agg
+        covariates = config.covariates
+        use_bootstrap = config.use_bootstrap
+        n_boot = config.n_boot
+        seed = config.seed
+        exclude_crossovers = config.exclude_crossovers
+
+    ad, obs = _prepare_did_obs(adata, design, visits, celltype, exclude_crossovers)
+
+    cols = [design.participant_col, design.visit_col, design.arm_col, "visit_num", "arm_bin"]
+    if design.celltype_col and design.celltype_col in obs.columns:
+        cols.append(design.celltype_col)
+
+    if covariates:
+        for c in covariates:
+            if c not in obs.columns:
+                raise KeyError(f"Covariate '{c}' not found in adata.obs")
+            cols.append(c)
+
+    df = obs[cols].copy()
+    df, final_features = _add_feature_columns(df, ad, features, layer)
+
+    df_use, unit, time, arm_bin = _aggregate_for_did(
+        df,
+        final_features,
+        design,
+        visits,
+        aggregate,
+        agg,
+        covariates,
+    )
+
+    def _fit_feature(idx: int, feat: str) -> dict:
+        out = did_fit(
+            df_use,
+            y=feat,
+            unit=unit,
+            time=time,
+            arm_bin=arm_bin,
+            covariates=covariates,
+            standardize=standardize,
+            use_bootstrap=use_bootstrap,
+            n_boot=n_boot,
+            seed=seed + idx,
+        )
+        out["feature"] = feat
+        return out
+
+    job_batch = "auto" if batch_size is None else batch_size
+    rows = Parallel(n_jobs=n_jobs, backend=backend, batch_size=job_batch)(
+        delayed(_fit_feature)(i, feat) for i, feat in enumerate(final_features)
+    )
+
+    res = pd.DataFrame(rows).sort_values("p_DiD")
+    res = apply_fdr(res, p_col="p_DiD", fdr_col="FDR_DiD")
+    return res.reset_index(drop=True)
+
+
 def did_table_by_celltype(
     adata: AnnData,
     features: Sequence[str],

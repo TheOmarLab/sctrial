@@ -44,7 +44,7 @@ from .stats.comparisons import (
 )
 from .stats.cv import cv_summary, influence_diagnostics, kfold_cv_did, loo_cv_did
 from .stats.diagnostics import check_did_assumptions
-from .stats.did import DiDConfig, did_fit, did_table, did_table_by_celltype
+from .stats.did import DiDConfig, did_fit, did_table, did_table_by_celltype, did_table_parallel
 from .stats.effect_size import (
     add_effect_sizes_to_did,
     bootstrap_effect_size_ci,
@@ -116,6 +116,7 @@ __all__ = [
     "did_table",
     "did_fit",
     "did_table_by_celltype",
+    "did_table_parallel",
     "abundance_did",
     "run_gsea_did",
     "run_gsea_did_multi",
