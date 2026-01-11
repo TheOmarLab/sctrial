@@ -79,6 +79,7 @@ from .stats.pseudobulk import (
 )
 from .stats.sensitivity import e_value_rr
 from .stats.summary import summarize_did_results
+from .stats.survival import hazard_regression_with_features
 from .stats.timeseries import event_study_did, test_parallel_trends, trend_interaction
 from .utils import resolve_feature
 from .validation import (
@@ -183,6 +184,8 @@ __all__ = [
     "test_treatment_heterogeneity",
     # Sensitivity
     "e_value_rr",
+    # Survival
+    "hazard_regression_with_features",
     "TrialDataValidator",
     # Convenience
     "quick_did",

@@ -54,6 +54,7 @@ from .pseudobulk import (
 )
 from .sensitivity import e_value_rr
 from .summary import summarize_did_results
+from .survival import hazard_regression_with_features
 from .timeseries import event_study_did, polynomial_trend, test_parallel_trends, trend_interaction
 
 __all__ = [
@@ -110,4 +111,6 @@ __all__ = [
     "cv_summary",
     # Diagnostics
     "check_did_assumptions",
+    # Survival
+    "hazard_regression_with_features",
 ]

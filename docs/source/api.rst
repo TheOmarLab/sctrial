@@ -84,6 +84,12 @@ Sensitivity
    :members:
    :undoc-members:
 
+Survival Analysis
+~~~~~~~~~~~~~~~~~
+.. automodule:: sctrial.stats.survival
+   :members:
+   :undoc-members:
+
 Diagnostics
 ~~~~~~~~~~~
 .. automodule:: sctrial.stats.diagnostics
