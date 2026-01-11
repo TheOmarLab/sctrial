@@ -289,7 +289,6 @@ def between_arm_comparison(
         if method == "ols":
             rows.append(_ols_between_arm(df_use, feat, design, standardize))
         elif method == "wilcoxon":
-            from scipy.stats import mannwhitneyu
             g1 = np.asarray(df_use[df_use["arm_bin"] == 1][feat].values, dtype=float)
             g2 = np.asarray(df_use[df_use["arm_bin"] == 0][feat].values, dtype=float)
 
