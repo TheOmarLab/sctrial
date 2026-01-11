@@ -52,9 +52,10 @@ from typing import Literal
 import numpy as np
 import pandas as pd
 from anndata import AnnData
-from statsmodels.stats.multitest import multipletests
+
 
 from ..design import TrialDesign
+from ._utils import apply_fdr
 from .did import AggregateMode, MIN_CLUSTERS_FOR_ROBUST_SE
 
 __all__ = [
@@ -277,12 +278,7 @@ def trend_interaction(
 
     # FDR correction for linear trend
     if "p_treat_trend" in res.columns:
-        mask = res["p_treat_trend"].notna()
-        res["FDR_treat_trend"] = np.nan
-        if mask.sum() > 0:
-            res.loc[mask, "FDR_treat_trend"] = multipletests(
-                res.loc[mask, "p_treat_trend"], method="fdr_bh"
-            )[1]
+        res = apply_fdr(res, p_col="p_treat_trend", fdr_col="FDR_treat_trend")
 
     return res
 

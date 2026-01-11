@@ -10,7 +10,7 @@ from scipy.stats import wilcoxon
 from statsmodels.stats.multitest import multipletests
 
 from ..design import TrialDesign
-from ._utils import encode_visit
+from ._utils import apply_fdr, encode_visit
 from .did import did_fit
 
 __all__ = ["pseudobulk_expression", "pseudobulk_within_arm", "pseudobulk_did", "pseudobulk_export"]
@@ -273,11 +273,9 @@ def pseudobulk_did(
     if res.empty:
         return res
 
-    mask = res["p_DiD"].notna()
-    res["FDR_DiD"] = np.nan
-    if mask.sum() > 0:
-        res.loc[mask, "FDR_DiD"] = multipletests(res.loc[mask, "p_DiD"], method="fdr_bh")[1]
+    res = apply_fdr(res, p_col="p_DiD", fdr_col="FDR_DiD")
 
+    # Per-celltype FDR correction
     if celltype_col is not None:
         res["FDR_DiD_celltype"] = np.nan
         for ct, sub in res.groupby("celltype", observed=True):
@@ -353,9 +351,6 @@ def pseudobulk_within_arm(
 
     summary = pd.DataFrame(rows)
     if not summary.empty:
-        mask = summary["p_time"].notna()
-        summary["FDR_time"] = np.nan
-        if mask.sum() > 0:
-            summary.loc[mask, "FDR_time"] = multipletests(summary.loc[mask, "p_time"], method="fdr_bh")[1]
+        summary = apply_fdr(summary, p_col="p_time", fdr_col="FDR_time")
     delta_long = pd.DataFrame(deltas)
     return summary, delta_long

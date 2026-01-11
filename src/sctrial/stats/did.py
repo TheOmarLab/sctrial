@@ -10,7 +10,7 @@ import pandas as pd
 import scipy.sparse as sp
 import statsmodels.formula.api as smf
 from anndata import AnnData
-from statsmodels.stats.multitest import multipletests
+
 
 # Minimum number of clusters for reliable cluster-robust standard errors
 # Cameron & Miller (2015) recommend 42+, with 10 as absolute minimum
@@ -19,7 +19,7 @@ MIN_CLUSTERS_FOR_ROBUST_SE = 10
 from ..adata_tools import subset_primary
 from ..design import TrialDesign
 from ..utils import wild_cluster_bootstrap_t
-from ._utils import encode_visit, standardize_series
+from ._utils import apply_fdr, encode_visit, standardize_series
 
 
 @dataclass(frozen=True)
@@ -369,7 +369,7 @@ def did_fit(
             stacklevel=2,
         )
 
-    fit = model.fit(cov_type=cov_type, cov_kwds={"groups": tmp[unit]} if cov_type=="cluster" else None)
+    fit = model.fit(cov_type=cov_type, cov_kwds={"groups": tmp[unit]} if cov_type == "cluster" else None)
     term = f"{time}:{arm_bin}"
 
     res = {
@@ -521,7 +521,7 @@ def did_table(
         covariates,
     )
 
-    rows=[]
+    rows = []
     for feat in final_features:
         out = did_fit(
             df_use,
@@ -535,14 +535,10 @@ def did_table(
             n_boot=n_boot,
             seed=seed
         )
-        out["feature"]=feat
+        out["feature"] = feat
         rows.append(out)
-    res=pd.DataFrame(rows).sort_values("p_DiD")
-    # FDR
-    mask=res["p_DiD"].notna()
-    res["FDR_DiD"]=np.nan
-    if mask.sum()>0:
-        res.loc[mask,"FDR_DiD"]=multipletests(res.loc[mask,"p_DiD"], method="fdr_bh")[1]
+    res = pd.DataFrame(rows).sort_values("p_DiD")
+    res = apply_fdr(res, p_col="p_DiD", fdr_col="FDR_DiD")
     return res.reset_index(drop=True)
 
 
@@ -638,12 +634,7 @@ def did_table_by_celltype(
 
     full_res = pd.concat(all_res, ignore_index=True)
 
-    # Recalculate FDR across all tests if possible
-    mask = full_res["p_DiD"].notna()
-    if mask.sum() > 0:
-        full_res["FDR_DiD_stratified"] = np.nan
-        full_res.loc[mask, "FDR_DiD_stratified"] = multipletests(
-            full_res.loc[mask, "p_DiD"], method="fdr_bh"
-        )[1]
+    # Recalculate FDR across all tests
+    full_res = apply_fdr(full_res, p_col="p_DiD", fdr_col="FDR_DiD_stratified")
 
     return full_res

@@ -9,14 +9,11 @@ import pandas as pd
 import statsmodels.formula.api as smf
 from anndata import AnnData
 from scipy.stats import mannwhitneyu
-from statsmodels.stats.multitest import multipletests
-
-from .did import MIN_CLUSTERS_FOR_ROBUST_SE
 
 from ..adata_tools import subset_cells
 from ..design import TrialDesign
-from ._utils import aggregate_features, encode_visit, standardize_series
-from .did import AggregateFunc, AggregateMode, _ensure_paired
+from ._utils import aggregate_features, apply_fdr, encode_visit, standardize_series
+from .did import AggregateFunc, AggregateMode, MIN_CLUSTERS_FOR_ROBUST_SE, _ensure_paired
 
 
 def _add_feature_columns(
@@ -86,6 +83,24 @@ def _ols_between_arm(
     design: TrialDesign,
     standardize: bool,
 ) -> dict:
+    """Fit OLS model comparing arms at a single timepoint.
+
+    Parameters
+    ----------
+    df_use
+        DataFrame with feature values and arm assignments.
+    feat
+        Name of the feature column to analyze.
+    design
+        TrialDesign object with column specifications.
+    standardize
+        If True, z-score the outcome before fitting.
+
+    Returns
+    -------
+    dict
+        Dictionary with keys: feature, beta_arm, p_arm, n_units.
+    """
     df_feat = df_use.copy()
     if standardize:
         y_std, ok = standardize_series(df_feat, feat, min_std=1e-12)
@@ -96,11 +111,11 @@ def _ols_between_arm(
                 "p_arm": np.nan,
                 "n_units": int(df_feat[design.participant_col].nunique()),
             }
-            df_feat["outcome_std"] = y_std
-        else:
-            df_feat["outcome_std"] = df_feat[feat].astype(float)
+        df_feat["outcome_std"] = y_std
+    else:
+        df_feat["outcome_std"] = df_feat[feat].astype(float)
 
-        model = smf.ols("outcome_std ~ arm_bin", data=df_feat)
+    model = smf.ols("outcome_std ~ arm_bin", data=df_feat)
     fit = model.fit()
     return {
         "feature": feat,
@@ -217,11 +232,9 @@ def within_arm_comparison(
         })
 
     res = pd.DataFrame(rows)
-    mask = res["p_time"].notna()
-    res["FDR_time"] = np.nan
-    if mask.sum() > 0:
-        res.loc[mask, "FDR_time"] = multipletests(res.loc[mask, "p_time"], method="fdr_bh")[1]
+    res = apply_fdr(res, p_col="p_time", fdr_col="FDR_time")
     return res
+
 
 def between_arm_comparison(
     adata: AnnData,
@@ -297,10 +310,7 @@ def between_arm_comparison(
                 })
 
     res = pd.DataFrame(rows)
-    mask = res["p_arm"].notna()
-    res["FDR_arm"] = np.nan
-    if mask.sum() > 0:
-        res.loc[mask, "FDR_arm"] = multipletests(res.loc[mask, "p_arm"], method="fdr_bh")[1]
+    res = apply_fdr(res, p_col="p_arm", fdr_col="FDR_arm")
     return res
 
 
