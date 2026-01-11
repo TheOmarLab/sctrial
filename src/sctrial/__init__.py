@@ -24,6 +24,7 @@ from .plotting import (
     plot_gsea_heatmap,
     plot_gsea_radar,
     plot_module_umap_panel,
+    plot_parallel_trends,
     plot_trial_dotplot,
     plot_trial_interaction,
     plot_trial_umap,
@@ -40,6 +41,7 @@ from .stats.comparisons import (
     within_arm_comparison,
 )
 from .stats.cv import cv_summary, influence_diagnostics, kfold_cv_did, loo_cv_did
+from .stats.diagnostics import check_did_assumptions
 from .stats.did import DiDConfig, did_fit, did_table, did_table_by_celltype
 from .stats.effect_size import (
     add_effect_sizes_to_did,
@@ -68,6 +70,7 @@ from .stats.power import (
 )
 from .stats.pseudobulk import (
     pseudobulk_did,
+    pseudobulk_export,
     pseudobulk_expression,
     pseudobulk_within_arm,
 )
@@ -120,6 +123,7 @@ __all__ = [
     "pseudobulk_expression",
     "pseudobulk_within_arm",
     "pseudobulk_did",
+    "pseudobulk_export",
     "module_score_pseudobulk",
     "module_score_did_by_pool",
     "module_score_within_arm_by_pool",
@@ -150,8 +154,11 @@ __all__ = [
     "kfold_cv_did",
     "influence_diagnostics",
     "cv_summary",
+    # Diagnostics
+    "check_did_assumptions",
     # Plotting
     "plot_trial_interaction",
+    "plot_parallel_trends",
     "plot_abundance_interaction",
     "plot_did_forest",
     "plot_within_arm_comparison",

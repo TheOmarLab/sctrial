@@ -155,6 +155,70 @@ def plot_trial_interaction(
     return ax
 
 
+def plot_parallel_trends(
+    adata: AnnData,
+    feature: str,
+    design: TrialDesign,
+    visits: Sequence[str],
+    *,
+    layer: str | None = None,
+    ax: Axes | None = None,
+) -> Axes:
+    """Plot pre-treatment trends by arm to visually assess parallel trends.
+
+    Parameters
+    ----------
+    adata
+        AnnData object.
+    feature
+        Feature to plot (gene or obs column).
+    design
+        TrialDesign object.
+    visits
+        Sequence of visit labels to include (should be pre-treatment visits).
+    layer
+        Layer for gene expression.
+    ax
+        Optional matplotlib axis.
+
+    Returns
+    -------
+    matplotlib.axes.Axes
+        Axes containing the parallel trends plot.
+    """
+    if plt is None or sns is None:
+        raise ImportError(
+            "matplotlib and seaborn are required for plotting. "
+            "Install with: pip install sctrial[plots]"
+        )
+
+    obs = adata.obs[[design.arm_col, design.visit_col]].copy()
+    if feature in adata.obs.columns:
+        obs[feature] = adata.obs[feature].values
+    elif feature in adata.var_names:
+        obs[feature] = extract_gene_vector(adata, feature, layer=layer)
+    else:
+        raise KeyError(f"Feature '{feature}' not found.")
+
+    obs = obs[obs[design.visit_col].isin(list(visits))].copy()
+    obs[design.visit_col] = pd.Categorical(obs[design.visit_col], categories=list(visits), ordered=True)
+
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(5, 4))
+
+    sns.pointplot(
+        data=obs,
+        x=design.visit_col,
+        y=feature,
+        hue=design.arm_col,
+        dodge=True,
+        capsize=0.1,
+        ax=ax,
+    )
+    ax.set_title(f"Parallel trends (pre-treatment): {feature}")
+    return ax
+
+
 def plot_did_forest(
     df: pd.DataFrame,
     *,

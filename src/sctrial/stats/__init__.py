@@ -27,6 +27,7 @@ Effect Sizes & Power
 from .abundance import abundance_did
 from .comparisons import between_arm_comparison, compare_gene_in_celltype, within_arm_comparison
 from .cv import cv_summary, influence_diagnostics, kfold_cv_did, loo_cv_did
+from .diagnostics import check_did_assumptions
 from .did import DiDConfig, did_fit, did_table, did_table_by_celltype
 from .effect_size import (
     add_effect_sizes_to_did,
@@ -44,7 +45,12 @@ from .module_scores import (
     module_score_within_arm_by_pool,
 )
 from .power import design_effect, effective_sample_size, power_curve, power_did, sample_size_did
-from .pseudobulk import pseudobulk_did, pseudobulk_expression, pseudobulk_within_arm
+from .pseudobulk import (
+    pseudobulk_did,
+    pseudobulk_export,
+    pseudobulk_expression,
+    pseudobulk_within_arm,
+)
 from .summary import summarize_did_results
 from .timeseries import event_study_did, polynomial_trend, test_parallel_trends, trend_interaction
 
@@ -65,6 +71,7 @@ __all__ = [
     "pseudobulk_expression",
     "pseudobulk_within_arm",
     "pseudobulk_did",
+    "pseudobulk_export",
     "module_score_pseudobulk",
     "module_score_did_by_pool",
     "module_score_within_arm_by_pool",
@@ -96,4 +103,6 @@ __all__ = [
     "kfold_cv_did",
     "influence_diagnostics",
     "cv_summary",
+    # Diagnostics
+    "check_did_assumptions",
 ]

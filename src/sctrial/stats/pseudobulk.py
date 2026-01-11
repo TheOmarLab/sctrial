@@ -13,7 +13,7 @@ from ..design import TrialDesign
 from ._utils import encode_visit
 from .did import did_fit
 
-__all__ = ["pseudobulk_expression", "pseudobulk_within_arm", "pseudobulk_did"]
+__all__ = ["pseudobulk_expression", "pseudobulk_within_arm", "pseudobulk_did", "pseudobulk_export"]
 
 
 def _get_layer(adata: AnnData, layer: str | None):
@@ -30,6 +30,7 @@ def pseudobulk_expression(
     counts_layer: str | None = "counts",
     scale: float = 1e6,
     log1p: bool = True,
+    min_cells_per_group: int = 1,
     include_n_cells: bool = True,
 ) -> pd.DataFrame:
     """Compute pseudobulk log1p-CPM for a gene panel per group.
@@ -58,6 +59,18 @@ def pseudobulk_expression(
 
     # Group encoding (vectorized aggregation)
     group_df = adata.obs[list(groupby)].copy()
+
+    if min_cells_per_group > 1:
+        counts = group_df.value_counts().rename("n_cells")
+        keep_groups = counts[counts >= min_cells_per_group].index
+        group_df = group_df.merge(
+            keep_groups.to_frame(index=False),
+            on=list(groupby),
+            how="inner",
+        )
+        adata = adata[group_df.index].copy()
+        if group_df.empty:
+            return pd.DataFrame()
     group_index = pd.MultiIndex.from_frame(group_df)
     group_index.names = list(groupby)
     group_codes, groups = pd.factorize(group_index)
@@ -103,6 +116,68 @@ def pseudobulk_expression(
         cpm = np.log1p(cpm)
     df_sum[genes] = cpm
     return df_sum
+
+
+def pseudobulk_export(
+    adata: AnnData,
+    genes: Sequence[str],
+    design: TrialDesign,
+    *,
+    visits: tuple[str, str] | None = None,
+    celltype_col: str | None = None,
+    counts_layer: str | None = "counts",
+    min_cells_per_group: int = 1,
+    log1p: bool = True,
+) -> AnnData:
+    """Export pseudobulk expression as a new AnnData object.
+
+    Parameters
+    ----------
+    adata
+        Input AnnData.
+    genes
+        List of genes to include.
+    design
+        TrialDesign object.
+    visits
+        Optional (baseline, followup) visits to subset.
+    celltype_col
+        If provided, aggregate per participant-visit-celltype.
+    counts_layer
+        Layer to use for counts (default: "counts").
+    min_cells_per_group
+        Minimum cells per group to include.
+    log1p
+        Whether to log1p-transform CPM values.
+
+    Returns
+    -------
+    AnnData
+        AnnData with pseudobulk expression in .X and group metadata in .obs.
+    """
+    groupby = [design.participant_col, design.visit_col]
+    if design.arm_col in adata.obs.columns:
+        groupby.append(design.arm_col)
+    if celltype_col is not None:
+        groupby.append(celltype_col)
+
+    if visits is not None:
+        adata = adata[adata.obs[design.visit_col].isin(visits)].copy()
+
+    df_sum = pseudobulk_expression(
+        adata,
+        genes=genes,
+        groupby=groupby,
+        counts_layer=counts_layer,
+        min_cells_per_group=min_cells_per_group,
+        log1p=log1p,
+    )
+
+    X = df_sum[genes].to_numpy(dtype=float)
+    obs = df_sum[groupby].copy()
+    pb = AnnData(X=X, obs=obs)
+    pb.var_names = list(genes)
+    return pb
 
 
 def pseudobulk_did(

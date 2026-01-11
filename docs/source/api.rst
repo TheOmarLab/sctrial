@@ -72,6 +72,12 @@ Mixed Effects Models
    :members:
    :undoc-members:
 
+Diagnostics
+~~~~~~~~~~~
+.. automodule:: sctrial.stats.diagnostics
+   :members:
+   :undoc-members:
+
 Time Series Analysis
 ~~~~~~~~~~~~~~~~~~~~
 .. automodule:: sctrial.stats.timeseries
