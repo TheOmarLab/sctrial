@@ -6,6 +6,7 @@ from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _pkg_version
 
 from .adata_tools import profile_features, subset_cells, subset_primary
+from .analysis import DiDAnalyzer
 from .convenience import auto_detect_design, quick_did
 from .datasets import (
     categorize_celltype,
@@ -39,7 +40,7 @@ from .stats.comparisons import (
     within_arm_comparison,
 )
 from .stats.cv import cv_summary, influence_diagnostics, kfold_cv_did, loo_cv_did
-from .stats.did import did_fit, did_table, did_table_by_celltype
+from .stats.did import DiDConfig, did_fit, did_table, did_table_by_celltype
 from .stats.effect_size import (
     add_effect_sizes_to_did,
     bootstrap_effect_size_ci,
@@ -79,10 +80,13 @@ from .validation import (
     validate_adata,
     validate_features,
 )
+from .workflow import TrialWorkflow, workflow
 
 __all__ = [
     # Core design
     "TrialDesign",
+    "DiDAnalyzer",
+    "DiDConfig",
     # Preprocessing
     "add_log1p_cpm_layer",
     "score_gene_sets",
@@ -134,6 +138,9 @@ __all__ = [
     # Mixed effects
     "did_table_mixed",
     "compare_fixed_vs_mixed",
+    # Workflow
+    "TrialWorkflow",
+    "workflow",
     # Time series
     "trend_interaction",
     "event_study_did",

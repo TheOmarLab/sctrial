@@ -97,7 +97,7 @@ def pseudobulk_expression(
     if include_n_cells:
         df_sum["n_cells"] = n_cells.astype(int)
 
-    totals = df_sum["total_counts"].values.reshape(-1, 1)
+    totals = df_sum["total_counts"].to_numpy(dtype=float).reshape(-1, 1)
     cpm = df_sum[genes].values / (totals + 1e-12) * scale
     if log1p:
         cpm = np.log1p(cpm)
@@ -167,7 +167,7 @@ def pseudobulk_did(
             index=design.participant_col,
             columns=design.visit_col,
             values=genes[0],
-            aggfunc="size",
+            aggfunc="count",
         )
         keep = wide[(wide.get(visits[0], 0) > 0) & (wide.get(visits[1], 0) > 0)].index
         df_pool = df_pool[df_pool[design.participant_col].isin(keep)].copy()

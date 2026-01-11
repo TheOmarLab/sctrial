@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import dataclass
 from typing import Literal
 
 import numpy as np
@@ -14,6 +15,24 @@ from ..adata_tools import subset_primary
 from ..design import TrialDesign
 from ..utils import wild_cluster_bootstrap_t
 from ._utils import encode_visit, standardize_series
+
+
+@dataclass(frozen=True)
+class DiDConfig:
+    """Configuration for DiD analysis.
+
+    Use this dataclass to bundle common DiD settings and pass to did_table.
+    """
+
+    aggregate: AggregateMode = "participant_visit"
+    layer: str | None = None
+    standardize: bool = True
+    agg: AggregateFunc = "mean"
+    covariates: list[str] | None = None
+    use_bootstrap: bool = False
+    n_boot: int = 999
+    seed: int = 42
+    exclude_crossovers: bool = True
 
 
 def _validate_did_fit_inputs(df: pd.DataFrame, cols: list[str]) -> None:
@@ -366,7 +385,7 @@ def did_table(
     adata: AnnData,
     features: Sequence[str],
     design: TrialDesign,
-    visits: tuple[str,str],
+    visits: tuple[str, str],
     exclude_crossovers: bool = True,
     celltype: str | None = None,
     aggregate: AggregateMode = "participant_visit",
@@ -377,6 +396,7 @@ def did_table(
     use_bootstrap: bool = False,
     n_boot: int = 999,
     seed: int = 42,
+    config: DiDConfig | None = None,
 ) -> pd.DataFrame:
     """Run Difference-in-Differences (DiD) for a list of features.
 
@@ -402,6 +422,10 @@ def did_table(
     exclude_crossovers
         If True, excludes observations where `design.crossover_col` is True.
         Recommended for primary randomized analysis.
+    config
+        Optional DiDConfig object. If provided, its values override the corresponding
+        keyword arguments (aggregate, layer, standardize, agg, covariates, bootstrap,
+        seed, and exclude_crossovers).
     celltype
         If provided, subsets the analysis to a specific cell type.
     aggregate
@@ -445,6 +469,17 @@ def did_table(
     >>> print(res[["feature", "beta_DiD", "p_DiD"]])
     """
     # subset and prepare
+    if config is not None:
+        aggregate = config.aggregate
+        layer = config.layer
+        standardize = config.standardize
+        agg = config.agg
+        covariates = config.covariates
+        use_bootstrap = config.use_bootstrap
+        n_boot = config.n_boot
+        seed = config.seed
+        exclude_crossovers = config.exclude_crossovers
+
     ad, obs = _prepare_did_obs(adata, design, visits, celltype, exclude_crossovers)
 
     # build dataframe with features and all possible grouping columns
