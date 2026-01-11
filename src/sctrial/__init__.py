@@ -55,6 +55,7 @@ from .stats.gsea import (
     run_gsea_did_multi,
     run_gsea_pseudobulk,
 )
+from .stats.heterogeneity import test_treatment_heterogeneity
 from .stats.mixed_effects import compare_fixed_vs_mixed, did_table_mixed
 from .stats.module_scores import (
     module_score_did_by_pool,
@@ -172,6 +173,8 @@ __all__ = [
     "validate_adata",
     "validate_features",
     "diagnose_trial_data",
+    # Heterogeneity
+    "test_treatment_heterogeneity",
     "TrialDataValidator",
     # Convenience
     "quick_did",

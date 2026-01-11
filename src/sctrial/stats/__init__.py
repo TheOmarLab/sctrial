@@ -38,6 +38,7 @@ from .effect_size import (
     hedges_g,
 )
 from .gsea import run_gsea_did, run_gsea_did_by_celltype, run_gsea_did_multi, run_gsea_pseudobulk
+from .heterogeneity import test_treatment_heterogeneity
 from .mixed_effects import compare_fixed_vs_mixed, did_mixed, did_table_mixed
 from .module_scores import (
     module_score_did_by_pool,
@@ -93,6 +94,7 @@ __all__ = [
     "did_mixed",
     "did_table_mixed",
     "compare_fixed_vs_mixed",
+    "test_treatment_heterogeneity",
     # Time series
     "trend_interaction",
     "event_study_did",
