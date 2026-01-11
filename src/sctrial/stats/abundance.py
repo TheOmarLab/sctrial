@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 import pandas as pd
 import statsmodels.formula.api as smf
@@ -10,6 +12,7 @@ from ..adata_tools import subset_primary
 from ..design import TrialDesign
 from ..utils import wild_cluster_bootstrap_t
 from ._utils import encode_visit
+from .did import MIN_CLUSTERS_FOR_ROBUST_SE
 
 
 def abundance_did(
@@ -153,6 +156,16 @@ def abundance_did(
         model = smf.ols(formula, data=tmp)
 
         try:
+            # Warn if using cluster-robust SE with few clusters
+            if n_units < MIN_CLUSTERS_FOR_ROBUST_SE:
+                warnings.warn(
+                    f"Only {n_units} clusters (participants) available for celltype "
+                    f"'{ct}'. Cluster-robust standard errors are unreliable with fewer "
+                    f"than {MIN_CLUSTERS_FOR_ROBUST_SE} clusters. Consider using "
+                    f"use_bootstrap=True for more reliable p-values.",
+                    UserWarning,
+                    stacklevel=2,
+                )
             # Use cluster-robust standard errors for consistency with did_fit
             fit = model.fit(
                 cov_type="cluster",

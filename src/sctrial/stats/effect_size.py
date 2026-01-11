@@ -302,10 +302,12 @@ def _compute_effect_size_from_fit(
             j = 1 - 3 / (4 * df - 1)
             d = d * j
 
-    # Approximate CI using delta method (Hedges & Olkin 1985)
+    # Approximate CI using Hedges & Olkin (1985) formula:
+    # SE(d) = sqrt((n1+n2)/(n1*n2) + d²/(2*(n1+n2-2)))
+    # For balanced design (n1=n2=n/2): (n1+n2)/(n1*n2) = n/(n²/4) = 4/n
     n = fit.nobs
     df_resid = max(n - 2, 1)
-    se_d = np.sqrt(2 / n + (d ** 2) / (2 * df_resid)) if not np.isnan(d) else np.nan
+    se_d = np.sqrt(4 / n + (d ** 2) / (2 * df_resid)) if not np.isnan(d) else np.nan
 
     if not np.isnan(se_d):
         t_crit = stats.t.ppf(0.975, fit.df_resid)
@@ -385,8 +387,8 @@ def add_effect_sizes_to_did(
 
         # Apply Hedge's correction
         if method == "hedges_g" and not np.isnan(d) and n > 2:
-            df = n - 2
-            j = 1 - 3 / (4 * df - 1) if df > 1 else 1.0
+            df_hedges = n - 2  # Renamed to avoid shadowing DataFrame parameter
+            j = 1 - 3 / (4 * df_hedges - 1) if df_hedges > 1 else 1.0
             d = d * j
 
         # CI via approximate SE (Hedges & Olkin 1985)
