@@ -4,9 +4,11 @@ from collections.abc import Sequence
 
 import numpy as np
 import pandas as pd
+from statsmodels.stats.multitest import multipletests
 
 __all__ = [
     "aggregate_features",
+    "apply_fdr",
     "encode_visit",
     "standardize_series",
 ]
@@ -57,3 +59,40 @@ def aggregate_features(
         )
         return out
     raise ValueError(f"Unsupported agg='{agg}'. Use 'mean', 'median', or 'pct_pos'.")
+
+
+def apply_fdr(
+    df: pd.DataFrame,
+    p_col: str,
+    fdr_col: str = "FDR",
+    method: str = "fdr_bh",
+) -> pd.DataFrame:
+    """Apply FDR correction to a p-value column in a DataFrame.
+
+    Parameters
+    ----------
+    df
+        DataFrame containing the p-value column.
+    p_col
+        Name of the column containing p-values.
+    fdr_col
+        Name of the output column for FDR-corrected values.
+    method
+        Multiple testing correction method (default: 'fdr_bh' for
+        Benjamini-Hochberg).
+
+    Returns
+    -------
+    pd.DataFrame
+        Input DataFrame with added FDR column.
+
+    Examples
+    --------
+    >>> df = apply_fdr(results, p_col="p_DiD", fdr_col="FDR_DiD")
+    """
+    df = df.copy()
+    mask = df[p_col].notna()
+    df[fdr_col] = np.nan
+    if mask.sum() > 0:
+        df.loc[mask, fdr_col] = multipletests(df.loc[mask, p_col], method=method)[1]
+    return df

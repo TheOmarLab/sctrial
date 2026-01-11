@@ -6,12 +6,11 @@ import numpy as np
 import pandas as pd
 import statsmodels.formula.api as smf
 from anndata import AnnData
-from statsmodels.stats.multitest import multipletests
 
 from ..adata_tools import subset_primary
 from ..design import TrialDesign
 from ..utils import wild_cluster_bootstrap_t
-from ._utils import encode_visit
+from ._utils import apply_fdr, encode_visit
 from .did import MIN_CLUSTERS_FOR_ROBUST_SE
 
 
@@ -128,12 +127,12 @@ def abundance_did(
     counts = encode_visit(counts, design.visit_col, visits)
     counts["arm_bin"] = design.arm_bin(counts)
 
-    rows=[]
+    rows = []
     for ct in sorted(counts[design.celltype_col].unique()):
-        tmp = counts[counts[design.celltype_col]==ct].copy()
+        tmp = counts[counts[design.celltype_col] == ct].copy()
         # keep paired units only
         wide = tmp.pivot_table(index=design.participant_col, columns=design.visit_col, aggfunc="size", fill_value=0, observed=True)
-        keep = wide[(wide.get(visits[0],0)>0)&(wide.get(visits[1],0)>0)].index
+        keep = wide[(wide.get(visits[0], 0) > 0) & (wide.get(visits[1], 0) > 0)].index
         tmp = tmp[tmp[design.participant_col].isin(keep)].copy()
 
         n_units = tmp[design.participant_col].nunique()
@@ -141,7 +140,7 @@ def abundance_did(
             continue
         # must have both arms among units
         arm_counts = tmp.groupby("arm_bin")[design.participant_col].nunique()
-        if (arm_counts>0).sum() < 2:
+        if (arm_counts > 0).sum() < 2:
             continue
 
         # Ensure there is at least some variation in the outcome
@@ -207,11 +206,5 @@ def abundance_did(
         ])
 
     res = pd.DataFrame(rows).sort_values("p_DiD")
-
-    # FDR correction
-    mask = res["p_DiD"].notna()
-    res["FDR_DiD"] = np.nan
-    if mask.sum() > 0:
-        res.loc[mask, "FDR_DiD"] = multipletests(res.loc[mask, "p_DiD"], method="fdr_bh")[1]
-
+    res = apply_fdr(res, p_col="p_DiD", fdr_col="FDR_DiD")
     return res.reset_index(drop=True)

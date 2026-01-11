@@ -62,11 +62,11 @@ from collections.abc import Sequence
 import numpy as np
 import pandas as pd
 from anndata import AnnData
-from statsmodels.stats.multitest import multipletests
+
 from statsmodels.tools.sm_exceptions import ConvergenceWarning
 
 from ..design import TrialDesign
-from ._utils import aggregate_features, standardize_series
+from ._utils import aggregate_features, apply_fdr, standardize_series
 from .did import AggregateFunc, AggregateMode, _ensure_paired
 
 __all__ = [
@@ -409,13 +409,7 @@ def did_table_mixed(
         })
 
     res = pd.DataFrame(rows)
-
-    # FDR correction
-    mask = res["p_DiD"].notna()
-    res["FDR_DiD"] = np.nan
-    if mask.sum() > 0:
-        res.loc[mask, "FDR_DiD"] = multipletests(res.loc[mask, "p_DiD"], method="fdr_bh")[1]
-
+    res = apply_fdr(res, p_col="p_DiD", fdr_col="FDR_DiD")
     return res
 
 
