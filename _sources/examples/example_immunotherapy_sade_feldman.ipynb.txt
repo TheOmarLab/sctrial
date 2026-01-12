@@ -36,7 +36,7 @@
     "### Analysis Strategy\n",
     "\n",
     "1. **Cross-sectional comparisons**: Responder vs Non-responder at each timepoint\n",
-    "2. **Within-arm longitudinal**: Pre→Post changes within each response group\n",
+    "2. **Within-arm longitudinal**: Pre\u2192Post changes within each response group\n",
     "3. **Difference-in-Differences (DiD)**: Do responders change differently than non-responders?\n",
     "\n",
     "**Statistical considerations:**\n",
@@ -830,8 +830,8 @@
       "  Non-responder: 7\n",
       "\n",
       "Comparison with cell-level pairing (from cell-11):\n",
-      "  Responder: 3 (cells) = 3 (valid scores) ✓\n",
-      "  Non-responder: 7 (cells) = 7 (valid scores) ✓\n",
+      "  Responder: 3 (cells) = 3 (valid scores) \u2713\n",
+      "  Non-responder: 7 (cells) = 7 (valid scores) \u2713\n",
       "\n",
       "Using VALID_PAIRED_BY_RESPONSE for all subsequent analyses.\n"
      ]
@@ -904,7 +904,7 @@
     "    if diff > 0:\n",
     "        print(f\"  {arm}: {cell_based} (cells) -> {score_based} (valid scores) | {diff} dropped due to NaN scores\")\n",
     "    else:\n",
-    "        print(f\"  {arm}: {cell_based} (cells) = {score_based} (valid scores) ✓\")\n",
+    "        print(f\"  {arm}: {cell_based} (cells) = {score_based} (valid scores) \u2713\")\n",
     "\n",
     "# Show which participants were dropped (for debugging)\n",
     "for arm in [design.arm_treated, design.arm_control]:\n",
@@ -1246,7 +1246,7 @@
      "output_type": "stream",
      "text": [
       "============================================================\n",
-      "WITHIN-ARM LONGITUDINAL ANALYSIS: Pre → Post changes\n",
+      "WITHIN-ARM LONGITUDINAL ANALYSIS: Pre \u2192 Post changes\n",
       "============================================================\n",
       "\n",
       "Using paired Wilcoxon signed-rank test (appropriate for small samples)\n",
@@ -1260,7 +1260,7 @@
      "output_type": "stream",
      "text": [
       "\n",
-      "Pre→Post changes in Responder:\n"
+      "Pre\u2192Post changes in Responder:\n"
      ]
     },
     {
@@ -1361,7 +1361,7 @@
      "output_type": "stream",
      "text": [
       "\n",
-      "Pre→Post changes in Non-responder:\n"
+      "Pre\u2192Post changes in Non-responder:\n"
      ]
     },
     {
@@ -1453,13 +1453,13 @@
      "name": "stdout",
      "output_type": "stream",
      "text": [
-      "  sig_Activation: ↑ (delta=0.173, FDR=0.078)\n"
+      "  sig_Activation: \u2191 (delta=0.173, FDR=0.078)\n"
      ]
     }
    ],
    "source": [
     "print(\"=\" * 60)\n",
-    "print(\"WITHIN-ARM LONGITUDINAL ANALYSIS: Pre → Post changes\")\n",
+    "print(\"WITHIN-ARM LONGITUDINAL ANALYSIS: Pre \u2192 Post changes\")\n",
     "print(\"=\" * 60)\n",
     "print(\"\")\n",
     "print(\"Using paired Wilcoxon signed-rank test (appropriate for small samples)\")\n",
@@ -1554,7 +1554,7 @@
     "            \n",
     "            # Display\n",
     "            print(\"\")\n",
-    "            print(f\"Pre→Post changes in {arm}:\")\n",
+    "            print(f\"Pre\u2192Post changes in {arm}:\")\n",
     "            display_cols = [\"feature\", \"n_paired\", \"mean_delta\", \"p_time\", \"FDR_time\"]\n",
     "            display(df_arm[display_cols].round(4))\n",
     "            \n",
@@ -1562,7 +1562,7 @@
     "            sig = df_arm[(df_arm[\"FDR_time\"].notna()) & (df_arm[\"FDR_time\"] < FDR_ALPHA)]\n",
     "            if not sig.empty:\n",
     "                for _, row in sig.iterrows():\n",
-    "                    direction = \"↑\" if row[\"mean_delta\"] > 0 else \"↓\"\n",
+    "                    direction = \"\u2191\" if row[\"mean_delta\"] > 0 else \"\u2193\"\n",
     "                    print(f\"  {row['feature']}: {direction} (delta={row['mean_delta']:.3f}, FDR={row['FDR_time']:.3f})\")\n",
     "else:\n",
     "    print(\"Insufficient visits or features for within-arm comparison.\")\n",
@@ -1592,7 +1592,7 @@
      "output_type": "stream",
      "text": [
       "============================================================\n",
-      "WITHIN-ARM LONGITUDINAL ANALYSIS: Pre → Post changes\n",
+      "WITHIN-ARM LONGITUDINAL ANALYSIS: Pre \u2192 Post changes\n",
       "============================================================\n",
       "\n",
       "Using paired Wilcoxon signed-rank test (appropriate for small samples)\n",
@@ -1605,7 +1605,7 @@
      "output_type": "stream",
      "text": [
       "\n",
-      "Pre→Post changes in Responder:\n"
+      "Pre\u2192Post changes in Responder:\n"
      ]
     },
     {
@@ -1706,7 +1706,7 @@
      "output_type": "stream",
      "text": [
       "\n",
-      "Pre→Post changes in Non-responder:\n"
+      "Pre\u2192Post changes in Non-responder:\n"
      ]
     },
     {
@@ -1798,13 +1798,13 @@
      "name": "stdout",
      "output_type": "stream",
      "text": [
-      "  sig_Activation: ↑ (delta=0.173, FDR=0.078)\n"
+      "  sig_Activation: \u2191 (delta=0.173, FDR=0.078)\n"
      ]
     }
    ],
    "source": [
     "print(\"=\" * 60)\n",
-    "print(\"WITHIN-ARM LONGITUDINAL ANALYSIS: Pre → Post changes\")\n",
+    "print(\"WITHIN-ARM LONGITUDINAL ANALYSIS: Pre \u2192 Post changes\")\n",
     "print(\"=\" * 60)\n",
     "print(\"\")\n",
     "print(\"Using paired Wilcoxon signed-rank test (appropriate for small samples)\")\n",
@@ -1898,7 +1898,7 @@
     "            \n",
     "            # Display\n",
     "            print(\"\")\n",
-    "            print(f\"Pre→Post changes in {arm}:\")\n",
+    "            print(f\"Pre\u2192Post changes in {arm}:\")\n",
     "            display_cols = [\"feature\", \"n_paired\", \"mean_delta\", \"p_time\", \"FDR_time\"]\n",
     "            display(df_arm[display_cols].round(4))\n",
     "            \n",
@@ -1906,7 +1906,7 @@
     "            sig = df_arm[(df_arm[\"FDR_time\"].notna()) & (df_arm[\"FDR_time\"] < FDR_ALPHA)]\n",
     "            if not sig.empty:\n",
     "                for _, row in sig.iterrows():\n",
-    "                    direction = \"↑\" if row[\"mean_delta\"] > 0 else \"↓\"\n",
+    "                    direction = \"\u2191\" if row[\"mean_delta\"] > 0 else \"\u2193\"\n",
     "                    print(f\"  {row['feature']}: {direction} (delta={row['mean_delta']:.3f}, FDR={row['FDR_time']:.3f})\")\n",
     "else:\n",
     "    print(\"Insufficient visits or features for within-arm comparison.\")\n",
@@ -2073,7 +2073,7 @@
       "  beta_DiD < 0: Non-responders increase MORE (or decrease less) than Responders\n",
       "\n",
       "Significant DiD effects (FDR < 0.25):\n",
-      "  sig_Activation: Non-responders ↑ more (β=-0.253)\n"
+      "  sig_Activation: Non-responders \u2191 more (\u03b2=-0.253)\n"
      ]
     }
    ],
@@ -2102,7 +2102,7 @@
     "    \n",
     "    if n_resp_valid < 3 or n_nonresp_valid < 3:\n",
     "        print(\"\")\n",
-    "        print(\"⚠️  DiD requires >= 3 paired participants per arm with valid scores.\")\n",
+    "        print(\"\u26a0\ufe0f  DiD requires >= 3 paired participants per arm with valid scores.\")\n",
     "        print(\"   Insufficient pairing for reliable DiD analysis.\")\n",
     "    else:\n",
     "        print(\"\")\n",
@@ -2151,6 +2151,7 @@
     "                    \"delta_resp\": np.nan,\n",
     "                    \"delta_nonresp\": np.nan,\n",
     "                    \"beta_DiD\": np.nan,\n",
+    "                    \"se_DiD\": np.nan,\n",
     "                    \"p_DiD\": np.nan,\n",
     "                })\n",
     "                continue\n",
@@ -2164,6 +2165,19 @@
     "            except Exception:\n",
     "                p_val = np.nan\n",
     "            \n",
+    "            # Bootstrap SE for DiD estimate\n",
+    "            def _did_stat(dr, dnr):\n",
+    "                return dr.mean() - dnr.mean()\n",
+    "            \n",
+    "            n_boot = 999\n",
+    "            rng = np.random.default_rng(SEED)\n",
+    "            boot_dids = []\n",
+    "            for _ in range(n_boot):\n",
+    "                dr_boot = rng.choice(delta_resp, size=len(delta_resp), replace=True)\n",
+    "                dnr_boot = rng.choice(delta_nonresp, size=len(delta_nonresp), replace=True)\n",
+    "                boot_dids.append(_did_stat(dr_boot, dnr_boot))\n",
+    "            se_did = float(np.std(boot_dids, ddof=1))\n",
+    "            \n",
     "            did_rows.append({\n",
     "                \"feature\": feat,\n",
     "                \"n_resp\": len(delta_resp),\n",
@@ -2171,6 +2185,7 @@
     "                \"delta_resp\": float(delta_resp.mean()),\n",
     "                \"delta_nonresp\": float(delta_nonresp.mean()),\n",
     "                \"beta_DiD\": float(beta_did),\n",
+    "                \"se_DiD\": se_did,\n",
     "                \"p_DiD\": float(p_val),\n",
     "            })\n",
     "        \n",
@@ -2190,7 +2205,7 @@
     "            \n",
     "            print(\"\")\n",
     "            print(\"DiD Results:\")\n",
-    "            display_cols = [\"feature\", \"n_resp\", \"n_nonresp\", \"delta_resp\", \"delta_nonresp\", \"beta_DiD\", \"p_DiD\", \"FDR_DiD\"]\n",
+    "            display_cols = [\"feature\", \"n_resp\", \"n_nonresp\", \"delta_resp\", \"delta_nonresp\", \"beta_DiD\", \"se_DiD\", \"p_DiD\", \"FDR_DiD\"]\n",
     "            display(did_results[display_cols].round(4))\n",
     "            \n",
     "            # Interpretation\n",
@@ -2205,301 +2220,13 @@
     "                print(\"\")\n",
     "                print(f\"Significant DiD effects (FDR < {FDR_ALPHA}):\")\n",
     "                for _, row in sig.iterrows():\n",
-    "                    direction = \"Responders ↑ more\" if row[\"beta_DiD\"] > 0 else \"Non-responders ↑ more\"\n",
-    "                    print(f\"  {row['feature']}: {direction} (β={row['beta_DiD']:.3f})\")\n",
+    "                    direction = \"Responders \u2191 more\" if row[\"beta_DiD\"] > 0 else \"Non-responders \u2191 more\"\n",
+    "                    print(f\"  {row['feature']}: {direction} (\u03b2={row['beta_DiD']:.3f})\")\n",
     "            else:\n",
     "                print(\"\")\n",
     "                print(f\"No signatures showed significant differential change (FDR < {FDR_ALPHA})\")\n",
     "else:\n",
     "    print(\"DiD analysis skipped: insufficient visits or features\")"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 12,
-   "id": "44af7757",
-   "metadata": {
-    "execution": {
-     "iopub.execute_input": "2026-01-11T21:22:58.378651Z",
-     "iopub.status.busy": "2026-01-11T21:22:58.378565Z",
-     "iopub.status.idle": "2026-01-11T21:22:58.426205Z",
-     "shell.execute_reply": "2026-01-11T21:22:58.425788Z"
-    }
-   },
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "============================================================\n",
-      "DIFFERENCE-IN-DIFFERENCES ANALYSIS\n",
-      "============================================================\n",
-      "\n",
-      "Using participant-level deltas with Mann-Whitney U test\n",
-      "(More robust for small samples than fixed-effects models)\n",
-      "\n",
-      "Paired participants available:\n",
-      "  Responders: 3\n",
-      "  Non-responders: 7\n",
-      "  Total: 10\n",
-      "\n",
-      "Calculating DiD...\n",
-      "\n",
-      "DiD Results:\n"
-     ]
-    },
-    {
-     "data": {
-      "text/html": [
-       "<div>\n",
-       "<style scoped>\n",
-       "    .dataframe tbody tr th:only-of-type {\n",
-       "        vertical-align: middle;\n",
-       "    }\n",
-       "\n",
-       "    .dataframe tbody tr th {\n",
-       "        vertical-align: top;\n",
-       "    }\n",
-       "\n",
-       "    .dataframe thead th {\n",
-       "        text-align: right;\n",
-       "    }\n",
-       "</style>\n",
-       "<table border=\"1\" class=\"dataframe\">\n",
-       "  <thead>\n",
-       "    <tr style=\"text-align: right;\">\n",
-       "      <th></th>\n",
-       "      <th>feature</th>\n",
-       "      <th>n_resp</th>\n",
-       "      <th>n_nonresp</th>\n",
-       "      <th>delta_resp</th>\n",
-       "      <th>delta_nonresp</th>\n",
-       "      <th>beta_DiD</th>\n",
-       "      <th>p_DiD</th>\n",
-       "      <th>FDR_DiD</th>\n",
-       "    </tr>\n",
-       "  </thead>\n",
-       "  <tbody>\n",
-       "    <tr>\n",
-       "      <th>4</th>\n",
-       "      <td>sig_Activation</td>\n",
-       "      <td>3</td>\n",
-       "      <td>7</td>\n",
-       "      <td>-0.0805</td>\n",
-       "      <td>0.1725</td>\n",
-       "      <td>-0.2530</td>\n",
-       "      <td>0.0167</td>\n",
-       "      <td>0.0833</td>\n",
-       "    </tr>\n",
-       "    <tr>\n",
-       "      <th>2</th>\n",
-       "      <td>sig_IFN_Response</td>\n",
-       "      <td>3</td>\n",
-       "      <td>7</td>\n",
-       "      <td>-0.4269</td>\n",
-       "      <td>-0.0008</td>\n",
-       "      <td>-0.4261</td>\n",
-       "      <td>0.2667</td>\n",
-       "      <td>0.6667</td>\n",
-       "    </tr>\n",
-       "    <tr>\n",
-       "      <th>0</th>\n",
-       "      <td>sig_Cytotoxicity</td>\n",
-       "      <td>3</td>\n",
-       "      <td>7</td>\n",
-       "      <td>0.0373</td>\n",
-       "      <td>0.1006</td>\n",
-       "      <td>-0.0634</td>\n",
-       "      <td>0.6667</td>\n",
-       "      <td>0.8333</td>\n",
-       "    </tr>\n",
-       "    <tr>\n",
-       "      <th>3</th>\n",
-       "      <td>sig_Memory</td>\n",
-       "      <td>3</td>\n",
-       "      <td>7</td>\n",
-       "      <td>-0.1986</td>\n",
-       "      <td>0.0379</td>\n",
-       "      <td>-0.2365</td>\n",
-       "      <td>0.6667</td>\n",
-       "      <td>0.8333</td>\n",
-       "    </tr>\n",
-       "    <tr>\n",
-       "      <th>1</th>\n",
-       "      <td>sig_Exhaustion</td>\n",
-       "      <td>3</td>\n",
-       "      <td>7</td>\n",
-       "      <td>-0.0056</td>\n",
-       "      <td>0.1602</td>\n",
-       "      <td>-0.1659</td>\n",
-       "      <td>0.8333</td>\n",
-       "      <td>0.8333</td>\n",
-       "    </tr>\n",
-       "  </tbody>\n",
-       "</table>\n",
-       "</div>"
-      ],
-      "text/plain": [
-       "            feature  n_resp  n_nonresp  delta_resp  delta_nonresp  beta_DiD  \\\n",
-       "4    sig_Activation       3          7     -0.0805         0.1725   -0.2530   \n",
-       "2  sig_IFN_Response       3          7     -0.4269        -0.0008   -0.4261   \n",
-       "0  sig_Cytotoxicity       3          7      0.0373         0.1006   -0.0634   \n",
-       "3        sig_Memory       3          7     -0.1986         0.0379   -0.2365   \n",
-       "1    sig_Exhaustion       3          7     -0.0056         0.1602   -0.1659   \n",
-       "\n",
-       "    p_DiD  FDR_DiD  \n",
-       "4  0.0167   0.0833  \n",
-       "2  0.2667   0.6667  \n",
-       "0  0.6667   0.8333  \n",
-       "3  0.6667   0.8333  \n",
-       "1  0.8333   0.8333  "
-      ]
-     },
-     "metadata": {},
-     "output_type": "display_data"
-    },
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "\n",
-      "Interpretation:\n",
-      "  beta_DiD > 0: Responders increase MORE (or decrease less) than Non-responders\n",
-      "  beta_DiD < 0: Non-responders increase MORE (or decrease less) than Responders\n",
-      "\n",
-      "Significant DiD effects (FDR < 0.25):\n",
-      "  sig_Activation: Non-responders ↑ more (β=-0.253)\n"
-     ]
-    }
-   ],
-   "source": [
-    "print(\"=\" * 60)\n",
-    "print(\"DIFFERENCE-IN-DIFFERENCES ANALYSIS\")\n",
-    "print(\"=\" * 60)\n",
-    "print(\"\")\n",
-    "print(\"Using participant-level deltas with Mann-Whitney U test\")\n",
-    "print(\"(More robust for small samples than fixed-effects models)\")\n",
-    "\n",
-    "did_results = None\n",
-    "\n",
-    "if features_use and len(visits) == 2:\n",
-    "    total_paired = paired_by_response.get('Responder', 0) + paired_by_response.get('Non-responder', 0)\n",
-    "    \n",
-    "    print(\"\")\n",
-    "    print(\"Paired participants available:\")\n",
-    "    print(f\"  Responders: {paired_by_response.get('Responder', 0)}\")\n",
-    "    print(f\"  Non-responders: {paired_by_response.get('Non-responder', 0)}\")\n",
-    "    print(f\"  Total: {total_paired}\")\n",
-    "    \n",
-    "    if paired_by_response.get('Responder', 0) < 3 or paired_by_response.get('Non-responder', 0) < 3:\n",
-    "        print(\"\")\n",
-    "        print(\"⚠️  DiD requires >= 3 paired participants per arm.\")\n",
-    "        print(\"   Insufficient pairing for reliable DiD analysis.\")\n",
-    "    else:\n",
-    "        print(\"\")\n",
-    "        print(\"Calculating DiD...\")\n",
-    "        \n",
-    "        # Aggregate to participant-visit level (paired participants only)\n",
-    "        df_agg = (\n",
-    "            adata.obs[adata.obs[design.participant_col].isin(paired_ids)]\n",
-    "            .groupby([design.participant_col, design.visit_col], observed=True)[features_use]\n",
-    "            .mean()\n",
-    "            .reset_index()\n",
-    "        )\n",
-    "        \n",
-    "        did_rows = []\n",
-    "        for feat in features_use:\n",
-    "            # Pivot to get Pre/Post for each participant\n",
-    "            wide = df_agg.pivot_table(\n",
-    "                index=design.participant_col,\n",
-    "                columns=design.visit_col,\n",
-    "                values=feat,\n",
-    "                aggfunc=\"mean\"\n",
-    "            )\n",
-    "            \n",
-    "            if visits[0] not in wide.columns or visits[1] not in wide.columns:\n",
-    "                continue\n",
-    "            \n",
-    "            # Calculate deltas\n",
-    "            wide[\"delta\"] = wide[visits[1]] - wide[visits[0]]\n",
-    "            wide = wide.dropna(subset=[\"delta\"])\n",
-    "            \n",
-    "            # Get arm for each participant (harmonized)\n",
-    "            wide[\"arm\"] = wide.index.map(participant_response)\n",
-    "            \n",
-    "            # Split by arm\n",
-    "            delta_resp = wide[wide[\"arm\"] == design.arm_treated][\"delta\"].values\n",
-    "            delta_nonresp = wide[wide[\"arm\"] == design.arm_control][\"delta\"].values\n",
-    "            \n",
-    "            if len(delta_resp) < 3 or len(delta_nonresp) < 3:\n",
-    "                did_rows.append({\n",
-    "                    \"feature\": feat,\n",
-    "                    \"n_resp\": len(delta_resp),\n",
-    "                    \"n_nonresp\": len(delta_nonresp),\n",
-    "                    \"delta_resp\": np.nan,\n",
-    "                    \"delta_nonresp\": np.nan,\n",
-    "                    \"beta_DiD\": np.nan,\n",
-    "                    \"p_DiD\": np.nan,\n",
-    "                })\n",
-    "                continue\n",
-    "            \n",
-    "            # DiD estimate: (Post-Pre)_Resp - (Post-Pre)_NonResp\n",
-    "            beta_did = delta_resp.mean() - delta_nonresp.mean()\n",
-    "            \n",
-    "            # Mann-Whitney U test on the deltas\n",
-    "            try:\n",
-    "                stat, p_val = mannwhitneyu(delta_resp, delta_nonresp, alternative=\"two-sided\")\n",
-    "            except Exception:\n",
-    "                p_val = np.nan\n",
-    "            \n",
-    "            did_rows.append({\n",
-    "                \"feature\": feat,\n",
-    "                \"n_resp\": len(delta_resp),\n",
-    "                \"n_nonresp\": len(delta_nonresp),\n",
-    "                \"delta_resp\": float(delta_resp.mean()),\n",
-    "                \"delta_nonresp\": float(delta_nonresp.mean()),\n",
-    "                \"beta_DiD\": float(beta_did),\n",
-    "                \"p_DiD\": float(p_val),\n",
-    "            })\n",
-    "        \n",
-    "        if did_rows:\n",
-    "            did_results = pd.DataFrame(did_rows)\n",
-    "            \n",
-    "            # FDR correction\n",
-    "            mask = did_results[\"p_DiD\"].notna()\n",
-    "            did_results[\"FDR_DiD\"] = np.nan\n",
-    "            if mask.sum() > 0:\n",
-    "                did_results.loc[mask, \"FDR_DiD\"] = multipletests(\n",
-    "                    did_results.loc[mask, \"p_DiD\"], method=\"fdr_bh\"\n",
-    "                )[1]\n",
-    "            \n",
-    "            # Sort by p-value\n",
-    "            did_results = did_results.sort_values(\"p_DiD\")\n",
-    "            \n",
-    "            print(\"\")\n",
-    "            print(\"DiD Results:\")\n",
-    "            display_cols = [\"feature\", \"n_resp\", \"n_nonresp\", \"delta_resp\", \"delta_nonresp\", \"beta_DiD\", \"p_DiD\", \"FDR_DiD\"]\n",
-    "            display(did_results[display_cols].round(4))\n",
-    "            \n",
-    "            # Interpretation\n",
-    "            print(\"\")\n",
-    "            print(\"Interpretation:\")\n",
-    "            print(\"  beta_DiD > 0: Responders increase MORE (or decrease less) than Non-responders\")\n",
-    "            print(\"  beta_DiD < 0: Non-responders increase MORE (or decrease less) than Responders\")\n",
-    "            \n",
-    "            # Highlight significant\n",
-    "            sig = did_results[(did_results[\"FDR_DiD\"].notna()) & (did_results[\"FDR_DiD\"] < FDR_ALPHA)]\n",
-    "            if not sig.empty:\n",
-    "                print(\"\")\n",
-    "                print(f\"Significant DiD effects (FDR < {FDR_ALPHA}):\")\n",
-    "                for _, row in sig.iterrows():\n",
-    "                    direction = \"Responders ↑ more\" if row[\"beta_DiD\"] > 0 else \"Non-responders ↑ more\"\n",
-    "                    print(f\"  {row['feature']}: {direction} (β={row['beta_DiD']:.3f})\")\n",
-    "            else:\n",
-    "                print(\"\")\n",
-    "                print(f\"No signatures showed significant differential change (FDR < {FDR_ALPHA})\")\n",
-    "else:\n",
-    "    print(\"DiD analysis skipped: insufficient visits or features\")\n"
    ]
   },
   {
@@ -2658,8 +2385,8 @@
     "        colors = [\"forestgreen\" if b > 0 else \"coral\" for b in valid_did[\"beta_DiD\"]]\n",
     "        bars = ax.barh(valid_did[\"feature\"], valid_did[\"beta_DiD\"], color=colors)\n",
     "        ax.axvline(0, color=\"black\", linewidth=0.5)\n",
-    "        ax.set_xlabel(\"DiD Effect (β)\")\n",
-    "        ax.set_title(\"Difference-in-Differences: Responder vs Non-responder (Green = Responders ↑ more, Red = Non-responders ↑ more)\")\n",
+    "        ax.set_xlabel(\"DiD Effect (\u03b2)\")\n",
+    "        ax.set_title(\"Difference-in-Differences: Responder vs Non-responder (Green = Responders \u2191 more, Red = Non-responders \u2191 more)\")\n",
     "        \n",
     "        # Add significance markers\n",
     "        for i, (_, row) in enumerate(valid_did.iterrows()):\n",
@@ -3250,6 +2977,12 @@
     }
    ],
    "source": [
+    "# Suppress RuntimeWarnings from singular covariance matrices (common with small samples)\n",
+    "import warnings\n",
+    "from statsmodels.tools.sm_exceptions import ConvergenceWarning\n",
+    "warnings.filterwarnings(\"ignore\", category=RuntimeWarning, message=\"invalid value\")\n",
+    "warnings.filterwarnings(\"ignore\", category=ConvergenceWarning)\n",
+    "\n",
     "print(\"=\" * 60)\n",
     "print(\"MIXED EFFECTS MODEL COMPARISON\")\n",
     "print(\"=\" * 60)\n",
@@ -3267,6 +3000,8 @@
     "\n",
     "        # Keep only rows with valid fixed effects\n",
     "        if comparison is not None and not comparison.empty:\n",
+    "        # Note: NaN values in CI columns indicate singular covariance (common with small samples)\n",
+    "        # This doesn't invalidate the point estimates, just the uncertainty bounds\n",
     "            display_cols = [\n",
     "                \"feature\", \"beta_fixed\", \"se_fixed\", \"p_fixed\",\n",
     "                \"beta_mixed\", \"se_mixed\", \"p_mixed\", \"icc\", \"agreement\"\n",
@@ -3277,7 +3012,8 @@
     "    except Exception as e:\n",
     "        print(f\"Mixed effects comparison failed: {e}\")\n",
     "else:\n",
-    "    print(\"Skipping mixed effects comparison: insufficient visits or features.\")\n"
+    "    print(\"Skipping mixed effects comparison: insufficient visits or features.\")\n",
+    ""
    ]
   },
   {
@@ -3842,6 +3578,10 @@
     }
    ],
    "source": [
+    "# Suppress RuntimeWarnings from singular covariance matrices during LOO-CV\n",
+    "import warnings\n",
+    "warnings.filterwarnings(\"ignore\", category=RuntimeWarning, message=\"invalid value\")\n",
+    "\n",
     "print(\"=\" * 60)\n",
     "print(\"CROSS-VALIDATION: EFFECT STABILITY\")\n",
     "print(\"=\" * 60)\n",
@@ -3924,7 +3664,8 @@
     "        print(f\"LOO-CV failed: {e}\")\n",
     "        \n",
     "else:\n",
-    "    print(\"Cross-validation requires ≥5 paired participants and valid features.\")\n"
+    "    print(\"Cross-validation requires \u22655 paired participants and valid features.\")\n",
+    ""
    ]
   },
   {
@@ -4028,13 +3769,19 @@
     }
    ],
    "source": [
+    "# Suppress RuntimeWarnings from singular covariance matrices\n",
+    "import warnings\n",
+    "warnings.filterwarnings(\"ignore\", category=RuntimeWarning, message=\"invalid value\")\n",
+    "\n",
     "if features_use and len(visits) == 2:\n",
     "    analyzer = st.DiDAnalyzer(adata, design)\n",
     "    res_an = analyzer.fit(features=features_use[:1], visits=tuple(visits))\n",
     "    display(res_an)\n",
     "    analyzer.plot_forest()\n",
     "    plt.tight_layout()\n",
-    "    plt.show()\n"
+    "    plt.show()\n",
+    "else:\n",
+    "    print(\"Skipping DiDAnalyzer: insufficient features or visits\")"
    ]
   },
   {
@@ -4228,7 +3975,7 @@
      "name": "stdout",
      "output_type": "stream",
      "text": [
-      "E-value (RR≈exp(beta)): 1.897\n"
+      "E-value (RR\u2248exp(beta)): 1.897\n"
      ]
     }
    ],
@@ -4237,7 +3984,7 @@
     "    row = did_results.iloc[0]\n",
     "    rr = float(np.exp(row['beta_DiD']))\n",
     "    e_val, e_ci = st.e_value_rr(rr)\n",
-    "    print(f'E-value (RR≈exp(beta)): {e_val:.3f}')\n",
+    "    print(f'E-value (RR\u2248exp(beta)): {e_val:.3f}')\n",
     "    if e_ci is not None:\n",
     "        print(f'E-value (CI): {e_ci:.3f}')\n"
    ]
@@ -4259,7 +4006,7 @@
    "source": [
     "### Survival Analysis (Cox Model)\n",
     "\n",
-    "Here we demonstrate how to run a Cox proportional hazards model on participant‑level features. The Sade‑Feldman dataset does not include survival outcomes, so we derive a **demo** time‑to‑event variable from participant‑level cell counts. Replace this with real survival data in practice.\n"
+    "Here we demonstrate how to run a Cox proportional hazards model on participant\u2011level features. The Sade\u2011Feldman dataset does not include survival outcomes, so we derive a **demo** time\u2011to\u2011event variable from participant\u2011level cell counts. Replace this with real survival data in practice.\n"
    ]
   },
   {
@@ -4460,10 +4207,20 @@
    "source": [
     "if did_results is not None and not did_results.empty:\n",
     "    try:\n",
-    "        fig = st.plot_did_forest_interactive(did_results)\n",
-    "        fig.show()\n",
+    "        # Check if se_DiD column exists and has valid values\n",
+    "        if \"se_DiD\" not in did_results.columns:\n",
+    "            print(\"se_DiD column not available - skipping interactive forest plot\")\n",
+    "        elif did_results[\"se_DiD\"].isna().all():\n",
+    "            print(\"All se_DiD values are NaN - skipping interactive forest plot\")\n",
+    "        else:\n",
+    "            fig = st.plot_did_forest_interactive(did_results)\n",
+    "            fig.show()\n",
+    "    except ImportError as e:\n",
+    "        print(f\"Plotly not installed: {e}\")\n",
     "    except Exception as e:\n",
-    "        print(f'Plotly not available: {e}')\n"
+    "        print(f\"Could not create interactive plot: {e}\")\n",
+    "else:\n",
+    "    print(\"No DiD results available for interactive plot\")"
    ]
   }
  ],
