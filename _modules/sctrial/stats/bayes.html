@@ -119,6 +119,9 @@
     <span class="n">covariates</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">draws</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
     <span class="n">tune</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
+    <span class="n">chains</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span>
+    <span class="n">target_accept</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.9</span><span class="p">,</span>
+    <span class="n">max_treedepth</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">12</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">42</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Bayesian DiD with participant random intercepts.</span>
@@ -133,6 +136,12 @@
 <span class="sd">        Posterior draws.</span>
 <span class="sd">    tune</span>
 <span class="sd">        Tuning iterations.</span>
+<span class="sd">    chains</span>
+<span class="sd">        Number of MCMC chains.</span>
+<span class="sd">    target_accept</span>
+<span class="sd">        Target acceptance rate for NUTS.</span>
+<span class="sd">    max_treedepth</span>
+<span class="sd">        Maximum tree depth for NUTS.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="kn">import</span><span class="w"> </span><span class="nn">pymc</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pm</span>
@@ -192,8 +201,9 @@
             <span class="n">idata</span> <span class="o">=</span> <span class="n">pm</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span>
                 <span class="n">draws</span><span class="o">=</span><span class="n">draws</span><span class="p">,</span>
                 <span class="n">tune</span><span class="o">=</span><span class="n">tune</span><span class="p">,</span>
-                <span class="n">chains</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-                <span class="n">target_accept</span><span class="o">=</span><span class="mf">0.9</span><span class="p">,</span>
+                <span class="n">chains</span><span class="o">=</span><span class="n">chains</span><span class="p">,</span>
+                <span class="n">target_accept</span><span class="o">=</span><span class="n">target_accept</span><span class="p">,</span>
+                <span class="n">max_treedepth</span><span class="o">=</span><span class="n">max_treedepth</span><span class="p">,</span>
                 <span class="n">random_seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span>
                 <span class="n">progressbar</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
             <span class="p">)</span>
