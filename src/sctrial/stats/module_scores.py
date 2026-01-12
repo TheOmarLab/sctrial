@@ -85,6 +85,9 @@ def module_score_pseudobulk(
 
     df = df.dropna(subset=["pool"])
 
+    # Normalize arm labels to avoid whitespace/case mismatches downstream
+    df[design.arm_col] = df[design.arm_col].astype(str).str.strip()
+
     # Long format: participant × visit × pool × module
     long_df = df[
         [design.participant_col, design.visit_col, design.arm_col, "pool"] + list(module_cols)
@@ -94,6 +97,7 @@ def module_score_pseudobulk(
         var_name="module",
         value_name="module_score",
     )
+    long_df = long_df.dropna(subset=["module_score"])
 
     # Pseudobulk aggregation
     pb = (
@@ -104,6 +108,7 @@ def module_score_pseudobulk(
         .mean()
         .reset_index()
     )
+    pb = pb[pb["module_score"].notna()].copy()
 
     counts = (
         df.groupby([design.participant_col, design.visit_col, design.arm_col, "pool"], observed=True)
@@ -169,16 +174,19 @@ def module_score_did_by_pool(
         when no paired participants exist and should be interpreted cautiously.
     """
     rows: list[dict[str, Any]] = []
+    arm_treated = str(design.arm_treated).strip()
+    arm_control = str(design.arm_control).strip()
 
     for (pool, module), sub in pb.groupby(["pool", "module"], observed=True):
         sub = sub[sub[design.visit_col].isin(visits)].copy()
-        sub = sub[sub[design.arm_col].isin([design.arm_treated, design.arm_control])].copy()
+        sub[design.arm_col] = sub[design.arm_col].astype(str).str.strip()
+        sub = sub[sub[design.arm_col].isin([arm_treated, arm_control])].copy()
         if sub[design.visit_col].nunique() < 2 or sub[design.arm_col].nunique() < 2:
             continue
 
         if allow_unpaired:
             df = encode_visit(sub.copy(), design.visit_col, visits)
-            df["arm_bin"] = (df[design.arm_col] == design.arm_treated).astype(int)
+            df["arm_bin"] = (df[design.arm_col] == arm_treated).astype(int)
             model = smf.ols("module_score ~ visit_num + arm_bin + visit_num:arm_bin", data=df)
             fit = model.fit(cov_type="HC1")
 
@@ -249,28 +257,34 @@ def module_score_did_by_pool(
         for arm_label in deltas["arm"].unique():
             sub_arm = deltas[deltas["arm"] == arm_label]
             if len(sub_arm) >= 3:
-                try:
-                    _, p = wilcoxon(sub_arm[visits[1]].values - sub_arm[visits[0]].values)
-                except (ValueError, TypeError):
-                    p = np.nan
+                delta_vals = sub_arm[visits[1]].values - sub_arm[visits[0]].values
+                if np.allclose(delta_vals, 0):
+                    p = 1.0
+                else:
+                    try:
+                        _, p = wilcoxon(delta_vals)
+                    except (ValueError, TypeError):
+                        p = np.nan
             else:
                 p = np.nan
             p_arm[arm_label] = p
 
-        did = deltas[deltas["arm"] == design.arm_treated]["delta"].mean() - \
-              deltas[deltas["arm"] == design.arm_control]["delta"].mean()
+        arm_means = deltas.groupby("arm", observed=True)["delta"].mean()
+        mean_delta_treated = float(arm_means.get(arm_treated, np.nan))
+        mean_delta_control = float(arm_means.get(arm_control, np.nan))
+        did = mean_delta_treated - mean_delta_control
 
         p_did = _perm_test_diff(deltas["delta"], deltas["arm"], n_perm=n_perm, seed=seed)
 
         rows.append({
             "pool": pool,
             "module": module,
-            "mean_delta_treated": float(deltas[deltas["arm"] == design.arm_treated]["delta"].mean()),
-            "mean_delta_control": float(deltas[deltas["arm"] == design.arm_control]["delta"].mean()),
+            "mean_delta_treated": mean_delta_treated,
+            "mean_delta_control": mean_delta_control,
             "beta_DiD": float(did),
             "p_DiD": float(p_did),
-            "p_treated": float(p_arm.get(design.arm_treated, np.nan)),
-            "p_control": float(p_arm.get(design.arm_control, np.nan)),
+            "p_treated": float(p_arm.get(arm_treated, np.nan)),
+            "p_control": float(p_arm.get(arm_control, np.nan)),
             "n_units": int(deltas.index.nunique()),
         })
 
