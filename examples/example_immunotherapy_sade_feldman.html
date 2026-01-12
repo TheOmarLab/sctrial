@@ -3030,114 +3030,6 @@ E-value (RR≈exp(beta)): 1.897
 <h3>7.9 Interactive DiD Plot (Plotly)<a class="headerlink" href="#7.9-Interactive-DiD-Plot-(Plotly)" title="Link to this heading"></a></h3>
 <p>If Plotly is available, we render an interactive forest plot of DiD effects.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="p">{</span><span class="s2">&quot;time_to_event&quot;</span><span class="p">,</span> <span class="s2">&quot;event&quot;</span><span class="p">}</span><span class="o">.</span><span class="n">issubset</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">):</span>
-    <span class="n">time_col</span> <span class="o">=</span> <span class="s2">&quot;time_to_event&quot;</span>
-    <span class="n">event_col</span> <span class="o">=</span> <span class="s2">&quot;event&quot;</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Using existing survival columns in adata.obs&quot;</span><span class="p">)</span>
-<span class="k">else</span><span class="p">:</span>
-    <span class="c1"># Demo survival outcomes from participant-level cell counts</span>
-    <span class="n">pt_counts</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;participant_id&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">size</span><span class="p">()</span>
-    <span class="n">time_col</span> <span class="o">=</span> <span class="s2">&quot;time_to_event&quot;</span>
-    <span class="n">event_col</span> <span class="o">=</span> <span class="s2">&quot;event&quot;</span>
-    <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">time_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;participant_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">pt_counts</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">-</span> <span class="n">pt_counts</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
-    <span class="n">pt_series</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;participant_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">pt_counts</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
-    <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">event_col</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pt_series</span> <span class="o">&gt;</span> <span class="nb">float</span><span class="p">(</span><span class="n">pt_counts</span><span class="o">.</span><span class="n">median</span><span class="p">()))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No survival columns found; created demo time_to_event/event from cell counts.&quot;</span><span class="p">)</span>
-
-<span class="c1"># Run Cox regression on selected features at baseline visit</span>
-<span class="k">if</span> <span class="n">features_use</span> <span class="ow">and</span> <span class="n">visits</span><span class="p">:</span>
-    <span class="n">surv_res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">hazard_regression_with_features</span><span class="p">(</span>
-        <span class="n">adata</span><span class="p">,</span>
-        <span class="n">features</span><span class="o">=</span><span class="n">features_use</span><span class="p">[:</span><span class="mi">3</span><span class="p">],</span>
-        <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
-        <span class="n">time_col</span><span class="o">=</span><span class="n">time_col</span><span class="p">,</span>
-        <span class="n">event_col</span><span class="o">=</span><span class="n">event_col</span><span class="p">,</span>
-        <span class="n">visit</span><span class="o">=</span><span class="n">visits</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
-    <span class="p">)</span>
-    <span class="n">display</span><span class="p">(</span><span class="n">surv_res</span><span class="p">)</span>
-<span class="k">else</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No features or visits available for survival analysis.&quot;</span><span class="p">)</span>
-<br/></pre></div>
-</div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-No survival columns found; created demo time_to_event/event from cell counts.
-</pre></div></div>
-</div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area rendered_html docutils container">
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>feature</th>
-      <th>HR</th>
-      <th>HR_low</th>
-      <th>HR_high</th>
-      <th>p</th>
-      <th>n</th>
-      <th>FDR</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>sig_IFN_Response</td>
-      <td>1.358017</td>
-      <td>0.730667</td>
-      <td>2.524010</td>
-      <td>0.333197</td>
-      <td>18</td>
-      <td>0.658066</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>sig_Cytotoxicity</td>
-      <td>1.285296</td>
-      <td>0.680945</td>
-      <td>2.426022</td>
-      <td>0.438711</td>
-      <td>18</td>
-      <td>0.658066</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>sig_Exhaustion</td>
-      <td>1.107510</td>
-      <td>0.594950</td>
-      <td>2.061649</td>
-      <td>0.747390</td>
-      <td>18</td>
-      <td>0.747390</td>
-    </tr>
-  </tbody>
-</table>
-</div></div>
-</div>
-<div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[22]:
 </pre></div>
 </div>
@@ -3175,35 +3067,38 @@ No survival columns found; created demo time_to_event/event from cell counts.
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
 Initializing NUTS using jitter+adapt_diag...
-Multiprocess sampling (2 chains in 2 jobs)
+Multiprocess sampling (4 chains in 4 jobs)
 NUTS: [sigma, alpha, beta_time, beta_arm, beta_did]
-Sampling 2 chains for 300 tune and 300 draw iterations (600 + 600 draws total) took 9 seconds.
+Sampling 4 chains for 1_000 tune and 1_000 draw iterations (4_000 + 4_000 draws total) took 150 seconds.
 Chain 0 reached the maximum tree depth. Increase `max_treedepth`, increase `target_accept` or reparameterize.
 Chain 1 reached the maximum tree depth. Increase `max_treedepth`, increase `target_accept` or reparameterize.
-We recommend running at least 4 chains for robust computation of convergence diagnostics
+Chain 2 reached the maximum tree depth. Increase `max_treedepth`, increase `target_accept` or reparameterize.
+Chain 3 reached the maximum tree depth. Increase `max_treedepth`, increase `target_accept` or reparameterize.
 The rhat statistic is larger than 1.01 for some parameters. This indicates problems during sampling. See https://arxiv.org/abs/1903.08008 for details
 The effective sample size per chain is smaller than 100 for some parameters.  A higher number is needed for reliable rhat and ess computation. See https://arxiv.org/abs/1903.08008 for details
 Initializing NUTS using jitter+adapt_diag...
-Multiprocess sampling (2 chains in 2 jobs)
+Multiprocess sampling (4 chains in 4 jobs)
 NUTS: [sigma, alpha, beta_time, beta_arm, beta_did]
-Sampling 2 chains for 300 tune and 300 draw iterations (600 + 600 draws total) took 9 seconds.
+Sampling 4 chains for 1_000 tune and 1_000 draw iterations (4_000 + 4_000 draws total) took 153 seconds.
 Chain 0 reached the maximum tree depth. Increase `max_treedepth`, increase `target_accept` or reparameterize.
 Chain 1 reached the maximum tree depth. Increase `max_treedepth`, increase `target_accept` or reparameterize.
-We recommend running at least 4 chains for robust computation of convergence diagnostics
+Chain 2 reached the maximum tree depth. Increase `max_treedepth`, increase `target_accept` or reparameterize.
+Chain 3 reached the maximum tree depth. Increase `max_treedepth`, increase `target_accept` or reparameterize.
 The rhat statistic is larger than 1.01 for some parameters. This indicates problems during sampling. See https://arxiv.org/abs/1903.08008 for details
 The effective sample size per chain is smaller than 100 for some parameters.  A higher number is needed for reliable rhat and ess computation. See https://arxiv.org/abs/1903.08008 for details
 Initializing NUTS using jitter+adapt_diag...
-Multiprocess sampling (2 chains in 2 jobs)
+Multiprocess sampling (4 chains in 4 jobs)
 NUTS: [sigma, alpha, beta_time, beta_arm, beta_did]
-Sampling 2 chains for 300 tune and 300 draw iterations (600 + 600 draws total) took 9 seconds.
+Sampling 4 chains for 1_000 tune and 1_000 draw iterations (4_000 + 4_000 draws total) took 151 seconds.
 Chain 0 reached the maximum tree depth. Increase `max_treedepth`, increase `target_accept` or reparameterize.
 Chain 1 reached the maximum tree depth. Increase `max_treedepth`, increase `target_accept` or reparameterize.
-We recommend running at least 4 chains for robust computation of convergence diagnostics
+Chain 2 reached the maximum tree depth. Increase `max_treedepth`, increase `target_accept` or reparameterize.
+Chain 3 reached the maximum tree depth. Increase `max_treedepth`, increase `target_accept` or reparameterize.
 The rhat statistic is larger than 1.01 for some parameters. This indicates problems during sampling. See https://arxiv.org/abs/1903.08008 for details
 The effective sample size per chain is smaller than 100 for some parameters.  A higher number is needed for reliable rhat and ess computation. See https://arxiv.org/abs/1903.08008 for details
 </pre></div></div>
 </div>
-<div class="nboutput nblast docutils container">
+<div class="nboutput docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area rendered_html docutils container">
@@ -3238,36 +3133,45 @@ The effective sample size per chain is smaller than 100 for some parameters.  A 
     <tr>
       <th>0</th>
       <td>sig_IFN_Response</td>
-      <td>-0.699629</td>
-      <td>-1.950933</td>
-      <td>0.292957</td>
-      <td>0.296667</td>
+      <td>-0.836253</td>
+      <td>-1.883495</td>
+      <td>0.444479</td>
+      <td>0.1670</td>
       <td>10</td>
-      <td>0.876667</td>
+      <td>0.5010</td>
     </tr>
     <tr>
       <th>1</th>
       <td>sig_Exhaustion</td>
-      <td>-0.189442</td>
-      <td>-1.435900</td>
-      <td>0.712477</td>
-      <td>0.850000</td>
+      <td>-0.217843</td>
+      <td>-1.261426</td>
+      <td>0.790014</td>
+      <td>0.6780</td>
       <td>10</td>
-      <td>0.876667</td>
+      <td>0.9865</td>
     </tr>
     <tr>
       <th>2</th>
       <td>sig_Cytotoxicity</td>
-      <td>-0.119862</td>
-      <td>-1.224033</td>
-      <td>0.980690</td>
-      <td>0.876667</td>
+      <td>0.001968</td>
+      <td>-1.208460</td>
+      <td>1.243055</td>
+      <td>0.9865</td>
       <td>10</td>
-      <td>0.876667</td>
+      <td>0.9865</td>
     </tr>
   </tbody>
 </table>
 </div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Bayesian DiD note: For small samples, convergence diagnostics may be noisy.
+If rhat &gt; 1.01 or ESS is low, increase draws/tune or consider stronger priors.
+</pre></div></div>
 </div>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[23]:
@@ -3300,6 +3204,13 @@ The effective sample size per chain is smaller than 100 for some parameters.  A 
 <span class="k">else</span><span class="p">:</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No DiD results available for interactive plot&quot;</span><span class="p">)</span>
 <br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/examples_example_immunotherapy_sade_feldman_42_0.png" src="../_images/examples_example_immunotherapy_sade_feldman_42_0.png" />
 </div>
 </div>
 <div class="nboutput nblast docutils container">
