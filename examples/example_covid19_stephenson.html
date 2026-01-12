@@ -2130,16 +2130,23 @@ KEY INSIGHTS
     <span class="p">)</span>
     <span class="n">display</span><span class="p">(</span><span class="n">pb_mod</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
 
-    <span class="n">res_mod</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">module_score_did_by_pool</span><span class="p">(</span>
-        <span class="n">pb_mod</span><span class="p">,</span>
-        <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
-        <span class="n">visits</span><span class="o">=</span><span class="n">visits_pair</span><span class="p">,</span>
-        <span class="n">min_paired</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-        <span class="n">n_perm</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
-        <span class="n">seed</span><span class="o">=</span><span class="n">SEED</span><span class="p">,</span>
-        <span class="n">fdr_within</span><span class="o">=</span><span class="s2">&quot;module&quot;</span><span class="p">,</span>
-        <span class="n">allow_unpaired</span><span class="o">=</span><span class="n">allow_unpaired</span><span class="p">,</span>
-    <span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_run_mod_did</span><span class="p">(</span><span class="n">pb_df</span><span class="p">,</span> <span class="n">allow_unpaired_flag</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">st</span><span class="o">.</span><span class="n">module_score_did_by_pool</span><span class="p">(</span>
+            <span class="n">pb_df</span><span class="p">,</span>
+            <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+            <span class="n">visits</span><span class="o">=</span><span class="n">visits_pair</span><span class="p">,</span>
+            <span class="n">min_paired</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="n">n_perm</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
+            <span class="n">seed</span><span class="o">=</span><span class="n">SEED</span><span class="p">,</span>
+            <span class="n">fdr_within</span><span class="o">=</span><span class="s2">&quot;module&quot;</span><span class="p">,</span>
+            <span class="n">allow_unpaired</span><span class="o">=</span><span class="n">allow_unpaired_flag</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="n">res_mod</span> <span class="o">=</span> <span class="n">_run_mod_did</span><span class="p">(</span><span class="n">pb_mod</span><span class="p">,</span> <span class="n">allow_unpaired</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">res_mod</span><span class="o">.</span><span class="n">empty</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">allow_unpaired</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No valid paired lineage-level DiD results. Retrying with unpaired OLS DiD.&quot;</span><span class="p">)</span>
+        <span class="n">res_mod</span> <span class="o">=</span> <span class="n">_run_mod_did</span><span class="p">(</span><span class="n">pb_mod</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+
     <span class="k">if</span> <span class="n">res_mod</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No valid lineage-level DiD results. Falling back to pooled lineage.&quot;</span><span class="p">)</span>
         <span class="n">pb_all</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">module_score_pseudobulk</span><span class="p">(</span>
@@ -2159,7 +2166,7 @@ KEY INSIGHTS
             <span class="n">n_perm</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
             <span class="n">seed</span><span class="o">=</span><span class="n">SEED</span><span class="p">,</span>
             <span class="n">fdr_within</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-            <span class="n">allow_unpaired</span><span class="o">=</span><span class="n">allow_unpaired</span><span class="p">,</span>
+            <span class="n">allow_unpaired</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="p">)</span>
 
     <span class="k">if</span> <span class="ow">not</span> <span class="n">res_mod</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
