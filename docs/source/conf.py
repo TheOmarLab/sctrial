@@ -15,15 +15,11 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.intersphinx",
     "nbsphinx",
-    "myst_nb",
 ]
 
 nbsphinx_allow_errors = True
 nbsphinx_execute = 'auto'  # Or 'always'
 
-# MyST-NB (trial) configuration
-nb_execution_mode = "off"
-nb_execution_cache_path = ".jupyter_cache"
 
 
 templates_path = ["_templates"]
