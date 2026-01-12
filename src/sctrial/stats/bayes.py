@@ -34,6 +34,9 @@ def did_table_bayes(
     covariates: list[str] | None = None,
     draws: int = 1000,
     tune: int = 1000,
+    chains: int = 4,
+    target_accept: float = 0.9,
+    max_treedepth: int = 12,
     seed: int = 42,
 ) -> pd.DataFrame:
     """Bayesian DiD with participant random intercepts.
@@ -48,6 +51,12 @@ def did_table_bayes(
         Posterior draws.
     tune
         Tuning iterations.
+    chains
+        Number of MCMC chains.
+    target_accept
+        Target acceptance rate for NUTS.
+    max_treedepth
+        Maximum tree depth for NUTS.
     """
     try:
         import pymc as pm
@@ -107,8 +116,9 @@ def did_table_bayes(
             idata = pm.sample(
                 draws=draws,
                 tune=tune,
-                chains=2,
-                target_accept=0.9,
+                chains=chains,
+                target_accept=target_accept,
+                max_treedepth=max_treedepth,
                 random_seed=seed,
                 progressbar=False,
             )
