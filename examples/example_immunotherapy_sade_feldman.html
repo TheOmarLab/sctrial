@@ -1470,7 +1470,7 @@ Pre→Post changes in Non-responder:
 </pre></div></div>
 </div>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
@@ -1676,6 +1676,7 @@ DiD Results:
       <th>delta_resp</th>
       <th>delta_nonresp</th>
       <th>beta_DiD</th>
+      <th>se_DiD</th>
       <th>p_DiD</th>
       <th>FDR_DiD</th>
     </tr>
@@ -1689,6 +1690,7 @@ DiD Results:
       <td>-0.0805</td>
       <td>0.1725</td>
       <td>-0.2530</td>
+      <td>0.0570</td>
       <td>0.0167</td>
       <td>0.0833</td>
     </tr>
@@ -1700,6 +1702,7 @@ DiD Results:
       <td>-0.4269</td>
       <td>-0.0008</td>
       <td>-0.4261</td>
+      <td>0.3140</td>
       <td>0.2667</td>
       <td>0.6667</td>
     </tr>
@@ -1711,6 +1714,7 @@ DiD Results:
       <td>0.0373</td>
       <td>0.1006</td>
       <td>-0.0634</td>
+      <td>0.2171</td>
       <td>0.6667</td>
       <td>0.8333</td>
     </tr>
@@ -1722,6 +1726,7 @@ DiD Results:
       <td>-0.1986</td>
       <td>0.0379</td>
       <td>-0.2365</td>
+      <td>0.2559</td>
       <td>0.6667</td>
       <td>0.8333</td>
     </tr>
@@ -1733,6 +1738,7 @@ DiD Results:
       <td>-0.0056</td>
       <td>0.1602</td>
       <td>-0.1659</td>
+      <td>0.1577</td>
       <td>0.8333</td>
       <td>0.8333</td>
     </tr>
@@ -1760,7 +1766,7 @@ Significant DiD effects (FDR &lt; 0.25):
 <section id="6.1-Signature-Distributions-by-Response-and-Visit">
 <h3>6.1 Signature Distributions by Response and Visit<a class="headerlink" href="#6.1-Signature-Distributions-by-Response-and-Visit" title="Link to this heading"></a></h3>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Visualize signature distributions</span>
@@ -1819,7 +1825,7 @@ Significant DiD effects (FDR &lt; 0.25):
 <h3>6.2 Trial Interaction Plot<a class="headerlink" href="#6.2-Trial-Interaction-Plot" title="Link to this heading"></a></h3>
 <p>Shows mean trajectories for each response group from Pre to Post.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Interaction plots for top features</span>
@@ -1902,7 +1908,7 @@ Significant DiD effects (FDR &lt; 0.25):
 <h3>7.1 Effect Sizes with Confidence Intervals<a class="headerlink" href="#7.1-Effect-Sizes-with-Confidence-Intervals" title="Link to this heading"></a></h3>
 <p>Effect sizes (Cohen’s d, Hedge’s g) provide standardized measures of treatment effects that are independent of sample size and complement p-values.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
@@ -2086,7 +2092,7 @@ Effect sizes for DiD (Responder vs Non-responder change):
 <h3>7.2 Power Analysis<a class="headerlink" href="#7.2-Power-Analysis" title="Link to this heading"></a></h3>
 <p>Power analysis helps understand the statistical power of the current study and plan future studies.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
@@ -2248,7 +2254,7 @@ is already accounted for. Cell counts help reduce within-participant noise.
 <li><p>Better handling of unbalanced designs</p></li>
 </ul>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Suppress RuntimeWarnings from singular covariance matrices (common with small samples)</span>
@@ -2301,25 +2307,9 @@ is already accounted for. Cell counts help reduce within-participant noise.
 ============================================================
 MIXED EFFECTS MODEL COMPARISON
 ============================================================
-</pre></div></div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area stderr docutils container">
-<div class="highlight"><pre>
-/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/statsmodels/regression/linear_model.py:1884: RuntimeWarning: invalid value encountered in sqrt
-  return np.sqrt(np.diag(self.cov_params()))
-/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/statsmodels/regression/linear_model.py:1884: RuntimeWarning: invalid value encountered in sqrt
-  return np.sqrt(np.diag(self.cov_params()))
-/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/statsmodels/regression/linear_model.py:1884: RuntimeWarning: invalid value encountered in sqrt
-  return np.sqrt(np.diag(self.cov_params()))
-/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/statsmodels/regression/linear_model.py:1884: RuntimeWarning: invalid value encountered in sqrt
-  return np.sqrt(np.diag(self.cov_params()))
-/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/statsmodels/regression/linear_model.py:1884: RuntimeWarning: invalid value encountered in sqrt
-  return np.sqrt(np.diag(self.cov_params()))
-/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/statsmodels/regression/mixed_linear_model.py:2237: ConvergenceWarning: The MLE may be on the boundary of the parameter space.
-  warnings.warn(msg, ConvergenceWarning)
+
+Note: With small samples, fixed effects models may produce NaN standard errors
+due to singular covariance matrices. Mixed effects models are more robust here.
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -2425,7 +2415,7 @@ MIXED EFFECTS MODEL COMPARISON
 <h3>7.4 Cross-Validation for Effect Stability<a class="headerlink" href="#7.4-Cross-Validation-for-Effect-Stability" title="Link to this heading"></a></h3>
 <p>Leave-one-out cross-validation (LOO-CV) helps assess the stability of DiD estimates and identify influential participants.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Suppress RuntimeWarnings from singular covariance matrices during LOO-CV</span>
@@ -2533,71 +2523,10 @@ CROSS-VALIDATION: EFFECT STABILITY
 Running leave-one-out cross-validation on 10 paired participants...
 This assesses how stable DiD estimates are when each participant is removed.
 
+Note: Influence = |beta_full - beta_loo| / SE_full
+      NaN influence occurs when SE is undefined (singular covariance).
+
 Feature: sig_Cytotoxicity
-</pre></div></div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area stderr docutils container">
-<div class="highlight"><pre>
-/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/statsmodels/regression/linear_model.py:1884: RuntimeWarning: invalid value encountered in sqrt
-  return np.sqrt(np.diag(self.cov_params()))
-/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/statsmodels/regression/linear_model.py:1884: RuntimeWarning: invalid value encountered in sqrt
-  return np.sqrt(np.diag(self.cov_params()))
-/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/statsmodels/regression/linear_model.py:1884: RuntimeWarning: invalid value encountered in sqrt
-  return np.sqrt(np.diag(self.cov_params()))
-/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/statsmodels/regression/linear_model.py:1884: RuntimeWarning: invalid value encountered in sqrt
-  return np.sqrt(np.diag(self.cov_params()))
-/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/statsmodels/regression/linear_model.py:1884: RuntimeWarning: invalid value encountered in sqrt
-  return np.sqrt(np.diag(self.cov_params()))
-/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/statsmodels/regression/linear_model.py:1884: RuntimeWarning: invalid value encountered in sqrt
-  return np.sqrt(np.diag(self.cov_params()))
-/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/statsmodels/regression/linear_model.py:1884: RuntimeWarning: invalid value encountered in sqrt
-  return np.sqrt(np.diag(self.cov_params()))
-/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/statsmodels/regression/linear_model.py:1884: RuntimeWarning: invalid value encountered in sqrt
-  return np.sqrt(np.diag(self.cov_params()))
-/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/statsmodels/regression/linear_model.py:1884: RuntimeWarning: invalid value encountered in sqrt
-  return np.sqrt(np.diag(self.cov_params()))
-/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/statsmodels/regression/linear_model.py:1884: RuntimeWarning: invalid value encountered in sqrt
-  return np.sqrt(np.diag(self.cov_params()))
-/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/statsmodels/regression/linear_model.py:1884: RuntimeWarning: invalid value encountered in sqrt
-  return np.sqrt(np.diag(self.cov_params()))
-/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/statsmodels/regression/linear_model.py:1884: RuntimeWarning: invalid value encountered in sqrt
-  return np.sqrt(np.diag(self.cov_params()))
-/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/statsmodels/regression/linear_model.py:1884: RuntimeWarning: invalid value encountered in sqrt
-  return np.sqrt(np.diag(self.cov_params()))
-/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/statsmodels/regression/linear_model.py:1884: RuntimeWarning: invalid value encountered in sqrt
-  return np.sqrt(np.diag(self.cov_params()))
-/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/statsmodels/regression/linear_model.py:1884: RuntimeWarning: invalid value encountered in sqrt
-  return np.sqrt(np.diag(self.cov_params()))
-/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/statsmodels/regression/linear_model.py:1884: RuntimeWarning: invalid value encountered in sqrt
-  return np.sqrt(np.diag(self.cov_params()))
-/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/statsmodels/regression/linear_model.py:1884: RuntimeWarning: invalid value encountered in sqrt
-  return np.sqrt(np.diag(self.cov_params()))
-/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/statsmodels/regression/linear_model.py:1884: RuntimeWarning: invalid value encountered in sqrt
-  return np.sqrt(np.diag(self.cov_params()))
-/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/statsmodels/regression/linear_model.py:1884: RuntimeWarning: invalid value encountered in sqrt
-  return np.sqrt(np.diag(self.cov_params()))
-/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/statsmodels/regression/linear_model.py:1884: RuntimeWarning: invalid value encountered in sqrt
-  return np.sqrt(np.diag(self.cov_params()))
-/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/statsmodels/regression/linear_model.py:1884: RuntimeWarning: invalid value encountered in sqrt
-  return np.sqrt(np.diag(self.cov_params()))
-/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/statsmodels/regression/linear_model.py:1884: RuntimeWarning: invalid value encountered in sqrt
-  return np.sqrt(np.diag(self.cov_params()))
-/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/statsmodels/regression/linear_model.py:1884: RuntimeWarning: invalid value encountered in sqrt
-  return np.sqrt(np.diag(self.cov_params()))
-/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/statsmodels/regression/linear_model.py:1884: RuntimeWarning: invalid value encountered in sqrt
-  return np.sqrt(np.diag(self.cov_params()))
-/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/statsmodels/regression/linear_model.py:1884: RuntimeWarning: invalid value encountered in sqrt
-  return np.sqrt(np.diag(self.cov_params()))
-</pre></div></div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
 
 LOO-CV Results:
   Full sample estimate: -0.3583
@@ -2606,15 +2535,6 @@ LOO-CV Results:
   CV (coefficient of variation): 77.81%
 
 Influence Diagnostics:
-</pre></div></div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area stderr docutils container">
-<div class="highlight"><pre>
-/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/statsmodels/regression/linear_model.py:1884: RuntimeWarning: invalid value encountered in sqrt
-  return np.sqrt(np.diag(self.cov_params()))
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -2881,7 +2801,7 @@ Influence Diagnostics:
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_immunotherapy_sade_feldman_31_5.png" src="../_images/examples_example_immunotherapy_sade_feldman_31_5.png" />
+<img alt="../_images/examples_example_immunotherapy_sade_feldman_31_2.png" src="../_images/examples_example_immunotherapy_sade_feldman_31_2.png" />
 </div>
 </div>
 </section>
@@ -2890,7 +2810,7 @@ Influence Diagnostics:
 <p>Here we run DiD using the high-level analyzer interface and render a forest plot.</p>
 <p><strong>Note</strong>: With very small samples (n=10 paired), the fixed effects DiD model may produce NaN standard errors due to rank-deficient design matrices. The point estimates (beta_DiD) remain valid, but confidence intervals and p-values require larger samples or alternative methods (e.g., bootstrap, mixed effects).</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Suppress RuntimeWarnings from singular covariance matrices</span>
@@ -2908,15 +2828,6 @@ Influence Diagnostics:
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Skipping DiDAnalyzer: insufficient features or visits&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area stderr docutils container">
-<div class="highlight"><pre>
-/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/statsmodels/regression/linear_model.py:1884: RuntimeWarning: invalid value encountered in sqrt
-  return np.sqrt(np.diag(self.cov_params()))
-</pre></div></div>
 </div>
 <div class="nboutput docutils container">
 <div class="prompt empty docutils container">
@@ -2970,7 +2881,7 @@ Influence Diagnostics:
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_immunotherapy_sade_feldman_33_2.png" src="../_images/examples_example_immunotherapy_sade_feldman_33_2.png" />
+<img alt="../_images/examples_example_immunotherapy_sade_feldman_33_1.png" src="../_images/examples_example_immunotherapy_sade_feldman_33_1.png" />
 </div>
 </div>
 </section>
@@ -2978,7 +2889,7 @@ Influence Diagnostics:
 <h3>7.6 Model Diagnostics (Residual Checks)<a class="headerlink" href="#7.6-Model-Diagnostics-(Residual-Checks)" title="Link to this heading"></a></h3>
 <p>We fit a simple DiD model for one feature and check residual diagnostics.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[20]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">features_use</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">visits</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
@@ -3027,7 +2938,7 @@ Influence Diagnostics:
 <h3>7.7 Treatment Heterogeneity<a class="headerlink" href="#7.7-Treatment-Heterogeneity" title="Link to this heading"></a></h3>
 <p>Here we test whether the DiD effect differs by a baseline biomarker (median split at baseline).</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">features_use</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">visits</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
@@ -3095,7 +3006,7 @@ Influence Diagnostics:
 <h3>7.8 Sensitivity to Unmeasured Confounding (E-value)<a class="headerlink" href="#7.8-Sensitivity-to-Unmeasured-Confounding-(E-value)" title="Link to this heading"></a></h3>
 <p>We compute an E-value on an approximate risk-ratio scale from the DiD estimate as a sensitivity diagnostic.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[22]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[20]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">did_results</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">did_results</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
@@ -3125,7 +3036,7 @@ E-value (RR≈exp(beta)): 1.897
 <h3>7.10 Survival Analysis (Cox Model)<a class="headerlink" href="#7.10-Survival-Analysis-(Cox-Model)" title="Link to this heading"></a></h3>
 <p>Here we demonstrate how to run a Cox proportional hazards model on participant‑level features. The Sade‑Feldman dataset does not include survival outcomes, so we derive a <strong>demo</strong> time‑to‑event variable from participant‑level cell counts. Replace this with real survival data in practice.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[23]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="p">{</span><span class="s2">&quot;time_to_event&quot;</span><span class="p">,</span> <span class="s2">&quot;event&quot;</span><span class="p">}</span><span class="o">.</span><span class="n">issubset</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">):</span>
@@ -3237,41 +3148,154 @@ No survival columns found; created demo time_to_event/event from cell counts.
 <h3>7.11 Bayesian DiD (PyMC)<a class="headerlink" href="#7.11-Bayesian-DiD-(PyMC)" title="Link to this heading"></a></h3>
 <p>This optional section fits a Bayesian DiD model with participant random intercepts. It provides posterior means and 95% credible intervals for the DiD effect.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[24]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[22]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">try</span><span class="p">:</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># 7.11 Bayesian DiD (PyMC)</span>
+<span class="c1">#</span>
+<span class="c1"># Here we fit a Bayesian DiD model with participant random intercepts.</span>
+<span class="c1"># We increase chains/draws and tighten NUTS settings to improve convergence.</span>
+<span class="k">try</span><span class="p">:</span>
     <span class="kn">import</span><span class="w"> </span><span class="nn">pymc</span>  <span class="c1"># noqa: F401</span>
+
     <span class="n">bayes_res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table_bayes</span><span class="p">(</span>
         <span class="n">adata</span><span class="p">,</span>
         <span class="n">features</span><span class="o">=</span><span class="n">features_use</span><span class="p">[:</span><span class="mi">3</span><span class="p">],</span>
         <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
         <span class="n">visits</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">visits</span><span class="p">),</span>
-        <span class="n">draws</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
-        <span class="n">tune</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
+        <span class="n">draws</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
+        <span class="n">tune</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
+        <span class="n">chains</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+        <span class="n">target_accept</span><span class="o">=</span><span class="mf">0.9</span><span class="p">,</span>
+        <span class="n">max_treedepth</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span>
         <span class="n">seed</span><span class="o">=</span><span class="n">SEED</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">display</span><span class="p">(</span><span class="n">bayes_res</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Bayesian DiD note: For small samples, convergence diagnostics may be noisy.&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;If rhat &gt; 1.01 or ESS is low, increase draws/tune or consider stronger priors.&quot;</span><span class="p">)</span>
 <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;PyMC not installed; skip Bayesian DiD. Install with: pip install &#39;sctrial[bayes]&#39;&quot;</span><span class="p">)</span>
 <br/></pre></div>
 </div>
 </div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+Initializing NUTS using jitter+adapt_diag...
+Multiprocess sampling (2 chains in 2 jobs)
+NUTS: [sigma, alpha, beta_time, beta_arm, beta_did]
+Sampling 2 chains for 300 tune and 300 draw iterations (600 + 600 draws total) took 9 seconds.
+Chain 0 reached the maximum tree depth. Increase `max_treedepth`, increase `target_accept` or reparameterize.
+Chain 1 reached the maximum tree depth. Increase `max_treedepth`, increase `target_accept` or reparameterize.
+We recommend running at least 4 chains for robust computation of convergence diagnostics
+The rhat statistic is larger than 1.01 for some parameters. This indicates problems during sampling. See https://arxiv.org/abs/1903.08008 for details
+The effective sample size per chain is smaller than 100 for some parameters.  A higher number is needed for reliable rhat and ess computation. See https://arxiv.org/abs/1903.08008 for details
+Initializing NUTS using jitter+adapt_diag...
+Multiprocess sampling (2 chains in 2 jobs)
+NUTS: [sigma, alpha, beta_time, beta_arm, beta_did]
+Sampling 2 chains for 300 tune and 300 draw iterations (600 + 600 draws total) took 9 seconds.
+Chain 0 reached the maximum tree depth. Increase `max_treedepth`, increase `target_accept` or reparameterize.
+Chain 1 reached the maximum tree depth. Increase `max_treedepth`, increase `target_accept` or reparameterize.
+We recommend running at least 4 chains for robust computation of convergence diagnostics
+The rhat statistic is larger than 1.01 for some parameters. This indicates problems during sampling. See https://arxiv.org/abs/1903.08008 for details
+The effective sample size per chain is smaller than 100 for some parameters.  A higher number is needed for reliable rhat and ess computation. See https://arxiv.org/abs/1903.08008 for details
+Initializing NUTS using jitter+adapt_diag...
+Multiprocess sampling (2 chains in 2 jobs)
+NUTS: [sigma, alpha, beta_time, beta_arm, beta_did]
+Sampling 2 chains for 300 tune and 300 draw iterations (600 + 600 draws total) took 9 seconds.
+Chain 0 reached the maximum tree depth. Increase `max_treedepth`, increase `target_accept` or reparameterize.
+Chain 1 reached the maximum tree depth. Increase `max_treedepth`, increase `target_accept` or reparameterize.
+We recommend running at least 4 chains for robust computation of convergence diagnostics
+The rhat statistic is larger than 1.01 for some parameters. This indicates problems during sampling. See https://arxiv.org/abs/1903.08008 for details
+The effective sample size per chain is smaller than 100 for some parameters.  A higher number is needed for reliable rhat and ess computation. See https://arxiv.org/abs/1903.08008 for details
+</pre></div></div>
+</div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-PyMC not installed; skip Bayesian DiD. Install with: pip install &#39;sctrial[bayes]&#39;
-</pre></div></div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>feature</th>
+      <th>beta_DiD</th>
+      <th>ci_low</th>
+      <th>ci_high</th>
+      <th>p_bayes</th>
+      <th>n_units</th>
+      <th>FDR_bayes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>sig_IFN_Response</td>
+      <td>-0.699629</td>
+      <td>-1.950933</td>
+      <td>0.292957</td>
+      <td>0.296667</td>
+      <td>10</td>
+      <td>0.876667</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>sig_Exhaustion</td>
+      <td>-0.189442</td>
+      <td>-1.435900</td>
+      <td>0.712477</td>
+      <td>0.850000</td>
+      <td>10</td>
+      <td>0.876667</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>sig_Cytotoxicity</td>
+      <td>-0.119862</td>
+      <td>-1.224033</td>
+      <td>0.980690</td>
+      <td>0.876667</td>
+      <td>10</td>
+      <td>0.876667</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
 </div>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[25]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[23]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">did_results</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">did_results</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Interactive plot (Plotly) + static fallback for HTML docs</span>
+<span class="k">if</span> <span class="n">did_results</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">did_results</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+    <span class="c1"># Static fallback always available for HTML</span>
     <span class="k">try</span><span class="p">:</span>
-        <span class="c1"># Check if se_DiD column exists and has valid values</span>
+        <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="nb">max</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">did_results</span><span class="p">))))</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">plot_did_forest</span><span class="p">(</span><span class="n">did_results</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;DiD Effect Sizes (Static)&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Static forest plot failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Interactive Plotly (may not render in HTML docs)</span>
+    <span class="k">try</span><span class="p">:</span>
         <span class="k">if</span> <span class="s2">&quot;se_DiD&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">did_results</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;se_DiD column not available - skipping interactive forest plot&quot;</span><span class="p">)</span>
         <span class="k">elif</span> <span class="n">did_results</span><span class="p">[</span><span class="s2">&quot;se_DiD&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
@@ -3285,16 +3309,17 @@ PyMC not installed; skip Bayesian DiD. Install with: pip install &#39;sctrial[ba
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not create interactive plot: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <span class="k">else</span><span class="p">:</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No DiD results available for interactive plot&quot;</span><span class="p">)</span>
-</pre></div>
+<br/></pre></div>
 </div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<div class="highlight"><pre>
-Plotly not available: [&#39;se_DiD&#39;]
-</pre></div></div>
+<div class="admonition warning">
+<p>Data type cannot be displayed: application/vnd.plotly.v1+json</p>
+</div>
+</div>
 </div>
 </section>
 </section>
