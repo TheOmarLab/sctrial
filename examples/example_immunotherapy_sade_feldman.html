@@ -3188,38 +3188,31 @@ If rhat &gt; 1.01 or ESS is low, increase draws/tune or consider stronger priors
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Static forest plot failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-    <span class="c1"># Interactive Plotly (may not render in HTML docs)</span>
-    <span class="k">try</span><span class="p">:</span>
-        <span class="k">if</span> <span class="s2">&quot;se_DiD&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">did_results</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;se_DiD column not available - skipping interactive forest plot&quot;</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="n">did_results</span><span class="p">[</span><span class="s2">&quot;se_DiD&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;All se_DiD values are NaN - skipping interactive forest plot&quot;</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">fig</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">plot_did_forest_interactive</span><span class="p">(</span><span class="n">did_results</span><span class="p">)</span>
-            <span class="n">fig</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-    <span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Plotly not installed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not create interactive plot: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="c1"># Plotly disabled in docs to avoid unsupported MIME output</span>
+    <span class="n">SHOW_PLOTLY</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">if</span> <span class="n">SHOW_PLOTLY</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s2">&quot;se_DiD&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">did_results</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;se_DiD column not available - skipping interactive forest plot&quot;</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">did_results</span><span class="p">[</span><span class="s2">&quot;se_DiD&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;All se_DiD values are NaN - skipping interactive forest plot&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">fig</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">plot_did_forest_interactive</span><span class="p">(</span><span class="n">did_results</span><span class="p">)</span>
+                <span class="n">fig</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Plotly not installed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not create interactive plot: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <span class="k">else</span><span class="p">:</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No DiD results available for interactive plot&quot;</span><span class="p">)</span>
 <br/></pre></div>
-</div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<img alt="../_images/examples_example_immunotherapy_sade_feldman_42_0.png" src="../_images/examples_example_immunotherapy_sade_feldman_42_0.png" />
 </div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<div class="admonition warning">
-<p>Data type cannot be displayed: application/vnd.plotly.v1+json</p>
-</div>
+<img alt="../_images/examples_example_immunotherapy_sade_feldman_42_0.png" src="../_images/examples_example_immunotherapy_sade_feldman_42_0.png" />
 </div>
 </div>
 </section>
