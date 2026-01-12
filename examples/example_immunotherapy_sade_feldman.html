@@ -83,8 +83,6 @@
 <li class="toctree-l4"><a class="reference internal" href="#7.7-Treatment-Heterogeneity">7.7 Treatment Heterogeneity</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#7.8-Sensitivity-to-Unmeasured-Confounding-(E-value)">7.8 Sensitivity to Unmeasured Confounding (E-value)</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#7.9-Interactive-DiD-Plot-(Plotly)">7.9 Interactive DiD Plot (Plotly)</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#7.10-Survival-Analysis-(Cox-Model)">7.10 Survival Analysis (Cox Model)</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#7.11-Bayesian-DiD-(PyMC)">7.11 Bayesian DiD (PyMC)</a></li>
 </ul>
 </li>
 </ul>
@@ -3031,10 +3029,6 @@ E-value (RR≈exp(beta)): 1.897
 <section id="7.9-Interactive-DiD-Plot-(Plotly)">
 <h3>7.9 Interactive DiD Plot (Plotly)<a class="headerlink" href="#7.9-Interactive-DiD-Plot-(Plotly)" title="Link to this heading"></a></h3>
 <p>If Plotly is available, we render an interactive forest plot of DiD effects.</p>
-</section>
-<section id="7.10-Survival-Analysis-(Cox-Model)">
-<h3>7.10 Survival Analysis (Cox Model)<a class="headerlink" href="#7.10-Survival-Analysis-(Cox-Model)" title="Link to this heading"></a></h3>
-<p>Here we demonstrate how to run a Cox proportional hazards model on participant‑level features. The Sade‑Feldman dataset does not include survival outcomes, so we derive a <strong>demo</strong> time‑to‑event variable from participant‑level cell counts. Replace this with real survival data in practice.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
 </pre></div>
@@ -3143,15 +3137,11 @@ No survival columns found; created demo time_to_event/event from cell counts.
 </table>
 </div></div>
 </div>
-</section>
-<section id="7.11-Bayesian-DiD-(PyMC)">
-<h3>7.11 Bayesian DiD (PyMC)<a class="headerlink" href="#7.11-Bayesian-DiD-(PyMC)" title="Link to this heading"></a></h3>
-<p>This optional section fits a Bayesian DiD model with participant random intercepts. It provides posterior means and 95% credible intervals for the DiD effect.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[22]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># 7.11 Bayesian DiD (PyMC)</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># 7.10 Bayesian DiD (PyMC)</span>
 <span class="c1">#</span>
 <span class="c1"># Here we fit a Bayesian DiD model with participant random intercepts.</span>
 <span class="c1"># We increase chains/draws and tighten NUTS settings to improve convergence.</span>
