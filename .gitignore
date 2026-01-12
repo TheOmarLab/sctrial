@@ -36,4 +36,5 @@ examples/data/
 .vscode/
 .idea/
 .ruff_cache/
+.jupyter_cache/
 docs/build/

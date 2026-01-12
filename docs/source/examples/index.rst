@@ -8,5 +8,5 @@ These interactive Jupyter Notebooks demonstrate `sctrial` in action, from synthe
 
    example_covid19_stephenson
    example_immunotherapy_sade_feldman
-   example_vaccine_immport
+   example_vaccine_immport_myst
    stress_test_real_scale
