@@ -82,7 +82,7 @@
 <li class="toctree-l4"><a class="reference internal" href="#7.6-Model-Diagnostics-(Residual-Checks)">7.6 Model Diagnostics (Residual Checks)</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#7.7-Treatment-Heterogeneity">7.7 Treatment Heterogeneity</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#7.8-Sensitivity-to-Unmeasured-Confounding-(E-value)">7.8 Sensitivity to Unmeasured Confounding (E-value)</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#7.9-DiD-Forest-Plot">7.9 DiD Forest Plot</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#7.9-Bayesian-DiD-Forest-Plot">7.9 Bayesian DiD Forest Plot</a></li>
 </ul>
 </li>
 </ul>
@@ -3026,9 +3026,9 @@ E-value (RR≈exp(beta)): 1.897
 </pre></div></div>
 </div>
 </section>
-<section id="7.9-DiD-Forest-Plot">
-<h3>7.9 DiD Forest Plot<a class="headerlink" href="#7.9-DiD-Forest-Plot" title="Link to this heading"></a></h3>
-<p>Here we render a static forest plot of DiD effects.</p>
+<section id="7.9-Bayesian-DiD-Forest-Plot">
+<h3>7.9 Bayesian DiD Forest Plot<a class="headerlink" href="#7.9-Bayesian-DiD-Forest-Plot" title="Link to this heading"></a></h3>
+<p>Here we visualize <strong>Bayesian DiD</strong> effect estimates (posterior means with 95% credible intervals). This differs from the earlier frequentist DiD tables, which report point estimates and p-values from fixed‑effects or permutation-based inference. The Bayesian plot summarizes the posterior distribution for the treatment×time interaction, providing interval estimates that directly represent uncertainty.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[22]:
 </pre></div>
