@@ -38,6 +38,7 @@ Hedge's g:
 """
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
@@ -52,6 +53,7 @@ __all__ = [
     "cohens_d",
     "hedges_g",
     "cohens_d_from_did",
+    "cohens_d_from_did_approx",
     "effect_size_ci",
     "add_effect_sizes_to_did",
     "EffectSizeMethod",
@@ -239,34 +241,59 @@ def effect_size_ci(
 
 
 def cohens_d_from_did(
-    beta_did: float,
-    residual_std: float,
+    delta_treated: np.ndarray,
+    delta_control: np.ndarray,
 ) -> float:
-    """Calculate Cohen's d from a DiD regression coefficient.
+    """Calculate Cohen's d for DiD from participant-level change scores.
 
-    For DiD models, the effect size is the interaction coefficient
-    divided by the residual standard deviation:
+    This computes the **exact** Cohen's d for the difference in change scores:
 
-        d = β_DiD / σ_residual
+        d = (mean(Δ_treated) - mean(Δ_control)) / s_pooled
+
+    where s_pooled is the pooled SD of participant-level deltas.
 
     Parameters
     ----------
-    beta_did
-        The DiD interaction coefficient (treatment × time).
-    residual_std
-        Residual standard deviation from the regression.
+    delta_treated
+        Participant-level change scores (post - pre) for the treated arm.
+    delta_control
+        Participant-level change scores (post - pre) for the control arm.
 
     Returns
     -------
     float
-        Cohen's d effect size.
+        Cohen's d effect size based on change-score distributions.
+    """
+    d_t = np.asarray(delta_treated, dtype=float)
+    d_c = np.asarray(delta_control, dtype=float)
+    d_t = d_t[~np.isnan(d_t)]
+    d_c = d_c[~np.isnan(d_c)]
+
+    if d_t.size < 2 or d_c.size < 2:
+        return np.nan
+
+    return cohens_d(d_t, d_c, pooled=True)
+
+
+def cohens_d_from_did_approx(
+    beta_did: float,
+    residual_std: float,
+) -> float:
+    """Approximate Cohen's d from a DiD regression coefficient (deprecated).
+
+    This uses the regression residual SD instead of pooled SD of change scores,
+    which can mis-scale effect sizes when designs are imbalanced or heteroscedastic.
 
     Notes
     -----
-    This is an approximation that uses the regression residual SD rather
-    than a pooled SD of group-level change scores. For more precise effect
-    sizes, compute Cohen's d directly from the change scores in each group.
+    Deprecated: use ``cohens_d_from_did(delta_treated, delta_control)`` instead.
     """
+    warnings.warn(
+        "cohens_d_from_did_approx() is deprecated. "
+        "Use cohens_d_from_did(delta_treated, delta_control) for exact d.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     if residual_std < 1e-12 or np.isnan(beta_did):
         return np.nan
     return beta_did / residual_std
