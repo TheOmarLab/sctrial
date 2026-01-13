@@ -70,7 +70,6 @@
 <li class="toctree-l3"><a class="reference internal" href="#5.-Cross-Sectional-Comparisons-by-Timepoint">5. Cross-Sectional Comparisons by Timepoint</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#6.-Within-Arm-Longitudinal-Comparisons">6. Within-Arm Longitudinal Comparisons</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#Signature-Distributions-by-Response-and-Visit">Signature Distributions by Response and Visit</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#6.1-Signature-Distributions-by-Response-and-Visit">6.1 Signature Distributions by Response and Visit</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#7.-Difference-in-Differences-(Frequentist-DiD)">7. Difference-in-Differences (Frequentist DiD)</a><ul>
@@ -1476,11 +1475,8 @@ Pre→Post changes in Non-responder:
 </div>
 <section id="Signature-Distributions-by-Response-and-Visit">
 <h3>Signature Distributions by Response and Visit<a class="headerlink" href="#Signature-Distributions-by-Response-and-Visit" title="Link to this heading"></a></h3>
-</section>
-<section id="6.1-Signature-Distributions-by-Response-and-Visit">
-<span id="signature-distributions-by-response-and-visit-1"></span><h3>6.1 Signature Distributions by Response and Visit<a class="headerlink" href="#6.1-Signature-Distributions-by-Response-and-Visit" title="Link to this heading"></a></h3>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Visualize signature distributions</span>
@@ -1539,7 +1535,7 @@ Pre→Post changes in Non-responder:
 <section id="7.-Difference-in-Differences-(Frequentist-DiD)">
 <h2>7. Difference-in-Differences (Frequentist DiD)<a class="headerlink" href="#7.-Difference-in-Differences-(Frequentist-DiD)" title="Link to this heading"></a></h2>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
@@ -1900,8 +1896,8 @@ Significant DiD effects (FDR &lt; 0.25):
 <img alt="../_images/examples_example_immunotherapy_sade_feldman_24_1.png" src="../_images/examples_example_immunotherapy_sade_feldman_24_1.png" />
 </div>
 </div>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Frequentist DiD forest plot (only if SEs are valid)</span>
@@ -1917,6 +1913,13 @@ Significant DiD effects (FDR &lt; 0.25):
     <span class="k">else</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Frequentist forest plot skipped: se_DiD not available or all NaN.&quot;</span><span class="p">)</span>
 <br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/examples_example_immunotherapy_sade_feldman_25_0.png" src="../_images/examples_example_immunotherapy_sade_feldman_25_0.png" />
 </div>
 </div>
 </section>
@@ -1935,7 +1938,7 @@ Significant DiD effects (FDR &lt; 0.25):
 <h3>Effect Sizes with Confidence Intervals<a class="headerlink" href="#Effect-Sizes-with-Confidence-Intervals" title="Link to this heading"></a></h3>
 <p>Effect sizes (Cohen’s d, Hedge’s g) provide standardized measures of treatment effects that are independent of sample size and complement p-values.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
@@ -2119,7 +2122,7 @@ Effect sizes for DiD (Responder vs Non-responder change):
 <h3>Power Analysis<a class="headerlink" href="#Power-Analysis" title="Link to this heading"></a></h3>
 <p>Power analysis helps understand the statistical power of the current study and plan future studies.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
@@ -2281,7 +2284,7 @@ is already accounted for. Cell counts help reduce within-participant noise.
 <li><p>Better handling of unbalanced designs</p></li>
 </ul>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Suppress RuntimeWarnings from singular covariance matrices (common with small samples)</span>
@@ -2442,7 +2445,7 @@ due to singular covariance matrices. Mixed effects models are more robust here.
 <h3>Cross-Validation for Effect Stability<a class="headerlink" href="#Cross-Validation-for-Effect-Stability" title="Link to this heading"></a></h3>
 <p>Leave-one-out cross-validation (LOO-CV) helps assess the stability of DiD estimates and identify influential participants.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Suppress RuntimeWarnings from singular covariance matrices during LOO-CV</span>
@@ -2837,7 +2840,7 @@ Influence Diagnostics:
 <p>Here we run DiD using the high-level analyzer interface and render a forest plot.</p>
 <p><strong>Note</strong>: With very small samples (n=10 paired), the fixed effects DiD model may produce NaN standard errors due to rank-deficient design matrices. The point estimates (beta_DiD) remain valid, but confidence intervals and p-values require larger samples or alternative methods (e.g., bootstrap, mixed effects).</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Suppress RuntimeWarnings from singular covariance matrices</span>
@@ -2916,7 +2919,7 @@ Influence Diagnostics:
 <h3>Model Diagnostics (Residual Checks)<a class="headerlink" href="#Model-Diagnostics-(Residual-Checks)" title="Link to this heading"></a></h3>
 <p>We fit a simple DiD model for one feature and check residual diagnostics.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">features_use</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">visits</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
@@ -2965,7 +2968,7 @@ Influence Diagnostics:
 <h3>Treatment Heterogeneity<a class="headerlink" href="#Treatment-Heterogeneity" title="Link to this heading"></a></h3>
 <p>Here we test whether the DiD effect differs by a baseline biomarker (median split at baseline).</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[20]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">features_use</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">visits</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
@@ -3033,7 +3036,7 @@ Influence Diagnostics:
 <h3>Sensitivity to Unmeasured Confounding (E-value)<a class="headerlink" href="#Sensitivity-to-Unmeasured-Confounding-(E-value)" title="Link to this heading"></a></h3>
 <p>We compute an E-value on an approximate risk-ratio scale from the DiD estimate as a sensitivity diagnostic.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[20]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">did_results</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">did_results</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
@@ -3118,7 +3121,7 @@ The effective sample size per chain is smaller than 100 for some parameters.  A 
 Initializing NUTS using jitter+adapt_diag...
 Multiprocess sampling (4 chains in 4 jobs)
 NUTS: [sigma, alpha, beta_time, beta_arm, beta_did]
-Sampling 4 chains for 1_000 tune and 1_000 draw iterations (4_000 + 4_000 draws total) took 151 seconds.
+Sampling 4 chains for 1_000 tune and 1_000 draw iterations (4_000 + 4_000 draws total) took 149 seconds.
 Chain 0 reached the maximum tree depth. Increase `max_treedepth`, increase `target_accept` or reparameterize.
 Chain 1 reached the maximum tree depth. Increase `max_treedepth`, increase `target_accept` or reparameterize.
 Chain 2 reached the maximum tree depth. Increase `max_treedepth`, increase `target_accept` or reparameterize.
@@ -3162,12 +3165,12 @@ The effective sample size per chain is smaller than 100 for some parameters.  A 
     <tr>
       <th>0</th>
       <td>sig_IFN_Response</td>
-      <td>-0.836253</td>
-      <td>-1.883495</td>
-      <td>0.444479</td>
-      <td>0.1670</td>
+      <td>-0.884482</td>
+      <td>-1.988535</td>
+      <td>0.416985</td>
+      <td>0.1530</td>
       <td>10</td>
-      <td>0.5010</td>
+      <td>0.4590</td>
     </tr>
     <tr>
       <th>1</th>
@@ -3206,16 +3209,15 @@ If rhat &gt; 1.01 or ESS is low, increase draws/tune or consider stronger priors
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[23]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Interactive plot (Plotly) + static fallback for HTML docs</span>
-<span class="k">if</span> <span class="n">did_results</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">did_results</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">did_results</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">did_results</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
     <span class="c1"># Static fallback always available for HTML</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="nb">max</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">did_results</span><span class="p">))))</span>
-        <span class="n">st</span><span class="o">.</span><span class="n">plot_did_forest</span><span class="p">(</span><span class="n">did_results</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;DiD Effect Sizes (Static)&quot;</span><span class="p">)</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">plot_did_forest</span><span class="p">(</span><span class="n">did_results</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Bayesian DiD Effect Sizes&quot;</span><span class="p">)</span>
         <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
         <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Static forest plot failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Bayesian DiD forest plot failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
     <span class="c1"># Plotly disabled in docs to avoid unsupported MIME output</span>
     <span class="n">SHOW_PLOTLY</span> <span class="o">=</span> <span class="kc">False</span>
