@@ -50,6 +50,7 @@ from .stats.effect_size import (
     add_effect_sizes_to_did,
     bootstrap_effect_size_ci,
     cohens_d,
+    cohens_d_from_did,
     hedges_g,
 )
 from .stats.gsea import (
@@ -139,6 +140,7 @@ __all__ = [
     # Effect sizes
     "cohens_d",
     "hedges_g",
+    "cohens_d_from_did",
     "add_effect_sizes_to_did",
     "bootstrap_effect_size_ci",
     # Power analysis

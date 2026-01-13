@@ -35,6 +35,7 @@ from .effect_size import (
     bootstrap_effect_size_ci,
     cohens_d,
     cohens_d_from_did,
+    cohens_d_from_did_approx,
     effect_size_ci,
     hedges_g,
 )
@@ -86,6 +87,7 @@ __all__ = [
     "cohens_d",
     "hedges_g",
     "cohens_d_from_did",
+    "cohens_d_from_did_approx",
     "effect_size_ci",
     "add_effect_sizes_to_did",
     "bootstrap_effect_size_ci",
