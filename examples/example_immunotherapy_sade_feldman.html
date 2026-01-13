@@ -68,22 +68,23 @@
 <li class="toctree-l3"><a class="reference internal" href="#3.-Trial-Design-and-Timepoint-Strategy">3. Trial Design and Timepoint Strategy</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#4.-Immune-Signatures">4. Immune Signatures</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#5.-Cross-Sectional-Comparisons-by-Timepoint">5. Cross-Sectional Comparisons by Timepoint</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#7.-Difference-in-Differences-(Frequentist-DiD)">7. Difference-in-Differences (Frequentist DiD)</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#6.-Visualizations">6. Visualizations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#6.-Within-Arm-Longitudinal-Comparisons">6. Within-Arm Longitudinal Comparisons</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#7.-Difference-in-Differences-(Frequentist-DiD)">7. Difference-in-Differences (Frequentist DiD)</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#8.1-Signature-Distributions-by-Response-and-Visit">8.1 Signature Distributions by Response and Visit</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#6.1-Signature-Distributions-by-Response-and-Visit">6.1 Signature Distributions by Response and Visit</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#6.2-Trial-Interaction-Plot">6.2 Trial Interaction Plot</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#8.2-Trial-Interaction-Plot">8.2 Trial Interaction Plot</a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="#7.-Advanced-Statistical-Analyses">7. Advanced Statistical Analyses</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#7.1-Effect-Sizes-with-Confidence-Intervals">7.1 Effect Sizes with Confidence Intervals</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#7.2-Power-Analysis">7.2 Power Analysis</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#7.3-Mixed-Effects-Models">7.3 Mixed Effects Models</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#7.4-Cross-Validation-for-Effect-Stability">7.4 Cross-Validation for Effect Stability</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#7.5-DiDAnalyzer-Example">7.5 DiDAnalyzer Example</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#7.6-Model-Diagnostics-(Residual-Checks)">7.6 Model Diagnostics (Residual Checks)</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#7.7-Treatment-Heterogeneity">7.7 Treatment Heterogeneity</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#7.8-Sensitivity-to-Unmeasured-Confounding-(E-value)">7.8 Sensitivity to Unmeasured Confounding (E-value)</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#7.9-Bayesian-DiD-Forest-Plot">7.9 Bayesian DiD Forest Plot</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#9.-Advanced-Statistical-Analyses">9. Advanced Statistical Analyses</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#9.1-Effect-Sizes-with-Confidence-Intervals">9.1 Effect Sizes with Confidence Intervals</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#9.2-Power-Analysis">9.2 Power Analysis</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#9.3-Mixed-Effects-Models">9.3 Mixed Effects Models</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#9.4-Cross-Validation-for-Effect-Stability">9.4 Cross-Validation for Effect Stability</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#9.5-DiDAnalyzer-Example">9.5 DiDAnalyzer Example</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#9.6-Model-Diagnostics-(Residual-Checks)">9.6 Model Diagnostics (Residual Checks)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#9.7-Treatment-Heterogeneity">9.7 Treatment Heterogeneity</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#9.8-Sensitivity-to-Unmeasured-Confounding-(E-value)">9.8 Sensitivity to Unmeasured Confounding (E-value)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#9.9-Bayesian-DiD-Forest-Plot">9.9 Bayesian DiD Forest Plot</a></li>
 </ul>
 </li>
 </ul>
@@ -1163,6 +1164,9 @@ Results at Post:
   Significant (FDR&lt;0.25): [&#39;sig_IFN_Response&#39;, &#39;sig_Activation&#39;]
 </pre></div></div>
 </div>
+</section>
+<section id="6.-Within-Arm-Longitudinal-Comparisons">
+<h2>6. Within-Arm Longitudinal Comparisons<a class="headerlink" href="#6.-Within-Arm-Longitudinal-Comparisons" title="Link to this heading"></a></h2>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
 </pre></div>
@@ -1781,11 +1785,11 @@ Significant DiD effects (FDR &lt; 0.25):
 <br/></pre></div>
 </div>
 </div>
+<section id="8.1-Signature-Distributions-by-Response-and-Visit">
+<h3>8.1 Signature Distributions by Response and Visit<a class="headerlink" href="#8.1-Signature-Distributions-by-Response-and-Visit" title="Link to this heading"></a></h3>
 </section>
-<section id="6.-Visualizations">
-<h2>6. Visualizations<a class="headerlink" href="#6.-Visualizations" title="Link to this heading"></a></h2>
 <section id="6.1-Signature-Distributions-by-Response-and-Visit">
-<h3>6.1 Signature Distributions by Response and Visit<a class="headerlink" href="#6.1-Signature-Distributions-by-Response-and-Visit" title="Link to this heading"></a></h3>
+<span id="signature-distributions-by-response-and-visit-1"></span><h3>6.1 Signature Distributions by Response and Visit<a class="headerlink" href="#6.1-Signature-Distributions-by-Response-and-Visit" title="Link to this heading"></a></h3>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
 </pre></div>
@@ -1838,12 +1842,12 @@ Significant DiD effects (FDR &lt; 0.25):
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_immunotherapy_sade_feldman_22_0.png" src="../_images/examples_example_immunotherapy_sade_feldman_22_0.png" />
+<img alt="../_images/examples_example_immunotherapy_sade_feldman_23_0.png" src="../_images/examples_example_immunotherapy_sade_feldman_23_0.png" />
 </div>
 </div>
 </section>
-<section id="6.2-Trial-Interaction-Plot">
-<h3>6.2 Trial Interaction Plot<a class="headerlink" href="#6.2-Trial-Interaction-Plot" title="Link to this heading"></a></h3>
+<section id="8.2-Trial-Interaction-Plot">
+<h3>8.2 Trial Interaction Plot<a class="headerlink" href="#8.2-Trial-Interaction-Plot" title="Link to this heading"></a></h3>
 <p>Shows mean trajectories for each response group from Pre to Post.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
@@ -1903,20 +1907,20 @@ Significant DiD effects (FDR &lt; 0.25):
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_immunotherapy_sade_feldman_24_0.png" src="../_images/examples_example_immunotherapy_sade_feldman_24_0.png" />
+<img alt="../_images/examples_example_immunotherapy_sade_feldman_25_0.png" src="../_images/examples_example_immunotherapy_sade_feldman_25_0.png" />
 </div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_immunotherapy_sade_feldman_24_1.png" src="../_images/examples_example_immunotherapy_sade_feldman_24_1.png" />
+<img alt="../_images/examples_example_immunotherapy_sade_feldman_25_1.png" src="../_images/examples_example_immunotherapy_sade_feldman_25_1.png" />
 </div>
 </div>
 </section>
 </section>
-<section id="7.-Advanced-Statistical-Analyses">
-<h2>7. Advanced Statistical Analyses<a class="headerlink" href="#7.-Advanced-Statistical-Analyses" title="Link to this heading"></a></h2>
+<section id="9.-Advanced-Statistical-Analyses">
+<h2>9. Advanced Statistical Analyses<a class="headerlink" href="#9.-Advanced-Statistical-Analyses" title="Link to this heading"></a></h2>
 <p>In this section, we demonstrate the new statistical modules added to sctrial:</p>
 <ul class="simple">
 <li><p><strong>Effect sizes</strong>: Cohen’s d and Hedge’s g with confidence intervals</p></li>
@@ -1925,8 +1929,8 @@ Significant DiD effects (FDR &lt; 0.25):
 <li><p><strong>Cross-validation</strong>: Leave-one-out CV for effect stability</p></li>
 <li><p><strong>Effective sample size</strong>: Accounting for clustering</p></li>
 </ul>
-<section id="7.1-Effect-Sizes-with-Confidence-Intervals">
-<h3>7.1 Effect Sizes with Confidence Intervals<a class="headerlink" href="#7.1-Effect-Sizes-with-Confidence-Intervals" title="Link to this heading"></a></h3>
+<section id="9.1-Effect-Sizes-with-Confidence-Intervals">
+<h3>9.1 Effect Sizes with Confidence Intervals<a class="headerlink" href="#9.1-Effect-Sizes-with-Confidence-Intervals" title="Link to this heading"></a></h3>
 <p>Effect sizes (Cohen’s d, Hedge’s g) provide standardized measures of treatment effects that are independent of sample size and complement p-values.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
@@ -2109,8 +2113,8 @@ Effect sizes for DiD (Responder vs Non-responder change):
 </div></div>
 </div>
 </section>
-<section id="7.2-Power-Analysis">
-<h3>7.2 Power Analysis<a class="headerlink" href="#7.2-Power-Analysis" title="Link to this heading"></a></h3>
+<section id="9.2-Power-Analysis">
+<h3>9.2 Power Analysis<a class="headerlink" href="#9.2-Power-Analysis" title="Link to this heading"></a></h3>
 <p>Power analysis helps understand the statistical power of the current study and plan future studies.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
@@ -2239,7 +2243,7 @@ Sample size needed for 80% power:
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_immunotherapy_sade_feldman_29_1.png" src="../_images/examples_example_immunotherapy_sade_feldman_29_1.png" />
+<img alt="../_images/examples_example_immunotherapy_sade_feldman_30_1.png" src="../_images/examples_example_immunotherapy_sade_feldman_30_1.png" />
 </div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -2266,8 +2270,8 @@ is already accounted for. Cell counts help reduce within-participant noise.
 </pre></div></div>
 </div>
 </section>
-<section id="7.3-Mixed-Effects-Models">
-<h3>7.3 Mixed Effects Models<a class="headerlink" href="#7.3-Mixed-Effects-Models" title="Link to this heading"></a></h3>
+<section id="9.3-Mixed-Effects-Models">
+<h3>9.3 Mixed Effects Models<a class="headerlink" href="#9.3-Mixed-Effects-Models" title="Link to this heading"></a></h3>
 <p>Mixed effects models provide an alternative to fixed effects DiD by modeling participant effects as random rather than fixed. This allows for:</p>
 <ul class="simple">
 <li><p>Partial pooling of information across participants</p></li>
@@ -2432,8 +2436,8 @@ due to singular covariance matrices. Mixed effects models are more robust here.
 </div></div>
 </div>
 </section>
-<section id="7.4-Cross-Validation-for-Effect-Stability">
-<h3>7.4 Cross-Validation for Effect Stability<a class="headerlink" href="#7.4-Cross-Validation-for-Effect-Stability" title="Link to this heading"></a></h3>
+<section id="9.4-Cross-Validation-for-Effect-Stability">
+<h3>9.4 Cross-Validation for Effect Stability<a class="headerlink" href="#9.4-Cross-Validation-for-Effect-Stability" title="Link to this heading"></a></h3>
 <p>Leave-one-out cross-validation (LOO-CV) helps assess the stability of DiD estimates and identify influential participants.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
@@ -2822,12 +2826,12 @@ Influence Diagnostics:
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_immunotherapy_sade_feldman_33_2.png" src="../_images/examples_example_immunotherapy_sade_feldman_33_2.png" />
+<img alt="../_images/examples_example_immunotherapy_sade_feldman_34_2.png" src="../_images/examples_example_immunotherapy_sade_feldman_34_2.png" />
 </div>
 </div>
 </section>
-<section id="7.5-DiDAnalyzer-Example">
-<h3>7.5 DiDAnalyzer Example<a class="headerlink" href="#7.5-DiDAnalyzer-Example" title="Link to this heading"></a></h3>
+<section id="9.5-DiDAnalyzer-Example">
+<h3>9.5 DiDAnalyzer Example<a class="headerlink" href="#9.5-DiDAnalyzer-Example" title="Link to this heading"></a></h3>
 <p>Here we run DiD using the high-level analyzer interface and render a forest plot.</p>
 <p><strong>Note</strong>: With very small samples (n=10 paired), the fixed effects DiD model may produce NaN standard errors due to rank-deficient design matrices. The point estimates (beta_DiD) remain valid, but confidence intervals and p-values require larger samples or alternative methods (e.g., bootstrap, mixed effects).</p>
 <div class="nbinput docutils container">
@@ -2902,12 +2906,12 @@ Influence Diagnostics:
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_immunotherapy_sade_feldman_35_1.png" src="../_images/examples_example_immunotherapy_sade_feldman_35_1.png" />
+<img alt="../_images/examples_example_immunotherapy_sade_feldman_36_1.png" src="../_images/examples_example_immunotherapy_sade_feldman_36_1.png" />
 </div>
 </div>
 </section>
-<section id="7.6-Model-Diagnostics-(Residual-Checks)">
-<h3>7.6 Model Diagnostics (Residual Checks)<a class="headerlink" href="#7.6-Model-Diagnostics-(Residual-Checks)" title="Link to this heading"></a></h3>
+<section id="9.6-Model-Diagnostics-(Residual-Checks)">
+<h3>9.6 Model Diagnostics (Residual Checks)<a class="headerlink" href="#9.6-Model-Diagnostics-(Residual-Checks)" title="Link to this heading"></a></h3>
 <p>We fit a simple DiD model for one feature and check residual diagnostics.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
@@ -2944,19 +2948,19 @@ Influence Diagnostics:
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_immunotherapy_sade_feldman_37_1.png" src="../_images/examples_example_immunotherapy_sade_feldman_37_1.png" />
+<img alt="../_images/examples_example_immunotherapy_sade_feldman_38_1.png" src="../_images/examples_example_immunotherapy_sade_feldman_38_1.png" />
 </div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_immunotherapy_sade_feldman_37_2.png" src="../_images/examples_example_immunotherapy_sade_feldman_37_2.png" />
+<img alt="../_images/examples_example_immunotherapy_sade_feldman_38_2.png" src="../_images/examples_example_immunotherapy_sade_feldman_38_2.png" />
 </div>
 </div>
 </section>
-<section id="7.7-Treatment-Heterogeneity">
-<h3>7.7 Treatment Heterogeneity<a class="headerlink" href="#7.7-Treatment-Heterogeneity" title="Link to this heading"></a></h3>
+<section id="9.7-Treatment-Heterogeneity">
+<h3>9.7 Treatment Heterogeneity<a class="headerlink" href="#9.7-Treatment-Heterogeneity" title="Link to this heading"></a></h3>
 <p>Here we test whether the DiD effect differs by a baseline biomarker (median split at baseline).</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
@@ -3023,8 +3027,8 @@ Influence Diagnostics:
 </div></div>
 </div>
 </section>
-<section id="7.8-Sensitivity-to-Unmeasured-Confounding-(E-value)">
-<h3>7.8 Sensitivity to Unmeasured Confounding (E-value)<a class="headerlink" href="#7.8-Sensitivity-to-Unmeasured-Confounding-(E-value)" title="Link to this heading"></a></h3>
+<section id="9.8-Sensitivity-to-Unmeasured-Confounding-(E-value)">
+<h3>9.8 Sensitivity to Unmeasured Confounding (E-value)<a class="headerlink" href="#9.8-Sensitivity-to-Unmeasured-Confounding-(E-value)" title="Link to this heading"></a></h3>
 <p>We compute an E-value on an approximate risk-ratio scale from the DiD estimate as a sensitivity diagnostic.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[20]:
@@ -3049,8 +3053,8 @@ E-value (RR≈exp(beta)): 1.897
 </pre></div></div>
 </div>
 </section>
-<section id="7.9-Bayesian-DiD-Forest-Plot">
-<h3>7.9 Bayesian DiD Forest Plot<a class="headerlink" href="#7.9-Bayesian-DiD-Forest-Plot" title="Link to this heading"></a></h3>
+<section id="9.9-Bayesian-DiD-Forest-Plot">
+<h3>9.9 Bayesian DiD Forest Plot<a class="headerlink" href="#9.9-Bayesian-DiD-Forest-Plot" title="Link to this heading"></a></h3>
 <p>Here we visualize <strong>Bayesian DiD</strong> effect estimates (posterior means with 95% credible intervals). This differs from the earlier frequentist DiD tables, which report point estimates and p-values from fixed‑effects or permutation-based inference. The Bayesian plot summarizes the posterior distribution for the treatment×time interaction, providing interval estimates that directly represent uncertainty.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[22]:
@@ -3235,7 +3239,7 @@ If rhat &gt; 1.01 or ESS is low, increase draws/tune or consider stronger priors
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_immunotherapy_sade_feldman_44_0.png" src="../_images/examples_example_immunotherapy_sade_feldman_44_0.png" />
+<img alt="../_images/examples_example_immunotherapy_sade_feldman_45_0.png" src="../_images/examples_example_immunotherapy_sade_feldman_45_0.png" />
 </div>
 </div>
 </section>
