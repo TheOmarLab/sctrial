@@ -301,6 +301,12 @@ def between_arm_comparison(
                     "n_units": int(df_use[design.participant_col].nunique()),
                 })
             else:
+                warnings.warn(
+                    f"Between-arm comparison skipped for feature '{feat}': "
+                    f"empty group detected (n_treated={len(g1)}, n_control={len(g2)}).",
+                    UserWarning,
+                    stacklevel=2,
+                )
                 rows.append({
                     "feature": feat,
                     "beta_arm": np.nan,

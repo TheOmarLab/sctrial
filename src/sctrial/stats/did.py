@@ -343,8 +343,8 @@ def did_fit(
             "n_units": n_units,
         }
     tmp = tmp_opt
-    # mypy: tmp is guaranteed non-None beyond this point
-    assert tmp is not None
+    if tmp is None:
+        raise ValueError("Outcome standardization failed unexpectedly.")
 
     formula = _build_did_formula(time, arm_bin, unit, covariates, outcome_col="outcome_std")
 

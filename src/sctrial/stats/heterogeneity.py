@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+import warnings
 from typing import Literal
 
 import numpy as np
@@ -87,6 +88,12 @@ def test_treatment_heterogeneity(
         biomarker_high = biomarker.astype(int)
     else:
         biomarker = pd.to_numeric(biomarker, errors="coerce")
+        if biomarker.isna().any():
+            warnings.warn(
+                f"biomarker_col '{biomarker_col}' contained non-numeric values that were coerced to NaN.",
+                UserWarning,
+                stacklevel=2,
+            )
         if threshold is None:
             threshold = float(np.nanmedian(biomarker))
         biomarker_high = (biomarker > threshold).astype(int)
