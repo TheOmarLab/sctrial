@@ -25,6 +25,15 @@ __all__ = [
 
 
 def safe_filename(s: str, maxlen: int = 180) -> str:
+    """Return a filesystem-safe filename slug.
+
+    Parameters
+    ----------
+    s
+        Input string to sanitize.
+    maxlen
+        Maximum length of the output string.
+    """
     s = str(s)
     s = s.replace("γ", "gamma").replace("δ", "delta")
     s = re.sub(r"\s+", "_", s.strip())
@@ -34,6 +43,7 @@ def safe_filename(s: str, maxlen: int = 180) -> str:
 
 
 def intersect_preserve_order(items: Sequence[str], universe: Iterable[str]) -> list[str]:
+    """Return items that appear in universe, preserving original order."""
     u = set(universe)
     return [x for x in items if x in u]
 

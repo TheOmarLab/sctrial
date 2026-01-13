@@ -50,6 +50,17 @@ class TrialDesign:
             baseline: str | None = None,
             followup: str | None = None,
     ) -> tuple[str, str]:
+        """Return (baseline, followup) visit labels.
+
+        Parameters
+        ----------
+        baseline
+            Optional explicit baseline visit label. If None, uses
+            ``self.baseline_visit``.
+        followup
+            Optional explicit follow-up visit label. If None, uses
+            ``self.followup_visit``.
+        """
         b = baseline or self.baseline_visit
         f = followup or self.followup_visit
         if b is None or f is None:
@@ -65,6 +76,15 @@ class TrialDesign:
             include_celltype: bool = False,
             include_crossover: bool = False,
     ) -> Sequence[str]:
+        """Return required obs columns for this design.
+
+        Parameters
+        ----------
+        include_celltype
+            If True, include ``celltype_col`` when it is defined.
+        include_crossover
+            If True, include ``crossover_col`` when it is defined.
+        """
         cols = [self.participant_col, self.visit_col, self.arm_col]
         if include_celltype and self.celltype_col:
             cols.append(self.celltype_col)
@@ -80,6 +100,19 @@ class TrialDesign:
             include_crossover: bool = False,
             check_arm_labels: bool = True,
     ) -> None:
+        """Validate that `adata.obs` contains required columns and labels.
+
+        Parameters
+        ----------
+        adata
+            AnnData object to validate.
+        include_celltype
+            If True, require ``celltype_col`` in ``adata.obs``.
+        include_crossover
+            If True, require ``crossover_col`` in ``adata.obs``.
+        check_arm_labels
+            If True, verify that treated/control labels are present in ``arm_col``.
+        """
         obs = adata.obs
         missing = [
             c

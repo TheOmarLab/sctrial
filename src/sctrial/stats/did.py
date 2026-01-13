@@ -29,14 +29,23 @@ class DiDConfig:
     """
 
     aggregate: AggregateMode = "participant_visit"
+    """Aggregation mode for features (cell-level or participant-level)."""
     layer: str | None = None
+    """Expression layer to use for genes (None uses adata.X)."""
     standardize: bool = True
+    """Whether to z-score outcomes before model fitting."""
     agg: AggregateFunc = "mean"
+    """Aggregation function applied after grouping."""
     covariates: list[str] | None = None
+    """Optional covariate columns to include as fixed effects."""
     use_bootstrap: bool = False
+    """If True, use wild cluster bootstrap for p-values."""
     n_boot: int = 999
+    """Number of bootstrap permutations."""
     seed: int = 42
+    """Random seed for bootstrap reproducibility."""
     exclude_crossovers: bool = True
+    """Whether to drop crossover cells if crossover_col is set."""
 
 
 def _validate_did_fit_inputs(df: pd.DataFrame, cols: list[str]) -> None:
