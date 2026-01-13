@@ -68,6 +68,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#3.-Trial-Design-and-Timepoint-Strategy">3. Trial Design and Timepoint Strategy</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#4.-Immune-Signatures">4. Immune Signatures</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#5.-Cross-Sectional-Comparisons-by-Timepoint">5. Cross-Sectional Comparisons by Timepoint</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#7.-Difference-in-Differences-(Frequentist-DiD)">7. Difference-in-Differences (Frequentist DiD)</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#6.-Visualizations">6. Visualizations</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#6.1-Signature-Distributions-by-Response-and-Visit">6.1 Signature Distributions by Response and Visit</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#6.2-Trial-Interaction-Plot">6.2 Trial Interaction Plot</a></li>
@@ -1467,6 +1468,9 @@ Pre→Post changes in Non-responder:
   sig_Activation: ↑ (delta=0.173, FDR=0.078)
 </pre></div></div>
 </div>
+</section>
+<section id="7.-Difference-in-Differences-(Frequentist-DiD)">
+<h2>7. Difference-in-Differences (Frequentist DiD)<a class="headerlink" href="#7.-Difference-in-Differences-(Frequentist-DiD)" title="Link to this heading"></a></h2>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
 </pre></div>
@@ -1834,7 +1838,7 @@ Significant DiD effects (FDR &lt; 0.25):
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_immunotherapy_sade_feldman_21_0.png" src="../_images/examples_example_immunotherapy_sade_feldman_21_0.png" />
+<img alt="../_images/examples_example_immunotherapy_sade_feldman_22_0.png" src="../_images/examples_example_immunotherapy_sade_feldman_22_0.png" />
 </div>
 </div>
 </section>
@@ -1899,14 +1903,14 @@ Significant DiD effects (FDR &lt; 0.25):
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_immunotherapy_sade_feldman_23_0.png" src="../_images/examples_example_immunotherapy_sade_feldman_23_0.png" />
+<img alt="../_images/examples_example_immunotherapy_sade_feldman_24_0.png" src="../_images/examples_example_immunotherapy_sade_feldman_24_0.png" />
 </div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_immunotherapy_sade_feldman_23_1.png" src="../_images/examples_example_immunotherapy_sade_feldman_23_1.png" />
+<img alt="../_images/examples_example_immunotherapy_sade_feldman_24_1.png" src="../_images/examples_example_immunotherapy_sade_feldman_24_1.png" />
 </div>
 </div>
 </section>
@@ -2235,7 +2239,7 @@ Sample size needed for 80% power:
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_immunotherapy_sade_feldman_28_1.png" src="../_images/examples_example_immunotherapy_sade_feldman_28_1.png" />
+<img alt="../_images/examples_example_immunotherapy_sade_feldman_29_1.png" src="../_images/examples_example_immunotherapy_sade_feldman_29_1.png" />
 </div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -2818,7 +2822,7 @@ Influence Diagnostics:
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_immunotherapy_sade_feldman_32_2.png" src="../_images/examples_example_immunotherapy_sade_feldman_32_2.png" />
+<img alt="../_images/examples_example_immunotherapy_sade_feldman_33_2.png" src="../_images/examples_example_immunotherapy_sade_feldman_33_2.png" />
 </div>
 </div>
 </section>
@@ -2898,7 +2902,7 @@ Influence Diagnostics:
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_immunotherapy_sade_feldman_34_1.png" src="../_images/examples_example_immunotherapy_sade_feldman_34_1.png" />
+<img alt="../_images/examples_example_immunotherapy_sade_feldman_35_1.png" src="../_images/examples_example_immunotherapy_sade_feldman_35_1.png" />
 </div>
 </div>
 </section>
@@ -2940,14 +2944,14 @@ Influence Diagnostics:
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_immunotherapy_sade_feldman_36_1.png" src="../_images/examples_example_immunotherapy_sade_feldman_36_1.png" />
+<img alt="../_images/examples_example_immunotherapy_sade_feldman_37_1.png" src="../_images/examples_example_immunotherapy_sade_feldman_37_1.png" />
 </div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_immunotherapy_sade_feldman_36_2.png" src="../_images/examples_example_immunotherapy_sade_feldman_36_2.png" />
+<img alt="../_images/examples_example_immunotherapy_sade_feldman_37_2.png" src="../_images/examples_example_immunotherapy_sade_feldman_37_2.png" />
 </div>
 </div>
 </section>
@@ -3231,7 +3235,7 @@ If rhat &gt; 1.01 or ESS is low, increase draws/tune or consider stronger priors
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_immunotherapy_sade_feldman_43_0.png" src="../_images/examples_example_immunotherapy_sade_feldman_43_0.png" />
+<img alt="../_images/examples_example_immunotherapy_sade_feldman_44_0.png" src="../_images/examples_example_immunotherapy_sade_feldman_44_0.png" />
 </div>
 </div>
 </section>
