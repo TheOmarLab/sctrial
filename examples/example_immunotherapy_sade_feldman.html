@@ -3084,7 +3084,7 @@ E-value (RR≈exp(beta)): 1.897
 
     <span class="n">bayes_res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table_bayes</span><span class="p">(</span>
         <span class="n">adata</span><span class="p">,</span>
-        <span class="n">features</span><span class="o">=</span><span class="n">features_use</span><span class="p">[:</span><span class="mi">4</span><span class="p">],</span>
+        <span class="n">features</span><span class="o">=</span><span class="n">features_use</span><span class="p">,</span>
         <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
         <span class="n">visits</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">visits</span><span class="p">),</span>
         <span class="n">draws</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
@@ -3127,6 +3127,10 @@ Initializing NUTS using jitter+adapt_diag...
 Multiprocess sampling (4 chains in 4 jobs)
 NUTS: [sigma, alpha, beta_time, beta_arm, beta_did]
 Sampling 4 chains for 1_000 tune and 1_000 draw iterations (4_000 + 4_000 draws total) took 26 seconds.
+Initializing NUTS using jitter+adapt_diag...
+Multiprocess sampling (4 chains in 4 jobs)
+NUTS: [sigma, alpha, beta_time, beta_arm, beta_did]
+Sampling 4 chains for 1_000 tune and 1_000 draw iterations (4_000 + 4_000 draws total) took 32 seconds.
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -3163,36 +3167,46 @@ Sampling 4 chains for 1_000 tune and 1_000 draw iterations (4_000 + 4_000 draws 
   <tbody>
     <tr>
       <th>0</th>
+      <td>sig_Activation</td>
+      <td>-1.294029</td>
+      <td>-2.222763</td>
+      <td>-0.089712</td>
+      <td>0.0380</td>
+      <td>10</td>
+      <td>0.190000</td>
+    </tr>
+    <tr>
+      <th>1</th>
       <td>sig_IFN_Response</td>
       <td>-0.846977</td>
       <td>-2.005031</td>
       <td>0.364221</td>
       <td>0.1670</td>
       <td>10</td>
-      <td>0.668000</td>
+      <td>0.417500</td>
     </tr>
     <tr>
-      <th>1</th>
+      <th>2</th>
       <td>sig_Exhaustion</td>
       <td>-0.398332</td>
       <td>-1.417500</td>
       <td>0.689066</td>
       <td>0.4540</td>
       <td>10</td>
-      <td>0.692667</td>
+      <td>0.649375</td>
     </tr>
     <tr>
-      <th>2</th>
+      <th>3</th>
       <td>sig_Memory</td>
       <td>-0.414287</td>
       <td>-1.675969</td>
       <td>0.842397</td>
       <td>0.5195</td>
       <td>10</td>
-      <td>0.692667</td>
+      <td>0.649375</td>
     </tr>
     <tr>
-      <th>3</th>
+      <th>4</th>
       <td>sig_Cytotoxicity</td>
       <td>-0.122615</td>
       <td>-1.345407</td>
