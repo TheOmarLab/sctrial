@@ -133,7 +133,7 @@
    "id": "ed4f91cc",
    "metadata": {},
    "source": [
-    "### 2.1 Load processed AnnData\n",
+    "### Load processed AnnData\n",
     "\n",
     "We harmonize response labels at the **participant level** (majority label) because a few participants have mixed response annotations across cells/samples. Mixed cases are reported below.\n"
    ]
@@ -363,7 +363,7 @@
    "id": "c562c29d",
    "metadata": {},
    "source": [
-    "### 2.2 Quick exploratory summaries\n"
+    "### Quick exploratory summaries\n"
    ]
   },
   {
@@ -1933,7 +1933,7 @@
    "id": "f596dc6d",
    "metadata": {},
    "source": [
-    "### 8.1 Signature Distributions by Response and Visit\n",
+    "### Signature Distributions by Response and Visit\n",
     "\n",
     "### 6.1 Signature Distributions by Response and Visit"
    ]
@@ -2011,7 +2011,7 @@
    "id": "215c466d",
    "metadata": {},
    "source": [
-    "### 8.2 Trial Interaction Plot\n",
+    "### Trial Interaction Plot\n",
     "\n",
     "Shows mean trajectories for each response group from Pre to Post."
    ]
@@ -2120,7 +2120,7 @@
    "id": "evnrev1amtp",
    "metadata": {},
    "source": [
-    "### 9.1 Effect Sizes with Confidence Intervals\n",
+    "### Effect Sizes with Confidence Intervals\n",
     "\n",
     "Effect sizes (Cohen's d, Hedge's g) provide standardized measures of treatment effects that are independent of sample size and complement p-values."
    ]
@@ -2330,7 +2330,7 @@
    "id": "otomsocdae",
    "metadata": {},
    "source": [
-    "### 9.2 Power Analysis\n",
+    "### Power Analysis\n",
     "\n",
     "Power analysis helps understand the statistical power of the current study and plan future studies."
    ]
@@ -2504,7 +2504,7 @@
    "id": "nuklk2wm5jp",
    "metadata": {},
    "source": [
-    "### 9.3 Mixed Effects Models\n",
+    "### Mixed Effects Models\n",
     "\n",
     "Mixed effects models provide an alternative to fixed effects DiD by modeling participant effects as random rather than fixed. This allows for:\n",
     "- Partial pooling of information across participants\n",
@@ -2701,7 +2701,7 @@
    "id": "dw4m2cwzw4c",
    "metadata": {},
    "source": [
-    "### 9.4 Cross-Validation for Effect Stability\n",
+    "### Cross-Validation for Effect Stability\n",
     "\n",
     "Leave-one-out cross-validation (LOO-CV) helps assess the stability of DiD estimates and identify influential participants."
    ]
@@ -3150,7 +3150,7 @@
    "id": "11a09d9f",
    "metadata": {},
    "source": [
-    "### 9.5 DiDAnalyzer Example\n",
+    "### DiDAnalyzer Example\n",
     "\n",
     "Here we run DiD using the high-level analyzer interface and render a forest plot.\n",
     "\n",
@@ -3263,7 +3263,7 @@
    "id": "b80a28c2",
    "metadata": {},
    "source": [
-    "### 9.6 Model Diagnostics (Residual Checks)\n",
+    "### Model Diagnostics (Residual Checks)\n",
     "\n",
     "We fit a simple DiD model for one feature and check residual diagnostics."
    ]
@@ -3333,7 +3333,7 @@
    "id": "bd52f7dc",
    "metadata": {},
    "source": [
-    "### 9.7 Treatment Heterogeneity\n",
+    "### Treatment Heterogeneity\n",
     "\n",
     "Here we test whether the DiD effect differs by a baseline biomarker (median split at baseline)."
    ]
@@ -3427,7 +3427,7 @@
    "id": "7a4e0d7f",
    "metadata": {},
    "source": [
-    "### 9.8 Sensitivity to Unmeasured Confounding (E-value)\n",
+    "### Sensitivity to Unmeasured Confounding (E-value)\n",
     "\n",
     "We compute an E-value on an approximate risk-ratio scale from the DiD estimate as a sensitivity diagnostic."
    ]
@@ -3468,7 +3468,7 @@
    "id": "a3cc4f00",
    "metadata": {},
    "source": [
-    "### 9.9 Bayesian DiD Forest Plot\n",
+    "### Bayesian DiD Forest Plot\n",
     "\n",
     "Here we visualize **Bayesian DiD** effect estimates (posterior means with 95% credible intervals).\n",
     "This differs from the earlier frequentist DiD tables, which report point estimates and p-values\n",
