@@ -31,6 +31,14 @@ def e_value_rr(
             rr = 1 / rr
         return rr + math.sqrt(rr * (rr - 1))
 
+    if ci_lower is not None and ci_upper is not None:
+        if ci_lower <= 0 or ci_upper <= 0:
+            raise ValueError("CI bounds must be > 0 for E-value.")
+        if ci_lower > ci_upper:
+            raise ValueError("ci_lower must be <= ci_upper.")
+        if not (ci_lower <= estimate <= ci_upper):
+            raise ValueError("estimate must fall within [ci_lower, ci_upper].")
+
     e_est = _e_value(estimate)
 
     e_ci = None
