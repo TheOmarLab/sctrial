@@ -88,16 +88,22 @@ def did_table_bayes(
         covariates,
     )
 
-    # participant index for random intercepts
-    unit_codes = df_use[unit].astype("category").cat.codes.to_numpy()
-    n_units = int(df_use[unit].nunique())
-    time_vals = df_use[time].to_numpy()
-    arm_vals = df_use[arm_bin].to_numpy()
-    interaction = time_vals * arm_vals
-
     rows = []
     for feat in final_features:
-        y = df_use[feat].astype(float).to_numpy()
+        df_feat = df_use[[unit, time, arm_bin, feat]].dropna()
+        if df_feat.empty:
+            rows.append({"feature": feat, "beta_DiD": np.nan, "n_units": 0})
+            continue
+
+        # participant index for random intercepts (remove unused categories)
+        unit_cat = df_feat[unit].astype("category").cat.remove_unused_categories()
+        unit_codes = unit_cat.cat.codes.to_numpy()
+        n_units = int(unit_cat.cat.categories.size)
+        time_vals = df_feat[time].to_numpy()
+        arm_vals = df_feat[arm_bin].to_numpy()
+        interaction = time_vals * arm_vals
+
+        y = df_feat[feat].astype(float).to_numpy()
         if standardize:
             y_std = y.std(ddof=1)
             if not np.isfinite(y_std) or y_std < 1e-12:
