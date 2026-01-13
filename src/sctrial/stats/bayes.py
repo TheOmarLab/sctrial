@@ -45,6 +45,17 @@ def did_table_bayes(
 
         y_ijt = alpha_i + beta_time * time + beta_arm * arm + beta_did * time*arm + eps
 
+    Prior specification (defaults)
+    ------------------------------
+    - alpha_i ~ Normal(0, 1) (participant random intercepts)
+    - beta_time ~ Normal(0, 1)
+    - beta_arm ~ Normal(0, 1)
+    - beta_did ~ Normal(0, 1)
+    - sigma ~ HalfNormal(1)
+
+    These weakly-informative priors are designed to stabilize estimation for
+    small samples while remaining agnostic about effect direction.
+
     Parameters
     ----------
     draws

@@ -76,6 +76,18 @@ def test_treatment_heterogeneity(
     -------
     pd.DataFrame
         Table with heterogeneity effects for each feature.
+
+    Examples
+    --------
+    >>> res = test_treatment_heterogeneity(
+    ...     adata,
+    ...     features=["sig_IFN_Response", "sig_Cytotoxicity"],
+    ...     design=design,
+    ...     visits=("Pre", "Post"),
+    ...     biomarker_col="baseline_crp",
+    ...     threshold=5.0,
+    ... )
+    >>> res[["feature", "beta_heterogeneity", "p_heterogeneity"]].head()
     """
     if biomarker_col not in adata.obs.columns:
         raise KeyError(f"biomarker_col '{biomarker_col}' not found in adata.obs")

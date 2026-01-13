@@ -68,7 +68,26 @@ def did_volcano_frame(
         out_col: str = "neglog10p",
         p_floor: float = 1e-300,
 ) -> pd.DataFrame:
-    """Return a copy with an added -log10(p) column for volcano plots."""
+    """Return a copy with an added -log10(p) column for volcano plots.
+
+    Parameters
+    ----------
+    df
+        Input results DataFrame.
+    effect_col
+        Column name for effect sizes.
+    p_col
+        Column name for p-values.
+    out_col
+        Name of the output column to add.
+    p_floor
+        Minimum p-value used for log transform.
+
+    Returns
+    -------
+    pd.DataFrame
+        Copy of ``df`` with an added ``out_col`` column.
+    """
     if effect_col not in df.columns:
         raise KeyError(f"Missing effect_col='{effect_col}' in df.columns.")
     if p_col not in df.columns:
@@ -81,13 +100,30 @@ def did_volcano_frame(
 
 
 def signed_logp(
-        df: pd.DataFrame,
-        *,
-        effect_col: str = "beta_DiD",
-        p_col: str = "p_DiD",
-        p_floor: float = 1e-300,
+    df: pd.DataFrame,
+    *,
+    effect_col: str = "beta_DiD",
+    p_col: str = "p_DiD",
+    p_floor: float = 1e-300,
 ) -> pd.Series:
-    """Return sign(effect) * -log10(p) as a Series aligned to df.index."""
+    """Return sign(effect) * -log10(p) as a Series aligned to df.index.
+
+    Parameters
+    ----------
+    df
+        Input results DataFrame.
+    effect_col
+        Column name for effect sizes.
+    p_col
+        Column name for p-values.
+    p_floor
+        Minimum p-value used for log transform.
+
+    Returns
+    -------
+    pd.Series
+        Signed -log10(p) values aligned to ``df.index``.
+    """
     if effect_col not in df.columns:
         raise KeyError(f"Missing effect_col='{effect_col}' in df.columns.")
     if p_col not in df.columns:

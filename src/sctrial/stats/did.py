@@ -223,7 +223,10 @@ def _aggregate_for_did(
     return df_use, unit, time, arm_bin
 
 AggregateMode = Literal["cell", "participant_visit", "participant_visit_celltype"]
+"""Supported aggregation modes for DiD analysis."""
+
 AggregateFunc = Literal["mean", "median", "pct_pos"]
+"""Supported aggregation functions for grouped feature summaries."""
 
 
 class DidFitResult(TypedDict):
