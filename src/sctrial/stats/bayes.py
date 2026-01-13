@@ -57,6 +57,18 @@ def did_table_bayes(
         Target acceptance rate for NUTS.
     max_treedepth
         Maximum tree depth for NUTS.
+
+    Returns
+    -------
+    pd.DataFrame
+        Columns:
+        - feature: Feature name
+        - beta_DiD: Posterior mean of the DiD effect
+        - ci_low: 2.5th percentile of posterior
+        - ci_high: 97.5th percentile of posterior
+        - p_bayes: Two-sided posterior probability of effect crossing zero
+        - n_units: Number of paired units used
+        - FDR_bayes: BH-adjusted p_bayes
     """
     try:
         import pymc as pm

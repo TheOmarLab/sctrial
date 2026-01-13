@@ -3,7 +3,7 @@ from __future__ import annotations
 import warnings
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, TypedDict
 
 import numpy as np
 import pandas as pd
@@ -216,6 +216,17 @@ def _aggregate_for_did(
 AggregateMode = Literal["cell", "participant_visit", "participant_visit_celltype"]
 AggregateFunc = Literal["mean", "median", "pct_pos"]
 
+
+class DidFitResult(TypedDict):
+    """Structured return for did_fit."""
+
+    beta_DiD: float
+    se_DiD: float
+    p_DiD: float
+    beta_time: float
+    p_time: float
+    n_units: int
+
 def _ensure_paired(df: pd.DataFrame, unit: str, time: str, visits: tuple[str,str]) -> pd.DataFrame:
     wide = df.groupby([unit, time], observed=True).size().unstack(fill_value=0)
     keep = wide[(wide.get(visits[0], 0) > 0) & (wide.get(visits[1], 0) > 0)].index
@@ -233,7 +244,7 @@ def did_fit(
     use_bootstrap: bool = False,
     n_boot: int = 999,
     seed: int = 42,
-) -> dict:
+) -> DidFitResult:
     """Fit fixed-effects Difference-in-Differences (DiD) model.
 
     Mathematical Model
@@ -304,8 +315,8 @@ def did_fit(
 
     Returns
     -------
-    dict
-        Dictionary with keys:
+    DidFitResult
+        Keys:
         - beta_DiD: DiD coefficient (β₂)
         - se_DiD: Standard error of β₂
         - p_DiD: P-value for H₀: β₂ = 0

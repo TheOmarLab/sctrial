@@ -16,7 +16,7 @@ from .did import did_fit
 __all__ = ["pseudobulk_expression", "pseudobulk_within_arm", "pseudobulk_did", "pseudobulk_export"]
 
 
-def _get_layer(adata: AnnData, layer: str | None):
+def _get_layer(adata: AnnData, layer: str | None) -> np.ndarray | sp.csr_matrix:
     X = adata.layers[layer] if layer is not None else adata.X
     if sp.issparse(X):
         X = X.tocsr()
