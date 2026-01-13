@@ -3112,42 +3112,106 @@ E-value (RR≈exp(beta)): 1.897
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
 Initializing NUTS using jitter+adapt_diag...
+Multiprocess sampling (4 chains in 4 jobs)
+NUTS: [sigma, alpha, beta_time, beta_arm, beta_did]
+Sampling 4 chains for 1_000 tune and 1_000 draw iterations (4_000 + 4_000 draws total) took 27 seconds.
+Initializing NUTS using jitter+adapt_diag...
+Multiprocess sampling (4 chains in 4 jobs)
+NUTS: [sigma, alpha, beta_time, beta_arm, beta_did]
+Sampling 4 chains for 1_000 tune and 1_000 draw iterations (4_000 + 4_000 draws total) took 30 seconds.
+Initializing NUTS using jitter+adapt_diag...
+Multiprocess sampling (4 chains in 4 jobs)
+NUTS: [sigma, alpha, beta_time, beta_arm, beta_did]
+Sampling 4 chains for 1_000 tune and 1_000 draw iterations (4_000 + 4_000 draws total) took 28 seconds.
+Initializing NUTS using jitter+adapt_diag...
+Multiprocess sampling (4 chains in 4 jobs)
+NUTS: [sigma, alpha, beta_time, beta_arm, beta_did]
+Sampling 4 chains for 1_000 tune and 1_000 draw iterations (4_000 + 4_000 draws total) took 26 seconds.
 </pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>feature</th>
+      <th>beta_DiD</th>
+      <th>ci_low</th>
+      <th>ci_high</th>
+      <th>p_bayes</th>
+      <th>n_units</th>
+      <th>FDR_bayes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>sig_IFN_Response</td>
+      <td>-0.846977</td>
+      <td>-2.005031</td>
+      <td>0.364221</td>
+      <td>0.1670</td>
+      <td>10</td>
+      <td>0.668000</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>sig_Exhaustion</td>
+      <td>-0.398332</td>
+      <td>-1.417500</td>
+      <td>0.689066</td>
+      <td>0.4540</td>
+      <td>10</td>
+      <td>0.692667</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>sig_Memory</td>
+      <td>-0.414287</td>
+      <td>-1.675969</td>
+      <td>0.842397</td>
+      <td>0.5195</td>
+      <td>10</td>
+      <td>0.692667</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>sig_Cytotoxicity</td>
+      <td>-0.122615</td>
+      <td>-1.345407</td>
+      <td>1.105890</td>
+      <td>0.8495</td>
+      <td>10</td>
+      <td>0.849500</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-Bayesian DiD failed due to PyMC/PyTensor runtime error.
-Reason: IndexError: index 10 is out of bounds for axis 0 with size 10
-Apply node that caused the error: AdvancedSubtensor1(Subtensor{start:stop}.0, [ 0  0  1 ... 12 19 19])
-Toposort index: 9
-Inputs types: [TensorType(float64, shape=(10,)), TensorType(int8, shape=(20,))]
-Inputs shapes: [(10,), (20,)]
-Inputs strides: [(8,), (1,)]
-Inputs values: [&#39;not shown&#39;, &#39;not shown&#39;]
-Outputs clients: [[Composite{...}(Subtensor{start:}.0, [0. 1. 0. ... 0. 0. 0.], AdvancedSubtensor1.0, Subtensor{start:stop}.0, [1. 1. 0. ... 0. 0. 0.], Subtensor{start:stop}.0, [0. 1. 0. ... 1. 0. 1.], y{[ 0.630674 ... .30114758]}, ExpandDims{axis=0}.0, Log.0, Gt.0)]]
-
-Backtrace when the node is created (use PyTensor flag traceback__limit=N to make it longer):
-  File &#34;/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/IPython/core/interactiveshell.py&#34;, line 3077, in run_cell
-    result = self._run_cell(
-  File &#34;/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/IPython/core/interactiveshell.py&#34;, line 3132, in _run_cell
-    result = runner(coro)
-  File &#34;/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/IPython/core/async_helpers.py&#34;, line 128, in _pseudo_sync_runner
-    coro.send(None)
-  File &#34;/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/IPython/core/interactiveshell.py&#34;, line 3336, in run_cell_async
-    has_raised = await self.run_ast_nodes(code_ast.body, cell_name,
-  File &#34;/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/IPython/core/interactiveshell.py&#34;, line 3519, in run_ast_nodes
-    if await self.run_code(code, result, async_=asy):
-  File &#34;/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/IPython/core/interactiveshell.py&#34;, line 3579, in run_code
-    exec(code_obj, self.user_global_ns, self.user_ns)
-  File &#34;/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_10665/4108574177.py&#34;, line 18, in &lt;module&gt;
-    bayes_res = st.did_table_bayes(
-  File &#34;/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/bayes.py&#34;, line 114, in did_table_bayes
-    mu = alpha[unit_codes] + beta_time * time_vals + beta_arm * arm_vals + beta_did * interaction
-
-HINT: Use the PyTensor flag `exception_verbosity=high` for a debug print-out and storage map footprint of this Apply node.
+Bayesian DiD note: For small samples, convergence diagnostics may be noisy.
+If rhat &gt; 1.01 or ESS is low, increase draws/tune or consider stronger priors.
 </pre></div></div>
 </div>
 <div class="nbinput docutils container">
@@ -3183,9 +3247,8 @@ HINT: Use the PyTensor flag `exception_verbosity=high` for a debug print-out and
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<div class="highlight"><pre>
-No Bayesian DiD results available for forest plot
-</pre></div></div>
+<img alt="../_images/examples_example_immunotherapy_sade_feldman_45_0.png" src="../_images/examples_example_immunotherapy_sade_feldman_45_0.png" />
+</div>
 </div>
 </section>
 </section>
