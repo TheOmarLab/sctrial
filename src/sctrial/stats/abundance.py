@@ -107,7 +107,7 @@ def abundance_did(
     )
     totals = counts.groupby([design.participant_col, design.visit_col, design.arm_col], observed=True)["n_cells"].sum().reset_index(name="total_cells")
     counts = counts.merge(totals, on=[design.participant_col, design.visit_col, design.arm_col], how="left")
-    counts["prop"] = counts["n_cells"] / (counts["total_cells"] + 1e-12)
+    counts["prop"] = counts["n_cells"] / counts["total_cells"].clip(lower=1)
 
     if covariates:
         # Merge covariates back into counts.
