@@ -165,7 +165,9 @@
         <span class="n">required</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">visit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">required</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">celltype</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">celltype</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;celltype_col must be set in TrialDesign when filtering by celltype.&quot;</span><span class="p">)</span>
         <span class="n">required</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">exclude_crossovers</span> <span class="ow">and</span> <span class="n">design</span><span class="o">.</span><span class="n">crossover_col</span><span class="p">:</span>
         <span class="n">required</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">crossover_col</span><span class="p">)</span>
@@ -181,7 +183,7 @@
     <span class="k">if</span> <span class="n">visit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">mask</span> <span class="o">&amp;=</span> <span class="p">(</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span> <span class="o">==</span> <span class="n">visit</span><span class="p">)</span>
 
-    <span class="k">if</span> <span class="n">celltype</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">celltype</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">mask</span> <span class="o">&amp;=</span> <span class="p">(</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span> <span class="o">==</span> <span class="n">celltype</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">exclude_crossovers</span> <span class="ow">and</span> <span class="n">design</span><span class="o">.</span><span class="n">crossover_col</span><span class="p">:</span>
