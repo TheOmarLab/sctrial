@@ -77,7 +77,9 @@ def subset_cells(
         required.append(design.arm_col)
     if visit is not None:
         required.append(design.visit_col)
-    if celltype is not None and design.celltype_col:
+    if celltype is not None:
+        if not design.celltype_col:
+            raise ValueError("celltype_col must be set in TrialDesign when filtering by celltype.")
         required.append(design.celltype_col)
     if exclude_crossovers and design.crossover_col:
         required.append(design.crossover_col)
@@ -93,7 +95,7 @@ def subset_cells(
     if visit is not None:
         mask &= (obs[design.visit_col].to_numpy() == visit)
 
-    if celltype is not None and design.celltype_col:
+    if celltype is not None:
         mask &= (obs[design.celltype_col].to_numpy() == celltype)
 
     if exclude_crossovers and design.crossover_col:
