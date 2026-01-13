@@ -83,6 +83,13 @@ def abundance_did(
         - p_DiD: P-value for the treatment effect
         - FDR_DiD: Benjamini-Hochberg FDR-corrected p-value
 
+    Interpretation notes
+    --------------------
+    The arcsin-sqrt transform stabilizes variance but is not on the original
+    proportion scale. A positive beta_DiD indicates an increase in proportion
+    in the treated arm relative to control; to interpret effect magnitude in
+    raw proportions, inspect group-level proportions directly.
+
     Examples
     --------
     >>> ab_res = abundance_did(adata, design, visits=("V1", "V2"))

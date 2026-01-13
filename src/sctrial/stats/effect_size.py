@@ -43,6 +43,7 @@ from typing import TYPE_CHECKING, Literal
 import numpy as np
 import pandas as pd
 from scipy import stats
+from scipy.special import gammaln
 
 if TYPE_CHECKING:
     from statsmodels.regression.linear_model import RegressionResultsWrapper
@@ -149,6 +150,11 @@ def hedges_g(
 
     Notes
     -----
+    Uses the exact small-sample correction via the gamma function:
+
+        J = Γ(df/2) / (√(df/2) × Γ((df-1)/2))
+
+    which is more accurate than the common approximation for small df.
     Use Hedge's g when sample sizes are small (n < 20 per group).
     For larger samples, Cohen's d and Hedge's g are nearly identical.
     """
@@ -171,8 +177,7 @@ def hedges_g(
 
     # Exact correction using gamma function
     # J = Γ(df/2) / (√(df/2) × Γ((df-1)/2))
-    # Approximation: J ≈ 1 - 3/(4df - 1)
-    j = 1 - 3 / (4 * df - 1)
+    j = float(np.exp(gammaln(df / 2) - (0.5 * np.log(df / 2)) - gammaln((df - 1) / 2)))
 
     return d * j
 
@@ -258,8 +263,9 @@ def cohens_d_from_did(
 
     Notes
     -----
-    This is an approximation. For more precise effect sizes, compute
-    Cohen's d directly from the change scores in each group.
+    This is an approximation that uses the regression residual SD rather
+    than a pooled SD of group-level change scores. For more precise effect
+    sizes, compute Cohen's d directly from the change scores in each group.
     """
     if residual_std < 1e-12 or np.isnan(beta_did):
         return np.nan

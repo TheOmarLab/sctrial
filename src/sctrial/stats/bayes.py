@@ -77,7 +77,7 @@ def did_table_bayes(
         - beta_DiD: Posterior mean of the DiD effect
         - ci_low: 2.5th percentile of posterior
         - ci_high: 97.5th percentile of posterior
-        - p_bayes: Two-sided posterior probability of effect crossing zero
+        - p_bayes: Two-sided posterior tail probability (not a frequentist p-value)
         - n_units: Number of paired units used
         - FDR_bayes: BH-adjusted p_bayes
     """

@@ -297,6 +297,8 @@ def did_fit(
     - Features with near-zero variance (std < 1e-8) return NaN.
     - Cluster-robust standard errors account for within-participant correlation.
     - If `n_cells` column is present, Weighted Least Squares (WLS) is used.
+      Weights are proportional to √(n_cells), which approximates inverse
+      variance for participant-level means when cells are i.i.d.
 
     Parameters
     ----------
