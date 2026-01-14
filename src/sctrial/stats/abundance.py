@@ -112,8 +112,26 @@ def abundance_did(
         .size()
         .reset_index(name="n_cells")
     )
-    totals = counts.groupby([design.participant_col, design.visit_col, design.arm_col], observed=True)["n_cells"].sum().reset_index(name="total_cells")
+    totals = (
+        counts
+        .groupby([design.participant_col, design.visit_col, design.arm_col], observed=True)["n_cells"]
+        .sum()
+        .reset_index(name="total_cells")
+    )
+    # Expand to include zero counts for missing celltype/participant/visit
+    celltypes = sorted(counts[design.celltype_col].unique())
+    base_df = totals[[design.participant_col, design.visit_col, design.arm_col]].drop_duplicates()
+    base_df["_key"] = 1
+    cell_df = pd.DataFrame({design.celltype_col: celltypes, "_key": 1})
+    full_df = base_df.merge(cell_df, on="_key").drop(columns=["_key"])
+    counts = counts.merge(
+        full_df,
+        on=[design.participant_col, design.visit_col, design.arm_col, design.celltype_col],
+        how="right",
+    )
+    counts["n_cells"] = counts["n_cells"].fillna(0)
     counts = counts.merge(totals, on=[design.participant_col, design.visit_col, design.arm_col], how="left")
+    counts["total_cells"] = counts["total_cells"].fillna(0)
     counts["prop"] = counts["n_cells"] / counts["total_cells"].clip(lower=1)
 
     if covariates:
@@ -135,12 +153,22 @@ def abundance_did(
     counts["arm_bin"] = design.arm_bin(counts)
 
     rows = []
+    # paired participants based on presence of both visits overall (not celltype-specific)
+    wide_tot = totals.pivot_table(
+        index=design.participant_col,
+        columns=design.visit_col,
+        values="total_cells",
+        aggfunc="mean",
+        observed=True,
+    )
+    paired_units = wide_tot[
+        wide_tot[visits[0]].notna() & wide_tot[visits[1]].notna()
+    ].index
+
     for ct in sorted(counts[design.celltype_col].unique()):
         tmp = counts[counts[design.celltype_col] == ct].copy()
         # keep paired units only
-        wide = tmp.pivot_table(index=design.participant_col, columns=design.visit_col, aggfunc="size", fill_value=0, observed=True)
-        keep = wide[(wide.get(visits[0], 0) > 0) & (wide.get(visits[1], 0) > 0)].index
-        tmp = tmp[tmp[design.participant_col].isin(keep)].copy()
+        tmp = tmp[tmp[design.participant_col].isin(paired_units)].copy()
 
         n_units = tmp[design.participant_col].nunique()
         if n_units < min_units:
