@@ -4,6 +4,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
+import numpy as np
+import pandas as pd
 from anndata import AnnData
 
 from .datasets import count_paired
@@ -15,6 +17,7 @@ __all__ = [
     "validate_adata",
     "validate_features",
     "diagnose_trial_data",
+    "check_covariate_balance",
 ]
 
 
@@ -322,6 +325,120 @@ def diagnose_trial_data(
         _print_diagnostic_report(report)
 
     return report
+
+
+def check_covariate_balance(
+    adata: AnnData,
+    design: TrialDesign,
+    covariates: Sequence[str],
+    *,
+    visit: str | None = None,
+    dropna: bool = True,
+    smd_threshold: float = 0.1,
+) -> pd.DataFrame:
+    """Compute standardized mean differences (SMD) for baseline covariates.
+
+    This compares treated vs control arms at a single visit (usually baseline)
+    and reports SMD values that quantify imbalance.
+
+    Parameters
+    ----------
+    adata
+        AnnData object with trial metadata in ``adata.obs``.
+    design
+        TrialDesign describing participant, visit, and arm columns.
+    covariates
+        List of covariate column names in ``adata.obs``.
+    visit
+        Visit label to use for balance checks. If None, uses
+        ``design.baseline_visit``; otherwise raises if not available.
+    dropna
+        If True, drop rows with missing covariate values for each covariate.
+    smd_threshold
+        Absolute SMD threshold for "balanced" flag (default 0.1).
+
+    Returns
+    -------
+    pd.DataFrame
+        Table with SMD values. Numeric covariates produce one row per covariate.
+        Categorical covariates produce one row per level with proportions.
+    """
+    if design.visit_col not in adata.obs.columns:
+        raise KeyError(f"visit_col '{design.visit_col}' not in adata.obs")
+    if design.arm_col not in adata.obs.columns:
+        raise KeyError(f"arm_col '{design.arm_col}' not in adata.obs")
+
+    if visit is None:
+        if design.baseline_visit is None:
+            raise ValueError("visit must be provided or design.baseline_visit must be set.")
+        visit = design.baseline_visit
+
+    obs = adata.obs.copy()
+    obs = obs[obs[design.visit_col] == visit].copy()
+    if obs.empty:
+        raise ValueError(f"No observations found for visit '{visit}'.")
+
+    # collapse to participant-level to avoid pseudoreplication
+    group_cols = [design.participant_col, design.arm_col]
+    base = obs[group_cols + list(covariates)].copy()
+
+    rows: list[dict[str, object]] = []
+    for cov in covariates:
+        if cov not in base.columns:
+            raise KeyError(f"Covariate '{cov}' not found in adata.obs")
+        sub = base[group_cols + [cov]].copy()
+        if dropna:
+            sub = sub.dropna(subset=[cov])
+        if sub.empty:
+            continue
+
+        # reduce to participant-level
+        sub = sub.groupby(group_cols, observed=True)[cov].first().reset_index()
+
+        treated = sub[sub[design.arm_col] == design.arm_treated][cov]
+        control = sub[sub[design.arm_col] == design.arm_control][cov]
+
+        if treated.empty or control.empty:
+            continue
+
+        if pd.api.types.is_numeric_dtype(sub[cov]):
+            mean_t = float(treated.mean())
+            mean_c = float(control.mean())
+            sd_t = float(treated.std(ddof=1))
+            sd_c = float(control.std(ddof=1))
+            pooled = np.sqrt((sd_t**2 + sd_c**2) / 2) if (sd_t > 0 or sd_c > 0) else np.nan
+            smd = (mean_t - mean_c) / pooled if pooled and np.isfinite(pooled) else np.nan
+            rows.append({
+                "covariate": cov,
+                "level": None,
+                "mean_treated": mean_t,
+                "mean_control": mean_c,
+                "smd": float(smd) if np.isfinite(smd) else np.nan,
+                "n_treated": int(treated.shape[0]),
+                "n_control": int(control.shape[0]),
+                "balanced": bool(np.isfinite(smd) and abs(smd) < smd_threshold),
+            })
+        else:
+            # categorical: compute SMD for each level via proportions
+            levels = pd.Series(sub[cov].astype(str)).unique()
+            for lvl in levels:
+                p_t = float((treated.astype(str) == lvl).mean())
+                p_c = float((control.astype(str) == lvl).mean())
+                p_pool = (p_t + p_c) / 2
+                denom = np.sqrt(p_pool * (1 - p_pool)) if 0 < p_pool < 1 else np.nan
+                smd = (p_t - p_c) / denom if denom and np.isfinite(denom) else np.nan
+                rows.append({
+                    "covariate": cov,
+                    "level": str(lvl),
+                    "mean_treated": p_t,
+                    "mean_control": p_c,
+                    "smd": float(smd) if np.isfinite(smd) else np.nan,
+                    "n_treated": int(treated.shape[0]),
+                    "n_control": int(control.shape[0]),
+                    "balanced": bool(np.isfinite(smd) and abs(smd) < smd_threshold),
+                })
+
+    return pd.DataFrame(rows)
 
 
 def _print_diagnostic_report(report: dict[str, Any]) -> None:

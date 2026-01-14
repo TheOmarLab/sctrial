@@ -3,7 +3,9 @@ from __future__ import annotations
 import warnings
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Literal, TypedDict
+from typing import Literal, TypedDict, cast
+
+from typing_extensions import NotRequired
 
 import numpy as np
 import pandas as pd
@@ -238,6 +240,7 @@ class DidFitResult(TypedDict):
     beta_time: float
     p_time: float
     n_units: int
+    p_DiD_boot: NotRequired[float]
 
 def _ensure_paired(df: pd.DataFrame, unit: str, time: str, visits: tuple[str,str]) -> pd.DataFrame:
     wide = df.groupby([unit, time], observed=True).size().unstack(fill_value=0)
@@ -354,7 +357,14 @@ def did_fit(
     tmp = df[cols].dropna().copy()
     n_units = tmp[unit].nunique()
     if n_units < 4:
-        return {"beta_DiD": np.nan, "se_DiD": np.nan, "p_DiD": np.nan, "n_units": n_units}
+        return {
+            "beta_DiD": np.nan,
+            "se_DiD": np.nan,
+            "p_DiD": np.nan,
+            "beta_time": np.nan,
+            "p_time": np.nan,
+            "n_units": n_units,
+        }
 
     # time is assumed numeric 0/1 already
     tmp_opt = _standardize_outcome(tmp, y, standardize, outcome_col="outcome_std")
@@ -418,7 +428,7 @@ def did_fit(
         # Use bootstrap p-value as primary if requested
         res["p_DiD"] = p_boot
 
-    return res
+    return cast(DidFitResult, res)
 
 def did_table(
     adata: AnnData,
@@ -559,8 +569,9 @@ def did_table(
             n_boot=n_boot,
             seed=seed
         )
-        out["feature"] = feat
-        rows.append(out)
+        row = dict(out)
+        row["feature"] = feat
+        rows.append(row)
     res = pd.DataFrame(rows).sort_values("p_DiD")
     res = apply_fdr(res, p_col="p_DiD", fdr_col="FDR_DiD")
     return res.reset_index(drop=True)
@@ -673,8 +684,9 @@ def did_table_parallel(
             n_boot=n_boot,
             seed=seed + idx,
         )
-        out["feature"] = feat
-        return out
+        row = dict(out)
+        row["feature"] = feat
+        return row
 
     job_batch = "auto" if batch_size is None else batch_size
     rows = Parallel(n_jobs=n_jobs, backend=backend, batch_size=job_batch)(

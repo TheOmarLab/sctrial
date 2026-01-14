@@ -91,6 +91,7 @@ from .stats.timeseries import (
 from .utils import resolve_feature
 from .validation import (
     TrialDataValidator,
+    check_covariate_balance,
     diagnose_trial_data,
     validate_adata,
     validate_features,
@@ -190,6 +191,7 @@ __all__ = [
     "validate_adata",
     "validate_features",
     "diagnose_trial_data",
+    "check_covariate_balance",
     # Heterogeneity
     "test_treatment_heterogeneity",
     # Sensitivity

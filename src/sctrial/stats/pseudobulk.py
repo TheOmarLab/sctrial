@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -78,7 +79,8 @@ def pseudobulk_expression(
 
     # Total counts per cell
     if sp.issparse(X):
-        X_panel = X[:, gene_idx].tocsr()
+        X_sparse = cast(sp.csr_matrix, X)
+        X_panel = X_sparse[:, gene_idx].tocsr()
         total_counts = np.asarray(X.sum(axis=1)).ravel()
 
         # Sparse group aggregation: G @ X_panel
@@ -263,11 +265,12 @@ def pseudobulk_did(
                 n_boot=n_boot,
                 seed=seed,
             )
-            out["feature"] = g
-            out["n_units"] = int(df_pool[design.participant_col].nunique())
+            row = dict(out)
+            row["feature"] = g
+            row["n_units"] = int(df_pool[design.participant_col].nunique())
             if pool is not None:
-                out["celltype"] = pool
-            rows.append(out)
+                row["celltype"] = pool
+            rows.append(row)
 
     res = pd.DataFrame(rows)
     if res.empty:

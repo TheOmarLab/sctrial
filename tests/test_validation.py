@@ -36,3 +36,38 @@ def test_diagnose_trial_data(sample_adata, trial_design):
     assert "n_cells" in report
     assert "n_participants" in report
     assert "warnings" in report
+
+
+def test_check_covariate_balance_numeric_and_categorical():
+    obs = []
+    for pid in range(10):
+        arm = "Treated" if pid < 5 else "Control"
+        age = 30 + pid
+        sex = "F" if pid % 2 == 0 else "M"
+        for visit in ["V1", "V2"]:
+            obs.append(
+                {
+                    "participant_id": f"P{pid}",
+                    "visit": visit,
+                    "arm": arm,
+                    "age": age,
+                    "sex": sex,
+                }
+            )
+    adata = AnnData(X=np.zeros((len(obs), 1)), obs=pd.DataFrame(obs))
+    design = st.TrialDesign(
+        participant_col="participant_id",
+        visit_col="visit",
+        arm_col="arm",
+        arm_treated="Treated",
+        arm_control="Control",
+        baseline_visit="V1",
+    )
+    res = st.check_covariate_balance(
+        adata,
+        design,
+        covariates=["age", "sex"],
+        visit="V1",
+    )
+    assert not res.empty
+    assert {"covariate", "smd", "mean_treated", "mean_control"}.issubset(res.columns)
