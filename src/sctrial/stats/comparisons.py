@@ -60,19 +60,41 @@ def _prepare_between_arm_df(
     aggregate: AggregateMode,
     layer: str | None,
     agg: AggregateFunc,
+    covariates: list[str] | None,
 ) -> pd.DataFrame:
     ad = subset_cells(adata, design, visit=visit, exclude_crossovers=False)
     obs = ad.obs.copy()
     obs["arm_bin"] = (obs[design.arm_col] == design.arm_treated).astype(int)
 
     cols = [design.participant_col, "arm_bin", design.arm_col]
+    if covariates:
+        for c in covariates:
+            if c not in obs.columns:
+                raise KeyError(f"Covariate '{c}' not found in adata.obs")
+            cols.append(c)
     df = obs[cols].copy()
 
     df = _add_feature_columns(df, ad, features, layer)
 
     if aggregate == "participant_visit":
         grp_cols = [design.participant_col, "arm_bin", design.arm_col]
-        df = aggregate_features(df, grp_cols=grp_cols, features=features, agg=agg)
+        cov_agg: dict[str, str] = {}
+        if covariates:
+            for c in covariates:
+                if pd.api.types.is_numeric_dtype(df[c]):
+                    cov_agg[c] = str(agg)
+                else:
+                    nunique = df.groupby(grp_cols, observed=True)[c].nunique()
+                    if nunique.max() > 1:
+                        raise ValueError(
+                            f"Covariate '{c}' varies within participant at visit; "
+                            "use numeric or constant covariates only."
+                        )
+                    cov_agg[c] = "first"
+        df = df.groupby(grp_cols, observed=True).agg({
+            **{f: agg for f in features},
+            **cov_agg,
+        }).reset_index()
 
     return df
 
@@ -82,6 +104,7 @@ def _ols_between_arm(
     feat: str,
     design: TrialDesign,
     standardize: bool,
+    covariates: list[str] | None,
 ) -> dict:
     """Fit OLS model comparing arms at a single timepoint.
 
@@ -115,7 +138,10 @@ def _ols_between_arm(
     else:
         df_feat["outcome_std"] = df_feat[feat].astype(float)
 
-    model = smf.ols("outcome_std ~ arm_bin", data=df_feat)
+    formula = "outcome_std ~ arm_bin"
+    if covariates:
+        formula += " + " + " + ".join(covariates)
+    model = smf.ols(formula, data=df_feat)
     fit = model.fit()
     return {
         "feature": feat,
@@ -135,6 +161,7 @@ def within_arm_comparison(
     layer: str | None = None,
     agg: AggregateFunc = "mean",
     standardize: bool = True,
+    covariates: list[str] | None = None,
 ) -> pd.DataFrame:
     """Paired within-arm pre->post contrast.
 
@@ -162,6 +189,9 @@ def within_arm_comparison(
         Aggregation function.
     standardize
         Whether to z-score the outcome variable.
+    covariates
+        Optional covariate columns to include as fixed effects. Non-numeric
+        covariates must be constant within participant-visit.
 
     Returns
     -------
@@ -176,6 +206,11 @@ def within_arm_comparison(
 
     # build dataframe
     cols = [design.participant_col, design.visit_col, "visit_num"]
+    if covariates:
+        for c in covariates:
+            if c not in obs.columns:
+                raise KeyError(f"Covariate '{c}' not found in adata.obs")
+            cols.append(c)
     df = obs[cols].copy()
 
     df = _add_feature_columns(df, ad, features, layer)
@@ -183,7 +218,23 @@ def within_arm_comparison(
     # Aggregate
     if aggregate == "participant_visit":
         grp_cols = [design.participant_col, design.visit_col]
-        df_use = aggregate_features(df, grp_cols=grp_cols, features=features, agg=agg)
+        cov_agg: dict[str, str] = {}
+        if covariates:
+            for c in covariates:
+                if pd.api.types.is_numeric_dtype(df[c]):
+                    cov_agg[c] = str(agg)
+                else:
+                    nunique = df.groupby(grp_cols, observed=True)[c].nunique()
+                    if nunique.max() > 1:
+                        raise ValueError(
+                            f"Covariate '{c}' varies within participant-visit; "
+                            "use numeric or constant covariates only."
+                        )
+                    cov_agg[c] = "first"
+        df_use = df.groupby(grp_cols, observed=True).agg({
+            **{f: agg for f in features},
+            **cov_agg,
+        }).reset_index()
         unit = design.participant_col
     else:
         df_use = df.copy()
@@ -212,7 +263,10 @@ def within_arm_comparison(
         else:
             df_feat["outcome_std"] = df_feat[feat].astype(float)
 
-        model = smf.ols(f"outcome_std ~ visit_num + C({unit})", data=df_feat)
+        formula = f"outcome_std ~ visit_num + C({unit})"
+        if covariates:
+            formula += " + " + " + ".join(covariates)
+        model = smf.ols(formula, data=df_feat)
         n_units_feat = df_feat[unit].nunique()
         if n_units_feat < MIN_CLUSTERS_FOR_ROBUST_SE:
             warnings.warn(
@@ -246,6 +300,7 @@ def between_arm_comparison(
     agg: AggregateFunc = "mean",
     standardize: bool = True,
     method: Literal["ols", "wilcoxon"] = "ols",
+    covariates: list[str] | None = None,
 ) -> pd.DataFrame:
     """Between-arm contrast at a fixed visit.
 
@@ -273,6 +328,8 @@ def between_arm_comparison(
     method
         - 'ols': Ordinary Least Squares.
         - 'wilcoxon': Wilcoxon rank-sum test (Mann-Whitney U).
+    covariates
+        Optional covariate columns to include as fixed effects for OLS.
     """
     df_use = _prepare_between_arm_df(
         adata=adata,
@@ -282,12 +339,13 @@ def between_arm_comparison(
         aggregate=aggregate,
         layer=layer,
         agg=agg,
+        covariates=covariates,
     )
 
     rows = []
     for feat in features:
         if method == "ols":
-            rows.append(_ols_between_arm(df_use, feat, design, standardize))
+            rows.append(_ols_between_arm(df_use, feat, design, standardize, covariates))
         elif method == "wilcoxon":
             g1 = np.asarray(df_use[df_use["arm_bin"] == 1][feat].values, dtype=float)
             g2 = np.asarray(df_use[df_use["arm_bin"] == 0][feat].values, dtype=float)
