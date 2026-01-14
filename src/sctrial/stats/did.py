@@ -5,13 +5,12 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal, TypedDict, cast
 
-from typing_extensions import NotRequired
-
 import numpy as np
 import pandas as pd
 import scipy.sparse as sp
 import statsmodels.formula.api as smf
 from anndata import AnnData
+from typing_extensions import NotRequired
 
 from ..adata_tools import subset_primary
 from ..design import TrialDesign
