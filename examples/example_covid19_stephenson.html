@@ -489,7 +489,6 @@ Severe         6397  44275   18594
 
         <span class="k">try</span><span class="p">:</span>
             <span class="n">balance</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">check_covariate_balance</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">covariates</span><span class="p">,</span> <span class="n">visit</span><span class="o">=</span><span class="n">visit0</span><span class="p">)</span>
-            <span class="n">display</span><span class="p">(</span><span class="n">balance</span><span class="p">)</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">balance</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
                 <span class="c1"># Numeric covariates: one figure</span>
                 <span class="n">num_bal</span> <span class="o">=</span> <span class="n">balance</span><span class="p">[</span><span class="n">balance</span><span class="p">[</span><span class="s2">&quot;level&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isna</span><span class="p">()]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
@@ -538,149 +537,9 @@ Selected baseline visit: DFO_8-14 (treated=5, control=11)
 <div class="nboutput docutils container">
 <div class="prompt empty docutils container">
 </div>
-<div class="output_area rendered_html docutils container">
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>covariate</th>
-      <th>level</th>
-      <th>mean_treated</th>
-      <th>mean_control</th>
-      <th>smd</th>
-      <th>n_treated</th>
-      <th>n_control</th>
-      <th>balanced</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>Age_interval</td>
-      <td>(50, 59]</td>
-      <td>0.4</td>
-      <td>0.181818</td>
-      <td>0.480384</td>
-      <td>5</td>
-      <td>11</td>
-      <td>False</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>Age_interval</td>
-      <td>(30, 39]</td>
-      <td>0.2</td>
-      <td>0.181818</td>
-      <td>0.046262</td>
-      <td>5</td>
-      <td>11</td>
-      <td>True</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>Age_interval</td>
-      <td>(70, 79]</td>
-      <td>0.0</td>
-      <td>0.090909</td>
-      <td>-0.436436</td>
-      <td>5</td>
-      <td>11</td>
-      <td>False</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>Age_interval</td>
-      <td>(40, 49]</td>
-      <td>0.2</td>
-      <td>0.272727</td>
-      <td>-0.171184</td>
-      <td>5</td>
-      <td>11</td>
-      <td>False</td>
-    </tr>
-    <tr>
-      <th>4</th>
-      <td>Age_interval</td>
-      <td>(60, 69]</td>
-      <td>0.2</td>
-      <td>0.272727</td>
-      <td>-0.171184</td>
-      <td>5</td>
-      <td>11</td>
-      <td>False</td>
-    </tr>
-    <tr>
-      <th>5</th>
-      <td>Sex</td>
-      <td>Female</td>
-      <td>0.8</td>
-      <td>0.636364</td>
-      <td>0.363729</td>
-      <td>5</td>
-      <td>11</td>
-      <td>False</td>
-    </tr>
-    <tr>
-      <th>6</th>
-      <td>Sex</td>
-      <td>Male</td>
-      <td>0.2</td>
-      <td>0.363636</td>
-      <td>-0.363729</td>
-      <td>5</td>
-      <td>11</td>
-      <td>False</td>
-    </tr>
-    <tr>
-      <th>7</th>
-      <td>Site</td>
-      <td>Sanger</td>
-      <td>0.4</td>
-      <td>0.090909</td>
-      <td>0.718221</td>
-      <td>5</td>
-      <td>11</td>
-      <td>False</td>
-    </tr>
-    <tr>
-      <th>8</th>
-      <td>Site</td>
-      <td>Cambridge</td>
-      <td>0.2</td>
-      <td>0.545455</td>
-      <td>-0.714442</td>
-      <td>5</td>
-      <td>11</td>
-      <td>False</td>
-    </tr>
-    <tr>
-      <th>9</th>
-      <td>Site</td>
-      <td>Ncl</td>
-      <td>0.4</td>
-      <td>0.363636</td>
-      <td>0.074848</td>
-      <td>5</td>
-      <td>11</td>
-      <td>True</td>
-    </tr>
-  </tbody>
-</table>
-</div></div>
+<div class="output_area docutils container">
+<img alt="../_images/examples_example_covid19_stephenson_12_1.png" src="../_images/examples_example_covid19_stephenson_12_1.png" />
+</div>
 </div>
 <div class="nboutput docutils container">
 <div class="prompt empty docutils container">
@@ -689,18 +548,11 @@ Selected baseline visit: DFO_8-14 (treated=5, control=11)
 <img alt="../_images/examples_example_covid19_stephenson_12_2.png" src="../_images/examples_example_covid19_stephenson_12_2.png" />
 </div>
 </div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<img alt="../_images/examples_example_covid19_stephenson_12_3.png" src="../_images/examples_example_covid19_stephenson_12_3.png" />
-</div>
-</div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_covid19_stephenson_12_4.png" src="../_images/examples_example_covid19_stephenson_12_4.png" />
+<img alt="../_images/examples_example_covid19_stephenson_12_3.png" src="../_images/examples_example_covid19_stephenson_12_3.png" />
 </div>
 </div>
 </section>
