@@ -491,11 +491,10 @@ def plot_trial_umap(
     -------
     fig : matplotlib.figure.Figure
     """
-    if plt is None or sc is None:
+    if plt is None:
         raise ImportError(
-            "matplotlib and scanpy are required for plotting. "
+            "matplotlib is required for plotting. "
             "Install with: pip install sctrial[plots]"
-            + (f" (scanpy import failed: {_scanpy_import_error})" if _scanpy_import_error else "")
         )
     if visits is None:
         visits = design.primary_visits()
@@ -520,17 +519,33 @@ def plot_trial_umap(
             sub = adata[mask].copy()
 
             if sub.n_obs > 0:
-                sc.pl.umap(
-                    sub,
-                    color=feature,
-                    ax=ax,
-                    show=False,
-                    vmin=vmin,
-                    vmax=vmax,
-                    cmap=cmap,
-                    title=f"{arm} - {visit}",
-                    frameon=False
-                )
+                if sc is not None:
+                    sc.pl.umap(
+                        sub,
+                        color=feature,
+                        ax=ax,
+                        show=False,
+                        vmin=vmin,
+                        vmax=vmax,
+                        cmap=cmap,
+                        title=f"{arm} - {visit}",
+                        frameon=False
+                    )
+                else:
+                    if "X_umap" not in sub.obsm:
+                        raise KeyError("UMAP coordinates not found in adata.obsm['X_umap'].")
+                    vals_sub = sub.obs[feature].values if feature in sub.obs.columns else extract_gene_vector(sub, feature, layer=layer)
+                    ax.scatter(
+                        sub.obsm["X_umap"][:, 0],
+                        sub.obsm["X_umap"][:, 1],
+                        c=vals_sub,
+                        s=6,
+                        cmap=cmap,
+                        vmin=vmin,
+                        vmax=vmax,
+                    )
+                    ax.set_title(f"{arm} - {visit}")
+                    ax.set_axis_off()
             else:
                 ax.set_title(f"{arm} - {visit} (no cells)")
                 ax.axis("off")
@@ -745,17 +760,14 @@ def plot_trial_umap_panel(
     matplotlib.figure.Figure
         The figure containing the UMAP panel.
     """
-    if plt is None or sc is None or GridSpec is None:
+    if plt is None or GridSpec is None:
         raise ImportError(
-            "matplotlib and scanpy are required for plotting. "
+            "matplotlib is required for plotting. "
             "Install with: pip install sctrial[plots]"
-            + (f" (scanpy import failed: {_scanpy_import_error})" if _scanpy_import_error else "")
         )
     if visits is None:
         visits = design.primary_visits()
 
-    # Pre-extract feature
-    from .stats._extract import extract_gene_vector
     ad = adata.copy()
     if feature in ad.obs.columns:
         pass
@@ -771,7 +783,22 @@ def plot_trial_umap_panel(
 
     # 1. Big Cell Type UMAP on the left
     ax_big = fig.add_subplot(gs[:, 0])
-    sc.pl.umap(ad, color=design.celltype_col, ax=ax_big, show=False, frameon=False, title="Cell Types")
+    if sc is not None:
+        sc.pl.umap(ad, color=design.celltype_col, ax=ax_big, show=False, frameon=False, title="Cell Types")
+    else:
+        if "X_umap" not in ad.obsm:
+            raise KeyError("UMAP coordinates not found in adata.obsm['X_umap'].")
+        ct = ad.obs[design.celltype_col].astype("category")
+        codes = ct.cat.codes
+        ax_big.scatter(
+            ad.obsm["X_umap"][:, 0],
+            ad.obsm["X_umap"][:, 1],
+            c=codes,
+            s=6,
+            cmap="tab20",
+        )
+        ax_big.set_title("Cell Types")
+        ax_big.set_axis_off()
 
     # 2. 2x2 Grid on the right
     # Calculate global vmin/vmax for consistent color scale
@@ -791,10 +818,26 @@ def plot_trial_umap_panel(
         sub = ad[(ad.obs[design.arm_col] == arm) & (ad.obs[design.visit_col] == visit)]
 
         if sub.n_obs > 0:
-            sc.pl.umap(
-                sub, color=feature, ax=ax, show=False, frameon=False,
-                vmin=vmin, vmax=vmax, cmap=cmap, title=f"{arm} - {visit}"
-            )
+            if sc is not None:
+                sc.pl.umap(
+                    sub, color=feature, ax=ax, show=False, frameon=False,
+                    vmin=vmin, vmax=vmax, cmap=cmap, title=f"{arm} - {visit}"
+                )
+            else:
+                if "X_umap" not in sub.obsm:
+                    raise KeyError("UMAP coordinates not found in adata.obsm['X_umap'].")
+                vals_sub = sub.obs[feature].values if feature in sub.obs.columns else extract_gene_vector(sub, feature, layer=layer)
+                ax.scatter(
+                    sub.obsm["X_umap"][:, 0],
+                    sub.obsm["X_umap"][:, 1],
+                    c=vals_sub,
+                    s=6,
+                    cmap=cmap,
+                    vmin=vmin,
+                    vmax=vmax,
+                )
+                ax.set_title(f"{arm} - {visit}")
+                ax.set_axis_off()
         else:
             ax.set_title(f"{arm} - {visit} (no cells)")
             ax.axis("off")

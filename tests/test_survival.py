@@ -44,3 +44,30 @@ def test_hazard_regression_with_features_basic():
 
     assert set(res.columns) >= {"feature", "HR", "HR_low", "HR_high", "p", "n"}
     assert res.shape[0] == 2
+
+
+def test_hazard_regression_missing_columns():
+    obs = pd.DataFrame(
+        {
+            "participant_id": ["P1", "P1"],
+            "visit": ["V1", "V1"],
+            "score": [0.1, 0.2],
+        }
+    )
+    adata = AnnData(X=np.zeros((len(obs), 1)), obs=obs, var=pd.DataFrame(index=["G1"]))
+    design = st.TrialDesign(
+        participant_col="participant_id",
+        visit_col="visit",
+        arm_col="arm",
+        arm_treated="T",
+        arm_control="C",
+    )
+    with pytest.raises(KeyError):
+        st.hazard_regression_with_features(
+            adata,
+            features=["score"],
+            design=design,
+            time_col="time",
+            event_col="event",
+            visit="V1",
+        )

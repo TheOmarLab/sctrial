@@ -22,6 +22,22 @@ def test_check_did_assumptions_basic():
     assert "jb_pvalue" in out
 
 
+def test_check_did_assumptions_with_outliers():
+    rng = np.random.default_rng(2)
+    df = pd.DataFrame(
+        {
+            "outcome": np.concatenate([rng.normal(size=36), np.array([10.0, 12.0, -9.0, -8.0])]),
+            "time_num": np.repeat([0, 1], 20),
+            "arm_bin": np.repeat([0, 1], 20),
+            "participant_id": np.repeat([f"P{i}" for i in range(20)], 2),
+        }
+    )
+    fit = smf.ols("outcome ~ time_num + time_num:arm_bin + C(participant_id)", data=df).fit()
+    out = st.check_did_assumptions(fit)
+    assert "bp_pvalue" in out
+    assert "jb_pvalue" in out
+
+
 def test_pseudobulk_export():
     obs = []
     for pid in ["P1", "P2"]:

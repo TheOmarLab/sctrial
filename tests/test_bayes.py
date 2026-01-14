@@ -1,3 +1,6 @@
+import os
+import tempfile
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -5,10 +8,17 @@ from anndata import AnnData
 
 import sctrial as st
 
+# Ensure PyTensor has a writable compiledir before importing pymc
+tmp_dir = tempfile.mkdtemp(prefix="pytensor_test_")
+os.environ["PYTENSOR_FLAGS"] = f"compiledir={tmp_dir},cxx="
+
 pymc = pytest.importorskip("pymc")
 
 
 def test_did_table_bayes_basic():
+    # Ensure PyTensor has a writable compiledir in CI/local tests
+    tmp_dir = tempfile.mkdtemp(prefix="pytensor_test_")
+    os.environ["PYTENSOR_FLAGS"] = f"compiledir={tmp_dir},cxx="
     obs = []
     for pid in ["P1", "P2", "P3", "P4"]:
         arm = "Treated" if pid in ["P1", "P2"] else "Control"
@@ -33,6 +43,7 @@ def test_did_table_bayes_basic():
         visits=("V1", "V2"),
         draws=200,
         tune=200,
+        chains=1,
         seed=0,
     )
 

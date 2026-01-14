@@ -11,11 +11,6 @@ except ImportError:
     HAS_MATPLOTLIB = False
     plt = None
 
-try:
-    import scanpy  # noqa: F401
-    HAS_SCANPY = True
-except Exception:
-    HAS_SCANPY = False
 
 def test_bootstrap_did(sample_adata, trial_design):
     # Run DiD with bootstrap - use very small n_boot for speed
@@ -83,7 +78,7 @@ def test_abundance_did_bootstrap(sample_adata, trial_design):
     assert "p_DiD" in res.columns
     assert len(res) > 0
 
-@pytest.mark.skipif(not HAS_SCANPY or not HAS_MATPLOTLIB, reason="scanpy and matplotlib not installed")
+@pytest.mark.skipif(not HAS_MATPLOTLIB, reason="matplotlib not installed")
 def test_trial_umap(sample_adata, trial_design):
     # Mock X_umap
     sample_adata.obsm["X_umap"] = np.random.randn(sample_adata.n_obs, 2)
