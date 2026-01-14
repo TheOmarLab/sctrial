@@ -230,7 +230,7 @@ def abundance_did(
 
             # Check if interaction term was estimable
             if term not in fit.params or np.isnan(fit.params[term]):
-                continue
+                raise ValueError("DiD term not estimable")
 
             p_val = float(fit.pvalues[term])
             if use_bootstrap:
@@ -253,7 +253,45 @@ def abundance_did(
                 "p_time": float(fit.pvalues.get("visit_num", np.nan)),
             })
         except (ValueError, np.linalg.LinAlgError, KeyError):
-            continue
+            # Fallback: delta model without fixed effects or covariates
+            try:
+                wide = tmp.pivot_table(
+                    index=design.participant_col,
+                    columns=design.visit_col,
+                    values="y",
+                    aggfunc="mean",
+                    observed=True,
+                )
+                if visits[0] not in wide.columns or visits[1] not in wide.columns:
+                    continue
+                delta = (wide[visits[1]] - wide[visits[0]]).dropna()
+                if delta.empty:
+                    continue
+                df_delta = delta.rename("delta").to_frame()
+                df_delta["arm_bin"] = (
+                    tmp.groupby(design.participant_col, observed=True)["arm_bin"]
+                    .first()
+                    .reindex(df_delta.index)
+                )
+                df_delta = df_delta.dropna()
+                if df_delta.shape[0] < min_units:
+                    continue
+                model = smf.ols("delta ~ arm_bin", data=df_delta)
+                fit = model.fit()
+                term = "arm_bin"
+                if term not in fit.params or np.isnan(fit.params[term]):
+                    continue
+                rows.append({
+                    "celltype": ct,
+                    "n_participants": int(df_delta.shape[0]),
+                    "beta_DiD": float(fit.params[term]),
+                    "se_DiD": float(fit.bse[term]),
+                    "p_DiD": float(fit.pvalues[term]),
+                    "beta_time": np.nan,
+                    "p_time": np.nan,
+                })
+            except (ValueError, np.linalg.LinAlgError, KeyError):
+                continue
 
     if not rows:
         return pd.DataFrame(columns=[
