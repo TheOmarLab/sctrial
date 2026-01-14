@@ -110,6 +110,15 @@
 <div class="viewcode-block" id="safe_filename">
 <a class="viewcode-back" href="../../api.html#sctrial.utils.safe_filename">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">safe_filename</span><span class="p">(</span><span class="n">s</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">maxlen</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">180</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a filesystem-safe filename slug.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    s</span>
+<span class="sd">        Input string to sanitize.</span>
+<span class="sd">    maxlen</span>
+<span class="sd">        Maximum length of the output string.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">s</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
     <span class="n">s</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;γ&quot;</span><span class="p">,</span> <span class="s2">&quot;gamma&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;δ&quot;</span><span class="p">,</span> <span class="s2">&quot;delta&quot;</span><span class="p">)</span>
     <span class="n">s</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\s+&quot;</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="p">,</span> <span class="n">s</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
@@ -122,6 +131,7 @@
 <div class="viewcode-block" id="intersect_preserve_order">
 <a class="viewcode-back" href="../../api.html#sctrial.utils.intersect_preserve_order">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">intersect_preserve_order</span><span class="p">(</span><span class="n">items</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">universe</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return items that appear in universe, preserving original order.&quot;&quot;&quot;</span>
     <span class="n">u</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">universe</span><span class="p">)</span>
     <span class="k">return</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">items</span> <span class="k">if</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">u</span><span class="p">]</span></div>
 

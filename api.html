@@ -113,7 +113,10 @@
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#statistics">Statistics</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#module-sctrial.stats.did">Core DiD Methods</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#sctrial.stats.did.AggregateFunc"><code class="docutils literal notranslate"><span class="pre">AggregateFunc</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#sctrial.stats.did.AggregateMode"><code class="docutils literal notranslate"><span class="pre">AggregateMode</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#sctrial.stats.did.DiDConfig"><code class="docutils literal notranslate"><span class="pre">DiDConfig</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#sctrial.stats.did.DidFitResult"><code class="docutils literal notranslate"><span class="pre">DidFitResult</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#sctrial.stats.did.did_fit"><code class="docutils literal notranslate"><span class="pre">did_fit()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#sctrial.stats.did.did_table"><code class="docutils literal notranslate"><span class="pre">did_table()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#sctrial.stats.did.did_table_by_celltype"><code class="docutils literal notranslate"><span class="pre">did_table_by_celltype()</span></code></a></li>
@@ -135,6 +138,7 @@
 <li class="toctree-l4"><a class="reference internal" href="#sctrial.stats.effect_size.add_effect_sizes_to_did"><code class="docutils literal notranslate"><span class="pre">add_effect_sizes_to_did()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#sctrial.stats.effect_size.cohens_d"><code class="docutils literal notranslate"><span class="pre">cohens_d()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#sctrial.stats.effect_size.cohens_d_from_did"><code class="docutils literal notranslate"><span class="pre">cohens_d_from_did()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#sctrial.stats.effect_size.cohens_d_from_did_approx"><code class="docutils literal notranslate"><span class="pre">cohens_d_from_did_approx()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#sctrial.stats.effect_size.effect_size_ci"><code class="docutils literal notranslate"><span class="pre">effect_size_ci()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#sctrial.stats.effect_size.hedges_g"><code class="docutils literal notranslate"><span class="pre">hedges_g()</span></code></a></li>
 </ul>
@@ -253,6 +257,7 @@
 <li class="toctree-l4"><a class="reference internal" href="#sctrial.validation.TrialDataValidator.validate_features"><code class="docutils literal notranslate"><span class="pre">TrialDataValidator.validate_features()</span></code></a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="#sctrial.validation.check_covariate_balance"><code class="docutils literal notranslate"><span class="pre">check_covariate_balance()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#sctrial.validation.diagnose_trial_data"><code class="docutils literal notranslate"><span class="pre">diagnose_trial_data()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#sctrial.validation.validate_adata"><code class="docutils literal notranslate"><span class="pre">validate_adata()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#sctrial.validation.validate_features"><code class="docutils literal notranslate"><span class="pre">validate_features()</span></code></a></li>
@@ -376,17 +381,48 @@ functions in <cite>sctrial</cite>.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="sctrial.design.TrialDesign.primary_visits">
 <span class="sig-name descname"><span class="pre">primary_visits</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">baseline</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">followup</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/sctrial/design.html#TrialDesign.primary_visits"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.design.TrialDesign.primary_visits" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Return (baseline, followup) visit labels.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>baseline</strong> – Optional explicit baseline visit label. If None, uses
+<code class="docutils literal notranslate"><span class="pre">self.baseline_visit</span></code>.</p></li>
+<li><p><strong>followup</strong> – Optional explicit follow-up visit label. If None, uses
+<code class="docutils literal notranslate"><span class="pre">self.followup_visit</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="sctrial.design.TrialDesign.required_cols">
 <span class="sig-name descname"><span class="pre">required_cols</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_celltype</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_crossover</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Sequence" title="(in Python v3.14)"><span class="pre">Sequence</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/sctrial/design.html#TrialDesign.required_cols"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.design.TrialDesign.required_cols" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Return required obs columns for this design.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>include_celltype</strong> – If True, include <code class="docutils literal notranslate"><span class="pre">celltype_col</span></code> when it is defined.</p></li>
+<li><p><strong>include_crossover</strong> – If True, include <code class="docutils literal notranslate"><span class="pre">crossover_col</span></code> when it is defined.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="sctrial.design.TrialDesign.validate">
 <span class="sig-name descname"><span class="pre">validate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">adata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://anndata.readthedocs.io/en/latest/generated/anndata.AnnData.html#anndata.AnnData" title="(in anndata v0.13.0.dev104+gc6f6f54ca)"><span class="pre">AnnData</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_celltype</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_crossover</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check_arm_labels</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="_modules/sctrial/design.html#TrialDesign.validate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.design.TrialDesign.validate" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Validate that <cite>adata.obs</cite> contains required columns and labels.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>adata</strong> – AnnData object to validate.</p></li>
+<li><p><strong>include_celltype</strong> – If True, require <code class="docutils literal notranslate"><span class="pre">celltype_col</span></code> in <code class="docutils literal notranslate"><span class="pre">adata.obs</span></code>.</p></li>
+<li><p><strong>include_crossover</strong> – If True, require <code class="docutils literal notranslate"><span class="pre">crossover_col</span></code> in <code class="docutils literal notranslate"><span class="pre">adata.obs</span></code>.</p></li>
+<li><p><strong>check_arm_labels</strong> – If True, verify that treated/control labels are present in <code class="docutils literal notranslate"><span class="pre">arm_col</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="sctrial.design.TrialDesign.visit_col">
@@ -631,6 +667,20 @@ aggregated feature values.</p>
 <h2>Statistics<a class="headerlink" href="#statistics" title="Link to this heading"></a></h2>
 <section id="module-sctrial.stats.did">
 <span id="core-did-methods"></span><h3>Core DiD Methods<a class="headerlink" href="#module-sctrial.stats.did" title="Link to this heading"></a></h3>
+<dl class="py data">
+<dt class="sig sig-object py" id="sctrial.stats.did.AggregateFunc">
+<span class="sig-prename descclassname"><span class="pre">sctrial.stats.did.</span></span><span class="sig-name descname"><span class="pre">AggregateFunc</span></span><a class="headerlink" href="#sctrial.stats.did.AggregateFunc" title="Link to this definition"></a></dt>
+<dd><p>Supported aggregation functions for grouped feature summaries.</p>
+<p>alias of <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Literal</span></code></a>[‘mean’, ‘median’, ‘pct_pos’]</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="sctrial.stats.did.AggregateMode">
+<span class="sig-prename descclassname"><span class="pre">sctrial.stats.did.</span></span><span class="sig-name descname"><span class="pre">AggregateMode</span></span><a class="headerlink" href="#sctrial.stats.did.AggregateMode" title="Link to this definition"></a></dt>
+<dd><p>Supported aggregation modes for DiD analysis.</p>
+<p>alias of <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Literal</span></code></a>[‘cell’, ‘participant_visit’, ‘participant_visit_celltype’]</p>
+</dd></dl>
+
 <dl class="py class">
 <dt class="sig sig-object py" id="sctrial.stats.did.DiDConfig">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">sctrial.stats.did.</span></span><span class="sig-name descname"><span class="pre">DiDConfig</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">aggregate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'cell'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'participant_visit'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'participant_visit_celltype'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'participant_visit'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'mean'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'median'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'pct_pos'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'mean'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">covariates</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_bootstrap</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_boot</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">999</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">42</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclude_crossovers</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sctrial/stats/did.html#DiDConfig"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.stats.did.DiDConfig" title="Link to this definition"></a></dt>
@@ -639,53 +689,103 @@ aggregated feature values.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="sctrial.stats.did.DiDConfig.agg">
 <span class="sig-name descname"><span class="pre">agg</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'mean'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'median'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'pct_pos'</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'mean'</span></em><a class="headerlink" href="#sctrial.stats.did.DiDConfig.agg" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Aggregation function applied after grouping.</p>
+</dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="sctrial.stats.did.DiDConfig.aggregate">
 <span class="sig-name descname"><span class="pre">aggregate</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'cell'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'participant_visit'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'participant_visit_celltype'</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'participant_visit'</span></em><a class="headerlink" href="#sctrial.stats.did.DiDConfig.aggregate" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Aggregation mode for features (cell-level or participant-level).</p>
+</dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="sctrial.stats.did.DiDConfig.covariates">
 <span class="sig-name descname"><span class="pre">covariates</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#sctrial.stats.did.DiDConfig.covariates" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Optional covariate columns to include as fixed effects.</p>
+</dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="sctrial.stats.did.DiDConfig.exclude_crossovers">
 <span class="sig-name descname"><span class="pre">exclude_crossovers</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">True</span></em><a class="headerlink" href="#sctrial.stats.did.DiDConfig.exclude_crossovers" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Whether to drop crossover cells if crossover_col is set.</p>
+</dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="sctrial.stats.did.DiDConfig.layer">
 <span class="sig-name descname"><span class="pre">layer</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#sctrial.stats.did.DiDConfig.layer" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Expression layer to use for genes (None uses adata.X).</p>
+</dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="sctrial.stats.did.DiDConfig.n_boot">
 <span class="sig-name descname"><span class="pre">n_boot</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">999</span></em><a class="headerlink" href="#sctrial.stats.did.DiDConfig.n_boot" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Number of bootstrap permutations.</p>
+</dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="sctrial.stats.did.DiDConfig.seed">
 <span class="sig-name descname"><span class="pre">seed</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">42</span></em><a class="headerlink" href="#sctrial.stats.did.DiDConfig.seed" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Random seed for bootstrap reproducibility.</p>
+</dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="sctrial.stats.did.DiDConfig.standardize">
 <span class="sig-name descname"><span class="pre">standardize</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">True</span></em><a class="headerlink" href="#sctrial.stats.did.DiDConfig.standardize" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Whether to z-score outcomes before model fitting.</p>
+</dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="sctrial.stats.did.DiDConfig.use_bootstrap">
 <span class="sig-name descname"><span class="pre">use_bootstrap</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="headerlink" href="#sctrial.stats.did.DiDConfig.use_bootstrap" title="Link to this definition"></a></dt>
+<dd><p>If True, use wild cluster bootstrap for p-values.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="sctrial.stats.did.DidFitResult">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">sctrial.stats.did.</span></span><span class="sig-name descname"><span class="pre">DidFitResult</span></span><a class="reference internal" href="_modules/sctrial/stats/did.html#DidFitResult"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.stats.did.DidFitResult" title="Link to this definition"></a></dt>
+<dd><p>Structured return for did_fit.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sctrial.stats.did.DidFitResult.beta_DiD">
+<span class="sig-name descname"><span class="pre">beta_DiD</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><a class="headerlink" href="#sctrial.stats.did.DidFitResult.beta_DiD" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sctrial.stats.did.DidFitResult.beta_time">
+<span class="sig-name descname"><span class="pre">beta_time</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><a class="headerlink" href="#sctrial.stats.did.DidFitResult.beta_time" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sctrial.stats.did.DidFitResult.n_units">
+<span class="sig-name descname"><span class="pre">n_units</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#sctrial.stats.did.DidFitResult.n_units" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sctrial.stats.did.DidFitResult.p_DiD">
+<span class="sig-name descname"><span class="pre">p_DiD</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><a class="headerlink" href="#sctrial.stats.did.DidFitResult.p_DiD" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sctrial.stats.did.DidFitResult.p_DiD_boot">
+<span class="sig-name descname"><span class="pre">p_DiD_boot</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">NotRequired</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#sctrial.stats.did.DidFitResult.p_DiD_boot" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sctrial.stats.did.DidFitResult.p_time">
+<span class="sig-name descname"><span class="pre">p_time</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><a class="headerlink" href="#sctrial.stats.did.DidFitResult.p_time" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sctrial.stats.did.DidFitResult.se_DiD">
+<span class="sig-name descname"><span class="pre">se_DiD</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><a class="headerlink" href="#sctrial.stats.did.DidFitResult.se_DiD" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="sctrial.stats.did.did_fit">
-<span class="sig-prename descclassname"><span class="pre">sctrial.stats.did.</span></span><span class="sig-name descname"><span class="pre">did_fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">time</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">arm_bin</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">covariates</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cov_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cluster'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_bootstrap</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_boot</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">999</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">42</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></span></span><a class="reference internal" href="_modules/sctrial/stats/did.html#did_fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.stats.did.did_fit" title="Link to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">sctrial.stats.did.</span></span><span class="sig-name descname"><span class="pre">did_fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">time</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">arm_bin</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">covariates</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cov_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cluster'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_bootstrap</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_boot</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">999</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">42</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#sctrial.stats.did.DidFitResult" title="sctrial.stats.did.DidFitResult"><span class="pre">DidFitResult</span></a></span></span><a class="reference internal" href="_modules/sctrial/stats/did.html#did_fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.stats.did.did_fit" title="Link to this definition"></a></dt>
 <dd><p>Fit fixed-effects Difference-in-Differences (DiD) model.</p>
 <section id="mathematical-model">
 <h4>Mathematical Model<a class="headerlink" href="#mathematical-model" title="Link to this heading"></a></h4>
@@ -723,7 +823,9 @@ same trajectory. Cannot be tested directly but can check pre-trends.</p></li>
 Returns NaN for all estimates if n_units &lt; 4.</p></li>
 <li><p>Features with near-zero variance (std &lt; 1e-8) return NaN.</p></li>
 <li><p>Cluster-robust standard errors account for within-participant correlation.</p></li>
-<li><p>If <cite>n_cells</cite> column is present, Weighted Least Squares (WLS) is used.</p></li>
+<li><p>If <cite>n_cells</cite> column is present, Weighted Least Squares (WLS) is used.
+Weights are proportional to √(n_cells), which approximates inverse
+variance for participant-level means when cells are i.i.d.</p></li>
 </ul>
 <dl class="field-list simple">
 <dt class="field-odd">param df<span class="colon">:</span></dt>
@@ -795,7 +897,7 @@ when n_participants &lt; 15).</p>
 <dd class="field-even"><p>int</p>
 </dd>
 <dt class="field-odd">returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Dictionary with keys:
+<dd class="field-odd"><p>Keys:
 - beta_DiD: DiD coefficient (β₂)
 - se_DiD: Standard error of β₂
 - p_DiD: P-value for H₀: β₂ = 0
@@ -804,7 +906,7 @@ when n_participants &lt; 15).</p>
 - n_units: Number of participants used</p>
 </dd>
 <dt class="field-even">rtype<span class="colon">:</span></dt>
-<dd class="field-even"><p>dict</p>
+<dd class="field-even"><p>DidFitResult</p>
 </dd>
 </dl>
 </section>
@@ -935,17 +1037,48 @@ most useful for large feature panels (hundreds to thousands of genes).</p>
 <blockquote>
 <div><p>y_ijt = alpha_i + beta_time * time + beta_arm * arm + beta_did * time*arm + eps</p>
 </div></blockquote>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>draws</strong> – Posterior draws.</p></li>
-<li><p><strong>tune</strong> – Tuning iterations.</p></li>
-<li><p><strong>chains</strong> – Number of MCMC chains.</p></li>
-<li><p><strong>target_accept</strong> – Target acceptance rate for NUTS.</p></li>
-<li><p><strong>max_treedepth</strong> – Maximum tree depth for NUTS.</p></li>
+<section id="prior-specification-defaults">
+<h4>Prior specification (defaults)<a class="headerlink" href="#prior-specification-defaults" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p>alpha_i ~ Normal(0, 1) (participant random intercepts)</p></li>
+<li><p>beta_time ~ Normal(0, 1)</p></li>
+<li><p>beta_arm ~ Normal(0, 1)</p></li>
+<li><p>beta_did ~ Normal(0, 1)</p></li>
+<li><p>sigma ~ HalfNormal(1)</p></li>
 </ul>
+<p>These weakly-informative priors are designed to stabilize estimation for
+small samples while remaining agnostic about effect direction.</p>
+<dl class="field-list simple">
+<dt class="field-odd">param draws<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Posterior draws.</p>
+</dd>
+<dt class="field-even">param tune<span class="colon">:</span></dt>
+<dd class="field-even"><p>Tuning iterations.</p>
+</dd>
+<dt class="field-odd">param chains<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Number of MCMC chains.</p>
+</dd>
+<dt class="field-even">param target_accept<span class="colon">:</span></dt>
+<dd class="field-even"><p>Target acceptance rate for NUTS.</p>
+</dd>
+<dt class="field-odd">param max_treedepth<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Maximum tree depth for NUTS.</p>
+</dd>
+<dt class="field-even">returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Columns:
+- feature: Feature name
+- beta_DiD: Posterior mean of the DiD effect
+- ci_low: 2.5th percentile of posterior
+- ci_high: 97.5th percentile of posterior
+- p_bayes: Two-sided posterior tail probability (not a frequentist p-value)
+- n_units: Number of paired units used
+- FDR_bayes: BH-adjusted p_bayes</p>
+</dd>
+<dt class="field-odd">rtype<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
 </dd>
 </dl>
+</section>
 </dd></dl>
 
 <dl class="py function" id="module-sctrial.stats.abundance">
@@ -1005,8 +1138,9 @@ small sample sizes (&lt; 15 participants per arm).</p>
 <dd class="field-even"><p>Random seed.</p>
 </dd>
 <dt class="field-odd">returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Table with one row per cell type containing:</p>
-<ul class="simple">
+<dd class="field-odd"><ul class="simple">
+<li><p><em>pd.DataFrame</em> – Table with one row per cell type containing:</p>
+<ul>
 <li><p>celltype: Cell type name</p></li>
 <li><p>n_participants: Number of paired participants</p></li>
 <li><p>beta_DiD: Treatment effect (interaction term)</p></li>
@@ -1014,9 +1148,14 @@ small sample sizes (&lt; 15 participants per arm).</p>
 <li><p>p_DiD: P-value for the treatment effect</p></li>
 <li><p>FDR_DiD: Benjamini-Hochberg FDR-corrected p-value</p></li>
 </ul>
-</dd>
-<dt class="field-even">rtype<span class="colon">:</span></dt>
-<dd class="field-even"><p>pd.DataFrame</p>
+</li>
+<li><p><em>Interpretation notes</em></p></li>
+<li><p><em>——————–</em></p></li>
+<li><p><em>The arcsin-sqrt transform stabilizes variance but is not on the original</em></p></li>
+<li><p><em>proportion scale. A positive beta_DiD indicates an increase in proportion</em></p></li>
+<li><p><em>in the treated arm relative to control; to interpret effect magnitude in</em></p></li>
+<li><p><em>raw proportions, inspect group-level proportions directly.</em></p></li>
+</ul>
 </dd>
 </dl>
 <p class="rubric">Examples</p>
@@ -1211,30 +1350,37 @@ If False, use only group1’s standard deviation (Glass’s delta).</p></li>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="sctrial.stats.effect_size.cohens_d_from_did">
-<span class="sig-prename descclassname"><span class="pre">sctrial.stats.effect_size.</span></span><span class="sig-name descname"><span class="pre">cohens_d_from_did</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">beta_did</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">residual_std</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></span><a class="reference internal" href="_modules/sctrial/stats/effect_size.html#cohens_d_from_did"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.stats.effect_size.cohens_d_from_did" title="Link to this definition"></a></dt>
-<dd><p>Calculate Cohen’s d from a DiD regression coefficient.</p>
-<p>For DiD models, the effect size is the interaction coefficient
-divided by the residual standard deviation:</p>
+<span class="sig-prename descclassname"><span class="pre">sctrial.stats.effect_size.</span></span><span class="sig-name descname"><span class="pre">cohens_d_from_did</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">delta_treated</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">delta_control</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></span><a class="reference internal" href="_modules/sctrial/stats/effect_size.html#cohens_d_from_did"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.stats.effect_size.cohens_d_from_did" title="Link to this definition"></a></dt>
+<dd><p>Calculate Cohen’s d for DiD from participant-level change scores.</p>
+<p>This computes the <strong>exact</strong> Cohen’s d for the difference in change scores:</p>
 <blockquote>
-<div><p>d = β_DiD / σ_residual</p>
+<div><p>d = (mean(Δ_treated) - mean(Δ_control)) / s_pooled</p>
 </div></blockquote>
+<p>where s_pooled is the pooled SD of participant-level deltas.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>beta_did</strong> – The DiD interaction coefficient (treatment × time).</p></li>
-<li><p><strong>residual_std</strong> – Residual standard deviation from the regression.</p></li>
+<li><p><strong>delta_treated</strong> – Participant-level change scores (post - pre) for the treated arm.</p></li>
+<li><p><strong>delta_control</strong> – Participant-level change scores (post - pre) for the control arm.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Cohen’s d effect size.</p>
+<dd class="field-even"><p>Cohen’s d effect size based on change-score distributions.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="sctrial.stats.effect_size.cohens_d_from_did_approx">
+<span class="sig-prename descclassname"><span class="pre">sctrial.stats.effect_size.</span></span><span class="sig-name descname"><span class="pre">cohens_d_from_did_approx</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">beta_did</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">residual_std</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></span><a class="reference internal" href="_modules/sctrial/stats/effect_size.html#cohens_d_from_did_approx"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.stats.effect_size.cohens_d_from_did_approx" title="Link to this definition"></a></dt>
+<dd><p>Approximate Cohen’s d from a DiD regression coefficient (deprecated).</p>
+<p>This uses the regression residual SD instead of pooled SD of change scores,
+which can mis-scale effect sizes when designs are imbalanced or heteroscedastic.</p>
 <p class="rubric">Notes</p>
-<p>This is an approximation. For more precise effect sizes, compute
-Cohen’s d directly from the change scores in each group.</p>
+<p>Deprecated: use <code class="docutils literal notranslate"><span class="pre">cohens_d_from_did(delta_treated,</span> <span class="pre">delta_control)</span></code> instead.</p>
 </dd></dl>
 
 <dl class="py function">
@@ -1297,7 +1443,12 @@ J = 1 - 3/(4(n₁+n₂-2) - 1)  (equivalently 1 - 3/(4*df - 1))</p>
 </dd>
 </dl>
 <p class="rubric">Notes</p>
-<p>Use Hedge’s g when sample sizes are small (n &lt; 20 per group).
+<p>Uses the exact small-sample correction via the gamma function:</p>
+<blockquote>
+<div><p>J = Γ(df/2) / (√(df/2) × Γ((df-1)/2))</p>
+</div></blockquote>
+<p>which is more accurate than the common approximation for small df.
+Use Hedge’s g when sample sizes are small (n &lt; 20 per group).
 For larger samples, Cohen’s d and Hedge’s g are nearly identical.</p>
 </dd></dl>
 
@@ -1775,6 +1926,18 @@ biomarkers (0/1 or True/False), values are used directly.</p></li>
 <dd class="field-odd"><p>pd.DataFrame</p>
 </dd>
 </dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">res</span> <span class="o">=</span> <span class="n">test_treatment_heterogeneity</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">adata</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">features</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;sig_IFN_Response&quot;</span><span class="p">,</span> <span class="s2">&quot;sig_Cytotoxicity&quot;</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;Pre&quot;</span><span class="p">,</span> <span class="s2">&quot;Post&quot;</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="n">biomarker_col</span><span class="o">=</span><span class="s2">&quot;baseline_crp&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">threshold</span><span class="o">=</span><span class="mf">5.0</span><span class="p">,</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">res</span><span class="p">[[</span><span class="s2">&quot;feature&quot;</span><span class="p">,</span> <span class="s2">&quot;beta_heterogeneity&quot;</span><span class="p">,</span> <span class="s2">&quot;p_heterogeneity&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+</div>
 </dd></dl>
 
 </section>
@@ -2519,6 +2682,23 @@ If None, global FDR.</p></li>
 <dt class="sig sig-object py" id="sctrial.plotting.did_volcano_frame">
 <span class="sig-prename descclassname"><span class="pre">sctrial.plotting.</span></span><span class="sig-name descname"><span class="pre">did_volcano_frame</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">effect_col</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'beta_DiD'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p_col</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'p_DiD'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_col</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'neglog10p'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p_floor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1e-300</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></span><a class="reference internal" href="_modules/sctrial/plotting.html#did_volcano_frame"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.plotting.did_volcano_frame" title="Link to this definition"></a></dt>
 <dd><p>Return a copy with an added -log10(p) column for volcano plots.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>df</strong> – Input results DataFrame.</p></li>
+<li><p><strong>effect_col</strong> – Column name for effect sizes.</p></li>
+<li><p><strong>p_col</strong> – Column name for p-values.</p></li>
+<li><p><strong>out_col</strong> – Name of the output column to add.</p></li>
+<li><p><strong>p_floor</strong> – Minimum p-value used for log transform.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Copy of <code class="docutils literal notranslate"><span class="pre">df</span></code> with an added <code class="docutils literal notranslate"><span class="pre">out_col</span></code> column.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -2730,6 +2910,22 @@ the expression of a feature on the UMAP embedding.</p>
 <dt class="sig sig-object py" id="sctrial.plotting.signed_logp">
 <span class="sig-prename descclassname"><span class="pre">sctrial.plotting.</span></span><span class="sig-name descname"><span class="pre">signed_logp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">effect_col</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'beta_DiD'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p_col</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'p_DiD'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p_floor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1e-300</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v2.3.3)"><span class="pre">Series</span></a></span></span><a class="reference internal" href="_modules/sctrial/plotting.html#signed_logp"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.plotting.signed_logp" title="Link to this definition"></a></dt>
 <dd><p>Return sign(effect) * -log10(p) as a Series aligned to df.index.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>df</strong> – Input results DataFrame.</p></li>
+<li><p><strong>effect_col</strong> – Column name for effect sizes.</p></li>
+<li><p><strong>p_col</strong> – Column name for p-values.</p></li>
+<li><p><strong>p_floor</strong> – Minimum p-value used for log transform.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Signed -log10(p) values aligned to <code class="docutils literal notranslate"><span class="pre">df.index</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.Series</p>
+</dd>
+</dl>
 </dd></dl>
 
 </section>
@@ -2751,7 +2947,8 @@ the expression of a feature on the UMAP embedding.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="sctrial.utils.intersect_preserve_order">
 <span class="sig-prename descclassname"><span class="pre">sctrial.utils.</span></span><span class="sig-name descname"><span class="pre">intersect_preserve_order</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">items</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Sequence" title="(in Python v3.14)"><span class="pre">Sequence</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">universe</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Iterable" title="(in Python v3.14)"><span class="pre">Iterable</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/sctrial/utils.html#intersect_preserve_order"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.utils.intersect_preserve_order" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Return items that appear in universe, preserving original order.</p>
+</dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="sctrial.utils.looks_like_counts">
@@ -2783,7 +2980,16 @@ the expression of a feature on the UMAP embedding.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="sctrial.utils.safe_filename">
 <span class="sig-prename descclassname"><span class="pre">sctrial.utils.</span></span><span class="sig-name descname"><span class="pre">safe_filename</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">maxlen</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">180</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="_modules/sctrial/utils.html#safe_filename"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.utils.safe_filename" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Return a filesystem-safe filename slug.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>s</strong> – Input string to sanitize.</p></li>
+<li><p><strong>maxlen</strong> – Maximum length of the output string.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="sctrial.utils.wild_cluster_bootstrap_t">
@@ -2877,6 +3083,34 @@ The Review of Economics and Statistics, 90(3), 414–427.</p>
 </div>
 </dd></dl>
 
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="sctrial.validation.check_covariate_balance">
+<span class="sig-prename descclassname"><span class="pre">sctrial.validation.</span></span><span class="sig-name descname"><span class="pre">check_covariate_balance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">adata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://anndata.readthedocs.io/en/latest/generated/anndata.AnnData.html#anndata.AnnData" title="(in anndata v0.13.0.dev104+gc6f6f54ca)"><span class="pre">AnnData</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">design</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#sctrial.design.TrialDesign" title="sctrial.design.TrialDesign"><span class="pre">TrialDesign</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">covariates</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Sequence" title="(in Python v3.14)"><span class="pre">Sequence</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">visit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dropna</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">smd_threshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></span><a class="reference internal" href="_modules/sctrial/validation.html#check_covariate_balance"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.validation.check_covariate_balance" title="Link to this definition"></a></dt>
+<dd><p>Compute standardized mean differences (SMD) for baseline covariates.</p>
+<p>This compares treated vs control arms at a single visit (usually baseline)
+and reports SMD values that quantify imbalance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>adata</strong> – AnnData object with trial metadata in <code class="docutils literal notranslate"><span class="pre">adata.obs</span></code>.</p></li>
+<li><p><strong>design</strong> – TrialDesign describing participant, visit, and arm columns.</p></li>
+<li><p><strong>covariates</strong> – List of covariate column names in <code class="docutils literal notranslate"><span class="pre">adata.obs</span></code>.</p></li>
+<li><p><strong>visit</strong> – Visit label to use for balance checks. If None, uses
+<code class="docutils literal notranslate"><span class="pre">design.baseline_visit</span></code>; otherwise raises if not available.</p></li>
+<li><p><strong>dropna</strong> – If True, drop rows with missing covariate values for each covariate.</p></li>
+<li><p><strong>smd_threshold</strong> – Absolute SMD threshold for “balanced” flag (default 0.1).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Table with SMD values. Numeric covariates produce one row per covariate.
+Categorical covariates produce one row per level with proportions.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">

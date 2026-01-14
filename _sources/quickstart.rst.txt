@@ -46,7 +46,7 @@ Minimal end‑to‑end example
    st.plot_did_forest(res)
 
 Common add‑ons
--------------
+---------------
 
 **Fluent workflow API**
 

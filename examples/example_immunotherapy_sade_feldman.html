@@ -1976,7 +1976,7 @@ Significant DiD effects (FDR &lt; 0.25):
 
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">delta_resp</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">delta_nonresp</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
             <span class="c1"># Cohen&#39;s d</span>
-            <span class="n">d</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">cohens_d</span><span class="p">(</span><span class="n">delta_resp</span><span class="p">,</span> <span class="n">delta_nonresp</span><span class="p">)</span>
+            <span class="n">d</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">cohens_d_from_did</span><span class="p">(</span><span class="n">delta_resp</span><span class="p">,</span> <span class="n">delta_nonresp</span><span class="p">)</span>
             <span class="c1"># Hedge&#39;s g (bias-corrected, recommended for small samples)</span>
             <span class="n">g</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">hedges_g</span><span class="p">(</span><span class="n">delta_resp</span><span class="p">,</span> <span class="n">delta_nonresp</span><span class="p">)</span>
             <span class="c1"># Bootstrap confidence interval (correct signature)</span>
@@ -2068,8 +2068,8 @@ Effect sizes for DiD (Responder vs Non-responder change):
       <td>sig_Cytotoxicity</td>
       <td>-0.195</td>
       <td>-0.176</td>
-      <td>-1.947</td>
-      <td>1.632</td>
+      <td>-1.946</td>
+      <td>1.631</td>
       <td>3</td>
       <td>7</td>
     </tr>
@@ -2077,9 +2077,9 @@ Effect sizes for DiD (Responder vs Non-responder change):
       <th>1</th>
       <td>sig_Exhaustion</td>
       <td>-0.694</td>
-      <td>-0.627</td>
-      <td>-2.410</td>
-      <td>0.795</td>
+      <td>-0.626</td>
+      <td>-2.409</td>
+      <td>0.794</td>
       <td>3</td>
       <td>7</td>
     </tr>
@@ -2088,7 +2088,7 @@ Effect sizes for DiD (Responder vs Non-responder change):
       <td>sig_IFN_Response</td>
       <td>-1.160</td>
       <td>-1.047</td>
-      <td>-6.691</td>
+      <td>-6.688</td>
       <td>0.401</td>
       <td>3</td>
       <td>7</td>
@@ -2098,8 +2098,8 @@ Effect sizes for DiD (Responder vs Non-responder change):
       <td>sig_Memory</td>
       <td>-0.730</td>
       <td>-0.659</td>
-      <td>-5.607</td>
-      <td>1.441</td>
+      <td>-5.604</td>
+      <td>1.440</td>
       <td>3</td>
       <td>7</td>
     </tr>
@@ -2107,9 +2107,9 @@ Effect sizes for DiD (Responder vs Non-responder change):
       <th>4</th>
       <td>sig_Activation</td>
       <td>-2.840</td>
-      <td>-2.565</td>
-      <td>-5.461</td>
-      <td>-1.823</td>
+      <td>-2.564</td>
+      <td>-5.458</td>
+      <td>-1.822</td>
       <td>3</td>
       <td>7</td>
     </tr>
@@ -3114,7 +3114,11 @@ E-value (RR≈exp(beta)): 1.897
 Initializing NUTS using jitter+adapt_diag...
 Multiprocess sampling (4 chains in 4 jobs)
 NUTS: [sigma, alpha, beta_time, beta_arm, beta_did]
-Sampling 4 chains for 1_000 tune and 1_000 draw iterations (4_000 + 4_000 draws total) took 27 seconds.
+Sampling 4 chains for 1_000 tune and 1_000 draw iterations (4_000 + 4_000 draws total) took 28 seconds.
+Initializing NUTS using jitter+adapt_diag...
+Multiprocess sampling (4 chains in 4 jobs)
+NUTS: [sigma, alpha, beta_time, beta_arm, beta_did]
+Sampling 4 chains for 1_000 tune and 1_000 draw iterations (4_000 + 4_000 draws total) took 31 seconds.
 Initializing NUTS using jitter+adapt_diag...
 Multiprocess sampling (4 chains in 4 jobs)
 NUTS: [sigma, alpha, beta_time, beta_arm, beta_did]
@@ -3122,15 +3126,11 @@ Sampling 4 chains for 1_000 tune and 1_000 draw iterations (4_000 + 4_000 draws 
 Initializing NUTS using jitter+adapt_diag...
 Multiprocess sampling (4 chains in 4 jobs)
 NUTS: [sigma, alpha, beta_time, beta_arm, beta_did]
-Sampling 4 chains for 1_000 tune and 1_000 draw iterations (4_000 + 4_000 draws total) took 28 seconds.
+Sampling 4 chains for 1_000 tune and 1_000 draw iterations (4_000 + 4_000 draws total) took 27 seconds.
 Initializing NUTS using jitter+adapt_diag...
 Multiprocess sampling (4 chains in 4 jobs)
 NUTS: [sigma, alpha, beta_time, beta_arm, beta_did]
-Sampling 4 chains for 1_000 tune and 1_000 draw iterations (4_000 + 4_000 draws total) took 26 seconds.
-Initializing NUTS using jitter+adapt_diag...
-Multiprocess sampling (4 chains in 4 jobs)
-NUTS: [sigma, alpha, beta_time, beta_arm, beta_did]
-Sampling 4 chains for 1_000 tune and 1_000 draw iterations (4_000 + 4_000 draws total) took 32 seconds.
+Sampling 4 chains for 1_000 tune and 1_000 draw iterations (4_000 + 4_000 draws total) took 33 seconds.
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">

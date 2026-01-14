@@ -168,6 +168,13 @@
 <span class="sd">        - p_DiD: P-value for the treatment effect</span>
 <span class="sd">        - FDR_DiD: Benjamini-Hochberg FDR-corrected p-value</span>
 
+<span class="sd">    Interpretation notes</span>
+<span class="sd">    --------------------</span>
+<span class="sd">    The arcsin-sqrt transform stabilizes variance but is not on the original</span>
+<span class="sd">    proportion scale. A positive beta_DiD indicates an increase in proportion</span>
+<span class="sd">    in the treated arm relative to control; to interpret effect magnitude in</span>
+<span class="sd">    raw proportions, inspect group-level proportions directly.</span>
+
 <span class="sd">    Examples</span>
 <span class="sd">    --------</span>
 <span class="sd">    &gt;&gt;&gt; ab_res = abundance_did(adata, design, visits=(&quot;V1&quot;, &quot;V2&quot;))</span>

@@ -61,6 +61,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#2.-Data-Loading-and-Processing">2. Data Loading and Processing</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#3.-Sample-Size-Assessment">3. Sample Size Assessment</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#4.-Study-Design-Configuration">4. Study Design Configuration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#4.1-Baseline-Covariate-Balance-(Treated-vs-Control)">4.1 Baseline Covariate Balance (Treated vs Control)</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#5.-Cell-Type-Quality-Control">5. Cell Type Quality Control</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#6.-UMAP-Visualization">6. UMAP Visualization</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#7.-COVID-19-Immune-Signatures">7. COVID-19 Immune Signatures</a></li>
@@ -459,11 +460,202 @@ Severe         6397  44275   18594
 </pre></div></div>
 </div>
 </section>
+<section id="4.1-Baseline-Covariate-Balance-(Treated-vs-Control)">
+<h2>4.1 Baseline Covariate Balance (Treated vs Control)<a class="headerlink" href="#4.1-Baseline-Covariate-Balance-(Treated-vs-Control)" title="Link to this heading"></a></h2>
+<p>Here we assess baseline covariate balance between severity groups at the earliest visit. Standardized mean differences (SMD) below 0.1 indicate good balance.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Baseline covariate balance (uses early visit)</span>
+<span class="n">covariates</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;Age_interval&quot;</span><span class="p">,</span> <span class="s2">&quot;Sex&quot;</span><span class="p">,</span> <span class="s2">&quot;Site&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
+<span class="k">if</span> <span class="n">covariates</span><span class="p">:</span>
+    <span class="c1"># Use earliest DFO bin if available</span>
+    <span class="k">if</span> <span class="s2">&quot;dfo_bin&quot;</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">visit0</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;dfo_bin&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">unique</span><span class="p">())[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">design</span> <span class="o">=</span> <span class="n">design</span> <span class="k">if</span> <span class="s1">&#39;design&#39;</span> <span class="ow">in</span> <span class="nb">globals</span><span class="p">()</span> <span class="k">else</span> <span class="n">st</span><span class="o">.</span><span class="n">TrialDesign</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">balance</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">check_covariate_balance</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">covariates</span><span class="p">,</span> <span class="n">visit</span><span class="o">=</span><span class="n">visit0</span><span class="p">)</span>
+            <span class="n">display</span><span class="p">(</span><span class="n">balance</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">balance</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="nb">max</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mf">0.35</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">balance</span><span class="p">))))</span>
+                <span class="n">sns</span><span class="o">.</span><span class="n">barplot</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">balance</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="s2">&quot;covariate&quot;</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="s2">&quot;smd&quot;</span><span class="p">,</span> <span class="n">hue</span><span class="o">=</span><span class="s2">&quot;level&quot;</span><span class="p">,</span> <span class="n">dodge</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;red&quot;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s2">&quot;--&quot;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="o">-</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;red&quot;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s2">&quot;--&quot;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Baseline covariate balance at </span><span class="si">{</span><span class="n">visit0</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Standardized Mean Difference (SMD)&quot;</span><span class="p">)</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Covariate&quot;</span><span class="p">)</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Covariate balance check failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;dfo_bin not found; skipping covariate balance check.&quot;</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No baseline covariates available for balance checking.&quot;</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>covariate</th>
+      <th>level</th>
+      <th>mean_treated</th>
+      <th>mean_control</th>
+      <th>smd</th>
+      <th>n_treated</th>
+      <th>n_control</th>
+      <th>balanced</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>Age_interval</td>
+      <td>(70, 79]</td>
+      <td>0.0</td>
+      <td>0.125</td>
+      <td>-0.516398</td>
+      <td>2</td>
+      <td>8</td>
+      <td>False</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>Age_interval</td>
+      <td>(80, 89]</td>
+      <td>0.5</td>
+      <td>0.375</td>
+      <td>0.251976</td>
+      <td>2</td>
+      <td>8</td>
+      <td>False</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>Age_interval</td>
+      <td>(40, 49]</td>
+      <td>0.5</td>
+      <td>0.125</td>
+      <td>0.809040</td>
+      <td>2</td>
+      <td>8</td>
+      <td>False</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>Age_interval</td>
+      <td>(60, 69]</td>
+      <td>0.0</td>
+      <td>0.250</td>
+      <td>-0.755929</td>
+      <td>2</td>
+      <td>8</td>
+      <td>False</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>Age_interval</td>
+      <td>(30, 39]</td>
+      <td>0.0</td>
+      <td>0.125</td>
+      <td>-0.516398</td>
+      <td>2</td>
+      <td>8</td>
+      <td>False</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>Sex</td>
+      <td>Female</td>
+      <td>0.5</td>
+      <td>0.625</td>
+      <td>-0.251976</td>
+      <td>2</td>
+      <td>8</td>
+      <td>False</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>Sex</td>
+      <td>Male</td>
+      <td>0.5</td>
+      <td>0.375</td>
+      <td>0.251976</td>
+      <td>2</td>
+      <td>8</td>
+      <td>False</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>Site</td>
+      <td>Sanger</td>
+      <td>0.0</td>
+      <td>0.125</td>
+      <td>-0.516398</td>
+      <td>2</td>
+      <td>8</td>
+      <td>False</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>Site</td>
+      <td>Cambridge</td>
+      <td>0.0</td>
+      <td>0.125</td>
+      <td>-0.516398</td>
+      <td>2</td>
+      <td>8</td>
+      <td>False</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>Site</td>
+      <td>Ncl</td>
+      <td>1.0</td>
+      <td>0.750</td>
+      <td>0.755929</td>
+      <td>2</td>
+      <td>8</td>
+      <td>False</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/examples_example_covid19_stephenson_12_1.png" src="../_images/examples_example_covid19_stephenson_12_1.png" />
+</div>
+</div>
+</section>
 <section id="5.-Cell-Type-Quality-Control">
 <h2>5. Cell Type Quality Control<a class="headerlink" href="#5.-Cell-Type-Quality-Control" title="Link to this heading"></a></h2>
 <p>Filter to well-represented cell types for robust analysis.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Cell type counts</span>
@@ -600,14 +792,14 @@ Top 15 cell types:
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_covid19_stephenson_12_2.png" src="../_images/examples_example_covid19_stephenson_12_2.png" />
+<img alt="../_images/examples_example_covid19_stephenson_14_2.png" src="../_images/examples_example_covid19_stephenson_14_2.png" />
 </div>
 </div>
 </section>
 <section id="6.-UMAP-Visualization">
 <h2>6. UMAP Visualization<a class="headerlink" href="#6.-UMAP-Visualization" title="Link to this heading"></a></h2>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Compute UMAP if missing</span>
@@ -651,14 +843,14 @@ Top 15 cell types:
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_covid19_stephenson_14_0.png" src="../_images/examples_example_covid19_stephenson_14_0.png" />
+<img alt="../_images/examples_example_covid19_stephenson_16_0.png" src="../_images/examples_example_covid19_stephenson_16_0.png" />
 </div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_covid19_stephenson_14_1.png" src="../_images/examples_example_covid19_stephenson_14_1.png" />
+<img alt="../_images/examples_example_covid19_stephenson_16_1.png" src="../_images/examples_example_covid19_stephenson_16_1.png" />
 </div>
 </div>
 </section>
@@ -673,7 +865,7 @@ Top 15 cell types:
 <li><p><strong>Myeloid activation</strong>: Monocyte/macrophage markers, drivers of pathology</p></li>
 </ul>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">available_genes</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="p">)</span>
@@ -764,7 +956,7 @@ Signature scores available: [&#39;sig_IFN_Response&#39;, &#39;sig_Inflammation&#
 <li><p>FDR correction for multiple testing</p></li>
 </ul>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Run comparisons at each timepoint using sctrial&#39;s built-in function</span>
@@ -938,7 +1130,7 @@ DFO_8-14:
 <section id="9.-Visualization-of-Severity-Differences">
 <h2>9. Visualization of Severity Differences<a class="headerlink" href="#9.-Visualization-of-Severity-Differences" title="Link to this heading"></a></h2>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Visualize signature distributions by severity and timepoint</span>
@@ -988,14 +1180,14 @@ DFO_8-14:
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_covid19_stephenson_20_0.png" src="../_images/examples_example_covid19_stephenson_20_0.png" />
+<img alt="../_images/examples_example_covid19_stephenson_22_0.png" src="../_images/examples_example_covid19_stephenson_22_0.png" />
 </div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_covid19_stephenson_20_1.png" src="../_images/examples_example_covid19_stephenson_20_1.png" />
+<img alt="../_images/examples_example_covid19_stephenson_22_1.png" src="../_images/examples_example_covid19_stephenson_22_1.png" />
 </div>
 </div>
 </section>
@@ -1003,7 +1195,7 @@ DFO_8-14:
 <h2>10. Cell-Type Specific Analysis<a class="headerlink" href="#10.-Cell-Type-Specific-Analysis" title="Link to this heading"></a></h2>
 <p>Examine severity differences within specific immune cell populations.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Focus on major immune populations</span>
@@ -1111,7 +1303,7 @@ NK: Insufficient participants
 <h2>11. Cell Type Abundance Differences<a class="headerlink" href="#11.-Cell-Type-Abundance-Differences" title="Link to this heading"></a></h2>
 <p>Compare cell type composition between severity groups.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Calculate cell type proportions per participant</span>
@@ -1184,7 +1376,7 @@ NK: Insufficient participants
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_covid19_stephenson_24_0.png" src="../_images/examples_example_covid19_stephenson_24_0.png" />
+<img alt="../_images/examples_example_covid19_stephenson_26_0.png" src="../_images/examples_example_covid19_stephenson_26_0.png" />
 </div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -1203,7 +1395,7 @@ Note: Each data point = one participant&#39;s cell type proportion
 <h2>12. Individual Gene Analysis<a class="headerlink" href="#12.-Individual-Gene-Analysis" title="Link to this heading"></a></h2>
 <p>Examine specific genes of interest for COVID-19.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Key COVID-19 genes</span>
@@ -1268,14 +1460,14 @@ Analyzing 12 COVID-relevant genes
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_covid19_stephenson_26_1.png" src="../_images/examples_example_covid19_stephenson_26_1.png" />
+<img alt="../_images/examples_example_covid19_stephenson_28_1.png" src="../_images/examples_example_covid19_stephenson_28_1.png" />
 </div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_covid19_stephenson_26_2.png" src="../_images/examples_example_covid19_stephenson_26_2.png" />
+<img alt="../_images/examples_example_covid19_stephenson_28_2.png" src="../_images/examples_example_covid19_stephenson_28_2.png" />
 </div>
 </div>
 </section>
@@ -1291,7 +1483,7 @@ Analyzing 12 COVID-relevant genes
 <h3>13.1 Effect Sizes for Cross-Sectional Comparisons<a class="headerlink" href="#13.1-Effect-Sizes-for-Cross-Sectional-Comparisons" title="Link to this heading"></a></h3>
 <p>Effect sizes quantify the magnitude of differences between Mild and Severe cases.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
@@ -1443,9 +1635,9 @@ Effect sizes (Severe vs Mild):
       <td>DFO_15+</td>
       <td>sig_IFN_Response</td>
       <td>0.453</td>
-      <td>0.394</td>
-      <td>-0.731</td>
-      <td>4.216</td>
+      <td>0.393</td>
+      <td>-0.730</td>
+      <td>4.211</td>
       <td>4</td>
       <td>4</td>
     </tr>
@@ -1454,9 +1646,9 @@ Effect sizes (Severe vs Mild):
       <td>DFO_15+</td>
       <td>sig_Inflammation</td>
       <td>1.787</td>
-      <td>1.554</td>
-      <td>0.528</td>
-      <td>5.787</td>
+      <td>1.552</td>
+      <td>0.527</td>
+      <td>5.781</td>
       <td>4</td>
       <td>4</td>
     </tr>
@@ -1465,9 +1657,9 @@ Effect sizes (Severe vs Mild):
       <td>DFO_15+</td>
       <td>sig_Cytotoxicity</td>
       <td>0.649</td>
-      <td>0.565</td>
-      <td>-1.609</td>
-      <td>5.722</td>
+      <td>0.564</td>
+      <td>-1.608</td>
+      <td>5.716</td>
       <td>4</td>
       <td>4</td>
     </tr>
@@ -1477,8 +1669,8 @@ Effect sizes (Severe vs Mild):
       <td>sig_T_Cell_Exhaustion</td>
       <td>0.195</td>
       <td>0.170</td>
-      <td>-1.177</td>
-      <td>2.275</td>
+      <td>-1.176</td>
+      <td>2.273</td>
       <td>4</td>
       <td>4</td>
     </tr>
@@ -1487,9 +1679,9 @@ Effect sizes (Severe vs Mild):
       <td>DFO_15+</td>
       <td>sig_Myeloid_Activation</td>
       <td>0.627</td>
-      <td>0.546</td>
-      <td>-0.631</td>
-      <td>12.724</td>
+      <td>0.545</td>
+      <td>-0.630</td>
+      <td>12.711</td>
       <td>4</td>
       <td>4</td>
     </tr>
@@ -1498,8 +1690,8 @@ Effect sizes (Severe vs Mild):
       <td>DFO_15+</td>
       <td>sig_B_Cell_Activation</td>
       <td>-1.185</td>
-      <td>-1.030</td>
-      <td>-5.001</td>
+      <td>-1.029</td>
+      <td>-4.995</td>
       <td>0.038</td>
       <td>4</td>
       <td>4</td>
@@ -1522,7 +1714,7 @@ Effect sizes (Severe vs Mild):
       <td>-0.056</td>
       <td>-0.053</td>
       <td>-0.884</td>
-      <td>1.051</td>
+      <td>1.050</td>
       <td>11</td>
       <td>5</td>
     </tr>
@@ -1533,7 +1725,7 @@ Effect sizes (Severe vs Mild):
       <td>0.138</td>
       <td>0.131</td>
       <td>-0.791</td>
-      <td>1.334</td>
+      <td>1.333</td>
       <td>11</td>
       <td>5</td>
     </tr>
@@ -1542,9 +1734,9 @@ Effect sizes (Severe vs Mild):
       <td>DFO_8-14</td>
       <td>sig_T_Cell_Exhaustion</td>
       <td>0.734</td>
-      <td>0.694</td>
+      <td>0.693</td>
       <td>-0.150</td>
-      <td>1.942</td>
+      <td>1.941</td>
       <td>11</td>
       <td>5</td>
     </tr>
@@ -1555,7 +1747,7 @@ Effect sizes (Severe vs Mild):
       <td>0.020</td>
       <td>0.019</td>
       <td>-0.785</td>
-      <td>1.063</td>
+      <td>1.062</td>
       <td>11</td>
       <td>5</td>
     </tr>
@@ -1566,7 +1758,7 @@ Effect sizes (Severe vs Mild):
       <td>1.211</td>
       <td>1.145</td>
       <td>0.164</td>
-      <td>3.559</td>
+      <td>3.558</td>
       <td>11</td>
       <td>5</td>
     </tr>
@@ -1578,14 +1770,14 @@ Effect sizes (Severe vs Mild):
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_covid19_stephenson_29_2.png" src="../_images/examples_example_covid19_stephenson_29_2.png" />
+<img alt="../_images/examples_example_covid19_stephenson_31_2.png" src="../_images/examples_example_covid19_stephenson_31_2.png" />
 </div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_covid19_stephenson_29_3.png" src="../_images/examples_example_covid19_stephenson_29_3.png" />
+<img alt="../_images/examples_example_covid19_stephenson_31_3.png" src="../_images/examples_example_covid19_stephenson_31_3.png" />
 </div>
 </div>
 </section>
@@ -1593,7 +1785,7 @@ Effect sizes (Severe vs Mild):
 <h3>13.2 Power Analysis<a class="headerlink" href="#13.2-Power-Analysis" title="Link to this heading"></a></h3>
 <p>Power analysis helps understand what effect sizes this study could detect and plan future longitudinal studies.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
@@ -1782,7 +1974,7 @@ Average cells per participant: 6035
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_covid19_stephenson_31_3.png" src="../_images/examples_example_covid19_stephenson_31_3.png" />
+<img alt="../_images/examples_example_covid19_stephenson_33_3.png" src="../_images/examples_example_covid19_stephenson_33_3.png" />
 </div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -1815,7 +2007,7 @@ KEY INSIGHTS
 <h3>Single-Gene Cross-Sectional Check (Participant-Level)<a class="headerlink" href="#Single-Gene-Cross-Sectional-Check-(Participant-Level)" title="Link to this heading"></a></h3>
 <p>Here, we use a focused single-gene comparison to validate cross-sectional differences at the participant level. This avoids pseudoreplication and provides an interpretable effect for one gene in a specific lineage.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">=== Single-Gene Cross-Sectional Check (Participant-Level) ===&quot;</span><span class="p">)</span>
@@ -2048,14 +2240,14 @@ KEY INSIGHTS
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_covid19_stephenson_33_2.png" src="../_images/examples_example_covid19_stephenson_33_2.png" />
+<img alt="../_images/examples_example_covid19_stephenson_35_2.png" src="../_images/examples_example_covid19_stephenson_35_2.png" />
 </div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_covid19_stephenson_33_3.png" src="../_images/examples_example_covid19_stephenson_33_3.png" />
+<img alt="../_images/examples_example_covid19_stephenson_35_3.png" src="../_images/examples_example_covid19_stephenson_35_3.png" />
 </div>
 </div>
 </section>
@@ -2063,7 +2255,7 @@ KEY INSIGHTS
 <h3>Module-Score Pseudobulk DiD by Lineage<a class="headerlink" href="#Module-Score-Pseudobulk-DiD-by-Lineage" title="Link to this heading"></a></h3>
 <p>Here, we collapse each participant×visit×lineage into a pseudobulk mean of module scores, then compute DiD per lineage. This highlights which lineages drive the severity-associated changes.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">signature_cols</span><span class="p">:</span>
@@ -2583,7 +2775,7 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_covid19_stephenson_35_3.png" src="../_images/examples_example_covid19_stephenson_35_3.png" />
+<img alt="../_images/examples_example_covid19_stephenson_37_3.png" src="../_images/examples_example_covid19_stephenson_37_3.png" />
 </div>
 </div>
 </section>
@@ -2591,7 +2783,7 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
 <h3>Parallel Trends Visualization (Early Visits)<a class="headerlink" href="#Parallel-Trends-Visualization-(Early-Visits)" title="Link to this heading"></a></h3>
 <p>Here we visualize pre-treatment trends across early visits to assess whether arms move in parallel before divergence. This is a diagnostic, not a formal test.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">signature_cols</span><span class="p">:</span>
@@ -2613,7 +2805,7 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_covid19_stephenson_37_0.png" src="../_images/examples_example_covid19_stephenson_37_0.png" />
+<img alt="../_images/examples_example_covid19_stephenson_39_0.png" src="../_images/examples_example_covid19_stephenson_39_0.png" />
 </div>
 </div>
 </section>

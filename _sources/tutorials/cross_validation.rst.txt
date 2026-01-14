@@ -22,7 +22,7 @@ These diagnostics help identify influential participants and quantify estimate r
    )
 
 2. Leave-one-out cross-validation (LOO)
---------------------------------------
+-----------------------------------------------
 
 .. code-block:: python
 

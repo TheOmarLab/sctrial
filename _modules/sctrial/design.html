@@ -137,6 +137,17 @@
             <span class="n">baseline</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
             <span class="n">followup</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return (baseline, followup) visit labels.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        baseline</span>
+<span class="sd">            Optional explicit baseline visit label. If None, uses</span>
+<span class="sd">            ``self.baseline_visit``.</span>
+<span class="sd">        followup</span>
+<span class="sd">            Optional explicit follow-up visit label. If None, uses</span>
+<span class="sd">            ``self.followup_visit``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">b</span> <span class="o">=</span> <span class="n">baseline</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">baseline_visit</span>
         <span class="n">f</span> <span class="o">=</span> <span class="n">followup</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">followup_visit</span>
         <span class="k">if</span> <span class="n">b</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">f</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -155,6 +166,15 @@
             <span class="n">include_celltype</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
             <span class="n">include_crossover</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return required obs columns for this design.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        include_celltype</span>
+<span class="sd">            If True, include ``celltype_col`` when it is defined.</span>
+<span class="sd">        include_crossover</span>
+<span class="sd">            If True, include ``crossover_col`` when it is defined.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">include_celltype</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">:</span>
             <span class="n">cols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">)</span>
@@ -173,6 +193,19 @@
             <span class="n">include_crossover</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
             <span class="n">check_arm_labels</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Validate that `adata.obs` contains required columns and labels.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        adata</span>
+<span class="sd">            AnnData object to validate.</span>
+<span class="sd">        include_celltype</span>
+<span class="sd">            If True, require ``celltype_col`` in ``adata.obs``.</span>
+<span class="sd">        include_crossover</span>
+<span class="sd">            If True, require ``crossover_col`` in ``adata.obs``.</span>
+<span class="sd">        check_arm_labels</span>
+<span class="sd">            If True, verify that treated/control labels are present in ``arm_col``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">obs</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span>
         <span class="n">missing</span> <span class="o">=</span> <span class="p">[</span>
             <span class="n">c</span>

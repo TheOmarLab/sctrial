@@ -153,7 +153,26 @@
         <span class="n">out_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;neglog10p&quot;</span><span class="p">,</span>
         <span class="n">p_floor</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-300</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a copy with an added -log10(p) column for volcano plots.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a copy with an added -log10(p) column for volcano plots.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    df</span>
+<span class="sd">        Input results DataFrame.</span>
+<span class="sd">    effect_col</span>
+<span class="sd">        Column name for effect sizes.</span>
+<span class="sd">    p_col</span>
+<span class="sd">        Column name for p-values.</span>
+<span class="sd">    out_col</span>
+<span class="sd">        Name of the output column to add.</span>
+<span class="sd">    p_floor</span>
+<span class="sd">        Minimum p-value used for log transform.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.DataFrame</span>
+<span class="sd">        Copy of ``df`` with an added ``out_col`` column.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">effect_col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing effect_col=&#39;</span><span class="si">{</span><span class="n">effect_col</span><span class="si">}</span><span class="s2">&#39; in df.columns.&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">p_col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
@@ -169,13 +188,30 @@
 <div class="viewcode-block" id="signed_logp">
 <a class="viewcode-back" href="../../api.html#sctrial.plotting.signed_logp">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">signed_logp</span><span class="p">(</span>
-        <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
-        <span class="o">*</span><span class="p">,</span>
-        <span class="n">effect_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;beta_DiD&quot;</span><span class="p">,</span>
-        <span class="n">p_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;p_DiD&quot;</span><span class="p">,</span>
-        <span class="n">p_floor</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-300</span><span class="p">,</span>
+    <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">effect_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;beta_DiD&quot;</span><span class="p">,</span>
+    <span class="n">p_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;p_DiD&quot;</span><span class="p">,</span>
+    <span class="n">p_floor</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-300</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return sign(effect) * -log10(p) as a Series aligned to df.index.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return sign(effect) * -log10(p) as a Series aligned to df.index.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    df</span>
+<span class="sd">        Input results DataFrame.</span>
+<span class="sd">    effect_col</span>
+<span class="sd">        Column name for effect sizes.</span>
+<span class="sd">    p_col</span>
+<span class="sd">        Column name for p-values.</span>
+<span class="sd">    p_floor</span>
+<span class="sd">        Minimum p-value used for log transform.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.Series</span>
+<span class="sd">        Signed -log10(p) values aligned to ``df.index``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">effect_col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing effect_col=&#39;</span><span class="si">{</span><span class="n">effect_col</span><span class="si">}</span><span class="s2">&#39; in df.columns.&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">p_col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
@@ -555,11 +591,10 @@
 <span class="sd">    -------</span>
 <span class="sd">    fig : matplotlib.figure.Figure</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="n">plt</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">sc</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">plt</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
-            <span class="s2">&quot;matplotlib and scanpy are required for plotting. &quot;</span>
+            <span class="s2">&quot;matplotlib is required for plotting. &quot;</span>
             <span class="s2">&quot;Install with: pip install sctrial[plots]&quot;</span>
-            <span class="o">+</span> <span class="p">(</span><span class="sa">f</span><span class="s2">&quot; (scanpy import failed: </span><span class="si">{</span><span class="n">_scanpy_import_error</span><span class="si">}</span><span class="s2">)&quot;</span> <span class="k">if</span> <span class="n">_scanpy_import_error</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
         <span class="p">)</span>
     <span class="k">if</span> <span class="n">visits</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">visits</span> <span class="o">=</span> <span class="n">design</span><span class="o">.</span><span class="n">primary_visits</span><span class="p">()</span>
@@ -584,17 +619,33 @@
             <span class="n">sub</span> <span class="o">=</span> <span class="n">adata</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
             <span class="k">if</span> <span class="n">sub</span><span class="o">.</span><span class="n">n_obs</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="n">sc</span><span class="o">.</span><span class="n">pl</span><span class="o">.</span><span class="n">umap</span><span class="p">(</span>
-                    <span class="n">sub</span><span class="p">,</span>
-                    <span class="n">color</span><span class="o">=</span><span class="n">feature</span><span class="p">,</span>
-                    <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
-                    <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                    <span class="n">vmin</span><span class="o">=</span><span class="n">vmin</span><span class="p">,</span>
-                    <span class="n">vmax</span><span class="o">=</span><span class="n">vmax</span><span class="p">,</span>
-                    <span class="n">cmap</span><span class="o">=</span><span class="n">cmap</span><span class="p">,</span>
-                    <span class="n">title</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">arm</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">visit</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-                    <span class="n">frameon</span><span class="o">=</span><span class="kc">False</span>
-                <span class="p">)</span>
+                <span class="k">if</span> <span class="n">sc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">sc</span><span class="o">.</span><span class="n">pl</span><span class="o">.</span><span class="n">umap</span><span class="p">(</span>
+                        <span class="n">sub</span><span class="p">,</span>
+                        <span class="n">color</span><span class="o">=</span><span class="n">feature</span><span class="p">,</span>
+                        <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
+                        <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                        <span class="n">vmin</span><span class="o">=</span><span class="n">vmin</span><span class="p">,</span>
+                        <span class="n">vmax</span><span class="o">=</span><span class="n">vmax</span><span class="p">,</span>
+                        <span class="n">cmap</span><span class="o">=</span><span class="n">cmap</span><span class="p">,</span>
+                        <span class="n">title</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">arm</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">visit</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                        <span class="n">frameon</span><span class="o">=</span><span class="kc">False</span>
+                    <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="s2">&quot;X_umap&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">sub</span><span class="o">.</span><span class="n">obsm</span><span class="p">:</span>
+                        <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="s2">&quot;UMAP coordinates not found in adata.obsm[&#39;X_umap&#39;].&quot;</span><span class="p">)</span>
+                    <span class="n">vals_sub</span> <span class="o">=</span> <span class="n">sub</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">feature</span><span class="p">]</span><span class="o">.</span><span class="n">values</span> <span class="k">if</span> <span class="n">feature</span> <span class="ow">in</span> <span class="n">sub</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span> <span class="k">else</span> <span class="n">extract_gene_vector</span><span class="p">(</span><span class="n">sub</span><span class="p">,</span> <span class="n">feature</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="n">layer</span><span class="p">)</span>
+                    <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span>
+                        <span class="n">sub</span><span class="o">.</span><span class="n">obsm</span><span class="p">[</span><span class="s2">&quot;X_umap&quot;</span><span class="p">][:,</span> <span class="mi">0</span><span class="p">],</span>
+                        <span class="n">sub</span><span class="o">.</span><span class="n">obsm</span><span class="p">[</span><span class="s2">&quot;X_umap&quot;</span><span class="p">][:,</span> <span class="mi">1</span><span class="p">],</span>
+                        <span class="n">c</span><span class="o">=</span><span class="n">vals_sub</span><span class="p">,</span>
+                        <span class="n">s</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>
+                        <span class="n">cmap</span><span class="o">=</span><span class="n">cmap</span><span class="p">,</span>
+                        <span class="n">vmin</span><span class="o">=</span><span class="n">vmin</span><span class="p">,</span>
+                        <span class="n">vmax</span><span class="o">=</span><span class="n">vmax</span><span class="p">,</span>
+                    <span class="p">)</span>
+                    <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">arm</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">visit</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="n">ax</span><span class="o">.</span><span class="n">set_axis_off</span><span class="p">()</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">arm</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">visit</span><span class="si">}</span><span class="s2"> (no cells)&quot;</span><span class="p">)</span>
                 <span class="n">ax</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s2">&quot;off&quot;</span><span class="p">)</span>
@@ -821,17 +872,14 @@
 <span class="sd">    matplotlib.figure.Figure</span>
 <span class="sd">        The figure containing the UMAP panel.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="n">plt</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">sc</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">GridSpec</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">plt</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">GridSpec</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
-            <span class="s2">&quot;matplotlib and scanpy are required for plotting. &quot;</span>
+            <span class="s2">&quot;matplotlib is required for plotting. &quot;</span>
             <span class="s2">&quot;Install with: pip install sctrial[plots]&quot;</span>
-            <span class="o">+</span> <span class="p">(</span><span class="sa">f</span><span class="s2">&quot; (scanpy import failed: </span><span class="si">{</span><span class="n">_scanpy_import_error</span><span class="si">}</span><span class="s2">)&quot;</span> <span class="k">if</span> <span class="n">_scanpy_import_error</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
         <span class="p">)</span>
     <span class="k">if</span> <span class="n">visits</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">visits</span> <span class="o">=</span> <span class="n">design</span><span class="o">.</span><span class="n">primary_visits</span><span class="p">()</span>
 
-    <span class="c1"># Pre-extract feature</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">.stats._extract</span><span class="w"> </span><span class="kn">import</span> <span class="n">extract_gene_vector</span>
     <span class="n">ad</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
     <span class="k">if</span> <span class="n">feature</span> <span class="ow">in</span> <span class="n">ad</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
         <span class="k">pass</span>
@@ -847,7 +895,22 @@
 
     <span class="c1"># 1. Big Cell Type UMAP on the left</span>
     <span class="n">ax_big</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="n">gs</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">])</span>
-    <span class="n">sc</span><span class="o">.</span><span class="n">pl</span><span class="o">.</span><span class="n">umap</span><span class="p">(</span><span class="n">ad</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax_big</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">frameon</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Cell Types&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">sc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">sc</span><span class="o">.</span><span class="n">pl</span><span class="o">.</span><span class="n">umap</span><span class="p">(</span><span class="n">ad</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax_big</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">frameon</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Cell Types&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s2">&quot;X_umap&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ad</span><span class="o">.</span><span class="n">obsm</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="s2">&quot;UMAP coordinates not found in adata.obsm[&#39;X_umap&#39;].&quot;</span><span class="p">)</span>
+        <span class="n">ct</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;category&quot;</span><span class="p">)</span>
+        <span class="n">codes</span> <span class="o">=</span> <span class="n">ct</span><span class="o">.</span><span class="n">cat</span><span class="o">.</span><span class="n">codes</span>
+        <span class="n">ax_big</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span>
+            <span class="n">ad</span><span class="o">.</span><span class="n">obsm</span><span class="p">[</span><span class="s2">&quot;X_umap&quot;</span><span class="p">][:,</span> <span class="mi">0</span><span class="p">],</span>
+            <span class="n">ad</span><span class="o">.</span><span class="n">obsm</span><span class="p">[</span><span class="s2">&quot;X_umap&quot;</span><span class="p">][:,</span> <span class="mi">1</span><span class="p">],</span>
+            <span class="n">c</span><span class="o">=</span><span class="n">codes</span><span class="p">,</span>
+            <span class="n">s</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>
+            <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;tab20&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">ax_big</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Cell Types&quot;</span><span class="p">)</span>
+        <span class="n">ax_big</span><span class="o">.</span><span class="n">set_axis_off</span><span class="p">()</span>
 
     <span class="c1"># 2. 2x2 Grid on the right</span>
     <span class="c1"># Calculate global vmin/vmax for consistent color scale</span>
@@ -867,10 +930,26 @@
         <span class="n">sub</span> <span class="o">=</span> <span class="n">ad</span><span class="p">[(</span><span class="n">ad</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span> <span class="o">==</span> <span class="n">arm</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ad</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span> <span class="o">==</span> <span class="n">visit</span><span class="p">)]</span>
 
         <span class="k">if</span> <span class="n">sub</span><span class="o">.</span><span class="n">n_obs</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="n">sc</span><span class="o">.</span><span class="n">pl</span><span class="o">.</span><span class="n">umap</span><span class="p">(</span>
-                <span class="n">sub</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">feature</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">frameon</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                <span class="n">vmin</span><span class="o">=</span><span class="n">vmin</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="n">vmax</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="n">cmap</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">arm</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">visit</span><span class="si">}</span><span class="s2">&quot;</span>
-            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">sc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">sc</span><span class="o">.</span><span class="n">pl</span><span class="o">.</span><span class="n">umap</span><span class="p">(</span>
+                    <span class="n">sub</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">feature</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">frameon</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                    <span class="n">vmin</span><span class="o">=</span><span class="n">vmin</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="n">vmax</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="n">cmap</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">arm</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">visit</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="s2">&quot;X_umap&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">sub</span><span class="o">.</span><span class="n">obsm</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="s2">&quot;UMAP coordinates not found in adata.obsm[&#39;X_umap&#39;].&quot;</span><span class="p">)</span>
+                <span class="n">vals_sub</span> <span class="o">=</span> <span class="n">sub</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">feature</span><span class="p">]</span><span class="o">.</span><span class="n">values</span> <span class="k">if</span> <span class="n">feature</span> <span class="ow">in</span> <span class="n">sub</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span> <span class="k">else</span> <span class="n">extract_gene_vector</span><span class="p">(</span><span class="n">sub</span><span class="p">,</span> <span class="n">feature</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="n">layer</span><span class="p">)</span>
+                <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span>
+                    <span class="n">sub</span><span class="o">.</span><span class="n">obsm</span><span class="p">[</span><span class="s2">&quot;X_umap&quot;</span><span class="p">][:,</span> <span class="mi">0</span><span class="p">],</span>
+                    <span class="n">sub</span><span class="o">.</span><span class="n">obsm</span><span class="p">[</span><span class="s2">&quot;X_umap&quot;</span><span class="p">][:,</span> <span class="mi">1</span><span class="p">],</span>
+                    <span class="n">c</span><span class="o">=</span><span class="n">vals_sub</span><span class="p">,</span>
+                    <span class="n">s</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>
+                    <span class="n">cmap</span><span class="o">=</span><span class="n">cmap</span><span class="p">,</span>
+                    <span class="n">vmin</span><span class="o">=</span><span class="n">vmin</span><span class="p">,</span>
+                    <span class="n">vmax</span><span class="o">=</span><span class="n">vmax</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">arm</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">visit</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">ax</span><span class="o">.</span><span class="n">set_axis_off</span><span class="p">()</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">arm</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">visit</span><span class="si">}</span><span class="s2"> (no cells)&quot;</span><span class="p">)</span>
             <span class="n">ax</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s2">&quot;off&quot;</span><span class="p">)</span>

@@ -83,6 +83,7 @@
   <h1>Source code for sctrial.stats.heterogeneity</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sequence</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Literal</span>
 
@@ -160,6 +161,18 @@
 <span class="sd">    -------</span>
 <span class="sd">    pd.DataFrame</span>
 <span class="sd">        Table with heterogeneity effects for each feature.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; res = test_treatment_heterogeneity(</span>
+<span class="sd">    ...     adata,</span>
+<span class="sd">    ...     features=[&quot;sig_IFN_Response&quot;, &quot;sig_Cytotoxicity&quot;],</span>
+<span class="sd">    ...     design=design,</span>
+<span class="sd">    ...     visits=(&quot;Pre&quot;, &quot;Post&quot;),</span>
+<span class="sd">    ...     biomarker_col=&quot;baseline_crp&quot;,</span>
+<span class="sd">    ...     threshold=5.0,</span>
+<span class="sd">    ... )</span>
+<span class="sd">    &gt;&gt;&gt; res[[&quot;feature&quot;, &quot;beta_heterogeneity&quot;, &quot;p_heterogeneity&quot;]].head()</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">biomarker_col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;biomarker_col &#39;</span><span class="si">{</span><span class="n">biomarker_col</span><span class="si">}</span><span class="s2">&#39; not found in adata.obs&quot;</span><span class="p">)</span>
@@ -172,6 +185,12 @@
         <span class="n">biomarker_high</span> <span class="o">=</span> <span class="n">biomarker</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">biomarker</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_numeric</span><span class="p">(</span><span class="n">biomarker</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s2">&quot;coerce&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">biomarker</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;biomarker_col &#39;</span><span class="si">{</span><span class="n">biomarker_col</span><span class="si">}</span><span class="s2">&#39; contained non-numeric values that were coerced to NaN.&quot;</span><span class="p">,</span>
+                <span class="ne">UserWarning</span><span class="p">,</span>
+                <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="p">)</span>
         <span class="k">if</span> <span class="n">threshold</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">threshold</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">biomarker</span><span class="p">))</span>
         <span class="n">biomarker_high</span> <span class="o">=</span> <span class="p">(</span><span class="n">biomarker</span> <span class="o">&gt;</span> <span class="n">threshold</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>

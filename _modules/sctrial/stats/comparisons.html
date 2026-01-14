@@ -392,6 +392,12 @@
                     <span class="s2">&quot;n_units&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">df_use</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()),</span>
                 <span class="p">})</span>
             <span class="k">else</span><span class="p">:</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Between-arm comparison skipped for feature &#39;</span><span class="si">{</span><span class="n">feat</span><span class="si">}</span><span class="s2">&#39;: &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;empty group detected (n_treated=</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">g1</span><span class="p">)</span><span class="si">}</span><span class="s2">, n_control=</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">g2</span><span class="p">)</span><span class="si">}</span><span class="s2">).&quot;</span><span class="p">,</span>
+                    <span class="ne">UserWarning</span><span class="p">,</span>
+                    <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+                <span class="p">)</span>
                 <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
                     <span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
                     <span class="s2">&quot;beta_arm&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
