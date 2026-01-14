@@ -154,12 +154,57 @@ def abundance_did(
         if tmp["y"].nunique() < 2:
             continue
 
-        formula = f"y ~ visit_num + visit_num:arm_bin + C({design.participant_col})"
+        # If covariates are constant within participant, use differenced model
+        # to avoid collinearity with participant fixed effects.
+        use_diff = False
         if covariates:
-            formula += " + " + " + ".join(covariates)
+            per_unit = (
+                tmp
+                .groupby(design.participant_col, observed=True)[covariates]
+                .nunique(dropna=False)
+            )
+            use_diff = bool((per_unit.max(axis=0) <= 1).all())
 
-        # residual df guard for FE
-        model = smf.ols(formula, data=tmp)
+        if use_diff:
+            wide = tmp.pivot_table(
+                index=design.participant_col,
+                columns=design.visit_col,
+                values="y",
+                aggfunc="mean",
+                observed=True,
+            )
+            if visits[0] not in wide.columns or visits[1] not in wide.columns:
+                continue
+            delta = (wide[visits[1]] - wide[visits[0]]).dropna()
+            if delta.empty:
+                continue
+            df_delta = delta.rename("delta").to_frame()
+            df_delta["arm_bin"] = (
+                tmp.groupby(design.participant_col, observed=True)["arm_bin"]
+                .first()
+                .reindex(df_delta.index)
+            )
+            if covariates:
+                cov_df = (
+                    tmp.groupby(design.participant_col, observed=True)[covariates]
+                    .first()
+                    .reindex(df_delta.index)
+                )
+                df_delta = pd.concat([df_delta, cov_df], axis=1)
+            df_delta = df_delta.dropna()
+            if df_delta.shape[0] < min_units:
+                continue
+            formula = "delta ~ arm_bin"
+            if covariates:
+                formula += " + " + " + ".join(covariates)
+            model = smf.ols(formula, data=df_delta)
+            clusters_use = df_delta.index.to_numpy()
+        else:
+            formula = f"y ~ visit_num + visit_num:arm_bin + C({design.participant_col})"
+            if covariates:
+                formula += " + " + " + ".join(covariates)
+            model = smf.ols(formula, data=tmp)
+            clusters_use = tmp[design.participant_col].values
 
         try:
             # Warn if using cluster-robust SE with few clusters
@@ -173,11 +218,15 @@ def abundance_did(
                     stacklevel=2,
                 )
             # Use cluster-robust standard errors for consistency with did_fit
-            fit = model.fit(
-                cov_type="cluster",
-                cov_kwds={"groups": tmp[design.participant_col]}
-            )
-            term = "visit_num:arm_bin"
+            if use_diff:
+                fit = model.fit()
+                term = "arm_bin"
+            else:
+                fit = model.fit(
+                    cov_type="cluster",
+                    cov_kwds={"groups": tmp[design.participant_col]}
+                )
+                term = "visit_num:arm_bin"
 
             # Check if interaction term was estimable
             if term not in fit.params or np.isnan(fit.params[term]):
@@ -188,7 +237,7 @@ def abundance_did(
                 p_val = wild_cluster_bootstrap_t(
                     fit,
                     X=fit.model.exog,
-                    clusters=tmp[design.participant_col].values,
+                    clusters=clusters_use,
                     term_name=term,
                     B=n_boot,
                     seed=seed
