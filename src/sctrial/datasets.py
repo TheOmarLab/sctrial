@@ -98,6 +98,7 @@ def load_sade_feldman(
     processed_name: str = "sade_feldman_processed_v5.h5ad",
     max_cells_per_participant_visit: int | None = None,
     seed: int = 42,
+    allow_download: bool = False,
     force_reprocess: bool = False,
 ) -> ad.AnnData:
     """Load and preprocess Sade-Feldman melanoma immunotherapy dataset (GSE120575)."""
@@ -130,9 +131,17 @@ def load_sade_feldman(
 
     for p in [tpm_path, meta_path]:
         if not p.exists():
-            raise FileNotFoundError(
-                f"Missing file: {p}. Download from GEO: https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE120575"
-            )
+            if not allow_download:
+                raise FileNotFoundError(
+                    f"Missing file: {p}. Download from GEO: https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE120575"
+                )
+            data_dir_path.mkdir(parents=True, exist_ok=True)
+            print(f"Downloading from {url1}...")
+            url1 = 'https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE120575&format=file&file=GSE120575%5FSade%5FFeldman%5Fmelanoma%5Fsingle%5Fcells%5FTPM%5FGEO%2Etxt%2Egz'
+            urllib.request.urlretrieve(url1, str(tpm_path))
+            print(f"Downloading from {url2}...")
+            url2 = 'https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE120575&format=file&file=GSE120575%5Fpatient%5FID%5Fsingle%5Fcells%2Etxt%2Egz'
+            urllib.request.urlretrieve(url2, str(meta_path))
 
     print("Processing raw data (this may take a minute)...")
     with gzip.open(tpm_path, "rt") as f:
