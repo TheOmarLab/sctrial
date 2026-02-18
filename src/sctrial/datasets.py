@@ -291,6 +291,7 @@ def load_stephenson_data(
 def load_vaccine_gse171964(
     data_dir: str = "data/vaccine_gse171964",
     processed_name: str = "vaccine_gse171964_day0_day7.h5ad",
+    allow_download: bool = False,
     max_participants: int = 30,
     max_cells_per_group: int | None = 200,
     seed: int = 42,
@@ -335,7 +336,21 @@ def load_vaccine_gse171964(
 
     for p in [barcodes_path, feats_path, pheno_path, mtx_path]:
         if not p.exists():
-            raise FileNotFoundError(f"Missing file: {p}")
+            if not allow_download:
+                raise FileNotFoundError(f"Missing file: {p}")
+            data_dir_path.mkdir(parents=True, exist_ok=True)
+            url1 = 'https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE171964&format=file&file=GSE171964%5Fbarcodes%5Fv2%2Etsv%2Egz'
+            print(f"Downloading from {url1}...")
+            urllib.request.urlretrieve(url1, str(barcodes_path))
+            url2 = 'https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE171964&format=file&file=GSE171964%5Ffeats%5Fv2%2Etsv%2Egz'
+            print(f"Downloading from {url2}...")
+            urllib.request.urlretrieve(url2, str(feats_path))
+            url3 = 'https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE171964&format=file&file=GSE171964%5Fgeo%5Fpheno%5Fv2%2Ecsv%2Egz'
+            print(f"Downloading from {url3}...")
+            urllib.request.urlretrieve(url3, str(pheno_path))
+            url4 = 'https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE171964&format=file&file=GSE171964%5Fcountsmatrix%5Fv2%2Emtx%2Egz'
+            print(f"Downloading from {url4}...")
+            urllib.request.urlretrieve(url4, str(mtx_path))
 
     barcodes = (
         pd.read_csv(barcodes_path, sep="\\s+", header=None, engine="python", skiprows=1)[1]
