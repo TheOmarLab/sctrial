@@ -136,11 +136,11 @@ def load_sade_feldman(
                     f"Missing file: {p}. Download from GEO: https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE120575"
                 )
             data_dir_path.mkdir(parents=True, exist_ok=True)
-            print(f"Downloading from {url1}...")
             url1 = 'https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE120575&format=file&file=GSE120575%5FSade%5FFeldman%5Fmelanoma%5Fsingle%5Fcells%5FTPM%5FGEO%2Etxt%2Egz'
+            print(f"Downloading from {url1}...")
             urllib.request.urlretrieve(url1, str(tpm_path))
-            print(f"Downloading from {url2}...")
             url2 = 'https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE120575&format=file&file=GSE120575%5Fpatient%5FID%5Fsingle%5Fcells%2Etxt%2Egz'
+            print(f"Downloading from {url2}...")
             urllib.request.urlretrieve(url2, str(meta_path))
 
     print("Processing raw data (this may take a minute)...")
