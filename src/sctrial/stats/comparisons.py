@@ -12,7 +12,7 @@ from scipy.stats import mannwhitneyu
 
 from ..adata_tools import subset_cells
 from ..design import TrialDesign
-from ._utils import aggregate_features, apply_fdr, encode_visit, standardize_series
+from ._utils import apply_fdr, encode_visit, standardize_series
 from .did import MIN_CLUSTERS_FOR_ROBUST_SE, AggregateFunc, AggregateMode, _ensure_paired
 
 
