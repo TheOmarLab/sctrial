@@ -6,7 +6,6 @@ import urllib.request
 from collections.abc import Sequence
 from io import StringIO
 from pathlib import Path
-from typing import Any
 
 import anndata as ad
 import numpy as np
@@ -15,9 +14,9 @@ import scipy.sparse as sp
 from scipy.io import mmread
 from statsmodels.stats.multitest import multipletests
 
-logger = logging.getLogger(__name__)
-
 from .utils import get_counts_matrix
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "load_sade_feldman",

@@ -9,11 +9,11 @@ import numpy as np
 import pandas as pd
 from anndata import AnnData
 
-logger = logging.getLogger(__name__)
-
 from .datasets import count_paired
 from .design import TrialDesign
 from .utils import get_counts_matrix
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "TrialDataValidator",
