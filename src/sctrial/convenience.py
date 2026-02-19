@@ -7,12 +7,12 @@ from typing import Literal
 import pandas as pd
 from anndata import AnnData
 
-logger = logging.getLogger(__name__)
-
 from .design import TrialDesign
 from .preprocessing import add_log1p_cpm_layer
 from .scoring import score_gene_sets
 from .stats.did import did_table
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "quick_did",

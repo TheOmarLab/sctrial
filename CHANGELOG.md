@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### Bayesian DiD (`sctrial.stats.bayes`)
+- `prior_predictive_check()`: Run prior predictive checks to calibrate Bayesian priors before fitting.
+- `did_table_bayes()` now accepts `prior_scale` and `sigma_scale` parameters for prior sensitivity analysis.
+
 #### Effect Size Module (`sctrial.stats.effect_size`)
 - `cohens_d()`: Calculate Cohen's d effect size between two groups
 - `hedges_g()`: Bias-corrected effect size (recommended for n < 20)
@@ -41,6 +45,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `cv_summary()`: Summary statistics from CV results
 
 ### Improved
+- `add_effect_sizes_to_did()` now uses residual SD directly from the OLS/WLS fit when available, instead of back-calculating from standard errors with a balanced-design assumption.
+- `module_score_did_by_pool()` now accepts `fdr_global` parameter; emits a global FDR column (`FDR_DiD_global`) and a warning when per-group FDR is used.
+- `kfold_cv_did()` now stratifies fold assignment by treatment arm for balanced folds.
+- `did_table_mixed()` convergence handling improved: trusts `fit.converged` as primary indicator with `lbfgs` fallback optimizer.
+- `design_effect()` and `effective_sample_size()` now validate inputs (ICC, cluster_size).
+- Missing feature error messages in `did_fit()` now show total count when more than 5 are missing.
+- Replaced `print()` with `logging` throughout `convenience`, `datasets`, and `validation` modules.
 - Enhanced `did_fit()` docstring with full mathematical model specification
 - Added explicit null hypothesis statements to all statistical functions
 - Expanded FAQ with bootstrap vs standard errors guidance
@@ -49,6 +60,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reorganized API documentation by statistical method category
 
 ### Fixed
+- **Statistical**: Fixed WLS weighting in `did_fit()` — now uses `n_cells` (correct inverse-variance weights) instead of `sqrt(n_cells)` for pre-aggregated participant-level means.
+- **Statistical**: Fixed `pseudobulk_expression()` to drop groups with zero total counts before CPM normalization instead of adding a `1e-12` epsilon.
+- Fixed duplicate `_params_match()` definition in `datasets.py` that silently overwrote the robust version; also fixed numpy array comparison bug.
 - Fixed README.md example with incorrect `arm_col` parameter value.
 - Fixed `auto_detect_design` docstring example showing incorrect mutation of frozen dataclass.
 - Fixed `test_plot_gsea_heatmap` test to skip when matplotlib is not installed.
