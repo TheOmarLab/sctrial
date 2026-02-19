@@ -92,6 +92,10 @@ def design_effect(
     >>> print(f"Design effect: {deff:.1f}")
     Design effect: 5.95
     """
+    if not (0 <= icc <= 1):
+        raise ValueError("icc must be between 0 and 1.")
+    if not np.isfinite(cluster_size) or cluster_size <= 0:
+        raise ValueError("cluster_size must be > 0.")
     return 1 + (cluster_size - 1) * icc
 
 
@@ -127,6 +131,8 @@ def effective_sample_size(
     close to the number of participants, not the number of cells,
     when aggregating to participant level.
     """
+    if not np.isfinite(n_clusters) or n_clusters <= 0:
+        raise ValueError("n_clusters must be > 0.")
     deff = design_effect(cluster_size, icc)
     n_total = n_clusters * cluster_size
     return n_total / deff

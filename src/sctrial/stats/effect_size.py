@@ -358,12 +358,17 @@ def add_effect_sizes_to_did(
     beta_col: str = "beta_DiD",
     se_col: str = "se_DiD",
     n_col: str = "n_units",
+    resid_sd_col: str = "resid_sd",
     method: EffectSizeMethod = "hedges_g",
 ) -> pd.DataFrame:
     """Add standardized effect sizes to a DiD results DataFrame.
 
     This function computes Cohen's d or Hedge's g from the DiD coefficients
     and adds columns for the effect size and its confidence interval.
+
+    When the ``resid_sd`` column is present (populated by ``did_table``),
+    effect sizes are computed directly as ``beta / resid_sd``.  Otherwise,
+    a balanced-design approximation is used as a fallback.
 
     Parameters
     ----------
@@ -375,6 +380,8 @@ def add_effect_sizes_to_did(
         Name of the standard error column.
     n_col
         Name of the sample size column.
+    resid_sd_col
+        Name of the residual standard deviation column (from OLS/WLS fit).
     method
         "cohens_d" or "hedges_g" (recommended for small samples).
 
@@ -394,6 +401,7 @@ def add_effect_sizes_to_did(
     >>> print(res[["feature", "beta_DiD", "effect_size", "effect_size_interpretation"]])
     """
     df = df.copy()
+    has_resid_sd = resid_sd_col in df.columns
 
     effect_sizes = []
     effect_lower = []
@@ -412,16 +420,17 @@ def add_effect_sizes_to_did(
             interpretations.append("")
             continue
 
-        # Approximate residual SD from SE and sample size
-        # For DiD: SE(d) ≈ residual_SD × √((n1+n2)/(n1*n2))
-        # Assuming balanced design (n1=n2=n/2): SE ≈ residual_SD × √(4/n)
-        # So: residual_SD ≈ SE × √(n/4) ≈ SE / √((n1+n2)/(n1*n2))
-        # Use (n1+n2)/(n1*n2) = 4/n for balanced, but since we only have n,
-        # assume balanced: n1 = n2 = n/2
-        n1 = n2 = max(n / 2, 1)
-        approx_resid_sd = se / np.sqrt((n1 + n2) / (n1 * n2)) if n > 0 else se
+        # Use residual SD from model fit when available (preferred),
+        # otherwise fall back to balanced-design approximation.
+        resid_sd = row.get(resid_sd_col, np.nan) if has_resid_sd else np.nan
+        if pd.notna(resid_sd) and resid_sd > 1e-12:
+            denom = resid_sd
+        else:
+            # Fallback: approximate residual SD assuming balanced arms
+            n1 = n2 = max(n / 2, 1)
+            denom = se / np.sqrt((n1 + n2) / (n1 * n2)) if n > 0 else se
 
-        d = beta / approx_resid_sd if approx_resid_sd > 1e-12 else np.nan
+        d = beta / denom if denom > 1e-12 else np.nan
 
         # Apply Hedge's correction (exact gamma correction)
         if method == "hedges_g" and not np.isnan(d) and n > 2:

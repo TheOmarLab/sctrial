@@ -184,9 +184,23 @@ def did_mixed(
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always", ConvergenceWarning)
             fit = model.fit(method="powell", maxiter=500, full_output=False)
-        converged = fit.converged
-        if caught:
-            converged = False
+
+        # Determine convergence: trust fit.converged as primary indicator,
+        # fall back to caught warnings only if the attribute is unavailable.
+        if hasattr(fit, "converged") and fit.converged is not None:
+            converged = fit.converged
+        else:
+            converged = not bool(caught)
+
+        # Fallback optimizer: retry with lbfgs if Powell did not converge
+        if not converged:
+            with warnings.catch_warnings(record=True) as caught2:
+                warnings.simplefilter("always", ConvergenceWarning)
+                fit = model.fit(method="lbfgs", maxiter=500, full_output=False)
+            if hasattr(fit, "converged") and fit.converged is not None:
+                converged = fit.converged
+            else:
+                converged = not bool(caught2)
     except (ValueError, np.linalg.LinAlgError) as e:
         return {
             "beta_DiD": np.nan,

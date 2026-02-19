@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from collections.abc import Sequence
 from typing import Any
 
@@ -183,6 +184,7 @@ def module_score_did_by_pool(
     n_perm: int = 1000,
     seed: int = 42,
     fdr_within: str | None = "module",
+    fdr_global: bool = True,
     allow_unpaired: bool = False,
 ) -> pd.DataFrame:
     """Compute DiD on module scores by pool with permutation p-values.
@@ -203,6 +205,14 @@ def module_score_did_by_pool(
         If "module", FDR is computed within each module across pools.
         If "pool", FDR is computed within each pool across modules.
         If None, global FDR.
+    fdr_global
+        Only used when *fdr_within* is not None.  If True (default),
+        an additional ``FDR_DiD_global`` column is added that applies
+        BH-FDR correction globally across **all** tests, mirroring
+        the behaviour when ``fdr_within=None``.  This is useful because
+        per-group FDR (``FDR_DiD``) controls the false discovery rate
+        only within each group and does **not** control the overall
+        false discovery rate across all tests.
     allow_unpaired
         If True, fit an unpaired OLS DiD (module_score ~ visit + arm + visit×arm)
         using all available participant-visit observations. This is a fallback
@@ -214,6 +224,8 @@ def module_score_did_by_pool(
         One row per (pool, module) with columns: ``pool``, ``module``,
         ``mean_delta_treated``, ``mean_delta_control``, ``beta_DiD``,
         ``p_DiD``, ``p_treated``, ``p_control``, ``n_units``, ``FDR_DiD``.
+        When *fdr_within* is set and *fdr_global* is True, an additional
+        ``FDR_DiD_global`` column contains the globally-corrected q-values.
     """
     rows: list[dict[str, Any]] = []
     arm_treated = str(design.arm_treated).strip()
@@ -343,12 +355,28 @@ def module_score_did_by_pool(
         if mask.sum() > 0:
             res.loc[mask, "FDR_DiD"] = multipletests(res.loc[mask, "p_DiD"], method="fdr_bh")[1]
     else:
+        warnings.warn(
+            f"FDR correction is applied within each '{fdr_within}' group "
+            f"(column FDR_DiD). Per-group FDR does not control the overall "
+            f"false discovery rate across all tests. Consult "
+            f"FDR_DiD_global (when fdr_global=True) for a globally "
+            f"corrected q-value.",
+            stacklevel=2,
+        )
         res["FDR_DiD"] = np.nan
         for key, sub in res.groupby(fdr_within, observed=True):
             mask = sub["p_DiD"].notna()
             if mask.sum() > 0:
                 res.loc[sub.index[mask], "FDR_DiD"] = multipletests(
                     sub.loc[mask, "p_DiD"], method="fdr_bh"
+                )[1]
+
+        if fdr_global:
+            mask = res["p_DiD"].notna()
+            res["FDR_DiD_global"] = np.nan
+            if mask.sum() > 0:
+                res.loc[mask, "FDR_DiD_global"] = multipletests(
+                    res.loc[mask, "p_DiD"], method="fdr_bh"
                 )[1]
 
     return res

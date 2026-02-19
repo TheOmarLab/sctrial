@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Sequence
 from typing import cast
 
@@ -13,6 +14,8 @@ from statsmodels.stats.multitest import multipletests
 from ..design import TrialDesign
 from ._utils import apply_fdr, encode_visit
 from .did import did_fit
+
+logger = logging.getLogger(__name__)
 
 __all__ = ["pseudobulk_expression", "pseudobulk_within_arm", "pseudobulk_did", "pseudobulk_export"]
 
@@ -113,7 +116,16 @@ def pseudobulk_expression(
         df_sum["n_cells"] = n_cells.astype(int)
 
     totals = df_sum["total_counts"].to_numpy(dtype=float).reshape(-1, 1)
-    cpm = df_sum[genes].values / (totals + 1e-12) * scale
+    zero_mask = (totals.ravel() == 0)
+    if zero_mask.any():
+        n_dropped = int(zero_mask.sum())
+        logger.warning(
+            "Dropped %d group(s) with zero total counts before CPM normalization.",
+            n_dropped,
+        )
+        df_sum = df_sum[~zero_mask].copy()
+        totals = totals[~zero_mask]
+    cpm = df_sum[genes].values / totals * scale
     if log1p:
         cpm = np.log1p(cpm)
     df_sum[genes] = cpm

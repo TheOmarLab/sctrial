@@ -1,10 +1,13 @@
 """Convenience functions for quick trial analysis workflows."""
 from __future__ import annotations
 
+import logging
 from typing import Literal
 
 import pandas as pd
 from anndata import AnnData
+
+logger = logging.getLogger(__name__)
 
 from .design import TrialDesign
 from .preprocessing import add_log1p_cpm_layer
@@ -103,24 +106,24 @@ def quick_did(
                 f"Need at least 2 visits for DiD analysis, found {len(all_visits)}"
             )
         visits = (all_visits[0], all_visits[1])
-        print(f"Auto-detected visits: {visits}")
+        logger.info(f"Auto-detected visits: {visits}")
 
     # 3. Ensure preprocessing
     if layer not in adata.layers:
-        print(f"Creating '{layer}' layer from '{counts_layer}'...")
+        logger.info(f"Creating '{layer}' layer from '{counts_layer}'...")
         adata = add_log1p_cpm_layer(
             adata, counts_layer=counts_layer, out_layer=layer
         )
 
     # 4. Score gene sets
-    print(f"Scoring {len(module_scores)} gene sets...")
+    logger.info(f"Scoring {len(module_scores)} gene sets...")
     adata = score_gene_sets(
         adata, module_scores, layer=layer, method=score_method, prefix="ms_"
     )
 
     # 5. Run DiD
     features = [f"ms_{k}" for k in module_scores.keys()]
-    print(f"Running DiD for {len(features)} features...")
+    logger.info(f"Running DiD for {len(features)} features...")
     return did_table(adata, features=features, design=design, visits=visits, **kwargs)
 
 
@@ -190,21 +193,21 @@ def _print_design_summary(
     arm_control: str | None,
     celltype_col: str | None,
 ) -> None:
-    print("\n" + "=" * 60)
-    print("AUTO-DETECTED TRIAL DESIGN")
-    print("=" * 60)
-    print(f"Participant column: {participant_col}")
-    print(f"Visit column:       {visit_col}")
-    print(f"Arm column:         {arm_col}")
-    print(f"  Treated arm:      {arm_treated}")
-    print(f"  Control arm:      {arm_control}")
+    logger.info("\n" + "=" * 60)
+    logger.info("AUTO-DETECTED TRIAL DESIGN")
+    logger.info("=" * 60)
+    logger.info(f"Participant column: {participant_col}")
+    logger.info(f"Visit column:       {visit_col}")
+    logger.info(f"Arm column:         {arm_col}")
+    logger.info(f"  Treated arm:      {arm_treated}")
+    logger.info(f"  Control arm:      {arm_control}")
     if celltype_col:
-        print(f"Cell type column:   {celltype_col}")
+        logger.info(f"Cell type column:   {celltype_col}")
     else:
-        print("Cell type column:   (not detected)")
-    print("=" * 60)
-    print("⚠️  Please verify this design is correct before using!")
-    print("=" * 60 + "\n")
+        logger.info("Cell type column:   (not detected)")
+    logger.info("=" * 60)
+    logger.warning("Please verify this design is correct before using!")
+    logger.info("=" * 60 + "\n")
 
 
 def auto_detect_design(
@@ -272,15 +275,15 @@ def auto_detect_design(
             if arm_control is None:
                 arm_control = str(unique_arms[1])
 
-            print(f"Auto-detected arms: treated='{arm_treated}', control='{arm_control}'")
-            print("⚠️  Please verify these are correct!")
+            logger.info(f"Auto-detected arms: treated='{arm_treated}', control='{arm_control}'")
+            logger.warning("Please verify these are correct!")
         elif len(unique_arms) > 2:
-            print(
-                f"⚠️  Found {len(unique_arms)} arms: {list(unique_arms)}\n"
+            logger.warning(
+                f"Found {len(unique_arms)} arms: {list(unique_arms)}. "
                 "Please specify arm_treated and arm_control manually."
             )
         else:
-            print(f"⚠️  Found only 1 arm: {unique_arms[0]}")
+            logger.warning(f"Found only 1 arm: {unique_arms[0]}")
 
     # Validate required columns were detected
     if participant_col is None:
