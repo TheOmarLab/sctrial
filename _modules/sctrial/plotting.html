@@ -99,7 +99,10 @@
     <span class="s2">&quot;did_volcano_frame&quot;</span><span class="p">,</span>
     <span class="s2">&quot;signed_logp&quot;</span><span class="p">,</span>
     <span class="s2">&quot;plot_trial_interaction&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;plot_parallel_trends&quot;</span><span class="p">,</span>
     <span class="s2">&quot;plot_did_forest&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;plot_did_forest_interactive&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;plot_did_volcano_interactive&quot;</span><span class="p">,</span>
     <span class="s2">&quot;plot_within_arm_comparison&quot;</span><span class="p">,</span>
     <span class="s2">&quot;plot_trial_umap&quot;</span><span class="p">,</span>
     <span class="s2">&quot;plot_gsea_radar&quot;</span><span class="p">,</span>
@@ -283,6 +286,8 @@
 
 
 
+<div class="viewcode-block" id="plot_parallel_trends">
+<a class="viewcode-back" href="../../api.html#sctrial.plotting.plot_parallel_trends">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">plot_parallel_trends</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
     <span class="n">feature</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
@@ -344,7 +349,8 @@
         <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Parallel trends (pre-treatment): </span><span class="si">{</span><span class="n">feature</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">ax</span>
+    <span class="k">return</span> <span class="n">ax</span></div>
+
 
 
 <div class="viewcode-block" id="plot_did_forest">
@@ -757,6 +763,11 @@
             <span class="s2">&quot;Install with: pip install sctrial[plots]&quot;</span>
             <span class="o">+</span> <span class="p">(</span><span class="sa">f</span><span class="s2">&quot; (scanpy import failed: </span><span class="si">{</span><span class="n">_scanpy_import_error</span><span class="si">}</span><span class="s2">)&quot;</span> <span class="k">if</span> <span class="n">_scanpy_import_error</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
         <span class="p">)</span>
+    <span class="k">if</span> <span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;TrialDesign.celltype_col must be set for plot_trial_dotplot.&quot;</span>
+        <span class="p">)</span>
+
     <span class="n">ad</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
     <span class="k">if</span> <span class="n">visits</span><span class="p">:</span>
         <span class="n">ad</span> <span class="o">=</span> <span class="n">ad</span><span class="p">[</span><span class="n">ad</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">visits</span><span class="p">)]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
@@ -1131,6 +1142,8 @@
 
 
 
+<div class="viewcode-block" id="plot_did_forest_interactive">
+<a class="viewcode-back" href="../../api.html#sctrial.plotting.plot_did_forest_interactive">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">plot_did_forest_interactive</span><span class="p">(</span>
     <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
@@ -1176,9 +1189,12 @@
         <span class="p">)</span>
     <span class="p">)</span>
     <span class="n">fig</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span> <span class="n">xaxis_title</span><span class="o">=</span><span class="s2">&quot;Effect (beta)&quot;</span><span class="p">,</span> <span class="n">yaxis_title</span><span class="o">=</span><span class="s2">&quot;Feature&quot;</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">fig</span>
+    <span class="k">return</span> <span class="n">fig</span></div>
 
 
+
+<div class="viewcode-block" id="plot_did_volcano_interactive">
+<a class="viewcode-back" href="../../api.html#sctrial.plotting.plot_did_volcano_interactive">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">plot_did_volcano_interactive</span><span class="p">(</span>
     <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
@@ -1209,7 +1225,8 @@
         <span class="p">)</span>
     <span class="p">)</span>
     <span class="n">fig</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span> <span class="n">xaxis_title</span><span class="o">=</span><span class="s2">&quot;Effect (beta)&quot;</span><span class="p">,</span> <span class="n">yaxis_title</span><span class="o">=</span><span class="s2">&quot;-log10(p)&quot;</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">fig</span>
+    <span class="k">return</span> <span class="n">fig</span></div>
+
 </pre></div>
 
            </div>

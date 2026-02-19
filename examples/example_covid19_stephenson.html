@@ -65,10 +65,16 @@
 <li class="toctree-l3"><a class="reference internal" href="#5.-Cell-Type-Quality-Control">5. Cell Type Quality Control</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#6.-UMAP-Visualization">6. UMAP Visualization</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#7.-COVID-19-Immune-Signatures">7. COVID-19 Immune Signatures</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#8.-Cross-Sectional-Comparisons:-Severity-Differences-at-Each-Timepoint">8. Cross-Sectional Comparisons: Severity Differences at Each Timepoint</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#8.-Cross-Sectional-Comparisons:-Severity-Differences-at-Each-Timepoint">8. Cross-Sectional Comparisons: Severity Differences at Each Timepoint</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#6.1-Adjusted-Cross-Sectional-Comparisons">6.1 Adjusted Cross-Sectional Comparisons</a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="#9.-Visualization-of-Severity-Differences">9. Visualization of Severity Differences</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#10.-Cell-Type-Specific-Analysis">10. Cell-Type Specific Analysis</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#11.-Cell-Type-Abundance-Differences">11. Cell Type Abundance Differences</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#11.-Cell-Type-Abundance-Differences">11. Cell Type Abundance Differences</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#9.1-Adjusted-Abundance-DiD">9.1 Adjusted Abundance DiD</a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="#12.-Individual-Gene-Analysis">12. Individual Gene Analysis</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#13.-Advanced-Statistical-Analyses">13. Advanced Statistical Analyses</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#13.1-Effect-Sizes-for-Cross-Sectional-Comparisons">13.1 Effect Sizes for Cross-Sectional Comparisons</a></li>
@@ -555,12 +561,30 @@ Selected baseline visit: DFO_8-14 (treated=5, control=11)
 <img alt="../_images/examples_example_covid19_stephenson_12_3.png" src="../_images/examples_example_covid19_stephenson_12_3.png" />
 </div>
 </div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Covariates for adjusted analyses (baseline balance indicated imbalance)</span>
+<span class="n">covariates_adj</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;Age_interval&quot;</span><span class="p">,</span> <span class="s2">&quot;Sex&quot;</span><span class="p">,</span> <span class="s2">&quot;Site&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Adjusted covariates:&quot;</span><span class="p">,</span> <span class="n">covariates_adj</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Adjusted covariates: [&#39;Age_interval&#39;, &#39;Sex&#39;, &#39;Site&#39;]
+</pre></div></div>
+</div>
 </section>
 <section id="5.-Cell-Type-Quality-Control">
 <h2>5. Cell Type Quality Control<a class="headerlink" href="#5.-Cell-Type-Quality-Control" title="Link to this heading"></a></h2>
 <p>Filter to well-represented cell types for robust analysis.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Cell type counts</span>
@@ -697,14 +721,14 @@ Top 15 cell types:
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_covid19_stephenson_14_2.png" src="../_images/examples_example_covid19_stephenson_14_2.png" />
+<img alt="../_images/examples_example_covid19_stephenson_15_2.png" src="../_images/examples_example_covid19_stephenson_15_2.png" />
 </div>
 </div>
 </section>
 <section id="6.-UMAP-Visualization">
 <h2>6. UMAP Visualization<a class="headerlink" href="#6.-UMAP-Visualization" title="Link to this heading"></a></h2>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Compute UMAP if missing</span>
@@ -748,14 +772,14 @@ Top 15 cell types:
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_covid19_stephenson_16_0.png" src="../_images/examples_example_covid19_stephenson_16_0.png" />
+<img alt="../_images/examples_example_covid19_stephenson_17_0.png" src="../_images/examples_example_covid19_stephenson_17_0.png" />
 </div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_covid19_stephenson_16_1.png" src="../_images/examples_example_covid19_stephenson_16_1.png" />
+<img alt="../_images/examples_example_covid19_stephenson_17_1.png" src="../_images/examples_example_covid19_stephenson_17_1.png" />
 </div>
 </div>
 </section>
@@ -770,7 +794,7 @@ Top 15 cell types:
 <li><p><strong>Myeloid activation</strong>: Monocyte/macrophage markers, drivers of pathology</p></li>
 </ul>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">available_genes</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="p">)</span>
@@ -861,7 +885,7 @@ Signature scores available: [&#39;sig_IFN_Response&#39;, &#39;sig_Inflammation&#
 <li><p>FDR correction for multiple testing</p></li>
 </ul>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Run comparisons at each timepoint using sctrial&#39;s built-in function</span>
@@ -1031,11 +1055,231 @@ DFO_8-14:
   Significant (FDR&lt;0.25): [&#39;sig_B_Cell_Activation&#39;]
 </pre></div></div>
 </div>
+<section id="6.1-Adjusted-Cross-Sectional-Comparisons">
+<h3>6.1 Adjusted Cross-Sectional Comparisons<a class="headerlink" href="#6.1-Adjusted-Cross-Sectional-Comparisons" title="Link to this heading"></a></h3>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Adjusted cross-sectional analysis (includes covariates)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Adjusted cross-sectional analysis (covariates):&#39;</span><span class="p">,</span> <span class="n">covariates_adj</span><span class="p">)</span>
+<span class="n">cross_sectional_adj</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">features_adj</span> <span class="o">=</span> <span class="n">features_use</span> <span class="k">if</span> <span class="s1">&#39;features_use&#39;</span> <span class="ow">in</span> <span class="nb">globals</span><span class="p">()</span> <span class="k">else</span> <span class="n">signature_cols</span>
+<span class="n">visits_adj</span> <span class="o">=</span> <span class="n">visits</span> <span class="k">if</span> <span class="s1">&#39;visits&#39;</span> <span class="ow">in</span> <span class="nb">globals</span><span class="p">()</span> <span class="k">else</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">unique</span><span class="p">())[:</span><span class="mi">2</span><span class="p">])</span>
+<span class="k">if</span> <span class="n">features_adj</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">visits_adj</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Adjusted results at visit: </span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">between_arm_comparison</span><span class="p">(</span>
+            <span class="n">adata</span><span class="p">,</span>
+            <span class="n">visit</span><span class="o">=</span><span class="n">v</span><span class="p">,</span>
+            <span class="n">features</span><span class="o">=</span><span class="n">features_adj</span><span class="p">,</span>
+            <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+            <span class="n">aggregate</span><span class="o">=</span><span class="s1">&#39;participant_visit&#39;</span><span class="p">,</span>
+            <span class="n">standardize</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">method</span><span class="o">=</span><span class="s1">&#39;ols&#39;</span><span class="p">,</span>
+            <span class="n">covariates</span><span class="o">=</span><span class="n">covariates_adj</span> <span class="k">if</span> <span class="n">covariates_adj</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">res</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">res</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="n">res</span><span class="p">[</span><span class="s1">&#39;visit&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+            <span class="n">cross_sectional_adj</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+            <span class="n">display</span><span class="p">(</span><span class="n">res</span><span class="p">[[</span><span class="s1">&#39;feature&#39;</span><span class="p">,</span> <span class="s1">&#39;beta_arm&#39;</span><span class="p">,</span> <span class="s1">&#39;p_arm&#39;</span><span class="p">,</span> <span class="s1">&#39;FDR_arm&#39;</span><span class="p">,</span> <span class="s1">&#39;n_units&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">4</span><span class="p">))</span>
+<span class="k">if</span> <span class="n">cross_sectional_adj</span><span class="p">:</span>
+    <span class="n">all_cross_adj</span> <span class="o">=</span> <span class="nb">__import__</span><span class="p">(</span><span class="s1">&#39;pandas&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">cross_sectional_adj</span><span class="p">,</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">all_cross_adj</span> <span class="o">=</span> <span class="nb">__import__</span><span class="p">(</span><span class="s1">&#39;pandas&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+Adjusted cross-sectional analysis (covariates): [&#39;Age_interval&#39;, &#39;Sex&#39;, &#39;Site&#39;]
+
+Adjusted results at visit: DFO_0-7
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>feature</th>
+      <th>beta_arm</th>
+      <th>p_arm</th>
+      <th>FDR_arm</th>
+      <th>n_units</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>sig_IFN_Response</td>
+      <td>0.0001</td>
+      <td>0.9999</td>
+      <td>0.9999</td>
+      <td>10</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>sig_Inflammation</td>
+      <td>-0.6616</td>
+      <td>0.5036</td>
+      <td>0.7554</td>
+      <td>10</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>sig_Cytotoxicity</td>
+      <td>1.5344</td>
+      <td>0.3092</td>
+      <td>0.7017</td>
+      <td>10</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>sig_T_Cell_Exhaustion</td>
+      <td>0.0722</td>
+      <td>0.9350</td>
+      <td>0.9999</td>
+      <td>10</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>sig_Myeloid_Activation</td>
+      <td>-0.8469</td>
+      <td>0.2063</td>
+      <td>0.7017</td>
+      <td>10</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>sig_B_Cell_Activation</td>
+      <td>-1.4705</td>
+      <td>0.3508</td>
+      <td>0.7017</td>
+      <td>10</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+Adjusted results at visit: DFO_15+
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>feature</th>
+      <th>beta_arm</th>
+      <th>p_arm</th>
+      <th>FDR_arm</th>
+      <th>n_units</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>sig_IFN_Response</td>
+      <td>0.2717</td>
+      <td>0.7917</td>
+      <td>0.7917</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>sig_Inflammation</td>
+      <td>1.0656</td>
+      <td>0.0663</td>
+      <td>0.2053</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>sig_Cytotoxicity</td>
+      <td>0.8534</td>
+      <td>0.4450</td>
+      <td>0.6778</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>sig_T_Cell_Exhaustion</td>
+      <td>0.2500</td>
+      <td>0.7734</td>
+      <td>0.7917</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>sig_Myeloid_Activation</td>
+      <td>0.3073</td>
+      <td>0.0684</td>
+      <td>0.2053</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>sig_B_Cell_Activation</td>
+      <td>-0.9182</td>
+      <td>0.4519</td>
+      <td>0.6778</td>
+      <td>8</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+</section>
 </section>
 <section id="9.-Visualization-of-Severity-Differences">
 <h2>9. Visualization of Severity Differences<a class="headerlink" href="#9.-Visualization-of-Severity-Differences" title="Link to this heading"></a></h2>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Visualize signature distributions by severity and timepoint</span>
@@ -1085,14 +1329,14 @@ DFO_8-14:
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_covid19_stephenson_22_0.png" src="../_images/examples_example_covid19_stephenson_22_0.png" />
+<img alt="../_images/examples_example_covid19_stephenson_25_0.png" src="../_images/examples_example_covid19_stephenson_25_0.png" />
 </div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_covid19_stephenson_22_1.png" src="../_images/examples_example_covid19_stephenson_22_1.png" />
+<img alt="../_images/examples_example_covid19_stephenson_25_1.png" src="../_images/examples_example_covid19_stephenson_25_1.png" />
 </div>
 </div>
 </section>
@@ -1100,7 +1344,7 @@ DFO_8-14:
 <h2>10. Cell-Type Specific Analysis<a class="headerlink" href="#10.-Cell-Type-Specific-Analysis" title="Link to this heading"></a></h2>
 <p>Examine severity differences within specific immune cell populations.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Focus on major immune populations</span>
@@ -1208,7 +1452,7 @@ NK: Insufficient participants
 <h2>11. Cell Type Abundance Differences<a class="headerlink" href="#11.-Cell-Type-Abundance-Differences" title="Link to this heading"></a></h2>
 <p>Compare cell type composition between severity groups.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Calculate cell type proportions per participant</span>
@@ -1281,7 +1525,7 @@ NK: Insufficient participants
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_covid19_stephenson_26_0.png" src="../_images/examples_example_covid19_stephenson_26_0.png" />
+<img alt="../_images/examples_example_covid19_stephenson_29_0.png" src="../_images/examples_example_covid19_stephenson_29_0.png" />
 </div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -1295,12 +1539,689 @@ Note: Each data point = one participant&#39;s cell type proportion
 --------------------------------------------------
 </pre></div></div>
 </div>
+<section id="9.1-Adjusted-Abundance-DiD">
+<h3>9.1 Adjusted Abundance DiD<a class="headerlink" href="#9.1-Adjusted-Abundance-DiD" title="Link to this heading"></a></h3>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Adjusted abundance DiD (covariates)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Adjusted abundance DiD (covariates):&#39;</span><span class="p">,</span> <span class="n">covariates_adj</span><span class="p">)</span>
+<span class="c1"># Build numeric covariates for abundance models when possible</span>
+<span class="n">covariates_ab</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">if</span> <span class="s1">&#39;Age_interval&#39;</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+    <span class="c1"># Convert intervals like &#39;(50, 59]&#39; to midpoint</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_age_mid</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">s</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s1">&#39;()[]&#39;</span><span class="p">)</span>
+            <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">lo</span><span class="p">)</span> <span class="o">+</span> <span class="nb">float</span><span class="p">(</span><span class="n">hi</span><span class="p">))</span> <span class="o">/</span> <span class="mi">2</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;nan&#39;</span><span class="p">)</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s1">&#39;age_mid&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s1">&#39;Age_interval&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">_age_mid</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s1">&#39;age_mid&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="n">covariates_ab</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;age_mid&#39;</span><span class="p">)</span>
+<span class="k">if</span> <span class="s1">&#39;Sex&#39;</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+    <span class="n">covariates_ab</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;Sex&#39;</span><span class="p">)</span>
+<span class="k">if</span> <span class="s1">&#39;Site&#39;</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+    <span class="c1"># high-cardinality sites can destabilize models; include only if &lt;=3 levels</span>
+    <span class="k">if</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s1">&#39;Site&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span> <span class="o">&lt;=</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="n">covariates_ab</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;Site&#39;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Adjusted abundance covariates:&#39;</span><span class="p">,</span> <span class="n">covariates_ab</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">:</span>
+    <span class="c1"># Diagnostic: participant counts per celltype at selected visits</span>
+    <span class="n">visits_ab</span> <span class="o">=</span> <span class="n">visits</span> <span class="k">if</span> <span class="s1">&#39;visits&#39;</span> <span class="ow">in</span> <span class="nb">globals</span><span class="p">()</span> <span class="k">else</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">unique</span><span class="p">())[:</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">diag</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">visits_ab</span><span class="p">)]</span>
+        <span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">])[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]</span>
+        <span class="o">.</span><span class="n">nunique</span><span class="p">()</span>
+        <span class="o">.</span><span class="n">unstack</span><span class="p">(</span><span class="n">fill_value</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Participant counts per cell type (treated/control):&#39;</span><span class="p">)</span>
+    <span class="n">display</span><span class="p">(</span><span class="n">diag</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_run_ab</span><span class="p">(</span><span class="n">covs</span><span class="p">,</span> <span class="n">label</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Attempt: </span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s1"> covariates -&gt; </span><span class="si">{</span><span class="n">covs</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">st</span><span class="o">.</span><span class="n">abundance_did</span><span class="p">(</span>
+            <span class="n">adata</span><span class="p">,</span>
+            <span class="n">design</span><span class="p">,</span>
+            <span class="n">visits</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">visits_ab</span><span class="p">),</span>
+            <span class="n">covariates</span><span class="o">=</span><span class="n">covs</span> <span class="k">if</span> <span class="n">covs</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">min_units</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+            <span class="n">use_bootstrap</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">n_boot</span><span class="o">=</span><span class="mi">199</span><span class="p">,</span>
+            <span class="n">seed</span><span class="o">=</span><span class="n">SEED</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="n">ab_adj</span> <span class="o">=</span> <span class="n">_run_ab</span><span class="p">(</span><span class="n">covariates_ab</span><span class="p">,</span> <span class="s1">&#39;full&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ab_adj</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">ab_adj</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="c1"># retry with numeric-only covariates</span>
+        <span class="n">num_covs</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">covariates_ab</span> <span class="k">if</span> <span class="n">c</span> <span class="o">==</span> <span class="s1">&#39;age_mid&#39;</span><span class="p">]</span>
+        <span class="n">ab_adj</span> <span class="o">=</span> <span class="n">_run_ab</span><span class="p">(</span><span class="n">num_covs</span><span class="p">,</span> <span class="s1">&#39;numeric-only&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ab_adj</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">ab_adj</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="c1"># final fallback: unadjusted</span>
+        <span class="n">ab_adj</span> <span class="o">=</span> <span class="n">_run_ab</span><span class="p">([],</span> <span class="s1">&#39;unadjusted fallback&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">ab_adj</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">ab_adj</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="n">display</span><span class="p">(</span><span class="n">ab_adj</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">4</span><span class="p">))</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="nb">max</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mf">0.35</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">ab_adj</span><span class="p">))))</span>
+            <span class="n">sns</span><span class="o">.</span><span class="n">barplot</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">ab_adj</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="s1">&#39;celltype&#39;</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="s1">&#39;beta_DiD&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;teal&#39;</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;black&#39;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">0.8</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Adjusted Abundance DiD (covariates)&#39;</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;DiD effect (beta)&#39;</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Cell type&#39;</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Adjusted abundance plot failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;No adjusted abundance DiD results after retries.&#39;</span><span class="p">)</span>
+
+
+    <span class="c1"># If DiD is not feasible (no paired participants), run cross-sectional abundance at baseline</span>
+    <span class="k">if</span> <span class="n">ab_adj</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">ab_adj</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="c1"># Check paired participants overall</span>
+        <span class="n">visits_use</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">visits_ab</span><span class="p">)</span>
+        <span class="n">obs_use</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">visits_use</span><span class="p">)]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">totals_all</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">obs_use</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">],</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">size</span><span class="p">()</span>
+            <span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;n_cells&#39;</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">wide_tot</span> <span class="o">=</span> <span class="n">totals_all</span><span class="o">.</span><span class="n">pivot_table</span><span class="p">(</span>
+            <span class="n">index</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span>
+            <span class="n">columns</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span>
+            <span class="n">values</span><span class="o">=</span><span class="s1">&#39;n_cells&#39;</span><span class="p">,</span>
+            <span class="n">aggfunc</span><span class="o">=</span><span class="s1">&#39;mean&#39;</span><span class="p">,</span>
+            <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">paired_units</span> <span class="o">=</span> <span class="n">wide_tot</span><span class="p">[</span><span class="n">wide_tot</span><span class="p">[</span><span class="n">visits_use</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span> <span class="o">&amp;</span> <span class="n">wide_tot</span><span class="p">[</span><span class="n">visits_use</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span><span class="o">.</span><span class="n">notna</span><span class="p">()]</span><span class="o">.</span><span class="n">index</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">paired_units</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;No paired participants for abundance DiD. Running baseline cross-sectional abundance instead.&#39;</span><span class="p">)</span>
+            <span class="n">baseline_visit</span> <span class="o">=</span> <span class="n">visits_use</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">obs_base</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span> <span class="o">==</span> <span class="n">baseline_visit</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="c1"># proportions per participant × celltype</span>
+            <span class="n">counts_base</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">obs_base</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">],</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="o">.</span><span class="n">size</span><span class="p">()</span>
+                <span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;n_cells&#39;</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">totals_base</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">counts_base</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">],</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="s1">&#39;n_cells&#39;</span><span class="p">]</span>
+                <span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+                <span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;total_cells&#39;</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">counts_base</span> <span class="o">=</span> <span class="n">counts_base</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">totals_base</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">],</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">)</span>
+            <span class="n">counts_base</span><span class="p">[</span><span class="s1">&#39;prop&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">counts_base</span><span class="p">[</span><span class="s1">&#39;n_cells&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="n">counts_base</span><span class="p">[</span><span class="s1">&#39;total_cells&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">lower</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+            <span class="c1"># attach covariates (participant-level)</span>
+            <span class="n">cov_df</span> <span class="o">=</span> <span class="n">obs_base</span><span class="p">[[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]</span> <span class="o">+</span> <span class="n">covariates_ab</span><span class="p">]</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">()</span>
+            <span class="n">counts_base</span> <span class="o">=</span> <span class="n">counts_base</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">cov_df</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">)</span>
+            <span class="n">counts_base</span><span class="p">[</span><span class="s1">&#39;arm_bin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_bin</span><span class="p">(</span><span class="n">counts_base</span><span class="p">)</span>
+            <span class="n">counts_base</span> <span class="o">=</span> <span class="n">counts_base</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;arm_bin&#39;</span><span class="p">])</span>
+
+            <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">ct</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">counts_base</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()):</span>
+                <span class="n">tmp</span> <span class="o">=</span> <span class="n">counts_base</span><span class="p">[</span><span class="n">counts_base</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">]</span> <span class="o">==</span> <span class="n">ct</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">tmp</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="k">if</span> <span class="n">tmp</span><span class="p">[</span><span class="s1">&#39;prop&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="n">formula</span> <span class="o">=</span> <span class="s1">&#39;prop ~ arm_bin&#39;</span>
+                <span class="k">if</span> <span class="n">covariates_ab</span><span class="p">:</span>
+                    <span class="n">formula</span> <span class="o">+=</span> <span class="s1">&#39; + &#39;</span> <span class="o">+</span> <span class="s1">&#39; + &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">covariates_ab</span><span class="p">)</span>
+                <span class="kn">import</span><span class="w"> </span><span class="nn">statsmodels.formula.api</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">smf</span>
+                <span class="n">fit</span> <span class="o">=</span> <span class="n">smf</span><span class="o">.</span><span class="n">ols</span><span class="p">(</span><span class="n">formula</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">tmp</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
+                <span class="k">if</span> <span class="s1">&#39;arm_bin&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">fit</span><span class="o">.</span><span class="n">params</span> <span class="ow">or</span> <span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;arm_bin&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                    <span class="s1">&#39;celltype&#39;</span><span class="p">:</span> <span class="n">ct</span><span class="p">,</span>
+                    <span class="s1">&#39;n_participants&#39;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">tmp</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()),</span>
+                    <span class="s1">&#39;beta_arm&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;arm_bin&#39;</span><span class="p">]),</span>
+                    <span class="s1">&#39;p_arm&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">pvalues</span><span class="p">[</span><span class="s1">&#39;arm_bin&#39;</span><span class="p">]),</span>
+                <span class="p">})</span>
+            <span class="k">if</span> <span class="n">rows</span><span class="p">:</span>
+                <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+                <span class="kn">from</span><span class="w"> </span><span class="nn">statsmodels.stats.multitest</span><span class="w"> </span><span class="kn">import</span> <span class="n">multipletests</span>
+                <span class="n">res_xs</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
+                <span class="n">mask</span> <span class="o">=</span> <span class="n">res_xs</span><span class="p">[</span><span class="s1">&#39;p_arm&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span>
+                <span class="n">res_xs</span><span class="p">[</span><span class="s1">&#39;FDR_arm&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">NA</span>
+                <span class="k">if</span> <span class="n">mask</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+                    <span class="n">res_xs</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="s1">&#39;FDR_arm&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">multipletests</span><span class="p">(</span><span class="n">res_xs</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span><span class="s1">&#39;p_arm&#39;</span><span class="p">],</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;fdr_bh&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="n">display</span><span class="p">(</span><span class="n">res_xs</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s1">&#39;p_arm&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">20</span><span class="p">))</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="nb">max</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mf">0.35</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">res_xs</span><span class="p">))))</span>
+                    <span class="n">sns</span><span class="o">.</span><span class="n">barplot</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">res_xs</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="s1">&#39;celltype&#39;</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="s1">&#39;beta_arm&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;teal&#39;</span><span class="p">)</span>
+                    <span class="n">plt</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;black&#39;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">0.8</span><span class="p">)</span>
+                    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Baseline abundance differences at </span><span class="si">{</span><span class="n">baseline_visit</span><span class="si">}</span><span class="s1"> (covariate-adjusted)&#39;</span><span class="p">)</span>
+                    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Arm effect (beta)&#39;</span><span class="p">)</span>
+                    <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Cell type&#39;</span><span class="p">)</span>
+                    <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+                    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Baseline abundance plot failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+Adjusted abundance DiD (covariates): [&#39;Age_interval&#39;, &#39;Sex&#39;, &#39;Site&#39;]
+Adjusted abundance covariates: [&#39;age_mid&#39;, &#39;Sex&#39;, &#39;Site&#39;]
+Participant counts per cell type (treated/control):
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>severity</th>
+      <th>Mild</th>
+      <th>Severe</th>
+    </tr>
+    <tr>
+      <th>celltype</th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>ASDC</th>
+      <td>7</td>
+      <td>4</td>
+    </tr>
+    <tr>
+      <th>B_exhausted</th>
+      <td>12</td>
+      <td>6</td>
+    </tr>
+    <tr>
+      <th>B_immature</th>
+      <td>12</td>
+      <td>6</td>
+    </tr>
+    <tr>
+      <th>B_naive</th>
+      <td>12</td>
+      <td>6</td>
+    </tr>
+    <tr>
+      <th>B_non-switched_memory</th>
+      <td>12</td>
+      <td>6</td>
+    </tr>
+    <tr>
+      <th>B_switched_memory</th>
+      <td>12</td>
+      <td>6</td>
+    </tr>
+    <tr>
+      <th>C1_CD16_mono</th>
+      <td>8</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>CD4.CM</th>
+      <td>12</td>
+      <td>6</td>
+    </tr>
+    <tr>
+      <th>CD4.EM</th>
+      <td>12</td>
+      <td>6</td>
+    </tr>
+    <tr>
+      <th>CD4.IL22</th>
+      <td>12</td>
+      <td>6</td>
+    </tr>
+    <tr>
+      <th>CD4.Naive</th>
+      <td>12</td>
+      <td>6</td>
+    </tr>
+    <tr>
+      <th>CD4.Prolif</th>
+      <td>10</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>CD4.Tfh</th>
+      <td>12</td>
+      <td>6</td>
+    </tr>
+    <tr>
+      <th>CD4.Th1</th>
+      <td>11</td>
+      <td>3</td>
+    </tr>
+    <tr>
+      <th>CD4.Th2</th>
+      <td>2</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>CD4.Th17</th>
+      <td>1</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>CD8.EM</th>
+      <td>12</td>
+      <td>6</td>
+    </tr>
+    <tr>
+      <th>CD8.Naive</th>
+      <td>12</td>
+      <td>6</td>
+    </tr>
+    <tr>
+      <th>CD8.Prolif</th>
+      <td>12</td>
+      <td>6</td>
+    </tr>
+    <tr>
+      <th>CD8.TE</th>
+      <td>12</td>
+      <td>6</td>
+    </tr>
+    <tr>
+      <th>CD14_mono</th>
+      <td>12</td>
+      <td>6</td>
+    </tr>
+    <tr>
+      <th>CD16_mono</th>
+      <td>12</td>
+      <td>6</td>
+    </tr>
+    <tr>
+      <th>CD83_CD14_mono</th>
+      <td>12</td>
+      <td>6</td>
+    </tr>
+    <tr>
+      <th>DC1</th>
+      <td>8</td>
+      <td>3</td>
+    </tr>
+    <tr>
+      <th>DC2</th>
+      <td>12</td>
+      <td>6</td>
+    </tr>
+    <tr>
+      <th>DC3</th>
+      <td>12</td>
+      <td>6</td>
+    </tr>
+    <tr>
+      <th>DC_prolif</th>
+      <td>4</td>
+      <td>3</td>
+    </tr>
+    <tr>
+      <th>HSC_CD38neg</th>
+      <td>9</td>
+      <td>4</td>
+    </tr>
+    <tr>
+      <th>HSC_CD38pos</th>
+      <td>12</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>HSC_MK</th>
+      <td>1</td>
+      <td>4</td>
+    </tr>
+    <tr>
+      <th>HSC_erythroid</th>
+      <td>9</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>HSC_myeloid</th>
+      <td>4</td>
+      <td>2</td>
+    </tr>
+    <tr>
+      <th>HSC_prolif</th>
+      <td>5</td>
+      <td>2</td>
+    </tr>
+    <tr>
+      <th>ILC1_3</th>
+      <td>9</td>
+      <td>6</td>
+    </tr>
+    <tr>
+      <th>ILC2</th>
+      <td>5</td>
+      <td>2</td>
+    </tr>
+    <tr>
+      <th>MAIT</th>
+      <td>12</td>
+      <td>6</td>
+    </tr>
+    <tr>
+      <th>Mono_prolif</th>
+      <td>4</td>
+      <td>4</td>
+    </tr>
+    <tr>
+      <th>NKT</th>
+      <td>12</td>
+      <td>6</td>
+    </tr>
+    <tr>
+      <th>NK_16hi</th>
+      <td>12</td>
+      <td>6</td>
+    </tr>
+    <tr>
+      <th>NK_56hi</th>
+      <td>12</td>
+      <td>6</td>
+    </tr>
+    <tr>
+      <th>NK_prolif</th>
+      <td>12</td>
+      <td>6</td>
+    </tr>
+    <tr>
+      <th>Plasma_cell_IgA</th>
+      <td>12</td>
+      <td>6</td>
+    </tr>
+    <tr>
+      <th>Plasma_cell_IgG</th>
+      <td>12</td>
+      <td>6</td>
+    </tr>
+    <tr>
+      <th>Plasma_cell_IgM</th>
+      <td>11</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>Plasmablast</th>
+      <td>12</td>
+      <td>6</td>
+    </tr>
+    <tr>
+      <th>Platelets</th>
+      <td>12</td>
+      <td>6</td>
+    </tr>
+    <tr>
+      <th>RBC</th>
+      <td>8</td>
+      <td>6</td>
+    </tr>
+    <tr>
+      <th>Treg</th>
+      <td>8</td>
+      <td>3</td>
+    </tr>
+    <tr>
+      <th>gdT</th>
+      <td>12</td>
+      <td>6</td>
+    </tr>
+    <tr>
+      <th>pDC</th>
+      <td>11</td>
+      <td>6</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Attempt: full covariates -&gt; [&#39;age_mid&#39;, &#39;Sex&#39;, &#39;Site&#39;]
+Attempt: numeric-only covariates -&gt; [&#39;age_mid&#39;]
+Attempt: unadjusted fallback covariates -&gt; []
+No adjusted abundance DiD results after retries.
+No paired participants for abundance DiD. Running baseline cross-sectional abundance instead.
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>celltype</th>
+      <th>n_participants</th>
+      <th>beta_arm</th>
+      <th>p_arm</th>
+      <th>FDR_arm</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>21</th>
+      <td>DC1</td>
+      <td>7</td>
+      <td>0.001090</td>
+      <td>0.032445</td>
+      <td>0.781814</td>
+    </tr>
+    <tr>
+      <th>11</th>
+      <td>CD4.IL22</td>
+      <td>10</td>
+      <td>-0.007421</td>
+      <td>0.044069</td>
+      <td>0.781814</td>
+    </tr>
+    <tr>
+      <th>36</th>
+      <td>NK_16hi</td>
+      <td>10</td>
+      <td>0.075020</td>
+      <td>0.055844</td>
+      <td>0.781814</td>
+    </tr>
+    <tr>
+      <th>23</th>
+      <td>DC3</td>
+      <td>10</td>
+      <td>-0.001242</td>
+      <td>0.143460</td>
+      <td>0.875708</td>
+    </tr>
+    <tr>
+      <th>35</th>
+      <td>NKT</td>
+      <td>10</td>
+      <td>0.002001</td>
+      <td>0.147275</td>
+      <td>0.875708</td>
+    </tr>
+    <tr>
+      <th>19</th>
+      <td>CD8.TE</td>
+      <td>10</td>
+      <td>0.130125</td>
+      <td>0.165944</td>
+      <td>0.875708</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>B_immature</td>
+      <td>10</td>
+      <td>-0.005815</td>
+      <td>0.167006</td>
+      <td>0.875708</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>B_exhausted</td>
+      <td>10</td>
+      <td>0.001560</td>
+      <td>0.173708</td>
+      <td>0.875708</td>
+    </tr>
+    <tr>
+      <th>28</th>
+      <td>HSC_erythroid</td>
+      <td>9</td>
+      <td>-0.000836</td>
+      <td>0.218194</td>
+      <td>0.875708</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>C1_CD16_mono</td>
+      <td>8</td>
+      <td>-0.010052</td>
+      <td>0.234704</td>
+      <td>0.875708</td>
+    </tr>
+    <tr>
+      <th>46</th>
+      <td>gdT</td>
+      <td>10</td>
+      <td>-0.033003</td>
+      <td>0.295915</td>
+      <td>0.875708</td>
+    </tr>
+    <tr>
+      <th>47</th>
+      <td>pDC</td>
+      <td>10</td>
+      <td>0.015888</td>
+      <td>0.312960</td>
+      <td>0.875708</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>CD16_mono</td>
+      <td>10</td>
+      <td>-0.034212</td>
+      <td>0.324744</td>
+      <td>0.875708</td>
+    </tr>
+    <tr>
+      <th>12</th>
+      <td>CD4.Naive</td>
+      <td>10</td>
+      <td>-0.034840</td>
+      <td>0.337689</td>
+      <td>0.875708</td>
+    </tr>
+    <tr>
+      <th>42</th>
+      <td>Plasmablast</td>
+      <td>10</td>
+      <td>0.003829</td>
+      <td>0.337901</td>
+      <td>0.875708</td>
+    </tr>
+    <tr>
+      <th>39</th>
+      <td>Plasma_cell_IgA</td>
+      <td>10</td>
+      <td>0.003787</td>
+      <td>0.340136</td>
+      <td>0.875708</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>B_naive</td>
+      <td>10</td>
+      <td>-0.025556</td>
+      <td>0.354453</td>
+      <td>0.875708</td>
+    </tr>
+    <tr>
+      <th>16</th>
+      <td>CD8.EM</td>
+      <td>10</td>
+      <td>-0.011124</td>
+      <td>0.413749</td>
+      <td>0.909467</td>
+    </tr>
+    <tr>
+      <th>40</th>
+      <td>Plasma_cell_IgG</td>
+      <td>10</td>
+      <td>0.003477</td>
+      <td>0.427501</td>
+      <td>0.909467</td>
+    </tr>
+    <tr>
+      <th>34</th>
+      <td>Mono_prolif</td>
+      <td>6</td>
+      <td>0.001219</td>
+      <td>0.434371</td>
+      <td>0.909467</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/examples_example_covid19_stephenson_31_4.png" src="../_images/examples_example_covid19_stephenson_31_4.png" />
+</div>
+</div>
+</section>
 </section>
 <section id="12.-Individual-Gene-Analysis">
 <h2>12. Individual Gene Analysis<a class="headerlink" href="#12.-Individual-Gene-Analysis" title="Link to this heading"></a></h2>
 <p>Examine specific genes of interest for COVID-19.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Key COVID-19 genes</span>
@@ -1365,14 +2286,14 @@ Analyzing 12 COVID-relevant genes
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_covid19_stephenson_28_1.png" src="../_images/examples_example_covid19_stephenson_28_1.png" />
+<img alt="../_images/examples_example_covid19_stephenson_33_1.png" src="../_images/examples_example_covid19_stephenson_33_1.png" />
 </div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_covid19_stephenson_28_2.png" src="../_images/examples_example_covid19_stephenson_28_2.png" />
+<img alt="../_images/examples_example_covid19_stephenson_33_2.png" src="../_images/examples_example_covid19_stephenson_33_2.png" />
 </div>
 </div>
 </section>
@@ -1388,7 +2309,7 @@ Analyzing 12 COVID-relevant genes
 <h3>13.1 Effect Sizes for Cross-Sectional Comparisons<a class="headerlink" href="#13.1-Effect-Sizes-for-Cross-Sectional-Comparisons" title="Link to this heading"></a></h3>
 <p>Effect sizes quantify the magnitude of differences between Mild and Severe cases.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
@@ -1675,14 +2596,14 @@ Effect sizes (Severe vs Mild):
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_covid19_stephenson_31_2.png" src="../_images/examples_example_covid19_stephenson_31_2.png" />
+<img alt="../_images/examples_example_covid19_stephenson_36_2.png" src="../_images/examples_example_covid19_stephenson_36_2.png" />
 </div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_covid19_stephenson_31_3.png" src="../_images/examples_example_covid19_stephenson_31_3.png" />
+<img alt="../_images/examples_example_covid19_stephenson_36_3.png" src="../_images/examples_example_covid19_stephenson_36_3.png" />
 </div>
 </div>
 </section>
@@ -1690,7 +2611,7 @@ Effect sizes (Severe vs Mild):
 <h3>13.2 Power Analysis<a class="headerlink" href="#13.2-Power-Analysis" title="Link to this heading"></a></h3>
 <p>Power analysis helps understand what effect sizes this study could detect and plan future longitudinal studies.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
@@ -1879,7 +2800,7 @@ Average cells per participant: 6035
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_covid19_stephenson_33_3.png" src="../_images/examples_example_covid19_stephenson_33_3.png" />
+<img alt="../_images/examples_example_covid19_stephenson_38_3.png" src="../_images/examples_example_covid19_stephenson_38_3.png" />
 </div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -1912,7 +2833,7 @@ KEY INSIGHTS
 <h3>Single-Gene Cross-Sectional Check (Participant-Level)<a class="headerlink" href="#Single-Gene-Cross-Sectional-Check-(Participant-Level)" title="Link to this heading"></a></h3>
 <p>Here, we use a focused single-gene comparison to validate cross-sectional differences at the participant level. This avoids pseudoreplication and provides an interpretable effect for one gene in a specific lineage.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[20]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">=== Single-Gene Cross-Sectional Check (Participant-Level) ===&quot;</span><span class="p">)</span>
@@ -2145,14 +3066,14 @@ KEY INSIGHTS
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_covid19_stephenson_35_2.png" src="../_images/examples_example_covid19_stephenson_35_2.png" />
+<img alt="../_images/examples_example_covid19_stephenson_40_2.png" src="../_images/examples_example_covid19_stephenson_40_2.png" />
 </div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_covid19_stephenson_35_3.png" src="../_images/examples_example_covid19_stephenson_35_3.png" />
+<img alt="../_images/examples_example_covid19_stephenson_40_3.png" src="../_images/examples_example_covid19_stephenson_40_3.png" />
 </div>
 </div>
 </section>
@@ -2160,7 +3081,7 @@ KEY INSIGHTS
 <h3>Module-Score Pseudobulk DiD by Lineage<a class="headerlink" href="#Module-Score-Pseudobulk-DiD-by-Lineage" title="Link to this heading"></a></h3>
 <p>Here, we collapse each participant×visit×lineage into a pseudobulk mean of module scores, then compute DiD per lineage. This highlights which lineages drive the severity-associated changes.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">signature_cols</span><span class="p">:</span>
@@ -2680,7 +3601,7 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_covid19_stephenson_37_3.png" src="../_images/examples_example_covid19_stephenson_37_3.png" />
+<img alt="../_images/examples_example_covid19_stephenson_42_3.png" src="../_images/examples_example_covid19_stephenson_42_3.png" />
 </div>
 </div>
 </section>
@@ -2688,7 +3609,7 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
 <h3>Parallel Trends Visualization (Early Visits)<a class="headerlink" href="#Parallel-Trends-Visualization-(Early-Visits)" title="Link to this heading"></a></h3>
 <p>Here we visualize pre-treatment trends across early visits to assess whether arms move in parallel before divergence. This is a diagnostic, not a formal test.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[22]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">signature_cols</span><span class="p">:</span>
@@ -2710,7 +3631,7 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_covid19_stephenson_39_0.png" src="../_images/examples_example_covid19_stephenson_39_0.png" />
+<img alt="../_images/examples_example_covid19_stephenson_44_0.png" src="../_images/examples_example_covid19_stephenson_44_0.png" />
 </div>
 </div>
 </section>

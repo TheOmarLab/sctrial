@@ -176,9 +176,9 @@
 <span class="sd">            If True, include ``crossover_col`` when it is defined.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span>
-        <span class="k">if</span> <span class="n">include_celltype</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">include_celltype</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">celltype_col</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">cols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">include_crossover</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">crossover_col</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">include_crossover</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">crossover_col</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">cols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">crossover_col</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">cols</span></div>
 

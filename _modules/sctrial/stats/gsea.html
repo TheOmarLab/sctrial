@@ -334,9 +334,25 @@
         <span class="n">visits</span><span class="o">=</span><span class="n">visits</span><span class="p">,</span>
         <span class="n">celltype_col</span><span class="o">=</span><span class="n">celltype_col</span><span class="p">,</span>
     <span class="p">)</span>
+
+    <span class="c1"># If celltype_col is provided and results contain per-celltype rows,</span>
+    <span class="c1"># run GSEA separately for each cell type and concatenate results.</span>
     <span class="k">if</span> <span class="n">celltype_col</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="s2">&quot;celltype&quot;</span> <span class="ow">in</span> <span class="n">res</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-        <span class="c1"># For pseudobulk GSEA per celltype, caller should filter externally</span>
-        <span class="k">pass</span>
+        <span class="n">all_results</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">ct</span><span class="p">,</span> <span class="n">ct_res</span> <span class="ow">in</span> <span class="n">res</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;celltype&quot;</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">ct_ranking</span> <span class="o">=</span> <span class="n">_rank_did_results</span><span class="p">(</span><span class="n">ct_res</span><span class="p">,</span> <span class="n">rank_by</span><span class="o">=</span><span class="n">rank_by</span><span class="p">,</span> <span class="n">min_units</span><span class="o">=</span><span class="n">min_units</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">ct_pre</span> <span class="o">=</span> <span class="n">gp</span><span class="o">.</span><span class="n">prerank</span><span class="p">(</span><span class="n">rnk</span><span class="o">=</span><span class="n">ct_ranking</span><span class="p">,</span> <span class="n">gene_sets</span><span class="o">=</span><span class="n">gene_sets</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">return_obj</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">ct_pre</span>  <span class="c1"># Can only return one object; fall back to first</span>
+            <span class="n">ct_df</span> <span class="o">=</span> <span class="n">ct_pre</span><span class="o">.</span><span class="n">res2d</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">ct_pre</span><span class="p">,</span> <span class="s2">&quot;res2d&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">ct_pre</span><span class="p">)</span>
+            <span class="n">ct_df</span><span class="p">[</span><span class="s2">&quot;celltype&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ct</span>
+            <span class="n">all_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ct_df</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">all_results</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">all_results</span><span class="p">,</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
     <span class="n">ranking</span> <span class="o">=</span> <span class="n">_rank_did_results</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="n">rank_by</span><span class="o">=</span><span class="n">rank_by</span><span class="p">,</span> <span class="n">min_units</span><span class="o">=</span><span class="n">min_units</span><span class="p">)</span>
 

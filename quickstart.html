@@ -147,7 +147,7 @@
 </div>
 <p><strong>Pairing diagnostics</strong></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Count paired participants before longitudinal analysis</span>
-<span class="n">paired</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">count_paired</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">))</span>
+<span class="n">paired</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">count_paired</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">,</span> <span class="s2">&quot;visit&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">],</span> <span class="n">participant_col</span><span class="o">=</span><span class="s2">&quot;pid&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">paired</span><span class="p">)</span>
 </pre></div>
 </div>

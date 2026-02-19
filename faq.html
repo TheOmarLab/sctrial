@@ -207,7 +207,7 @@
 </section>
 <section id="do-i-need-the-same-number-of-cells-per-participant">
 <h3>Do I need the same number of cells per participant?<a class="headerlink" href="#do-i-need-the-same-number-of-cells-per-participant" title="Link to this heading"></a></h3>
-<p>No! DiD aggregates to the participant level, so unequal cell counts are fine. The method uses weighted least squares to account for this.</p>
+<p>No! DiD aggregates to the participant level, so unequal cell counts are fine. The method uses OLS with cluster-robust standard errors to account for within-participant correlation.</p>
 </section>
 <section id="can-i-use-sctrial-with-cross-sectional-data-no-longitudinal-measurements">
 <h3>Can I use sctrial with cross-sectional data (no longitudinal measurements)?<a class="headerlink" href="#can-i-use-sctrial-with-cross-sectional-data-no-longitudinal-measurements" title="Link to this heading"></a></h3>
@@ -586,7 +586,18 @@
 </section>
 <section id="can-i-run-sctrial-in-parallel">
 <h3>Can I run sctrial in parallel?<a class="headerlink" href="#can-i-run-sctrial-in-parallel" title="Link to this heading"></a></h3>
-<p>Not currently built-in. For large gene sets, process in batches:</p>
+<p>Yes! Use <code class="docutils literal notranslate"><span class="pre">did_table_parallel</span></code> for parallel DiD across many features:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table_parallel</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">,</span>
+    <span class="n">features</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="p">),</span>
+    <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">),</span>
+    <span class="n">n_jobs</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>  <span class="c1"># Number of parallel workers</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>For smaller gene sets, the standard <code class="docutils literal notranslate"><span class="pre">did_table</span></code> is often fast enough.
+You can also process in batches manually:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
 <span class="n">features</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="p">)</span>
