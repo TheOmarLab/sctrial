@@ -116,9 +116,11 @@
     <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
     <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">),</span>
     <span class="n">n_perm</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
-    <span class="n">fdr_within</span><span class="o">=</span><span class="s2">&quot;module&quot;</span><span class="p">,</span>
+    <span class="n">fdr_within</span><span class="o">=</span><span class="s2">&quot;module&quot;</span><span class="p">,</span>   <span class="c1"># Per-module FDR (exploratory)</span>
+    <span class="n">fdr_global</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>       <span class="c1"># Also compute global FDR across all tests</span>
 <span class="p">)</span>
 
+<span class="c1"># Use FDR_DiD_global for properly controlled multiple testing</span>
 <span class="n">display</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s2">&quot;p_DiD&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
 </pre></div>
 </div>

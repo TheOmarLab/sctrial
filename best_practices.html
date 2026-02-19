@@ -69,6 +69,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#bootstrap-for-small-samples">Bootstrap for Small Samples</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#multiple-testing-correction">Multiple Testing Correction</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#covariates">Covariates</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#bayesian-did">Bayesian DiD</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#feature-selection">Feature Selection</a><ul>
@@ -149,35 +150,36 @@
 <li><p><a class="reference internal" href="#bootstrap-for-small-samples" id="id9">Bootstrap for Small Samples</a></p></li>
 <li><p><a class="reference internal" href="#multiple-testing-correction" id="id10">Multiple Testing Correction</a></p></li>
 <li><p><a class="reference internal" href="#covariates" id="id11">Covariates</a></p></li>
+<li><p><a class="reference internal" href="#bayesian-did" id="id12">Bayesian DiD</a></p></li>
 </ul>
 </li>
-<li><p><a class="reference internal" href="#feature-selection" id="id12">Feature Selection</a></p>
+<li><p><a class="reference internal" href="#feature-selection" id="id13">Feature Selection</a></p>
 <ul>
-<li><p><a class="reference internal" href="#gene-sets-vs-individual-genes" id="id13">Gene Sets vs. Individual Genes</a></p></li>
-<li><p><a class="reference internal" href="#scoring-method-selection" id="id14">Scoring Method Selection</a></p></li>
+<li><p><a class="reference internal" href="#gene-sets-vs-individual-genes" id="id14">Gene Sets vs. Individual Genes</a></p></li>
+<li><p><a class="reference internal" href="#scoring-method-selection" id="id15">Scoring Method Selection</a></p></li>
 </ul>
 </li>
-<li><p><a class="reference internal" href="#cell-type-analysis" id="id15">Cell-Type Analysis</a></p>
+<li><p><a class="reference internal" href="#cell-type-analysis" id="id16">Cell-Type Analysis</a></p>
 <ul>
-<li><p><a class="reference internal" href="#when-to-stratify" id="id16">When to Stratify</a></p></li>
-<li><p><a class="reference internal" href="#abundance-analysis" id="id17">Abundance Analysis</a></p></li>
+<li><p><a class="reference internal" href="#when-to-stratify" id="id17">When to Stratify</a></p></li>
+<li><p><a class="reference internal" href="#abundance-analysis" id="id18">Abundance Analysis</a></p></li>
 </ul>
 </li>
-<li><p><a class="reference internal" href="#reproducibility" id="id18">Reproducibility</a></p>
+<li><p><a class="reference internal" href="#reproducibility" id="id19">Reproducibility</a></p>
 <ul>
-<li><p><a class="reference internal" href="#set-random-seeds" id="id19">Set Random Seeds</a></p></li>
-<li><p><a class="reference internal" href="#document-versions" id="id20">Document Versions</a></p></li>
-<li><p><a class="reference internal" href="#save-intermediate-results" id="id21">Save Intermediate Results</a></p></li>
+<li><p><a class="reference internal" href="#set-random-seeds" id="id20">Set Random Seeds</a></p></li>
+<li><p><a class="reference internal" href="#document-versions" id="id21">Document Versions</a></p></li>
+<li><p><a class="reference internal" href="#save-intermediate-results" id="id22">Save Intermediate Results</a></p></li>
 </ul>
 </li>
-<li><p><a class="reference internal" href="#reporting-results" id="id22">Reporting Results</a></p>
+<li><p><a class="reference internal" href="#reporting-results" id="id23">Reporting Results</a></p>
 <ul>
-<li><p><a class="reference internal" href="#minimum-reporting-standards" id="id23">Minimum Reporting Standards</a></p></li>
-<li><p><a class="reference internal" href="#visualization" id="id24">Visualization</a></p></li>
+<li><p><a class="reference internal" href="#minimum-reporting-standards" id="id24">Minimum Reporting Standards</a></p></li>
+<li><p><a class="reference internal" href="#visualization" id="id25">Visualization</a></p></li>
 </ul>
 </li>
-<li><p><a class="reference internal" href="#common-pitfalls-to-avoid" id="id25">Common Pitfalls to Avoid</a></p></li>
-<li><p><a class="reference internal" href="#pre-analysis-checklist" id="id26">Pre-Analysis Checklist</a></p></li>
+<li><p><a class="reference internal" href="#common-pitfalls-to-avoid" id="id26">Common Pitfalls to Avoid</a></p></li>
+<li><p><a class="reference internal" href="#pre-analysis-checklist" id="id27">Pre-Analysis Checklist</a></p></li>
 </ul>
 </nav>
 <section id="study-design">
@@ -356,6 +358,21 @@
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;FDR &lt; 0.25: </span><span class="si">{</span><span class="nb">sum</span><span class="p">(</span><span class="n">res</span><span class="p">[</span><span class="s1">&#39;FDR_DiD&#39;</span><span class="p">]</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mf">0.25</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
+<p><strong>Grouped FDR correction</strong>: When using <code class="docutils literal notranslate"><span class="pre">module_score_did_by_pool()</span></code> with
+<code class="docutils literal notranslate"><span class="pre">fdr_within=&quot;module&quot;</span></code>, FDR is corrected within each group separately. This does
+<strong>not</strong> control the overall false discovery rate across all tests. Use the
+<code class="docutils literal notranslate"><span class="pre">FDR_DiD_global</span></code> column (enabled by default via <code class="docutils literal notranslate"><span class="pre">fdr_global=True</span></code>) for a
+properly controlled global correction:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">module_score_did_by_pool</span><span class="p">(</span>
+    <span class="n">pb</span><span class="p">,</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">),</span>
+    <span class="n">fdr_within</span><span class="o">=</span><span class="s2">&quot;module&quot;</span><span class="p">,</span>   <span class="c1"># Per-module FDR (exploratory)</span>
+    <span class="n">fdr_global</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>       <span class="c1"># Also compute global FDR (recommended)</span>
+<span class="p">)</span>
+
+<span class="c1"># Use FDR_DiD_global for properly controlled inference</span>
+<span class="n">significant</span> <span class="o">=</span> <span class="n">res</span><span class="p">[</span><span class="n">res</span><span class="p">[</span><span class="s2">&quot;FDR_DiD_global&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mf">0.05</span><span class="p">]</span>
+</pre></div>
+</div>
 </section>
 <section id="covariates">
 <h3><a class="toc-backref" href="#id11" role="doc-backlink">Covariates</a><a class="headerlink" href="#covariates" title="Link to this heading"></a></h3>
@@ -383,11 +400,40 @@
 </pre></div>
 </div>
 </section>
+<section id="bayesian-did">
+<h3><a class="toc-backref" href="#id12" role="doc-backlink">Bayesian DiD</a><a class="headerlink" href="#bayesian-did" title="Link to this heading"></a></h3>
+<p>When using <code class="docutils literal notranslate"><span class="pre">did_table_bayes()</span></code>, prior specification matters for small samples.
+Use <code class="docutils literal notranslate"><span class="pre">prior_predictive_check()</span></code> to verify that your priors produce plausible
+outcome values:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Check priors before fitting</span>
+<span class="n">check</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">prior_predictive_check</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">),</span>
+    <span class="n">prior_scale</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+    <span class="n">sigma_scale</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="k">if</span> <span class="ow">not</span> <span class="n">check</span><span class="p">[</span><span class="s2">&quot;prior_covers_data&quot;</span><span class="p">]:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Priors may be too narrow; consider increasing prior_scale&quot;</span><span class="p">)</span>
+
+<span class="c1"># Fit with custom priors</span>
+<span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table_bayes</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">),</span>
+    <span class="n">prior_scale</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span>    <span class="c1"># Wider priors for more uncertainty</span>
+    <span class="n">sigma_scale</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Prior sensitivity</strong>: If results change substantially with different
+<code class="docutils literal notranslate"><span class="pre">prior_scale</span></code> values (e.g., 0.5 vs 2.0), the data is insufficient to
+overwhelm the prior. Report results from multiple prior specifications.</p>
+</section>
 </section>
 <section id="feature-selection">
-<h2><a class="toc-backref" href="#id12" role="doc-backlink">Feature Selection</a><a class="headerlink" href="#feature-selection" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id13" role="doc-backlink">Feature Selection</a><a class="headerlink" href="#feature-selection" title="Link to this heading"></a></h2>
 <section id="gene-sets-vs-individual-genes">
-<h3><a class="toc-backref" href="#id13" role="doc-backlink">Gene Sets vs. Individual Genes</a><a class="headerlink" href="#gene-sets-vs-individual-genes" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id14" role="doc-backlink">Gene Sets vs. Individual Genes</a><a class="headerlink" href="#gene-sets-vs-individual-genes" title="Link to this heading"></a></h3>
 <p><strong>Recommendation</strong>: Use biologically meaningful gene sets</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ✓ RECOMMENDED: Test gene sets/modules</span>
 <span class="n">gene_sets</span> <span class="o">=</span> <span class="p">{</span>
@@ -420,7 +466,7 @@
 </div>
 </section>
 <section id="scoring-method-selection">
-<h3><a class="toc-backref" href="#id14" role="doc-backlink">Scoring Method Selection</a><a class="headerlink" href="#scoring-method-selection" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id15" role="doc-backlink">Scoring Method Selection</a><a class="headerlink" href="#scoring-method-selection" title="Link to this heading"></a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># For general use: z-normalized mean (recommended)</span>
 <span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">score_gene_sets</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">gene_sets</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;zmean&quot;</span><span class="p">)</span>
 
@@ -437,9 +483,9 @@
 </section>
 </section>
 <section id="cell-type-analysis">
-<h2><a class="toc-backref" href="#id15" role="doc-backlink">Cell-Type Analysis</a><a class="headerlink" href="#cell-type-analysis" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id16" role="doc-backlink">Cell-Type Analysis</a><a class="headerlink" href="#cell-type-analysis" title="Link to this heading"></a></h2>
 <section id="when-to-stratify">
-<h3><a class="toc-backref" href="#id16" role="doc-backlink">When to Stratify</a><a class="headerlink" href="#when-to-stratify" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id17" role="doc-backlink">When to Stratify</a><a class="headerlink" href="#when-to-stratify" title="Link to this heading"></a></h3>
 <p>Stratify by cell type when:</p>
 <ol class="arabic simple">
 <li><p>You expect heterogeneous treatment effects across cell types</p></li>
@@ -461,7 +507,7 @@
 <p><strong>Note</strong>: Stratification increases multiple testing burden; use <code class="docutils literal notranslate"><span class="pre">FDR_DiD_stratified</span></code> column.</p>
 </section>
 <section id="abundance-analysis">
-<h3><a class="toc-backref" href="#id17" role="doc-backlink">Abundance Analysis</a><a class="headerlink" href="#abundance-analysis" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id18" role="doc-backlink">Abundance Analysis</a><a class="headerlink" href="#abundance-analysis" title="Link to this heading"></a></h3>
 <p>Test for changes in cell-type proportions:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Cell-type abundance DiD</span>
 <span class="n">res_abundance</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">abundance_did</span><span class="p">(</span>
@@ -477,9 +523,9 @@
 </section>
 </section>
 <section id="reproducibility">
-<h2><a class="toc-backref" href="#id18" role="doc-backlink">Reproducibility</a><a class="headerlink" href="#reproducibility" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id19" role="doc-backlink">Reproducibility</a><a class="headerlink" href="#reproducibility" title="Link to this heading"></a></h2>
 <section id="set-random-seeds">
-<h3><a class="toc-backref" href="#id19" role="doc-backlink">Set Random Seeds</a><a class="headerlink" href="#set-random-seeds" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id20" role="doc-backlink">Set Random Seeds</a><a class="headerlink" href="#set-random-seeds" title="Link to this heading"></a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># For bootstrap</span>
 <span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">,</span>
@@ -497,7 +543,7 @@
 </div>
 </section>
 <section id="document-versions">
-<h3><a class="toc-backref" href="#id20" role="doc-backlink">Document Versions</a><a class="headerlink" href="#document-versions" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id21" role="doc-backlink">Document Versions</a><a class="headerlink" href="#document-versions" title="Link to this heading"></a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">sctrial</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">scanpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sc</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">anndata</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ad</span>
@@ -510,7 +556,7 @@
 </div>
 </section>
 <section id="save-intermediate-results">
-<h3><a class="toc-backref" href="#id21" role="doc-backlink">Save Intermediate Results</a><a class="headerlink" href="#save-intermediate-results" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id22" role="doc-backlink">Save Intermediate Results</a><a class="headerlink" href="#save-intermediate-results" title="Link to this heading"></a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Save processed AnnData</span>
 <span class="n">adata</span><span class="o">.</span><span class="n">write_h5ad</span><span class="p">(</span><span class="s2">&quot;processed_data.h5ad&quot;</span><span class="p">)</span>
 
@@ -533,9 +579,9 @@
 </section>
 </section>
 <section id="reporting-results">
-<h2><a class="toc-backref" href="#id22" role="doc-backlink">Reporting Results</a><a class="headerlink" href="#reporting-results" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id23" role="doc-backlink">Reporting Results</a><a class="headerlink" href="#reporting-results" title="Link to this heading"></a></h2>
 <section id="minimum-reporting-standards">
-<h3><a class="toc-backref" href="#id23" role="doc-backlink">Minimum Reporting Standards</a><a class="headerlink" href="#minimum-reporting-standards" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id24" role="doc-backlink">Minimum Reporting Standards</a><a class="headerlink" href="#minimum-reporting-standards" title="Link to this heading"></a></h3>
 <p>Always report:</p>
 <ol class="arabic simple">
 <li><p><strong>Sample size</strong>: Number of paired participants</p></li>
@@ -551,7 +597,7 @@
 </div>
 </section>
 <section id="visualization">
-<h3><a class="toc-backref" href="#id24" role="doc-backlink">Visualization</a><a class="headerlink" href="#visualization" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id25" role="doc-backlink">Visualization</a><a class="headerlink" href="#visualization" title="Link to this heading"></a></h3>
 <p>Create publication-quality figures:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
 
@@ -575,7 +621,7 @@
 </section>
 </section>
 <section id="common-pitfalls-to-avoid">
-<h2><a class="toc-backref" href="#id25" role="doc-backlink">Common Pitfalls to Avoid</a><a class="headerlink" href="#common-pitfalls-to-avoid" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id26" role="doc-backlink">Common Pitfalls to Avoid</a><a class="headerlink" href="#common-pitfalls-to-avoid" title="Link to this heading"></a></h2>
 <ol class="arabic simple">
 <li><p><strong>Testing at cell level for inference</strong> → Use <code class="docutils literal notranslate"><span class="pre">aggregate=&quot;participant_visit&quot;</span></code></p></li>
 <li><p><strong>Ignoring multiple testing</strong> → Always check FDR, not raw p-values</p></li>
@@ -586,7 +632,7 @@
 </ol>
 </section>
 <section id="pre-analysis-checklist">
-<h2><a class="toc-backref" href="#id26" role="doc-backlink">Pre-Analysis Checklist</a><a class="headerlink" href="#pre-analysis-checklist" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id27" role="doc-backlink">Pre-Analysis Checklist</a><a class="headerlink" href="#pre-analysis-checklist" title="Link to this heading"></a></h2>
 <p>Before running DiD analysis:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ✓ Run diagnostics</span>
 <span class="n">diag</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">diagnose_trial_data</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>

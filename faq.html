@@ -80,6 +80,8 @@
 <li class="toctree-l3"><a class="reference internal" href="#what-are-wild-cluster-bootstrap-p-values">What are Wild Cluster Bootstrap p-values?</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#how-do-i-interpret-beta-did">How do I interpret beta_DiD?</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#what-fdr-threshold-should-i-use">What FDR threshold should I use?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#how-do-i-use-bayesian-did">How do I use Bayesian DiD?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#what-is-the-difference-between-fdr-did-and-fdr-did-global">What is the difference between FDR_DiD and FDR_DiD_global?</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#analysis-questions">Analysis Questions</a><ul>
@@ -388,6 +390,9 @@
 <h3>Should I use cell-level or participant-level aggregation?<a class="headerlink" href="#should-i-use-cell-level-or-participant-level-aggregation" title="Link to this heading"></a></h3>
 <p><strong>Always use participant-level</strong> (<code class="docutils literal notranslate"><span class="pre">aggregate=&quot;participant_visit&quot;</span></code>, which is the default) for valid statistical inference.</p>
 <p>Why? Cells from the same participant are not independent, violating regression assumptions. Participant-level aggregation (pseudobulk) respects the experimental design.</p>
+<p>When aggregated, if an <code class="docutils literal notranslate"><span class="pre">n_cells</span></code> column is present, Weighted Least Squares (WLS) is
+used with inverse-variance weights proportional to the number of cells per group.
+This gives more weight to participant-visit groups with more cells (lower variance means).</p>
 </section>
 <section id="what-are-wild-cluster-bootstrap-p-values">
 <h3>What are Wild Cluster Bootstrap p-values?<a class="headerlink" href="#what-are-wild-cluster-bootstrap-p-values" title="Link to this heading"></a></h3>
@@ -403,6 +408,15 @@
 <li><p><code class="docutils literal notranslate"><span class="pre">|beta_DiD|</span></code> &gt; 0.8: Large effect</p></li>
 </ul>
 <p>Positive beta_DiD = feature increased more (or decreased less) in treated vs. control.</p>
+<p>For standardized effect sizes (Cohen’s d or Hedge’s g), use <code class="docutils literal notranslate"><span class="pre">add_effect_sizes_to_did()</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">))</span>
+<span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">add_effect_sizes_to_did</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+
+<span class="c1"># Columns added: effect_size, effect_size_lower, effect_size_upper,</span>
+<span class="c1">#                effect_size_interpretation</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">res</span><span class="p">[[</span><span class="s2">&quot;feature&quot;</span><span class="p">,</span> <span class="s2">&quot;beta_DiD&quot;</span><span class="p">,</span> <span class="s2">&quot;effect_size&quot;</span><span class="p">,</span> <span class="s2">&quot;effect_size_interpretation&quot;</span><span class="p">]])</span>
+</pre></div>
+</div>
 </section>
 <section id="what-fdr-threshold-should-i-use">
 <h3>What FDR threshold should I use?<a class="headerlink" href="#what-fdr-threshold-should-i-use" title="Link to this heading"></a></h3>
@@ -412,6 +426,49 @@
 <li><p><strong>Stringent</strong>: FDR &lt; 0.01</p></li>
 </ul>
 <p>Always report FDR-corrected p-values, not raw p-values, when testing multiple features.</p>
+</section>
+<section id="how-do-i-use-bayesian-did">
+<h3>How do I use Bayesian DiD?<a class="headerlink" href="#how-do-i-use-bayesian-did" title="Link to this heading"></a></h3>
+<p>Bayesian DiD provides posterior distributions and credible intervals.
+Requires PyMC (<code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">sctrial[bayes]</span></code>):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table_bayes</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">),</span>
+    <span class="n">prior_scale</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>    <span class="c1"># Scale for coefficient priors</span>
+    <span class="n">sigma_scale</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>    <span class="c1"># Scale for residual SD prior</span>
+    <span class="n">draws</span><span class="o">=</span><span class="mi">2000</span><span class="p">,</span>
+    <span class="n">chains</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Run a prior predictive check first to ensure priors are reasonable:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">check</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">prior_predictive_check</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">),</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Priors cover data: </span><span class="si">{</span><span class="n">check</span><span class="p">[</span><span class="s1">&#39;prior_covers_data&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="what-is-the-difference-between-fdr-did-and-fdr-did-global">
+<h3>What is the difference between FDR_DiD and FDR_DiD_global?<a class="headerlink" href="#what-is-the-difference-between-fdr-did-and-fdr-did-global" title="Link to this heading"></a></h3>
+<p>In <code class="docutils literal notranslate"><span class="pre">module_score_did_by_pool()</span></code>, when <code class="docutils literal notranslate"><span class="pre">fdr_within</span></code> is set:</p>
+<ul class="simple">
+<li><p><strong>FDR_DiD</strong>: Corrected within each group (e.g., per module). Useful for
+exploratory analysis but does not control the overall false discovery rate.</p></li>
+<li><p><strong>FDR_DiD_global</strong>: Corrected across all tests globally. Use this for
+properly controlled inference.</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">module_score_did_by_pool</span><span class="p">(</span>
+    <span class="n">pb</span><span class="p">,</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">),</span>
+    <span class="n">fdr_within</span><span class="o">=</span><span class="s2">&quot;module&quot;</span><span class="p">,</span>
+    <span class="n">fdr_global</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>  <span class="c1"># default</span>
+<span class="p">)</span>
+
+<span class="c1"># For publication: use global FDR</span>
+<span class="n">sig</span> <span class="o">=</span> <span class="n">res</span><span class="p">[</span><span class="n">res</span><span class="p">[</span><span class="s2">&quot;FDR_DiD_global&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mf">0.05</span><span class="p">]</span>
+</pre></div>
+</div>
 </section>
 </section>
 <section id="analysis-questions">
