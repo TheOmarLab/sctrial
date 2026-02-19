@@ -14,7 +14,6 @@ from sctrial.stats.effect_size import _compute_effect_size_from_fit
 from sctrial.stats.module_scores import _perm_test_diff
 from sctrial.utils import wild_cluster_bootstrap_t
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -380,7 +379,7 @@ def test_within_arm_cell_aggregate():
 # ---------------------------------------------------------------------------
 
 def test_gsea_pseudobulk_return_obj():
-    gseapy = pytest.importorskip("gseapy")
+    pytest.importorskip("gseapy")
 
     rng = np.random.default_rng(5)
     n_p, n_genes = 20, 30
