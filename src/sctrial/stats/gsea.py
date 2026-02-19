@@ -229,7 +229,7 @@ def run_gsea_pseudobulk(
     min_units: int = 4,
     return_obj: bool = False,
     **kwargs,
-) -> pd.DataFrame | gp.Prerank:
+) -> pd.DataFrame | gp.Prerank | dict[str, gp.Prerank]:
     """Run GSEA using pseudobulk DiD results."""
     _ensure_gseapy()
 
@@ -244,7 +244,8 @@ def run_gsea_pseudobulk(
     # If celltype_col is provided and results contain per-celltype rows,
     # run GSEA separately for each cell type and concatenate results.
     if celltype_col is not None and "celltype" in res.columns:
-        all_results = []
+        all_results: list[pd.DataFrame] = []
+        obj_results: dict[str, gp.Prerank] = {}
         for ct, ct_res in res.groupby("celltype"):
             try:
                 ct_ranking = _rank_did_results(ct_res, rank_by=rank_by, min_units=min_units)
@@ -252,10 +253,13 @@ def run_gsea_pseudobulk(
                 continue
             ct_pre = gp.prerank(rnk=ct_ranking, gene_sets=gene_sets, **kwargs)
             if return_obj:
-                return ct_pre  # Can only return one object; fall back to first
-            ct_df = ct_pre.res2d if hasattr(ct_pre, "res2d") else pd.DataFrame(ct_pre)
-            ct_df["celltype"] = ct
-            all_results.append(ct_df)
+                obj_results[ct] = ct_pre
+            else:
+                ct_df = ct_pre.res2d if hasattr(ct_pre, "res2d") else pd.DataFrame(ct_pre)
+                ct_df["celltype"] = ct
+                all_results.append(ct_df)
+        if return_obj:
+            return obj_results
         if not all_results:
             return pd.DataFrame()
         return pd.concat(all_results, ignore_index=True)
