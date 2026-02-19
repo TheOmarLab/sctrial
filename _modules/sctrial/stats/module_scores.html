@@ -148,6 +148,12 @@
 <span class="sd">        Minimum cells per participant×visit×pool to keep.</span>
 <span class="sd">    exclude_crossovers</span>
 <span class="sd">        Whether to exclude crossover cells.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.DataFrame</span>
+<span class="sd">        Long-format table with columns: participant, visit, arm, pool,</span>
+<span class="sd">        module, ``module_score``, and ``n_cells``.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">df</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
     <span class="k">if</span> <span class="n">exclude_crossovers</span> <span class="ow">and</span> <span class="n">design</span><span class="o">.</span><span class="n">crossover_col</span> <span class="ow">and</span> <span class="n">design</span><span class="o">.</span><span class="n">crossover_col</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
@@ -218,6 +224,27 @@
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
     <span class="n">treated_label</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Permutation test for difference between arm-level mean deltas.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    delta</span>
+<span class="sd">        Participant-level change scores (post − pre).</span>
+<span class="sd">    arms</span>
+<span class="sd">        Arm labels aligned to *delta*.</span>
+<span class="sd">    n_perm</span>
+<span class="sd">        Number of random permutations.</span>
+<span class="sd">    seed</span>
+<span class="sd">        Random seed for reproducibility.</span>
+<span class="sd">    treated_label</span>
+<span class="sd">        Label identifying the treated arm.  If ``None``, the first</span>
+<span class="sd">        element of *arms* is used.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    float</span>
+<span class="sd">        Two-sided permutation p-value in ``[0, 1]``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
     <span class="n">values</span> <span class="o">=</span> <span class="n">delta</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
     <span class="n">labels</span> <span class="o">=</span> <span class="n">arms</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
@@ -268,6 +295,13 @@
 <span class="sd">        If True, fit an unpaired OLS DiD (module_score ~ visit + arm + visit×arm)</span>
 <span class="sd">        using all available participant-visit observations. This is a fallback</span>
 <span class="sd">        when no paired participants exist and should be interpreted cautiously.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.DataFrame</span>
+<span class="sd">        One row per (pool, module) with columns: ``pool``, ``module``,</span>
+<span class="sd">        ``mean_delta_treated``, ``mean_delta_control``, ``beta_DiD``,</span>
+<span class="sd">        ``p_DiD``, ``p_treated``, ``p_control``, ``n_units``, ``FDR_DiD``.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">rows</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">arm_treated</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">arm_treated</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
@@ -435,6 +469,12 @@
 <span class="sd">        If &quot;module&quot;, FDR is computed within each module across pools.</span>
 <span class="sd">        If &quot;pool&quot;, FDR is computed within each pool across modules.</span>
 <span class="sd">        If None, global FDR.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.DataFrame</span>
+<span class="sd">        One row per (pool, module) with columns: ``pool``, ``module``,</span>
+<span class="sd">        ``mean_delta``, ``p_time``, ``n_units``, ``FDR_time``.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">rows</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
 

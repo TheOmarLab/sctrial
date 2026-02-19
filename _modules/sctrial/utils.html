@@ -211,6 +211,13 @@
 <span class="sd">    cluster level. This is recommended when the number of clusters is small</span>
 <span class="sd">    and standard cluster-robust inference may be unreliable.</span>
 
+<span class="sd">    The procedure uses a **score / Rao-type** standard error approach: each</span>
+<span class="sd">    bootstrap draw perturbs the restricted residuals with cluster-level</span>
+<span class="sd">    Rademacher weights (±1 with equal probability), re-fits the full model</span>
+<span class="sd">    via OLS (or WLS when the original fit used weights), and forms a</span>
+<span class="sd">    bootstrap t-statistic.  The two-sided p-value is computed as the</span>
+<span class="sd">    fraction of bootstrap |t*| values that exceed the observed |t|.</span>
+
 <span class="sd">    Reference:</span>
 <span class="sd">    Cameron, A.C., Gelbach, J.B., &amp; Miller, D.L. (2008).</span>
 <span class="sd">    Bootstrap-based improvements for inference with clustered errors.</span>

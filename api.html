@@ -1052,20 +1052,56 @@ most useful for large feature panels (hundreds to thousands of genes).</p>
 <p>These weakly-informative priors are designed to stabilize estimation for
 small samples while remaining agnostic about effect direction.</p>
 <dl class="field-list simple">
-<dt class="field-odd">param draws<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Posterior draws.</p>
+<dt class="field-odd">param adata<span class="colon">:</span></dt>
+<dd class="field-odd"><p>AnnData object containing expression data.</p>
 </dd>
-<dt class="field-even">param tune<span class="colon">:</span></dt>
-<dd class="field-even"><p>Tuning iterations.</p>
+<dt class="field-even">param features<span class="colon">:</span></dt>
+<dd class="field-even"><p>Feature names (genes or <code class="docutils literal notranslate"><span class="pre">obs</span></code> columns) to test.</p>
 </dd>
-<dt class="field-odd">param chains<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Number of MCMC chains.</p>
+<dt class="field-odd">param design<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A <code class="docutils literal notranslate"><span class="pre">TrialDesign</span></code> specifying participant, visit, and arm columns.</p>
 </dd>
-<dt class="field-even">param target_accept<span class="colon">:</span></dt>
-<dd class="field-even"><p>Target acceptance rate for NUTS.</p>
+<dt class="field-even">param visits<span class="colon">:</span></dt>
+<dd class="field-even"><p>Tuple of <code class="docutils literal notranslate"><span class="pre">(baseline,</span> <span class="pre">followup)</span></code> visit labels.</p>
 </dd>
-<dt class="field-odd">param max_treedepth<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Maximum tree depth for NUTS.</p>
+<dt class="field-odd">param exclude_crossovers<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Whether to exclude crossover participants.</p>
+</dd>
+<dt class="field-even">param celltype<span class="colon">:</span></dt>
+<dd class="field-even"><p>If provided, subset to this cell type before analysis.</p>
+</dd>
+<dt class="field-odd">param aggregate<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Aggregation mode (<code class="docutils literal notranslate"><span class="pre">&quot;participant_visit&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;cell&quot;</span></code>).</p>
+</dd>
+<dt class="field-even">param layer<span class="colon">:</span></dt>
+<dd class="field-even"><p>Expression layer for gene features (<code class="docutils literal notranslate"><span class="pre">None</span></code> uses <code class="docutils literal notranslate"><span class="pre">adata.X</span></code>).</p>
+</dd>
+<dt class="field-odd">param standardize<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Whether to z-score outcomes before model fitting.</p>
+</dd>
+<dt class="field-even">param agg<span class="colon">:</span></dt>
+<dd class="field-even"><p>Aggregation function (<code class="docutils literal notranslate"><span class="pre">&quot;mean&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;sum&quot;</span></code>, etc.).</p>
+</dd>
+<dt class="field-odd">param covariates<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Optional covariate columns to include as fixed effects.</p>
+</dd>
+<dt class="field-even">param draws<span class="colon">:</span></dt>
+<dd class="field-even"><p>Number of posterior draws (after tuning).</p>
+</dd>
+<dt class="field-odd">param tune<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Number of tuning (warm-up) iterations per chain.</p>
+</dd>
+<dt class="field-even">param chains<span class="colon">:</span></dt>
+<dd class="field-even"><p>Number of MCMC chains.</p>
+</dd>
+<dt class="field-odd">param target_accept<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Target acceptance rate for the NUTS sampler.</p>
+</dd>
+<dt class="field-even">param max_treedepth<span class="colon">:</span></dt>
+<dd class="field-even"><p>Maximum tree depth for the NUTS sampler.</p>
+</dd>
+<dt class="field-odd">param seed<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Random seed for reproducibility.</p>
 </dd>
 <dt class="field-even">returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>Columns:
@@ -2614,6 +2650,14 @@ using all available participant-visit observations. This is a fallback
 when no paired participants exist and should be interpreted cautiously.</p></li>
 </ul>
 </dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>One row per (pool, module) with columns: <code class="docutils literal notranslate"><span class="pre">pool</span></code>, <code class="docutils literal notranslate"><span class="pre">module</span></code>,
+<code class="docutils literal notranslate"><span class="pre">mean_delta_treated</span></code>, <code class="docutils literal notranslate"><span class="pre">mean_delta_control</span></code>, <code class="docutils literal notranslate"><span class="pre">beta_DiD</span></code>,
+<code class="docutils literal notranslate"><span class="pre">p_DiD</span></code>, <code class="docutils literal notranslate"><span class="pre">p_treated</span></code>, <code class="docutils literal notranslate"><span class="pre">p_control</span></code>, <code class="docutils literal notranslate"><span class="pre">n_units</span></code>, <code class="docutils literal notranslate"><span class="pre">FDR_DiD</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
 </dl>
 </dd></dl>
 
@@ -2635,6 +2679,13 @@ when no paired participants exist and should be interpreted cautiously.</p></li>
 <li><p><strong>exclude_crossovers</strong> – Whether to exclude crossover cells.</p></li>
 </ul>
 </dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Long-format table with columns: participant, visit, arm, pool,
+module, <code class="docutils literal notranslate"><span class="pre">module_score</span></code>, and <code class="docutils literal notranslate"><span class="pre">n_cells</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
 </dl>
 </dd></dl>
 
@@ -2653,6 +2704,13 @@ when no paired participants exist and should be interpreted cautiously.</p></li>
 If “pool”, FDR is computed within each pool across modules.
 If None, global FDR.</p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>One row per (pool, module) with columns: <code class="docutils literal notranslate"><span class="pre">pool</span></code>, <code class="docutils literal notranslate"><span class="pre">module</span></code>,
+<code class="docutils literal notranslate"><span class="pre">mean_delta</span></code>, <code class="docutils literal notranslate"><span class="pre">p_time</span></code>, <code class="docutils literal notranslate"><span class="pre">n_units</span></code>, <code class="docutils literal notranslate"><span class="pre">FDR_time</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
 </dd>
 </dl>
 </dd></dl>
@@ -2752,11 +2810,22 @@ If None, global FDR.</p></li>
 <span class="sig-prename descclassname"><span class="pre">sctrial.plotting.</span></span><span class="sig-name descname"><span class="pre">plot_did_forest_interactive</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">feature_col</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'feature'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">beta_col</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'beta_DiD'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">se_col</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'se_DiD'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p_col</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'p_DiD'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'DiD</span> <span class="pre">Effect</span> <span class="pre">Sizes'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sctrial/plotting.html#plot_did_forest_interactive"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.plotting.plot_did_forest_interactive" title="Link to this definition"></a></dt>
 <dd><p>Interactive forest plot using Plotly.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Interactive forest plot.</p>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>df</strong> – DataFrame with DiD results (from <code class="docutils literal notranslate"><span class="pre">did_table</span></code> or <code class="docutils literal notranslate"><span class="pre">abundance_did</span></code>).</p></li>
+<li><p><strong>feature_col</strong> – Column name for feature labels (y-axis).</p></li>
+<li><p><strong>beta_col</strong> – Column name for effect size estimates.</p></li>
+<li><p><strong>se_col</strong> – Column name for standard errors (used for 95 % CI error bars).</p></li>
+<li><p><strong>p_col</strong> – Column name for p-values (used to color significant points).</p></li>
+<li><p><strong>alpha</strong> – Significance threshold for coloring points.</p></li>
+<li><p><strong>title</strong> – Plot title.</p></li>
+</ul>
 </dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>plotly.graph_objects.Figure</p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Interactive forest plot.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>plotly.graph_objects.Figure</p>
 </dd>
 </dl>
 </dd></dl>
@@ -2766,11 +2835,19 @@ If None, global FDR.</p></li>
 <span class="sig-prename descclassname"><span class="pre">sctrial.plotting.</span></span><span class="sig-name descname"><span class="pre">plot_did_volcano_interactive</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">beta_col</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'beta_DiD'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p_col</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'p_DiD'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'DiD</span> <span class="pre">Volcano</span> <span class="pre">Plot'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sctrial/plotting.html#plot_did_volcano_interactive"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.plotting.plot_did_volcano_interactive" title="Link to this definition"></a></dt>
 <dd><p>Interactive volcano plot using Plotly.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Interactive volcano plot.</p>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>df</strong> – DataFrame with DiD results.</p></li>
+<li><p><strong>beta_col</strong> – Column name for effect size estimates (x-axis).</p></li>
+<li><p><strong>p_col</strong> – Column name for p-values (y-axis as <code class="docutils literal notranslate"><span class="pre">-log10(p)</span></code>).</p></li>
+<li><p><strong>title</strong> – Plot title.</p></li>
+</ul>
 </dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>plotly.graph_objects.Figure</p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Interactive volcano plot.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>plotly.graph_objects.Figure</p>
 </dd>
 </dl>
 </dd></dl>
@@ -2827,12 +2904,28 @@ If None, global FDR.</p></li>
 <dt class="sig sig-object py" id="sctrial.plotting.plot_module_umap_panel">
 <span class="sig-prename descclassname"><span class="pre">sctrial.plotting.</span></span><span class="sig-name descname"><span class="pre">plot_module_umap_panel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">adata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">AnnData</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module_cols</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">celltype_col</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'celltype'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">umap_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'X_umap'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_cols</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cmap</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'magma'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">figsize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">(12,</span> <span class="pre">10)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">point_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">6</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.7</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label_fontsize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">8</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Figure</span></span></span><a class="reference internal" href="_modules/sctrial/plotting.html#plot_module_umap_panel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.plotting.plot_module_umap_panel" title="Link to this definition"></a></dt>
 <dd><p>Plot cell-type UMAP plus module score UMAP panels.</p>
+<p>Creates a multi-panel figure with one cell-type reference UMAP and one
+UMAP per module score column, all sharing the same embedding coordinates.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The figure containing the UMAP panel.</p>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>adata</strong> – AnnData object with a UMAP embedding in <code class="docutils literal notranslate"><span class="pre">obsm[umap_key]</span></code>.</p></li>
+<li><p><strong>module_cols</strong> – Column names in <code class="docutils literal notranslate"><span class="pre">adata.obs</span></code> containing module scores to plot.</p></li>
+<li><p><strong>celltype_col</strong> – Column in <code class="docutils literal notranslate"><span class="pre">adata.obs</span></code> with cell-type labels (used in reference panel).</p></li>
+<li><p><strong>umap_key</strong> – Key in <code class="docutils literal notranslate"><span class="pre">adata.obsm</span></code> for UMAP coordinates.</p></li>
+<li><p><strong>n_cols</strong> – Number of columns in the subplot grid.</p></li>
+<li><p><strong>cmap</strong> – Matplotlib colormap for module score panels.</p></li>
+<li><p><strong>figsize</strong> – Figure size <code class="docutils literal notranslate"><span class="pre">(width,</span> <span class="pre">height)</span></code>.</p></li>
+<li><p><strong>point_size</strong> – Scatter point size.</p></li>
+<li><p><strong>alpha</strong> – Point transparency.</p></li>
+<li><p><strong>label_fontsize</strong> – Font size for cell-type labels on the reference panel.</p></li>
+</ul>
 </dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>matplotlib.figure.Figure</p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The figure containing the UMAP panel.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>matplotlib.figure.Figure</p>
 </dd>
 </dl>
 </dd></dl>
@@ -2841,15 +2934,17 @@ If None, global FDR.</p></li>
 <dt class="sig sig-object py" id="sctrial.plotting.plot_parallel_trends">
 <span class="sig-prename descclassname"><span class="pre">sctrial.plotting.</span></span><span class="sig-name descname"><span class="pre">plot_parallel_trends</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">adata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">AnnData</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">feature</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">design</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#sctrial.design.TrialDesign" title="sctrial.design.TrialDesign"><span class="pre">TrialDesign</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">visits</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Axes</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Axes</span></span></span><a class="reference internal" href="_modules/sctrial/plotting.html#plot_parallel_trends"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.plotting.plot_parallel_trends" title="Link to this definition"></a></dt>
 <dd><p>Plot pre-treatment trends by arm to visually assess parallel trends.</p>
+<p>Produces a point-plot of mean feature values across visits, separately
+for each arm, to help evaluate the parallel-trends assumption.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>adata</strong> – AnnData object.</p></li>
-<li><p><strong>feature</strong> – Feature to plot (gene or obs column).</p></li>
-<li><p><strong>design</strong> – TrialDesign object.</p></li>
+<li><p><strong>feature</strong> – Feature to plot (gene name in <code class="docutils literal notranslate"><span class="pre">var_names</span></code> or column in <code class="docutils literal notranslate"><span class="pre">obs</span></code>).</p></li>
+<li><p><strong>design</strong> – TrialDesign object specifying arm and visit columns.</p></li>
 <li><p><strong>visits</strong> – Sequence of visit labels to include (should be pre-treatment visits).</p></li>
-<li><p><strong>layer</strong> – Layer for gene expression.</p></li>
-<li><p><strong>ax</strong> – Optional matplotlib axis.</p></li>
+<li><p><strong>layer</strong> – Layer for gene expression (<code class="docutils literal notranslate"><span class="pre">None</span></code> uses <code class="docutils literal notranslate"><span class="pre">adata.X</span></code>).</p></li>
+<li><p><strong>ax</strong> – Optional matplotlib axes; a new figure is created if <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -2923,13 +3018,28 @@ the expression of a feature on the UMAP embedding.</p>
 <dt class="sig sig-object py" id="sctrial.plotting.plot_trial_umap_panel">
 <span class="sig-prename descclassname"><span class="pre">sctrial.plotting.</span></span><span class="sig-name descname"><span class="pre">plot_trial_umap_panel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">adata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">AnnData</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">feature</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">design</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#sctrial.design.TrialDesign" title="sctrial.design.TrialDesign"><span class="pre">TrialDesign</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">visits</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cmap</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'magma'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">figsize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">(16,</span> <span class="pre">8)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Figure</span></span></span><a class="reference internal" href="_modules/sctrial/plotting.html#plot_trial_umap_panel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.plotting.plot_trial_umap_panel" title="Link to this definition"></a></dt>
 <dd><p>Combined UMAP panel: Cell Types + 4 Trial-stratified UMAPs.</p>
-<p>Replicates the layout: [Large Cell Type UMAP] [2x2 Grid of Feature UMAPs].</p>
+<p>Produces a 1×3 grid: a large cell-type reference UMAP on the left and a
+2×2 grid of feature UMAPs (Treated/Control × Baseline/Followup) on the
+right.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The figure containing the UMAP panel.</p>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>adata</strong> – AnnData object with <code class="docutils literal notranslate"><span class="pre">X_umap</span></code> in <code class="docutils literal notranslate"><span class="pre">obsm</span></code>.</p></li>
+<li><p><strong>feature</strong> – Gene name or <code class="docutils literal notranslate"><span class="pre">obs</span></code> column to display.</p></li>
+<li><p><strong>design</strong> – TrialDesign object (must have <code class="docutils literal notranslate"><span class="pre">celltype_col</span></code> set).</p></li>
+<li><p><strong>visits</strong> – Tuple of <code class="docutils literal notranslate"><span class="pre">(baseline,</span> <span class="pre">followup)</span></code> visit labels; uses
+<code class="docutils literal notranslate"><span class="pre">design.primary_visits()</span></code> if <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
+<li><p><strong>layer</strong> – Expression layer for gene features (<code class="docutils literal notranslate"><span class="pre">None</span></code> uses <code class="docutils literal notranslate"><span class="pre">adata.X</span></code>).</p></li>
+<li><p><strong>cmap</strong> – Matplotlib colormap for the feature panels.</p></li>
+<li><p><strong>figsize</strong> – Figure size <code class="docutils literal notranslate"><span class="pre">(width,</span> <span class="pre">height)</span></code>.</p></li>
+<li><p><strong>title</strong> – Optional suptitle; defaults to <code class="docutils literal notranslate"><span class="pre">&quot;Trial</span> <span class="pre">UMAP</span> <span class="pre">Panel:</span> <span class="pre">{feature}&quot;</span></code>.</p></li>
+</ul>
 </dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>matplotlib.figure.Figure</p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The figure containing the UMAP panel.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>matplotlib.figure.Figure</p>
 </dd>
 </dl>
 </dd></dl>
@@ -3057,6 +3167,12 @@ the expression of a feature on the UMAP embedding.</p>
 <p>Implements a <strong>wild cluster bootstrap-t</strong> using Rademacher weights at the
 cluster level. This is recommended when the number of clusters is small
 and standard cluster-robust inference may be unreliable.</p>
+<p>The procedure uses a <strong>score / Rao-type</strong> standard error approach: each
+bootstrap draw perturbs the restricted residuals with cluster-level
+Rademacher weights (±1 with equal probability), re-fits the full model
+via OLS (or WLS when the original fit used weights), and forms a
+bootstrap t-statistic.  The two-sided p-value is computed as the
+fraction of bootstrap <a href="#id4"><span class="problematic" id="id5">|t*|</span></a> values that exceed the observed <a href="#id6"><span class="problematic" id="id7">|t|</span></a>.</p>
 <p>Reference:
 Cameron, A.C., Gelbach, J.B., &amp; Miller, D.L. (2008).
 Bootstrap-based improvements for inference with clustered errors.
