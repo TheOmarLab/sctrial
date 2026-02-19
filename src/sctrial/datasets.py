@@ -163,24 +163,24 @@ def load_sade_feldman(
                 )
             data_dir_path.mkdir(parents=True, exist_ok=True)
             url1 = 'https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE120575&format=file&file=GSE120575%5FSade%5FFeldman%5Fmelanoma%5Fsingle%5Fcells%5FTPM%5FGEO%2Etxt%2Egz'
-            print(f"Downloading from {url1}...")
+            logger.info(f"Downloading from {url1}...")
             try:
                 urllib.request.urlretrieve(url1, str(tpm_path))
             except (urllib.error.URLError, urllib.error.HTTPError, OSError) as e:
                 if tpm_path.exists():
                     tpm_path.unlink()
                 raise RuntimeError(f"Failed to download TPM file from {url1}: {e}. Please download manually from {url1} and place it in {data_dir_path}") from e
-            print(f'Successfully downloaded TPM file: {tpm_path}')
+            logger.info(f'Successfully downloaded TPM file: {tpm_path}')
             url2 = 'https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE120575&format=file&file=GSE120575%5Fpatient%5FID%5Fsingle%5Fcells%2Etxt%2Egz'
-            print(f"Downloading from {url2}...")
+            logger.info(f"Downloading from {url2}...")
             try:
                 urllib.request.urlretrieve(url2, str(meta_path))
             except (urllib.error.URLError, urllib.error.HTTPError, OSError) as e:
                 if meta_path.exists():
                     meta_path.unlink()
                 raise RuntimeError(f"Failed to download metadata file from {url2}: {e}. Please download manually from {url2} and place it in {data_dir_path}") from e
-            print(f'Successfully downloaded metadata file: {meta_path}')
-    print("Processing raw data (this may take a minute)...")
+            logger.info(f'Successfully downloaded metadata file: {meta_path}')
+    logger.info("Processing raw data (this may take a minute)...")
     with gzip.open(tpm_path, "rt") as f:
         header1 = f.readline().strip().split("\t")
         header2 = f.readline().strip().split("\t")
@@ -290,15 +290,15 @@ def load_stephenson_data(
             )
         data_path_resolved.parent.mkdir(parents=True, exist_ok=True)
         url = "https://www.ebi.ac.uk/biostudies/files/E-MTAB-10026/covid_portal_210320_with_raw.h5ad"
-        print(f"Downloading from {url}...")
+        logger.info(f"Downloading from {url}...")
         try:
             urllib.request.urlretrieve(url, str(data_path_resolved))
         except (urllib.error.URLError, urllib.error.HTTPError, OSError) as e:
             if data_path_resolved.exists():
                 data_path_resolved.unlink()
             raise RuntimeError(f"Failed to download data from {url}: {e}. Please download manually from {url} and place it in {data_path_resolved.parent}") from e
-        print(f'Successfully downloaded data: {data_path_resolved}')
-    print("Processing raw data...")
+        logger.info(f'Successfully downloaded data: {data_path_resolved}')
+    logger.info("Processing raw data...")
     adata = ad.read_h5ad(data_path_resolved)
 
     X_counts, source = _get_counts_matrix(adata)
@@ -404,41 +404,41 @@ def load_vaccine_gse171964(
                 raise FileNotFoundError(f"Missing file: {p}")
             data_dir_path.mkdir(parents=True, exist_ok=True)
             url1 = 'https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE171964&format=file&file=GSE171964%5Fbarcodes%5Fv2%2Etsv%2Egz'
-            print(f"Downloading from {url1}...")
+            logger.info(f"Downloading from {url1}...")
             try:
                 urllib.request.urlretrieve(url1, str(barcodes_path))
             except (urllib.error.URLError, urllib.error.HTTPError, OSError) as e:
                 if barcodes_path.exists():
                     barcodes_path.unlink()
                 raise RuntimeError(f"Failed to download barcodes file from {url1}: {e}. Please download manually from {url1} and place it in {data_dir_path}") from e
-            print(f'Successfully downloaded barcodes file: {barcodes_path}')
+            logger.info(f'Successfully downloaded barcodes file: {barcodes_path}')
             url2 = 'https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE171964&format=file&file=GSE171964%5Ffeats%5Fv2%2Etsv%2Egz'
-            print(f"Downloading from {url2}...")
+            logger.info(f"Downloading from {url2}...")
             try:
                 urllib.request.urlretrieve(url2, str(feats_path))
             except (urllib.error.URLError, urllib.error.HTTPError, OSError) as e:
                 if feats_path.exists():
                     feats_path.unlink()
                 raise RuntimeError(f"Failed to download features file from {url2}: {e}. Please download manually from {url2} and place it in {data_dir_path}") from e
-            print(f'Successfully downloaded features file: {feats_path}')
+            logger.info(f'Successfully downloaded features file: {feats_path}')
             url3 = 'https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE171964&format=file&file=GSE171964%5Fgeo%5Fpheno%5Fv2%2Ecsv%2Egz'
-            print(f"Downloading from {url3}...")
+            logger.info(f"Downloading from {url3}...")
             try:
                 urllib.request.urlretrieve(url3, str(pheno_path))
             except (urllib.error.URLError, urllib.error.HTTPError, OSError) as e:
                 if pheno_path.exists():
                     pheno_path.unlink()
                 raise RuntimeError(f"Failed to download pheno file from {url3}: {e}. Please download manually from {url3} and place it in {data_dir_path}") from e
-            print(f'Successfully downloaded pheno file: {pheno_path}')
+            logger.info(f'Successfully downloaded pheno file: {pheno_path}')
             url4 = 'https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE171964&format=file&file=GSE171964%5Fcountsmatrix%5Fv2%2Emtx%2Egz'
-            print(f"Downloading from {url4}...")
+            logger.info(f"Downloading from {url4}...")
             try:
                 urllib.request.urlretrieve(url4, str(mtx_path))
             except (urllib.error.URLError, urllib.error.HTTPError, OSError) as e:
                 if mtx_path.exists():
                     mtx_path.unlink()
                 raise RuntimeError(f"Failed to download mtx file from {url4}: {e}. Please download manually from {url4} and place it in {data_dir_path}") from e
-            print(f'Successfully downloaded mtx file: {mtx_path}')
+            logger.info(f'Successfully downloaded mtx file: {mtx_path}')
     barcodes = (
         pd.read_csv(barcodes_path, sep="\\s+", header=None, engine="python", skiprows=1)[1]
         .astype(str)
