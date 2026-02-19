@@ -137,7 +137,9 @@ def _add_feature_columns(
         df = pd.concat([df, pd.DataFrame(feature_data, index=df.index)], axis=1)
 
     if missing:
-        raise KeyError(f"Features not found in obs or var_names: {missing[:5]}")
+        shown = missing[:5]
+        suffix = f" ({len(missing)} total)" if len(missing) > 5 else ""
+        raise KeyError(f"Features not found in obs or var_names: {shown}{suffix}")
     if not final_features:
         raise ValueError("No numeric features found to analyze.")
     return df, final_features
@@ -239,6 +241,7 @@ class DidFitResult(TypedDict):
     beta_time: float
     p_time: float
     n_units: int
+    resid_sd: NotRequired[float]
     p_DiD_boot: NotRequired[float]
 
 def _ensure_paired(df: pd.DataFrame, unit: str, time: str, visits: tuple[str,str]) -> pd.DataFrame:
@@ -299,8 +302,8 @@ def did_fit(
     - Features with near-zero variance (std < 1e-8) return NaN.
     - Cluster-robust standard errors account for within-participant correlation.
     - If `n_cells` column is present, Weighted Least Squares (WLS) is used.
-      Weights are proportional to √(n_cells), which approximates inverse
-      variance for participant-level means when cells are i.i.d.
+      Weights are proportional to n_cells (inverse-variance weighting for
+      participant-level means, since Var(mean) = σ²/n).
 
     Parameters
     ----------
@@ -382,10 +385,11 @@ def did_fit(
 
     formula = _build_did_formula(time, arm_bin, unit, covariates, outcome_col="outcome_std")
 
-    # detection of aggregation for weighting
+    # Inverse-variance weighting for pre-aggregated means:
+    # Var(mean_i) = sigma^2 / n_i, so weight_i = n_i (proportional to 1/Var)
     weights = None
     if "n_cells" in tmp.columns:
-        weights = np.sqrt(tmp["n_cells"])
+        weights = tmp["n_cells"].values.astype(float)
 
     if weights is not None:
         model = smf.wls(formula, data=tmp, weights=weights)
@@ -412,6 +416,7 @@ def did_fit(
         "beta_time": float(fit.params.get(time, np.nan)),
         "p_time": float(fit.pvalues.get(time, np.nan)),
         "n_units": int(tmp[unit].nunique()),
+        "resid_sd": float(np.sqrt(fit.scale)),
     }
 
     if use_bootstrap and term in fit.params:

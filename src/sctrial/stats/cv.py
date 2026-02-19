@@ -44,6 +44,7 @@ Interpretation Guidelines
 """
 from __future__ import annotations
 
+import warnings
 from collections.abc import Sequence
 
 import numpy as np
@@ -163,8 +164,11 @@ def loo_cv_did(
                     "influence": influence,
                 })
 
-        except (ValueError, np.linalg.LinAlgError, KeyError):
-            # If model fails, record NaN
+        except (ValueError, np.linalg.LinAlgError, KeyError) as exc:
+            warnings.warn(
+                f"LOO CV: model failed when excluding participant {pid}: {exc}",
+                stacklevel=2,
+            )
             for feat in features:
                 rows.append({
                     "feature": feat,
@@ -254,18 +258,32 @@ def kfold_cv_did(
 
     # Collect CV estimates
     cv_estimates: dict[str, list[float]] = {feat: [] for feat in features}
+    n_failed_folds = 0
+
+    # Build a mapping from participant to arm for stratified assignment
+    _arm_map = (
+        ad.obs[[design.participant_col, design.arm_col]]
+        .drop_duplicates(subset=[design.participant_col])
+        .set_index(design.participant_col)[design.arm_col]
+    )
+    arms = _arm_map.unique()
+
+    # Group participants by arm
+    arm_groups = {arm: [p for p in participants if _arm_map[p] == arm] for arm in arms}
 
     for _ in range(n_repeats):
-        # Shuffle participants
-        shuffled = rng.permutation(participants).tolist()
+        # Stratified fold assignment: shuffle within each arm, then assign
+        # folds so that every fold has participants from each arm.
+        fold_assignments: dict[int, list] = {fi: [] for fi in range(k)}
+        for arm in arms:
+            members = arm_groups[arm]
+            shuffled_arm = rng.permutation(members).tolist()
+            for idx, pid in enumerate(shuffled_arm):
+                fold_assignments[idx % k].append(pid)
 
         # K-fold splits
-        fold_size = n_participants // k
         for fold_idx in range(k):
-            # Exclude this fold
-            start = fold_idx * fold_size
-            end = start + fold_size if fold_idx < k - 1 else n_participants
-            excluded = set(shuffled[start:end])
+            excluded = set(fold_assignments[fold_idx])
             included = [p for p in participants if p not in excluded]
 
             if len(included) < 4:  # Need minimum participants
@@ -287,7 +305,14 @@ def kfold_cv_did(
                         cv_estimates[feat].append(row["beta_DiD"])
 
             except (ValueError, np.linalg.LinAlgError, KeyError):
-                pass
+                n_failed_folds += 1
+
+    if n_failed_folds > 0:
+        total_folds = n_repeats * k
+        warnings.warn(
+            f"K-fold CV: {n_failed_folds}/{total_folds} folds failed to fit.",
+            stacklevel=2,
+        )
 
     # Summarize CV estimates
     rows = []

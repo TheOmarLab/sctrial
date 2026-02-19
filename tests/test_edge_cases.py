@@ -119,6 +119,17 @@ class TestZeroVarianceFeatures:
         """within_arm_comparison should handle zero-variance features."""
         sample_adata.obs["constant"] = 5.0
 
+        res = st.within_arm_comparison(
+            sample_adata,
+            arm="Treated",
+            features=["constant"],
+            design=trial_design,
+            visits=("V1", "V2"),
+        )
+        # Zero-variance feature should produce NaN beta
+        assert len(res) == 1
+        assert pd.isna(res.iloc[0]["beta_time"])
+
 
 class TestInputValidation:
     """Input validation edge cases."""

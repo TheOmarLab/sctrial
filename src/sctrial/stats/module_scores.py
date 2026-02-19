@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from collections.abc import Sequence
 from typing import Any
 
@@ -63,6 +64,12 @@ def module_score_pseudobulk(
         Minimum cells per participant×visit×pool to keep.
     exclude_crossovers
         Whether to exclude crossover cells.
+
+    Returns
+    -------
+    pd.DataFrame
+        Long-format table with columns: participant, visit, arm, pool,
+        module, ``module_score``, and ``n_cells``.
     """
     df = adata.obs.copy()
     if exclude_crossovers and design.crossover_col and design.crossover_col in df.columns:
@@ -125,18 +132,47 @@ def module_score_pseudobulk(
     return pb
 
 
-def _perm_test_diff(delta: pd.Series, arms: pd.Series, n_perm: int, seed: int) -> float:
+def _perm_test_diff(
+    delta: pd.Series,
+    arms: pd.Series,
+    n_perm: int,
+    seed: int,
+    treated_label: str | None = None,
+) -> float:
+    """Permutation test for difference between arm-level mean deltas.
+
+    Parameters
+    ----------
+    delta
+        Participant-level change scores (post − pre).
+    arms
+        Arm labels aligned to *delta*.
+    n_perm
+        Number of random permutations.
+    seed
+        Random seed for reproducibility.
+    treated_label
+        Label identifying the treated arm.  If ``None``, the first
+        element of *arms* is used.
+
+    Returns
+    -------
+    float
+        Two-sided permutation p-value in ``[0, 1]``.
+    """
     rng = np.random.default_rng(seed)
     values = delta.to_numpy()
     labels = arms.to_numpy()
-    treated_label = labels[0]
+    if treated_label is None:
+        treated_label = labels[0]
     obs = values[labels == treated_label].mean() - values[labels != treated_label].mean()
-    perm_vals: list[float] = []
+    count = 0
     for _ in range(n_perm):
         perm = rng.permutation(np.asarray(labels))
-        perm_vals.append(values[perm == treated_label].mean() - values[perm != treated_label].mean())
-    perm_vals_arr = np.asarray(perm_vals)
-    return float((np.abs(perm_vals_arr) >= np.abs(obs)).mean())
+        perm_diff = values[perm == treated_label].mean() - values[perm != treated_label].mean()
+        if np.abs(perm_diff) >= np.abs(obs):
+            count += 1
+    return float((count + 1) / (n_perm + 1))
 
 
 def module_score_did_by_pool(
@@ -148,6 +184,7 @@ def module_score_did_by_pool(
     n_perm: int = 1000,
     seed: int = 42,
     fdr_within: str | None = "module",
+    fdr_global: bool = True,
     allow_unpaired: bool = False,
 ) -> pd.DataFrame:
     """Compute DiD on module scores by pool with permutation p-values.
@@ -168,10 +205,27 @@ def module_score_did_by_pool(
         If "module", FDR is computed within each module across pools.
         If "pool", FDR is computed within each pool across modules.
         If None, global FDR.
+    fdr_global
+        Only used when *fdr_within* is not None.  If True (default),
+        an additional ``FDR_DiD_global`` column is added that applies
+        BH-FDR correction globally across **all** tests, mirroring
+        the behaviour when ``fdr_within=None``.  This is useful because
+        per-group FDR (``FDR_DiD``) controls the false discovery rate
+        only within each group and does **not** control the overall
+        false discovery rate across all tests.
     allow_unpaired
         If True, fit an unpaired OLS DiD (module_score ~ visit + arm + visit×arm)
         using all available participant-visit observations. This is a fallback
         when no paired participants exist and should be interpreted cautiously.
+
+    Returns
+    -------
+    pd.DataFrame
+        One row per (pool, module) with columns: ``pool``, ``module``,
+        ``mean_delta_treated``, ``mean_delta_control``, ``beta_DiD``,
+        ``p_DiD``, ``p_treated``, ``p_control``, ``n_units``, ``FDR_DiD``.
+        When *fdr_within* is set and *fdr_global* is True, an additional
+        ``FDR_DiD_global`` column contains the globally-corrected q-values.
     """
     rows: list[dict[str, Any]] = []
     arm_treated = str(design.arm_treated).strip()
@@ -274,7 +328,10 @@ def module_score_did_by_pool(
         mean_delta_control = float(arm_means.get(arm_control, np.nan))
         did = mean_delta_treated - mean_delta_control
 
-        p_did = _perm_test_diff(deltas["delta"], deltas["arm"], n_perm=n_perm, seed=seed)
+        p_did = _perm_test_diff(
+            deltas["delta"], deltas["arm"], n_perm=n_perm, seed=seed,
+            treated_label=arm_treated,
+        )
 
         rows.append({
             "pool": pool,
@@ -298,12 +355,28 @@ def module_score_did_by_pool(
         if mask.sum() > 0:
             res.loc[mask, "FDR_DiD"] = multipletests(res.loc[mask, "p_DiD"], method="fdr_bh")[1]
     else:
+        warnings.warn(
+            f"FDR correction is applied within each '{fdr_within}' group "
+            f"(column FDR_DiD). Per-group FDR does not control the overall "
+            f"false discovery rate across all tests. Consult "
+            f"FDR_DiD_global (when fdr_global=True) for a globally "
+            f"corrected q-value.",
+            stacklevel=2,
+        )
         res["FDR_DiD"] = np.nan
         for key, sub in res.groupby(fdr_within, observed=True):
             mask = sub["p_DiD"].notna()
             if mask.sum() > 0:
                 res.loc[sub.index[mask], "FDR_DiD"] = multipletests(
                     sub.loc[mask, "p_DiD"], method="fdr_bh"
+                )[1]
+
+        if fdr_global:
+            mask = res["p_DiD"].notna()
+            res["FDR_DiD_global"] = np.nan
+            if mask.sum() > 0:
+                res.loc[mask, "FDR_DiD_global"] = multipletests(
+                    res.loc[mask, "p_DiD"], method="fdr_bh"
                 )[1]
 
     return res
@@ -333,6 +406,12 @@ def module_score_within_arm_by_pool(
         If "module", FDR is computed within each module across pools.
         If "pool", FDR is computed within each pool across modules.
         If None, global FDR.
+
+    Returns
+    -------
+    pd.DataFrame
+        One row per (pool, module) with columns: ``pool``, ``module``,
+        ``mean_delta``, ``p_time``, ``n_units``, ``FDR_time``.
     """
     rows: list[dict[str, Any]] = []
 

@@ -328,19 +328,20 @@ def _compute_effect_size_from_fit(
 
     d = beta / resid_std if resid_std > 1e-12 else np.nan
 
-    # Apply Hedge's correction if requested
+    # Apply Hedge's correction if requested (exact gamma correction)
     if method == "hedges_g" and not np.isnan(d):
         df = fit.df_resid
         if df > 0:
-            j = 1 - 3 / (4 * df - 1)
+            j = float(np.exp(gammaln(df / 2) - (0.5 * np.log(df / 2)) - gammaln((df - 1) / 2)))
             d = d * j
 
     # Approximate CI using Hedges & Olkin (1985) formula:
     # SE(d) = sqrt((n1+n2)/(n1*n2) + d²/(2*(n1+n2-2)))
-    # For balanced design (n1=n2=n/2): (n1+n2)/(n1*n2) = n/(n²/4) = 4/n
+    # Assume balanced design: n1 = n2 = n/2
     n = fit.nobs
-    df_resid = max(n - 2, 1)
-    se_d = np.sqrt(4 / n + (d ** 2) / (2 * df_resid)) if not np.isnan(d) else np.nan
+    n1 = n2 = max(n / 2, 1)
+    df_resid = max(n1 + n2 - 2, 1)
+    se_d = np.sqrt((n1 + n2) / (n1 * n2) + (d ** 2) / (2 * df_resid)) if not np.isnan(d) else np.nan
 
     if not np.isnan(se_d):
         t_crit = stats.t.ppf(0.975, fit.df_resid)
@@ -357,12 +358,17 @@ def add_effect_sizes_to_did(
     beta_col: str = "beta_DiD",
     se_col: str = "se_DiD",
     n_col: str = "n_units",
+    resid_sd_col: str = "resid_sd",
     method: EffectSizeMethod = "hedges_g",
 ) -> pd.DataFrame:
     """Add standardized effect sizes to a DiD results DataFrame.
 
     This function computes Cohen's d or Hedge's g from the DiD coefficients
     and adds columns for the effect size and its confidence interval.
+
+    When the ``resid_sd`` column is present (populated by ``did_table``),
+    effect sizes are computed directly as ``beta / resid_sd``.  Otherwise,
+    a balanced-design approximation is used as a fallback.
 
     Parameters
     ----------
@@ -374,6 +380,8 @@ def add_effect_sizes_to_did(
         Name of the standard error column.
     n_col
         Name of the sample size column.
+    resid_sd_col
+        Name of the residual standard deviation column (from OLS/WLS fit).
     method
         "cohens_d" or "hedges_g" (recommended for small samples).
 
@@ -393,6 +401,7 @@ def add_effect_sizes_to_did(
     >>> print(res[["feature", "beta_DiD", "effect_size", "effect_size_interpretation"]])
     """
     df = df.copy()
+    has_resid_sd = resid_sd_col in df.columns
 
     effect_sizes = []
     effect_lower = []
@@ -411,23 +420,31 @@ def add_effect_sizes_to_did(
             interpretations.append("")
             continue
 
-        # Approximate residual SD from SE and sample size
-        # For DiD: SE ≈ residual_SD × √(4/n) for balanced design
-        # So: residual_SD ≈ SE × √(n/4)
-        approx_resid_sd = se * np.sqrt(n / 4) if n > 0 else se
+        # Use residual SD from model fit when available (preferred),
+        # otherwise fall back to balanced-design approximation.
+        resid_sd = row.get(resid_sd_col, np.nan) if has_resid_sd else np.nan
+        if pd.notna(resid_sd) and resid_sd > 1e-12:
+            denom = resid_sd
+        else:
+            # Fallback: approximate residual SD assuming balanced arms
+            n1 = n2 = max(n / 2, 1)
+            denom = se / np.sqrt((n1 + n2) / (n1 * n2)) if n > 0 else se
 
-        d = beta / approx_resid_sd if approx_resid_sd > 1e-12 else np.nan
+        d = beta / denom if denom > 1e-12 else np.nan
 
-        # Apply Hedge's correction
+        # Apply Hedge's correction (exact gamma correction)
         if method == "hedges_g" and not np.isnan(d) and n > 2:
             df_hedges = n - 2  # Renamed to avoid shadowing DataFrame parameter
-            j = 1 - 3 / (4 * df_hedges - 1) if df_hedges > 1 else 1.0
+            if df_hedges > 0:
+                j = float(np.exp(gammaln(df_hedges / 2) - (0.5 * np.log(df_hedges / 2)) - gammaln((df_hedges - 1) / 2)))
+            else:
+                j = 1.0
             d = d * j
 
         # CI via approximate SE (Hedges & Olkin 1985)
         if not np.isnan(d) and n > 2:
             df_ci = n - 2
-            se_d = np.sqrt(4 / n + (d ** 2) / (2 * df_ci))
+            se_d = np.sqrt((n1 + n2) / (n1 * n2) + (d ** 2) / (2 * df_ci))
             t_crit = stats.t.ppf(0.975, df_ci)
             lower = d - t_crit * se_d
             upper = d + t_crit * se_d

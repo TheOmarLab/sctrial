@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import gzip
 import urllib.error
+import logging
 import urllib.request
 from collections.abc import Sequence
 from io import StringIO
 from pathlib import Path
-from typing import Any
 
 import anndata as ad
 import numpy as np
@@ -16,6 +16,8 @@ from scipy.io import mmread
 from statsmodels.stats.multitest import multipletests
 
 from .utils import get_counts_matrix
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "load_sade_feldman",
@@ -51,6 +53,36 @@ def _resolve_file(p: str) -> Path:
     return path
 
 
+def _params_match(prev: dict, current: dict) -> bool:
+    """Robustly compare processing parameters, handling None/NaN/list differences.
+
+    Returns True if every key in *current* has a matching value in *prev*.
+    Extra keys in *prev* (e.g. metadata added later) are tolerated.
+    """
+    if not set(current.keys()).issubset(set(prev.keys())):
+        return False
+    for key in current:
+        v1, v2 = prev.get(key), current.get(key)
+        # Handle None comparisons (h5ad may store None differently)
+        if v1 is None or (isinstance(v1, float) and np.isnan(v1)):
+            v1 = None
+        if v2 is None or (isinstance(v2, float) and np.isnan(v2)):
+            v2 = None
+        # Handle string "None"
+        if isinstance(v1, str) and v1 in ("None", "null"):
+            v1 = None
+        if isinstance(v2, str) and v2 in ("None", "null"):
+            v2 = None
+        # Handle list/array comparisons (h5ad may convert lists to numpy arrays)
+        if isinstance(v1, (list, tuple, np.ndarray)) and isinstance(v2, (list, tuple, np.ndarray)):
+            if list(v1) != list(v2):
+                return False
+            continue
+        if v1 != v2:
+            return False
+    return True
+
+
 def _looks_log1p(X, sample: int = 10000, seed: int = 0) -> bool:
     if X is None:
         return False
@@ -72,26 +104,6 @@ def _looks_log1p(X, sample: int = 10000, seed: int = 0) -> bool:
 def _get_counts_matrix(adata: ad.AnnData) -> tuple[np.ndarray | None, str | None]:
     return get_counts_matrix(adata)
 
-
-# Backward-compatible alias for tests/internal use
-
-def _params_match(prev: dict, curr: dict) -> bool:
-    for k, v in curr.items():
-        pv = prev.get(k, None)
-        pv_normalized: Any
-        if isinstance(pv, (list, tuple)):
-            pv_normalized = list(pv)
-        elif pv is not None and hasattr(pv, "tolist"):
-            pv_normalized = pv.tolist()
-        else:
-            pv_normalized = pv
-        if isinstance(v, (list, tuple)):
-            if list(v) != pv_normalized:
-                return False
-        else:
-            if pv_normalized != v:
-                return False
-    return True
 
 
 def load_sade_feldman(
@@ -132,10 +144,13 @@ def load_sade_feldman(
     if processed_path.exists() and not force_reprocess:
         adata = ad.read_h5ad(processed_path)
         prev = adata.uns.get("processing_params", {})
-        if prev == processing_params:
-            print(f"Loaded processed Sade-Feldman dataset: {adata.n_obs:,} cells, {adata.n_vars:,} genes")
+        if _params_match(prev, processing_params):
+            logger.info(f"Loaded processed Sade-Feldman dataset: {adata.n_obs:,} cells, {adata.n_vars:,} genes")
             return adata
-        print("Processed file parameters differ; reprocessing.")
+        # Show what's different for debugging
+        logger.info("Processed file parameters differ; reprocessing.")
+        logger.debug(f"  Stored: {prev}")
+        logger.debug(f"  Current: {processing_params}")
 
     tpm_path = data_dir_path / "GSE120575_Sade_Feldman_melanoma_single_cells_TPM_GEO.txt.gz"
     meta_path = data_dir_path / "GSE120575_patient_ID_single_cells.txt.gz"
@@ -223,9 +238,9 @@ def load_sade_feldman(
                 keep = group.index.values
             keep_indices.extend(keep)
         adata = adata[keep_indices].copy()
-        print(f"Stratified sampling: {adata.n_obs:,} cells (max {max_cells_per_participant_visit} per participant-visit)")
+        logger.info(f"Stratified sampling: {adata.n_obs:,} cells (max {max_cells_per_participant_visit} per participant-visit)")
     else:
-        print(f"Using full dataset: {adata.n_obs:,} cells (no subsampling)")
+        logger.info(f"Using full dataset: {adata.n_obs:,} cells (no subsampling)")
 
     adata.layers["tpm"] = adata.X.copy()
     adata.layers["log1p_tpm"] = adata.X.copy() if _looks_log1p(adata.X) else np.log1p(adata.X)
@@ -236,8 +251,8 @@ def load_sade_feldman(
 
     processed_path.parent.mkdir(parents=True, exist_ok=True)
     adata.write_h5ad(processed_path)
-    print(f"Saved processed file: {processed_path}")
-    print(f"Loaded Sade-Feldman dataset: {adata.n_obs:,} cells, {adata.n_vars:,} genes")
+    logger.info(f"Saved processed file: {processed_path}")
+    logger.info(f"Loaded Sade-Feldman dataset: {adata.n_obs:,} cells, {adata.n_vars:,} genes")
     return adata
 
 
@@ -264,8 +279,8 @@ def load_stephenson_data(
 
     if processed_path.exists() and not force_reprocess:
         adata = ad.read_h5ad(processed_path)
-        print(f"Loaded cached file: {processed_path}")
-        print(f"  {adata.n_obs:,} cells, {adata.n_vars:,} genes")
+        logger.info(f"Loaded cached file: {processed_path}")
+        logger.info(f"  {adata.n_obs:,} cells, {adata.n_vars:,} genes")
         return adata
 
     if not data_path_resolved.exists():
@@ -290,12 +305,12 @@ def load_stephenson_data(
     if X_counts is None:
         raise ValueError("No raw counts found in dataset.")
     adata.layers["counts"] = X_counts
-    print(f"  Counts source: {source}")
+    logger.info(f"  Counts source: {source}")
 
     obs = adata.obs.copy()
     obs["severity"] = obs["Status_on_day_collection_summary"].astype(str)
     obs = obs[obs["severity"].isin(["Mild", "Severe"])].copy()
-    print(f"  After severity filter: {len(obs):,} cells")
+    logger.info(f"  After severity filter: {len(obs):,} cells")
 
     obs["dfo"] = pd.to_numeric(obs["Days_from_onset"], errors="coerce")
     obs["dfo_bin"] = pd.cut(
@@ -306,7 +321,7 @@ def load_stephenson_data(
 
     valid_dfo = obs["dfo_bin"].isin(["DFO_0-7", "DFO_8-14", "DFO_15+"])
     obs = obs[valid_dfo].copy()
-    print(f"  After DFO filter: {len(obs):,} cells")
+    logger.info(f"  After DFO filter: {len(obs):,} cells")
 
     if "Collection_Day" in obs.columns:
         obs["collection_day"] = obs["Collection_Day"].astype(str)
@@ -319,15 +334,15 @@ def load_stephenson_data(
 
     processed_path.parent.mkdir(parents=True, exist_ok=True)
     adata.write_h5ad(processed_path)
-    print(f"  Saved: {processed_path}")
-    print(f"  Final: {adata.n_obs:,} cells, {adata.n_vars:,} genes")
+    logger.info(f"  Saved: {processed_path}")
+    logger.info(f"  Final: {adata.n_obs:,} cells, {adata.n_vars:,} genes")
     return adata
 
 
 def load_vaccine_gse171964(
     data_dir: str = "data/vaccine_gse171964",
     processed_name: str = "vaccine_gse171964_day0_day7.h5ad",
-    max_participants: int = 30,
+    max_participants: int | None = 30,
     max_cells_per_group: int | None = 200,
     seed: int = 42,
     allow_download: bool = False,
@@ -368,13 +383,15 @@ def load_vaccine_gse171964(
         adata = ad.read_h5ad(processed_path)
         prev = adata.uns.get("processing_params", {})
         if _params_match(prev, processing_params):
-            print(f"Loaded processed vaccine dataset (GSE171964): {adata.n_obs} cells, {adata.n_vars} genes")
-            print("Processed file:", processed_path)
-            print("Days:", adata.obs["day"].unique())
-            print("Participants:", adata.obs["pt_id"].nunique())
-            print("Cell types:", adata.obs["clustnm"].nunique())
+            logger.info(f"Loaded processed vaccine dataset (GSE171964): {adata.n_obs} cells, {adata.n_vars} genes")
+            logger.info(f"Processed file: {processed_path}")
+            logger.info(f"Days: {adata.obs['day'].unique()}")
+            logger.info(f"Participants: {adata.obs['pt_id'].nunique()}")
+            logger.info(f"Cell types: {adata.obs['clustnm'].nunique()}")
             return adata
-        print("Processed file parameters differ; reprocessing.")
+        logger.info("Processed file parameters differ; reprocessing.")
+        logger.debug(f"  Stored: {prev}")
+        logger.debug(f"  Current: {processing_params}")
 
     barcodes_path = data_dir_path / "GSE171964_barcodes_v2.tsv.gz"
     feats_path = data_dir_path / "GSE171964_feats_v2.tsv.gz"
@@ -463,9 +480,12 @@ def load_vaccine_gse171964(
 
     rng = np.random.default_rng(seed)
     uniq_ids = adata.obs["pt_id"].unique()
-    n = min(len(uniq_ids), max_participants)
-    sel = rng.choice(uniq_ids, size=n, replace=False)
-    adata = adata[adata.obs["pt_id"].isin(sel)].copy()
+    # If max_participants is None, use all participants (no subsampling)
+    if max_participants is not None:
+        n = min(len(uniq_ids), max_participants)
+        sel = rng.choice(uniq_ids, size=n, replace=False)
+        adata = adata[adata.obs["pt_id"].isin(sel)].copy()
+    # else: use all participants
 
     if max_cells_per_group is not None:
         grp = ["pt_id", "day", "clustnm"]
@@ -480,11 +500,11 @@ def load_vaccine_gse171964(
 
     processed_path.parent.mkdir(parents=True, exist_ok=True)
     adata.write_h5ad(processed_path)
-    print("Saved processed file:", processed_path)
-    print(f"Loaded vaccine dataset (GSE171964): {adata.n_obs} cells, {adata.n_vars} genes")
-    print("Days:", adata.obs["day"].unique())
-    print("Participants:", adata.obs["pt_id"].nunique())
-    print("Cell types:", adata.obs["clustnm"].nunique())
+    logger.info(f"Saved processed file: {processed_path}")
+    logger.info(f"Loaded vaccine dataset (GSE171964): {adata.n_obs} cells, {adata.n_vars} genes")
+    logger.info(f"Days: {adata.obs['day'].unique()}")
+    logger.info(f"Participants: {adata.obs['pt_id'].nunique()}")
+    logger.info(f"Cell types: {adata.obs['clustnm'].nunique()}")
     return adata
 
 

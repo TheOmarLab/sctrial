@@ -19,9 +19,11 @@ This tutorial demonstrates a module‑score pseudobulk DiD workflow.
        design=design,
        visits=("V1", "V2"),
        n_perm=1000,
-       fdr_within="module",
+       fdr_within="module",   # Per-module FDR (exploratory)
+       fdr_global=True,       # Also compute global FDR across all tests
    )
 
+   # Use FDR_DiD_global for properly controlled multiple testing
    display(res.sort_values("p_DiD").head())
 
 Visualization

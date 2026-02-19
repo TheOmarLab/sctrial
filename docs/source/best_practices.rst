@@ -203,6 +203,23 @@ Multiple Testing Correction
    print(f"FDR < 0.10: {sum(res['FDR_DiD'] < 0.10)}")
    print(f"FDR < 0.25: {sum(res['FDR_DiD'] < 0.25)}")
 
+**Grouped FDR correction**: When using ``module_score_did_by_pool()`` with
+``fdr_within="module"``, FDR is corrected within each group separately. This does
+**not** control the overall false discovery rate across all tests. Use the
+``FDR_DiD_global`` column (enabled by default via ``fdr_global=True``) for a
+properly controlled global correction:
+
+.. code-block:: python
+
+   res = st.module_score_did_by_pool(
+       pb, design=design, visits=("V1", "V2"),
+       fdr_within="module",   # Per-module FDR (exploratory)
+       fdr_global=True,       # Also compute global FDR (recommended)
+   )
+
+   # Use FDR_DiD_global for properly controlled inference
+   significant = res[res["FDR_DiD_global"] < 0.05]
+
 Covariates
 ~~~~~~~~~~
 
@@ -229,6 +246,38 @@ Covariates
 
    # ✗ BAD: Time-varying covariates that differ within participant-visit
    # Will raise an error if they vary
+
+Bayesian DiD
+~~~~~~~~~~~~~
+
+When using ``did_table_bayes()``, prior specification matters for small samples.
+Use ``prior_predictive_check()`` to verify that your priors produce plausible
+outcome values:
+
+.. code-block:: python
+
+   # Check priors before fitting
+   check = st.prior_predictive_check(
+       adata, features=features, design=design,
+       visits=("V1", "V2"),
+       prior_scale=1.0,
+       sigma_scale=1.0,
+   )
+
+   if not check["prior_covers_data"]:
+       print("Priors may be too narrow; consider increasing prior_scale")
+
+   # Fit with custom priors
+   res = st.did_table_bayes(
+       adata, features=features, design=design,
+       visits=("V1", "V2"),
+       prior_scale=2.0,    # Wider priors for more uncertainty
+       sigma_scale=2.0,
+   )
+
+**Prior sensitivity**: If results change substantially with different
+``prior_scale`` values (e.g., 0.5 vs 2.0), the data is insufficient to
+overwhelm the prior. Report results from multiple prior specifications.
 
 Feature Selection
 -----------------

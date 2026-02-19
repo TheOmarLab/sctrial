@@ -76,7 +76,7 @@ For smaller samples, use bootstrap: ``use_bootstrap=True``
 Do I need the same number of cells per participant?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-No! DiD aggregates to the participant level, so unequal cell counts are fine. The method uses weighted least squares to account for this.
+No! DiD aggregates to the participant level, so unequal cell counts are fine. The method uses OLS with cluster-robust standard errors to account for within-participant correlation.
 
 Can I use sctrial with cross-sectional data (no longitudinal measurements)?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -258,6 +258,10 @@ Should I use cell-level or participant-level aggregation?
 
 Why? Cells from the same participant are not independent, violating regression assumptions. Participant-level aggregation (pseudobulk) respects the experimental design.
 
+When aggregated, if an ``n_cells`` column is present, Weighted Least Squares (WLS) is
+used with inverse-variance weights proportional to the number of cells per group.
+This gives more weight to participant-visit groups with more cells (lower variance means).
+
 What are Wild Cluster Bootstrap p-values?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -276,6 +280,17 @@ If ``standardize=True`` (default), ``beta_DiD`` is in standard deviation units (
 
 Positive beta_DiD = feature increased more (or decreased less) in treated vs. control.
 
+For standardized effect sizes (Cohen's d or Hedge's g), use ``add_effect_sizes_to_did()``:
+
+.. code-block:: python
+
+   res = st.did_table(adata, features=features, design=design, visits=("V1", "V2"))
+   res = st.add_effect_sizes_to_did(res)
+
+   # Columns added: effect_size, effect_size_lower, effect_size_upper,
+   #                effect_size_interpretation
+   print(res[["feature", "beta_DiD", "effect_size", "effect_size_interpretation"]])
+
 What FDR threshold should I use?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -284,6 +299,54 @@ What FDR threshold should I use?
 - **Stringent**: FDR < 0.01
 
 Always report FDR-corrected p-values, not raw p-values, when testing multiple features.
+
+How do I use Bayesian DiD?
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Bayesian DiD provides posterior distributions and credible intervals.
+Requires PyMC (``pip install sctrial[bayes]``):
+
+.. code-block:: python
+
+   res = st.did_table_bayes(
+       adata, features=features, design=design,
+       visits=("V1", "V2"),
+       prior_scale=1.0,    # Scale for coefficient priors
+       sigma_scale=1.0,    # Scale for residual SD prior
+       draws=2000,
+       chains=4,
+   )
+
+Run a prior predictive check first to ensure priors are reasonable:
+
+.. code-block:: python
+
+   check = st.prior_predictive_check(
+       adata, features=features, design=design,
+       visits=("V1", "V2"),
+   )
+   print(f"Priors cover data: {check['prior_covers_data']}")
+
+What is the difference between FDR_DiD and FDR_DiD_global?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In ``module_score_did_by_pool()``, when ``fdr_within`` is set:
+
+- **FDR_DiD**: Corrected within each group (e.g., per module). Useful for
+  exploratory analysis but does not control the overall false discovery rate.
+- **FDR_DiD_global**: Corrected across all tests globally. Use this for
+  properly controlled inference.
+
+.. code-block:: python
+
+   res = st.module_score_did_by_pool(
+       pb, design=design, visits=("V1", "V2"),
+       fdr_within="module",
+       fdr_global=True,  # default
+   )
+
+   # For publication: use global FDR
+   sig = res[res["FDR_DiD_global"] < 0.05]
 
 Analysis Questions
 ------------------
@@ -479,7 +542,20 @@ Run diagnostics:
 Can I run sctrial in parallel?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Not currently built-in. For large gene sets, process in batches:
+Yes! Use ``did_table_parallel`` for parallel DiD across many features:
+
+.. code-block:: python
+
+   res = st.did_table_parallel(
+       adata,
+       features=list(adata.var_names),
+       design=design,
+       visits=("V1", "V2"),
+       n_jobs=4,  # Number of parallel workers
+   )
+
+For smaller gene sets, the standard ``did_table`` is often fast enough.
+You can also process in batches manually:
 
 .. code-block:: python
 

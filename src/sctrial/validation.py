@@ -1,6 +1,7 @@
 """Data validation utilities for trial analysis."""
 from __future__ import annotations
 
+import logging
 from collections.abc import Sequence
 from typing import Any
 
@@ -11,6 +12,8 @@ from anndata import AnnData
 from .datasets import count_paired
 from .design import TrialDesign
 from .utils import get_counts_matrix
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "TrialDataValidator",
@@ -443,48 +446,48 @@ def check_covariate_balance(
 
 def _print_diagnostic_report(report: dict[str, Any]) -> None:
     """Print formatted diagnostic report."""
-    print("=" * 60)
-    print("TRIAL DATA DIAGNOSTIC REPORT")
-    print("=" * 60)
+    logger.info("=" * 60)
+    logger.info("TRIAL DATA DIAGNOSTIC REPORT")
+    logger.info("=" * 60)
 
-    print("\n📊 DATA SUMMARY")
-    print(f"  Cells:        {report.get('n_cells', 'N/A'):,}")
-    print(f"  Genes:        {report.get('n_genes', 'N/A'):,}")
-    print(f"  Participants: {report.get('n_participants', 'N/A')}")
-    print(f"  Visits:       {report.get('n_visits', 'N/A')}")
-    print(f"  Arms:         {report.get('n_arms', 'N/A')}")
+    logger.info("DATA SUMMARY")
+    logger.info(f"  Cells:        {report.get('n_cells', 'N/A'):,}")
+    logger.info(f"  Genes:        {report.get('n_genes', 'N/A'):,}")
+    logger.info(f"  Participants: {report.get('n_participants', 'N/A')}")
+    logger.info(f"  Visits:       {report.get('n_visits', 'N/A')}")
+    logger.info(f"  Arms:         {report.get('n_arms', 'N/A')}")
 
     if "visits" in report:
-        print(f"    Visit labels: {', '.join(map(str, report['visits']))}")
+        logger.info(f"    Visit labels: {', '.join(map(str, report['visits']))}")
 
     if "arms" in report:
-        print(f"    Arm labels: {', '.join(map(str, report['arms']))}")
+        logger.info(f"    Arm labels: {', '.join(map(str, report['arms']))}")
 
     if "paired_participants" in report:
-        print("\n🔗 PAIRED PARTICIPANTS")
+        logger.info("PAIRED PARTICIPANTS")
         for (v1, v2), count in report["paired_participants"].items():
-            status = "✓" if count >= 4 else "⚠️"
-            print(f"  {status} {v1} <-> {v2}: {count} paired")
+            status = "OK" if count >= 4 else "LOW"
+            logger.info(f"  [{status}] {v1} <-> {v2}: {count} paired")
 
     if "cells_per_participant_visit_mean" in report:
-        print("\n📈 CELLS PER PARTICIPANT-VISIT")
-        print(f"  Mean:   {report['cells_per_participant_visit_mean']:.1f}")
-        print(f"  Median: {report['cells_per_participant_visit_median']:.1f}")
-        print(f"  Min:    {report['cells_per_participant_visit_min']}")
+        logger.info("CELLS PER PARTICIPANT-VISIT")
+        logger.info(f"  Mean:   {report['cells_per_participant_visit_mean']:.1f}")
+        logger.info(f"  Median: {report['cells_per_participant_visit_median']:.1f}")
+        logger.info(f"  Min:    {report['cells_per_participant_visit_min']}")
 
     if "celltype_distribution" in report:
-        print("\n🧬 CELL TYPE DISTRIBUTION")
+        logger.debug("CELL TYPE DISTRIBUTION")
         for ct, count in list(report["celltype_distribution"].items())[:10]:
-            print(f"  {ct}: {count:,}")
+            logger.debug(f"  {ct}: {count:,}")
 
     if report.get("warnings"):
-        print(f"\n⚠️  WARNINGS ({len(report['warnings'])})")
+        logger.warning(f"WARNINGS ({len(report['warnings'])})")
         for w in report["warnings"]:
-            print(f"  • {w}")
+            logger.warning(f"  - {w}")
 
     if report.get("recommendations"):
-        print("\n💡 RECOMMENDATIONS")
+        logger.info("RECOMMENDATIONS")
         for r in report["recommendations"]:
-            print(f"  • {r}")
+            logger.info(f"  - {r}")
 
-    print("=" * 60)
+    logger.info("=" * 60)

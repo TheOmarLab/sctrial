@@ -20,6 +20,13 @@ def test_check_did_assumptions_basic():
     out = st.check_did_assumptions(fit)
     assert "bp_pvalue" in out
     assert "jb_pvalue" in out
+    # BP p-value should be between 0 and 1
+    assert 0 <= out["bp_pvalue"] <= 1
+    # JB p-value should be between 0 and 1
+    assert 0 <= out["jb_pvalue"] <= 1
+    # Durbin-Watson should be between 0 and 4
+    if "durbin_watson" in out:
+        assert 0 <= out["durbin_watson"] <= 4
 
 
 def test_check_did_assumptions_with_outliers():
@@ -36,6 +43,10 @@ def test_check_did_assumptions_with_outliers():
     out = st.check_did_assumptions(fit)
     assert "bp_pvalue" in out
     assert "jb_pvalue" in out
+    # With outliers, Jarque-Bera p-value should be low (significant non-normality)
+    # but we just verify valid range
+    assert 0 <= out["bp_pvalue"] <= 1
+    assert 0 <= out["jb_pvalue"] <= 1
 
 
 def test_pseudobulk_export():
