@@ -151,6 +151,23 @@ def plot_trial_interaction(
     This visualizes the DiD effect: the change from baseline to follow-up
     across treatment arms.
 
+    Parameters
+    ----------
+    adata
+        AnnData object.
+    feature
+        Gene name or obs column to plot.
+    design
+        TrialDesign object.
+    visits
+        Tuple of (baseline, followup) visit labels.
+    layer
+        Layer for gene expression.
+    color_palette
+        Optional colour mapping for arms.
+    ax
+        Optional matplotlib axes.
+
     Returns
     -------
     matplotlib.axes.Axes
@@ -640,11 +657,30 @@ def plot_trial_dotplot(
     use_raw: bool | None = None,
     standard_scale: str | None = None,
     cmap: str = "Reds",
-    **kwargs
-):
+    **kwargs,
+) -> Any:
     """Dotplot of features across cell types and trial arms.
 
     Replicates the 'celltype_treatment' dotplot pattern.
+
+    Parameters
+    ----------
+    adata
+        AnnData object.
+    features
+        List of gene names to include.
+    design
+        TrialDesign object (must have ``celltype_col``).
+    visits
+        Optional (baseline, followup) visit tuple to subset.
+    use_raw
+        Whether to use ``adata.raw``. Defaults to ``True`` if raw exists.
+    standard_scale
+        Scanpy standard_scale parameter (``"var"`` or ``"group"``).
+    cmap
+        Colormap name.
+    **kwargs
+        Additional arguments passed to ``scanpy.pl.dotplot``.
 
     Returns
     -------
@@ -707,6 +743,19 @@ def plot_abundance_interaction(
     ax: Axes | None = None,
 ) -> Axes:
     """Plot cell type abundance (proportion) by arm and visit.
+
+    Parameters
+    ----------
+    adata
+        AnnData object.
+    celltype
+        Cell type to plot.
+    design
+        TrialDesign object (must have ``celltype_col``).
+    visits
+        Tuple of (baseline, followup) visit labels.
+    ax
+        Optional matplotlib axes.
 
     Returns
     -------
@@ -1080,7 +1129,7 @@ def plot_did_forest_interactive(
     p_col: str = "p_DiD",
     alpha: float = 0.05,
     title: str = "DiD Effect Sizes",
-):
+) -> Any:
     """Interactive forest plot using Plotly.
 
     Parameters
@@ -1142,7 +1191,7 @@ def plot_did_volcano_interactive(
     beta_col: str = "beta_DiD",
     p_col: str = "p_DiD",
     title: str = "DiD Volcano Plot",
-):
+) -> Any:
     """Interactive volcano plot using Plotly.
 
     Parameters
