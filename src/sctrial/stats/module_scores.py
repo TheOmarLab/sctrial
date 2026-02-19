@@ -63,6 +63,12 @@ def module_score_pseudobulk(
         Minimum cells per participant×visit×pool to keep.
     exclude_crossovers
         Whether to exclude crossover cells.
+
+    Returns
+    -------
+    pd.DataFrame
+        Long-format table with columns: participant, visit, arm, pool,
+        module, ``module_score``, and ``n_cells``.
     """
     df = adata.obs.copy()
     if exclude_crossovers and design.crossover_col and design.crossover_col in df.columns:
@@ -132,6 +138,27 @@ def _perm_test_diff(
     seed: int,
     treated_label: str | None = None,
 ) -> float:
+    """Permutation test for difference between arm-level mean deltas.
+
+    Parameters
+    ----------
+    delta
+        Participant-level change scores (post − pre).
+    arms
+        Arm labels aligned to *delta*.
+    n_perm
+        Number of random permutations.
+    seed
+        Random seed for reproducibility.
+    treated_label
+        Label identifying the treated arm.  If ``None``, the first
+        element of *arms* is used.
+
+    Returns
+    -------
+    float
+        Two-sided permutation p-value in ``[0, 1]``.
+    """
     rng = np.random.default_rng(seed)
     values = delta.to_numpy()
     labels = arms.to_numpy()
@@ -180,6 +207,13 @@ def module_score_did_by_pool(
         If True, fit an unpaired OLS DiD (module_score ~ visit + arm + visit×arm)
         using all available participant-visit observations. This is a fallback
         when no paired participants exist and should be interpreted cautiously.
+
+    Returns
+    -------
+    pd.DataFrame
+        One row per (pool, module) with columns: ``pool``, ``module``,
+        ``mean_delta_treated``, ``mean_delta_control``, ``beta_DiD``,
+        ``p_DiD``, ``p_treated``, ``p_control``, ``n_units``, ``FDR_DiD``.
     """
     rows: list[dict[str, Any]] = []
     arm_treated = str(design.arm_treated).strip()
@@ -344,6 +378,12 @@ def module_score_within_arm_by_pool(
         If "module", FDR is computed within each module across pools.
         If "pool", FDR is computed within each pool across modules.
         If None, global FDR.
+
+    Returns
+    -------
+    pd.DataFrame
+        One row per (pool, module) with columns: ``pool``, ``module``,
+        ``mean_delta``, ``p_time``, ``n_units``, ``FDR_time``.
     """
     rows: list[dict[str, Any]] = []
 
