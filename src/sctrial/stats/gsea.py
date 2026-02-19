@@ -240,9 +240,25 @@ def run_gsea_pseudobulk(
         visits=visits,
         celltype_col=celltype_col,
     )
+
+    # If celltype_col is provided and results contain per-celltype rows,
+    # run GSEA separately for each cell type and concatenate results.
     if celltype_col is not None and "celltype" in res.columns:
-        # For pseudobulk GSEA per celltype, caller should filter externally
-        pass
+        all_results = []
+        for ct, ct_res in res.groupby("celltype"):
+            try:
+                ct_ranking = _rank_did_results(ct_res, rank_by=rank_by, min_units=min_units)
+            except ValueError:
+                continue
+            ct_pre = gp.prerank(rnk=ct_ranking, gene_sets=gene_sets, **kwargs)
+            if return_obj:
+                return ct_pre  # Can only return one object; fall back to first
+            ct_df = ct_pre.res2d if hasattr(ct_pre, "res2d") else pd.DataFrame(ct_pre)
+            ct_df["celltype"] = ct
+            all_results.append(ct_df)
+        if not all_results:
+            return pd.DataFrame()
+        return pd.concat(all_results, ignore_index=True)
 
     ranking = _rank_did_results(res, rank_by=rank_by, min_units=min_units)
 

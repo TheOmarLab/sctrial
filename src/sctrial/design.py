@@ -86,9 +86,9 @@ class TrialDesign:
             If True, include ``crossover_col`` when it is defined.
         """
         cols = [self.participant_col, self.visit_col, self.arm_col]
-        if include_celltype and self.celltype_col:
+        if include_celltype and self.celltype_col is not None:
             cols.append(self.celltype_col)
-        if include_crossover and self.crossover_col:
+        if include_crossover and self.crossover_col is not None:
             cols.append(self.crossover_col)
         return cols
 

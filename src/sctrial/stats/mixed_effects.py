@@ -57,6 +57,7 @@ Optional random slopes:
 """
 from __future__ import annotations
 
+import warnings
 from collections.abc import Sequence
 
 import numpy as np
@@ -84,6 +85,7 @@ def did_mixed(
     arm_treated: str,
     random_slope: bool = False,
     covariates: Sequence[str] | None = None,
+    visits: tuple[str, str] | None = None,
 ) -> dict:
     """Fit a single DiD mixed effects model.
 
@@ -152,7 +154,10 @@ def did_mixed(
         }
 
     # Map time to 0/1 (pre=0, post=1)
-    time_sorted = sorted(time_vals)
+    if visits is not None:
+        time_sorted = list(visits)
+    else:
+        time_sorted = sorted(time_vals)
     df["post_num"] = df[time_col].map({time_sorted[0]: 0, time_sorted[1]: 1}).astype(float)
 
     # Build formula
@@ -176,9 +181,13 @@ def did_mixed(
             groups=df[participant_col],
             re_formula=re_formula,
         )
-        fit = model.fit(method="powell", maxiter=500, full_output=False)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always", ConvergenceWarning)
+            fit = model.fit(method="powell", maxiter=500, full_output=False)
         converged = fit.converged
-    except (ValueError, np.linalg.LinAlgError, ConvergenceWarning) as e:
+        if caught:
+            converged = False
+    except (ValueError, np.linalg.LinAlgError) as e:
         return {
             "beta_DiD": np.nan,
             "se_DiD": np.nan,
@@ -324,7 +333,7 @@ def did_table_mixed(
     # Build dataframe
     obs = ad.obs.copy()
     cols = [design.participant_col, design.visit_col, design.arm_col]
-    if design.celltype_col:
+    if design.celltype_col is not None:
         cols.append(design.celltype_col)
 
     df = obs[cols].copy()
@@ -391,6 +400,7 @@ def did_table_mixed(
             arm_treated=design.arm_treated,
             random_slope=random_slope,
             covariates=covariates,
+            visits=visits,
         )
 
         rows.append({

@@ -125,18 +125,26 @@ def module_score_pseudobulk(
     return pb
 
 
-def _perm_test_diff(delta: pd.Series, arms: pd.Series, n_perm: int, seed: int) -> float:
+def _perm_test_diff(
+    delta: pd.Series,
+    arms: pd.Series,
+    n_perm: int,
+    seed: int,
+    treated_label: str | None = None,
+) -> float:
     rng = np.random.default_rng(seed)
     values = delta.to_numpy()
     labels = arms.to_numpy()
-    treated_label = labels[0]
+    if treated_label is None:
+        treated_label = labels[0]
     obs = values[labels == treated_label].mean() - values[labels != treated_label].mean()
-    perm_vals: list[float] = []
+    count = 0
     for _ in range(n_perm):
         perm = rng.permutation(np.asarray(labels))
-        perm_vals.append(values[perm == treated_label].mean() - values[perm != treated_label].mean())
-    perm_vals_arr = np.asarray(perm_vals)
-    return float((np.abs(perm_vals_arr) >= np.abs(obs)).mean())
+        perm_diff = values[perm == treated_label].mean() - values[perm != treated_label].mean()
+        if np.abs(perm_diff) >= np.abs(obs):
+            count += 1
+    return float((count + 1) / (n_perm + 1))
 
 
 def module_score_did_by_pool(
@@ -274,7 +282,10 @@ def module_score_did_by_pool(
         mean_delta_control = float(arm_means.get(arm_control, np.nan))
         did = mean_delta_treated - mean_delta_control
 
-        p_did = _perm_test_diff(deltas["delta"], deltas["arm"], n_perm=n_perm, seed=seed)
+        p_did = _perm_test_diff(
+            deltas["delta"], deltas["arm"], n_perm=n_perm, seed=seed,
+            treated_label=arm_treated,
+        )
 
         rows.append({
             "pool": pool,

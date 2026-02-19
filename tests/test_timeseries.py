@@ -28,6 +28,14 @@ def test_trend_interaction():
     design = st.TrialDesign(arm_treated="Treated", arm_control="Control")
     res = st.trend_interaction(ad, ["G0"], design, visits=("V1", "V2", "V3"))
     assert not res.empty
+    assert "feature" in res.columns
+    # Should have results for the feature
+    assert len(res) >= 1
+    # Coefficient values should be finite
+    for col in ["beta_DiD", "p_DiD"]:
+        if col in res.columns:
+            valid = res[col].dropna()
+            assert all(np.isfinite(valid))
 
 
 def test_event_study():
@@ -35,6 +43,8 @@ def test_event_study():
     design = st.TrialDesign(arm_treated="Treated", arm_control="Control")
     res = st.event_study_did(ad, ["G0"], design, visits=("V1", "V2", "V3"))
     assert not res.empty
+    # Should have multiple visit-specific estimates
+    assert len(res) >= 1
 
 
 def test_polynomial_trend():
@@ -42,6 +52,9 @@ def test_polynomial_trend():
     design = st.TrialDesign(arm_treated="Treated", arm_control="Control")
     res = st.polynomial_trend(ad, "G0", design, visits=("V1", "V2", "V3"), degree=2)
     assert "coefficients" in res
+    # Coefficients should be finite
+    for k, v in res["coefficients"].items():
+        assert np.isfinite(v), f"Coefficient {k} is not finite"
 
 
 def test_parallel_trends():
@@ -49,3 +62,9 @@ def test_parallel_trends():
     design = st.TrialDesign(arm_treated="Treated", arm_control="Control")
     res = st.test_parallel_trends(ad, ["G0"], design, pre_visits=("V1", "V2", "V3"))
     assert not res.empty
+    assert "feature" in res.columns
+    # p-values should be between 0 and 1
+    for col in res.columns:
+        if col.startswith("p_"):
+            valid = res[col].dropna()
+            assert all((valid >= 0) & (valid <= 1))

@@ -76,7 +76,7 @@ For smaller samples, use bootstrap: ``use_bootstrap=True``
 Do I need the same number of cells per participant?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-No! DiD aggregates to the participant level, so unequal cell counts are fine. The method uses weighted least squares to account for this.
+No! DiD aggregates to the participant level, so unequal cell counts are fine. The method uses OLS with cluster-robust standard errors to account for within-participant correlation.
 
 Can I use sctrial with cross-sectional data (no longitudinal measurements)?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -479,7 +479,20 @@ Run diagnostics:
 Can I run sctrial in parallel?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Not currently built-in. For large gene sets, process in batches:
+Yes! Use ``did_table_parallel`` for parallel DiD across many features:
+
+.. code-block:: python
+
+   res = st.did_table_parallel(
+       adata,
+       features=list(adata.var_names),
+       design=design,
+       visits=("V1", "V2"),
+       n_jobs=4,  # Number of parallel workers
+   )
+
+For smaller gene sets, the standard ``did_table`` is often fast enough.
+You can also process in batches manually:
 
 .. code-block:: python
 
