@@ -245,8 +245,11 @@ def pseudobulk_did(
             columns=design.visit_col,
             values=genes[0],
             aggfunc="count",
+            observed=True,
         )
-        keep = wide[(wide.get(visits[0], 0) > 0) & (wide.get(visits[1], 0) > 0)].index
+        has_v0 = wide[visits[0]] > 0 if visits[0] in wide.columns else pd.Series(False, index=wide.index)
+        has_v1 = wide[visits[1]] > 0 if visits[1] in wide.columns else pd.Series(False, index=wide.index)
+        keep = wide[has_v0 & has_v1].index
         df_pool = df_pool[df_pool[design.participant_col].isin(keep)].copy()
 
         if df_pool[design.participant_col].nunique() < min_paired:
