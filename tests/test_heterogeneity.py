@@ -43,6 +43,13 @@ def test_treatment_heterogeneity_basic():
     assert not res.empty
     assert "beta_heterogeneity" in res.columns
 
+    # Deeper assertions: p-value range, finite betas, n_units positive
+    for _, row in res.iterrows():
+        if pd.notna(row.get("p_heterogeneity")):
+            assert 0 <= row["p_heterogeneity"] <= 1, "p-value out of [0,1]"
+        assert np.isfinite(row["beta_heterogeneity"]), "beta should be finite"
+        assert row["n_units"] > 0, "n_units should be positive"
+
 
 def test_treatment_heterogeneity_numeric_biomarker():
     rng = np.random.default_rng(1)

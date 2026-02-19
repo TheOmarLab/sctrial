@@ -111,6 +111,13 @@ def wild_cluster_bootstrap_t(
     cluster level. This is recommended when the number of clusters is small
     and standard cluster-robust inference may be unreliable.
 
+    The procedure uses a **score / Rao-type** standard error approach: each
+    bootstrap draw perturbs the restricted residuals with cluster-level
+    Rademacher weights (±1 with equal probability), re-fits the full model
+    via OLS (or WLS when the original fit used weights), and forms a
+    bootstrap t-statistic.  The two-sided p-value is computed as the
+    fraction of bootstrap |t*| values that exceed the observed |t|.
+
     Reference:
     Cameron, A.C., Gelbach, J.B., & Miller, D.L. (2008).
     Bootstrap-based improvements for inference with clustered errors.

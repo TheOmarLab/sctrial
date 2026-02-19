@@ -205,20 +205,23 @@ def plot_parallel_trends(
 ) -> Axes:
     """Plot pre-treatment trends by arm to visually assess parallel trends.
 
+    Produces a point-plot of mean feature values across visits, separately
+    for each arm, to help evaluate the parallel-trends assumption.
+
     Parameters
     ----------
     adata
         AnnData object.
     feature
-        Feature to plot (gene or obs column).
+        Feature to plot (gene name in ``var_names`` or column in ``obs``).
     design
-        TrialDesign object.
+        TrialDesign object specifying arm and visit columns.
     visits
         Sequence of visit labels to include (should be pre-treatment visits).
     layer
-        Layer for gene expression.
+        Layer for gene expression (``None`` uses ``adata.X``).
     ax
-        Optional matplotlib axis.
+        Optional matplotlib axes; a new figure is created if ``None``.
 
     Returns
     -------
@@ -761,7 +764,29 @@ def plot_trial_umap_panel(
 ) -> Figure:
     """Combined UMAP panel: Cell Types + 4 Trial-stratified UMAPs.
 
-    Replicates the layout: [Large Cell Type UMAP] [2x2 Grid of Feature UMAPs].
+    Produces a 1×3 grid: a large cell-type reference UMAP on the left and a
+    2×2 grid of feature UMAPs (Treated/Control × Baseline/Followup) on the
+    right.
+
+    Parameters
+    ----------
+    adata
+        AnnData object with ``X_umap`` in ``obsm``.
+    feature
+        Gene name or ``obs`` column to display.
+    design
+        TrialDesign object (must have ``celltype_col`` set).
+    visits
+        Tuple of ``(baseline, followup)`` visit labels; uses
+        ``design.primary_visits()`` if ``None``.
+    layer
+        Expression layer for gene features (``None`` uses ``adata.X``).
+    cmap
+        Matplotlib colormap for the feature panels.
+    figsize
+        Figure size ``(width, height)``.
+    title
+        Optional suptitle; defaults to ``"Trial UMAP Panel: {feature}"``.
 
     Returns
     -------
@@ -870,6 +895,32 @@ def plot_module_umap_panel(
     label_fontsize: int = 8,
 ) -> Figure:
     """Plot cell-type UMAP plus module score UMAP panels.
+
+    Creates a multi-panel figure with one cell-type reference UMAP and one
+    UMAP per module score column, all sharing the same embedding coordinates.
+
+    Parameters
+    ----------
+    adata
+        AnnData object with a UMAP embedding in ``obsm[umap_key]``.
+    module_cols
+        Column names in ``adata.obs`` containing module scores to plot.
+    celltype_col
+        Column in ``adata.obs`` with cell-type labels (used in reference panel).
+    umap_key
+        Key in ``adata.obsm`` for UMAP coordinates.
+    n_cols
+        Number of columns in the subplot grid.
+    cmap
+        Matplotlib colormap for module score panels.
+    figsize
+        Figure size ``(width, height)``.
+    point_size
+        Scatter point size.
+    alpha
+        Point transparency.
+    label_fontsize
+        Font size for cell-type labels on the reference panel.
 
     Returns
     -------
@@ -1032,6 +1083,23 @@ def plot_did_forest_interactive(
 ):
     """Interactive forest plot using Plotly.
 
+    Parameters
+    ----------
+    df
+        DataFrame with DiD results (from ``did_table`` or ``abundance_did``).
+    feature_col
+        Column name for feature labels (y-axis).
+    beta_col
+        Column name for effect size estimates.
+    se_col
+        Column name for standard errors (used for 95 % CI error bars).
+    p_col
+        Column name for p-values (used to color significant points).
+    alpha
+        Significance threshold for coloring points.
+    title
+        Plot title.
+
     Returns
     -------
     plotly.graph_objects.Figure
@@ -1076,6 +1144,17 @@ def plot_did_volcano_interactive(
     title: str = "DiD Volcano Plot",
 ):
     """Interactive volcano plot using Plotly.
+
+    Parameters
+    ----------
+    df
+        DataFrame with DiD results.
+    beta_col
+        Column name for effect size estimates (x-axis).
+    p_col
+        Column name for p-values (y-axis as ``-log10(p)``).
+    title
+        Plot title.
 
     Returns
     -------

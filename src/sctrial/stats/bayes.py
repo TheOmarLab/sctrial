@@ -58,16 +58,40 @@ def did_table_bayes(
 
     Parameters
     ----------
+    adata
+        AnnData object containing expression data.
+    features
+        Feature names (genes or ``obs`` columns) to test.
+    design
+        A ``TrialDesign`` specifying participant, visit, and arm columns.
+    visits
+        Tuple of ``(baseline, followup)`` visit labels.
+    exclude_crossovers
+        Whether to exclude crossover participants.
+    celltype
+        If provided, subset to this cell type before analysis.
+    aggregate
+        Aggregation mode (``"participant_visit"`` or ``"cell"``).
+    layer
+        Expression layer for gene features (``None`` uses ``adata.X``).
+    standardize
+        Whether to z-score outcomes before model fitting.
+    agg
+        Aggregation function (``"mean"``, ``"sum"``, etc.).
+    covariates
+        Optional covariate columns to include as fixed effects.
     draws
-        Posterior draws.
+        Number of posterior draws (after tuning).
     tune
-        Tuning iterations.
+        Number of tuning (warm-up) iterations per chain.
     chains
         Number of MCMC chains.
     target_accept
-        Target acceptance rate for NUTS.
+        Target acceptance rate for the NUTS sampler.
     max_treedepth
-        Maximum tree depth for NUTS.
+        Maximum tree depth for the NUTS sampler.
+    seed
+        Random seed for reproducibility.
 
     Returns
     -------
