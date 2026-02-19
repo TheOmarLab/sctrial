@@ -85,6 +85,7 @@
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">gzip</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">urllib.error</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">urllib.request</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sequence</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">io</span><span class="w"> </span><span class="kn">import</span> <span class="n">StringIO</span>
@@ -183,6 +184,31 @@
     <span class="k">return</span> <span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">50</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">atol</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">))</span>
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">_download_file</span><span class="p">(</span><span class="n">url</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">dest</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;file&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Download a single file with error handling and partial-file cleanup.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    url : str</span>
+<span class="sd">        URL to download from.</span>
+<span class="sd">    dest : Path</span>
+<span class="sd">        Local destination path.</span>
+<span class="sd">    label : str</span>
+<span class="sd">        Human-readable label for log messages (e.g. &quot;TPM file&quot;).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Downloading </span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> from </span><span class="si">{</span><span class="n">url</span><span class="si">}</span><span class="s2">...&quot;</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">urllib</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">urlretrieve</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">dest</span><span class="p">))</span>
+    <span class="k">except</span> <span class="p">(</span><span class="n">urllib</span><span class="o">.</span><span class="n">error</span><span class="o">.</span><span class="n">URLError</span><span class="p">,</span> <span class="n">urllib</span><span class="o">.</span><span class="n">error</span><span class="o">.</span><span class="n">HTTPError</span><span class="p">,</span> <span class="ne">OSError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">dest</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="n">dest</span><span class="o">.</span><span class="n">unlink</span><span class="p">()</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Failed to download </span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> from </span><span class="si">{</span><span class="n">url</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">. &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Please download manually and place it in </span><span class="si">{</span><span class="n">dest</span><span class="o">.</span><span class="n">parent</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">e</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Successfully downloaded </span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">dest</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
 <span class="k">def</span><span class="w"> </span><span class="nf">_get_counts_matrix</span><span class="p">(</span><span class="n">adata</span><span class="p">:</span> <span class="n">ad</span><span class="o">.</span><span class="n">AnnData</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
     <span class="k">return</span> <span class="n">get_counts_matrix</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
 
@@ -195,9 +221,31 @@
     <span class="n">processed_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;sade_feldman_processed_v5.h5ad&quot;</span><span class="p">,</span>
     <span class="n">max_cells_per_participant_visit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">42</span><span class="p">,</span>
+    <span class="n">allow_download</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="n">force_reprocess</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ad</span><span class="o">.</span><span class="n">AnnData</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load and preprocess Sade-Feldman melanoma immunotherapy dataset (GSE120575).&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load and preprocess Sade-Feldman melanoma immunotherapy dataset (GSE120575).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data_dir : str</span>
+<span class="sd">        Directory containing (or to store) the raw data files.</span>
+<span class="sd">    processed_name : str</span>
+<span class="sd">        Filename for the cached processed h5ad file.</span>
+<span class="sd">    max_cells_per_participant_visit : int or None</span>
+<span class="sd">        Maximum number of cells to retain per participant-visit pair.</span>
+<span class="sd">    seed : int</span>
+<span class="sd">        Random seed for reproducibility.</span>
+<span class="sd">    allow_download : bool</span>
+<span class="sd">        If True, download missing files from GEO automatically.</span>
+<span class="sd">    force_reprocess : bool</span>
+<span class="sd">        If True, reprocess even when a cached file exists.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    AnnData</span>
+<span class="sd">        The processed AnnData object.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">data_dir_path</span> <span class="o">=</span> <span class="n">_resolve_dir_with_files</span><span class="p">(</span>
         <span class="n">data_dir</span><span class="p">,</span>
         <span class="p">[</span>
@@ -228,12 +276,22 @@
     <span class="n">tpm_path</span> <span class="o">=</span> <span class="n">data_dir_path</span> <span class="o">/</span> <span class="s2">&quot;GSE120575_Sade_Feldman_melanoma_single_cells_TPM_GEO.txt.gz&quot;</span>
     <span class="n">meta_path</span> <span class="o">=</span> <span class="n">data_dir_path</span> <span class="o">/</span> <span class="s2">&quot;GSE120575_patient_ID_single_cells.txt.gz&quot;</span>
 
-    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="p">[</span><span class="n">tpm_path</span><span class="p">,</span> <span class="n">meta_path</span><span class="p">]:</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">p</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+    <span class="n">_GEO_BASE</span> <span class="o">=</span> <span class="s2">&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE120575&amp;format=file&amp;file=&quot;</span>
+    <span class="n">_sade_feldman_files</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="n">tpm_path</span><span class="p">,</span> <span class="n">_GEO_BASE</span> <span class="o">+</span> <span class="s2">&quot;GSE120575</span><span class="si">%5F</span><span class="s2">Sade</span><span class="si">%5F</span><span class="s2">Feldman</span><span class="si">%5F</span><span class="s2">melanoma</span><span class="si">%5F</span><span class="s2">single</span><span class="si">%5F</span><span class="s2">cells</span><span class="si">%5F</span><span class="s2">TPM</span><span class="si">%5F</span><span class="s2">GEO</span><span class="si">%2E</span><span class="s2">txt</span><span class="si">%2E</span><span class="s2">gz&quot;</span><span class="p">,</span> <span class="s2">&quot;TPM file&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="n">meta_path</span><span class="p">,</span> <span class="n">_GEO_BASE</span> <span class="o">+</span> <span class="s2">&quot;GSE120575</span><span class="si">%5F</span><span class="s2">patient</span><span class="si">%5F</span><span class="s2">ID</span><span class="si">%5F</span><span class="s2">single</span><span class="si">%5F</span><span class="s2">cells</span><span class="si">%2E</span><span class="s2">txt</span><span class="si">%2E</span><span class="s2">gz&quot;</span><span class="p">,</span> <span class="s2">&quot;metadata file&quot;</span><span class="p">),</span>
+    <span class="p">]</span>
+    <span class="n">missing</span> <span class="o">=</span> <span class="p">[(</span><span class="n">p</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">_sade_feldman_files</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">p</span><span class="o">.</span><span class="n">exists</span><span class="p">()]</span>
+    <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">allow_download</span><span class="p">:</span>
+            <span class="n">names</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">missing</span><span class="p">)</span>
             <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Missing file: </span><span class="si">{</span><span class="n">p</span><span class="si">}</span><span class="s2">. Download from GEO: https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE120575&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;Missing file(s): </span><span class="si">{</span><span class="n">names</span><span class="si">}</span><span class="s2">. Download from GEO: &quot;</span>
+                <span class="s2">&quot;https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE120575&quot;</span>
             <span class="p">)</span>
-
+        <span class="n">data_dir_path</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">dest</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">missing</span><span class="p">:</span>
+            <span class="n">_download_file</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">dest</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Processing raw data (this may take a minute)...&quot;</span><span class="p">)</span>
     <span class="k">with</span> <span class="n">gzip</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">tpm_path</span><span class="p">,</span> <span class="s2">&quot;rt&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
         <span class="n">header1</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -320,7 +378,26 @@
     <span class="n">allow_download</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="n">force_reprocess</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ad</span><span class="o">.</span><span class="n">AnnData</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load and preprocess Stephenson COVID-19 dataset (E-MTAB-10026).&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load and preprocess Stephenson COVID-19 dataset (E-MTAB-10026).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data_path : str</span>
+<span class="sd">        Path to the raw h5ad data file.</span>
+<span class="sd">    processed_name : str</span>
+<span class="sd">        Filename for the cached processed h5ad file.</span>
+<span class="sd">    seed : int</span>
+<span class="sd">        Random seed for reproducibility.</span>
+<span class="sd">    allow_download : bool</span>
+<span class="sd">        If True, download the data file automatically when missing.</span>
+<span class="sd">    force_reprocess : bool</span>
+<span class="sd">        If True, reprocess even when a cached file exists.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    AnnData</span>
+<span class="sd">        The processed AnnData object.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">data_path_resolved</span> <span class="o">=</span> <span class="n">_resolve_file</span><span class="p">(</span><span class="n">data_path</span><span class="p">)</span>
     <span class="n">data_root</span> <span class="o">=</span> <span class="n">data_path_resolved</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span> <span class="k">if</span> <span class="n">data_path_resolved</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="k">else</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;data&quot;</span><span class="p">)</span>
     <span class="n">processed_path</span> <span class="o">=</span> <span class="n">data_root</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span>
@@ -336,11 +413,9 @@
             <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span>
                 <span class="sa">f</span><span class="s2">&quot;Data not found at </span><span class="si">{</span><span class="n">data_path_resolved</span><span class="si">}</span><span class="s2">. Download from: https://www.ebi.ac.uk/biostudies/files/E-MTAB-10026/&quot;</span>
             <span class="p">)</span>
-        <span class="n">url</span> <span class="o">=</span> <span class="s2">&quot;https://www.ebi.ac.uk/biostudies/files/E-MTAB-10026/covid_portal_210320_with_raw.h5ad&quot;</span>
         <span class="n">data_path_resolved</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Downloading from </span><span class="si">{</span><span class="n">url</span><span class="si">}</span><span class="s2">...&quot;</span><span class="p">)</span>
-        <span class="n">urllib</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">urlretrieve</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">data_path_resolved</span><span class="p">))</span>
-
+        <span class="n">url</span> <span class="o">=</span> <span class="s2">&quot;https://www.ebi.ac.uk/biostudies/files/E-MTAB-10026/covid_portal_210320_with_raw.h5ad&quot;</span>
+        <span class="n">_download_file</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">data_path_resolved</span><span class="p">,</span> <span class="s2">&quot;Stephenson COVID-19 data&quot;</span><span class="p">)</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Processing raw data...&quot;</span><span class="p">)</span>
     <span class="n">adata</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="n">data_path_resolved</span><span class="p">)</span>
 
@@ -391,9 +466,33 @@
     <span class="n">max_participants</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="mi">30</span><span class="p">,</span>
     <span class="n">max_cells_per_group</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="mi">200</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">42</span><span class="p">,</span>
+    <span class="n">allow_download</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="n">force_reprocess</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ad</span><span class="o">.</span><span class="n">AnnData</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load and preprocess GSE171964 PBMC vaccine time course data (Day 0 vs Day 7).&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load and preprocess GSE171964 PBMC vaccine time course data (Day 0 vs Day 7).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data_dir : str</span>
+<span class="sd">        Directory containing (or to store) the raw data files.</span>
+<span class="sd">    processed_name : str</span>
+<span class="sd">        Filename for the cached processed h5ad file.</span>
+<span class="sd">    max_participants : int or None</span>
+<span class="sd">        Maximum number of participants to retain.</span>
+<span class="sd">    max_cells_per_group : int or None</span>
+<span class="sd">        Maximum number of cells per participant-day-celltype group.</span>
+<span class="sd">    seed : int</span>
+<span class="sd">        Random seed for reproducibility.</span>
+<span class="sd">    allow_download : bool</span>
+<span class="sd">        If True, download missing files from GEO automatically.</span>
+<span class="sd">    force_reprocess : bool</span>
+<span class="sd">        If True, reprocess even when a cached file exists.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    AnnData</span>
+<span class="sd">        The processed AnnData object.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">data_dir_path</span> <span class="o">=</span> <span class="n">_resolve_dir_with_files</span><span class="p">(</span>
         <span class="n">data_dir</span><span class="p">,</span>
         <span class="p">[</span>
@@ -432,10 +531,21 @@
     <span class="n">pheno_path</span> <span class="o">=</span> <span class="n">data_dir_path</span> <span class="o">/</span> <span class="s2">&quot;GSE171964_geo_pheno_v2.csv.gz&quot;</span>
     <span class="n">mtx_path</span> <span class="o">=</span> <span class="n">data_dir_path</span> <span class="o">/</span> <span class="s2">&quot;GSE171964_countsmatrix_v2.mtx.gz&quot;</span>
 
-    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="p">[</span><span class="n">barcodes_path</span><span class="p">,</span> <span class="n">feats_path</span><span class="p">,</span> <span class="n">pheno_path</span><span class="p">,</span> <span class="n">mtx_path</span><span class="p">]:</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">p</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-            <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing file: </span><span class="si">{</span><span class="n">p</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
+    <span class="n">_GEO_BASE_V</span> <span class="o">=</span> <span class="s2">&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE171964&amp;format=file&amp;file=&quot;</span>
+    <span class="n">_vaccine_files</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="n">barcodes_path</span><span class="p">,</span> <span class="n">_GEO_BASE_V</span> <span class="o">+</span> <span class="s2">&quot;GSE171964</span><span class="si">%5F</span><span class="s2">barcodes</span><span class="si">%5F</span><span class="s2">v2</span><span class="si">%2E</span><span class="s2">tsv</span><span class="si">%2E</span><span class="s2">gz&quot;</span><span class="p">,</span> <span class="s2">&quot;barcodes file&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="n">feats_path</span><span class="p">,</span> <span class="n">_GEO_BASE_V</span> <span class="o">+</span> <span class="s2">&quot;GSE171964</span><span class="si">%5F</span><span class="s2">feats</span><span class="si">%5F</span><span class="s2">v2</span><span class="si">%2E</span><span class="s2">tsv</span><span class="si">%2E</span><span class="s2">gz&quot;</span><span class="p">,</span> <span class="s2">&quot;features file&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="n">pheno_path</span><span class="p">,</span> <span class="n">_GEO_BASE_V</span> <span class="o">+</span> <span class="s2">&quot;GSE171964</span><span class="si">%5F</span><span class="s2">geo</span><span class="si">%5F</span><span class="s2">pheno</span><span class="si">%5F</span><span class="s2">v2</span><span class="si">%2E</span><span class="s2">csv</span><span class="si">%2E</span><span class="s2">gz&quot;</span><span class="p">,</span> <span class="s2">&quot;pheno file&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="n">mtx_path</span><span class="p">,</span> <span class="n">_GEO_BASE_V</span> <span class="o">+</span> <span class="s2">&quot;GSE171964</span><span class="si">%5F</span><span class="s2">countsmatrix</span><span class="si">%5F</span><span class="s2">v2</span><span class="si">%2E</span><span class="s2">mtx</span><span class="si">%2E</span><span class="s2">gz&quot;</span><span class="p">,</span> <span class="s2">&quot;counts matrix&quot;</span><span class="p">),</span>
+    <span class="p">]</span>
+    <span class="n">missing</span> <span class="o">=</span> <span class="p">[(</span><span class="n">p</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">_vaccine_files</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">p</span><span class="o">.</span><span class="n">exists</span><span class="p">()]</span>
+    <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">allow_download</span><span class="p">:</span>
+            <span class="n">names</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">missing</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing file(s): </span><span class="si">{</span><span class="n">names</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">data_dir_path</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">dest</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">missing</span><span class="p">:</span>
+            <span class="n">_download_file</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">dest</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
     <span class="n">barcodes</span> <span class="o">=</span> <span class="p">(</span>
         <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">barcodes_path</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">s+&quot;</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="s2">&quot;python&quot;</span><span class="p">,</span> <span class="n">skiprows</span><span class="o">=</span><span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
         <span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
