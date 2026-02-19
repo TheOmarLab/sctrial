@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import gzip
-import urllib.error
 import logging
+import urllib.error
 import urllib.request
 from collections.abc import Sequence
 from io import StringIO
