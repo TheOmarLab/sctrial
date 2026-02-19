@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import gzip
+import urllib.error
 import urllib.request
 from collections.abc import Sequence
 from io import StringIO
@@ -101,7 +102,17 @@ def load_sade_feldman(
     allow_download: bool = False,
     force_reprocess: bool = False,
 ) -> ad.AnnData:
-    """Load and preprocess Sade-Feldman melanoma immunotherapy dataset (GSE120575)."""
+    """Load and preprocess Sade-Feldman melanoma immunotherapy dataset (GSE120575).
+    Args:
+        data_dir: Directory to store the data.
+        processed_name: Name of the processed file.
+        max_cells_per_participant_visit: Maximum number of cells per participant-visit.
+        seed: Random seed.
+        allow_download: Whether to allow downloading the data from GEO.
+        force_reprocess: Whether to force reprocessing the data.
+    Returns:
+        ad.AnnData: The processed AnnData object.
+    """
     data_dir_path = _resolve_dir_with_files(
         data_dir,
         [
@@ -138,11 +149,22 @@ def load_sade_feldman(
             data_dir_path.mkdir(parents=True, exist_ok=True)
             url1 = 'https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE120575&format=file&file=GSE120575%5FSade%5FFeldman%5Fmelanoma%5Fsingle%5Fcells%5FTPM%5FGEO%2Etxt%2Egz'
             print(f"Downloading from {url1}...")
-            urllib.request.urlretrieve(url1, str(tpm_path))
+            try:
+                urllib.request.urlretrieve(url1, str(tpm_path))
+            except (urllib.error.URLError, urllib.error.HTTPError, OSError) as e:
+                if tpm_path.exists():
+                    tpm_path.unlink()
+                raise RuntimeError(f"Failed to download TPM file from {url1}: {e}. Please download manually from {url1} and place it in {data_dir_path}") from e
+            print(f'Successfully downloaded TPM file: {tpm_path}')
             url2 = 'https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE120575&format=file&file=GSE120575%5Fpatient%5FID%5Fsingle%5Fcells%2Etxt%2Egz'
             print(f"Downloading from {url2}...")
-            urllib.request.urlretrieve(url2, str(meta_path))
-
+            try:
+                urllib.request.urlretrieve(url2, str(meta_path))
+            except (urllib.error.URLError, urllib.error.HTTPError, OSError) as e:
+                if meta_path.exists():
+                    meta_path.unlink()
+                raise RuntimeError(f"Failed to download metadata file from {url2}: {e}. Please download manually from {url2} and place it in {data_dir_path}") from e
+            print(f'Successfully downloaded metadata file: {meta_path}')
     print("Processing raw data (this may take a minute)...")
     with gzip.open(tpm_path, "rt") as f:
         header1 = f.readline().strip().split("\t")
@@ -226,7 +248,16 @@ def load_stephenson_data(
     allow_download: bool = False,
     force_reprocess: bool = False,
 ) -> ad.AnnData:
-    """Load and preprocess Stephenson COVID-19 dataset (E-MTAB-10026)."""
+    """Load and preprocess Stephenson COVID-19 dataset (E-MTAB-10026).
+    Args:
+        data_path: Path to the raw data file.
+        processed_name: Name of the processed file.
+        seed: Random seed.
+        allow_download: Whether to allow downloading the data from https://www.ebi.ac.uk/biostudies/files/E-MTAB-10026/covid_portal_210320_with_raw.h5ad.
+        force_reprocess: Whether to force reprocessing the data.
+    Returns:
+        ad.AnnData: The processed AnnData object.
+    """
     data_path_resolved = _resolve_file(data_path)
     data_root = data_path_resolved.parent.parent if data_path_resolved.exists() else Path("data")
     processed_path = data_root / "processed" / processed_name
@@ -242,11 +273,16 @@ def load_stephenson_data(
             raise FileNotFoundError(
                 f"Data not found at {data_path_resolved}. Download from: https://www.ebi.ac.uk/biostudies/files/E-MTAB-10026/"
             )
-        url = "https://www.ebi.ac.uk/biostudies/files/E-MTAB-10026/covid_portal_210320_with_raw.h5ad"
         data_path_resolved.parent.mkdir(parents=True, exist_ok=True)
+        url = "https://www.ebi.ac.uk/biostudies/files/E-MTAB-10026/covid_portal_210320_with_raw.h5ad"
         print(f"Downloading from {url}...")
-        urllib.request.urlretrieve(url, str(data_path_resolved))
-
+        try:
+            urllib.request.urlretrieve(url, str(data_path_resolved))
+        except (urllib.error.URLError, urllib.error.HTTPError, OSError) as e:
+            if data_path_resolved.exists():
+                data_path_resolved.unlink()
+            raise RuntimeError(f"Failed to download data from {url}: {e}. Please download manually from {url} and place it in {data_path_resolved.parent}") from e
+        print(f'Successfully downloaded data: {data_path_resolved}')
     print("Processing raw data...")
     adata = ad.read_h5ad(data_path_resolved)
 
@@ -291,13 +327,24 @@ def load_stephenson_data(
 def load_vaccine_gse171964(
     data_dir: str = "data/vaccine_gse171964",
     processed_name: str = "vaccine_gse171964_day0_day7.h5ad",
-    allow_download: bool = False,
     max_participants: int = 30,
     max_cells_per_group: int | None = 200,
     seed: int = 42,
+    allow_download: bool = False,
     force_reprocess: bool = False,
 ) -> ad.AnnData:
-    """Load and preprocess GSE171964 PBMC vaccine time course data (Day 0 vs Day 7)."""
+    """Load and preprocess GSE171964 PBMC vaccine time course data (Day 0 vs Day 7).
+    Args:
+        data_dir: Directory to store the data.
+        processed_name: Name of the processed file.
+        max_participants: Maximum number of participants.
+        max_cells_per_group: Maximum number of cells per group.
+        seed: Random seed.
+        allow_download: Whether to allow downloading the data from GEO.
+        force_reprocess: Whether to force reprocessing the data.
+    Returns:
+        ad.AnnData: The processed AnnData object.
+    """
     data_dir_path = _resolve_dir_with_files(
         data_dir,
         [
@@ -341,17 +388,40 @@ def load_vaccine_gse171964(
             data_dir_path.mkdir(parents=True, exist_ok=True)
             url1 = 'https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE171964&format=file&file=GSE171964%5Fbarcodes%5Fv2%2Etsv%2Egz'
             print(f"Downloading from {url1}...")
-            urllib.request.urlretrieve(url1, str(barcodes_path))
+            try:
+                urllib.request.urlretrieve(url1, str(barcodes_path))
+            except (urllib.error.URLError, urllib.error.HTTPError, OSError) as e:
+                if barcodes_path.exists():
+                    barcodes_path.unlink()
+                raise RuntimeError(f"Failed to download barcodes file from {url1}: {e}. Please download manually from {url1} and place it in {data_dir_path}") from e
+            print(f'Successfully downloaded barcodes file: {barcodes_path}')
             url2 = 'https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE171964&format=file&file=GSE171964%5Ffeats%5Fv2%2Etsv%2Egz'
             print(f"Downloading from {url2}...")
-            urllib.request.urlretrieve(url2, str(feats_path))
+            try:
+                urllib.request.urlretrieve(url2, str(feats_path))
+            except (urllib.error.URLError, urllib.error.HTTPError, OSError) as e:
+                if feats_path.exists():
+                    feats_path.unlink()
+                raise RuntimeError(f"Failed to download features file from {url2}: {e}. Please download manually from {url2} and place it in {data_dir_path}") from e
+            print(f'Successfully downloaded features file: {feats_path}')
             url3 = 'https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE171964&format=file&file=GSE171964%5Fgeo%5Fpheno%5Fv2%2Ecsv%2Egz'
             print(f"Downloading from {url3}...")
-            urllib.request.urlretrieve(url3, str(pheno_path))
+            try:
+                urllib.request.urlretrieve(url3, str(pheno_path))
+            except (urllib.error.URLError, urllib.error.HTTPError, OSError) as e:
+                if pheno_path.exists():
+                    pheno_path.unlink()
+                raise RuntimeError(f"Failed to download pheno file from {url3}: {e}. Please download manually from {url3} and place it in {data_dir_path}") from e
+            print(f'Successfully downloaded pheno file: {pheno_path}')
             url4 = 'https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE171964&format=file&file=GSE171964%5Fcountsmatrix%5Fv2%2Emtx%2Egz'
             print(f"Downloading from {url4}...")
-            urllib.request.urlretrieve(url4, str(mtx_path))
-
+            try:
+                urllib.request.urlretrieve(url4, str(mtx_path))
+            except (urllib.error.URLError, urllib.error.HTTPError, OSError) as e:
+                if mtx_path.exists():
+                    mtx_path.unlink()
+                raise RuntimeError(f"Failed to download mtx file from {url4}: {e}. Please download manually from {url4} and place it in {data_dir_path}") from e
+            print(f'Successfully downloaded mtx file: {mtx_path}')
     barcodes = (
         pd.read_csv(barcodes_path, sep="\\s+", header=None, engine="python", skiprows=1)[1]
         .astype(str)
