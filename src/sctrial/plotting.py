@@ -16,7 +16,10 @@ __all__ = [
     "did_volcano_frame",
     "signed_logp",
     "plot_trial_interaction",
+    "plot_parallel_trends",
     "plot_did_forest",
+    "plot_did_forest_interactive",
+    "plot_did_volcano_interactive",
     "plot_within_arm_comparison",
     "plot_trial_umap",
     "plot_gsea_radar",
@@ -651,6 +654,11 @@ def plot_trial_dotplot(
             "Install with: pip install sctrial[plots]"
             + (f" (scanpy import failed: {_scanpy_import_error})" if _scanpy_import_error else "")
         )
+    if design.celltype_col is None:
+        raise ValueError(
+            "TrialDesign.celltype_col must be set for plot_trial_dotplot."
+        )
+
     ad = adata.copy()
     if visits:
         ad = ad[ad.obs[design.visit_col].isin(visits)].copy()

@@ -66,7 +66,7 @@ Common add‑ons
 .. code-block:: python
 
    # Count paired participants before longitudinal analysis
-   paired = st.count_paired(adata, design, visits=("V1", "V2"))
+   paired = st.count_paired(adata.obs, "visit", ["V1", "V2"], participant_col="pid")
    print(paired)
 
 **AUCell scoring (optional)**

@@ -48,9 +48,9 @@ def aggregate_features(
 ) -> pd.DataFrame:
     """Aggregate features within grp_cols using agg."""
     if agg == "mean":
-        return df.groupby(grp_cols, observed=True).mean(numeric_only=True).reset_index()
+        return df.groupby(grp_cols, observed=True)[list(features)].mean().reset_index()
     if agg == "median":
-        return df.groupby(grp_cols, observed=True).median(numeric_only=True).reset_index()
+        return df.groupby(grp_cols, observed=True)[list(features)].median().reset_index()
     if agg == "pct_pos":
         out = (
             df.groupby(grp_cols, observed=True)[list(features)]

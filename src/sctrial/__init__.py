@@ -19,6 +19,7 @@ from .datasets import (
 )
 from .design import TrialDesign
 from .plotting import (
+    did_volcano_frame,
     plot_abundance_interaction,
     plot_did_forest,
     plot_did_forest_interactive,
@@ -32,6 +33,7 @@ from .plotting import (
     plot_trial_umap,
     plot_trial_umap_panel,
     plot_within_arm_comparison,
+    signed_logp,
 )
 from .preprocessing import add_log1p_cpm_layer
 from .scoring import score_gene_sets, score_gene_sets_aucell
@@ -51,6 +53,7 @@ from .stats.effect_size import (
     bootstrap_effect_size_ci,
     cohens_d,
     cohens_d_from_did,
+    effect_size_ci,
     hedges_g,
 )
 from .stats.gsea import (
@@ -60,7 +63,7 @@ from .stats.gsea import (
     run_gsea_pseudobulk,
 )
 from .stats.heterogeneity import test_treatment_heterogeneity
-from .stats.mixed_effects import compare_fixed_vs_mixed, did_table_mixed
+from .stats.mixed_effects import compare_fixed_vs_mixed, did_mixed, did_table_mixed
 from .stats.module_scores import (
     module_score_did_by_pool,
     module_score_pseudobulk,
@@ -72,6 +75,7 @@ from .stats.power import (
     power_curve,
     power_did,
     sample_size_did,
+    sensitivity_analysis,
 )
 from .stats.pseudobulk import (
     pseudobulk_did,
@@ -147,6 +151,7 @@ __all__ = [
     "cohens_d",
     "hedges_g",
     "cohens_d_from_did",
+    "effect_size_ci",
     "add_effect_sizes_to_did",
     "bootstrap_effect_size_ci",
     # Power analysis
@@ -156,6 +161,7 @@ __all__ = [
     "design_effect",
     "effective_sample_size",
     # Mixed effects
+    "did_mixed",
     "did_table_mixed",
     "compare_fixed_vs_mixed",
     # Workflow
@@ -173,6 +179,9 @@ __all__ = [
     "cv_summary",
     # Diagnostics
     "check_did_assumptions",
+    # Plotting helpers
+    "did_volcano_frame",
+    "signed_logp",
     # Plotting
     "plot_trial_interaction",
     "plot_parallel_trends",
@@ -196,6 +205,7 @@ __all__ = [
     "test_treatment_heterogeneity",
     # Sensitivity
     "e_value_rr",
+    "sensitivity_analysis",
     # Survival
     "hazard_regression_with_features",
     "TrialDataValidator",
