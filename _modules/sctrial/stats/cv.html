@@ -348,17 +348,30 @@
     <span class="n">cv_estimates</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span><span class="n">feat</span><span class="p">:</span> <span class="p">[]</span> <span class="k">for</span> <span class="n">feat</span> <span class="ow">in</span> <span class="n">features</span><span class="p">}</span>
     <span class="n">n_failed_folds</span> <span class="o">=</span> <span class="mi">0</span>
 
+    <span class="c1"># Build a mapping from participant to arm for stratified assignment</span>
+    <span class="n">_arm_map</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">ad</span><span class="o">.</span><span class="n">obs</span><span class="p">[[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]]</span>
+        <span class="o">.</span><span class="n">drop_duplicates</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">])</span>
+        <span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">)[</span><span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span>
+    <span class="p">)</span>
+    <span class="n">arms</span> <span class="o">=</span> <span class="n">_arm_map</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span>
+
+    <span class="c1"># Group participants by arm</span>
+    <span class="n">arm_groups</span> <span class="o">=</span> <span class="p">{</span><span class="n">arm</span><span class="p">:</span> <span class="p">[</span><span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">participants</span> <span class="k">if</span> <span class="n">_arm_map</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">==</span> <span class="n">arm</span><span class="p">]</span> <span class="k">for</span> <span class="n">arm</span> <span class="ow">in</span> <span class="n">arms</span><span class="p">}</span>
+
     <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_repeats</span><span class="p">):</span>
-        <span class="c1"># Shuffle participants</span>
-        <span class="n">shuffled</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">permutation</span><span class="p">(</span><span class="n">participants</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="c1"># Stratified fold assignment: shuffle within each arm, then assign</span>
+        <span class="c1"># folds so that every fold has participants from each arm.</span>
+        <span class="n">fold_assignments</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">list</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">fi</span><span class="p">:</span> <span class="p">[]</span> <span class="k">for</span> <span class="n">fi</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k</span><span class="p">)}</span>
+        <span class="k">for</span> <span class="n">arm</span> <span class="ow">in</span> <span class="n">arms</span><span class="p">:</span>
+            <span class="n">members</span> <span class="o">=</span> <span class="n">arm_groups</span><span class="p">[</span><span class="n">arm</span><span class="p">]</span>
+            <span class="n">shuffled_arm</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">permutation</span><span class="p">(</span><span class="n">members</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">pid</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">shuffled_arm</span><span class="p">):</span>
+                <span class="n">fold_assignments</span><span class="p">[</span><span class="n">idx</span> <span class="o">%</span> <span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pid</span><span class="p">)</span>
 
         <span class="c1"># K-fold splits</span>
-        <span class="n">fold_size</span> <span class="o">=</span> <span class="n">n_participants</span> <span class="o">//</span> <span class="n">k</span>
         <span class="k">for</span> <span class="n">fold_idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k</span><span class="p">):</span>
-            <span class="c1"># Exclude this fold</span>
-            <span class="n">start</span> <span class="o">=</span> <span class="n">fold_idx</span> <span class="o">*</span> <span class="n">fold_size</span>
-            <span class="n">end</span> <span class="o">=</span> <span class="n">start</span> <span class="o">+</span> <span class="n">fold_size</span> <span class="k">if</span> <span class="n">fold_idx</span> <span class="o">&lt;</span> <span class="n">k</span> <span class="o">-</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">n_participants</span>
-            <span class="n">excluded</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">shuffled</span><span class="p">[</span><span class="n">start</span><span class="p">:</span><span class="n">end</span><span class="p">])</span>
+            <span class="n">excluded</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">fold_assignments</span><span class="p">[</span><span class="n">fold_idx</span><span class="p">])</span>
             <span class="n">included</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">participants</span> <span class="k">if</span> <span class="n">p</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">excluded</span><span class="p">]</span>
 
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">included</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">4</span><span class="p">:</span>  <span class="c1"># Need minimum participants</span>

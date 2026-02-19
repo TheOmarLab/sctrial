@@ -83,6 +83,7 @@
   <h1>Source code for sctrial.stats.pseudobulk</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sequence</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">cast</span>
 
@@ -96,6 +97,8 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">..design</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrialDesign</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">apply_fdr</span><span class="p">,</span> <span class="n">encode_visit</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.did</span><span class="w"> </span><span class="kn">import</span> <span class="n">did_fit</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;pseudobulk_expression&quot;</span><span class="p">,</span> <span class="s2">&quot;pseudobulk_within_arm&quot;</span><span class="p">,</span> <span class="s2">&quot;pseudobulk_did&quot;</span><span class="p">,</span> <span class="s2">&quot;pseudobulk_export&quot;</span><span class="p">]</span>
 
@@ -198,7 +201,16 @@
         <span class="n">df_sum</span><span class="p">[</span><span class="s2">&quot;n_cells&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">n_cells</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
 
     <span class="n">totals</span> <span class="o">=</span> <span class="n">df_sum</span><span class="p">[</span><span class="s2">&quot;total_counts&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-    <span class="n">cpm</span> <span class="o">=</span> <span class="n">df_sum</span><span class="p">[</span><span class="n">genes</span><span class="p">]</span><span class="o">.</span><span class="n">values</span> <span class="o">/</span> <span class="p">(</span><span class="n">totals</span> <span class="o">+</span> <span class="mf">1e-12</span><span class="p">)</span> <span class="o">*</span> <span class="n">scale</span>
+    <span class="n">zero_mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">totals</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">zero_mask</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="n">n_dropped</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">zero_mask</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+            <span class="s2">&quot;Dropped </span><span class="si">%d</span><span class="s2"> group(s) with zero total counts before CPM normalization.&quot;</span><span class="p">,</span>
+            <span class="n">n_dropped</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">df_sum</span> <span class="o">=</span> <span class="n">df_sum</span><span class="p">[</span><span class="o">~</span><span class="n">zero_mask</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">totals</span> <span class="o">=</span> <span class="n">totals</span><span class="p">[</span><span class="o">~</span><span class="n">zero_mask</span><span class="p">]</span>
+    <span class="n">cpm</span> <span class="o">=</span> <span class="n">df_sum</span><span class="p">[</span><span class="n">genes</span><span class="p">]</span><span class="o">.</span><span class="n">values</span> <span class="o">/</span> <span class="n">totals</span> <span class="o">*</span> <span class="n">scale</span>
     <span class="k">if</span> <span class="n">log1p</span><span class="p">:</span>
         <span class="n">cpm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log1p</span><span class="p">(</span><span class="n">cpm</span><span class="p">)</span>
     <span class="n">df_sum</span><span class="p">[</span><span class="n">genes</span><span class="p">]</span> <span class="o">=</span> <span class="n">cpm</span>

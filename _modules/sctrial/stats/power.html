@@ -177,6 +177,10 @@
 <span class="sd">    &gt;&gt;&gt; print(f&quot;Design effect: {deff:.1f}&quot;)</span>
 <span class="sd">    Design effect: 5.95</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">icc</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;icc must be between 0 and 1.&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">cluster_size</span><span class="p">)</span> <span class="ow">or</span> <span class="n">cluster_size</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;cluster_size must be &gt; 0.&quot;</span><span class="p">)</span>
     <span class="k">return</span> <span class="mi">1</span> <span class="o">+</span> <span class="p">(</span><span class="n">cluster_size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">icc</span></div>
 
 
@@ -215,6 +219,8 @@
 <span class="sd">    close to the number of participants, not the number of cells,</span>
 <span class="sd">    when aggregating to participant level.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">n_clusters</span><span class="p">)</span> <span class="ow">or</span> <span class="n">n_clusters</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;n_clusters must be &gt; 0.&quot;</span><span class="p">)</span>
     <span class="n">deff</span> <span class="o">=</span> <span class="n">design_effect</span><span class="p">(</span><span class="n">cluster_size</span><span class="p">,</span> <span class="n">icc</span><span class="p">)</span>
     <span class="n">n_total</span> <span class="o">=</span> <span class="n">n_clusters</span> <span class="o">*</span> <span class="n">cluster_size</span>
     <span class="k">return</span> <span class="n">n_total</span> <span class="o">/</span> <span class="n">deff</span></div>

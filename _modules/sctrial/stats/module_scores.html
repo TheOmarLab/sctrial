@@ -83,6 +83,7 @@
   <h1>Source code for sctrial.stats.module_scores</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sequence</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
 
@@ -271,6 +272,7 @@
     <span class="n">n_perm</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">42</span><span class="p">,</span>
     <span class="n">fdr_within</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="s2">&quot;module&quot;</span><span class="p">,</span>
+    <span class="n">fdr_global</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
     <span class="n">allow_unpaired</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute DiD on module scores by pool with permutation p-values.</span>
@@ -291,6 +293,14 @@
 <span class="sd">        If &quot;module&quot;, FDR is computed within each module across pools.</span>
 <span class="sd">        If &quot;pool&quot;, FDR is computed within each pool across modules.</span>
 <span class="sd">        If None, global FDR.</span>
+<span class="sd">    fdr_global</span>
+<span class="sd">        Only used when *fdr_within* is not None.  If True (default),</span>
+<span class="sd">        an additional ``FDR_DiD_global`` column is added that applies</span>
+<span class="sd">        BH-FDR correction globally across **all** tests, mirroring</span>
+<span class="sd">        the behaviour when ``fdr_within=None``.  This is useful because</span>
+<span class="sd">        per-group FDR (``FDR_DiD``) controls the false discovery rate</span>
+<span class="sd">        only within each group and does **not** control the overall</span>
+<span class="sd">        false discovery rate across all tests.</span>
 <span class="sd">    allow_unpaired</span>
 <span class="sd">        If True, fit an unpaired OLS DiD (module_score ~ visit + arm + visit×arm)</span>
 <span class="sd">        using all available participant-visit observations. This is a fallback</span>
@@ -302,6 +312,8 @@
 <span class="sd">        One row per (pool, module) with columns: ``pool``, ``module``,</span>
 <span class="sd">        ``mean_delta_treated``, ``mean_delta_control``, ``beta_DiD``,</span>
 <span class="sd">        ``p_DiD``, ``p_treated``, ``p_control``, ``n_units``, ``FDR_DiD``.</span>
+<span class="sd">        When *fdr_within* is set and *fdr_global* is True, an additional</span>
+<span class="sd">        ``FDR_DiD_global`` column contains the globally-corrected q-values.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">rows</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">arm_treated</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">arm_treated</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
@@ -431,12 +443,28 @@
         <span class="k">if</span> <span class="n">mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">res</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="s2">&quot;FDR_DiD&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">multipletests</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="s2">&quot;p_DiD&quot;</span><span class="p">],</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;fdr_bh&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
     <span class="k">else</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;FDR correction is applied within each &#39;</span><span class="si">{</span><span class="n">fdr_within</span><span class="si">}</span><span class="s2">&#39; group &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;(column FDR_DiD). Per-group FDR does not control the overall &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;false discovery rate across all tests. Consult &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;FDR_DiD_global (when fdr_global=True) for a globally &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;corrected q-value.&quot;</span><span class="p">,</span>
+            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="p">)</span>
         <span class="n">res</span><span class="p">[</span><span class="s2">&quot;FDR_DiD&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
         <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">sub</span> <span class="ow">in</span> <span class="n">res</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">fdr_within</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
             <span class="n">mask</span> <span class="o">=</span> <span class="n">sub</span><span class="p">[</span><span class="s2">&quot;p_DiD&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span>
             <span class="k">if</span> <span class="n">mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="n">res</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">sub</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="n">mask</span><span class="p">],</span> <span class="s2">&quot;FDR_DiD&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">multipletests</span><span class="p">(</span>
                     <span class="n">sub</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="s2">&quot;p_DiD&quot;</span><span class="p">],</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;fdr_bh&quot;</span>
+                <span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">fdr_global</span><span class="p">:</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="n">res</span><span class="p">[</span><span class="s2">&quot;p_DiD&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span>
+            <span class="n">res</span><span class="p">[</span><span class="s2">&quot;FDR_DiD_global&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+            <span class="k">if</span> <span class="n">mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">res</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="s2">&quot;FDR_DiD_global&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">multipletests</span><span class="p">(</span>
+                    <span class="n">res</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="s2">&quot;p_DiD&quot;</span><span class="p">],</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;fdr_bh&quot;</span>
                 <span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
 
     <span class="k">return</span> <span class="n">res</span></div>

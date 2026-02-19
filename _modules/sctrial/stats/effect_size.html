@@ -458,12 +458,17 @@
     <span class="n">beta_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;beta_DiD&quot;</span><span class="p">,</span>
     <span class="n">se_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;se_DiD&quot;</span><span class="p">,</span>
     <span class="n">n_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;n_units&quot;</span><span class="p">,</span>
+    <span class="n">resid_sd_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;resid_sd&quot;</span><span class="p">,</span>
     <span class="n">method</span><span class="p">:</span> <span class="n">EffectSizeMethod</span> <span class="o">=</span> <span class="s2">&quot;hedges_g&quot;</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Add standardized effect sizes to a DiD results DataFrame.</span>
 
 <span class="sd">    This function computes Cohen&#39;s d or Hedge&#39;s g from the DiD coefficients</span>
 <span class="sd">    and adds columns for the effect size and its confidence interval.</span>
+
+<span class="sd">    When the ``resid_sd`` column is present (populated by ``did_table``),</span>
+<span class="sd">    effect sizes are computed directly as ``beta / resid_sd``.  Otherwise,</span>
+<span class="sd">    a balanced-design approximation is used as a fallback.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -475,6 +480,8 @@
 <span class="sd">        Name of the standard error column.</span>
 <span class="sd">    n_col</span>
 <span class="sd">        Name of the sample size column.</span>
+<span class="sd">    resid_sd_col</span>
+<span class="sd">        Name of the residual standard deviation column (from OLS/WLS fit).</span>
 <span class="sd">    method</span>
 <span class="sd">        &quot;cohens_d&quot; or &quot;hedges_g&quot; (recommended for small samples).</span>
 
@@ -494,6 +501,7 @@
 <span class="sd">    &gt;&gt;&gt; print(res[[&quot;feature&quot;, &quot;beta_DiD&quot;, &quot;effect_size&quot;, &quot;effect_size_interpretation&quot;]])</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">has_resid_sd</span> <span class="o">=</span> <span class="n">resid_sd_col</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span>
 
     <span class="n">effect_sizes</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">effect_lower</span> <span class="o">=</span> <span class="p">[]</span>
@@ -512,16 +520,17 @@
             <span class="n">interpretations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
             <span class="k">continue</span>
 
-        <span class="c1"># Approximate residual SD from SE and sample size</span>
-        <span class="c1"># For DiD: SE(d) ≈ residual_SD × √((n1+n2)/(n1*n2))</span>
-        <span class="c1"># Assuming balanced design (n1=n2=n/2): SE ≈ residual_SD × √(4/n)</span>
-        <span class="c1"># So: residual_SD ≈ SE × √(n/4) ≈ SE / √((n1+n2)/(n1*n2))</span>
-        <span class="c1"># Use (n1+n2)/(n1*n2) = 4/n for balanced, but since we only have n,</span>
-        <span class="c1"># assume balanced: n1 = n2 = n/2</span>
-        <span class="n">n1</span> <span class="o">=</span> <span class="n">n2</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">n</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-        <span class="n">approx_resid_sd</span> <span class="o">=</span> <span class="n">se</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">n1</span> <span class="o">+</span> <span class="n">n2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">n1</span> <span class="o">*</span> <span class="n">n2</span><span class="p">))</span> <span class="k">if</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">se</span>
+        <span class="c1"># Use residual SD from model fit when available (preferred),</span>
+        <span class="c1"># otherwise fall back to balanced-design approximation.</span>
+        <span class="n">resid_sd</span> <span class="o">=</span> <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">resid_sd_col</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span> <span class="k">if</span> <span class="n">has_resid_sd</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+        <span class="k">if</span> <span class="n">pd</span><span class="o">.</span><span class="n">notna</span><span class="p">(</span><span class="n">resid_sd</span><span class="p">)</span> <span class="ow">and</span> <span class="n">resid_sd</span> <span class="o">&gt;</span> <span class="mf">1e-12</span><span class="p">:</span>
+            <span class="n">denom</span> <span class="o">=</span> <span class="n">resid_sd</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Fallback: approximate residual SD assuming balanced arms</span>
+            <span class="n">n1</span> <span class="o">=</span> <span class="n">n2</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">n</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">denom</span> <span class="o">=</span> <span class="n">se</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">n1</span> <span class="o">+</span> <span class="n">n2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">n1</span> <span class="o">*</span> <span class="n">n2</span><span class="p">))</span> <span class="k">if</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">se</span>
 
-        <span class="n">d</span> <span class="o">=</span> <span class="n">beta</span> <span class="o">/</span> <span class="n">approx_resid_sd</span> <span class="k">if</span> <span class="n">approx_resid_sd</span> <span class="o">&gt;</span> <span class="mf">1e-12</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="n">beta</span> <span class="o">/</span> <span class="n">denom</span> <span class="k">if</span> <span class="n">denom</span> <span class="o">&gt;</span> <span class="mf">1e-12</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
 
         <span class="c1"># Apply Hedge&#39;s correction (exact gamma correction)</span>
         <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;hedges_g&quot;</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="ow">and</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
