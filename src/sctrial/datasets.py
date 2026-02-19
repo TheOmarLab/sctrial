@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import gzip
 import logging
+import urllib.error
 import urllib.request
 from collections.abc import Sequence
 from io import StringIO
@@ -100,6 +101,31 @@ def _looks_log1p(X, sample: int = 10000, seed: int = 0) -> bool:
     return (data.min() >= 0) and (data.max() < 50) and (not np.allclose(data, np.round(data), atol=1e-3))
 
 
+def _download_file(url: str, dest: Path, label: str = "file") -> None:
+    """Download a single file with error handling and partial-file cleanup.
+
+    Parameters
+    ----------
+    url : str
+        URL to download from.
+    dest : Path
+        Local destination path.
+    label : str
+        Human-readable label for log messages (e.g. "TPM file").
+    """
+    logger.info(f"Downloading {label} from {url}...")
+    try:
+        urllib.request.urlretrieve(url, str(dest))
+    except (urllib.error.URLError, urllib.error.HTTPError, OSError) as e:
+        if dest.exists():
+            dest.unlink()
+        raise RuntimeError(
+            f"Failed to download {label} from {url}: {e}. "
+            f"Please download manually and place it in {dest.parent}"
+        ) from e
+    logger.info(f"Successfully downloaded {label}: {dest}")
+
+
 def _get_counts_matrix(adata: ad.AnnData) -> tuple[np.ndarray | None, str | None]:
     return get_counts_matrix(adata)
 
@@ -110,9 +136,31 @@ def load_sade_feldman(
     processed_name: str = "sade_feldman_processed_v5.h5ad",
     max_cells_per_participant_visit: int | None = None,
     seed: int = 42,
+    allow_download: bool = False,
     force_reprocess: bool = False,
 ) -> ad.AnnData:
-    """Load and preprocess Sade-Feldman melanoma immunotherapy dataset (GSE120575)."""
+    """Load and preprocess Sade-Feldman melanoma immunotherapy dataset (GSE120575).
+
+    Parameters
+    ----------
+    data_dir : str
+        Directory containing (or to store) the raw data files.
+    processed_name : str
+        Filename for the cached processed h5ad file.
+    max_cells_per_participant_visit : int or None
+        Maximum number of cells to retain per participant-visit pair.
+    seed : int
+        Random seed for reproducibility.
+    allow_download : bool
+        If True, download missing files from GEO automatically.
+    force_reprocess : bool
+        If True, reprocess even when a cached file exists.
+
+    Returns
+    -------
+    AnnData
+        The processed AnnData object.
+    """
     data_dir_path = _resolve_dir_with_files(
         data_dir,
         [
@@ -143,12 +191,22 @@ def load_sade_feldman(
     tpm_path = data_dir_path / "GSE120575_Sade_Feldman_melanoma_single_cells_TPM_GEO.txt.gz"
     meta_path = data_dir_path / "GSE120575_patient_ID_single_cells.txt.gz"
 
-    for p in [tpm_path, meta_path]:
-        if not p.exists():
+    _GEO_BASE = "https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE120575&format=file&file="
+    _sade_feldman_files = [
+        (tpm_path, _GEO_BASE + "GSE120575%5FSade%5FFeldman%5Fmelanoma%5Fsingle%5Fcells%5FTPM%5FGEO%2Etxt%2Egz", "TPM file"),
+        (meta_path, _GEO_BASE + "GSE120575%5Fpatient%5FID%5Fsingle%5Fcells%2Etxt%2Egz", "metadata file"),
+    ]
+    missing = [(p, url, label) for p, url, label in _sade_feldman_files if not p.exists()]
+    if missing:
+        if not allow_download:
+            names = ", ".join(str(p) for p, _, _ in missing)
             raise FileNotFoundError(
-                f"Missing file: {p}. Download from GEO: https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE120575"
+                f"Missing file(s): {names}. Download from GEO: "
+                "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE120575"
             )
-
+        data_dir_path.mkdir(parents=True, exist_ok=True)
+        for dest, url, label in missing:
+            _download_file(url, dest, label)
     logger.info("Processing raw data (this may take a minute)...")
     with gzip.open(tpm_path, "rt") as f:
         header1 = f.readline().strip().split("\t")
@@ -232,7 +290,26 @@ def load_stephenson_data(
     allow_download: bool = False,
     force_reprocess: bool = False,
 ) -> ad.AnnData:
-    """Load and preprocess Stephenson COVID-19 dataset (E-MTAB-10026)."""
+    """Load and preprocess Stephenson COVID-19 dataset (E-MTAB-10026).
+
+    Parameters
+    ----------
+    data_path : str
+        Path to the raw h5ad data file.
+    processed_name : str
+        Filename for the cached processed h5ad file.
+    seed : int
+        Random seed for reproducibility.
+    allow_download : bool
+        If True, download the data file automatically when missing.
+    force_reprocess : bool
+        If True, reprocess even when a cached file exists.
+
+    Returns
+    -------
+    AnnData
+        The processed AnnData object.
+    """
     data_path_resolved = _resolve_file(data_path)
     data_root = data_path_resolved.parent.parent if data_path_resolved.exists() else Path("data")
     processed_path = data_root / "processed" / processed_name
@@ -248,11 +325,9 @@ def load_stephenson_data(
             raise FileNotFoundError(
                 f"Data not found at {data_path_resolved}. Download from: https://www.ebi.ac.uk/biostudies/files/E-MTAB-10026/"
             )
-        url = "https://www.ebi.ac.uk/biostudies/files/E-MTAB-10026/covid_portal_210320_with_raw.h5ad"
         data_path_resolved.parent.mkdir(parents=True, exist_ok=True)
-        logger.info(f"Downloading from {url}...")
-        urllib.request.urlretrieve(url, str(data_path_resolved))
-
+        url = "https://www.ebi.ac.uk/biostudies/files/E-MTAB-10026/covid_portal_210320_with_raw.h5ad"
+        _download_file(url, data_path_resolved, "Stephenson COVID-19 data")
     logger.info("Processing raw data...")
     adata = ad.read_h5ad(data_path_resolved)
 
@@ -300,9 +375,33 @@ def load_vaccine_gse171964(
     max_participants: int | None = 30,
     max_cells_per_group: int | None = 200,
     seed: int = 42,
+    allow_download: bool = False,
     force_reprocess: bool = False,
 ) -> ad.AnnData:
-    """Load and preprocess GSE171964 PBMC vaccine time course data (Day 0 vs Day 7)."""
+    """Load and preprocess GSE171964 PBMC vaccine time course data (Day 0 vs Day 7).
+
+    Parameters
+    ----------
+    data_dir : str
+        Directory containing (or to store) the raw data files.
+    processed_name : str
+        Filename for the cached processed h5ad file.
+    max_participants : int or None
+        Maximum number of participants to retain.
+    max_cells_per_group : int or None
+        Maximum number of cells per participant-day-celltype group.
+    seed : int
+        Random seed for reproducibility.
+    allow_download : bool
+        If True, download missing files from GEO automatically.
+    force_reprocess : bool
+        If True, reprocess even when a cached file exists.
+
+    Returns
+    -------
+    AnnData
+        The processed AnnData object.
+    """
     data_dir_path = _resolve_dir_with_files(
         data_dir,
         [
@@ -341,10 +440,21 @@ def load_vaccine_gse171964(
     pheno_path = data_dir_path / "GSE171964_geo_pheno_v2.csv.gz"
     mtx_path = data_dir_path / "GSE171964_countsmatrix_v2.mtx.gz"
 
-    for p in [barcodes_path, feats_path, pheno_path, mtx_path]:
-        if not p.exists():
-            raise FileNotFoundError(f"Missing file: {p}")
-
+    _GEO_BASE_V = "https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE171964&format=file&file="
+    _vaccine_files = [
+        (barcodes_path, _GEO_BASE_V + "GSE171964%5Fbarcodes%5Fv2%2Etsv%2Egz", "barcodes file"),
+        (feats_path, _GEO_BASE_V + "GSE171964%5Ffeats%5Fv2%2Etsv%2Egz", "features file"),
+        (pheno_path, _GEO_BASE_V + "GSE171964%5Fgeo%5Fpheno%5Fv2%2Ecsv%2Egz", "pheno file"),
+        (mtx_path, _GEO_BASE_V + "GSE171964%5Fcountsmatrix%5Fv2%2Emtx%2Egz", "counts matrix"),
+    ]
+    missing = [(p, url, label) for p, url, label in _vaccine_files if not p.exists()]
+    if missing:
+        if not allow_download:
+            names = ", ".join(str(p) for p, _, _ in missing)
+            raise FileNotFoundError(f"Missing file(s): {names}")
+        data_dir_path.mkdir(parents=True, exist_ok=True)
+        for dest, url, label in missing:
+            _download_file(url, dest, label)
     barcodes = (
         pd.read_csv(barcodes_path, sep="\\s+", header=None, engine="python", skiprows=1)[1]
         .astype(str)
