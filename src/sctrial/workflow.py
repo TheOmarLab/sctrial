@@ -5,9 +5,9 @@ from typing import Any, Literal
 
 from anndata import AnnData
 
+from .design import TrialDesign
 from .preprocessing import add_log1p_cpm_layer
 from .scoring import score_gene_sets
-from .design import TrialDesign
 from .stats.did import DiDConfig, did_table
 
 
