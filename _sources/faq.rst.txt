@@ -46,6 +46,28 @@ Yes! Convert Seurat to AnnData:
    import sctrial as st
    design = st.auto_detect_design(adata)
 
+Can I automatically download example datasets?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Yes! The built-in data loaders can download directly from GEO or EBI:
+
+.. code-block:: python
+
+   import sctrial as st
+
+   # Sade-Feldman melanoma immunotherapy (GSE120575)
+   adata = st.load_sade_feldman(allow_download=True)
+
+   # Stephenson COVID-19 (E-MTAB-10026)
+   adata = st.load_stephenson_data(allow_download=True)
+
+   # Vaccine PBMC time course (GSE171964)
+   adata = st.load_vaccine_gse171964(allow_download=True)
+
+Downloads are disabled by default (``allow_download=False``) so nothing is
+fetched without explicit consent. Only missing files are downloaded; files
+already on disk are reused.
+
 Data Requirements
 -----------------
 

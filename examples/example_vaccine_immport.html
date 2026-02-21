@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Vaccine Response Analysis &mdash; sctrial 0.2.0 documentation</title>
+  <title>Vaccine Response Analysis &mdash; sctrial 0.2.1.dev1 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css?v=2aa19091" />
@@ -14,7 +14,7 @@
   
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../_static/documentation_options.js?v=938c9ccc"></script>
+      <script src="../_static/documentation_options.js?v=28304322"></script>
       <script src="../_static/doctools.js?v=9bcbadda"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
@@ -159,7 +159,8 @@
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
 <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">&#39;ignore&#39;</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">FutureWarning</span><span class="p">)</span>
-<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">&#39;ignore&#39;</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">UserWarning</span><span class="p">)</span>
+<span class="c1"># Note: We do NOT suppress UserWarning — the package issues useful</span>
+<span class="c1"># recommendations (e.g. use_bootstrap=True for small samples)</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
@@ -170,14 +171,13 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">scanpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sc</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">sctrial</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">scipy.sparse</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sp</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">statsmodels.stats.multitest</span><span class="w"> </span><span class="kn">import</span> <span class="n">multipletests</span>
 <span class="n">pd</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">mode</span><span class="o">.</span><span class="n">chained_assignment</span> <span class="o">=</span> <span class="kc">None</span>
 <span class="c1"># Configuration</span>
 <span class="n">SEED</span> <span class="o">=</span> <span class="mi">42</span>
 <span class="n">MIN_PAIRED</span> <span class="o">=</span> <span class="mi">4</span>
 <span class="n">MIN_GENES_FOR_SCORE</span> <span class="o">=</span> <span class="mi">5</span>
 <span class="n">FDR_ALPHA</span> <span class="o">=</span> <span class="mf">0.25</span>
-<br/></pre></div>
+</pre></div>
 </div>
 </div>
 </section>
@@ -189,7 +189,8 @@
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Dataset loader and helpers (from sctrial)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">sctrial.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_vaccine_gse171964</span><span class="p">,</span> <span class="n">verify_paired_participants</span><span class="p">,</span> <span class="n">ensure_fdr</span>
-<br/></pre></div>
+<span class="kn">from</span><span class="w"> </span><span class="nn">statsmodels.stats.multitest</span><span class="w"> </span><span class="kn">import</span> <span class="n">multipletests</span>
+</pre></div>
 </div>
 </div>
 <section id="2.1-Load-processed-AnnData">
@@ -202,11 +203,12 @@
     <span class="n">max_participants</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
     <span class="n">max_cells_per_group</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
     <span class="n">seed</span><span class="o">=</span><span class="n">SEED</span><span class="p">,</span>
+    <span class="n">allow_download</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Obs columns:&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">tolist</span><span class="p">()))</span>
-<br/></pre></div>
+</pre></div>
 </div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -214,11 +216,6 @@
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-Loaded processed vaccine dataset (GSE171964): 21331 cells, 20102 genes
-Processed file: /Users/omarm/Documents/Research/projects/sc-trialdiff/data/processed/vaccine_gse171964_day0_day7.h5ad
-Days: [0 7]
-Participants: 6
-Cell types: 18
 AnnData object with n_obs × n_vars = 21331 × 20102
     obs: &#39;pt_id&#39;, &#39;day&#39;, &#39;clustnm&#39;, &#39;sample_id&#39;
     uns: &#39;processing_params&#39;
@@ -308,20 +305,29 @@ Name: pt_id, dtype: int64
 <span class="n">candidate_covariates</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;age&quot;</span><span class="p">,</span> <span class="s2">&quot;sex&quot;</span><span class="p">,</span> <span class="s2">&quot;batch&quot;</span><span class="p">,</span> <span class="s2">&quot;site&quot;</span><span class="p">]</span>
 <span class="n">covariates</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">candidate_covariates</span> <span class="k">if</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Covariates available (not modeled here):&quot;</span><span class="p">,</span> <span class="n">covariates</span><span class="p">)</span>
-<span class="c1"># Design object (single arm); arm labels are placeholders for API consistency</span>
-<span class="c1"># We rely on paired within-participant tests, not treated vs control inference.</span>
+
+<span class="c1"># Design object for a SINGLE-ARM longitudinal study.</span>
+<span class="c1"># IMPORTANT: This is NOT a two-arm trial. All participants received vaccine.</span>
+<span class="c1"># arm_treated == arm_control is intentional — sctrial&#39;s TrialDesign requires</span>
+<span class="c1"># an arm column, but analyses in this notebook use WITHIN-ARM paired tests</span>
+<span class="c1"># (e.g. within_arm_comparison, wilcoxon), not between-arm DiD.</span>
 <span class="n">design</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">TrialDesign</span><span class="p">(</span>
     <span class="n">participant_col</span><span class="o">=</span><span class="s2">&quot;participant_id&quot;</span><span class="p">,</span>
     <span class="n">visit_col</span><span class="o">=</span><span class="n">visit_col</span><span class="p">,</span>
     <span class="n">arm_col</span><span class="o">=</span><span class="s2">&quot;arm&quot;</span><span class="p">,</span>
     <span class="n">arm_treated</span><span class="o">=</span><span class="s2">&quot;Vaccinated&quot;</span><span class="p">,</span>
-    <span class="n">arm_control</span><span class="o">=</span><span class="s2">&quot;Vaccinated&quot;</span><span class="p">,</span>
+    <span class="n">arm_control</span><span class="o">=</span><span class="s2">&quot;Vaccinated&quot;</span><span class="p">,</span>   <span class="c1"># Same arm — single-arm study</span>
     <span class="n">celltype_col</span><span class="o">=</span><span class="s2">&quot;cell_type&quot;</span><span class="p">,</span>
 <span class="p">)</span>
-<br/></pre></div>
+
+<span class="c1"># Run diagnostics</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">--- Trial Diagnostics ---&quot;</span><span class="p">)</span>
+<span class="n">diag</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">diagnose_trial_data</span><span class="p">(</span><span class="n">adata_analysis</span><span class="p">,</span> <span class="n">design</span><span class="p">)</span>
+<span class="n">display</span><span class="p">(</span><span class="n">diag</span><span class="p">)</span>
+</pre></div>
 </div>
 </div>
-<div class="nboutput nblast docutils container">
+<div class="nboutput docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
@@ -329,6 +335,47 @@ Name: pt_id, dtype: int64
 Paired participants (0 vs 7): 6
 Analysis subset cells: 21331
 Covariates available (not modeled here): []
+
+--- Trial Diagnostics ---
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+{&#39;n_cells&#39;: 21331,
+ &#39;n_genes&#39;: 20102,
+ &#39;n_participants&#39;: 6,
+ &#39;n_visits&#39;: 2,
+ &#39;visits&#39;: [&#39;0&#39;, &#39;7&#39;],
+ &#39;paired_participants&#39;: {(&#39;0&#39;, &#39;7&#39;): 6},
+ &#39;n_arms&#39;: 1,
+ &#39;arms&#39;: [&#39;Vaccinated&#39;],
+ &#39;cells_per_participant_visit_mean&#39;: 1777.5833333333333,
+ &#39;cells_per_participant_visit_median&#39;: 1933.5,
+ &#39;cells_per_participant_visit_min&#39;: 214,
+ &#39;n_celltypes&#39;: 18,
+ &#39;celltype_distribution&#39;: {&#39;C6_CD8 T&#39;: 2202,
+  &#39;C3_CD14+ monocytes&#39;: 2201,
+  &#39;C0_CD4 T&#39;: 2200,
+  &#39;C1_NK&#39;: 2200,
+  &#39;C5_B&#39;: 2102,
+  &#39;C4_CD16+ monocytes&#39;: 2042,
+  &#39;C10_Naive CD8 T&#39;: 1958,
+  &#39;C7_cDC2&#39;: 1949,
+  &#39;C9_Platelets&#39;: 1671,
+  &#39;C11_pDC&#39;: 741,
+  &#39;C12_Tregs&#39;: 465,
+  &#39;C13_cDC1&#39;: 389,
+  &#39;C14_Plasmablasts&#39;: 297,
+  &#39;C2&#39;: 274,
+  &#39;C17_Naive B&#39;: 222,
+  &#39;C16_NK T&#39;: 204,
+  &#39;C15_HPCs&#39;: 184,
+  &#39;C8_CD14+BDCA1+PD-L1+ cells&#39;: 30},
+ &#39;warnings&#39;: [],
+ &#39;recommendations&#39;: [&#39;Sample size is small; use bootstrap inference (use_bootstrap=True)&#39;]}
 </pre></div></div>
 </div>
 <section id="3.1-Exploratory-plots-of-cell-types-per-visit">
@@ -561,13 +608,8 @@ Using 6 validated paired participants for analyses.
         <span class="n">standardize</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="k">if</span> <span class="n">res_within</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">res_within</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
-        <span class="k">if</span> <span class="s2">&quot;FDR_time&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">res_within</span><span class="o">.</span><span class="n">columns</span> <span class="ow">and</span> <span class="s2">&quot;p_time&quot;</span> <span class="ow">in</span> <span class="n">res_within</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-            <span class="n">mask</span> <span class="o">=</span> <span class="n">res_within</span><span class="p">[</span><span class="s2">&quot;p_time&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span>
-            <span class="n">res_within</span><span class="p">[</span><span class="s2">&quot;FDR_time&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
-            <span class="k">if</span> <span class="n">mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="n">res_within</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="s2">&quot;FDR_time&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">multipletests</span><span class="p">(</span>
-                    <span class="n">res_within</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="s2">&quot;p_time&quot;</span><span class="p">],</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;fdr_bh&quot;</span>
-                <span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="c1"># Use package helper for FDR correction</span>
+        <span class="n">res_within</span> <span class="o">=</span> <span class="n">ensure_fdr</span><span class="p">(</span><span class="n">res_within</span><span class="p">,</span> <span class="n">p_col</span><span class="o">=</span><span class="s2">&quot;p_time&quot;</span><span class="p">,</span> <span class="n">fdr_col</span><span class="o">=</span><span class="s2">&quot;FDR_time&quot;</span><span class="p">)</span>
         <span class="n">display_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;feature&quot;</span><span class="p">,</span> <span class="s2">&quot;beta_time&quot;</span><span class="p">,</span> <span class="s2">&quot;p_time&quot;</span><span class="p">,</span> <span class="s2">&quot;FDR_time&quot;</span><span class="p">,</span> <span class="s2">&quot;n_units&quot;</span><span class="p">]</span>
         <span class="n">display_cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">display_cols</span> <span class="k">if</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">res_within</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
         <span class="n">display</span><span class="p">(</span><span class="n">res_within</span><span class="p">[</span><span class="n">display_cols</span><span class="p">]</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">4</span><span class="p">))</span>
@@ -577,7 +619,7 @@ Using 6 validated paired participants for analyses.
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Module score changes (FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">):&quot;</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">sig</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
                 <span class="n">direction</span> <span class="o">=</span> <span class="s2">&quot;increased&quot;</span> <span class="k">if</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;beta_time&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;decreased&quot;</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;feature&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">direction</span><span class="si">}</span><span class="s2"> (β=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;beta_time&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, FDR=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;FDR_time&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;feature&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">direction</span><span class="si">}</span><span class="s2"> (beta=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;beta_time&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, FDR=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;FDR_time&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No module scores reached FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
@@ -633,7 +675,7 @@ Using 6 validated paired participants for analyses.
         <span class="n">axes</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s2">&quot;off&quot;</span><span class="p">)</span>
     <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
     <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-<br/></pre></div>
+</pre></div>
 </div>
 </div>
 <div class="nboutput docutils container">
@@ -644,6 +686,25 @@ Using 6 validated paired participants for analyses.
 ============================================================
 WITHIN-ARM COMPARISONS: MODULE SCORES (Day 0 vs Day 7)
 ============================================================
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21033/2697926110.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  res_within = st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21033/2697926110.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  res_within = st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21033/2697926110.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  res_within = st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21033/2697926110.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  res_within = st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21033/2697926110.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  res_within = st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21033/2697926110.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  res_within = st.within_arm_comparison(
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -743,7 +804,7 @@ Boxplots show participant-level distributions by day; points indicate individual
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_vaccine_immport_20_3.png" src="../_images/examples_example_vaccine_immport_20_3.png" />
+<img alt="../_images/examples_example_vaccine_immport_20_4.png" src="../_images/examples_example_vaccine_immport_20_4.png" />
 </div>
 </div>
 <section id="Module-Score-Pseudobulk-by-Cell-Type-(Within-Arm)">
@@ -1032,13 +1093,8 @@ Boxplots show participant-level distributions by day; points indicate individual
         <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;log1p_cpm&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="k">if</span> <span class="n">res_genes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">res_genes</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
-        <span class="k">if</span> <span class="s2">&quot;FDR_time&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">res_genes</span><span class="o">.</span><span class="n">columns</span> <span class="ow">and</span> <span class="s2">&quot;p_time&quot;</span> <span class="ow">in</span> <span class="n">res_genes</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-            <span class="n">mask</span> <span class="o">=</span> <span class="n">res_genes</span><span class="p">[</span><span class="s2">&quot;p_time&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span>
-            <span class="n">res_genes</span><span class="p">[</span><span class="s2">&quot;FDR_time&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
-            <span class="k">if</span> <span class="n">mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="n">res_genes</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="s2">&quot;FDR_time&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">multipletests</span><span class="p">(</span>
-                    <span class="n">res_genes</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="s2">&quot;p_time&quot;</span><span class="p">],</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;fdr_bh&quot;</span>
-                <span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="c1"># Use package helper for FDR correction</span>
+        <span class="n">res_genes</span> <span class="o">=</span> <span class="n">ensure_fdr</span><span class="p">(</span><span class="n">res_genes</span><span class="p">,</span> <span class="n">p_col</span><span class="o">=</span><span class="s2">&quot;p_time&quot;</span><span class="p">,</span> <span class="n">fdr_col</span><span class="o">=</span><span class="s2">&quot;FDR_time&quot;</span><span class="p">)</span>
         <span class="n">display_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;feature&quot;</span><span class="p">,</span> <span class="s2">&quot;beta_time&quot;</span><span class="p">,</span> <span class="s2">&quot;p_time&quot;</span><span class="p">,</span> <span class="s2">&quot;FDR_time&quot;</span><span class="p">,</span> <span class="s2">&quot;n_units&quot;</span><span class="p">]</span>
         <span class="n">display_cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">display_cols</span> <span class="k">if</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">res_genes</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
         <span class="n">display</span><span class="p">(</span><span class="n">res_genes</span><span class="p">[</span><span class="n">display_cols</span><span class="p">]</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">4</span><span class="p">))</span>
@@ -1048,7 +1104,7 @@ Boxplots show participant-level distributions by day; points indicate individual
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Panel genes with significant changes (FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">):&quot;</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">sig</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
                 <span class="n">direction</span> <span class="o">=</span> <span class="s2">&quot;increased&quot;</span> <span class="k">if</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;beta_time&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;decreased&quot;</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;feature&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">direction</span><span class="si">}</span><span class="s2"> (β=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;beta_time&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, FDR=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;FDR_time&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;feature&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">direction</span><span class="si">}</span><span class="s2"> (beta=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;beta_time&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, FDR=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;FDR_time&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No panel genes reached FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
@@ -1107,7 +1163,7 @@ Boxplots show participant-level distributions by day; points indicate individual
         <span class="n">axes</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s2">&quot;off&quot;</span><span class="p">)</span>
     <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
     <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-<br/></pre></div>
+</pre></div>
 </div>
 </div>
 <div class="nboutput docutils container">
@@ -1118,6 +1174,51 @@ Boxplots show participant-level distributions by day; points indicate individual
 ============================================================
 WITHIN-ARM COMPARISONS: PANEL GENES (Day 0 vs Day 7)
 ============================================================
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21033/249502114.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  res_genes = st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21033/249502114.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  res_genes = st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21033/249502114.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  res_genes = st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21033/249502114.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  res_genes = st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21033/249502114.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  res_genes = st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21033/249502114.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  res_genes = st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21033/249502114.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  res_genes = st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21033/249502114.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  res_genes = st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21033/249502114.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  res_genes = st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21033/249502114.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  res_genes = st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21033/249502114.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  res_genes = st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21033/249502114.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  res_genes = st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21033/249502114.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  res_genes = st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21033/249502114.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  res_genes = st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21033/249502114.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  res_genes = st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21033/249502114.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  res_genes = st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21033/249502114.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  res_genes = st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21033/249502114.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  res_genes = st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21033/249502114.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  res_genes = st.within_arm_comparison(
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -1313,7 +1414,7 @@ WITHIN-ARM COMPARISONS: PANEL GENES (Day 0 vs Day 7)
 <div class="highlight"><pre>
 
 Panel genes with significant changes (FDR &lt; 0.25):
-  IFI6: increased (β=0.714, FDR=0.000)
+  IFI6: increased (beta=0.714, FDR=0.000)
 
 Boxplots show participant-level log1p CPM by day; points indicate individual participants.
 </pre></div></div>
@@ -1322,7 +1423,7 @@ Boxplots show participant-level log1p CPM by day; points indicate individual par
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_vaccine_immport_24_3.png" src="../_images/examples_example_vaccine_immport_24_3.png" />
+<img alt="../_images/examples_example_vaccine_immport_24_4.png" src="../_images/examples_example_vaccine_immport_24_4.png" />
 </div>
 </div>
 </section>
@@ -1410,9 +1511,177 @@ Boxplots show participant-level log1p CPM by day; points indicate individual par
 <div class="nboutput docutils container">
 <div class="prompt empty docutils container">
 </div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 Pseudobulk paired deltas with Wilcoxon signed-rank test (panel genes × cell type):
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
+/opt/anaconda3/lib/python3.12/site-packages/scipy/stats/_wilcoxon.py:199: UserWarning: Sample size too small for normal approximation.
+  temp = _wilcoxon_iv(x, y, zero_method, correction, alternative, method, axis)
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -1755,14 +2024,14 @@ Pseudobulk paired deltas with Wilcoxon signed-rank test (panel genes × cell typ
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_vaccine_immport_26_2.png" src="../_images/examples_example_vaccine_immport_26_2.png" />
+<img alt="../_images/examples_example_vaccine_immport_26_4.png" src="../_images/examples_example_vaccine_immport_26_4.png" />
 </div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_vaccine_immport_26_3.png" src="../_images/examples_example_vaccine_immport_26_3.png" />
+<img alt="../_images/examples_example_vaccine_immport_26_5.png" src="../_images/examples_example_vaccine_immport_26_5.png" />
 </div>
 </div>
 </section>
@@ -2096,40 +2365,65 @@ Effect sizes for Day 0 → Day 7 changes:
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">scipy.stats</span><span class="w"> </span><span class="kn">import</span> <span class="n">norm</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;POWER ANALYSIS (Within-Arm Paired Design)&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+
+<span class="c1"># NOTE: power_did() assumes a TWO-ARM DiD design and is NOT appropriate here.</span>
+<span class="c1"># For a single-arm paired study, power is based on a one-sample or paired t-test.</span>
+<span class="c1"># We use the standard formula: power = P(Z &gt; z_alpha - d*sqrt(n))</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">power_paired</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">effect_size</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span> <span class="n">two_sided</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Power for a paired t-test (one-sample test on differences).&quot;&quot;&quot;</span>
+    <span class="n">z_alpha</span> <span class="o">=</span> <span class="n">norm</span><span class="o">.</span><span class="n">ppf</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">alpha</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="k">if</span> <span class="n">two_sided</span> <span class="k">else</span> <span class="mi">1</span><span class="p">))</span>
+    <span class="n">ncp</span> <span class="o">=</span> <span class="n">effect_size</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">norm</span><span class="o">.</span><span class="n">cdf</span><span class="p">(</span><span class="n">z_alpha</span> <span class="o">-</span> <span class="n">ncp</span><span class="p">))</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">sample_size_paired</span><span class="p">(</span><span class="n">effect_size</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="mf">0.80</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span> <span class="n">two_sided</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Sample size for a paired t-test to achieve target power.&quot;&quot;&quot;</span>
+    <span class="n">z_alpha</span> <span class="o">=</span> <span class="n">norm</span><span class="o">.</span><span class="n">ppf</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">alpha</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="k">if</span> <span class="n">two_sided</span> <span class="k">else</span> <span class="mi">1</span><span class="p">))</span>
+    <span class="n">z_beta</span> <span class="o">=</span> <span class="n">norm</span><span class="o">.</span><span class="n">ppf</span><span class="p">(</span><span class="n">power</span><span class="p">)</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="p">((</span><span class="n">z_alpha</span> <span class="o">+</span> <span class="n">z_beta</span><span class="p">)</span> <span class="o">/</span> <span class="n">effect_size</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
+    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">n</span><span class="p">))</span>
+
 <span class="c1"># Current sample size</span>
 <span class="n">n_paired</span> <span class="o">=</span> <span class="n">N_VALID_PAIRED</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Current paired sample size: </span><span class="si">{</span><span class="n">n_paired</span><span class="si">}</span><span class="s2"> participants&quot;</span><span class="p">)</span>
-<span class="c1"># Power for different effect sizes (using paired t-test approximation)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Power with n=</span><span class="si">{</span><span class="n">n_paired</span><span class="si">}</span><span class="s2"> paired participants:&quot;</span><span class="p">)</span>
+
+<span class="c1"># Power for different effect sizes</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Power with n=</span><span class="si">{</span><span class="n">n_paired</span><span class="si">}</span><span class="s2"> paired participants (paired t-test):&quot;</span><span class="p">)</span>
 <span class="k">for</span> <span class="n">effect_size</span> <span class="ow">in</span> <span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">]:</span>
-    <span class="c1"># For paired design, use single-sample power calculation</span>
-    <span class="n">power</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">power_did</span><span class="p">(</span><span class="n">n_per_group</span><span class="o">=</span><span class="n">n_paired</span><span class="p">,</span> <span class="n">effect_size</span><span class="o">=</span><span class="n">effect_size</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Effect size d=</span><span class="si">{</span><span class="n">effect_size</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">power</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2"> power&quot;</span><span class="p">)</span>
+    <span class="n">pwr</span> <span class="o">=</span> <span class="n">power_paired</span><span class="p">(</span><span class="n">n_paired</span><span class="p">,</span> <span class="n">effect_size</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Effect size d=</span><span class="si">{</span><span class="n">effect_size</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">pwr</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2"> power&quot;</span><span class="p">)</span>
+
 <span class="c1"># Sample sizes needed for 80% power</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Sample size needed for 80% power (paired design):&quot;</span><span class="p">)</span>
 <span class="k">for</span> <span class="n">effect_size</span> <span class="ow">in</span> <span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">]:</span>
-    <span class="n">n_needed</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">sample_size_did</span><span class="p">(</span><span class="n">effect_size</span><span class="o">=</span><span class="n">effect_size</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="mf">0.80</span><span class="p">)</span>
+    <span class="n">n_needed</span> <span class="o">=</span> <span class="n">sample_size_paired</span><span class="p">(</span><span class="n">effect_size</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="mf">0.80</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Effect size d=</span><span class="si">{</span><span class="n">effect_size</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">n_needed</span><span class="si">}</span><span class="s2"> participants&quot;</span><span class="p">)</span>
+
 <span class="c1"># Power curve visualization</span>
 <span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+
 <span class="c1"># Power curve across sample sizes</span>
 <span class="n">n_range</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">31</span><span class="p">)</span>
 <span class="k">for</span> <span class="n">effect_size</span><span class="p">,</span> <span class="n">color</span> <span class="ow">in</span> <span class="p">[(</span><span class="mf">0.5</span><span class="p">,</span> <span class="s2">&quot;blue&quot;</span><span class="p">),</span> <span class="p">(</span><span class="mf">0.8</span><span class="p">,</span> <span class="s2">&quot;green&quot;</span><span class="p">),</span> <span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;orange&quot;</span><span class="p">),</span> <span class="p">(</span><span class="mf">1.5</span><span class="p">,</span> <span class="s2">&quot;red&quot;</span><span class="p">)]:</span>
-    <span class="n">powers</span> <span class="o">=</span> <span class="p">[</span><span class="n">st</span><span class="o">.</span><span class="n">power_did</span><span class="p">(</span><span class="n">n_per_group</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">effect_size</span><span class="o">=</span><span class="n">effect_size</span><span class="p">)</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">n_range</span><span class="p">]</span>
+    <span class="n">powers</span> <span class="o">=</span> <span class="p">[</span><span class="n">power_paired</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">effect_size</span><span class="p">)</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">n_range</span><span class="p">]</span>
     <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">n_range</span><span class="p">,</span> <span class="n">powers</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;d=</span><span class="si">{</span><span class="n">effect_size</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
 <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="mf">0.8</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s2">&quot;--&quot;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;80% power&quot;</span><span class="p">)</span>
 <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">n_paired</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;gray&quot;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s2">&quot;:&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Current n=</span><span class="si">{</span><span class="n">n_paired</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Sample size (paired participants)&quot;</span><span class="p">)</span>
 <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Power&quot;</span><span class="p">)</span>
-<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Power Curves by Effect Size&quot;</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Power Curves by Effect Size (Paired Design)&quot;</span><span class="p">)</span>
 <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s2">&quot;lower right&quot;</span><span class="p">)</span>
 <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+
 <span class="c1"># Power with current sample across effect sizes</span>
 <span class="n">effect_range</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="mi">50</span><span class="p">)</span>
-<span class="n">power_current</span> <span class="o">=</span> <span class="p">[</span><span class="n">st</span><span class="o">.</span><span class="n">power_did</span><span class="p">(</span><span class="n">n_per_group</span><span class="o">=</span><span class="n">n_paired</span><span class="p">,</span> <span class="n">effect_size</span><span class="o">=</span><span class="n">e</span><span class="p">)</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">effect_range</span><span class="p">]</span>
+<span class="n">power_current</span> <span class="o">=</span> <span class="p">[</span><span class="n">power_paired</span><span class="p">(</span><span class="n">n_paired</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">effect_range</span><span class="p">]</span>
 <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">effect_range</span><span class="p">,</span> <span class="n">power_current</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;steelblue&quot;</span><span class="p">)</span>
 <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="mf">0.8</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s2">&quot;--&quot;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
 <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">fill_between</span><span class="p">(</span><span class="n">effect_range</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">power_current</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.2</span><span class="p">)</span>
@@ -2137,6 +2431,8 @@ Effect sizes for Day 0 → Day 7 changes:
 <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Power&quot;</span><span class="p">)</span>
 <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Power with Current Sample (n=</span><span class="si">{</span><span class="n">n_paired</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
 <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+
 <span class="c1"># Mark minimum detectable effect</span>
 <span class="n">idx_80</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">power_current</span><span class="p">)</span> <span class="o">-</span> <span class="mf">0.8</span><span class="p">))</span>
 <span class="k">if</span> <span class="n">idx_80</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
@@ -2146,6 +2442,7 @@ Effect sizes for Day 0 → Day 7 changes:
     <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
 <span class="c1"># Effective sample size</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;EFFECTIVE SAMPLE SIZE&quot;</span><span class="p">)</span>
@@ -2161,7 +2458,7 @@ Effect sizes for Day 0 → Day 7 changes:
     <span class="n">eff_n</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">effective_sample_size</span><span class="p">(</span><span class="n">total_cells</span><span class="p">,</span> <span class="n">avg_cells</span><span class="p">,</span> <span class="n">icc</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  ICC=</span><span class="si">{</span><span class="n">icc</span><span class="si">}</span><span class="s2">: Design effect=</span><span class="si">{</span><span class="n">de</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">, Effective n=</span><span class="si">{</span><span class="n">eff_n</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Note: Participant-level aggregation accounts for clustering automatically.&quot;</span><span class="p">)</span>
-<br/></pre></div>
+</pre></div>
 </div>
 </div>
 <div class="nboutput docutils container">
@@ -2175,19 +2472,19 @@ POWER ANALYSIS (Within-Arm Paired Design)
 
 Current paired sample size: 6 participants
 
-Power with n=6 paired participants:
-  Effect size d=0.5: 13.9% power
-  Effect size d=0.8: 28.3% power
-  Effect size d=1.0: 41.0% power
-  Effect size d=1.5: 73.8% power
-  Effect size d=2.0: 93.4% power
+Power with n=6 paired participants (paired t-test):
+  Effect size d=0.5: 23.1% power
+  Effect size d=0.8: 50.0% power
+  Effect size d=1.0: 68.8% power
+  Effect size d=1.5: 95.7% power
+  Effect size d=2.0: 99.8% power
 
 Sample size needed for 80% power (paired design):
-  Effect size d=0.5: 63 participants
-  Effect size d=0.8: 25 participants
-  Effect size d=1.0: 16 participants
-  Effect size d=1.5: 7 participants
-  Effect size d=2.0: 4 participants
+  Effect size d=0.5: 32 participants
+  Effect size d=0.8: 13 participants
+  Effect size d=1.0: 8 participants
+  Effect size d=1.5: 4 participants
+  Effect size d=2.0: 2 participants
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -2246,6 +2543,15 @@ Note: Participant-level aggregation accounts for clustering automatically.
 <div class="highlight"><pre>
 AnnData object with n_obs × n_vars = 202 × 5
     obs: &#39;participant_id&#39;, &#39;visit&#39;, &#39;arm&#39;, &#39;cell_type&#39;
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/opt/anaconda3/lib/python3.12/functools.py:907: ImplicitModificationWarning: Transforming to str index.
+  return dispatch(args[0].__class__)(*args, **kw)
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">

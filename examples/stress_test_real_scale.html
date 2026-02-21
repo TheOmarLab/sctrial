@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Scalability Analysis &mdash; sctrial 0.2.0 documentation</title>
+  <title>Scalability Analysis &mdash; sctrial 0.2.1.dev1 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css?v=2aa19091" />
@@ -14,7 +14,7 @@
   
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../_static/documentation_options.js?v=938c9ccc"></script>
+      <script src="../_static/documentation_options.js?v=28304322"></script>
       <script src="../_static/doctools.js?v=9bcbadda"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
@@ -128,7 +128,6 @@
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
 <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">&#39;ignore&#39;</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">FutureWarning</span><span class="p">)</span>
-<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">&#39;ignore&#39;</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">UserWarning</span><span class="p">)</span>
 <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">&#39;ignore&#39;</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">DeprecationWarning</span><span class="p">)</span>
 <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">&#39;ignore&#39;</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">RuntimeWarning</span><span class="p">,</span> <span class="n">message</span><span class="o">=</span><span class="s1">&#39;invalid value encountered in sqrt&#39;</span><span class="p">)</span>
 
@@ -247,6 +246,7 @@ Benchmark repeats: 3
     <span class="n">load_sade_feldman</span><span class="p">,</span>
     <span class="n">max_cells_per_participant_visit</span><span class="o">=</span><span class="n">MAX_CELLS_PER_PARTICIPANT_VISIT</span><span class="p">,</span>
     <span class="n">processed_name</span><span class="o">=</span><span class="s2">&quot;sade_feldman_processed_v5_subsample.h5ad&quot;</span><span class="p">,</span>
+    <span class="n">allow_download</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
     <span class="n">n_repeats</span><span class="o">=</span><span class="mi">1</span>
 <span class="p">)</span>
 <span class="n">benchmark_results</span><span class="p">[</span><span class="s1">&#39;timing&#39;</span><span class="p">][</span><span class="s1">&#39;data_load&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">load_time</span>
@@ -260,8 +260,7 @@ Benchmark repeats: 3
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 Loading dataset...
-Loaded processed Sade-Feldman dataset: 12,187 cells, 55,737 genes
-  Load time: 640.8ms
+  Load time: 1.26s
 </pre></div></div>
 </div>
 <section id="Data-Harmonization-&amp;-Trial-Design-Setup">
@@ -519,49 +518,49 @@ DATASET SUMMARY
 <div class="output_area rendered_html docutils container">
 <style type="text/css">
 </style>
-<table id="T_f7d8b">
+<table id="T_c8f2a">
   <thead>
     <tr>
-      <th id="T_f7d8b_level0_col0" class="col_heading level0 col0" >Metric</th>
-      <th id="T_f7d8b_level0_col1" class="col_heading level0 col1" >Value</th>
+      <th id="T_c8f2a_level0_col0" class="col_heading level0 col0" >Metric</th>
+      <th id="T_c8f2a_level0_col1" class="col_heading level0 col1" >Value</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td id="T_f7d8b_row0_col0" class="data row0 col0" >Full Dataset - Cells</td>
-      <td id="T_f7d8b_row0_col1" class="data row0 col1" >12,187</td>
+      <td id="T_c8f2a_row0_col0" class="data row0 col0" >Full Dataset - Cells</td>
+      <td id="T_c8f2a_row0_col1" class="data row0 col1" >12,187</td>
     </tr>
     <tr>
-      <td id="T_f7d8b_row1_col0" class="data row1 col0" >Full Dataset - Genes</td>
-      <td id="T_f7d8b_row1_col1" class="data row1 col1" >55,737</td>
+      <td id="T_c8f2a_row1_col0" class="data row1 col0" >Full Dataset - Genes</td>
+      <td id="T_c8f2a_row1_col1" class="data row1 col1" >55,737</td>
     </tr>
     <tr>
-      <td id="T_f7d8b_row2_col0" class="data row2 col0" >Full Dataset - Participants</td>
-      <td id="T_f7d8b_row2_col1" class="data row2 col1" >25</td>
+      <td id="T_c8f2a_row2_col0" class="data row2 col0" >Full Dataset - Participants</td>
+      <td id="T_c8f2a_row2_col1" class="data row2 col1" >25</td>
     </tr>
     <tr>
-      <td id="T_f7d8b_row3_col0" class="data row3 col0" >Paired Dataset - Cells</td>
-      <td id="T_f7d8b_row3_col1" class="data row3 col1" >7,068</td>
+      <td id="T_c8f2a_row3_col0" class="data row3 col0" >Paired Dataset - Cells</td>
+      <td id="T_c8f2a_row3_col1" class="data row3 col1" >7,068</td>
     </tr>
     <tr>
-      <td id="T_f7d8b_row4_col0" class="data row4 col0" >Paired Dataset - Participants</td>
-      <td id="T_f7d8b_row4_col1" class="data row4 col1" >10</td>
+      <td id="T_c8f2a_row4_col0" class="data row4 col0" >Paired Dataset - Participants</td>
+      <td id="T_c8f2a_row4_col1" class="data row4 col1" >10</td>
     </tr>
     <tr>
-      <td id="T_f7d8b_row5_col0" class="data row5 col0" >  Responders (paired)</td>
-      <td id="T_f7d8b_row5_col1" class="data row5 col1" >3</td>
+      <td id="T_c8f2a_row5_col0" class="data row5 col0" >  Responders (paired)</td>
+      <td id="T_c8f2a_row5_col1" class="data row5 col1" >3</td>
     </tr>
     <tr>
-      <td id="T_f7d8b_row6_col0" class="data row6 col0" >  Non-responders (paired)</td>
-      <td id="T_f7d8b_row6_col1" class="data row6 col1" >7</td>
+      <td id="T_c8f2a_row6_col0" class="data row6 col0" >  Non-responders (paired)</td>
+      <td id="T_c8f2a_row6_col1" class="data row6 col1" >7</td>
     </tr>
     <tr>
-      <td id="T_f7d8b_row7_col0" class="data row7 col0" >Visits</td>
-      <td id="T_f7d8b_row7_col1" class="data row7 col1" >['Pre', 'Post']</td>
+      <td id="T_c8f2a_row7_col0" class="data row7 col0" >Visits</td>
+      <td id="T_c8f2a_row7_col1" class="data row7 col1" >['Pre', 'Post']</td>
     </tr>
     <tr>
-      <td id="T_f7d8b_row8_col0" class="data row8 col0" >Mixed-response participants</td>
-      <td id="T_f7d8b_row8_col1" class="data row8 col1" >3</td>
+      <td id="T_c8f2a_row8_col0" class="data row8 col0" >Mixed-response participants</td>
+      <td id="T_c8f2a_row8_col1" class="data row8 col1" >3</td>
     </tr>
   </tbody>
 </table></div>
@@ -582,41 +581,41 @@ BENCHMARK CONFIGURATION
 <div class="output_area rendered_html docutils container">
 <style type="text/css">
 </style>
-<table id="T_5c56f">
+<table id="T_bc3cf">
   <thead>
     <tr>
-      <th id="T_5c56f_level0_col0" class="col_heading level0 col0" >Parameter</th>
-      <th id="T_5c56f_level0_col1" class="col_heading level0 col1" >Value</th>
+      <th id="T_bc3cf_level0_col0" class="col_heading level0 col0" >Parameter</th>
+      <th id="T_bc3cf_level0_col1" class="col_heading level0 col1" >Value</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td id="T_5c56f_row0_col0" class="data row0 col0" >Scaling gene counts</td>
-      <td id="T_5c56f_row0_col1" class="data row0 col1" >[100, 500, 1000, 2000, 5000]</td>
+      <td id="T_bc3cf_row0_col0" class="data row0 col0" >Scaling gene counts</td>
+      <td id="T_bc3cf_row0_col1" class="data row0 col1" >[100, 500, 1000, 2000, 5000]</td>
     </tr>
     <tr>
-      <td id="T_5c56f_row1_col0" class="data row1 col0" >Cell fractions</td>
-      <td id="T_5c56f_row1_col1" class="data row1 col1" >[0.25, 0.5, 0.75, 1.0]</td>
+      <td id="T_bc3cf_row1_col0" class="data row1 col0" >Cell fractions</td>
+      <td id="T_bc3cf_row1_col1" class="data row1 col1" >[0.25, 0.5, 0.75, 1.0]</td>
     </tr>
     <tr>
-      <td id="T_5c56f_row2_col0" class="data row2 col0" >Repeats per test</td>
-      <td id="T_5c56f_row2_col1" class="data row2 col1" >3</td>
+      <td id="T_bc3cf_row2_col0" class="data row2 col0" >Repeats per test</td>
+      <td id="T_bc3cf_row2_col1" class="data row2 col1" >3</td>
     </tr>
     <tr>
-      <td id="T_5c56f_row3_col0" class="data row3 col0" >Min genes for scoring</td>
-      <td id="T_5c56f_row3_col1" class="data row3 col1" >5</td>
+      <td id="T_bc3cf_row3_col0" class="data row3 col0" >Min genes for scoring</td>
+      <td id="T_bc3cf_row3_col1" class="data row3 col1" >5</td>
     </tr>
     <tr>
-      <td id="T_5c56f_row4_col0" class="data row4 col0" >Min paired per arm</td>
-      <td id="T_5c56f_row4_col1" class="data row4 col1" >3</td>
+      <td id="T_bc3cf_row4_col0" class="data row4 col0" >Min paired per arm</td>
+      <td id="T_bc3cf_row4_col1" class="data row4 col1" >3</td>
     </tr>
     <tr>
-      <td id="T_5c56f_row5_col0" class="data row5 col0" >FDR threshold</td>
-      <td id="T_5c56f_row5_col1" class="data row5 col1" >0.25</td>
+      <td id="T_bc3cf_row5_col0" class="data row5 col0" >FDR threshold</td>
+      <td id="T_bc3cf_row5_col1" class="data row5 col1" >0.25</td>
     </tr>
     <tr>
-      <td id="T_5c56f_row6_col0" class="data row6 col0" >Max cells/participant‑visit</td>
-      <td id="T_5c56f_row6_col1" class="data row6 col1" >500</td>
+      <td id="T_bc3cf_row6_col0" class="data row6 col0" >Max cells/participant‑visit</td>
+      <td id="T_bc3cf_row6_col1" class="data row6 col1" >500</td>
     </tr>
   </tbody>
 </table></div>
@@ -624,8 +623,17 @@ BENCHMARK CONFIGURATION
 <div class="nboutput docutils container">
 <div class="prompt empty docutils container">
 </div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21402/3428041469.py:141: UserWarning: This figure includes Axes that are not compatible with tight_layout, so results might be incorrect.
+  plt.tight_layout()
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_stress_test_real_scale_7_4.png" src="../_images/examples_stress_test_real_scale_7_4.png" />
+<img alt="../_images/examples_stress_test_real_scale_7_5.png" src="../_images/examples_stress_test_real_scale_7_5.png" />
 </div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -634,7 +642,7 @@ BENCHMARK CONFIGURATION
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 
-Total estimated memory: 1511.5 MB
+Total estimated memory: 1508.6 MB
 </pre></div></div>
 </div>
 </section>
@@ -743,51 +751,51 @@ Signature Gene Coverage:
 <div class="output_area rendered_html docutils container">
 <style type="text/css">
 </style>
-<table id="T_81498">
+<table id="T_0175f">
   <thead>
     <tr>
-      <th id="T_81498_level0_col0" class="col_heading level0 col0" >Signature</th>
-      <th id="T_81498_level0_col1" class="col_heading level0 col1" >Found</th>
-      <th id="T_81498_level0_col2" class="col_heading level0 col2" >Total</th>
-      <th id="T_81498_level0_col3" class="col_heading level0 col3" >Coverage</th>
-      <th id="T_81498_level0_col4" class="col_heading level0 col4" >Status</th>
+      <th id="T_0175f_level0_col0" class="col_heading level0 col0" >Signature</th>
+      <th id="T_0175f_level0_col1" class="col_heading level0 col1" >Found</th>
+      <th id="T_0175f_level0_col2" class="col_heading level0 col2" >Total</th>
+      <th id="T_0175f_level0_col3" class="col_heading level0 col3" >Coverage</th>
+      <th id="T_0175f_level0_col4" class="col_heading level0 col4" >Status</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td id="T_81498_row0_col0" class="data row0 col0" >Cytotoxicity</td>
-      <td id="T_81498_row0_col1" class="data row0 col1" >11</td>
-      <td id="T_81498_row0_col2" class="data row0 col2" >11</td>
-      <td id="T_81498_row0_col3" class="data row0 col3" >100%</td>
-      <td id="T_81498_row0_col4" class="data row0 col4" >OK</td>
+      <td id="T_0175f_row0_col0" class="data row0 col0" >Cytotoxicity</td>
+      <td id="T_0175f_row0_col1" class="data row0 col1" >11</td>
+      <td id="T_0175f_row0_col2" class="data row0 col2" >11</td>
+      <td id="T_0175f_row0_col3" class="data row0 col3" >100%</td>
+      <td id="T_0175f_row0_col4" class="data row0 col4" >OK</td>
     </tr>
     <tr>
-      <td id="T_81498_row1_col0" class="data row1 col0" >Exhaustion</td>
-      <td id="T_81498_row1_col1" class="data row1 col1" >9</td>
-      <td id="T_81498_row1_col2" class="data row1 col2" >9</td>
-      <td id="T_81498_row1_col3" class="data row1 col3" >100%</td>
-      <td id="T_81498_row1_col4" class="data row1 col4" >OK</td>
+      <td id="T_0175f_row1_col0" class="data row1 col0" >Exhaustion</td>
+      <td id="T_0175f_row1_col1" class="data row1 col1" >9</td>
+      <td id="T_0175f_row1_col2" class="data row1 col2" >9</td>
+      <td id="T_0175f_row1_col3" class="data row1 col3" >100%</td>
+      <td id="T_0175f_row1_col4" class="data row1 col4" >OK</td>
     </tr>
     <tr>
-      <td id="T_81498_row2_col0" class="data row2 col0" >IFN_Response</td>
-      <td id="T_81498_row2_col1" class="data row2 col1" >10</td>
-      <td id="T_81498_row2_col2" class="data row2 col2" >10</td>
-      <td id="T_81498_row2_col3" class="data row2 col3" >100%</td>
-      <td id="T_81498_row2_col4" class="data row2 col4" >OK</td>
+      <td id="T_0175f_row2_col0" class="data row2 col0" >IFN_Response</td>
+      <td id="T_0175f_row2_col1" class="data row2 col1" >10</td>
+      <td id="T_0175f_row2_col2" class="data row2 col2" >10</td>
+      <td id="T_0175f_row2_col3" class="data row2 col3" >100%</td>
+      <td id="T_0175f_row2_col4" class="data row2 col4" >OK</td>
     </tr>
     <tr>
-      <td id="T_81498_row3_col0" class="data row3 col0" >Memory</td>
-      <td id="T_81498_row3_col1" class="data row3 col1" >7</td>
-      <td id="T_81498_row3_col2" class="data row3 col2" >7</td>
-      <td id="T_81498_row3_col3" class="data row3 col3" >100%</td>
-      <td id="T_81498_row3_col4" class="data row3 col4" >OK</td>
+      <td id="T_0175f_row3_col0" class="data row3 col0" >Memory</td>
+      <td id="T_0175f_row3_col1" class="data row3 col1" >7</td>
+      <td id="T_0175f_row3_col2" class="data row3 col2" >7</td>
+      <td id="T_0175f_row3_col3" class="data row3 col3" >100%</td>
+      <td id="T_0175f_row3_col4" class="data row3 col4" >OK</td>
     </tr>
     <tr>
-      <td id="T_81498_row4_col0" class="data row4 col0" >Activation</td>
-      <td id="T_81498_row4_col1" class="data row4 col1" >6</td>
-      <td id="T_81498_row4_col2" class="data row4 col2" >6</td>
-      <td id="T_81498_row4_col3" class="data row4 col3" >100%</td>
-      <td id="T_81498_row4_col4" class="data row4 col4" >OK</td>
+      <td id="T_0175f_row4_col0" class="data row4 col0" >Activation</td>
+      <td id="T_0175f_row4_col1" class="data row4 col1" >6</td>
+      <td id="T_0175f_row4_col2" class="data row4 col2" >6</td>
+      <td id="T_0175f_row4_col3" class="data row4 col3" >100%</td>
+      <td id="T_0175f_row4_col4" class="data row4 col4" >OK</td>
     </tr>
   </tbody>
 </table></div>
@@ -798,7 +806,7 @@ Signature Gene Coverage:
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 
-Signature scoring time: 10.8ms ± 2.9ms
+Signature scoring time: 9.0ms ± 2.2ms
 Signatures scored: 5
 </pre></div></div>
 </div>
@@ -895,26 +903,28 @@ Participants with valid Pre+Post scores: 10
         <span class="k">continue</span>
 
     <span class="c1"># Select genes</span>
-    <span class="n">test_genes</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">adata_paired</span><span class="o">.</span><span class="n">var_names</span><span class="p">[:</span><span class="n">n_genes</span><span class="p">])</span>
+    <span class="n">_test_genes</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">adata_paired</span><span class="o">.</span><span class="n">var_names</span><span class="p">[:</span><span class="n">n_genes</span><span class="p">])</span>
 
-    <span class="c1"># Benchmark DiD (serial)</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">run_did</span><span class="p">():</span>
+    <span class="c1"># Benchmark DiD (serial) — capture loop variable via default arg</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">run_did</span><span class="p">(</span><span class="n">genes</span><span class="o">=</span><span class="n">_test_genes</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span>
             <span class="n">adata_paired</span><span class="p">,</span>
-            <span class="n">features</span><span class="o">=</span><span class="n">test_genes</span><span class="p">,</span>
+            <span class="n">features</span><span class="o">=</span><span class="n">genes</span><span class="p">,</span>
             <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
             <span class="n">visits</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">visits</span><span class="p">),</span>
             <span class="n">aggregate</span><span class="o">=</span><span class="s2">&quot;participant_visit&quot;</span><span class="p">,</span>
+            <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;log1p_tpm&quot;</span><span class="p">,</span>
         <span class="p">)</span>
 
     <span class="c1"># Benchmark DiD (parallel)</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">run_did_parallel</span><span class="p">():</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">run_did_parallel</span><span class="p">(</span><span class="n">genes</span><span class="o">=</span><span class="n">_test_genes</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table_parallel</span><span class="p">(</span>
             <span class="n">adata_paired</span><span class="p">,</span>
-            <span class="n">features</span><span class="o">=</span><span class="n">test_genes</span><span class="p">,</span>
+            <span class="n">features</span><span class="o">=</span><span class="n">genes</span><span class="p">,</span>
             <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
             <span class="n">visits</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">visits</span><span class="p">),</span>
             <span class="n">aggregate</span><span class="o">=</span><span class="s2">&quot;participant_visit&quot;</span><span class="p">,</span>
+            <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;log1p_tpm&quot;</span><span class="p">,</span>
             <span class="n">n_jobs</span><span class="o">=</span><span class="n">PARALLEL_JOBS</span><span class="p">,</span>
         <span class="p">)</span>
 
@@ -945,7 +955,7 @@ Participants with valid Pre+Post scores: 10
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;CELL SCALING BENCHMARK&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Testing DiD performance across </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">SCALING_CELL_FRACTIONS</span><span class="p">)</span><span class="si">}</span><span class="s2"> cell fractions...&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Cell fractions keep a fixed proportion of cells per participant‑visit (stratified), preserving pairing.&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Cell fractions keep a fixed proportion of cells per participant-visit (stratified), preserving pairing.&quot;</span><span class="p">)</span>
 
 <span class="n">cell_scaling_results</span> <span class="o">=</span> <span class="p">[]</span>
 <span class="n">n_test_genes</span> <span class="o">=</span> <span class="mi">500</span>  <span class="c1"># Fixed gene count for cell scaling test</span>
@@ -965,15 +975,17 @@ Participants with valid Pre+Post scores: 10
     <span class="k">else</span><span class="p">:</span>
         <span class="n">adata_sub</span> <span class="o">=</span> <span class="n">adata_paired</span>
 
-    <span class="n">test_genes</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">adata_sub</span><span class="o">.</span><span class="n">var_names</span><span class="p">[:</span><span class="n">n_test_genes</span><span class="p">])</span>
+    <span class="n">_test_genes_cell</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">adata_sub</span><span class="o">.</span><span class="n">var_names</span><span class="p">[:</span><span class="n">n_test_genes</span><span class="p">])</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">run_did_cells</span><span class="p">():</span>
+    <span class="c1"># Capture loop variables via default args</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">run_did_cells</span><span class="p">(</span><span class="n">ad</span><span class="o">=</span><span class="n">adata_sub</span><span class="p">,</span> <span class="n">genes</span><span class="o">=</span><span class="n">_test_genes_cell</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span>
-            <span class="n">adata_sub</span><span class="p">,</span>
-            <span class="n">features</span><span class="o">=</span><span class="n">test_genes</span><span class="p">,</span>
+            <span class="n">ad</span><span class="p">,</span>
+            <span class="n">features</span><span class="o">=</span><span class="n">genes</span><span class="p">,</span>
             <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
             <span class="n">visits</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">visits</span><span class="p">),</span>
             <span class="n">aggregate</span><span class="o">=</span><span class="s2">&quot;participant_visit&quot;</span><span class="p">,</span>
+            <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;log1p_tpm&quot;</span><span class="p">,</span>
         <span class="p">)</span>
 
     <span class="n">_</span><span class="p">,</span> <span class="n">mean_time</span><span class="p">,</span> <span class="n">std_time</span> <span class="o">=</span> <span class="n">timed_run</span><span class="p">(</span><span class="n">run_did_cells</span><span class="p">,</span> <span class="n">n_repeats</span><span class="o">=</span><span class="n">N_BENCHMARK_REPEATS</span><span class="p">)</span>
@@ -1051,46 +1063,28 @@ Participants with valid Pre+Post scores: 10
 GENE SCALING BENCHMARK
 ======================================================================
 Testing DiD performance across 5 gene counts...
-</pre></div></div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area stderr docutils container">
-<div class="highlight"><pre>
-/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/ctxcore/__init__.py:5: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools&lt;81.
-  from pkg_resources import DistributionNotFound, get_distribution
-/Users/omarm/mamba/envs/diab_did/lib/python3.10/site-packages/ctxcore/__init__.py:5: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools&lt;81.
-  from pkg_resources import DistributionNotFound, get_distribution
-</pre></div></div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-  100 genes: serial 755.3ms ± 4.6ms (132 genes/sec) | parallel 1.13s ± 708.3ms (88 genes/sec)
-  500 genes: serial 1.78s ± 4.8ms (280 genes/sec) | parallel 1.21s ± 3.8ms (412 genes/sec)
-  1,000 genes: serial 3.07s ± 7.8ms (325 genes/sec) | parallel 1.90s ± 12.7ms (527 genes/sec)
-  2,000 genes: serial 5.66s ± 8.5ms (354 genes/sec) | parallel 3.28s ± 9.2ms (610 genes/sec)
-  5,000 genes: serial 13.49s ± 32.1ms (371 genes/sec) | parallel 7.51s ± 11.5ms (666 genes/sec)
+  100 genes: serial 788.1ms ± 26.7ms (127 genes/sec) | parallel 1.38s ± 966.6ms (72 genes/sec)
+  500 genes: serial 1.57s ± 6.4ms (318 genes/sec) | parallel 1.12s ± 5.7ms (445 genes/sec)
+  1,000 genes: serial 2.58s ± 13.6ms (388 genes/sec) | parallel 1.65s ± 13.0ms (607 genes/sec)
+  2,000 genes: serial 4.53s ± 19.1ms (442 genes/sec) | parallel 2.74s ± 33.6ms (729 genes/sec)
+  5,000 genes: serial 10.58s ± 34.9ms (473 genes/sec) | parallel 6.20s ± 225.1ms (806 genes/sec)
 
 ======================================================================
 CELL SCALING BENCHMARK
 ======================================================================
 Testing DiD performance across 4 cell fractions...
-Cell fractions keep a fixed proportion of cells per participant‑visit (stratified), preserving pairing.
-  25% (1,767 cells): 1.36s ± 4.1ms
-  50% (3,534 cells): 1.54s ± 13.1ms
-  75% (5,301 cells): 1.66s ± 1.2ms
-  100% (7,068 cells): 1.78s ± 3.9ms
+Cell fractions keep a fixed proportion of cells per participant-visit (stratified), preserving pairing.
+  25% (1,767 cells): 1.08s ± 14.7ms
+  50% (3,534 cells): 1.34s ± 21.7ms
+  75% (5,301 cells): 1.48s ± 51.4ms
+  100% (7,068 cells): 1.59s ± 14.6ms
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_stress_test_real_scale_12_3.png" src="../_images/examples_stress_test_real_scale_12_3.png" />
+<img alt="../_images/examples_stress_test_real_scale_12_1.png" src="../_images/examples_stress_test_real_scale_12_1.png" />
 </div>
 </div>
 <div class="nbinput docutils container">
@@ -1104,8 +1098,8 @@ Cell fractions keep a fixed proportion of cells per participant‑visit (stratif
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;METHOD COMPARISON BENCHMARK&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;This compares: (1) DiD aggregation modes (participant_visit vs cell),&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;(2) cross‑sectional between‑arm contrasts at each visit,&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;and (3) within‑arm paired changes. All use the same trial design and feature set.&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;(2) cross-sectional between-arm contrasts at each visit,&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;and (3) within-arm paired changes. All use the same trial design and feature set.&quot;</span><span class="p">)</span>
 
 
 
@@ -1119,13 +1113,14 @@ Cell fractions keep a fixed proportion of cells per participant‑visit (stratif
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;-&quot;</span> <span class="o">*</span> <span class="mi">50</span><span class="p">)</span>
 
 <span class="k">for</span> <span class="n">agg_mode</span> <span class="ow">in</span> <span class="n">agg_modes</span><span class="p">:</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">run_agg_test</span><span class="p">():</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">run_agg_test</span><span class="p">(</span><span class="n">_agg</span><span class="o">=</span><span class="n">agg_mode</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span>
             <span class="n">adata_paired</span><span class="p">,</span>
             <span class="n">features</span><span class="o">=</span><span class="n">test_features</span><span class="p">,</span>
             <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
             <span class="n">visits</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">visits</span><span class="p">),</span>
-            <span class="n">aggregate</span><span class="o">=</span><span class="n">agg_mode</span><span class="p">,</span>
+            <span class="n">aggregate</span><span class="o">=</span><span class="n">_agg</span><span class="p">,</span>
+            <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;log1p_tpm&quot;</span><span class="p">,</span>
         <span class="p">)</span>
 
     <span class="k">try</span><span class="p">:</span>
@@ -1146,13 +1141,14 @@ Cell fractions keep a fixed proportion of cells per participant‑visit (stratif
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;-&quot;</span> <span class="o">*</span> <span class="mi">50</span><span class="p">)</span>
 
 <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">visits</span><span class="p">:</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">run_cross</span><span class="p">():</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">run_cross</span><span class="p">(</span><span class="n">_v</span><span class="o">=</span><span class="n">v</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">st</span><span class="o">.</span><span class="n">between_arm_comparison</span><span class="p">(</span>
             <span class="n">adata_paired</span><span class="p">,</span>
-            <span class="n">visit</span><span class="o">=</span><span class="n">v</span><span class="p">,</span>
+            <span class="n">visit</span><span class="o">=</span><span class="n">_v</span><span class="p">,</span>
             <span class="n">features</span><span class="o">=</span><span class="n">test_features</span><span class="p">,</span>
             <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
             <span class="n">aggregate</span><span class="o">=</span><span class="s2">&quot;participant_visit&quot;</span><span class="p">,</span>
+            <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;log1p_tpm&quot;</span><span class="p">,</span>
         <span class="p">)</span>
 
     <span class="n">result</span><span class="p">,</span> <span class="n">mean_time</span><span class="p">,</span> <span class="n">std_time</span> <span class="o">=</span> <span class="n">timed_run</span><span class="p">(</span><span class="n">run_cross</span><span class="p">,</span> <span class="n">n_repeats</span><span class="o">=</span><span class="n">N_BENCHMARK_REPEATS</span><span class="p">)</span>
@@ -1173,14 +1169,15 @@ Cell fractions keep a fixed proportion of cells per participant‑visit (stratif
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">arm</span><span class="si">}</span><span class="s2">: SKIPPED (insufficient participants)&quot;</span><span class="p">)</span>
         <span class="k">continue</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">run_within</span><span class="p">():</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">run_within</span><span class="p">(</span><span class="n">_arm</span><span class="o">=</span><span class="n">arm</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">st</span><span class="o">.</span><span class="n">within_arm_comparison</span><span class="p">(</span>
             <span class="n">adata_paired</span><span class="p">,</span>
-            <span class="n">arm</span><span class="o">=</span><span class="n">arm</span><span class="p">,</span>
+            <span class="n">arm</span><span class="o">=</span><span class="n">_arm</span><span class="p">,</span>
             <span class="n">features</span><span class="o">=</span><span class="n">test_features</span><span class="p">,</span>
             <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
             <span class="n">visits</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">visits</span><span class="p">),</span>
             <span class="n">aggregate</span><span class="o">=</span><span class="s2">&quot;participant_visit&quot;</span><span class="p">,</span>
+            <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;log1p_tpm&quot;</span><span class="p">,</span>
         <span class="p">)</span>
 
     <span class="n">result</span><span class="p">,</span> <span class="n">mean_time</span><span class="p">,</span> <span class="n">std_time</span> <span class="o">=</span> <span class="n">timed_run</span><span class="p">(</span><span class="n">run_within</span><span class="p">,</span> <span class="n">n_repeats</span><span class="o">=</span><span class="n">N_BENCHMARK_REPEATS</span><span class="p">)</span>
@@ -1224,30 +1221,125 @@ Cell fractions keep a fixed proportion of cells per participant‑visit (stratif
 METHOD COMPARISON BENCHMARK
 ======================================================================
 This compares: (1) DiD aggregation modes (participant_visit vs cell),
-(2) cross‑sectional between‑arm contrasts at each visit,
-and (3) within‑arm paired changes. All use the same trial design and feature set.
+(2) cross-sectional between-arm contrasts at each visit,
+and (3) within-arm paired changes. All use the same trial design and feature set.
 
 Aggregation Mode Comparison:
 --------------------------------------------------
-  participant_visit: 504.0ms ± 1.1ms
-  cell: 550.9ms ± 0.5ms
+  participant_visit: 601.4ms ± 0.8ms
+  cell: 659.8ms ± 12.2ms
 
 Cross-sectional Comparison:
 --------------------------------------------------
-  Pre: 224.2ms ± 0.6ms
-  Post: 285.6ms ± 1.2ms
+  Pre: 275.1ms ± 16.4ms
+  Post: 338.2ms ± 2.8ms
 
 Within-arm Comparison:
 --------------------------------------------------
-  Responder: 282.9ms ± 6.2ms
-  Non-responder: 707.1ms ± 2.4ms
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21402/3061682563.py:80: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  return st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21402/3061682563.py:80: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  return st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21402/3061682563.py:80: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  return st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21402/3061682563.py:80: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  return st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21402/3061682563.py:80: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  return st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21402/3061682563.py:80: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  return st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21402/3061682563.py:80: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  return st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21402/3061682563.py:80: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  return st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21402/3061682563.py:80: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  return st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21402/3061682563.py:80: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  return st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21402/3061682563.py:80: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  return st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21402/3061682563.py:80: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  return st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21402/3061682563.py:80: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  return st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21402/3061682563.py:80: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  return st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21402/3061682563.py:80: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  return st.within_arm_comparison(
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+  Responder: 295.8ms ± 15.5ms
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21402/3061682563.py:80: UserWarning: Only 7 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  return st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21402/3061682563.py:80: UserWarning: Only 7 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  return st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21402/3061682563.py:80: UserWarning: Only 7 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  return st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21402/3061682563.py:80: UserWarning: Only 7 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  return st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21402/3061682563.py:80: UserWarning: Only 7 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  return st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21402/3061682563.py:80: UserWarning: Only 7 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  return st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21402/3061682563.py:80: UserWarning: Only 7 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  return st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21402/3061682563.py:80: UserWarning: Only 7 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  return st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21402/3061682563.py:80: UserWarning: Only 7 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  return st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21402/3061682563.py:80: UserWarning: Only 7 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  return st.within_arm_comparison(
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+  Non-responder: 923.7ms ± 15.7ms
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21402/3061682563.py:80: UserWarning: Only 7 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  return st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21402/3061682563.py:80: UserWarning: Only 7 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  return st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21402/3061682563.py:80: UserWarning: Only 7 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  return st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21402/3061682563.py:80: UserWarning: Only 7 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  return st.within_arm_comparison(
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_21402/3061682563.py:80: UserWarning: Only 7 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+  return st.within_arm_comparison(
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_stress_test_real_scale_13_1.png" src="../_images/examples_stress_test_real_scale_13_1.png" />
+<img alt="../_images/examples_stress_test_real_scale_13_6.png" src="../_images/examples_stress_test_real_scale_13_6.png" />
 </div>
 </div>
 </section>
@@ -1277,6 +1369,7 @@ Within-arm Comparison:
             <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
             <span class="n">visits</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">visits</span><span class="p">),</span>
             <span class="n">aggregate</span><span class="o">=</span><span class="s2">&quot;participant_visit&quot;</span><span class="p">,</span>
+            <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;log1p_tpm&quot;</span><span class="p">,</span>
         <span class="p">)</span>
 
     <span class="n">did_results</span><span class="p">,</span> <span class="n">peak_mb</span><span class="p">,</span> <span class="n">current_mb</span> <span class="o">=</span> <span class="n">memory_profile</span><span class="p">(</span><span class="n">did_signatures</span><span class="p">)</span>
@@ -1296,15 +1389,16 @@ Within-arm Comparison:
     <span class="k">if</span> <span class="n">n_genes</span> <span class="o">&gt;</span> <span class="n">adata_paired</span><span class="o">.</span><span class="n">n_vars</span><span class="p">:</span>
         <span class="k">continue</span>
 
-    <span class="n">test_genes</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">adata_paired</span><span class="o">.</span><span class="n">var_names</span><span class="p">[:</span><span class="n">n_genes</span><span class="p">])</span>
+    <span class="n">_test_genes_mem</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">adata_paired</span><span class="o">.</span><span class="n">var_names</span><span class="p">[:</span><span class="n">n_genes</span><span class="p">])</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">did_gw</span><span class="p">():</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">did_gw</span><span class="p">(</span><span class="n">genes</span><span class="o">=</span><span class="n">_test_genes_mem</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span>
             <span class="n">adata_paired</span><span class="p">,</span>
-            <span class="n">features</span><span class="o">=</span><span class="n">test_genes</span><span class="p">,</span>
+            <span class="n">features</span><span class="o">=</span><span class="n">genes</span><span class="p">,</span>
             <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
             <span class="n">visits</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">visits</span><span class="p">),</span>
             <span class="n">aggregate</span><span class="o">=</span><span class="s2">&quot;participant_visit&quot;</span><span class="p">,</span>
+            <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;log1p_tpm&quot;</span><span class="p">,</span>
         <span class="p">)</span>
 
     <span class="n">_</span><span class="p">,</span> <span class="n">peak_mb</span><span class="p">,</span> <span class="n">current_mb</span> <span class="o">=</span> <span class="n">memory_profile</span><span class="p">(</span><span class="n">did_gw</span><span class="p">)</span>
@@ -1351,6 +1445,7 @@ Within-arm Comparison:
         <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
         <span class="n">visits</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">visits</span><span class="p">),</span>
         <span class="n">aggregate</span><span class="o">=</span><span class="s2">&quot;participant_visit&quot;</span><span class="p">,</span>
+        <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;log1p_tpm&quot;</span><span class="p">,</span>
     <span class="p">)</span>
 
 <span class="n">res_gw</span><span class="p">,</span> <span class="n">gw_time</span><span class="p">,</span> <span class="n">gw_std</span> <span class="o">=</span> <span class="n">timed_run</span><span class="p">(</span><span class="n">did_genomewide</span><span class="p">,</span> <span class="n">n_repeats</span><span class="o">=</span><span class="n">N_BENCHMARK_REPEATS</span><span class="p">)</span>
@@ -1373,12 +1468,12 @@ Within-arm Comparison:
 ======================================================================
 MEMORY PROFILING
 ======================================================================
-DiD (signatures): Peak=6015.25MB, Current=0.06MB
+DiD (signatures): Peak=6015.26MB, Current=0.05MB
 
 Genome-wide DiD memory usage:
-  500 genes: Peak=6015.25MB
-  1000 genes: Peak=6015.25MB
-  2000 genes: Peak=6015.25MB
+  500 genes: Peak=6015.26MB
+  1000 genes: Peak=6015.26MB
+  2000 genes: Peak=6015.26MB
 
 ======================================================================
 DID RESULTS: SIGNATURES
@@ -1419,46 +1514,46 @@ DID RESULTS: SIGNATURES
     <tr>
       <th>0</th>
       <td>sig_Activation</td>
-      <td>-2.0007</td>
-      <td>0.6869</td>
-      <td>0.0036</td>
-      <td>0.0179</td>
+      <td>-2.0117</td>
+      <td>0.6568</td>
+      <td>0.0022</td>
+      <td>0.0110</td>
       <td>10</td>
     </tr>
     <tr>
       <th>1</th>
       <td>sig_IFN_Response</td>
-      <td>-1.5318</td>
-      <td>1.7770</td>
-      <td>0.3887</td>
-      <td>0.7841</td>
+      <td>-1.6544</td>
+      <td>1.8360</td>
+      <td>0.3675</td>
+      <td>0.7991</td>
       <td>10</td>
     </tr>
     <tr>
       <th>2</th>
       <td>sig_Exhaustion</td>
-      <td>-0.7071</td>
-      <td>1.0625</td>
-      <td>0.5057</td>
-      <td>0.7841</td>
+      <td>-0.7621</td>
+      <td>1.0886</td>
+      <td>0.4839</td>
+      <td>0.7991</td>
       <td>10</td>
     </tr>
     <tr>
       <th>3</th>
       <td>sig_Memory</td>
-      <td>-0.9768</td>
-      <td>2.0119</td>
-      <td>0.6273</td>
-      <td>0.7841</td>
+      <td>-0.8186</td>
+      <td>2.0637</td>
+      <td>0.6916</td>
+      <td>0.7991</td>
       <td>10</td>
     </tr>
     <tr>
       <th>4</th>
       <td>sig_Cytotoxicity</td>
-      <td>-0.3207</td>
-      <td>1.5045</td>
-      <td>0.8312</td>
-      <td>0.8312</td>
+      <td>-0.3820</td>
+      <td>1.5010</td>
+      <td>0.7991</td>
+      <td>0.7991</td>
       <td>10</td>
     </tr>
   </tbody>
@@ -1478,8 +1573,8 @@ Significance summary:
 ======================================================================
 DID BENCHMARK: GENOME-WIDE
 ======================================================================
-Genome-wide DiD (2000 genes): 5.65s ± 19.1ms
-Throughput: 354 genes/second
+Genome-wide DiD (2000 genes): 4.56s ± 7.7ms
+Throughput: 439 genes/second
 
 Top 10 significant genes (by p-value):
 </pre></div></div>
@@ -1518,91 +1613,91 @@ Top 10 significant genes (by p-value):
     <tr>
       <th>0</th>
       <td>ABCC8</td>
-      <td>2.5862</td>
-      <td>0.5961</td>
+      <td>2.5994</td>
+      <td>0.5947</td>
       <td>0.0000</td>
-      <td>0.0286</td>
+      <td>0.0247</td>
       <td>10</td>
     </tr>
     <tr>
       <th>1</th>
       <td>RBM7</td>
-      <td>-2.0220</td>
-      <td>0.4864</td>
+      <td>-2.0196</td>
+      <td>0.4885</td>
       <td>0.0000</td>
-      <td>0.0321</td>
+      <td>0.0355</td>
       <td>10</td>
     </tr>
     <tr>
       <th>2</th>
       <td>IP6K2</td>
-      <td>-1.6014</td>
-      <td>0.4398</td>
+      <td>-1.6238</td>
+      <td>0.4469</td>
       <td>0.0003</td>
-      <td>0.1806</td>
+      <td>0.1856</td>
       <td>10</td>
     </tr>
     <tr>
       <th>3</th>
       <td>PEX3</td>
-      <td>-1.9954</td>
-      <td>0.6139</td>
-      <td>0.0012</td>
-      <td>0.5752</td>
+      <td>-2.0206</td>
+      <td>0.5947</td>
+      <td>0.0007</td>
+      <td>0.3389</td>
       <td>10</td>
     </tr>
     <tr>
       <th>4</th>
-      <td>SLC4A7</td>
-      <td>-1.7417</td>
-      <td>0.5989</td>
-      <td>0.0036</td>
-      <td>0.9991</td>
+      <td>AP3M2</td>
+      <td>-2.0088</td>
+      <td>0.6968</td>
+      <td>0.0039</td>
+      <td>0.9966</td>
       <td>10</td>
     </tr>
     <tr>
       <th>5</th>
-      <td>PRKCZ</td>
-      <td>1.9943</td>
-      <td>0.6971</td>
+      <td>SLC4A7</td>
+      <td>-1.7360</td>
+      <td>0.6064</td>
       <td>0.0042</td>
-      <td>0.9991</td>
+      <td>0.9966</td>
       <td>10</td>
     </tr>
     <tr>
       <th>6</th>
-      <td>AP3M2</td>
-      <td>-2.0080</td>
-      <td>0.7030</td>
-      <td>0.0043</td>
-      <td>0.9991</td>
+      <td>SPAST</td>
+      <td>-1.6535</td>
+      <td>0.5865</td>
+      <td>0.0048</td>
+      <td>0.9966</td>
       <td>10</td>
     </tr>
     <tr>
       <th>7</th>
-      <td>SPAST</td>
-      <td>-1.6462</td>
-      <td>0.5879</td>
-      <td>0.0051</td>
-      <td>0.9991</td>
+      <td>PRKCZ</td>
+      <td>2.0435</td>
+      <td>0.7251</td>
+      <td>0.0048</td>
+      <td>0.9966</td>
       <td>10</td>
     </tr>
     <tr>
       <th>8</th>
       <td>C19orf60</td>
-      <td>-1.2808</td>
-      <td>0.4726</td>
-      <td>0.0067</td>
-      <td>0.9991</td>
+      <td>-1.3039</td>
+      <td>0.4659</td>
+      <td>0.0051</td>
+      <td>0.9966</td>
       <td>10</td>
     </tr>
     <tr>
       <th>9</th>
       <td>PIK3C3</td>
-      <td>-1.7480</td>
-      <td>0.6670</td>
-      <td>0.0088</td>
-      <td>0.9991</td>
+      <td>-1.7934</td>
+      <td>0.6915</td>
+      <td>0.0095</td>
+      <td>0.9966</td>
       <td>10</td>
     </tr>
   </tbody>
@@ -1685,6 +1780,8 @@ Top 10 significant genes (by p-value):
 <span class="c1"># =============================================================================</span>
 <span class="c1"># VALIDATION VISUALIZATIONS</span>
 <span class="c1"># =============================================================================</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">stats</span> <span class="k">as</span> <span class="n">sp_stats</span>
+
 <span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">15</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
 
 <span class="c1"># 1. P-value histogram</span>
@@ -1703,7 +1800,6 @@ Top 10 significant genes (by p-value):
 <span class="c1"># 2. QQ plot</span>
 <span class="n">ax2</span> <span class="o">=</span> <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
 <span class="k">if</span> <span class="n">res_gw</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">res_gw</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">stats</span>
     <span class="n">valid_p</span> <span class="o">=</span> <span class="n">res_gw</span><span class="p">[</span><span class="s1">&#39;p_DiD&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">sort_values</span><span class="p">()</span>
     <span class="n">expected_p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="nb">len</span><span class="p">(</span><span class="n">valid_p</span><span class="p">),</span> <span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid_p</span><span class="p">))</span>
     <span class="n">ax2</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">expected_p</span><span class="p">),</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">valid_p</span><span class="p">),</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
@@ -1763,18 +1859,21 @@ Top 10 significant genes (by p-value):
     <span class="n">ax5</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s1">&#39;No data&#39;</span><span class="p">,</span> <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">ax5</span><span class="o">.</span><span class="n">transAxes</span><span class="p">)</span>
     <span class="n">ax5</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Memory Usage&#39;</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">)</span>
 
-<span class="c1"># 6. Signature-level results</span>
+<span class="c1"># 6. Signature-level results — forest plot with t-based CI</span>
 <span class="n">ax6</span> <span class="o">=</span> <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span>
 <span class="k">if</span> <span class="n">did_results</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">did_results</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
-    <span class="c1"># Forest plot style</span>
     <span class="n">y_pos</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">did_results</span><span class="p">))</span>
+    <span class="c1"># Use t-critical value for proper CI with small n</span>
+    <span class="n">n_paired</span> <span class="o">=</span> <span class="n">did_results</span><span class="p">[</span><span class="s1">&#39;n_units&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="s1">&#39;n_units&#39;</span> <span class="ow">in</span> <span class="n">did_results</span><span class="o">.</span><span class="n">columns</span> <span class="k">else</span> <span class="n">N_VALID_PAIRED</span>
+    <span class="n">df_resid</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">n_paired</span> <span class="o">-</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>  <span class="c1"># DiD model with treatment + time dummies</span>
+    <span class="n">t_crit</span> <span class="o">=</span> <span class="n">sp_stats</span><span class="o">.</span><span class="n">t</span><span class="o">.</span><span class="n">ppf</span><span class="p">(</span><span class="mf">0.975</span><span class="p">,</span> <span class="n">df</span><span class="o">=</span><span class="n">df_resid</span><span class="p">)</span>
     <span class="n">ax6</span><span class="o">.</span><span class="n">errorbar</span><span class="p">(</span><span class="n">did_results</span><span class="p">[</span><span class="s1">&#39;beta_DiD&#39;</span><span class="p">],</span> <span class="n">y_pos</span><span class="p">,</span>
-                 <span class="n">xerr</span><span class="o">=</span><span class="n">did_results</span><span class="p">[</span><span class="s1">&#39;se_DiD&#39;</span><span class="p">]</span><span class="o">*</span><span class="mf">1.96</span><span class="p">,</span>
+                 <span class="n">xerr</span><span class="o">=</span><span class="n">did_results</span><span class="p">[</span><span class="s1">&#39;se_DiD&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">t_crit</span><span class="p">,</span>
                  <span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;o&#39;</span><span class="p">,</span> <span class="n">capsize</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#3498db&#39;</span><span class="p">,</span> <span class="n">markersize</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
     <span class="n">ax6</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">)</span>
     <span class="n">ax6</span><span class="o">.</span><span class="n">set_yticks</span><span class="p">(</span><span class="n">y_pos</span><span class="p">)</span>
     <span class="n">ax6</span><span class="o">.</span><span class="n">set_yticklabels</span><span class="p">(</span><span class="n">did_results</span><span class="p">[</span><span class="s1">&#39;feature&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;sig_&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">))</span>
-    <span class="n">ax6</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;DiD Effect (95% CI)&#39;</span><span class="p">)</span>
+    <span class="n">ax6</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;DiD Effect (95% CI, t-dist df=</span><span class="si">{</span><span class="n">df_resid</span><span class="si">}</span><span class="s1">)&#39;</span><span class="p">)</span>
     <span class="n">ax6</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Signature DiD Effects</span><span class="se">\n</span><span class="s1">(Forest Plot)&#39;</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">)</span>
     <span class="n">ax6</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
 <span class="k">else</span><span class="p">:</span>
@@ -1783,8 +1882,6 @@ Top 10 significant genes (by p-value):
 
 <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Validation plots saved to &#39;validation_plots.png&#39;&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -1799,38 +1896,29 @@ STATISTICAL VALIDATION
 
 1. P-value Distribution (quintiles):
    Expected: 0.20 in each quintile under null
-   [0.0, 0.2): 0.088
-   [0.2, 0.4): 0.177
-   [0.4, 0.6): 0.254
-   [0.6, 0.8): 0.271
-   [0.8, 1.0): 0.211
+   [0.0, 0.2): 0.090
+   [0.2, 0.4): 0.181
+   [0.4, 0.6): 0.268
+   [0.6, 0.8): 0.259
+   [0.8, 1.0): 0.201
 
 2. Effect Size Distribution:
-   Mean: -0.3118
-   Std:  0.7865
-   Min:  -2.4165
-   Max:  2.5931
+   Mean: -0.3445
+   Std:  0.8019
+   Min:  -2.4177
+   Max:  2.5994
 
 3. Sample Size Consistency:
    n_units values: [10]
    Expected: 10
 </pre></div></div>
 </div>
-<div class="nboutput docutils container">
+<div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
 <img alt="../_images/examples_stress_test_real_scale_17_1.png" src="../_images/examples_stress_test_real_scale_17_1.png" />
 </div>
-</div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-
-Validation plots saved to &#39;validation_plots.png&#39;
-</pre></div></div>
 </div>
 </section>
 <hr class="docutils" />
@@ -1876,7 +1964,8 @@ Validation plots saved to &#39;validation_plots.png&#39;
 <span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">gene_sets</span><span class="p">))</span>
 
 <span class="c1"># =============================================================================</span>
-<span class="c1"># RUN GSEA WITH TIMING</span>
+<span class="c1"># RUN GSEA WITH TIMING (single run — GSEA uses internal permutations so</span>
+<span class="c1"># repeated benchmarking is redundant and very slow)</span>
 <span class="c1"># =============================================================================</span>
 <span class="k">if</span> <span class="n">gene_sets</span><span class="p">:</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">run_gsea</span><span class="p">():</span>
@@ -1888,11 +1977,11 @@ Validation plots saved to &#39;validation_plots.png&#39;
             <span class="n">min_size</span><span class="o">=</span><span class="n">MIN_GENES_FOR_SCORE</span><span class="p">,</span>
         <span class="p">)</span>
 
-    <span class="n">gsea_res</span><span class="p">,</span> <span class="n">gsea_time</span><span class="p">,</span> <span class="n">gsea_std</span> <span class="o">=</span> <span class="n">timed_run</span><span class="p">(</span><span class="n">run_gsea</span><span class="p">,</span> <span class="n">n_repeats</span><span class="o">=</span><span class="n">N_BENCHMARK_REPEATS</span><span class="p">)</span>
+    <span class="n">gsea_res</span><span class="p">,</span> <span class="n">gsea_time</span><span class="p">,</span> <span class="n">gsea_std</span> <span class="o">=</span> <span class="n">timed_run</span><span class="p">(</span><span class="n">run_gsea</span><span class="p">,</span> <span class="n">n_repeats</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
     <span class="n">gsea_res</span> <span class="o">=</span> <span class="n">gsea_res</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Custom&quot;</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">())</span>
     <span class="n">benchmark_results</span><span class="p">[</span><span class="s2">&quot;timing&quot;</span><span class="p">][</span><span class="s2">&quot;gsea_did&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">gsea_time</span>
 
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">GSEA runtime:&quot;</span><span class="p">,</span> <span class="n">format_time</span><span class="p">(</span><span class="n">gsea_time</span><span class="p">),</span> <span class="s2">&quot;±&quot;</span><span class="p">,</span> <span class="n">format_time</span><span class="p">(</span><span class="n">gsea_std</span><span class="p">))</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">GSEA runtime:&quot;</span><span class="p">,</span> <span class="n">format_time</span><span class="p">(</span><span class="n">gsea_time</span><span class="p">))</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Gene sets per second:&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">gene_sets</span><span class="p">)</span><span class="o">/</span><span class="n">gsea_time</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">gsea_res</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">gsea_res</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
@@ -1915,7 +2004,7 @@ Validation plots saved to &#39;validation_plots.png&#39;
         <span class="n">fig</span><span class="p">,</span> <span class="n">ax2</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="nb">max</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mf">0.35</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">gsea_res</span><span class="p">))))</span>
         <span class="k">if</span> <span class="s2">&quot;NES&quot;</span> <span class="ow">in</span> <span class="n">gsea_res</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
             <span class="n">sorted_res</span> <span class="o">=</span> <span class="n">gsea_res</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s2">&quot;NES&quot;</span><span class="p">)</span>
-            <span class="n">labels</span> <span class="o">=</span> <span class="n">sorted_res</span><span class="p">[</span><span class="s2">&quot;gene_set&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="s2">&quot;gene_set&quot;</span> <span class="ow">in</span> <span class="n">sorted_res</span><span class="o">.</span><span class="n">columns</span> <span class="k">else</span> <span class="n">sorted_res</span><span class="o">.</span><span class="n">index</span>
+            <span class="n">labels</span> <span class="o">=</span> <span class="n">sorted_res</span><span class="p">[</span><span class="s2">&quot;Term&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="s2">&quot;Term&quot;</span> <span class="ow">in</span> <span class="n">sorted_res</span><span class="o">.</span><span class="n">columns</span> <span class="k">else</span> <span class="n">sorted_res</span><span class="o">.</span><span class="n">index</span>
             <span class="n">colors</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;#e74c3c&quot;</span> <span class="k">if</span> <span class="n">nes</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;#2ecc71&quot;</span> <span class="k">for</span> <span class="n">nes</span> <span class="ow">in</span> <span class="n">sorted_res</span><span class="p">[</span><span class="s2">&quot;NES&quot;</span><span class="p">]]</span>
             <span class="n">ax2</span><span class="o">.</span><span class="n">barh</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="n">sorted_res</span><span class="p">[</span><span class="s2">&quot;NES&quot;</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="n">colors</span><span class="p">,</span> <span class="n">edgecolor</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">)</span>
             <span class="n">ax2</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
@@ -1928,7 +2017,7 @@ Validation plots saved to &#39;validation_plots.png&#39;
         <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 <span class="k">else</span><span class="p">:</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No gene sets available for GSEA.&quot;</span><span class="p">)</span>
-<br/></pre></div>
+</pre></div>
 </div>
 </div>
 <div class="nboutput docutils container">
@@ -1964,11 +2053,7 @@ Total gene sets for GSEA:
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-2026-01-13 17:18:26,365 [WARNING] Duplicated values found in preranked stats: 24.76% of genes
-The order of those genes will be arbitrary, which may produce unexpected results.
-2026-01-13 19:35:06,989 [WARNING] Duplicated values found in preranked stats: 24.76% of genes
-The order of those genes will be arbitrary, which may produce unexpected results.
-2026-01-13 20:11:47,559 [WARNING] Duplicated values found in preranked stats: 24.76% of genes
+2026-02-20 22:43:20,926 [WARNING] Duplicated values found in preranked stats: 24.84% of genes
 The order of those genes will be arbitrary, which may produce unexpected results.
 </pre></div></div>
 </div>
@@ -1978,7 +2063,7 @@ The order of those genes will be arbitrary, which may produce unexpected results
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 
-GSEA runtime: 2.5min ± 18.50s
+GSEA runtime: 1.7min
 Gene sets per second: 0.1
 
 GSEA Results:
@@ -2023,170 +2108,170 @@ GSEA Results:
       <th>0</th>
       <td>prerank</td>
       <td>IFN_Response</td>
-      <td>-0.718477</td>
-      <td>-1.701916</td>
-      <td>0.015177</td>
-      <td>0.082381</td>
-      <td>0.052</td>
+      <td>-0.732314</td>
+      <td>-1.759546</td>
+      <td>0.0</td>
+      <td>0.030137</td>
+      <td>0.019</td>
       <td>15/15</td>
-      <td>28.17%</td>
+      <td>26.79%</td>
       <td>STAT1;MX1;MX2;IFITM1;ISG15;IFI44L;IFI44;IFI6;I...</td>
     </tr>
     <tr>
       <th>1</th>
       <td>prerank</td>
       <td>B_Cell_Response</td>
-      <td>0.672974</td>
-      <td>1.503615</td>
-      <td>0.066667</td>
-      <td>0.133234</td>
-      <td>0.289</td>
-      <td>8/10</td>
-      <td>22.08%</td>
-      <td>IGHA1;IGHG1;IGHG2;IGKC;CD79B;CD79A;MS4A1;MZB1</td>
+      <td>0.676856</td>
+      <td>1.565822</td>
+      <td>0.046569</td>
+      <td>0.077976</td>
+      <td>0.185</td>
+      <td>6/10</td>
+      <td>10.52%</td>
+      <td>IGHA1;IGHG1;IGHG2;CD79B;IGKC;CD79A</td>
     </tr>
     <tr>
       <th>2</th>
       <td>prerank</td>
-      <td>Exhaustion</td>
-      <td>-0.614781</td>
-      <td>-1.419727</td>
-      <td>0.072816</td>
-      <td>0.434306</td>
-      <td>0.43</td>
-      <td>10/13</td>
-      <td>33.20%</td>
-      <td>IRF4;ICOS;CTLA4;EOMES;HAVCR2;LAYN;ENTPD1;LAG3;...</td>
+      <td>Chemokines</td>
+      <td>-0.671906</td>
+      <td>-1.411026</td>
+      <td>0.079038</td>
+      <td>0.448467</td>
+      <td>0.453</td>
+      <td>9/9</td>
+      <td>32.82%</td>
+      <td>CCL3;CXCL11;CCL2;CXCL9;CXCL10;CXCL2;CCL4;CCL5;...</td>
     </tr>
     <tr>
       <th>3</th>
       <td>prerank</td>
-      <td>T_Cell_Activation</td>
-      <td>-0.646607</td>
-      <td>-1.404223</td>
-      <td>0.087873</td>
-      <td>0.316997</td>
-      <td>0.463</td>
-      <td>8/11</td>
-      <td>26.36%</td>
-      <td>IL2RA;CD38;ICOS;CD28;TNFRSF9;CD69;CD27;IFNG</td>
+      <td>Exhaustion</td>
+      <td>-0.607116</td>
+      <td>-1.401916</td>
+      <td>0.092257</td>
+      <td>0.318113</td>
+      <td>0.473</td>
+      <td>10/13</td>
+      <td>33.25%</td>
+      <td>IRF4;CTLA4;ICOS;EOMES;HAVCR2;LAYN;ENTPD1;LAG3;...</td>
     </tr>
     <tr>
       <th>4</th>
       <td>prerank</td>
       <td>Antigen_Presentation</td>
-      <td>-0.671111</td>
-      <td>-1.377624</td>
-      <td>0.105455</td>
-      <td>0.282913</td>
-      <td>0.526</td>
+      <td>-0.655176</td>
+      <td>-1.366071</td>
+      <td>0.123311</td>
+      <td>0.294912</td>
+      <td>0.551</td>
       <td>7/9</td>
-      <td>27.40%</td>
+      <td>27.46%</td>
       <td>B2M;HLA-A;HLA-C;HLA-DPB1;CD74;HLA-DPA1;HLA-B</td>
     </tr>
     <tr>
       <th>5</th>
       <td>prerank</td>
-      <td>Chemokines</td>
-      <td>-0.662504</td>
-      <td>-1.362118</td>
-      <td>0.095486</td>
-      <td>0.243963</td>
-      <td>0.556</td>
-      <td>9/9</td>
-      <td>33.76%</td>
-      <td>CXCL11;CCL3;CCL2;CXCL9;CXCL10;CXCL2;CCL4;CCL5;...</td>
+      <td>Apoptosis</td>
+      <td>-0.645602</td>
+      <td>-1.338906</td>
+      <td>0.13468</td>
+      <td>0.279843</td>
+      <td>0.614</td>
+      <td>5/9</td>
+      <td>25.18%</td>
+      <td>FAS;TNFRSF10B;CASP3;FASLG;BID</td>
     </tr>
     <tr>
       <th>6</th>
       <td>prerank</td>
-      <td>Costimulation</td>
-      <td>-0.645943</td>
-      <td>-1.322787</td>
-      <td>0.130809</td>
-      <td>0.253646</td>
-      <td>0.64</td>
-      <td>5/8</td>
-      <td>26.17%</td>
-      <td>TNFSF9;ICOS;CD28;TNFRSF9;CD27</td>
+      <td>T_Cell_Activation</td>
+      <td>-0.607957</td>
+      <td>-1.3337</td>
+      <td>0.149485</td>
+      <td>0.238943</td>
+      <td>0.622</td>
+      <td>8/11</td>
+      <td>27.76%</td>
+      <td>IL2RA;CD38;ICOS;CD28;TNFRSF9;IFNG;CD27;CD69</td>
     </tr>
     <tr>
       <th>7</th>
       <td>prerank</td>
       <td>Cell_Cycle</td>
-      <td>-0.609259</td>
-      <td>-1.313347</td>
-      <td>0.143836</td>
-      <td>0.22918</td>
-      <td>0.66</td>
+      <td>-0.616866</td>
+      <td>-1.322096</td>
+      <td>0.123457</td>
+      <td>0.217314</td>
+      <td>0.644</td>
       <td>8/10</td>
-      <td>35.76%</td>
+      <td>34.89%</td>
       <td>MCM6;PCNA;MCM5;CCNB1;TYMS;CCNB2;UBE2C;TOP2A</td>
     </tr>
     <tr>
       <th>8</th>
       <td>prerank</td>
-      <td>Apoptosis</td>
-      <td>-0.615054</td>
-      <td>-1.267704</td>
-      <td>0.172061</td>
-      <td>0.253465</td>
-      <td>0.743</td>
-      <td>5/9</td>
-      <td>26.59%</td>
-      <td>TNFRSF10B;FAS;CASP3;FASLG;BID</td>
+      <td>Costimulation</td>
+      <td>-0.624324</td>
+      <td>-1.249148</td>
+      <td>0.198962</td>
+      <td>0.276794</td>
+      <td>0.775</td>
+      <td>4/8</td>
+      <td>17.33%</td>
+      <td>TNFSF9;ICOS;CD28;TNFRSF9</td>
     </tr>
     <tr>
       <th>9</th>
       <td>prerank</td>
       <td>Myeloid_Inflammation</td>
-      <td>-0.556616</td>
-      <td>-1.160066</td>
-      <td>0.285714</td>
-      <td>0.349918</td>
-      <td>0.883</td>
-      <td>8/9</td>
-      <td>41.98%</td>
-      <td>IL1B;S100A8;S100A9;LYZ;LGALS3;CTSD;LILRB1;VCAN</td>
+      <td>-0.578058</td>
+      <td>-1.205582</td>
+      <td>0.239796</td>
+      <td>0.294832</td>
+      <td>0.853</td>
+      <td>9/9</td>
+      <td>42.21%</td>
+      <td>IL1B;S100A8;S100A9;LYZ;LGALS3;CTSD;LILRB1;VCAN...</td>
     </tr>
     <tr>
       <th>10</th>
       <td>prerank</td>
       <td>Memory_T</td>
-      <td>-0.52914</td>
-      <td>-1.127756</td>
-      <td>0.319728</td>
-      <td>0.354526</td>
-      <td>0.916</td>
+      <td>-0.518895</td>
+      <td>-1.108468</td>
+      <td>0.33564</td>
+      <td>0.37743</td>
+      <td>0.941</td>
       <td>4/10</td>
-      <td>30.54%</td>
+      <td>34.57%</td>
       <td>IL7R;CD28;CD27;CCR7</td>
     </tr>
     <tr>
       <th>11</th>
       <td>prerank</td>
       <td>Cytotoxicity</td>
-      <td>-0.426052</td>
-      <td>-0.968835</td>
-      <td>0.520968</td>
-      <td>0.514781</td>
-      <td>0.983</td>
+      <td>-0.452434</td>
+      <td>-1.03649</td>
+      <td>0.429048</td>
+      <td>0.425179</td>
+      <td>0.972</td>
       <td>8/13</td>
-      <td>43.29%</td>
+      <td>41.81%</td>
       <td>GZMK;FASLG;IFNG;CTSW;KLRK1;NKG7;GZMB;GZMH</td>
     </tr>
     <tr>
       <th>12</th>
       <td>prerank</td>
       <td>NK_Markers</td>
-      <td>0.336019</td>
-      <td>0.714696</td>
-      <td>0.828916</td>
-      <td>0.827797</td>
-      <td>0.987</td>
+      <td>0.317555</td>
+      <td>0.694485</td>
+      <td>0.847458</td>
+      <td>0.851921</td>
+      <td>0.996</td>
       <td>8/8</td>
-      <td>66.40%</td>
-      <td>KLRD1;GNLY;KLRB1;PRF1;FCGR3A;TRAC;NKG7;TYROBP</td>
+      <td>68.25%</td>
+      <td>KLRD1;KLRB1;GNLY;PRF1;TRAC;FCGR3A;NKG7;TYROBP</td>
     </tr>
   </tbody>
 </table>
@@ -2214,14 +2299,14 @@ GSEA Results:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">signature_cols</span><span class="p">:</span>
-    <span class="n">cfg</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">DiDConfig</span><span class="p">(</span><span class="n">aggregate</span><span class="o">=</span><span class="s1">&#39;participant_visit&#39;</span><span class="p">,</span> <span class="n">standardize</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">use_bootstrap</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">cfg</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">DiDConfig</span><span class="p">(</span><span class="n">aggregate</span><span class="o">=</span><span class="s1">&#39;participant_visit&#39;</span><span class="p">,</span> <span class="n">standardize</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">use_bootstrap</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;log1p_tpm&quot;</span><span class="p">)</span>
     <span class="n">wf_res</span> <span class="o">=</span> <span class="p">(</span>
         <span class="n">st</span><span class="o">.</span><span class="n">workflow</span><span class="p">(</span><span class="n">adata_paired</span><span class="p">)</span>
         <span class="o">.</span><span class="n">did_table</span><span class="p">(</span><span class="n">features</span><span class="o">=</span><span class="n">signature_cols</span><span class="p">[:</span><span class="mi">1</span><span class="p">],</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">visits</span><span class="p">),</span> <span class="n">config</span><span class="o">=</span><span class="n">cfg</span><span class="p">)</span>
         <span class="o">.</span><span class="n">result</span><span class="p">()</span>
     <span class="p">)</span>
     <span class="n">display</span><span class="p">(</span><span class="n">wf_res</span><span class="p">)</span>
-<br/></pre></div>
+</pre></div>
 </div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -2252,6 +2337,7 @@ GSEA Results:
       <th>beta_time</th>
       <th>p_time</th>
       <th>n_units</th>
+      <th>resid_sd</th>
       <th>feature</th>
       <th>FDR_DiD</th>
     </tr>
@@ -2259,14 +2345,15 @@ GSEA Results:
   <tbody>
     <tr>
       <th>0</th>
-      <td>-0.320679</td>
-      <td>1.504524</td>
-      <td>0.831215</td>
-      <td>0.387928</td>
-      <td>0.608434</td>
+      <td>-0.382015</td>
+      <td>1.501016</td>
+      <td>0.799106</td>
+      <td>0.366814</td>
+      <td>0.631812</td>
       <td>10</td>
+      <td>18.570902</td>
       <td>sig_Cytotoxicity</td>
-      <td>0.831215</td>
+      <td>0.799106</td>
     </tr>
   </tbody>
 </table>

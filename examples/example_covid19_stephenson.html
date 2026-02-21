@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Immune Profiling of COVID-19 Severity: A Cross-Sectional Analysis &mdash; sctrial 0.2.0 documentation</title>
+  <title>Immune Profiling of COVID-19 Severity: A Cross-Sectional Analysis &mdash; sctrial 0.2.1.dev1 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css?v=2aa19091" />
@@ -14,7 +14,7 @@
   
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../_static/documentation_options.js?v=938c9ccc"></script>
+      <script src="../_static/documentation_options.js?v=28304322"></script>
       <script src="../_static/doctools.js?v=9bcbadda"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
@@ -230,8 +230,6 @@ sctrial version: 0.2.1.dev1
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-Loaded cached file: /Users/omarm/Documents/Research/projects/sc-trialdiff/data/processed/stephenson_covid19_v3.h5ad
-  205,202 cells, 24,929 genes
 
 === Dataset Summary ===
 Cells: 205,202
@@ -896,6 +894,9 @@ Signature scores available: [&#39;sig_IFN_Response&#39;, &#39;sig_Inflammation&#
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Positive beta = higher in Severe; Negative beta = higher in Mild&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Using participant-level aggregation to avoid pseudoreplication</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
 
+<span class="c1"># Use a lower threshold (3) to include more timepoints for exploratory analysis</span>
+<span class="n">MIN_CROSS_SECTIONAL</span> <span class="o">=</span> <span class="mi">3</span>
+
 <span class="n">all_results</span> <span class="o">=</span> <span class="p">[]</span>
 <span class="k">for</span> <span class="n">visit</span> <span class="ow">in</span> <span class="n">available_visits</span><span class="p">:</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="si">{</span><span class="n">visit</span><span class="si">}</span><span class="s2">:&quot;</span><span class="p">)</span>
@@ -903,10 +904,14 @@ Signature scores available: [&#39;sig_IFN_Response&#39;, &#39;sig_Inflammation&#
     <span class="c1"># Check sample size first</span>
     <span class="n">ad_visit</span> <span class="o">=</span> <span class="n">adata</span><span class="p">[</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;dfo_bin&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">visit</span><span class="p">]</span>
     <span class="n">n_per_group</span> <span class="o">=</span> <span class="n">ad_visit</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;severity&quot;</span><span class="p">)[</span><span class="s2">&quot;participant_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span>
+    <span class="n">n_min</span> <span class="o">=</span> <span class="n">n_per_group</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
 
-    <span class="k">if</span> <span class="n">n_per_group</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">MIN_PARTICIPANTS_FOR_COMPARISON</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">n_min</span> <span class="o">&lt;</span> <span class="n">MIN_CROSS_SECTIONAL</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Skipped: Insufficient participants (Mild=</span><span class="si">{</span><span class="n">n_per_group</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Mild&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2">, Severe=</span><span class="si">{</span><span class="n">n_per_group</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Severe&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
         <span class="k">continue</span>
+
+    <span class="k">if</span> <span class="n">n_min</span> <span class="o">&lt;</span> <span class="n">MIN_PARTICIPANTS_FOR_COMPARISON</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Note: Small sample (Mild=</span><span class="si">{</span><span class="n">n_per_group</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Mild&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2">, Severe=</span><span class="si">{</span><span class="n">n_per_group</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Severe&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2">) — interpret with caution&quot;</span><span class="p">)</span>
 
     <span class="c1"># Use sctrial&#39;s built-in between_arm_comparison</span>
     <span class="c1"># This properly aggregates to participant level</span>
@@ -960,7 +965,96 @@ DFO_0-7:
   Skipped: Insufficient participants (Mild=8, Severe=2)
 
 DFO_15+:
-  Skipped: Insufficient participants (Mild=4, Severe=4)
+  Note: Small sample (Mild=4, Severe=4) — interpret with caution
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>feature</th>
+      <th>beta</th>
+      <th>p_value</th>
+      <th>fdr</th>
+      <th>n_units</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>sig_IFN_Response</td>
+      <td>0.4732</td>
+      <td>0.5456</td>
+      <td>0.6547</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>sig_Inflammation</td>
+      <td>1.3433</td>
+      <td>0.0449</td>
+      <td>0.2692</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>sig_Cytotoxicity</td>
+      <td>0.6566</td>
+      <td>0.3939</td>
+      <td>0.6136</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>sig_T_Cell_Exhaustion</td>
+      <td>0.2097</td>
+      <td>0.7916</td>
+      <td>0.7916</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>sig_Myeloid_Activation</td>
+      <td>0.6372</td>
+      <td>0.4090</td>
+      <td>0.6136</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>sig_B_Cell_Activation</td>
+      <td>-1.0563</td>
+      <td>0.1448</td>
+      <td>0.4345</td>
+      <td>8</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
 
 DFO_8-14:
 </pre></div></div>
@@ -1310,10 +1404,41 @@ Adjusted results at visit: DFO_15+
 <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 
-<span class="c1"># Heatmap of effect sizes</span>
-<span class="k">if</span> <span class="ow">not</span> <span class="n">combined_results</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
-    <span class="n">pivot</span> <span class="o">=</span> <span class="n">combined_results</span><span class="o">.</span><span class="n">pivot</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="s2">&quot;feature&quot;</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="s2">&quot;timepoint&quot;</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="s2">&quot;beta&quot;</span><span class="p">)</span>
+<span class="c1"># Heatmap of effect sizes across ALL visits (computed directly from participant means)</span>
+<span class="c1"># Uses a lower threshold (≥2 per group) for visualization purposes</span>
+<span class="n">heatmap_rows</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">visit</span> <span class="ow">in</span> <span class="n">available_visits</span><span class="p">:</span>
+    <span class="n">ad_v</span> <span class="o">=</span> <span class="n">adata</span><span class="p">[</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;dfo_bin&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">visit</span><span class="p">]</span>
+    <span class="n">df_agg</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">ad_v</span><span class="o">.</span><span class="n">obs</span>
+        <span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">&quot;participant_id&quot;</span><span class="p">,</span> <span class="s2">&quot;severity&quot;</span><span class="p">],</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="n">signature_cols</span><span class="p">]</span>
+        <span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        <span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+    <span class="p">)</span>
+    <span class="n">n_mild</span> <span class="o">=</span> <span class="p">(</span><span class="n">df_agg</span><span class="p">[</span><span class="s2">&quot;severity&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Mild&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+    <span class="n">n_severe</span> <span class="o">=</span> <span class="p">(</span><span class="n">df_agg</span><span class="p">[</span><span class="s2">&quot;severity&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Severe&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+    <span class="k">if</span> <span class="nb">min</span><span class="p">(</span><span class="n">n_mild</span><span class="p">,</span> <span class="n">n_severe</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">continue</span>
+    <span class="k">for</span> <span class="n">sig</span> <span class="ow">in</span> <span class="n">signature_cols</span><span class="p">:</span>
+        <span class="n">mild_vals</span> <span class="o">=</span> <span class="n">df_agg</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">df_agg</span><span class="p">[</span><span class="s2">&quot;severity&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Mild&quot;</span><span class="p">,</span> <span class="n">sig</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+        <span class="n">severe_vals</span> <span class="o">=</span> <span class="n">df_agg</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">df_agg</span><span class="p">[</span><span class="s2">&quot;severity&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Severe&quot;</span><span class="p">,</span> <span class="n">sig</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+        <span class="n">diff</span> <span class="o">=</span> <span class="n">severe_vals</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">-</span> <span class="n">mild_vals</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        <span class="n">heatmap_rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">sig</span><span class="p">,</span> <span class="s2">&quot;timepoint&quot;</span><span class="p">:</span> <span class="n">visit</span><span class="p">,</span> <span class="s2">&quot;diff&quot;</span><span class="p">:</span> <span class="n">diff</span><span class="p">})</span>
 
+<span class="k">if</span> <span class="n">heatmap_rows</span><span class="p">:</span>
+    <span class="n">df_heatmap</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">heatmap_rows</span><span class="p">)</span>
+    <span class="n">pivot</span> <span class="o">=</span> <span class="n">df_heatmap</span><span class="o">.</span><span class="n">pivot</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="s2">&quot;feature&quot;</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="s2">&quot;timepoint&quot;</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="s2">&quot;diff&quot;</span><span class="p">)</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+    <span class="n">sns</span><span class="o">.</span><span class="n">heatmap</span><span class="p">(</span>
+        <span class="n">pivot</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;RdBu_r&quot;</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">annot</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s2">&quot;.2f&quot;</span><span class="p">,</span>
+        <span class="n">cbar_kws</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="s2">&quot;Mean difference (Severe - Mild)&quot;</span><span class="p">}</span>
+    <span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Severity Differences Across Timepoints</span><span class="se">\n</span><span class="s2">(participant-level mean difference)&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<span class="k">elif</span> <span class="ow">not</span> <span class="n">combined_results</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+    <span class="n">pivot</span> <span class="o">=</span> <span class="n">combined_results</span><span class="o">.</span><span class="n">pivot</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="s2">&quot;feature&quot;</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="s2">&quot;timepoint&quot;</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="s2">&quot;beta&quot;</span><span class="p">)</span>
     <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
     <span class="n">sns</span><span class="o">.</span><span class="n">heatmap</span><span class="p">(</span>
         <span class="n">pivot</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;RdBu_r&quot;</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">annot</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s2">&quot;.2f&quot;</span><span class="p">,</span>
@@ -1356,10 +1481,21 @@ Adjusted results at visit: DFO_15+
 <span class="c1"># Compare signatures within key lineages</span>
 <span class="c1"># IMPORTANT: We must aggregate to participant level to avoid pseudoreplication</span>
 <span class="n">focus_lineages</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;CD4_T&quot;</span><span class="p">,</span> <span class="s2">&quot;CD8_T&quot;</span><span class="p">,</span> <span class="s2">&quot;Monocytes&quot;</span><span class="p">,</span> <span class="s2">&quot;NK&quot;</span><span class="p">]</span>
-<span class="n">focus_visit</span> <span class="o">=</span> <span class="s2">&quot;DFO_0-7&quot;</span>  <span class="c1"># Early disease</span>
+
+<span class="c1"># Auto-select the visit with the best participant balance across arms</span>
+<span class="n">visit_scores</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;dfo_bin&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">unique</span><span class="p">()):</span>
+    <span class="n">sub</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;dfo_bin&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">v</span><span class="p">]</span>
+    <span class="n">counts</span> <span class="o">=</span> <span class="n">sub</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;severity&quot;</span><span class="p">)[</span><span class="s2">&quot;participant_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span>
+    <span class="n">n_mild</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">counts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Mild&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+    <span class="n">n_severe</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">counts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Severe&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+    <span class="n">visit_scores</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">v</span><span class="p">,</span> <span class="n">n_mild</span><span class="p">,</span> <span class="n">n_severe</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="n">n_mild</span><span class="p">,</span> <span class="n">n_severe</span><span class="p">)))</span>
+<span class="n">visit_scores</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">x</span><span class="p">[</span><span class="mi">2</span><span class="p">]),</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">focus_visit</span> <span class="o">=</span> <span class="n">visit_scores</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
 
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;=== Cell-Type Specific Analysis at </span><span class="si">{</span><span class="n">focus_visit</span><span class="si">}</span><span class="s2"> ===&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    (auto-selected: best participant balance across arms)&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Note: Using participant-level aggregation (not cell-level) for valid statistics&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
 
@@ -1373,7 +1509,7 @@ Adjusted results at visit: DFO_15+
 
     <span class="n">n_per_group</span> <span class="o">=</span> <span class="n">ad_sub</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;severity&quot;</span><span class="p">)[</span><span class="s2">&quot;participant_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span>
     <span class="k">if</span> <span class="n">n_per_group</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">lineage</span><span class="si">}</span><span class="s2">: Insufficient participants&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">lineage</span><span class="si">}</span><span class="s2">: Insufficient participants (Mild=</span><span class="si">{</span><span class="n">n_per_group</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Mild&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2">, Severe=</span><span class="si">{</span><span class="n">n_per_group</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Severe&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
         <span class="k">continue</span>
 
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">lineage</span><span class="si">}</span><span class="s2"> (n=</span><span class="si">{</span><span class="n">ad_sub</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">n_per_group</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="si">}</span><span class="s2"> participants):&quot;</span><span class="p">)</span>
@@ -1419,10 +1555,15 @@ Adjusted results at visit: DFO_15+
     <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Severity Differences by Cell Type (</span><span class="si">{</span><span class="n">focus_visit</span><span class="si">}</span><span class="s2">)</span><span class="se">\n</span><span class="s2">Positive = higher in Severe&quot;</span><span class="p">)</span>
     <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
     <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-<br/></pre></div>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No lineage had sufficient participants for cell-type specific analysis.&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Participant counts per visit:&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">nm</span><span class="p">,</span> <span class="n">ns</span><span class="p">,</span> <span class="n">mn</span> <span class="ow">in</span> <span class="n">visit_scores</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s2">: Mild=</span><span class="si">{</span><span class="n">nm</span><span class="si">}</span><span class="s2">, Severe=</span><span class="si">{</span><span class="n">ns</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
 </div>
 </div>
-<div class="nboutput nblast docutils container">
+<div class="nboutput docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
@@ -1438,14 +1579,220 @@ B_cells       4827
 DCs           4034
 Name: count, dtype: int64
 
-=== Cell-Type Specific Analysis at DFO_0-7 ===
+=== Cell-Type Specific Analysis at DFO_8-14 ===
+    (auto-selected: best participant balance across arms)
 Note: Using participant-level aggregation (not cell-level) for valid statistics
 
-CD4_T: Insufficient participants
-CD8_T: Insufficient participants
-Monocytes: Insufficient participants
-NK: Insufficient participants
+CD4_T (n=20,684 cells, 16 participants):
+CD8_T (n=22,232 cells, 16 participants):
+Monocytes (n=11,322 cells, 15 participants):
+NK (n=14,538 cells, 16 participants):
+
+Results (participant-level Mann-Whitney U):
 </pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>lineage</th>
+      <th>signature</th>
+      <th>diff</th>
+      <th>p_value</th>
+      <th>n_mild</th>
+      <th>n_severe</th>
+      <th>fdr</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>CD4_T</td>
+      <td>IFN_Response</td>
+      <td>0.0404</td>
+      <td>0.9130</td>
+      <td>11</td>
+      <td>5</td>
+      <td>1.0000</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>CD4_T</td>
+      <td>Inflammation</td>
+      <td>-0.0197</td>
+      <td>0.9130</td>
+      <td>11</td>
+      <td>5</td>
+      <td>1.0000</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>CD4_T</td>
+      <td>Cytotoxicity</td>
+      <td>-0.0369</td>
+      <td>0.5833</td>
+      <td>11</td>
+      <td>5</td>
+      <td>1.0000</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>CD4_T</td>
+      <td>T_Cell_Exhaustion</td>
+      <td>0.0545</td>
+      <td>0.0897</td>
+      <td>11</td>
+      <td>5</td>
+      <td>0.9194</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>CD8_T</td>
+      <td>IFN_Response</td>
+      <td>-0.0394</td>
+      <td>1.0000</td>
+      <td>11</td>
+      <td>5</td>
+      <td>1.0000</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>CD8_T</td>
+      <td>Inflammation</td>
+      <td>0.1593</td>
+      <td>0.6612</td>
+      <td>11</td>
+      <td>5</td>
+      <td>1.0000</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>CD8_T</td>
+      <td>Cytotoxicity</td>
+      <td>0.2082</td>
+      <td>0.2212</td>
+      <td>11</td>
+      <td>5</td>
+      <td>1.0000</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>CD8_T</td>
+      <td>T_Cell_Exhaustion</td>
+      <td>0.0961</td>
+      <td>0.1149</td>
+      <td>11</td>
+      <td>5</td>
+      <td>0.9194</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>Monocytes</td>
+      <td>IFN_Response</td>
+      <td>0.1161</td>
+      <td>0.8591</td>
+      <td>10</td>
+      <td>5</td>
+      <td>1.0000</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>Monocytes</td>
+      <td>Inflammation</td>
+      <td>0.0580</td>
+      <td>0.5135</td>
+      <td>10</td>
+      <td>5</td>
+      <td>1.0000</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>Monocytes</td>
+      <td>Cytotoxicity</td>
+      <td>-0.0634</td>
+      <td>0.8591</td>
+      <td>10</td>
+      <td>5</td>
+      <td>1.0000</td>
+    </tr>
+    <tr>
+      <th>11</th>
+      <td>Monocytes</td>
+      <td>T_Cell_Exhaustion</td>
+      <td>-0.0218</td>
+      <td>0.9530</td>
+      <td>10</td>
+      <td>5</td>
+      <td>1.0000</td>
+    </tr>
+    <tr>
+      <th>12</th>
+      <td>NK</td>
+      <td>IFN_Response</td>
+      <td>0.0015</td>
+      <td>1.0000</td>
+      <td>11</td>
+      <td>5</td>
+      <td>1.0000</td>
+    </tr>
+    <tr>
+      <th>13</th>
+      <td>NK</td>
+      <td>Inflammation</td>
+      <td>0.0093</td>
+      <td>0.9130</td>
+      <td>11</td>
+      <td>5</td>
+      <td>1.0000</td>
+    </tr>
+    <tr>
+      <th>14</th>
+      <td>NK</td>
+      <td>Cytotoxicity</td>
+      <td>0.0206</td>
+      <td>0.6612</td>
+      <td>11</td>
+      <td>5</td>
+      <td>1.0000</td>
+    </tr>
+    <tr>
+      <th>15</th>
+      <td>NK</td>
+      <td>T_Cell_Exhaustion</td>
+      <td>0.0294</td>
+      <td>0.6612</td>
+      <td>11</td>
+      <td>5</td>
+      <td>1.0000</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/examples_example_covid19_stephenson_27_2.png" src="../_images/examples_example_covid19_stephenson_27_2.png" />
+</div>
 </div>
 </section>
 <section id="11.-Cell-Type-Abundance-Differences">
@@ -3330,6 +3677,7 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
       <th>p_control</th>
       <th>n_units</th>
       <th>FDR_DiD</th>
+      <th>FDR_DiD_global</th>
     </tr>
   </thead>
   <tbody>
@@ -3345,6 +3693,7 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
       <td>1.434237e-01</td>
       <td>18</td>
       <td>0.041172</td>
+      <td>0.247029</td>
     </tr>
     <tr>
       <th>39</th>
@@ -3358,6 +3707,7 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
       <td>3.733759e-01</td>
       <td>18</td>
       <td>0.421574</td>
+      <td>0.766222</td>
     </tr>
     <tr>
       <th>0</th>
@@ -3371,6 +3721,7 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
       <td>3.061661e-02</td>
       <td>18</td>
       <td>0.287393</td>
+      <td>0.766222</td>
     </tr>
     <tr>
       <th>12</th>
@@ -3384,6 +3735,7 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
       <td>3.957648e-01</td>
       <td>18</td>
       <td>0.287393</td>
+      <td>0.766222</td>
     </tr>
     <tr>
       <th>36</th>
@@ -3397,6 +3749,7 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
       <td>3.764963e-02</td>
       <td>18</td>
       <td>0.287393</td>
+      <td>0.766222</td>
     </tr>
     <tr>
       <th>9</th>
@@ -3410,6 +3763,7 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
       <td>1.351592e-01</td>
       <td>18</td>
       <td>0.454896</td>
+      <td>0.766222</td>
     </tr>
     <tr>
       <th>22</th>
@@ -3423,6 +3777,7 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
       <td>4.771629e-02</td>
       <td>18</td>
       <td>0.306489</td>
+      <td>0.766222</td>
     </tr>
     <tr>
       <th>40</th>
@@ -3436,6 +3791,7 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
       <td>4.908473e-01</td>
       <td>18</td>
       <td>0.306489</td>
+      <td>0.766222</td>
     </tr>
     <tr>
       <th>5</th>
@@ -3449,6 +3805,7 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
       <td>5.923986e-01</td>
       <td>18</td>
       <td>0.906928</td>
+      <td>0.766222</td>
     </tr>
     <tr>
       <th>33</th>
@@ -3462,6 +3819,7 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
       <td>6.829833e-01</td>
       <td>18</td>
       <td>0.454896</td>
+      <td>0.766222</td>
     </tr>
     <tr>
       <th>16</th>
@@ -3475,6 +3833,7 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
       <td>1.815146e-01</td>
       <td>18</td>
       <td>0.306489</td>
+      <td>0.766222</td>
     </tr>
     <tr>
       <th>4</th>
@@ -3488,6 +3847,7 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
       <td>4.643997e-01</td>
       <td>18</td>
       <td>0.306489</td>
+      <td>0.766222</td>
     </tr>
     <tr>
       <th>15</th>
@@ -3501,6 +3861,7 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
       <td>2.486603e-01</td>
       <td>18</td>
       <td>0.509567</td>
+      <td>0.831972</td>
     </tr>
     <tr>
       <th>14</th>
@@ -3514,6 +3875,7 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
       <td>3.597705e-09</td>
       <td>18</td>
       <td>0.735324</td>
+      <td>0.831972</td>
     </tr>
     <tr>
       <th>38</th>
@@ -3527,6 +3889,7 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
       <td>4.882568e-05</td>
       <td>18</td>
       <td>0.735324</td>
+      <td>0.831972</td>
     </tr>
     <tr>
       <th>23</th>
@@ -3540,6 +3903,7 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
       <td>7.134282e-09</td>
       <td>18</td>
       <td>0.906928</td>
+      <td>0.831972</td>
     </tr>
     <tr>
       <th>3</th>
@@ -3553,6 +3917,7 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
       <td>1.890818e-01</td>
       <td>18</td>
       <td>0.567571</td>
+      <td>0.872670</td>
     </tr>
     <tr>
       <th>25</th>
@@ -3566,6 +3931,7 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
       <td>6.390095e-01</td>
       <td>18</td>
       <td>0.967153</td>
+      <td>0.872670</td>
     </tr>
     <tr>
       <th>13</th>
@@ -3579,6 +3945,7 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
       <td>9.144025e-01</td>
       <td>18</td>
       <td>0.967153</td>
+      <td>0.872670</td>
     </tr>
     <tr>
       <th>11</th>
@@ -3592,6 +3959,7 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
       <td>8.327001e-01</td>
       <td>18</td>
       <td>0.906928</td>
+      <td>0.872670</td>
     </tr>
   </tbody>
 </table>
