@@ -7,6 +7,7 @@ from anndata import AnnData
 
 from .preprocessing import add_log1p_cpm_layer
 from .scoring import score_gene_sets
+from .design import TrialDesign
 from .stats.did import DiDConfig, did_table
 
 
@@ -52,7 +53,7 @@ class TrialWorkflow:
         self,
         features: list[str],
         *,
-        design,
+        design: TrialDesign,
         visits: tuple[str, str],
         config: DiDConfig | None = None,
     ) -> TrialWorkflow:
