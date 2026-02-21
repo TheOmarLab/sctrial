@@ -22,21 +22,9 @@ def _add_feature_columns(
     features: Sequence[str],
     layer: str | None,
 ) -> pd.DataFrame:
-    obs_feats = [f for f in features if f in ad.obs.columns]
-    gene_feats = [f for f in features if f in ad.var_names and f not in ad.obs.columns]
-    missing = [f for f in features if f not in ad.obs.columns and f not in ad.var_names]
-    if missing:
-        raise KeyError(f"Features not found in obs or var_names: {missing[:5]}")
+    from .did import _add_feature_columns as _add_feature_columns_did
 
-    for feat in obs_feats:
-        df[feat] = ad.obs[feat].values
-
-    if gene_feats:
-        from ._extract import extract_gene_matrix
-
-        mat = extract_gene_matrix(ad, gene_feats, layer=layer)
-        df_genes = pd.DataFrame(mat, columns=gene_feats, index=df.index)
-        df = pd.concat([df, df_genes], axis=1)
+    df, _ = _add_feature_columns_did(df, ad, features, layer)
     return df
 
 

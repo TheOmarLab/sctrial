@@ -420,6 +420,9 @@ def add_effect_sizes_to_did(
             interpretations.append("")
             continue
 
+        # Assume balanced arms for CI calculation (n1 = n2 = n/2)
+        n1 = n2 = max(n / 2, 1)
+
         # Use residual SD from model fit when available (preferred),
         # otherwise fall back to balanced-design approximation.
         resid_sd = row.get(resid_sd_col, np.nan) if has_resid_sd else np.nan
@@ -427,7 +430,6 @@ def add_effect_sizes_to_did(
             denom = resid_sd
         else:
             # Fallback: approximate residual SD assuming balanced arms
-            n1 = n2 = max(n / 2, 1)
             denom = se / np.sqrt((n1 + n2) / (n1 * n2)) if n > 0 else se
 
         d = beta / denom if denom > 1e-12 else np.nan

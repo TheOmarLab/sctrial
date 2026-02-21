@@ -46,7 +46,30 @@ def aggregate_features(
     features: Sequence[str],
     agg: str,
 ) -> pd.DataFrame:
-    """Aggregate features within grp_cols using agg."""
+    """Aggregate features within grp_cols using *agg*.
+
+    Parameters
+    ----------
+    df
+        Long-form DataFrame with one row per cell.
+    grp_cols
+        Columns to group by (e.g. subject, visit, arm).
+    features
+        Feature columns to aggregate.
+    agg
+        Aggregation method: ``'mean'``, ``'median'``, or ``'pct_pos'``.
+
+    Returns
+    -------
+    pd.DataFrame
+        Aggregated DataFrame.
+
+    Notes
+    -----
+    ``'mean'`` and ``'median'`` return values on the original feature scale.
+    ``'pct_pos'`` returns the percentage (0–100) of cells with values > 0,
+    *not* a proportion (0–1).
+    """
     if agg == "mean":
         return df.groupby(grp_cols, observed=True)[list(features)].mean().reset_index()
     if agg == "median":

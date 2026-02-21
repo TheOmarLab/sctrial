@@ -33,7 +33,12 @@ def _build_did_model(
     This is a shared helper used by both ``did_table_bayes`` and
     ``prior_predictive_check`` so that the prior specification stays in sync.
     """
-    import pymc as pm
+    try:
+        import pymc as pm
+    except ImportError as exc:
+        raise ImportError(
+            "pymc is required for Bayesian DiD. Install with: pip install sctrial[bayes]"
+        ) from exc
 
     interaction = time_vals * arm_vals
     model = pm.Model()
@@ -204,7 +209,7 @@ def did_table_bayes(
                 tune=tune,
                 chains=chains,
                 target_accept=target_accept,
-                max_treedepth=max_treedepth,
+                nuts={"max_treedepth": max_treedepth},
                 random_seed=seed,
                 progressbar=False,
             )

@@ -1156,7 +1156,7 @@ def plot_did_forest_interactive(
     """
     try:
         import plotly.graph_objects as go
-    except Exception as e:  # pragma: no cover
+    except ImportError as e:  # pragma: no cover
         raise ImportError("plotly is required for interactive plots") from e
 
     if df.empty:
@@ -1212,7 +1212,7 @@ def plot_did_volcano_interactive(
     """
     try:
         import plotly.graph_objects as go
-    except Exception as e:  # pragma: no cover
+    except ImportError as e:  # pragma: no cover
         raise ImportError("plotly is required for interactive plots") from e
 
     df_plot = df.dropna(subset=[beta_col, p_col]).copy()
