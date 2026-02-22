@@ -64,11 +64,10 @@ def pseudobulk_expression(
     if min_cells_per_group > 1:
         counts = group_df.value_counts().rename("n_cells")
         keep_groups = counts[counts >= min_cells_per_group].index
-        group_df = group_df.merge(
-            keep_groups.to_frame(index=False),
-            on=list(groupby),
-            how="inner",
-        )
+        # Use isin mask instead of merge to preserve the original cell index
+        group_mi = pd.MultiIndex.from_frame(group_df[list(groupby)])
+        mask = group_mi.isin(keep_groups)
+        group_df = group_df[mask]
         adata = adata[group_df.index].copy()
         if group_df.empty:
             return pd.DataFrame()
