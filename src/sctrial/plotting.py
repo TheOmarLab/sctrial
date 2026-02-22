@@ -347,7 +347,14 @@ def plot_did_forest(
         ax.set_title(title)
         return ax
 
-    df_plot["ci"] = 1.96 * df_plot[se_col]
+    from scipy import stats as sp_stats
+
+    if "n_units" in df_plot.columns:
+        df_vals = (df_plot["n_units"] - 2).clip(lower=1)
+        t_crit = df_vals.apply(lambda d: sp_stats.t.ppf(0.975, d))
+        df_plot["ci"] = t_crit * df_plot[se_col]
+    else:
+        df_plot["ci"] = 1.96 * df_plot[se_col]
     df_plot = df_plot.sort_values(beta_col)
 
     if ax is None:
@@ -897,7 +904,7 @@ def plot_trial_umap_panel(
 
     for (arm, visit), (r, c) in positions.items():
         ax = fig.add_subplot(gs[r, c])
-        sub = ad[(ad.obs[design.arm_col] == arm) & (ad.obs[design.visit_col] == visit)]
+        sub = ad[(ad.obs[design.arm_col] == arm) & (ad.obs[design.visit_col] == visit)].copy()
 
         if sub.n_obs > 0:
             if sc is not None:
@@ -1164,8 +1171,15 @@ def plot_did_forest_interactive(
     if feature_col not in df.columns:
         raise KeyError(f"Missing column '{feature_col}'")
 
+    from scipy import stats as sp_stats
+
     df_plot = df.dropna(subset=[beta_col, se_col]).copy()
-    df_plot["ci"] = 1.96 * df_plot[se_col]
+    if "n_units" in df_plot.columns:
+        df_vals = (df_plot["n_units"] - 2).clip(lower=1)
+        t_crit = df_vals.apply(lambda d: sp_stats.t.ppf(0.975, d))
+        df_plot["ci"] = t_crit * df_plot[se_col]
+    else:
+        df_plot["ci"] = 1.96 * df_plot[se_col]
     df_plot = df_plot.sort_values(beta_col)
 
     sig = df_plot[p_col] < alpha if p_col in df_plot.columns else False

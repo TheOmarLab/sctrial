@@ -58,9 +58,6 @@ def pseudobulk_expression(
     if not genes:
         return pd.DataFrame()
 
-    X = _get_layer(adata, counts_layer)
-    gene_idx = [int(adata.var_names.get_loc(g)) for g in genes]
-
     # Group encoding (vectorized aggregation)
     group_df = adata.obs[list(groupby)].copy()
 
@@ -75,6 +72,11 @@ def pseudobulk_expression(
         adata = adata[group_df.index].copy()
         if group_df.empty:
             return pd.DataFrame()
+
+    # Extract expression matrix AFTER any subsetting so dimensions match
+    X = _get_layer(adata, counts_layer)
+    gene_idx = [int(adata.var_names.get_loc(g)) for g in genes]
+
     group_index = pd.MultiIndex.from_frame(group_df)
     group_index.names = list(groupby)
     group_codes, groups = pd.factorize(group_index)

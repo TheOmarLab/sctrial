@@ -46,9 +46,8 @@ def _build_did_model(
         sigma = pm.HalfNormal("sigma", sigma_scale)
         alpha = pm.Normal("alpha", 0.0, prior_scale, shape=n_units)
         beta_time = pm.Normal("beta_time", 0.0, prior_scale)
-        beta_arm = pm.Normal("beta_arm", 0.0, prior_scale)
         beta_did = pm.Normal("beta_did", 0.0, prior_scale)
-        mu = alpha[unit_codes] + beta_time * time_vals + beta_arm * arm_vals + beta_did * interaction
+        mu = alpha[unit_codes] + beta_time * time_vals + beta_did * interaction
         pm.Normal("y", mu=mu, sigma=sigma, observed=y)
     return model
 
@@ -217,7 +216,8 @@ def did_table_bayes(
         post = idata.posterior["beta_did"].to_numpy().ravel()
         beta_mean = float(post.mean())
         ci_low, ci_high = np.quantile(post, [0.025, 0.975])
-        p_bayes = 2 * min((post > 0).mean(), (post < 0).mean())
+        n_post = len(post)
+        p_bayes = max(2 * min((post > 0).mean(), (post < 0).mean()), 1.0 / n_post)
 
         rows.append(
             {
