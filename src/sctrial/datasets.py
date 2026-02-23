@@ -31,6 +31,7 @@ __all__ = [
 
 
 def _resolve_dir_with_files(p: str, required_files: Sequence[str]) -> Path:
+    """Resolve a directory path with required files."""
     path = Path(p)
     if path.is_absolute():
         if all((path / f).exists() for f in required_files):
@@ -84,6 +85,7 @@ def _params_match(prev: dict, current: dict) -> bool:
 
 
 def _looks_log1p(X, sample: int = 10000, seed: int = 0) -> bool:
+    """Check if a matrix looks like log-transformed counts."""
     if X is None:
         return False
     if sp.issparse(X):
@@ -127,6 +129,7 @@ def _download_file(url: str, dest: Path, label: str = "file") -> None:
 
 
 def _get_counts_matrix(adata: ad.AnnData) -> tuple[np.ndarray | None, str | None]:
+    """Get the counts matrix from the AnnData object."""
     return get_counts_matrix(adata)
 
 

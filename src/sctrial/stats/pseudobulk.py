@@ -53,6 +53,16 @@ def pseudobulk_expression(
         CPM scale factor (default 1e6).
     log1p
         If True, apply log1p to CPM.
+    min_cells_per_group
+        Minimum cells per group to include.
+    include_n_cells
+        If True, include the number of cells per group.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with pseudobulk expression.
+
     """
     genes = [g for g in genes if g in adata.var_names]
     if not genes:

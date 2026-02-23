@@ -112,6 +112,13 @@ class TrialDesign:
             If True, require ``crossover_col`` in ``adata.obs``.
         check_arm_labels
             If True, verify that treated/control labels are present in ``arm_col``.
+
+        Raises
+        ------
+        KeyError
+            If required columns are missing.
+        ValueError
+            If arm labels are not found in ``adata.obs[self.arm_col]``.
         """
         obs = adata.obs
         missing = [

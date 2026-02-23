@@ -19,6 +19,7 @@ from ._utils import apply_fdr, encode_visit, standardize_series
 
 # Minimum number of clusters for reliable cluster-robust standard errors
 # Cameron & Miller (2015) recommend 42+, with 10 as absolute minimum
+# Ref: Cameron, A. Colin, and Douglas L. Miller. "A practitioner’s guide to cluster-robust inference." Journal of human resources 50.2 (2015): 317-372.
 MIN_CLUSTERS_FOR_ROBUST_SE = 10
 
 
@@ -50,6 +51,7 @@ class DiDConfig:
 
 
 def _validate_did_fit_inputs(df: pd.DataFrame, cols: list[str]) -> None:
+    """Validate the input columns for did_fit."""
     missing = [c for c in cols if c not in df.columns]
     if missing:
         raise KeyError(f"Missing required columns for did_fit: {missing}")
@@ -61,6 +63,7 @@ def _standardize_outcome(
     standardize: bool,
     outcome_col: str = "outcome_std",
 ) -> pd.DataFrame | None:
+    """Standardize the outcome variable."""
     if not standardize:
         tmp[outcome_col] = tmp[y].astype(float)
         return tmp
@@ -78,6 +81,7 @@ def _build_did_formula(
     covariates: list[str] | None,
     outcome_col: str = "outcome_std",
 ) -> str:
+    """Build the formula for DiD."""
     formula = f"{outcome_col} ~ {time} + {time}:{arm_bin} + C({unit})"
     if covariates:
         formula += " + " + " + ".join(covariates)
@@ -91,6 +95,7 @@ def _prepare_did_obs(
     celltype: str | None,
     exclude_crossovers: bool,
 ) -> tuple[AnnData, pd.DataFrame]:
+    """Prepare the data for DiD analysis."""
     ad = subset_primary(adata, design, visits=visits, exclude_crossovers=exclude_crossovers)
     if celltype is not None and design.celltype_col:
         ad = ad[ad.obs[design.celltype_col] == celltype].copy()
@@ -105,6 +110,7 @@ def _add_feature_columns(
     features: Sequence[str],
     layer: str | None,
 ) -> tuple[pd.DataFrame, list[str]]:
+    """Add feature columns to the DataFrame."""
     # features can be genes (in var_names) or obs columns
     # Optimization: Extract all genes from X/layer at once if they are in var_names
     genes_to_extract = [f for f in features if f in ad.var_names and f not in ad.obs.columns]
@@ -154,6 +160,7 @@ def _aggregate_for_did(
     agg: AggregateFunc,
     covariates: list[str] | None,
 ) -> tuple[pd.DataFrame, str, str, str]:
+    """Aggregate the data for DiD analysis."""
     if aggregate == "participant_visit":
         grp_cols = [design.participant_col, design.visit_col, design.arm_col]
         df["n_cells"] = 1

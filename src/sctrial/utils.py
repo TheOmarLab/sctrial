@@ -195,7 +195,23 @@ def permutation_pvalue(
     seed: int = 42,
 ) -> float:
     """Two-sample permutation test for difference in means.
+    Parameters
+    ----------
+    group1
+        First group of values.
+    group2
+        Second group of values.
+    n_perm
+        Number of permutations.
+    seed
+        Random seed.
 
+    Returns
+    -------
+    float 
+
+    Notes
+    -----
     H0: mean(group1) = mean(group2)
     """
     rng = np.random.default_rng(seed)
@@ -221,6 +237,23 @@ def permutation_pvalue_paired(
 ) -> float:
     """Paired permutation test (sign-flip test) for difference in means.
 
+    Parameters
+    ----------
+    x
+        First group of values.
+    y
+        Second group of values.
+    n_perm
+        Number of permutations.
+    seed
+        Random seed.
+
+    Returns
+    -------
+    float 
+
+    Notes
+    -----
     H0: mean(y - x) = 0
     """
     rng = np.random.default_rng(seed)
@@ -240,7 +273,24 @@ def permutation_pvalue_paired(
 def resolve_feature(adata: AnnData, query: str) -> str:
     """Resolve a feature name in adata.var_names or adata.obs.columns (case-insensitive).
 
-    Returns the exact name string to use. Raises KeyError if not found.
+    Parameters
+    ----------
+    adata
+        AnnData object.
+    query
+        Feature name to resolve.
+
+    Returns
+    -------
+    str
+        The exact name string to use.
+
+    Raises
+    ------
+    KeyError
+        If the feature is not found in adata.var_names or adata.obs.columns.
+    ValueError
+        If the feature query is an empty string.
     """
     if query is None or (isinstance(query, str) and query.strip() == ""):
         raise ValueError("Feature query must be a non-empty string.")
