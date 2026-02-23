@@ -22,6 +22,7 @@ __all__ = [
 
 
 def _map_pool(celltype: str, pool_map: dict[str, Sequence[str]] | None) -> str | None:
+    """Map celltype to pool using the pool_map."""
     if pool_map is None:
         return None
     for pool, labels in pool_map.items():

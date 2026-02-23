@@ -22,6 +22,7 @@ def _add_feature_columns(
     features: Sequence[str],
     layer: str | None,
 ) -> pd.DataFrame:
+    """Add feature columns to the DataFrame."""
     from .did import _add_feature_columns as _add_feature_columns_did
 
     df, _ = _add_feature_columns_did(df, ad, features, layer)
@@ -50,6 +51,7 @@ def _prepare_between_arm_df(
     agg: AggregateFunc,
     covariates: list[str] | None,
 ) -> pd.DataFrame:
+    """Prepare the data for between-arm comparison."""
     ad = subset_cells(adata, design, visit=visit, exclude_crossovers=False)
     obs = ad.obs.copy()
     obs["arm_bin"] = (obs[design.arm_col] == design.arm_treated).astype(int)
