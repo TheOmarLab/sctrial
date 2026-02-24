@@ -209,7 +209,7 @@ def permutation_pvalue(
     Returns
     -------
     float 
-
+        Two-sided permutation p-value in ``[0, 1]``.
     Notes
     -----
     H0: mean(group1) = mean(group2)
@@ -249,9 +249,9 @@ def permutation_pvalue_paired(
         Random seed.
 
     Returns
-    -------
-    float 
-
+    ------- 
+    float
+        Two-sided permutation p-value in ``[0, 1]``.
     Notes
     -----
     H0: mean(y - x) = 0
