@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 import warnings
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -10,7 +11,11 @@ import pandas as pd
 import scipy.sparse as sp
 import statsmodels.formula.api as smf
 from anndata import AnnData
-from typing_extensions import NotRequired
+
+if sys.version_info >= (3, 11):
+    from typing import NotRequired
+else:
+    from typing_extensions import NotRequired
 
 from ..adata_tools import subset_primary
 from ..design import TrialDesign
@@ -389,7 +394,9 @@ def did_fit(
     # Var(mean_i) = sigma^2 / n_i, so weight_i = n_i (proportional to 1/Var)
     weights = None
     if "n_cells" in tmp.columns:
-        weights = tmp["n_cells"].values.astype(float)
+        w = tmp["n_cells"].values.astype(float)
+        if np.all(np.isfinite(w)) and np.all(w > 0):
+            weights = w
 
     if weights is not None:
         model = smf.wls(formula, data=tmp, weights=weights)
@@ -675,6 +682,10 @@ def did_table_parallel(
         covariates,
     )
 
+    # Generate independent seeds for each parallel feature using SeedSequence
+    ss = np.random.SeedSequence(seed)
+    feature_seeds = [int(s.generate_state(1)[0]) for s in ss.spawn(len(final_features))]
+
     def _fit_feature(idx: int, feat: str) -> dict:
         out = did_fit(
             df_use,
@@ -686,7 +697,7 @@ def did_table_parallel(
             standardize=standardize,
             use_bootstrap=use_bootstrap,
             n_boot=n_boot,
-            seed=seed + idx,
+            seed=feature_seeds[idx],
         )
         row = dict(out)
         row["feature"] = feat

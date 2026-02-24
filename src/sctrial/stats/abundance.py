@@ -153,7 +153,9 @@ def abundance_did(
     counts["arm_bin"] = design.arm_bin(counts)
 
     rows = []
-    # paired participants based on presence of both visits overall (not celltype-specific)
+    # Paired participants: must have cells in both visits (overall, not per-celltype).
+    # For abundance analysis, zero cells of a specific celltype is valid data (prop=0)
+    # since the zero-count expansion above fills in missing combos.
     wide_tot = totals.pivot_table(
         index=design.participant_col,
         columns=design.visit_col,
@@ -281,7 +283,7 @@ def abundance_did(
                 "p_time": float(fit.pvalues.get("visit_num", np.nan)),
             })
         except (ValueError, np.linalg.LinAlgError, KeyError):
-            # Fallback: delta model without fixed effects or covariates
+            # Fallback: delta model without fixed effects
             try:
                 wide = tmp.pivot_table(
                     index=design.participant_col,
@@ -301,10 +303,23 @@ def abundance_did(
                     .first()
                     .reindex(df_delta.index)
                 )
+                if covariates:
+                    # Use baseline (pre-treatment) covariate values so that
+                    # time-varying covariates are not silently collapsed.
+                    baseline = tmp[tmp[design.visit_col] == visits[0]]
+                    cov_df = (
+                        baseline.groupby(design.participant_col, observed=True)[covariates]
+                        .first()
+                        .reindex(df_delta.index)
+                    )
+                    df_delta = pd.concat([df_delta, cov_df], axis=1)
                 df_delta = df_delta.dropna()
                 if df_delta.shape[0] < min_units:
                     continue
-                model = smf.ols("delta ~ arm_bin", data=df_delta)
+                fallback_formula = "delta ~ arm_bin"
+                if covariates:
+                    fallback_formula += " + " + " + ".join(covariates)
+                model = smf.ols(fallback_formula, data=df_delta)
                 fit = model.fit()
                 term = "arm_bin"
                 if term not in fit.params or np.isnan(fit.params[term]):
