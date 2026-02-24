@@ -218,20 +218,14 @@ def did_table_bayes(
                 continue
             y = (y - y.mean()) / y_std
 
-        # Build covariate matrix if covariates are specified
+        # Build covariate matrix if covariates are specified.
+        # Categorical columns are automatically dummy-encoded (drop_first=True
+        # to avoid multicollinearity with the intercept).
         cov_matrix = None
         if cov_cols:
-            non_numeric = [
-                c for c in cov_cols
-                if not pd.api.types.is_numeric_dtype(df_feat[c])
-            ]
-            if non_numeric:
-                raise TypeError(
-                    f"Non-numeric covariate column(s): {non_numeric}. "
-                    f"Encode categorical covariates as numeric "
-                    f"(e.g. via pd.get_dummies) before passing them."
-                )
-            cov_matrix = df_feat[cov_cols].to_numpy(dtype=float)
+            cov_df = df_feat[cov_cols].copy()
+            cov_df = pd.get_dummies(cov_df, drop_first=True, dtype=float)
+            cov_matrix = cov_df.to_numpy(dtype=float)
 
         model = _build_did_model(
             unit_codes, n_units, time_vals, arm_vals, y,

@@ -51,8 +51,8 @@ def test_did_table_bayes_basic():
     assert {"beta_DiD", "ci_low", "ci_high", "p_bayes"}.issubset(res.columns)
 
 
-def test_did_table_bayes_categorical_covariate_raises():
-    """Categorical (non-numeric) covariates should raise a clear TypeError."""
+def test_did_table_bayes_categorical_covariate():
+    """Categorical covariates should be auto-encoded and accepted."""
     obs = []
     for pid in ["P1", "P2", "P3", "P4"]:
         arm = "Treated" if pid in ["P1", "P2"] else "Control"
@@ -75,15 +75,17 @@ def test_did_table_bayes_categorical_covariate_raises():
         arm_control="Control",
     )
 
-    with pytest.raises(TypeError, match="(?i)non-numeric"):
-        st.did_table_bayes(
-            adata,
-            features=["G1"],
-            design=design,
-            visits=("V1", "V2"),
-            covariates=["sex"],
-            draws=100,
-            tune=100,
-            chains=1,
-            seed=0,
-        )
+    res = st.did_table_bayes(
+        adata,
+        features=["G1"],
+        design=design,
+        visits=("V1", "V2"),
+        covariates=["sex"],
+        draws=200,
+        tune=200,
+        chains=1,
+        seed=0,
+    )
+
+    assert res.shape[0] == 1
+    assert {"beta_DiD", "ci_low", "ci_high", "p_bayes"}.issubset(res.columns)
