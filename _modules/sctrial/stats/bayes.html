@@ -163,13 +163,12 @@
 
 <span class="sd">    Fits a simple hierarchical model:</span>
 
-<span class="sd">        y_ijt = alpha_i + beta_time * time + beta_arm * arm + beta_did * time*arm + eps</span>
+<span class="sd">        y_ijt = alpha_i + beta_time * time + beta_did * time*arm + eps</span>
 
 <span class="sd">    Prior specification</span>
 <span class="sd">    -------------------</span>
 <span class="sd">    - alpha_i ~ Normal(0, prior_scale) (participant random intercepts)</span>
 <span class="sd">    - beta_time ~ Normal(0, prior_scale)</span>
-<span class="sd">    - beta_arm ~ Normal(0, prior_scale)</span>
 <span class="sd">    - beta_did ~ Normal(0, prior_scale)</span>
 <span class="sd">    - sigma ~ HalfNormal(sigma_scale)</span>
 

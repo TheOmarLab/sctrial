@@ -238,7 +238,9 @@
     <span class="n">counts</span><span class="p">[</span><span class="s2">&quot;arm_bin&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_bin</span><span class="p">(</span><span class="n">counts</span><span class="p">)</span>
 
     <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="c1"># paired participants based on presence of both visits overall (not celltype-specific)</span>
+    <span class="c1"># Paired participants: must have cells in both visits (overall, not per-celltype).</span>
+    <span class="c1"># For abundance analysis, zero cells of a specific celltype is valid data (prop=0)</span>
+    <span class="c1"># since the zero-count expansion above fills in missing combos.</span>
     <span class="n">wide_tot</span> <span class="o">=</span> <span class="n">totals</span><span class="o">.</span><span class="n">pivot_table</span><span class="p">(</span>
         <span class="n">index</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span>
         <span class="n">columns</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span>
@@ -366,7 +368,7 @@
                 <span class="s2">&quot;p_time&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">pvalues</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;visit_num&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)),</span>
             <span class="p">})</span>
         <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">LinAlgError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
-            <span class="c1"># Fallback: delta model without fixed effects or covariates</span>
+            <span class="c1"># Fallback: delta model without fixed effects</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">wide</span> <span class="o">=</span> <span class="n">tmp</span><span class="o">.</span><span class="n">pivot_table</span><span class="p">(</span>
                     <span class="n">index</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span>
@@ -386,10 +388,23 @@
                     <span class="o">.</span><span class="n">first</span><span class="p">()</span>
                     <span class="o">.</span><span class="n">reindex</span><span class="p">(</span><span class="n">df_delta</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
                 <span class="p">)</span>
+                <span class="k">if</span> <span class="n">covariates</span><span class="p">:</span>
+                    <span class="c1"># Use baseline (pre-treatment) covariate values so that</span>
+                    <span class="c1"># time-varying covariates are not silently collapsed.</span>
+                    <span class="n">baseline</span> <span class="o">=</span> <span class="n">tmp</span><span class="p">[</span><span class="n">tmp</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span> <span class="o">==</span> <span class="n">visits</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+                    <span class="n">cov_df</span> <span class="o">=</span> <span class="p">(</span>
+                        <span class="n">baseline</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="n">covariates</span><span class="p">]</span>
+                        <span class="o">.</span><span class="n">first</span><span class="p">()</span>
+                        <span class="o">.</span><span class="n">reindex</span><span class="p">(</span><span class="n">df_delta</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+                    <span class="p">)</span>
+                    <span class="n">df_delta</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">df_delta</span><span class="p">,</span> <span class="n">cov_df</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
                 <span class="n">df_delta</span> <span class="o">=</span> <span class="n">df_delta</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
                 <span class="k">if</span> <span class="n">df_delta</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">min_units</span><span class="p">:</span>
                     <span class="k">continue</span>
-                <span class="n">model</span> <span class="o">=</span> <span class="n">smf</span><span class="o">.</span><span class="n">ols</span><span class="p">(</span><span class="s2">&quot;delta ~ arm_bin&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">df_delta</span><span class="p">)</span>
+                <span class="n">fallback_formula</span> <span class="o">=</span> <span class="s2">&quot;delta ~ arm_bin&quot;</span>
+                <span class="k">if</span> <span class="n">covariates</span><span class="p">:</span>
+                    <span class="n">fallback_formula</span> <span class="o">+=</span> <span class="s2">&quot; + &quot;</span> <span class="o">+</span> <span class="s2">&quot; + &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">covariates</span><span class="p">)</span>
+                <span class="n">model</span> <span class="o">=</span> <span class="n">smf</span><span class="o">.</span><span class="n">ols</span><span class="p">(</span><span class="n">fallback_formula</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">df_delta</span><span class="p">)</span>
                 <span class="n">fit</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
                 <span class="n">term</span> <span class="o">=</span> <span class="s2">&quot;arm_bin&quot;</span>
                 <span class="k">if</span> <span class="n">term</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">fit</span><span class="o">.</span><span class="n">params</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="n">term</span><span class="p">]):</span>

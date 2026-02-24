@@ -1044,14 +1044,13 @@ most useful for large feature panels (hundreds to thousands of genes).</p>
 <dd><p>Bayesian DiD with participant random intercepts.</p>
 <p>Fits a simple hierarchical model:</p>
 <blockquote>
-<div><p>y_ijt = alpha_i + beta_time * time + beta_arm * arm + beta_did * time*arm + eps</p>
+<div><p>y_ijt = alpha_i + beta_time * time + beta_did * time*arm + eps</p>
 </div></blockquote>
 <section id="prior-specification">
 <h4>Prior specification<a class="headerlink" href="#prior-specification" title="Link to this heading"></a></h4>
 <ul class="simple">
 <li><p>alpha_i ~ Normal(0, prior_scale) (participant random intercepts)</p></li>
 <li><p>beta_time ~ Normal(0, prior_scale)</p></li>
-<li><p>beta_arm ~ Normal(0, prior_scale)</p></li>
 <li><p>beta_did ~ Normal(0, prior_scale)</p></li>
 <li><p>sigma ~ HalfNormal(sigma_scale)</p></li>
 </ul>

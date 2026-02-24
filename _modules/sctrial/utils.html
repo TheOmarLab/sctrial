@@ -284,7 +284,10 @@
         <span class="n">beta_b</span> <span class="o">=</span> <span class="n">fit_b</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
         <span class="n">t_boot</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">beta_b</span> <span class="o">-</span> <span class="n">beta_hat</span><span class="p">)</span> <span class="o">/</span> <span class="n">se_hat</span>
 
-    <span class="n">p_boot</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">t_boot</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">t_obs</span><span class="p">))</span>
+    <span class="c1"># +1 correction (same as permutation_pvalue) to avoid p=0 and ensure</span>
+    <span class="c1"># the observed statistic is included in the reference distribution.</span>
+    <span class="n">count</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">t_boot</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">t_obs</span><span class="p">))</span>
+    <span class="n">p_boot</span> <span class="o">=</span> <span class="p">(</span><span class="n">count</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">B</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
     <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">p_boot</span><span class="p">)</span></div>
 
 
