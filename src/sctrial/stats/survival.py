@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Sequence
 
 import numpy as np
@@ -9,6 +10,8 @@ from anndata import AnnData
 from ..design import TrialDesign
 from ._extract import extract_gene_matrix
 from ._utils import aggregate_features, apply_fdr
+
+logger = logging.getLogger(__name__)
 
 __all__ = ["hazard_regression_with_features"]
 
@@ -64,6 +67,7 @@ def hazard_regression_with_features(
     """
     try:
         from lifelines import CoxPHFitter
+        from lifelines.exceptions import ConvergenceError as _ConvergenceError
     except ImportError as exc:  # pragma: no cover
         raise ImportError("lifelines is required for survival analysis") from exc
 
@@ -134,10 +138,18 @@ def hazard_regression_with_features(
         try:
             cph = CoxPHFitter()
             cph.fit(df_model, duration_col=time_col, event_col=event_col)
-        except Exception:
-            # Convergence failure or separation — record as NaN
+        except (
+            _ConvergenceError,
+            np.linalg.LinAlgError,
+        ):
+            # Expected: convergence failure or singular matrix from separation
             results.append({"feature": feat, "HR": np.nan, "p": np.nan, "n": df_model.shape[0]})
             continue
+        except Exception:
+            # Unexpected error — log and propagate so data/config bugs
+            # are not silently swallowed as NaN results.
+            logger.exception("Unexpected error fitting Cox model for feature '%s'", feat)
+            raise
 
         coef = cph.params_[feat]
         hr = float(np.exp(coef))
