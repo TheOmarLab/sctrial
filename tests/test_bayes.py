@@ -75,7 +75,7 @@ def test_did_table_bayes_categorical_covariate_raises():
         arm_control="Control",
     )
 
-    with pytest.raises(TypeError, match="non-numeric"):
+    with pytest.raises(TypeError, match="(?i)non-numeric"):
         st.did_table_bayes(
             adata,
             features=["G1"],

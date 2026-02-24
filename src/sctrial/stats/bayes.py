@@ -227,10 +227,9 @@ def did_table_bayes(
             ]
             if non_numeric:
                 raise TypeError(
-                    f"Bayesian DiD requires numeric covariates but got "
-                    f"non-numeric column(s): {non_numeric}. "
-                    f"Encode categorical covariates (e.g. via pd.get_dummies) "
-                    f"before passing them."
+                    f"Non-numeric covariate column(s): {non_numeric}. "
+                    f"Encode categorical covariates as numeric "
+                    f"(e.g. via pd.get_dummies) before passing them."
                 )
             cov_matrix = df_feat[cov_cols].to_numpy(dtype=float)
 
