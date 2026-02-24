@@ -289,6 +289,11 @@ def kfold_cv_did(
             if len(included) < 4:  # Need minimum participants
                 continue
 
+            # Verify both arms are represented in the training fold
+            included_arms = {_arm_map[p] for p in included}
+            if len(included_arms) < len(arms):
+                continue
+
             # Subset data
             mask = adata.obs[design.participant_col].isin(included)
             ad_fold = adata[mask].copy()

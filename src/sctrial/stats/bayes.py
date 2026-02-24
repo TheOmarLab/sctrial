@@ -46,8 +46,14 @@ def _build_did_model(
         sigma = pm.HalfNormal("sigma", sigma_scale)
         alpha = pm.Normal("alpha", 0.0, prior_scale, shape=n_units)
         beta_time = pm.Normal("beta_time", 0.0, prior_scale)
+        beta_arm = pm.Normal("beta_arm", 0.0, prior_scale)
         beta_did = pm.Normal("beta_did", 0.0, prior_scale)
-        mu = alpha[unit_codes] + beta_time * time_vals + beta_did * interaction
+        mu = (
+            alpha[unit_codes]
+            + beta_time * time_vals
+            + beta_arm * arm_vals
+            + beta_did * interaction
+        )
         pm.Normal("y", mu=mu, sigma=sigma, observed=y)
     return model
 
@@ -78,12 +84,13 @@ def did_table_bayes(
 
     Fits a simple hierarchical model:
 
-        y_ijt = alpha_i + beta_time * time + beta_did * time*arm + eps
+        y_ijt = alpha_i + beta_time * time + beta_arm * arm + beta_did * time*arm + eps
 
     Prior specification
     -------------------
     - alpha_i ~ Normal(0, prior_scale) (participant random intercepts)
     - beta_time ~ Normal(0, prior_scale)
+    - beta_arm ~ Normal(0, prior_scale)
     - beta_did ~ Normal(0, prior_scale)
     - sigma ~ HalfNormal(sigma_scale)
 
@@ -229,7 +236,7 @@ def did_table_bayes(
             }
         )
 
-    res = pd.DataFrame(rows).sort_values("p_bayes")
+    res = pd.DataFrame(rows).sort_values("p_bayes", na_position="last")
     res = apply_fdr(res, p_col="p_bayes", fdr_col="FDR_bayes")
     return res.reset_index(drop=True)
 

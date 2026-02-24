@@ -203,6 +203,7 @@ def pseudobulk_did(
     *,
     celltype_col: str | None = None,
     counts_layer: str | None = "counts",
+    log1p: bool = True,
     min_cells_per_group: int = 5,
     min_paired: int = 4,
     use_bootstrap: bool = False,
@@ -227,7 +228,7 @@ def pseudobulk_did(
         genes=genes,
         groupby=groupby,
         counts_layer=counts_layer,
-        log1p=True,
+        log1p=log1p,
         include_n_cells=True,
     )
     if pb.empty:
@@ -252,17 +253,14 @@ def pseudobulk_did(
         else:
             df_pool = pb.copy()
 
-        # paired participants
-        wide = df_pool.pivot_table(
-            index=design.participant_col,
-            columns=design.visit_col,
-            values=genes[0],
-            aggfunc="count",
-            observed=True,
-        )
-        has_v0 = wide[visits[0]] > 0 if visits[0] in wide.columns else pd.Series(False, index=wide.index)
-        has_v1 = wide[visits[1]] > 0 if visits[1] in wide.columns else pd.Series(False, index=wide.index)
-        keep = wide[has_v0 & has_v1].index
+        # paired participants: check visit presence using row counts (not a
+        # single gene) so that pairing is consistent across all genes.
+        visit_counts = df_pool.groupby(
+            [design.participant_col, design.visit_col], observed=True
+        ).size().unstack(fill_value=0)
+        has_v0 = visit_counts.get(visits[0], pd.Series(0, index=visit_counts.index)) > 0
+        has_v1 = visit_counts.get(visits[1], pd.Series(0, index=visit_counts.index)) > 0
+        keep = visit_counts.index[has_v0 & has_v1]
         df_pool = df_pool[df_pool[design.participant_col].isin(keep)].copy()
 
         if df_pool[design.participant_col].nunique() < min_paired:

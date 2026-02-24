@@ -78,6 +78,16 @@ def hazard_regression_with_features(
     if missing:
         raise KeyError(f"Missing required columns in adata.obs: {missing}")
 
+    # Validate survival times are positive before building df
+    valid_mask = obs[time_col] > 0
+    if not valid_mask.all():
+        n_bad = int((~valid_mask).sum())
+        obs = obs[valid_mask].copy()
+        if obs.empty:
+            raise ValueError(
+                f"All {n_bad} observations have non-positive survival times in '{time_col}'."
+            )
+
     df = obs[base_cols].copy()
 
     obs_feats = [f for f in features if f in obs.columns]
