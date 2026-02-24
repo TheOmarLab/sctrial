@@ -194,12 +194,17 @@ def wild_cluster_bootstrap_t(
         if np.isfinite(se_b) and se_b > 0:
             t_boot[b] = beta_b / se_b
         else:
-            t_boot[b] = 0.0
+            t_boot[b] = np.nan
+
+    # Drop failed draws (non-finite SE) before computing p-value
+    valid = t_boot[np.isfinite(t_boot)]
+    if len(valid) == 0:
+        return np.nan
 
     # +1 correction (same as permutation_pvalue) to avoid p=0 and ensure
     # the observed statistic is included in the reference distribution.
-    count = np.sum(np.abs(t_boot) >= np.abs(t_obs))
-    p_boot = (count + 1) / (B + 1)
+    count = np.sum(np.abs(valid) >= np.abs(t_obs))
+    p_boot = (count + 1) / (len(valid) + 1)
     return float(p_boot)
 
 
