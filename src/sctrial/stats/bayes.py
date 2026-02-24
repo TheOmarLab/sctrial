@@ -78,13 +78,12 @@ def did_table_bayes(
 
     Fits a simple hierarchical model:
 
-        y_ijt = alpha_i + beta_time * time + beta_arm * arm + beta_did * time*arm + eps
+        y_ijt = alpha_i + beta_time * time + beta_did * time*arm + eps
 
     Prior specification
     -------------------
     - alpha_i ~ Normal(0, prior_scale) (participant random intercepts)
     - beta_time ~ Normal(0, prior_scale)
-    - beta_arm ~ Normal(0, prior_scale)
     - beta_did ~ Normal(0, prior_scale)
     - sigma ~ HalfNormal(sigma_scale)
 

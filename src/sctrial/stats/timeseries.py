@@ -378,6 +378,11 @@ def event_study_did(
 
     if all_results:
         combined = pd.concat(all_results, ignore_index=True)
+        # Recalculate FDR across all visit-feature tests to maintain proper
+        # family-wise error control (each did_table() only corrects within its visit).
+        if "p_DiD" in combined.columns and "FDR_DiD" in combined.columns:
+            from ._utils import apply_fdr
+            combined = apply_fdr(combined, p_col="p_DiD", fdr_col="FDR_DiD")
     else:
         combined = pd.DataFrame()
 

@@ -32,6 +32,7 @@ dependencies = [
   "statsmodels>=0.13",
   "anndata>=0.9",
   "joblib>=1.2",
+  "typing_extensions>=4.0; python_version < '3.11'",
 ]
 
 [project.urls]

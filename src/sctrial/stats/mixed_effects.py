@@ -165,7 +165,10 @@ def did_mixed(
     if covariates:
         for cov in covariates:
             if cov in df.columns:
-                fixed_part += f" + C({cov})"
+                if pd.api.types.is_numeric_dtype(df[cov]):
+                    fixed_part += f" + {cov}"
+                else:
+                    fixed_part += f" + C({cov})"
 
     # Random effects specification
     if random_slope:

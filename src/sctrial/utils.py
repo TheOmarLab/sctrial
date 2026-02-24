@@ -184,7 +184,10 @@ def wild_cluster_bootstrap_t(
         beta_b = fit_b.params.iloc[j]
         t_boot[b] = (beta_b - beta_hat) / se_hat
 
-    p_boot = np.mean(np.abs(t_boot) >= np.abs(t_obs))
+    # +1 correction (same as permutation_pvalue) to avoid p=0 and ensure
+    # the observed statistic is included in the reference distribution.
+    count = np.sum(np.abs(t_boot) >= np.abs(t_obs))
+    p_boot = (count + 1) / (B + 1)
     return float(p_boot)
 
 
