@@ -204,7 +204,9 @@ def effect_size_ci(
     alpha
         Significance level (default 0.05 for 95% CI).
     method
-        - "nct": Noncentral t-distribution (analytical, fast)
+        - "nct": Wald-type CI using the Hedges & Olkin (1985) large-sample
+          variance approximation with t critical values. Fast and adequate for
+          most sample sizes.
         - "bootstrap": Not implemented here; use bootstrap_effect_size_ci
 
     Returns
@@ -214,13 +216,11 @@ def effect_size_ci(
 
     Notes
     -----
-    The noncentral t-distribution method finds the noncentrality parameters
-    λ_L and λ_U such that:
+    Uses the Hedges & Olkin (1985) variance formula:
 
-        P(t > t_obs | λ=λ_L) = α/2
-        P(t < t_obs | λ=λ_U) = α/2
+        SE(d) = √( (n₁+n₂)/(n₁·n₂) + d² / (2·(n₁+n₂-2)) )
 
-    Then: d_L = λ_L × √(1/n₁ + 1/n₂), d_U = λ_U × √(1/n₁ + 1/n₂)
+    with t critical values at df = n₁ + n₂ - 2.
     """
     if np.isnan(d) or n1 < 2 or n2 < 2:
         return (np.nan, np.nan)

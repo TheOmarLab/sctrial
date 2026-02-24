@@ -146,6 +146,11 @@ def hazard_regression_with_features(
         hr_high = float(np.exp(ci.iloc[1]))
         p_val = float(cph.summary.loc[feat, "p"])
 
+        # Detect unstable estimates from separation (infinite CI bounds)
+        if not (np.isfinite(hr_low) and np.isfinite(hr_high) and np.isfinite(hr)):
+            results.append({"feature": feat, "HR": np.nan, "p": np.nan, "n": df_model.shape[0]})
+            continue
+
         results.append(
             {
                 "feature": feat,
