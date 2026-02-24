@@ -484,8 +484,12 @@ def compare_fixed_vs_mixed(
     """
     from .did import did_table
 
+    # Split kwargs: 'random_slope' is mixed-only and would cause TypeError in did_table
+    _MIXED_ONLY_KEYS = {"random_slope"}
+    fixed_kwargs = {k: v for k, v in kwargs.items() if k not in _MIXED_ONLY_KEYS}
+
     # Run fixed effects
-    res_fixed = did_table(adata, features, design, visits, **kwargs)
+    res_fixed = did_table(adata, features, design, visits, **fixed_kwargs)
 
     # Run mixed effects
     res_mixed = did_table_mixed(adata, features, design, visits, **kwargs)

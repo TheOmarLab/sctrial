@@ -27,11 +27,18 @@ def _build_did_model(
     y: np.ndarray,
     prior_scale: float = 1.0,
     sigma_scale: float = 1.0,
+    covariate_matrix: np.ndarray | None = None,
 ):
     """Build the Bayesian DiD PyMC model and return it as a context manager.
 
     This is a shared helper used by both ``did_table_bayes`` and
     ``prior_predictive_check`` so that the prior specification stays in sync.
+
+    Parameters
+    ----------
+    covariate_matrix
+        Optional (n_obs, n_covariates) array of covariate values to include
+        as additional fixed effects.
     """
     try:
         import pymc as pm
@@ -54,6 +61,11 @@ def _build_did_model(
             + beta_arm * arm_vals
             + beta_did * interaction
         )
+        # Add covariate fixed effects if provided
+        if covariate_matrix is not None and covariate_matrix.shape[1] > 0:
+            n_cov = covariate_matrix.shape[1]
+            beta_cov = pm.Normal("beta_cov", 0.0, prior_scale, shape=n_cov)
+            mu = mu + pm.math.dot(covariate_matrix, beta_cov)
         pm.Normal("y", mu=mu, sigma=sigma, observed=y)
     return model
 
@@ -84,7 +96,7 @@ def did_table_bayes(
 
     Fits a simple hierarchical model:
 
-        y_ijt = alpha_i + beta_time * time + beta_arm * arm + beta_did * time*arm + eps
+        y_ijt = alpha_i + beta_time * time + beta_arm * arm + beta_did * time*arm + X_cov * beta_cov + eps
 
     Prior specification
     -------------------
@@ -182,9 +194,11 @@ def did_table_bayes(
         covariates,
     )
 
+    cov_cols = covariates or []
     rows = []
     for feat in final_features:
-        df_feat = df_use[[unit, time, arm_bin, feat]].dropna()
+        select_cols = [unit, time, arm_bin, feat] + cov_cols
+        df_feat = df_use[select_cols].dropna()
         if df_feat.empty:
             rows.append({"feature": feat, "beta_DiD": np.nan, "n_units": 0})
             continue
@@ -204,9 +218,19 @@ def did_table_bayes(
                 continue
             y = (y - y.mean()) / y_std
 
+        # Build covariate matrix if covariates are specified.
+        # Categorical columns are automatically dummy-encoded (drop_first=True
+        # to avoid multicollinearity with the intercept).
+        cov_matrix = None
+        if cov_cols:
+            cov_df = df_feat[cov_cols].copy()
+            cov_df = pd.get_dummies(cov_df, drop_first=True, dtype=float)
+            cov_matrix = cov_df.to_numpy(dtype=float)
+
         model = _build_did_model(
             unit_codes, n_units, time_vals, arm_vals, y,
             prior_scale=prior_scale, sigma_scale=sigma_scale,
+            covariate_matrix=cov_matrix,
         )
         with model:
             idata = pm.sample(
