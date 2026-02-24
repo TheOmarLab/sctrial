@@ -252,6 +252,7 @@ class DidFitResult(TypedDict):
     p_DiD_boot: NotRequired[float]
 
 def _ensure_paired(df: pd.DataFrame, unit: str, time: str, visits: tuple[str,str]) -> pd.DataFrame:
+    """Ensure that the data is paired."""
     wide = df.groupby([unit, time], observed=True).size().unstack(fill_value=0)
     keep = wide[(wide.get(visits[0], 0) > 0) & (wide.get(visits[1], 0) > 0)].index
     return df[df[unit].isin(keep)].copy()
@@ -683,6 +684,7 @@ def did_table_parallel(
     )
 
     def _fit_feature(idx: int, feat: str) -> dict:
+        """Fit a feature using did_fit."""
         out = did_fit(
             df_use,
             y=feat,
