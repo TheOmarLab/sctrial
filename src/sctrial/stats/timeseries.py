@@ -203,6 +203,11 @@ def trend_interaction(
         grp_cols = [design.participant_col, design.visit_col, design.arm_col, "time_num", "arm_bin"]
         df = df.groupby(grp_cols, observed=True)[list(features)].mean().reset_index()
 
+    # Enforce balanced panel: keep only participants observed at all visits
+    visit_counts = df.groupby(design.participant_col, observed=True)[design.visit_col].nunique()
+    balanced_pids = visit_counts[visit_counts == len(visits)].index
+    df = df[df[design.participant_col].isin(balanced_pids)].copy()
+
     n_units = df[design.participant_col].nunique()
     n_timepoints = len(visits)
 
@@ -460,23 +465,27 @@ def polynomial_trend(
 
     fit = smf.ols(formula, data=df).fit()
 
-    # Generate predictions
+    # Generate population-average predictions by averaging across all
+    # participant fixed effects.
     time_grid = np.linspace(min(time_values), max(time_values), 50)
-    pred_data = []
+    all_pids = df[design.participant_col].unique()
+    pred_records = []
     for treat in [0, 1]:
         for t in time_grid:
-            row = {"time_num": t, "arm_bin": treat}
-            for d in range(2, degree + 1):
-                row[f"time_num{d}"] = t ** d
-            # Use mean participant (approximate)
-            row[design.participant_col] = df[design.participant_col].iloc[0]
-            pred_data.append(row)
+            preds_for_t = []
+            for pid in all_pids:
+                row_dict = {"time_num": t, "arm_bin": treat, design.participant_col: pid}
+                for d_i in range(2, degree + 1):
+                    row_dict[f"time_num{d_i}"] = t ** d_i
+                preds_for_t.append(row_dict)
+            try:
+                pid_df = pd.DataFrame(preds_for_t)
+                mean_pred = float(fit.predict(pid_df).mean())
+            except (ValueError, KeyError, TypeError):
+                mean_pred = np.nan
+            pred_records.append({"time_num": t, "arm_bin": treat, "predicted": mean_pred})
 
-    pred_df = pd.DataFrame(pred_data)
-    try:
-        pred_df["predicted"] = fit.predict(pred_df)
-    except (ValueError, KeyError, TypeError):
-        pred_df["predicted"] = np.nan
+    pred_df = pd.DataFrame(pred_records)
 
     pred_df["arm"] = pred_df["arm_bin"].map({0: design.arm_control, 1: design.arm_treated})
 

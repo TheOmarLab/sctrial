@@ -111,11 +111,11 @@ def wild_cluster_bootstrap_t(
     cluster level. This is recommended when the number of clusters is small
     and standard cluster-robust inference may be unreliable.
 
-    The procedure uses a **score / Rao-type** standard error approach: each
-    bootstrap draw perturbs the restricted residuals with cluster-level
-    Rademacher weights (±1 with equal probability), re-fits the full model
-    via OLS (or WLS when the original fit used weights), and forms a
-    bootstrap t-statistic.  The two-sided p-value is computed as the
+    Each bootstrap draw perturbs the **restricted** residuals (imposing
+    H0: beta_j = 0) with cluster-level Rademacher weights (±1 with equal
+    probability), re-fits the full model via OLS (or WLS when the
+    original fit used weights) with **per-iteration cluster-robust SE**,
+    and forms a bootstrap t-statistic.  The two-sided p-value is the
     fraction of bootstrap |t*| values that exceed the observed |t|.
 
     Reference:
@@ -156,8 +156,6 @@ def wild_cluster_bootstrap_t(
         return np.nan
 
     t_obs = beta_hat / se_hat
-    resid = fit.resid
-    fitted = fit.fittedvalues
     uniq_cl = np.unique(clusters)
     G = len(uniq_cl)
 
@@ -166,6 +164,12 @@ def wild_cluster_bootstrap_t(
     use_wls = weights is not None
 
     import statsmodels.api as sm
+
+    # Restricted residuals: impose H0 (beta_j = 0) by subtracting only the
+    # non-null components of the fit.
+    restricted_fitted = fit.fittedvalues - beta_hat * X[:, j]
+    resid_r = fit.model.endog - restricted_fitted
+
     t_boot = np.empty(B, dtype=float)
 
     for b in range(B):
@@ -173,16 +177,24 @@ def wild_cluster_bootstrap_t(
         w_map = dict(zip(uniq_cl, w_g))
         w_i = np.array([w_map[g] for g in clusters])
 
-        e_star = resid * w_i
-        y_star = fitted + e_star
+        e_star = resid_r * w_i
+        y_star = restricted_fitted + e_star
 
         if use_wls:
-            fit_b = sm.WLS(y_star, X, weights=weights).fit()
+            fit_b = sm.WLS(y_star, X, weights=weights).fit(
+                cov_type="cluster", cov_kwds={"groups": clusters}
+            )
         else:
-            fit_b = sm.OLS(y_star, X).fit()
+            fit_b = sm.OLS(y_star, X).fit(
+                cov_type="cluster", cov_kwds={"groups": clusters}
+            )
 
         beta_b = fit_b.params.iloc[j]
-        t_boot[b] = (beta_b - beta_hat) / se_hat
+        se_b = fit_b.bse.iloc[j]
+        if np.isfinite(se_b) and se_b > 0:
+            t_boot[b] = beta_b / se_b
+        else:
+            t_boot[b] = 0.0
 
     # +1 correction (same as permutation_pvalue) to avoid p=0 and ensure
     # the observed statistic is included in the reference distribution.

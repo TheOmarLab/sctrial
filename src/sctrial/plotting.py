@@ -872,21 +872,34 @@ def plot_trial_umap_panel(
 
     # 1. Big Cell Type UMAP on the left
     ax_big = fig.add_subplot(gs[:, 0])
-    if sc is not None:
-        sc.pl.umap(ad, color=design.celltype_col, ax=ax_big, show=False, frameon=False, title="Cell Types")
+    if design.celltype_col and design.celltype_col in ad.obs.columns:
+        if sc is not None:
+            sc.pl.umap(ad, color=design.celltype_col, ax=ax_big, show=False, frameon=False, title="Cell Types")
+        else:
+            if "X_umap" not in ad.obsm:
+                raise KeyError("UMAP coordinates not found in adata.obsm['X_umap'].")
+            ct = ad.obs[design.celltype_col].astype("category")
+            codes = ct.cat.codes
+            ax_big.scatter(
+                ad.obsm["X_umap"][:, 0],
+                ad.obsm["X_umap"][:, 1],
+                c=codes,
+                s=6,
+                cmap="tab20",
+            )
+            ax_big.set_title("Cell Types")
+            ax_big.set_axis_off()
     else:
         if "X_umap" not in ad.obsm:
             raise KeyError("UMAP coordinates not found in adata.obsm['X_umap'].")
-        ct = ad.obs[design.celltype_col].astype("category")
-        codes = ct.cat.codes
         ax_big.scatter(
             ad.obsm["X_umap"][:, 0],
             ad.obsm["X_umap"][:, 1],
-            c=codes,
             s=6,
-            cmap="tab20",
+            c="grey",
+            alpha=0.3,
         )
-        ax_big.set_title("Cell Types")
+        ax_big.set_title("All Cells")
         ax_big.set_axis_off()
 
     # 2. 2x2 Grid on the right

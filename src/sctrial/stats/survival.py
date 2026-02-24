@@ -80,6 +80,15 @@ def hazard_regression_with_features(
 
     df = obs[base_cols].copy()
 
+    # Validate survival times are positive
+    if (df[time_col] <= 0).any():
+        n_bad = int((df[time_col] <= 0).sum())
+        df = df[df[time_col] > 0].copy()
+        if df.empty:
+            raise ValueError(
+                f"All {n_bad} observations have non-positive survival times in '{time_col}'."
+            )
+
     obs_feats = [f for f in features if f in obs.columns]
     gene_feats = [f for f in features if f in adata.var_names and f not in obs.columns]
 
