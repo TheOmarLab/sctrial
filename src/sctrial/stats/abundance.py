@@ -304,8 +304,11 @@ def abundance_did(
                     .reindex(df_delta.index)
                 )
                 if covariates:
+                    # Use baseline (pre-treatment) covariate values so that
+                    # time-varying covariates are not silently collapsed.
+                    baseline = tmp[tmp[design.visit_col] == visits[0]]
                     cov_df = (
-                        tmp.groupby(design.participant_col, observed=True)[covariates]
+                        baseline.groupby(design.participant_col, observed=True)[covariates]
                         .first()
                         .reindex(df_delta.index)
                     )
