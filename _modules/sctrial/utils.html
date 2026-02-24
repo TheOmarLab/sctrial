@@ -211,11 +211,11 @@
 <span class="sd">    cluster level. This is recommended when the number of clusters is small</span>
 <span class="sd">    and standard cluster-robust inference may be unreliable.</span>
 
-<span class="sd">    The procedure uses a **score / Rao-type** standard error approach: each</span>
-<span class="sd">    bootstrap draw perturbs the restricted residuals with cluster-level</span>
-<span class="sd">    Rademacher weights (±1 with equal probability), re-fits the full model</span>
-<span class="sd">    via OLS (or WLS when the original fit used weights), and forms a</span>
-<span class="sd">    bootstrap t-statistic.  The two-sided p-value is computed as the</span>
+<span class="sd">    Each bootstrap draw perturbs the **restricted** residuals (imposing</span>
+<span class="sd">    H0: beta_j = 0) with cluster-level Rademacher weights (±1 with equal</span>
+<span class="sd">    probability), re-fits the full model via OLS (or WLS when the</span>
+<span class="sd">    original fit used weights) with **per-iteration cluster-robust SE**,</span>
+<span class="sd">    and forms a bootstrap t-statistic.  The two-sided p-value is the</span>
 <span class="sd">    fraction of bootstrap |t*| values that exceed the observed |t|.</span>
 
 <span class="sd">    Reference:</span>
@@ -256,8 +256,6 @@
         <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
 
     <span class="n">t_obs</span> <span class="o">=</span> <span class="n">beta_hat</span> <span class="o">/</span> <span class="n">se_hat</span>
-    <span class="n">resid</span> <span class="o">=</span> <span class="n">fit</span><span class="o">.</span><span class="n">resid</span>
-    <span class="n">fitted</span> <span class="o">=</span> <span class="n">fit</span><span class="o">.</span><span class="n">fittedvalues</span>
     <span class="n">uniq_cl</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">clusters</span><span class="p">)</span>
     <span class="n">G</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">uniq_cl</span><span class="p">)</span>
 
@@ -266,6 +264,12 @@
     <span class="n">use_wls</span> <span class="o">=</span> <span class="n">weights</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
 
     <span class="kn">import</span><span class="w"> </span><span class="nn">statsmodels.api</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sm</span>
+
+    <span class="c1"># Restricted residuals: impose H0 (beta_j = 0) by subtracting only the</span>
+    <span class="c1"># non-null components of the fit.</span>
+    <span class="n">restricted_fitted</span> <span class="o">=</span> <span class="n">fit</span><span class="o">.</span><span class="n">fittedvalues</span> <span class="o">-</span> <span class="n">beta_hat</span> <span class="o">*</span> <span class="n">X</span><span class="p">[:,</span> <span class="n">j</span><span class="p">]</span>
+    <span class="n">resid_r</span> <span class="o">=</span> <span class="n">fit</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">endog</span> <span class="o">-</span> <span class="n">restricted_fitted</span>
+
     <span class="n">t_boot</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
 
     <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">B</span><span class="p">):</span>
@@ -273,21 +277,34 @@
         <span class="n">w_map</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">uniq_cl</span><span class="p">,</span> <span class="n">w_g</span><span class="p">))</span>
         <span class="n">w_i</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">w_map</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">clusters</span><span class="p">])</span>
 
-        <span class="n">e_star</span> <span class="o">=</span> <span class="n">resid</span> <span class="o">*</span> <span class="n">w_i</span>
-        <span class="n">y_star</span> <span class="o">=</span> <span class="n">fitted</span> <span class="o">+</span> <span class="n">e_star</span>
+        <span class="n">e_star</span> <span class="o">=</span> <span class="n">resid_r</span> <span class="o">*</span> <span class="n">w_i</span>
+        <span class="n">y_star</span> <span class="o">=</span> <span class="n">restricted_fitted</span> <span class="o">+</span> <span class="n">e_star</span>
 
         <span class="k">if</span> <span class="n">use_wls</span><span class="p">:</span>
-            <span class="n">fit_b</span> <span class="o">=</span> <span class="n">sm</span><span class="o">.</span><span class="n">WLS</span><span class="p">(</span><span class="n">y_star</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
+            <span class="n">fit_b</span> <span class="o">=</span> <span class="n">sm</span><span class="o">.</span><span class="n">WLS</span><span class="p">(</span><span class="n">y_star</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span>
+                <span class="n">cov_type</span><span class="o">=</span><span class="s2">&quot;cluster&quot;</span><span class="p">,</span> <span class="n">cov_kwds</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;groups&quot;</span><span class="p">:</span> <span class="n">clusters</span><span class="p">}</span>
+            <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">fit_b</span> <span class="o">=</span> <span class="n">sm</span><span class="o">.</span><span class="n">OLS</span><span class="p">(</span><span class="n">y_star</span><span class="p">,</span> <span class="n">X</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
+            <span class="n">fit_b</span> <span class="o">=</span> <span class="n">sm</span><span class="o">.</span><span class="n">OLS</span><span class="p">(</span><span class="n">y_star</span><span class="p">,</span> <span class="n">X</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span>
+                <span class="n">cov_type</span><span class="o">=</span><span class="s2">&quot;cluster&quot;</span><span class="p">,</span> <span class="n">cov_kwds</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;groups&quot;</span><span class="p">:</span> <span class="n">clusters</span><span class="p">}</span>
+            <span class="p">)</span>
 
         <span class="n">beta_b</span> <span class="o">=</span> <span class="n">fit_b</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
-        <span class="n">t_boot</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">beta_b</span> <span class="o">-</span> <span class="n">beta_hat</span><span class="p">)</span> <span class="o">/</span> <span class="n">se_hat</span>
+        <span class="n">se_b</span> <span class="o">=</span> <span class="n">fit_b</span><span class="o">.</span><span class="n">bse</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">se_b</span><span class="p">)</span> <span class="ow">and</span> <span class="n">se_b</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">t_boot</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="o">=</span> <span class="n">beta_b</span> <span class="o">/</span> <span class="n">se_b</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">t_boot</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+    <span class="c1"># Drop failed draws (non-finite SE) before computing p-value</span>
+    <span class="n">valid</span> <span class="o">=</span> <span class="n">t_boot</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">t_boot</span><span class="p">)]</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
 
     <span class="c1"># +1 correction (same as permutation_pvalue) to avoid p=0 and ensure</span>
     <span class="c1"># the observed statistic is included in the reference distribution.</span>
-    <span class="n">count</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">t_boot</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">t_obs</span><span class="p">))</span>
-    <span class="n">p_boot</span> <span class="o">=</span> <span class="p">(</span><span class="n">count</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">B</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">count</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">valid</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">t_obs</span><span class="p">))</span>
+    <span class="n">p_boot</span> <span class="o">=</span> <span class="p">(</span><span class="n">count</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">valid</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
     <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">p_boot</span><span class="p">)</span></div>
 
 

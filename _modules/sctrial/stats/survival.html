@@ -163,6 +163,16 @@
     <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing required columns in adata.obs: </span><span class="si">{</span><span class="n">missing</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
+    <span class="c1"># Validate survival times are positive before building df</span>
+    <span class="n">valid_mask</span> <span class="o">=</span> <span class="n">obs</span><span class="p">[</span><span class="n">time_col</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">valid_mask</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+        <span class="n">n_bad</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="o">~</span><span class="n">valid_mask</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+        <span class="n">obs</span> <span class="o">=</span> <span class="n">obs</span><span class="p">[</span><span class="n">valid_mask</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">obs</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;All </span><span class="si">{</span><span class="n">n_bad</span><span class="si">}</span><span class="s2"> observations have non-positive survival times in &#39;</span><span class="si">{</span><span class="n">time_col</span><span class="si">}</span><span class="s2">&#39;.&quot;</span>
+            <span class="p">)</span>
+
     <span class="n">df</span> <span class="o">=</span> <span class="n">obs</span><span class="p">[</span><span class="n">base_cols</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
     <span class="n">obs_feats</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">features</span> <span class="k">if</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>

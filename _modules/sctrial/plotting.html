@@ -987,21 +987,34 @@
 
     <span class="c1"># 1. Big Cell Type UMAP on the left</span>
     <span class="n">ax_big</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="n">gs</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">])</span>
-    <span class="k">if</span> <span class="n">sc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">sc</span><span class="o">.</span><span class="n">pl</span><span class="o">.</span><span class="n">umap</span><span class="p">(</span><span class="n">ad</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax_big</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">frameon</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Cell Types&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span> <span class="ow">and</span> <span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span> <span class="ow">in</span> <span class="n">ad</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">sc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">sc</span><span class="o">.</span><span class="n">pl</span><span class="o">.</span><span class="n">umap</span><span class="p">(</span><span class="n">ad</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax_big</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">frameon</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Cell Types&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s2">&quot;X_umap&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ad</span><span class="o">.</span><span class="n">obsm</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="s2">&quot;UMAP coordinates not found in adata.obsm[&#39;X_umap&#39;].&quot;</span><span class="p">)</span>
+            <span class="n">ct</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;category&quot;</span><span class="p">)</span>
+            <span class="n">codes</span> <span class="o">=</span> <span class="n">ct</span><span class="o">.</span><span class="n">cat</span><span class="o">.</span><span class="n">codes</span>
+            <span class="n">ax_big</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span>
+                <span class="n">ad</span><span class="o">.</span><span class="n">obsm</span><span class="p">[</span><span class="s2">&quot;X_umap&quot;</span><span class="p">][:,</span> <span class="mi">0</span><span class="p">],</span>
+                <span class="n">ad</span><span class="o">.</span><span class="n">obsm</span><span class="p">[</span><span class="s2">&quot;X_umap&quot;</span><span class="p">][:,</span> <span class="mi">1</span><span class="p">],</span>
+                <span class="n">c</span><span class="o">=</span><span class="n">codes</span><span class="p">,</span>
+                <span class="n">s</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>
+                <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;tab20&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">ax_big</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Cell Types&quot;</span><span class="p">)</span>
+            <span class="n">ax_big</span><span class="o">.</span><span class="n">set_axis_off</span><span class="p">()</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="k">if</span> <span class="s2">&quot;X_umap&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ad</span><span class="o">.</span><span class="n">obsm</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="s2">&quot;UMAP coordinates not found in adata.obsm[&#39;X_umap&#39;].&quot;</span><span class="p">)</span>
-        <span class="n">ct</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;category&quot;</span><span class="p">)</span>
-        <span class="n">codes</span> <span class="o">=</span> <span class="n">ct</span><span class="o">.</span><span class="n">cat</span><span class="o">.</span><span class="n">codes</span>
         <span class="n">ax_big</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span>
             <span class="n">ad</span><span class="o">.</span><span class="n">obsm</span><span class="p">[</span><span class="s2">&quot;X_umap&quot;</span><span class="p">][:,</span> <span class="mi">0</span><span class="p">],</span>
             <span class="n">ad</span><span class="o">.</span><span class="n">obsm</span><span class="p">[</span><span class="s2">&quot;X_umap&quot;</span><span class="p">][:,</span> <span class="mi">1</span><span class="p">],</span>
-            <span class="n">c</span><span class="o">=</span><span class="n">codes</span><span class="p">,</span>
             <span class="n">s</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>
-            <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;tab20&quot;</span><span class="p">,</span>
+            <span class="n">c</span><span class="o">=</span><span class="s2">&quot;grey&quot;</span><span class="p">,</span>
+            <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
         <span class="p">)</span>
-        <span class="n">ax_big</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Cell Types&quot;</span><span class="p">)</span>
+        <span class="n">ax_big</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;All Cells&quot;</span><span class="p">)</span>
         <span class="n">ax_big</span><span class="o">.</span><span class="n">set_axis_off</span><span class="p">()</span>
 
     <span class="c1"># 2. 2x2 Grid on the right</span>

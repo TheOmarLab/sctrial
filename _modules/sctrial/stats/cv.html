@@ -377,6 +377,11 @@
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">included</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">4</span><span class="p">:</span>  <span class="c1"># Need minimum participants</span>
                 <span class="k">continue</span>
 
+            <span class="c1"># Verify both arms are represented in the training fold</span>
+            <span class="n">included_arms</span> <span class="o">=</span> <span class="p">{</span><span class="n">_arm_map</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">included</span><span class="p">}</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">included_arms</span><span class="p">)</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">arms</span><span class="p">):</span>
+                <span class="k">continue</span>
+
             <span class="c1"># Subset data</span>
             <span class="n">mask</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">included</span><span class="p">)</span>
             <span class="n">ad_fold</span> <span class="o">=</span> <span class="n">adata</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>

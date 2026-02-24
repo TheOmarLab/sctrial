@@ -129,8 +129,14 @@
         <span class="n">sigma</span> <span class="o">=</span> <span class="n">pm</span><span class="o">.</span><span class="n">HalfNormal</span><span class="p">(</span><span class="s2">&quot;sigma&quot;</span><span class="p">,</span> <span class="n">sigma_scale</span><span class="p">)</span>
         <span class="n">alpha</span> <span class="o">=</span> <span class="n">pm</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="s2">&quot;alpha&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">prior_scale</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="n">n_units</span><span class="p">)</span>
         <span class="n">beta_time</span> <span class="o">=</span> <span class="n">pm</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="s2">&quot;beta_time&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">prior_scale</span><span class="p">)</span>
+        <span class="n">beta_arm</span> <span class="o">=</span> <span class="n">pm</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="s2">&quot;beta_arm&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">prior_scale</span><span class="p">)</span>
         <span class="n">beta_did</span> <span class="o">=</span> <span class="n">pm</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="s2">&quot;beta_did&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">prior_scale</span><span class="p">)</span>
-        <span class="n">mu</span> <span class="o">=</span> <span class="n">alpha</span><span class="p">[</span><span class="n">unit_codes</span><span class="p">]</span> <span class="o">+</span> <span class="n">beta_time</span> <span class="o">*</span> <span class="n">time_vals</span> <span class="o">+</span> <span class="n">beta_did</span> <span class="o">*</span> <span class="n">interaction</span>
+        <span class="n">mu</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">alpha</span><span class="p">[</span><span class="n">unit_codes</span><span class="p">]</span>
+            <span class="o">+</span> <span class="n">beta_time</span> <span class="o">*</span> <span class="n">time_vals</span>
+            <span class="o">+</span> <span class="n">beta_arm</span> <span class="o">*</span> <span class="n">arm_vals</span>
+            <span class="o">+</span> <span class="n">beta_did</span> <span class="o">*</span> <span class="n">interaction</span>
+        <span class="p">)</span>
         <span class="n">pm</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="n">mu</span><span class="o">=</span><span class="n">mu</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="n">sigma</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="n">y</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">model</span>
 
@@ -163,12 +169,13 @@
 
 <span class="sd">    Fits a simple hierarchical model:</span>
 
-<span class="sd">        y_ijt = alpha_i + beta_time * time + beta_did * time*arm + eps</span>
+<span class="sd">        y_ijt = alpha_i + beta_time * time + beta_arm * arm + beta_did * time*arm + eps</span>
 
 <span class="sd">    Prior specification</span>
 <span class="sd">    -------------------</span>
 <span class="sd">    - alpha_i ~ Normal(0, prior_scale) (participant random intercepts)</span>
 <span class="sd">    - beta_time ~ Normal(0, prior_scale)</span>
+<span class="sd">    - beta_arm ~ Normal(0, prior_scale)</span>
 <span class="sd">    - beta_did ~ Normal(0, prior_scale)</span>
 <span class="sd">    - sigma ~ HalfNormal(sigma_scale)</span>
 
@@ -314,7 +321,7 @@
             <span class="p">}</span>
         <span class="p">)</span>
 
-    <span class="n">res</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s2">&quot;p_bayes&quot;</span><span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s2">&quot;p_bayes&quot;</span><span class="p">,</span> <span class="n">na_position</span><span class="o">=</span><span class="s2">&quot;last&quot;</span><span class="p">)</span>
     <span class="n">res</span> <span class="o">=</span> <span class="n">apply_fdr</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="n">p_col</span><span class="o">=</span><span class="s2">&quot;p_bayes&quot;</span><span class="p">,</span> <span class="n">fdr_col</span><span class="o">=</span><span class="s2">&quot;FDR_bayes&quot;</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">res</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
 
