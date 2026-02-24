@@ -188,10 +188,15 @@ def pseudobulk_export(
         log1p=log1p,
     )
 
-    X = df_sum[genes].to_numpy(dtype=float)
+    # Use only genes that survived filtering in pseudobulk_expression
+    available_genes = [g for g in genes if g in df_sum.columns]
+    if not available_genes:
+        raise ValueError("No requested genes found in pseudobulk output.")
+
+    X = df_sum[available_genes].to_numpy(dtype=float)
     obs = df_sum[groupby].copy()
     pb = AnnData(X=X, obs=obs)
-    pb.var_names = list(genes)
+    pb.var_names = list(available_genes)
     return pb
 
 

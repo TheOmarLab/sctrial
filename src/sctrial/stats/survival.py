@@ -131,8 +131,14 @@ def hazard_regression_with_features(
                 continue
             df_model[feat] = (df_model[feat] - df_model[feat].mean()) / std
 
-        cph = CoxPHFitter()
-        cph.fit(df_model, duration_col=time_col, event_col=event_col)
+        try:
+            cph = CoxPHFitter()
+            cph.fit(df_model, duration_col=time_col, event_col=event_col)
+        except Exception:
+            # Convergence failure or separation — record as NaN
+            results.append({"feature": feat, "HR": np.nan, "p": np.nan, "n": df_model.shape[0]})
+            continue
+
         coef = cph.params_[feat]
         hr = float(np.exp(coef))
         ci = cph.confidence_intervals_.loc[feat]
