@@ -575,8 +575,12 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">.did</span><span class="w"> </span><span class="kn">import</span> <span class="n">did_table</span>
 
+    <span class="c1"># Split kwargs: &#39;random_slope&#39; is mixed-only and would cause TypeError in did_table</span>
+    <span class="n">_MIXED_ONLY_KEYS</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;random_slope&quot;</span><span class="p">}</span>
+    <span class="n">fixed_kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_MIXED_ONLY_KEYS</span><span class="p">}</span>
+
     <span class="c1"># Run fixed effects</span>
-    <span class="n">res_fixed</span> <span class="o">=</span> <span class="n">did_table</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="n">res_fixed</span> <span class="o">=</span> <span class="n">did_table</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="p">,</span> <span class="o">**</span><span class="n">fixed_kwargs</span><span class="p">)</span>
 
     <span class="c1"># Run mixed effects</span>
     <span class="n">res_mixed</span> <span class="o">=</span> <span class="n">did_table_mixed</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>

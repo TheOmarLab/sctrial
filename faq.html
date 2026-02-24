@@ -85,6 +85,12 @@
 <li class="toctree-l3"><a class="reference internal" href="#what-is-the-difference-between-fdr-did-and-fdr-did-global">What is the difference between FDR_DiD and FDR_DiD_global?</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="#statistical-assumptions-limitations">Statistical Assumptions &amp; Limitations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#what-assumptions-does-did-require">What assumptions does DiD require?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#are-there-limitations-to-abundance-analysis">Are there limitations to abundance analysis?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#what-are-the-limitations-of-survival-analysis">What are the limitations of survival analysis?</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="#analysis-questions">Analysis Questions</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#can-i-test-for-batch-effects">Can I test for batch effects?</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#how-do-i-handle-multiple-time-points">How do I handle multiple time points?</a></li>
@@ -489,6 +495,66 @@ properly controlled inference.</p></li>
 <span class="n">sig</span> <span class="o">=</span> <span class="n">res</span><span class="p">[</span><span class="n">res</span><span class="p">[</span><span class="s2">&quot;FDR_DiD_global&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mf">0.05</span><span class="p">]</span>
 </pre></div>
 </div>
+</section>
+</section>
+<section id="statistical-assumptions-limitations">
+<h2>Statistical Assumptions &amp; Limitations<a class="headerlink" href="#statistical-assumptions-limitations" title="Link to this heading"></a></h2>
+<section id="what-assumptions-does-did-require">
+<h3>What assumptions does DiD require?<a class="headerlink" href="#what-assumptions-does-did-require" title="Link to this heading"></a></h3>
+<p>DiD relies on several key assumptions for causal interpretation:</p>
+<ol class="arabic simple">
+<li><p><strong>Parallel trends</strong>: In the absence of treatment, both arms would have
+followed the same trajectory. This cannot be tested directly with two time
+points, but can be assessed with pre-treatment data using
+<code class="docutils literal notranslate"><span class="pre">test_parallel_trends()</span></code> in multi-timepoint designs.</p></li>
+<li><p><strong>No anticipation</strong>: Participants do not change behaviour before treatment
+begins. Violated if, e.g., treated participants alter expression profiles
+at the baseline visit in anticipation of therapy.</p></li>
+<li><p><strong>SUTVA (Stable Unit Treatment Value Assumption)</strong>: No interference or
+spillover between participants. Each participant’s outcome depends only on
+their own treatment assignment.</p></li>
+<li><p><strong>No post-treatment confounding</strong>: Covariates included in the model should
+be pre-treatment (baseline) variables. Conditioning on post-treatment
+variables can introduce bias (see Angrist &amp; Pischke, 2009).</p></li>
+</ol>
+<p>These assumptions are inherent to the DiD framework and cannot be verified by
+the software alone. Users should assess their plausibility for each study
+design. Sensitivity analysis (<code class="docutils literal notranslate"><span class="pre">e_value_rr()</span></code>) can quantify how strong an
+unmeasured confounder would need to be to explain away the observed effect.</p>
+</section>
+<section id="are-there-limitations-to-abundance-analysis">
+<h3>Are there limitations to abundance analysis?<a class="headerlink" href="#are-there-limitations-to-abundance-analysis" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">abundance_did()</span></code> uses an arcsin-square-root transform on cell-type
+proportions, which is a standard variance-stabilising transformation for
+compositional data (Shao, 1999). This approach:</p>
+<ul class="simple">
+<li><p>Is simple, interpretable, and well-suited to the DiD framework</p></li>
+<li><p>Handles zero proportions gracefully (arcsin(0) = 0)</p></li>
+<li><p>Has been used in single-cell clinical trial analyses (Squair et al., 2021)</p></li>
+</ul>
+<p>However, proportions are inherently compositional: an increase in one cell type
+forces decreases in others. Fully compositional approaches (e.g., Bayesian
+multinomial-logit models, scCODA; Büttner et al., 2021) explicitly model this
+constraint. Consider these alternatives when compositional effects are a
+primary concern and sample sizes are sufficient.</p>
+</section>
+<section id="what-are-the-limitations-of-survival-analysis">
+<h3>What are the limitations of survival analysis?<a class="headerlink" href="#what-are-the-limitations-of-survival-analysis" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">hazard_regression_with_features()</span></code> fits per-feature Cox proportional hazards
+models. Key caveats:</p>
+<ul class="simple">
+<li><p><strong>Proportional hazards assumption</strong>: The hazard ratio for each feature is
+assumed constant over time. Violated when treatment effects emerge or wane.
+Assess with Schoenfeld residuals (external to sctrial).</p></li>
+<li><p><strong>Separation</strong>: When a feature perfectly predicts survival, the Cox model can
+fail to converge or produce infinite hazard ratios. sctrial detects these
+cases and returns NaN rather than misleading estimates.</p></li>
+<li><p><strong>Multiple testing</strong>: Testing many features inflates false positives. Always
+use the FDR-corrected column (<code class="docutils literal notranslate"><span class="pre">FDR</span></code>) rather than raw p-values.</p></li>
+<li><p><strong>Not a causal model</strong>: Unlike DiD, Cox regression on observational features
+estimates associations, not causal effects, unless combined with an
+appropriate causal framework.</p></li>
+</ul>
 </section>
 </section>
 <section id="analysis-questions">

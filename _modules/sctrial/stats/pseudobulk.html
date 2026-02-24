@@ -276,10 +276,15 @@
         <span class="n">log1p</span><span class="o">=</span><span class="n">log1p</span><span class="p">,</span>
     <span class="p">)</span>
 
-    <span class="n">X</span> <span class="o">=</span> <span class="n">df_sum</span><span class="p">[</span><span class="n">genes</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="c1"># Use only genes that survived filtering in pseudobulk_expression</span>
+    <span class="n">available_genes</span> <span class="o">=</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">genes</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">df_sum</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">available_genes</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;No requested genes found in pseudobulk output.&quot;</span><span class="p">)</span>
+
+    <span class="n">X</span> <span class="o">=</span> <span class="n">df_sum</span><span class="p">[</span><span class="n">available_genes</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
     <span class="n">obs</span> <span class="o">=</span> <span class="n">df_sum</span><span class="p">[</span><span class="n">groupby</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
     <span class="n">pb</span> <span class="o">=</span> <span class="n">AnnData</span><span class="p">(</span><span class="n">X</span><span class="o">=</span><span class="n">X</span><span class="p">,</span> <span class="n">obs</span><span class="o">=</span><span class="n">obs</span><span class="p">)</span>
-    <span class="n">pb</span><span class="o">.</span><span class="n">var_names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">genes</span><span class="p">)</span>
+    <span class="n">pb</span><span class="o">.</span><span class="n">var_names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">available_genes</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">pb</span></div>
 
 

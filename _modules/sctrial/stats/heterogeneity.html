@@ -222,7 +222,13 @@
         <span class="k">if</span> <span class="n">tmp</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">duplicated</span><span class="p">()</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
             <span class="n">tmp</span> <span class="o">=</span> <span class="n">tmp</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="o">~</span><span class="n">tmp</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">duplicated</span><span class="p">()]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
         <span class="n">tmp</span> <span class="o">=</span> <span class="n">tmp</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="n">feat</span><span class="p">,</span> <span class="s2">&quot;biomarker_high&quot;</span><span class="p">])</span>
-        <span class="k">if</span> <span class="n">tmp</span><span class="p">[</span><span class="n">unit</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">MIN_CLUSTERS_FOR_ROBUST_SE</span><span class="p">:</span>
+        <span class="n">n_clusters</span> <span class="o">=</span> <span class="n">tmp</span><span class="p">[</span><span class="n">unit</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">n_clusters</span> <span class="o">&lt;</span> <span class="n">MIN_CLUSTERS_FOR_ROBUST_SE</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Feature &#39;</span><span class="si">{</span><span class="n">feat</span><span class="si">}</span><span class="s2">&#39; skipped: only </span><span class="si">{</span><span class="n">n_clusters</span><span class="si">}</span><span class="s2"> clusters &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;(need &gt;= </span><span class="si">{</span><span class="n">MIN_CLUSTERS_FOR_ROBUST_SE</span><span class="si">}</span><span class="s2"> for robust SE).&quot;</span><span class="p">,</span>
+                <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="p">)</span>
             <span class="k">continue</span>
 
         <span class="c1"># Handle duplicate column names by selecting the first column</span>

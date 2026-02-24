@@ -370,6 +370,74 @@ In ``module_score_did_by_pool()``, when ``fdr_within`` is set:
    # For publication: use global FDR
    sig = res[res["FDR_DiD_global"] < 0.05]
 
+Statistical Assumptions & Limitations
+--------------------------------------
+
+What assumptions does DiD require?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+DiD relies on several key assumptions for causal interpretation:
+
+1. **Parallel trends**: In the absence of treatment, both arms would have
+   followed the same trajectory. This cannot be tested directly with two time
+   points, but can be assessed with pre-treatment data using
+   ``test_parallel_trends()`` in multi-timepoint designs.
+
+2. **No anticipation**: Participants do not change behaviour before treatment
+   begins. Violated if, e.g., treated participants alter expression profiles
+   at the baseline visit in anticipation of therapy.
+
+3. **SUTVA (Stable Unit Treatment Value Assumption)**: No interference or
+   spillover between participants. Each participant's outcome depends only on
+   their own treatment assignment.
+
+4. **No post-treatment confounding**: Covariates included in the model should
+   be pre-treatment (baseline) variables. Conditioning on post-treatment
+   variables can introduce bias (see Angrist & Pischke, 2009).
+
+These assumptions are inherent to the DiD framework and cannot be verified by
+the software alone. Users should assess their plausibility for each study
+design. Sensitivity analysis (``e_value_rr()``) can quantify how strong an
+unmeasured confounder would need to be to explain away the observed effect.
+
+Are there limitations to abundance analysis?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``abundance_did()`` uses an arcsin-square-root transform on cell-type
+proportions, which is a standard variance-stabilising transformation for
+compositional data (Shao, 1999). This approach:
+
+- Is simple, interpretable, and well-suited to the DiD framework
+- Handles zero proportions gracefully (arcsin(0) = 0)
+- Has been used in single-cell clinical trial analyses (Squair et al., 2021)
+
+However, proportions are inherently compositional: an increase in one cell type
+forces decreases in others. Fully compositional approaches (e.g., Bayesian
+multinomial-logit models, scCODA; Büttner et al., 2021) explicitly model this
+constraint. Consider these alternatives when compositional effects are a
+primary concern and sample sizes are sufficient.
+
+What are the limitations of survival analysis?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``hazard_regression_with_features()`` fits per-feature Cox proportional hazards
+models. Key caveats:
+
+- **Proportional hazards assumption**: The hazard ratio for each feature is
+  assumed constant over time. Violated when treatment effects emerge or wane.
+  Assess with Schoenfeld residuals (external to sctrial).
+
+- **Separation**: When a feature perfectly predicts survival, the Cox model can
+  fail to converge or produce infinite hazard ratios. sctrial detects these
+  cases and returns NaN rather than misleading estimates.
+
+- **Multiple testing**: Testing many features inflates false positives. Always
+  use the FDR-corrected column (``FDR``) rather than raw p-values.
+
+- **Not a causal model**: Unlike DiD, Cox regression on observational features
+  estimates associations, not causal effects, unless combined with an
+  appropriate causal framework.
+
 Analysis Questions
 ------------------
 

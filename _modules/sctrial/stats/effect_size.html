@@ -295,7 +295,9 @@
 <span class="sd">    alpha</span>
 <span class="sd">        Significance level (default 0.05 for 95% CI).</span>
 <span class="sd">    method</span>
-<span class="sd">        - &quot;nct&quot;: Noncentral t-distribution (analytical, fast)</span>
+<span class="sd">        - &quot;nct&quot;: Wald-type CI using the Hedges &amp; Olkin (1985) large-sample</span>
+<span class="sd">          variance approximation with t critical values. Fast and adequate for</span>
+<span class="sd">          most sample sizes.</span>
 <span class="sd">        - &quot;bootstrap&quot;: Not implemented here; use bootstrap_effect_size_ci</span>
 
 <span class="sd">    Returns</span>
@@ -305,13 +307,11 @@
 
 <span class="sd">    Notes</span>
 <span class="sd">    -----</span>
-<span class="sd">    The noncentral t-distribution method finds the noncentrality parameters</span>
-<span class="sd">    λ_L and λ_U such that:</span>
+<span class="sd">    Uses the Hedges &amp; Olkin (1985) variance formula:</span>
 
-<span class="sd">        P(t &gt; t_obs | λ=λ_L) = α/2</span>
-<span class="sd">        P(t &lt; t_obs | λ=λ_U) = α/2</span>
+<span class="sd">        SE(d) = √( (n₁+n₂)/(n₁·n₂) + d² / (2·(n₁+n₂-2)) )</span>
 
-<span class="sd">    Then: d_L = λ_L × √(1/n₁ + 1/n₂), d_U = λ_U × √(1/n₁ + 1/n₂)</span>
+<span class="sd">    with t critical values at df = n₁ + n₂ - 2.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="ow">or</span> <span class="n">n1</span> <span class="o">&lt;</span> <span class="mi">2</span> <span class="ow">or</span> <span class="n">n2</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
         <span class="k">return</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>

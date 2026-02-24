@@ -83,6 +83,7 @@
   <h1>Source code for sctrial.stats.survival</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sequence</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
@@ -92,6 +93,8 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">..design</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrialDesign</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._extract</span><span class="w"> </span><span class="kn">import</span> <span class="n">extract_gene_matrix</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">aggregate_features</span><span class="p">,</span> <span class="n">apply_fdr</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;hazard_regression_with_features&quot;</span><span class="p">]</span>
 
@@ -149,6 +152,7 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">lifelines</span><span class="w"> </span><span class="kn">import</span> <span class="n">CoxPHFitter</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">lifelines.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConvergenceError</span> <span class="k">as</span> <span class="n">_ConvergenceError</span>
     <span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>  <span class="c1"># pragma: no cover</span>
         <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span><span class="s2">&quot;lifelines is required for survival analysis&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
 
@@ -216,14 +220,33 @@
                 <span class="k">continue</span>
             <span class="n">df_model</span><span class="p">[</span><span class="n">feat</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">df_model</span><span class="p">[</span><span class="n">feat</span><span class="p">]</span> <span class="o">-</span> <span class="n">df_model</span><span class="p">[</span><span class="n">feat</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span> <span class="o">/</span> <span class="n">std</span>
 
-        <span class="n">cph</span> <span class="o">=</span> <span class="n">CoxPHFitter</span><span class="p">()</span>
-        <span class="n">cph</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">df_model</span><span class="p">,</span> <span class="n">duration_col</span><span class="o">=</span><span class="n">time_col</span><span class="p">,</span> <span class="n">event_col</span><span class="o">=</span><span class="n">event_col</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">cph</span> <span class="o">=</span> <span class="n">CoxPHFitter</span><span class="p">()</span>
+            <span class="n">cph</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">df_model</span><span class="p">,</span> <span class="n">duration_col</span><span class="o">=</span><span class="n">time_col</span><span class="p">,</span> <span class="n">event_col</span><span class="o">=</span><span class="n">event_col</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span>
+            <span class="n">_ConvergenceError</span><span class="p">,</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">LinAlgError</span><span class="p">,</span>
+        <span class="p">):</span>
+            <span class="c1"># Expected: convergence failure or singular matrix from separation</span>
+            <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span> <span class="s2">&quot;HR&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">&quot;p&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">&quot;n&quot;</span><span class="p">:</span> <span class="n">df_model</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]})</span>
+            <span class="k">continue</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="c1"># Unexpected error — log and propagate so data/config bugs</span>
+            <span class="c1"># are not silently swallowed as NaN results.</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">&quot;Unexpected error fitting Cox model for feature &#39;</span><span class="si">%s</span><span class="s2">&#39;&quot;</span><span class="p">,</span> <span class="n">feat</span><span class="p">)</span>
+            <span class="k">raise</span>
+
         <span class="n">coef</span> <span class="o">=</span> <span class="n">cph</span><span class="o">.</span><span class="n">params_</span><span class="p">[</span><span class="n">feat</span><span class="p">]</span>
         <span class="n">hr</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">coef</span><span class="p">))</span>
         <span class="n">ci</span> <span class="o">=</span> <span class="n">cph</span><span class="o">.</span><span class="n">confidence_intervals_</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">feat</span><span class="p">]</span>
         <span class="n">hr_low</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">ci</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
         <span class="n">hr_high</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">ci</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
         <span class="n">p_val</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">cph</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">feat</span><span class="p">,</span> <span class="s2">&quot;p&quot;</span><span class="p">])</span>
+
+        <span class="c1"># Detect unstable estimates from separation (infinite CI bounds)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">hr_low</span><span class="p">)</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">hr_high</span><span class="p">)</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">hr</span><span class="p">)):</span>
+            <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span> <span class="s2">&quot;HR&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">&quot;p&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">&quot;n&quot;</span><span class="p">:</span> <span class="n">df_model</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]})</span>
+            <span class="k">continue</span>
 
         <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
             <span class="p">{</span>

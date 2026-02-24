@@ -1044,7 +1044,7 @@ most useful for large feature panels (hundreds to thousands of genes).</p>
 <dd><p>Bayesian DiD with participant random intercepts.</p>
 <p>Fits a simple hierarchical model:</p>
 <blockquote>
-<div><p>y_ijt = alpha_i + beta_time * time + beta_arm * arm + beta_did * time*arm + eps</p>
+<div><p>y_ijt = alpha_i + beta_time * time + beta_arm * arm + beta_did * time*arm + X_cov * beta_cov + eps</p>
 </div></blockquote>
 <section id="prior-specification">
 <h4>Prior specification<a class="headerlink" href="#prior-specification" title="Link to this heading"></a></h4>
@@ -1495,7 +1495,9 @@ which can mis-scale effect sizes when designs are imbalanced or heteroscedastic.
 <li><p><strong>n2</strong> – Sample size of group 2.</p></li>
 <li><p><strong>alpha</strong> – Significance level (default 0.05 for 95% CI).</p></li>
 <li><p><strong>method</strong> – <ul>
-<li><p>“nct”: Noncentral t-distribution (analytical, fast)</p></li>
+<li><p>“nct”: Wald-type CI using the Hedges &amp; Olkin (1985) large-sample
+variance approximation with t critical values. Fast and adequate for
+most sample sizes.</p></li>
 <li><p>”bootstrap”: Not implemented here; use bootstrap_effect_size_ci</p></li>
 </ul>
 </p></li>
@@ -1509,13 +1511,11 @@ which can mis-scale effect sizes when designs are imbalanced or heteroscedastic.
 </dd>
 </dl>
 <p class="rubric">Notes</p>
-<p>The noncentral t-distribution method finds the noncentrality parameters
-λ_L and λ_U such that:</p>
+<p>Uses the Hedges &amp; Olkin (1985) variance formula:</p>
 <blockquote>
-<div><p>P(t &gt; t_obs | λ=λ_L) = α/2
-P(t &lt; t_obs | λ=λ_U) = α/2</p>
+<div><p>SE(d) = √( (n₁+n₂)/(n₁·n₂) + d² / (2·(n₁+n₂-2)) )</p>
 </div></blockquote>
-<p>Then: d_L = λ_L × √(1/n₁ + 1/n₂), d_U = λ_U × √(1/n₁ + 1/n₂)</p>
+<p>with t critical values at df = n₁ + n₂ - 2.</p>
 </dd></dl>
 
 <dl class="py function">
