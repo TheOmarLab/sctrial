@@ -113,7 +113,11 @@
         <span class="n">config</span><span class="p">:</span> <span class="n">DiDConfig</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">celltype</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run DiD and store results.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run DiD and store results.</span>
+
+<span class="sd">        Returns a *copy* of the results DataFrame so that external</span>
+<span class="sd">        mutations do not alter the analyzer&#39;s internal state.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">results_</span> <span class="o">=</span> <span class="n">did_table</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">adata</span><span class="p">,</span>
             <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span>
@@ -122,7 +126,7 @@
             <span class="n">celltype</span><span class="o">=</span><span class="n">celltype</span><span class="p">,</span>
             <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">,</span>
         <span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">results_</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">results_</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span></div>
 
 
 <div class="viewcode-block" id="DiDAnalyzer.summarize">

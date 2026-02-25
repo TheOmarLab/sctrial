@@ -10,11 +10,23 @@ In many clinical trials, participants in the control arm may "cross over" to the
 
 `sctrial` uses a `crossover_col` in the `TrialDesign` to identify these cells.
 
+The crossover column is flexible and accepts several formats:
+
+- **Boolean**: ``True`` / ``False``
+- **Numeric**: any non-zero finite value is treated as crossover (``0.5``, ``1.0`` → crossover; ``0.0`` → not crossover)
+- **String**: ``"true"``, ``"yes"``, ``"y"``, ``"1"`` (case-insensitive) are treated as crossover
+
+.. note::
+
+   Non-finite numeric values (``NaN``, ``inf``) in a crossover column are treated as
+   ``False`` (i.e. the cell is kept) and a warning is logged. This guards against
+   data quality issues without crashing the analysis.
+
 .. code-block:: python
 
    import sctrial as st
    import pandas as pd
-   
+
    # Setup design with crossover column
    design = st.TrialDesign(
        participant_col="participant_id",
@@ -173,11 +185,18 @@ Before running inference, you might want to see how marker genes or module score
 .. code-block:: python
 
    profile = st.profile_features(
-       adata, 
-       features=["MUC1", "MUC13", "EPCAM"], 
+       adata,
+       features=["MUC1", "MUC13", "EPCAM"],
        groupby="celltype"
    )
    # Returns a DataFrame of mean expression per celltype.
+
+.. note::
+
+   ``profile_features`` aggregates at the **cell level**. Groups with more cells
+   will dominate the aggregate. For participant-level or balanced arm comparisons,
+   pre-aggregate to pseudobulk (e.g. via ``st.pseudobulk_expression()``) before
+   calling this function.
 
 8. Specialized Heatmaps and Radar Plots
 ---------------------------------------

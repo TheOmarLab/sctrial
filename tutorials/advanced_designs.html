@@ -126,6 +126,18 @@
 <h2>1. Crossover Designs<a class="headerlink" href="#crossover-designs" title="Link to this heading"></a></h2>
 <p>In many clinical trials, participants in the control arm may “cross over” to the treatment arm after a certain period, or vice versa. Handling these correctly is essential to avoid conflating different types of effects.</p>
 <p><cite>sctrial</cite> uses a <cite>crossover_col</cite> in the <cite>TrialDesign</cite> to identify these cells.</p>
+<p>The crossover column is flexible and accepts several formats:</p>
+<ul class="simple">
+<li><p><strong>Boolean</strong>: <code class="docutils literal notranslate"><span class="pre">True</span></code> / <code class="docutils literal notranslate"><span class="pre">False</span></code></p></li>
+<li><p><strong>Numeric</strong>: any non-zero finite value is treated as crossover (<code class="docutils literal notranslate"><span class="pre">0.5</span></code>, <code class="docutils literal notranslate"><span class="pre">1.0</span></code> → crossover; <code class="docutils literal notranslate"><span class="pre">0.0</span></code> → not crossover)</p></li>
+<li><p><strong>String</strong>: <code class="docutils literal notranslate"><span class="pre">&quot;true&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;yes&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;y&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;1&quot;</span></code> (case-insensitive) are treated as crossover</p></li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Non-finite numeric values (<code class="docutils literal notranslate"><span class="pre">NaN</span></code>, <code class="docutils literal notranslate"><span class="pre">inf</span></code>) in a crossover column are treated as
+<code class="docutils literal notranslate"><span class="pre">False</span></code> (i.e. the cell is kept) and a warning is logged. This guards against
+data quality issues without crashing the analysis.</p>
+</div>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">sctrial</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 
@@ -273,6 +285,13 @@
 <span class="p">)</span>
 <span class="c1"># Returns a DataFrame of mean expression per celltype.</span>
 </pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code class="docutils literal notranslate"><span class="pre">profile_features</span></code> aggregates at the <strong>cell level</strong>. Groups with more cells
+will dominate the aggregate. For participant-level or balanced arm comparisons,
+pre-aggregate to pseudobulk (e.g. via <code class="docutils literal notranslate"><span class="pre">st.pseudobulk_expression()</span></code>) before
+calling this function.</p>
 </div>
 </section>
 <section id="specialized-heatmaps-and-radar-plots">

@@ -269,6 +269,17 @@
 <span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">score_gene_sets</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">gene_sets</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;log1p_cpm&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code class="docutils literal notranslate"><span class="pre">add_log1p_cpm_layer()</span></code> performs input validation before normalizing:</p>
+<ul class="simple">
+<li><p><strong>Negative counts</strong> raise a <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> — fix upstream QC before calling.</p></li>
+<li><p><strong>NaN or inf values</strong> emit a warning and may produce unexpected results.</p></li>
+<li><p><strong>All-zero cells</strong> emit a warning (library size = 0 yields <code class="docutils literal notranslate"><span class="pre">log1p(0)</span> <span class="pre">=</span> <span class="pre">0</span></code> for every gene).</p></li>
+</ul>
+<p>The function also records provenance metadata in <code class="docutils literal notranslate"><span class="pre">adata.uns[&quot;log1p_cpm_info&quot;]</span></code>
+(source layer, target layer, timestamp) for reproducibility tracking.</p>
+</div>
 <p><strong>Alternative for batch correction</strong>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># If you need batch correction, do it before sctrial</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">scanpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sc</span>
