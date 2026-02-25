@@ -539,12 +539,26 @@ preprocessing, gene scoring, and DiD analysis.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
+<li><p><strong>adata</strong> – AnnData object with raw counts.</p></li>
 <li><p><strong>counts_layer</strong> – Layer name containing raw counts. If None, uses adata.X.</p></li>
 <li><p><strong>out_layer</strong> – Output layer name.</p></li>
 <li><p><strong>layer_out</strong> – Backwards-compatible alias for out_layer.</p></li>
-<li><p><strong>scale</strong> – CPM scale factor (default 1e6).</p></li>
+<li><p><strong>scale</strong> – CPM scale factor (default 1e6). Must be finite and positive.</p></li>
 <li><p><strong>overwrite</strong> – Overwrite if out_layer already exists.</p></li>
 <li><p><strong>inplace</strong> – Modify the input AnnData if True, else return a copy.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The AnnData object with the new log1p(CPM) layer added.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>AnnData</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">scale</span></code> is not a finite positive number, or if the counts
+    matrix contains negative values.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#KeyError" title="(in Python v3.14)"><strong>KeyError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">counts_layer</span></code> is not found in <code class="docutils literal notranslate"><span class="pre">adata.layers</span></code>.</p></li>
 </ul>
 </dd>
 </dl>
