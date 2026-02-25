@@ -83,11 +83,14 @@
   <h1>Source code for sctrial.design</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sequence</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">anndata</span><span class="w"> </span><span class="kn">import</span> <span class="n">AnnData</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;TrialDesign&quot;</span><span class="p">]</span>
 
@@ -148,8 +151,8 @@
 <span class="sd">            Optional explicit follow-up visit label. If None, uses</span>
 <span class="sd">            ``self.followup_visit``.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">b</span> <span class="o">=</span> <span class="n">baseline</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">baseline_visit</span>
-        <span class="n">f</span> <span class="o">=</span> <span class="n">followup</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">followup_visit</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="n">baseline</span> <span class="k">if</span> <span class="n">baseline</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">baseline_visit</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="n">followup</span> <span class="k">if</span> <span class="n">followup</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">followup_visit</span>
         <span class="k">if</span> <span class="n">b</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">f</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                 <span class="s2">&quot;Primary visits not specified. Provide baseline/followup or set &quot;</span>
@@ -222,12 +225,30 @@
             <span class="p">)</span>
 
         <span class="k">if</span> <span class="n">check_arm_labels</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">arm_treated</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">arm_control</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;arm_treated and arm_control must be distinct for &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;between-arm analyses, got </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_treated</span><span class="si">!r}</span><span class="s2"> for both. &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;For single-arm studies, use check_arm_labels=False.&quot;</span>
+                <span class="p">)</span>
             <span class="n">arms</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">obs</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_col</span><span class="p">])</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
             <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_treated</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">arms</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_control</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">arms</span><span class="p">):</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                     <span class="sa">f</span><span class="s2">&quot;Arm labels not found in obs[&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_col</span><span class="si">}</span><span class="s2">&#39;]. &quot;</span>
                     <span class="sa">f</span><span class="s2">&quot;Expected treated=&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_treated</span><span class="si">}</span><span class="s2">&#39;, control=&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_control</span><span class="si">}</span><span class="s2">&#39;. &quot;</span>
                     <span class="sa">f</span><span class="s2">&quot;Observed arms: </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">arms</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="n">extra</span> <span class="o">=</span> <span class="n">arms</span> <span class="o">-</span> <span class="p">{</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_treated</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">arm_control</span><span class="p">}</span>
+            <span class="k">if</span> <span class="n">extra</span><span class="p">:</span>
+                <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;obs[&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_col</span><span class="si">}</span><span class="s2">&#39;] contains arms beyond treated/control: &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">extra</span><span class="p">)</span><span class="si">}</span><span class="s2">. These participants will be treated as &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;control in arm_bin(). Consider subsetting your data to &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;only the two arms of interest.&quot;</span><span class="p">,</span>
+                    <span class="ne">UserWarning</span><span class="p">,</span>
+                    <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
                 <span class="p">)</span></div>
 
 
@@ -235,6 +256,11 @@
 <a class="viewcode-back" href="../../api.html#sctrial.design.TrialDesign.arm_bin">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">arm_bin</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obs</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return 0/1 treated indicator aligned to obs.index.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">arm_treated</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">arm_control</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;arm_bin() requires distinct arm labels, but &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;arm_treated == arm_control == </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_treated</span><span class="si">!r}</span><span class="s2">.&quot;</span>
+            <span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">arm_col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;arm_col &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_col</span><span class="si">}</span><span class="s2">&#39; not in obs.&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="p">(</span><span class="n">obs</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">arm_treated</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span></div>
