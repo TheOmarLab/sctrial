@@ -89,6 +89,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#what-assumptions-does-did-require">What assumptions does DiD require?</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#are-there-limitations-to-abundance-analysis">Are there limitations to abundance analysis?</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#what-are-the-limitations-of-survival-analysis">What are the limitations of survival analysis?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#can-i-use-categorical-covariates-in-bayesian-did">Can I use categorical covariates in Bayesian DiD?</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#analysis-questions">Analysis Questions</a><ul>
@@ -555,6 +556,21 @@ use the FDR-corrected column (<code class="docutils literal notranslate"><span c
 estimates associations, not causal effects, unless combined with an
 appropriate causal framework.</p></li>
 </ul>
+</section>
+<section id="can-i-use-categorical-covariates-in-bayesian-did">
+<h3>Can I use categorical covariates in Bayesian DiD?<a class="headerlink" href="#can-i-use-categorical-covariates-in-bayesian-did" title="Link to this heading"></a></h3>
+<p>Yes. <code class="docutils literal notranslate"><span class="pre">did_table_bayes()</span></code> automatically dummy-encodes categorical columns
+(e.g., sex, batch, site) using one-hot encoding with the first category
+dropped to avoid multicollinearity with the intercept. You can pass
+categorical columns directly in the <code class="docutils literal notranslate"><span class="pre">covariates</span></code> parameter:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table_bayes</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">),</span>
+    <span class="n">covariates</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;sex&quot;</span><span class="p">,</span> <span class="s2">&quot;site&quot;</span><span class="p">],</span>  <span class="c1"># categorical columns are auto-encoded</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>This follows standard Bayesian practice for including indicator variables
+in linear models (Gelman &amp; Hill, 2006).</p>
 </section>
 </section>
 <section id="analysis-questions">

@@ -322,8 +322,10 @@
 <span class="c1"># GSEA radar chart (requires gseapy)</span>
 <span class="n">st</span><span class="o">.</span><span class="n">plot_gsea_radar</span><span class="p">(</span>
     <span class="n">gsea_results</span><span class="o">=</span><span class="n">res_gsea</span><span class="p">,</span>
-    <span class="n">top_n</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
-    <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Top Enriched Pathways&quot;</span>
+    <span class="n">term</span><span class="o">=</span><span class="s2">&quot;HALLMARK_OXIDATIVE_PHOSPHORYLATION&quot;</span><span class="p">,</span>
+    <span class="n">pool_col</span><span class="o">=</span><span class="s2">&quot;celltype&quot;</span><span class="p">,</span>
+    <span class="c1"># Column names are configurable via term_col, fdr_col</span>
+    <span class="n">title</span><span class="o">=</span><span class="s2">&quot;NES across cell types&quot;</span><span class="p">,</span>
 <span class="p">)</span>
 </pre></div>
 </div>
