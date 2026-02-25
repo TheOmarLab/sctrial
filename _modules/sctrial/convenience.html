@@ -118,6 +118,7 @@
     <span class="n">layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;log1p_cpm&quot;</span><span class="p">,</span>
     <span class="n">counts_layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;counts&quot;</span><span class="p">,</span>
     <span class="n">score_method</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;zmean&quot;</span><span class="p">,</span> <span class="s2">&quot;mean&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;zmean&quot;</span><span class="p">,</span>
+    <span class="n">min_genes</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
     <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;One-line wrapper for the most common DiD workflow.</span>
@@ -142,8 +143,14 @@
 <span class="sd">    arm_control</span>
 <span class="sd">        Label for control arm.</span>
 <span class="sd">    visits</span>
-<span class="sd">        Tuple of (baseline, followup) visit labels. If None, uses first two</span>
-<span class="sd">        unique visits in sorted order.</span>
+<span class="sd">        Tuple of (baseline, followup) visit labels.  Must be specified</span>
+<span class="sd">        explicitly to ensure the correct causal contrast direction.</span>
+
+<span class="sd">        .. deprecated::</span>
+<span class="sd">            Passing ``visits=None`` is deprecated. Lexicographic sorting</span>
+<span class="sd">            of visit labels can silently pick the wrong pair (e.g.</span>
+<span class="sd">            ``&quot;Day10&quot;`` before ``&quot;Day2&quot;``).  Always specify visits</span>
+<span class="sd">            explicitly.</span>
 <span class="sd">    celltype_col</span>
 <span class="sd">        Optional column name for cell types.</span>
 <span class="sd">    layer</span>
@@ -152,6 +159,10 @@
 <span class="sd">        Layer name for raw counts (used if layer needs to be created).</span>
 <span class="sd">    score_method</span>
 <span class="sd">        Method for gene set scoring (&#39;mean&#39; or &#39;zmean&#39;).</span>
+<span class="sd">    min_genes</span>
+<span class="sd">        Minimum number of overlapping genes for a module score to be</span>
+<span class="sd">        computed.  Modules with fewer overlapping genes get NaN scores.</span>
+<span class="sd">        Default is 3.</span>
 <span class="sd">    **kwargs</span>
 <span class="sd">        Additional arguments passed to did_table().</span>
 
@@ -173,6 +184,30 @@
 <span class="sd">    ... )</span>
 <span class="sd">    &gt;&gt;&gt; print(res[[&quot;feature&quot;, &quot;beta_DiD&quot;, &quot;p_DiD&quot;, &quot;FDR_DiD&quot;]])</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Validate that visit_col exists before doing anything else</span>
+    <span class="k">if</span> <span class="n">visit_col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Column &#39;</span><span class="si">{</span><span class="n">visit_col</span><span class="si">}</span><span class="s2">&#39; not found in adata.obs. &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Available columns: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">[:</span><span class="mi">20</span><span class="p">])</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Validate arm labels exist in the data</span>
+    <span class="n">actual_arms</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">arm_col</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">())</span> <span class="k">if</span> <span class="n">arm_col</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span> <span class="k">else</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">arm_col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Column &#39;</span><span class="si">{</span><span class="n">arm_col</span><span class="si">}</span><span class="s2">&#39; not found in adata.obs.&quot;</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">arm_treated</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">actual_arms</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;arm_treated=&#39;</span><span class="si">{</span><span class="n">arm_treated</span><span class="si">}</span><span class="s2">&#39; not found in column &#39;</span><span class="si">{</span><span class="n">arm_col</span><span class="si">}</span><span class="s2">&#39;. &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Available values: </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">actual_arms</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">arm_control</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">actual_arms</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;arm_control=&#39;</span><span class="si">{</span><span class="n">arm_control</span><span class="si">}</span><span class="s2">&#39; not found in column &#39;</span><span class="si">{</span><span class="n">arm_col</span><span class="si">}</span><span class="s2">&#39;. &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Available values: </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">actual_arms</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
     <span class="c1"># 1. Create design</span>
     <span class="n">design</span> <span class="o">=</span> <span class="n">TrialDesign</span><span class="p">(</span>
         <span class="n">participant_col</span><span class="o">=</span><span class="n">participant_col</span><span class="p">,</span>
@@ -183,37 +218,52 @@
         <span class="n">celltype_col</span><span class="o">=</span><span class="n">celltype_col</span><span class="p">,</span>
     <span class="p">)</span>
 
-    <span class="c1"># 2. Auto-detect visits if not provided</span>
+    <span class="c1"># 2. Auto-detect visits if not provided (deprecated — warns)</span>
     <span class="k">if</span> <span class="n">visits</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+
         <span class="n">all_visits</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">())</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">all_visits</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                 <span class="sa">f</span><span class="s2">&quot;Need at least 2 visits for DiD analysis, found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">all_visits</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
             <span class="p">)</span>
-        <span class="n">visits</span> <span class="o">=</span> <span class="p">(</span><span class="n">all_visits</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">all_visits</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Auto-detected visits: </span><span class="si">{</span><span class="n">visits</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">visits</span> <span class="o">=</span> <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">all_visits</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">str</span><span class="p">(</span><span class="n">all_visits</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="s2">&quot;visits=None uses lexicographic sorting, which can pick the &quot;</span>
+            <span class="s2">&quot;wrong visit pair (e.g. &#39;Day10&#39; before &#39;Day2&#39;). &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Auto-selected visits=</span><span class="si">{</span><span class="n">visits</span><span class="si">!r}</span><span class="s2">. &quot;</span>
+            <span class="s2">&quot;Please specify visits explicitly.&quot;</span><span class="p">,</span>
+            <span class="ne">FutureWarning</span><span class="p">,</span>
+            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="p">)</span>
 
     <span class="c1"># 3. Ensure preprocessing</span>
     <span class="k">if</span> <span class="n">layer</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Creating &#39;</span><span class="si">{</span><span class="n">layer</span><span class="si">}</span><span class="s2">&#39; layer from &#39;</span><span class="si">{</span><span class="n">counts_layer</span><span class="si">}</span><span class="s2">&#39;...&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Creating &#39;</span><span class="si">%s</span><span class="s2">&#39; layer from &#39;</span><span class="si">%s</span><span class="s2">&#39;...&quot;</span><span class="p">,</span> <span class="n">layer</span><span class="p">,</span> <span class="n">counts_layer</span><span class="p">)</span>
         <span class="n">adata</span> <span class="o">=</span> <span class="n">add_log1p_cpm_layer</span><span class="p">(</span>
             <span class="n">adata</span><span class="p">,</span> <span class="n">counts_layer</span><span class="o">=</span><span class="n">counts_layer</span><span class="p">,</span> <span class="n">out_layer</span><span class="o">=</span><span class="n">layer</span>
         <span class="p">)</span>
 
     <span class="c1"># 4. Score gene sets</span>
-    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Scoring </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">module_scores</span><span class="p">)</span><span class="si">}</span><span class="s2"> gene sets...&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Scoring </span><span class="si">%d</span><span class="s2"> gene sets...&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">module_scores</span><span class="p">))</span>
     <span class="n">adata</span> <span class="o">=</span> <span class="n">score_gene_sets</span><span class="p">(</span>
-        <span class="n">adata</span><span class="p">,</span> <span class="n">module_scores</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="n">layer</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="n">score_method</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;ms_&quot;</span>
+        <span class="n">adata</span><span class="p">,</span> <span class="n">module_scores</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="n">layer</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="n">score_method</span><span class="p">,</span>
+        <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;ms_&quot;</span><span class="p">,</span> <span class="n">min_genes</span><span class="o">=</span><span class="n">min_genes</span><span class="p">,</span>
     <span class="p">)</span>
 
     <span class="c1"># 5. Run DiD</span>
     <span class="n">features</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;ms_</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">module_scores</span><span class="o">.</span><span class="n">keys</span><span class="p">()]</span>
-    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Running DiD for </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">features</span><span class="p">)</span><span class="si">}</span><span class="s2"> features...&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Running DiD for </span><span class="si">%d</span><span class="s2"> features...&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">features</span><span class="p">))</span>
     <span class="k">return</span> <span class="n">did_table</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="n">visits</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
 
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_detect_column_patterns</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return column name patterns for auto-detection.</span>
+
+<span class="sd">    Patterns are tried in order: exact match first, then word-boundary</span>
+<span class="sd">    partial match (see :func:`_find_column`).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="p">{</span>
         <span class="s2">&quot;participant&quot;</span><span class="p">:</span> <span class="p">[</span>
             <span class="s2">&quot;participant_id&quot;</span><span class="p">,</span>
@@ -237,11 +287,11 @@
         <span class="p">],</span>
         <span class="s2">&quot;arm&quot;</span><span class="p">:</span> <span class="p">[</span>
             <span class="s2">&quot;arm&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;treatment_arm&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;arm_id&quot;</span><span class="p">,</span>
             <span class="s2">&quot;treatment&quot;</span><span class="p">,</span>
             <span class="s2">&quot;group&quot;</span><span class="p">,</span>
             <span class="s2">&quot;condition&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;arm_id&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;treatment_arm&quot;</span><span class="p">,</span>
         <span class="p">],</span>
         <span class="s2">&quot;celltype&quot;</span><span class="p">:</span> <span class="p">[</span>
             <span class="s2">&quot;celltype&quot;</span><span class="p">,</span>
@@ -275,20 +325,20 @@
     <span class="n">participant_col</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">visit_col</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">arm_col</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-    <span class="n">arm_treated</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">arm_control</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">arm_treated</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">arm_control</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">celltype_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;AUTO-DETECTED TRIAL DESIGN&quot;</span><span class="p">)</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
-    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Participant column: </span><span class="si">{</span><span class="n">participant_col</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Visit column:       </span><span class="si">{</span><span class="n">visit_col</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Arm column:         </span><span class="si">{</span><span class="n">arm_col</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Treated arm:      </span><span class="si">{</span><span class="n">arm_treated</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Control arm:      </span><span class="si">{</span><span class="n">arm_control</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Participant column: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">participant_col</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Visit column:       </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">visit_col</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Arm column:         </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">arm_col</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;  Treated arm:      </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">arm_treated</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;  Control arm:      </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">arm_control</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">celltype_col</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cell type column:   </span><span class="si">{</span><span class="n">celltype_col</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Cell type column:   </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">celltype_col</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Cell type column:   (not detected)&quot;</span><span class="p">)</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
@@ -306,19 +356,33 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Auto-detect trial design from common column naming patterns.</span>
 
 <span class="sd">    Looks for common patterns in column names:</span>
-<span class="sd">    - participant: &#39;participant_id&#39;, &#39;patient_id&#39;, &#39;donor_id&#39;, &#39;subject_id&#39;, &#39;sample_id&#39;</span>
-<span class="sd">    - visit: &#39;visit&#39;, &#39;timepoint&#39;, &#39;time&#39;, &#39;day&#39;, &#39;week&#39;, &#39;time_point&#39;</span>
-<span class="sd">    - arm: &#39;arm&#39;, &#39;treatment&#39;, &#39;group&#39;, &#39;condition&#39;, &#39;arm_id&#39;</span>
-<span class="sd">    - celltype: &#39;celltype&#39;, &#39;cell_type&#39;, &#39;cluster&#39;, &#39;annotation&#39;, &#39;cell_annotation&#39;</span>
+
+<span class="sd">    - participant: ``participant_id``, ``patient_id``, ``donor_id``,</span>
+<span class="sd">      ``subject_id``, ``sample_id``</span>
+<span class="sd">    - visit: ``visit``, ``timepoint``, ``time``, ``day``, ``week``,</span>
+<span class="sd">      ``time_point``</span>
+<span class="sd">    - arm: ``arm``, ``treatment_arm``, ``arm_id``, ``treatment``,</span>
+<span class="sd">      ``group``, ``condition``</span>
+<span class="sd">    - celltype: ``celltype``, ``cell_type``, ``cluster``,</span>
+<span class="sd">      ``annotation``, ``cell_annotation``</span>
+
+<span class="sd">    Column matching uses exact (case-insensitive) match first, then</span>
+<span class="sd">    word-boundary partial match (pattern must appear at a word boundary</span>
+<span class="sd">    in the column name, so ``&quot;arm&quot;`` matches ``&quot;arm_id&quot;`` but not</span>
+<span class="sd">    ``&quot;farm_id&quot;``).</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    adata</span>
 <span class="sd">        AnnData object to analyze.</span>
 <span class="sd">    arm_treated</span>
-<span class="sd">        Optional: specify the label for treated arm.</span>
+<span class="sd">        Optional: specify the label for treated arm.  If not provided,</span>
+<span class="sd">        the function tries keyword-based detection (e.g. &quot;Treated&quot;,</span>
+<span class="sd">        &quot;Drug&quot;, &quot;Active&quot;).  Raises if detection fails.</span>
 <span class="sd">    arm_control</span>
-<span class="sd">        Optional: specify the label for control arm.</span>
+<span class="sd">        Optional: specify the label for control arm.  If not provided,</span>
+<span class="sd">        the function tries keyword-based detection (e.g. &quot;Control&quot;,</span>
+<span class="sd">        &quot;Placebo&quot;).  Raises if detection fails.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -337,7 +401,9 @@
 <span class="sd">    Raises</span>
 <span class="sd">    ------</span>
 <span class="sd">    ValueError</span>
-<span class="sd">        If required columns cannot be detected.</span>
+<span class="sd">        If required columns cannot be detected, or if arm labels</span>
+<span class="sd">        cannot be determined (more than 2 arms, only 1 arm, or no</span>
+<span class="sd">        keyword match for ambiguous labels).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">obs_cols</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
     <span class="n">obs_cols_lower</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">obs_cols</span><span class="p">]</span>
@@ -348,52 +414,65 @@
     <span class="n">arm_col</span> <span class="o">=</span> <span class="n">_find_column</span><span class="p">(</span><span class="n">obs_cols</span><span class="p">,</span> <span class="n">obs_cols_lower</span><span class="p">,</span> <span class="n">patterns</span><span class="p">[</span><span class="s2">&quot;arm&quot;</span><span class="p">])</span>
     <span class="n">celltype_col</span> <span class="o">=</span> <span class="n">_find_column</span><span class="p">(</span><span class="n">obs_cols</span><span class="p">,</span> <span class="n">obs_cols_lower</span><span class="p">,</span> <span class="n">patterns</span><span class="p">[</span><span class="s2">&quot;celltype&quot;</span><span class="p">],</span> <span class="n">required</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
+    <span class="c1"># Validate required columns were detected (check early)</span>
+    <span class="k">if</span> <span class="n">participant_col</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;Could not detect participant column. Please specify manually &quot;</span>
+            <span class="s2">&quot;or rename column.&quot;</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">visit_col</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;Could not detect visit column. Please specify manually &quot;</span>
+            <span class="s2">&quot;or rename column.&quot;</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">arm_col</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;Could not detect arm column. Please specify manually &quot;</span>
+            <span class="s2">&quot;or rename column.&quot;</span>
+        <span class="p">)</span>
+
     <span class="c1"># Auto-detect arm labels if not provided</span>
-    <span class="k">if</span> <span class="n">arm_col</span> <span class="ow">and</span> <span class="p">(</span><span class="n">arm_treated</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">arm_control</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">arm_treated</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">arm_control</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">unique_arms</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">arm_col</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">unique_arms</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
-            <span class="c1"># Try to guess which is treated/control based on common names</span>
+            <span class="c1"># Try keyword-based detection</span>
             <span class="n">arm_treated</span><span class="p">,</span> <span class="n">arm_control</span> <span class="o">=</span> <span class="n">_auto_detect_arm_labels</span><span class="p">(</span>
                 <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">unique_arms</span><span class="p">],</span> <span class="n">arm_treated</span><span class="p">,</span> <span class="n">arm_control</span>
             <span class="p">)</span>
 
-            <span class="c1"># If still not detected, just use the two arms</span>
-            <span class="k">if</span> <span class="n">arm_treated</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">arm_treated</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">unique_arms</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-            <span class="k">if</span> <span class="n">arm_control</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">arm_control</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">unique_arms</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="c1"># If keywords didn&#39;t resolve both labels, raise instead</span>
+            <span class="c1"># of silently assigning by encounter order.</span>
+            <span class="k">if</span> <span class="n">arm_treated</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">arm_control</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Found 2 arms </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">a</span><span class="p">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">unique_arms</span><span class="p">)</span><span class="si">}</span><span class="s2"> in column &#39;</span><span class="si">{</span><span class="n">arm_col</span><span class="si">}</span><span class="s2">&#39; but could not &quot;</span>
+                    <span class="s2">&quot;determine which is treated vs control. &quot;</span>
+                    <span class="s2">&quot;Please specify arm_treated and arm_control.&quot;</span>
+                <span class="p">)</span>
 
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Auto-detected arms: treated=&#39;</span><span class="si">{</span><span class="n">arm_treated</span><span class="si">}</span><span class="s2">&#39;, control=&#39;</span><span class="si">{</span><span class="n">arm_control</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="s2">&quot;Auto-detected arms: treated=&#39;</span><span class="si">%s</span><span class="s2">&#39;, control=&#39;</span><span class="si">%s</span><span class="s2">&#39;&quot;</span><span class="p">,</span>
+                <span class="n">arm_treated</span><span class="p">,</span> <span class="n">arm_control</span><span class="p">,</span>
+            <span class="p">)</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Please verify these are correct!&quot;</span><span class="p">)</span>
         <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">unique_arms</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">unique_arms</span><span class="p">)</span><span class="si">}</span><span class="s2"> arms: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">unique_arms</span><span class="p">)</span><span class="si">}</span><span class="s2">. &quot;</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">unique_arms</span><span class="p">)</span><span class="si">}</span><span class="s2"> arms in column &#39;</span><span class="si">{</span><span class="n">arm_col</span><span class="si">}</span><span class="s2">&#39;: &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">a</span><span class="p">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">unique_arms</span><span class="p">)</span><span class="si">}</span><span class="s2">. &quot;</span>
                 <span class="s2">&quot;Please specify arm_treated and arm_control manually.&quot;</span>
             <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found only 1 arm: </span><span class="si">{</span><span class="n">unique_arms</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
-    <span class="c1"># Validate required columns were detected</span>
-    <span class="k">if</span> <span class="n">participant_col</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-            <span class="s2">&quot;Could not detect participant column. Please specify manually or rename column.&quot;</span>
-        <span class="p">)</span>
-    <span class="k">if</span> <span class="n">visit_col</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-            <span class="s2">&quot;Could not detect visit column. Please specify manually or rename column.&quot;</span>
-        <span class="p">)</span>
-    <span class="k">if</span> <span class="n">arm_col</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-            <span class="s2">&quot;Could not detect arm column. Please specify manually or rename column.&quot;</span>
-        <span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Found only 1 arm in column &#39;</span><span class="si">{</span><span class="n">arm_col</span><span class="si">}</span><span class="s2">&#39;: &#39;</span><span class="si">{</span><span class="n">unique_arms</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&#39;. &quot;</span>
+                <span class="s2">&quot;DiD requires at least 2 arms.&quot;</span>
+            <span class="p">)</span>
 
     <span class="c1"># Create design</span>
     <span class="n">design</span> <span class="o">=</span> <span class="n">TrialDesign</span><span class="p">(</span>
         <span class="n">participant_col</span><span class="o">=</span><span class="n">participant_col</span><span class="p">,</span>
         <span class="n">visit_col</span><span class="o">=</span><span class="n">visit_col</span><span class="p">,</span>
         <span class="n">arm_col</span><span class="o">=</span><span class="n">arm_col</span><span class="p">,</span>
-        <span class="n">arm_treated</span><span class="o">=</span><span class="n">arm_treated</span> <span class="ow">or</span> <span class="s2">&quot;UNKNOWN&quot;</span><span class="p">,</span>
-        <span class="n">arm_control</span><span class="o">=</span><span class="n">arm_control</span> <span class="ow">or</span> <span class="s2">&quot;UNKNOWN&quot;</span><span class="p">,</span>
+        <span class="n">arm_treated</span><span class="o">=</span><span class="n">arm_treated</span><span class="p">,</span>
+        <span class="n">arm_control</span><span class="o">=</span><span class="n">arm_control</span><span class="p">,</span>
         <span class="n">celltype_col</span><span class="o">=</span><span class="n">celltype_col</span><span class="p">,</span>
     <span class="p">)</span>
 
@@ -417,23 +496,36 @@
     <span class="n">patterns</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
     <span class="n">required</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Find column matching one of the patterns.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Find column matching one of the patterns.</span>
+
+<span class="sd">    Matching strategy (tried in order for each pattern):</span>
+
+<span class="sd">    1. **Exact match** (case-insensitive): ``col.lower() == pattern``</span>
+<span class="sd">    2. **Word-boundary partial match**: pattern must appear at a word</span>
+<span class="sd">       boundary (start of string, after ``_``, or after ``-``).</span>
+<span class="sd">       This prevents ``&quot;arm&quot;`` from matching ``&quot;farm_id&quot;`` while still</span>
+<span class="sd">       matching ``&quot;arm_treatment&quot;`` or ``&quot;treatment_arm&quot;``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+
     <span class="k">for</span> <span class="n">pattern</span> <span class="ow">in</span> <span class="n">patterns</span><span class="p">:</span>
         <span class="c1"># First try exact match (case-insensitive)</span>
         <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">col_lower</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">columns_lower</span><span class="p">):</span>
             <span class="k">if</span> <span class="n">col_lower</span> <span class="o">==</span> <span class="n">pattern</span><span class="p">:</span>
                 <span class="k">return</span> <span class="n">columns</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
 
-        <span class="c1"># Then try partial match</span>
+        <span class="c1"># Then try word-boundary partial match</span>
+        <span class="c1"># Pattern must appear at start of string or after _ or -</span>
+        <span class="n">boundary_re</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;(?:^|[_\-])&quot;</span> <span class="o">+</span> <span class="n">re</span><span class="o">.</span><span class="n">escape</span><span class="p">(</span><span class="n">pattern</span><span class="p">))</span>
         <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">col_lower</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">columns_lower</span><span class="p">):</span>
-            <span class="k">if</span> <span class="n">pattern</span> <span class="ow">in</span> <span class="n">col_lower</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">boundary_re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">col_lower</span><span class="p">):</span>
                 <span class="k">return</span> <span class="n">columns</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
 
     <span class="k">if</span> <span class="n">required</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
             <span class="sa">f</span><span class="s2">&quot;Could not auto-detect column. Tried patterns: </span><span class="si">{</span><span class="n">patterns</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
             <span class="sa">f</span><span class="s2">&quot;Available columns: </span><span class="si">{</span><span class="n">columns</span><span class="p">[:</span><span class="mi">20</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;Please specify the column manually when creating TrialDesign.&quot;</span>
+            <span class="s2">&quot;Please specify the column manually when creating TrialDesign.&quot;</span>
         <span class="p">)</span>
 
     <span class="k">return</span> <span class="kc">None</span>
