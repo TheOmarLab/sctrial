@@ -236,8 +236,10 @@ Additional visualizations
    # GSEA radar chart (requires gseapy)
    st.plot_gsea_radar(
        gsea_results=res_gsea,
-       top_n=8,
-       title="Top Enriched Pathways"
+       term="HALLMARK_OXIDATIVE_PHOSPHORYLATION",
+       pool_col="celltype",
+       # Column names are configurable via term_col, fdr_col
+       title="NES across cell types",
    )
 
 Conclusion
