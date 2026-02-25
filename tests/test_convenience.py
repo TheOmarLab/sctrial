@@ -8,7 +8,6 @@ handling, missing column errors).
 from __future__ import annotations
 
 import logging
-import warnings
 
 import numpy as np
 import pandas as pd
@@ -98,40 +97,25 @@ class TestQuickDidValidation:
 
 
 # ===================================================================
-# quick_did — Visit Auto-Detection (Deprecated)
+# quick_did — visits is required (no auto-detection)
 # ===================================================================
 
 class TestQuickDidVisits:
-    """P1 #1: Visit auto-detection emits FutureWarning."""
+    """P1 #1: visits must be explicitly specified (no lexicographic guessing)."""
 
-    def test_visits_none_emits_deprecation_warning(self):
+    def test_visits_required(self):
+        """Omitting visits raises TypeError (required positional argument)."""
         adata = _make_trial_adata()
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
-            st.quick_did(
-                adata, module_scores={"S": ["G0", "G1", "G2"]},
-                visits=None, counts_layer="counts",
-            )
-        future_warnings = [x for x in w if issubclass(x.category, FutureWarning)]
-        assert len(future_warnings) >= 1
-        assert "lexicographic" in str(future_warnings[0].message).lower()
+        with pytest.raises(TypeError):
+            st.quick_did(adata, module_scores={"S": ["G0", "G1", "G2"]})
 
-    def test_visits_none_single_visit_raises(self):
+    def test_explicit_visits_works(self):
         adata = _make_trial_adata()
-        ad = adata[adata.obs["visit"] == "V1"].copy()
-        with pytest.raises(ValueError, match="at least 2 visits"):
-            st.quick_did(ad, module_scores={"S": ["G0", "G1"]})
-
-    def test_explicit_visits_no_warning(self):
-        adata = _make_trial_adata()
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
-            st.quick_did(
-                adata, module_scores={"S": ["G0", "G1", "G2"]},
-                visits=("V1", "V2"), counts_layer="counts",
-            )
-        future_warnings = [x for x in w if issubclass(x.category, FutureWarning)]
-        assert len(future_warnings) == 0
+        res = st.quick_did(
+            adata, module_scores={"S": ["G0", "G1", "G2"]},
+            visits=("V1", "V2"), counts_layer="counts",
+        )
+        assert not res.empty
 
 
 # ===================================================================
