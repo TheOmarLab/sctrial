@@ -486,7 +486,7 @@ def plot_within_arm_comparison(
     obs_agg[design.visit_col] = pd.Categorical(obs_agg[design.visit_col], categories=list(visits), ordered=True)
 
     if plot_type == "box":
-        sns.boxplot(data=obs_agg, x=design.visit_col, y=feature, hue=design.visit_col, ax=ax, palette="Set2", showfliers=False, legend=False)
+        sns.boxplot(data=obs_agg, x=design.visit_col, y=feature, ax=ax, palette="Set2", showfliers=False)
         sns.stripplot(data=obs_agg, x=design.visit_col, y=feature, ax=ax, color="black", alpha=0.3)
     elif plot_type == "paired":
         df_paired = obs_agg
