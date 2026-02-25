@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+import pytest
 import scipy.sparse as sp
 from anndata import AnnData
 
@@ -13,6 +14,7 @@ from sctrial.datasets import (
     categorize_celltype,
     count_paired,
     ensure_fdr,
+    verify_paired_participants,
 )
 from sctrial.utils import looks_like_counts
 
@@ -171,6 +173,23 @@ class TestCountPaired:
         n_paired = count_paired(obs, "visit", ["V1", "V2"])
         assert n_paired == 3
 
+    def test_count_paired_single_visit_raises(self):
+        """Fewer than 2 visits must raise ValueError."""
+        obs = pd.DataFrame({
+            "participant_id": ["P1", "P1"],
+            "visit": ["V1", "V2"],
+        })
+        with pytest.raises(ValueError, match="at least 2 labels"):
+            count_paired(obs, "visit", ["V1"])
+
+    def test_count_paired_empty_visits_raises(self):
+        obs = pd.DataFrame({
+            "participant_id": ["P1"],
+            "visit": ["V1"],
+        })
+        with pytest.raises(ValueError, match="at least 2 labels"):
+            count_paired(obs, "visit", [])
+
 
 class TestCategorizeCelltype:
     """Test cell type categorization helper."""
@@ -207,6 +226,17 @@ class TestCategorizeCelltype:
         """Test dendritic cell categorization."""
         assert categorize_celltype("DC") == "DCs"
         assert categorize_celltype("Dendritic cell") == "DCs"
+
+    def test_plasmacytoid_dc_not_b_cell(self):
+        """Plasmacytoid dendritic cells must classify as DCs, not B_cells."""
+        assert categorize_celltype("Plasmacytoid dendritic cell") == "DCs"
+        assert categorize_celltype("Plasmacytoid DC") == "DCs"
+        assert categorize_celltype("pDC") == "DCs"
+
+    def test_plasma_b_cell_still_b(self):
+        """Plasma cells (non-DC) should still be B_cells."""
+        assert categorize_celltype("Plasma cell") == "B_cells"
+        assert categorize_celltype("Plasma B cell") == "B_cells"
 
     def test_categorize_truly_unknown(self):
         """Test unknown cell type categorization."""
@@ -264,3 +294,59 @@ class TestEnsureFDR:
         # FDR should be monotonically increasing (or equal) for increasing p-values
         fdr_values = result["FDR_time"].values
         assert all(fdr_values[i] <= fdr_values[i + 1] for i in range(len(fdr_values) - 1))
+
+
+class TestVerifyPairedParticipants:
+    """Tests for verify_paired_participants."""
+
+    def test_basic_pairing(self):
+        obs = pd.DataFrame({
+            "participant_id": ["P1", "P1", "P2", "P2", "P3"],
+            "visit": ["V1", "V2", "V1", "V2", "V1"],
+        })
+        result = verify_paired_participants(obs, "visit", ["V1", "V2"])
+        assert result["n_paired"] == 2
+        assert "P3" in result["dropped_ids"]
+
+    def test_single_visit_raises(self):
+        obs = pd.DataFrame({
+            "participant_id": ["P1", "P1"],
+            "visit": ["V1", "V2"],
+        })
+        with pytest.raises(ValueError, match="at least 2 labels"):
+            verify_paired_participants(obs, "visit", ["V1"])
+
+    def test_categorical_features(self):
+        """Categorical features should not raise TypeError."""
+        obs = pd.DataFrame({
+            "participant_id": ["P1", "P1", "P2", "P2"],
+            "visit": ["V1", "V2", "V1", "V2"],
+            "sex": ["M", "M", "F", "F"],
+        })
+        result = verify_paired_participants(obs, "visit", ["V1", "V2"], features=["sex"])
+        assert result["n_paired"] == 2
+
+    def test_mixed_numeric_categorical_features(self):
+        obs = pd.DataFrame({
+            "participant_id": ["P1", "P1", "P2", "P2"],
+            "visit": ["V1", "V2", "V1", "V2"],
+            "sex": ["M", "M", "F", "F"],
+            "age": [30.0, 30.0, 40.0, 40.0],
+        })
+        result = verify_paired_participants(
+            obs, "visit", ["V1", "V2"], features=["sex", "age"]
+        )
+        assert result["n_paired"] == 2
+
+    def test_feature_with_nan_drops_participant(self):
+        obs = pd.DataFrame({
+            "participant_id": ["P1", "P1", "P2", "P2"],
+            "visit": ["V1", "V2", "V1", "V2"],
+            "score": [1.0, 2.0, np.nan, 4.0],
+        })
+        result = verify_paired_participants(
+            obs, "visit", ["V1", "V2"], features=["score"]
+        )
+        # P2 has NaN at V1 so should be dropped
+        assert result["n_paired"] == 1
+        assert "P1" in result["paired_ids"]

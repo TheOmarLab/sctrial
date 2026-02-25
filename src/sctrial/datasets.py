@@ -311,7 +311,9 @@ def load_stephenson_data(
         The processed AnnData object.
     """
     data_path_resolved = _resolve_file(data_path)
-    data_root = data_path_resolved.parent.parent if data_path_resolved.exists() else Path("data")
+    # Derive processed cache location from the user-provided path so it
+    # respects custom directory layouts even when the raw file is missing.
+    data_root = Path(data_path).parent.parent if not data_path_resolved.exists() else data_path_resolved.parent.parent
     processed_path = data_root / "processed" / processed_name
 
     if processed_path.exists() and not force_reprocess:
@@ -531,6 +533,10 @@ def count_paired(
     participant_col: str = "participant_id"
 ) -> int:
     """Count participants with data at both visits."""
+    if len(visits) < 2:
+        raise ValueError(
+            f"visits must contain at least 2 labels, got {len(visits)}: {list(visits)}"
+        )
     wide = (
         obs.groupby([participant_col, visit_col], observed=True)
         .size()
@@ -557,6 +563,10 @@ def verify_paired_participants(
       - n_paired: count of paired_ids
       - n_total: total unique participants
     """
+    if len(visits) < 2:
+        raise ValueError(
+            f"visits must contain at least 2 labels, got {len(visits)}: {list(visits)}"
+        )
     wide = (
         obs.groupby([participant_col, visit_col], observed=True)
         .size()
@@ -568,11 +578,11 @@ def verify_paired_participants(
         paired_ids = set(wide[(wide[visits[0]] > 0) & (wide[visits[1]] > 0)].index)
 
     if features:
-        df_pv = (
-            obs.groupby([participant_col, visit_col], observed=True)[list(features)]
-            .mean()
-            .reset_index()
-        )
+        grouped = obs.groupby([participant_col, visit_col], observed=True)[list(features)]
+        # Use .first() instead of .mean() so categorical/string features
+        # don't raise TypeError.  For numeric columns the NaN-presence check
+        # below is still correct because .first() returns NaN for empty groups.
+        df_pv = grouped.first().reset_index()
         valid_ids = None
         for feat in features:
             wide_feat = df_pv.pivot(index=participant_col, columns=visit_col, values=feat)
@@ -603,12 +613,14 @@ def categorize_celltype(ct: str) -> str:
         return "CD8_T"
     if "nk" in ct_lower or "natural killer" in ct_lower:
         return "NK"
+    # DC check must precede B cell check so "plasmacytoid dendritic cell"
+    # is not captured by the "plasma" substring in the B cell rule.
+    if "dc" in ct_lower or "dendritic" in ct_lower:
+        return "DCs"
     if "b cell" in ct_lower or "plasma" in ct_lower or "b_cell" in ct_lower:
         return "B_cells"
     if "mono" in ct_lower or "cd14" in ct_lower or "cd16" in ct_lower:
         return "Monocytes"
-    if "dc" in ct_lower or "dendritic" in ct_lower:
-        return "DCs"
     return "Other"
 
 
