@@ -23,12 +23,12 @@ __all__ = [
 def quick_did(
     adata: AnnData,
     module_scores: dict[str, list[str]],
+    visits: tuple[str, str],
     participant_col: str = "participant_id",
     visit_col: str = "visit",
     arm_col: str = "arm",
     arm_treated: str = "Treated",
     arm_control: str = "Control",
-    visits: tuple[str, str] | None = None,
     celltype_col: str | None = None,
     layer: str = "log1p_cpm",
     counts_layer: str = "counts",
@@ -47,6 +47,10 @@ def quick_did(
         AnnData object with trial data.
     module_scores
         Dictionary mapping module names to gene lists.
+    visits
+        Tuple of (baseline, followup) visit labels.  The order matters:
+        the first element is the baseline visit and the second is the
+        follow-up, which determines the sign of the DiD estimate.
     participant_col
         Column name for participant identifiers.
     visit_col
@@ -57,15 +61,6 @@ def quick_did(
         Label for treated arm.
     arm_control
         Label for control arm.
-    visits
-        Tuple of (baseline, followup) visit labels.  Must be specified
-        explicitly to ensure the correct causal contrast direction.
-
-        .. deprecated::
-            Passing ``visits=None`` is deprecated. Lexicographic sorting
-            of visit labels can silently pick the wrong pair (e.g.
-            ``"Day10"`` before ``"Day2"``).  Always specify visits
-            explicitly.
     celltype_col
         Optional column name for cell types.
     layer
@@ -133,40 +128,21 @@ def quick_did(
         celltype_col=celltype_col,
     )
 
-    # 2. Auto-detect visits if not provided (deprecated — warns)
-    if visits is None:
-        import warnings
-
-        all_visits = sorted(adata.obs[visit_col].unique())
-        if len(all_visits) < 2:
-            raise ValueError(
-                f"Need at least 2 visits for DiD analysis, found {len(all_visits)}"
-            )
-        visits = (str(all_visits[0]), str(all_visits[1]))
-        warnings.warn(
-            "visits=None uses lexicographic sorting, which can pick the "
-            "wrong visit pair (e.g. 'Day10' before 'Day2'). "
-            f"Auto-selected visits={visits!r}. "
-            "Please specify visits explicitly.",
-            FutureWarning,
-            stacklevel=2,
-        )
-
-    # 3. Ensure preprocessing
+    # 2. Ensure preprocessing
     if layer not in adata.layers:
         logger.info("Creating '%s' layer from '%s'...", layer, counts_layer)
         adata = add_log1p_cpm_layer(
             adata, counts_layer=counts_layer, out_layer=layer
         )
 
-    # 4. Score gene sets
+    # 3. Score gene sets
     logger.info("Scoring %d gene sets...", len(module_scores))
     adata = score_gene_sets(
         adata, module_scores, layer=layer, method=score_method,
         prefix="ms_", min_genes=min_genes,
     )
 
-    # 5. Run DiD
+    # 4. Run DiD
     features = [f"ms_{k}" for k in module_scores.keys()]
     logger.info("Running DiD for %d features...", len(features))
     return did_table(adata, features=features, design=design, visits=visits, **kwargs)
