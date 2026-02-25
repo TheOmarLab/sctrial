@@ -103,6 +103,17 @@ Normalization
    # Use this layer for scoring and DiD
    adata = st.score_gene_sets(adata, gene_sets, layer="log1p_cpm")
 
+.. note::
+
+   ``add_log1p_cpm_layer()`` performs input validation before normalizing:
+
+   - **Negative counts** raise a ``ValueError`` — fix upstream QC before calling.
+   - **NaN or inf values** emit a warning and may produce unexpected results.
+   - **All-zero cells** emit a warning (library size = 0 yields ``log1p(0) = 0`` for every gene).
+
+   The function also records provenance metadata in ``adata.uns["log1p_cpm_info"]``
+   (source layer, target layer, timestamp) for reproducibility tracking.
+
 **Alternative for batch correction**:
 
 .. code-block:: python

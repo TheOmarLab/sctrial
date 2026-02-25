@@ -26,7 +26,11 @@ class DiDAnalyzer:
         config: DiDConfig | None = None,
         celltype: str | None = None,
     ) -> pd.DataFrame:
-        """Run DiD and store results."""
+        """Run DiD and store results.
+
+        Returns a *copy* of the results DataFrame so that external
+        mutations do not alter the analyzer's internal state.
+        """
         self.results_ = did_table(
             self.adata,
             features=features,
@@ -35,7 +39,7 @@ class DiDAnalyzer:
             celltype=celltype,
             config=config,
         )
-        return self.results_
+        return self.results_.copy()
 
     def summarize(self) -> str:
         """Summarize the last DiD results."""
