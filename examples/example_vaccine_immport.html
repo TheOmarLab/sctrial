@@ -176,8 +176,8 @@
 <span class="n">SEED</span> <span class="o">=</span> <span class="mi">42</span>
 <span class="n">MIN_PAIRED</span> <span class="o">=</span> <span class="mi">4</span>
 <span class="n">MIN_GENES_FOR_SCORE</span> <span class="o">=</span> <span class="mi">5</span>
-<span class="n">FDR_ALPHA</span> <span class="o">=</span> <span class="mf">0.25</span>
-</pre></div>
+<span class="n">FDR_ALPHA</span> <span class="o">=</span> <span class="mf">0.25</span>  <span class="c1"># Exploratory threshold; use 0.05 for confirmatory analyses</span>
+<br/></pre></div>
 </div>
 </div>
 </section>
@@ -195,6 +195,9 @@
 </div>
 <section id="2.1-Load-processed-AnnData">
 <h3>2.1 Load processed AnnData<a class="headerlink" href="#2.1-Load-processed-AnnData" title="Link to this heading"></a></h3>
+<blockquote>
+<div><p><strong>Demo mode:</strong> The data below is <strong>subsampled</strong> (<code class="docutils literal notranslate"><span class="pre">max_participants=30</span></code>, <code class="docutils literal notranslate"><span class="pre">max_cells_per_group=200</span></code>) for fast execution. Statistical outputs (p-values, effect sizes) are illustrative only — <strong>do not cite these numbers</strong>. Remove the caps or re-run on full data for publication-grade results.</p>
+</div></blockquote>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
 </pre></div>
@@ -202,6 +205,7 @@
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">adata</span> <span class="o">=</span> <span class="n">load_vaccine_gse171964</span><span class="p">(</span>
     <span class="n">max_participants</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
     <span class="n">max_cells_per_group</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+    <span class="c1"># ⚠ DEMO SUBSAMPLE — remove caps for publication-grade results</span>
     <span class="n">seed</span><span class="o">=</span><span class="n">SEED</span><span class="p">,</span>
     <span class="n">allow_download</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span>
