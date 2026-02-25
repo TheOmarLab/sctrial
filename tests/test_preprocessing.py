@@ -128,6 +128,27 @@ class TestInputValidation:
         with pytest.raises(ValueError, match="finite positive"):
             st.add_log1p_cpm_layer(ad, counts_layer="counts", out_layer="norm", scale=0)
 
+    def test_nan_counts_raises(self):
+        """NaN in counts should raise ValueError."""
+        X = np.array([[1.0, np.nan], [3.0, 4.0]])
+        ad = _make_adata(X)
+        with pytest.raises(ValueError, match="non-finite"):
+            st.add_log1p_cpm_layer(ad, counts_layer="counts", out_layer="norm")
+
+    def test_inf_counts_raises(self):
+        """Inf in counts should raise ValueError."""
+        X = np.array([[1.0, np.inf], [3.0, 4.0]])
+        ad = _make_adata(X)
+        with pytest.raises(ValueError, match="non-finite"):
+            st.add_log1p_cpm_layer(ad, counts_layer="counts", out_layer="norm")
+
+    def test_nan_counts_sparse_raises(self):
+        """NaN in sparse counts should raise ValueError."""
+        X = np.array([[1.0, np.nan], [3.0, 4.0]])
+        ad = _make_adata(X, sparse=True)
+        with pytest.raises(ValueError, match="non-finite"):
+            st.add_log1p_cpm_layer(ad, counts_layer="counts", out_layer="norm")
+
     def test_missing_counts_layer_raises(self):
         ad = AnnData(X=np.array([[1.0, 2.0]]))
         with pytest.raises(KeyError, match="not found"):

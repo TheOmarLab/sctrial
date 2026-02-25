@@ -85,17 +85,24 @@ def add_log1p_cpm_layer(
             )
         X = ad.layers[counts_layer]
 
-    # --- Validate counts are non-negative ---
+    # --- Validate counts are non-negative and finite ---
     if sp.issparse(X):
-        min_val = X.data.min() if X.nnz > 0 else 0.0
+        vals = X.data
     else:
-        min_val = np.min(X) if X.size > 0 else 0.0
-    if min_val < 0:
-        raise ValueError(
-            f"Counts matrix contains negative values (min={min_val:.4g}). "
-            "log1p(CPM) requires non-negative counts. "
-            "Pass raw counts, not log-transformed or z-scored data."
-        )
+        vals = np.asarray(X).ravel()
+
+    if vals.size > 0:
+        if not np.all(np.isfinite(vals)):
+            raise ValueError(
+                "Counts matrix contains non-finite values (NaN or inf). "
+                "log1p(CPM) requires finite non-negative counts."
+            )
+        if np.min(vals) < 0:
+            raise ValueError(
+                f"Counts matrix contains negative values (min={np.min(vals):.4g}). "
+                "log1p(CPM) requires non-negative counts. "
+                "Pass raw counts, not log-transformed or z-scored data."
+            )
 
     # Compute log1p(CPM)
     if sp.issparse(X):
