@@ -10,6 +10,10 @@ from .design import TrialDesign
 
 __all__ = ["subset_primary", "subset_cells", "profile_features"]
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def _require_cols(obs: pd.DataFrame, cols: list[str]) -> None:
     missing = [c for c in cols if c not in obs.columns]
@@ -30,6 +34,14 @@ def _to_bool_series(s: pd.Series) -> pd.Series:
 
     # numeric: any non-zero finite value is truthy
     if pd.api.types.is_numeric_dtype(s):
+        n_nonfinite = int(s.isna().sum() + np.isinf(s.fillna(0)).sum())
+        if n_nonfinite > 0:
+            logger.warning(
+                "%d non-finite value(s) (NaN/inf) in boolean column '%s'; "
+                "treating as False.",
+                n_nonfinite,
+                s.name,
+            )
         filled = s.fillna(0)
         finite_mask = np.isfinite(filled)
         return (finite_mask & (filled != 0)).astype(bool)

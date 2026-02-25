@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -110,6 +112,21 @@ class TestToBoolSeries:
         s = pd.Series([0.0, np.inf, -np.inf, 1.0])
         result = _to_bool_series(s)
         assert result.tolist() == [False, False, False, True]
+
+    def test_nonfinite_warns(self, caplog):
+        """Non-finite values should emit a warning."""
+        s = pd.Series([0.0, np.inf, np.nan], name="is_crossover")
+        with caplog.at_level(logging.WARNING, logger="sctrial.adata_tools"):
+            _to_bool_series(s)
+        assert "non-finite" in caplog.text
+        assert "2" in caplog.text  # 2 non-finite values
+
+    def test_finite_no_warning(self, caplog):
+        """No warning when all values are finite."""
+        s = pd.Series([0.0, 1.0, 0.0], name="is_crossover")
+        with caplog.at_level(logging.WARNING, logger="sctrial.adata_tools"):
+            _to_bool_series(s)
+        assert "non-finite" not in caplog.text
 
     def test_string_truthy(self):
         s = pd.Series(["true", "True", "TRUE", "t", "T", "yes", "Yes", "y", "Y", "1"])
