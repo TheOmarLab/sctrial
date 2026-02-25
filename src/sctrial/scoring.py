@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
@@ -11,6 +12,8 @@ if TYPE_CHECKING:
     from ctxcore.genesig import GeneSignature
 
 __all__ = ["score_gene_sets", "score_gene_sets_aucell", "ScoreMethod"]
+
+logger = logging.getLogger(__name__)
 
 ScoreMethod = Literal["zmean", "mean"]
 
@@ -39,6 +42,8 @@ def score_gene_sets(
         AnnData object containing expression data.
     gene_sets
         Dictionary mapping set names to lists of gene names.
+        Each value must be a ``list`` (not a bare string).  Duplicate gene
+        names within a set are automatically removed.
     layer
         Expression matrix source. If None, uses `adata.X`.
         For log1p-CPM workflows, use layer="log1p_cpm".
@@ -53,7 +58,8 @@ def score_gene_sets(
         Prefix to add to column names (e.g., ``ms_`` for module scores).
     min_genes
         Minimum number of genes from the set that must be present in the data.
-        If fewer genes overlap, the score is set to NaN.
+        If fewer genes overlap, the score is set to NaN and a warning is
+        logged.  Default is 3.
     overwrite
         If False, skip gene sets that already have a column in adata.obs.
 
@@ -71,6 +77,12 @@ def score_gene_sets(
 
     The zmean method computes: mean(z_i) where z_i = (x_i - mean(x_i)) / std(x_i)
     for each gene i across all cells.
+
+    **Non-finite expression values:**
+    NaN and inf values in the expression matrix are excluded from score
+    computation (treated as missing).  A warning is logged when non-finite
+    values are detected.  If *all* values for a cell are non-finite the
+    resulting score will be NaN.
     """
     if method not in ("zmean", "mean"):
         raise ValueError(f"Unknown method '{method}'. Use 'zmean' or 'mean'.")
@@ -82,6 +94,15 @@ def score_gene_sets(
         raise ValueError("min_genes must be >= 1.")
     if layer is not None and layer not in adata.layers:
         raise KeyError(f"Layer '{layer}' not found in adata.layers.")
+
+    # Validate per-set gene list types up front
+    for name, gset in gene_sets.items():
+        if not isinstance(gset, (list, tuple, set, frozenset)):
+            raise TypeError(
+                f"Gene set '{name}' must be a list of gene names, "
+                f"got {type(gset).__name__}."
+            )
+
     X = adata.layers[layer] if layer is not None else adata.X
     var_names = adata.var_names
     idx = {g: i for i, g in enumerate(var_names)}
@@ -92,45 +113,93 @@ def score_gene_sets(
             X = X.tocsr()
 
     for name, gset in gene_sets.items():
-        use = [g for g in gset if g in idx]
+        # Deduplicate while preserving order
+        seen: set[str] = set()
+        use: list[str] = []
+        for g in gset:
+            if g in idx and g not in seen:
+                use.append(g)
+                seen.add(g)
+
         col = f"{prefix}{name}"
 
         if (not overwrite) and (col in adata.obs.columns):
             continue
 
-        if len(use) < min_genes:
+        # Count unique requested genes (after dedup) for accurate logging
+        n_unique_requested = len({g for g in gset})
+        n_found = len(use)
+
+        if n_found < min_genes:
+            logger.warning(
+                "Gene set '%s': only %d/%d unique genes found in data "
+                "(min_genes=%d); setting score to NaN.",
+                name, n_found, n_unique_requested, min_genes,
+            )
             adata.obs[col] = np.nan
             continue
+
+        if n_found < n_unique_requested:
+            logger.info(
+                "Gene set '%s': %d/%d unique genes found in data.",
+                name, n_found, n_unique_requested,
+            )
 
         gidx = np.array([idx[g] for g in use], dtype=int)
 
         if method == "mean" and is_sparse:
             sub = X[:, gidx]
-            score = np.asarray(sub.mean(axis=1)).ravel()
+            dense_sub = np.asarray(sub.todense())
+            finite_mask = np.isfinite(dense_sub)
+            n_nonfinite = int(np.sum(~finite_mask))
+            if n_nonfinite > 0:
+                logger.warning(
+                    "Gene set '%s': %d non-finite value(s) in expression "
+                    "matrix; these are excluded from the mean.",
+                    name, n_nonfinite,
+                )
+            # nanmean ignores NaN; replace inf with NaN first
+            dense_sub = np.where(finite_mask, dense_sub, np.nan)
+            with np.errstate(all="ignore"):
+                score = np.nanmean(dense_sub, axis=1)
             adata.obs[col] = score
             continue
 
         # For zmean, or dense mean, compute dense submatrix for gene-set only
         sub = X[:, gidx].toarray() if is_sparse else np.asarray(X[:, gidx], dtype=np.float64)
 
-        if method == "mean":
-            score = sub.mean(axis=1)
-        elif method == "zmean":
-            mu = sub.mean(axis=0, keepdims=True)
-            sd = sub.std(axis=0, ddof=1, keepdims=True)
+        # Detect and mask non-finite values
+        finite_mask = np.isfinite(sub)
+        n_nonfinite_expr = int(np.sum(~finite_mask))
+        if n_nonfinite_expr > 0:
+            logger.warning(
+                "Gene set '%s': %d non-finite value(s) in expression "
+                "matrix; these are excluded from scoring.",
+                name, n_nonfinite_expr,
+            )
+            sub = np.where(finite_mask, sub, np.nan)
 
-            # Mask zero-variance genes to prevent NaNs
-            mask = (sd > 1e-12).ravel()
-            n_valid = mask.sum()
+        if method == "mean":
+            with np.errstate(all="ignore"):
+                score = np.nanmean(sub, axis=1)
+        else:  # zmean (already validated above)
+            # Compute stats ignoring NaN
+            with np.errstate(all="ignore"):
+                mu = np.nanmean(sub, axis=0, keepdims=True)
+                sd = np.nanstd(sub, axis=0, ddof=1, keepdims=True)
+
+            # Mask zero-variance genes to prevent division by zero
+            valid_genes = (sd > 1e-12).ravel()
+            n_valid = valid_genes.sum()
             if n_valid == 0:
                 # All genes have zero variance - return NaN
                 score = np.full(sub.shape[0], np.nan)
             else:
-                # Only average over genes with non-zero variance
-                z = (sub[:, mask] - mu[:, mask]) / sd[:, mask]
-                score = z.mean(axis=1)
-        else:
-            raise ValueError(f"Unknown method: {method}")
+                # Z-score only non-zero-variance genes; nanmean
+                # handles any per-cell NaN from the expression data.
+                z = (sub[:, valid_genes] - mu[:, valid_genes]) / sd[:, valid_genes]
+                with np.errstate(all="ignore"):
+                    score = np.nanmean(z, axis=1)
 
         adata.obs[col] = score
 

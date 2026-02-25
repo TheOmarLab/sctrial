@@ -51,6 +51,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `did_table_mixed()` convergence handling improved: trusts `fit.converged` as primary indicator with `lbfgs` fallback optimizer.
 - `design_effect()` and `effective_sample_size()` now validate inputs (ICC, cluster_size).
 - Missing feature error messages in `did_fit()` now show total count when more than 5 are missing.
+- `add_log1p_cpm_layer()` now supports `overwrite=True` to replace an existing layer and `inplace=True` to modify the AnnData in place without copying.
+- `_to_bool_series()` now emits a `WARNING`-level log when non-finite values are encountered in a boolean column, aiding data quality diagnostics.
+- `profile_features()` docstring now documents that aggregation is cell-weighted; for balanced participant-level comparisons, pre-aggregate to pseudobulk first.
 - Replaced `print()` with `logging` throughout `convenience`, `datasets`, and `validation` modules.
 - Enhanced `did_fit()` docstring with full mathematical model specification
 - Added explicit null hypothesis statements to all statistical functions
@@ -62,6 +65,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **Statistical**: Fixed WLS weighting in `did_fit()` — now uses `n_cells` (correct inverse-variance weights) instead of `sqrt(n_cells)` for pre-aggregated participant-level means.
 - **Statistical**: Fixed `pseudobulk_expression()` to drop groups with zero total counts before CPM normalization instead of adding a `1e-12` epsilon.
+- **Preprocessing**: `add_log1p_cpm_layer()` now validates input: raises `ValueError` on negative counts, warns on NaN/inf values, and warns when all cells in the counts layer are zero.
+- **Preprocessing**: `add_log1p_cpm_layer()` now records provenance metadata in `adata.uns["log1p_cpm_info"]` (source layer, target layer, timestamp).
+- **adata_tools**: Fixed `_to_bool_series()` truncating fractional crossover values (e.g. `0.5` was cast to `int` → `0` → `False`). Now any non-zero finite value is truthy.
+- **adata_tools**: Fixed `_to_bool_series()` crashing with `IntCastingNaNError` on `np.inf` crossover values. Non-finite values (NaN, inf) are now treated as `False` with a logged warning.
+- **analysis**: Fixed `DiDAnalyzer.fit()` returning a mutable alias to internal `results_` DataFrame. Now returns a copy so external mutations cannot corrupt internal state.
 - Fixed duplicate `_params_match()` definition in `datasets.py` that silently overwrote the robust version; also fixed numpy array comparison bug.
 - Fixed README.md example with incorrect `arm_col` parameter value.
 - Fixed `auto_detect_design` docstring example showing incorrect mutation of frozen dataclass.

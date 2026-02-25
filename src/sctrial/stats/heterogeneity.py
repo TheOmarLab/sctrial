@@ -137,7 +137,13 @@ def test_treatment_heterogeneity(
         if tmp.columns.duplicated().any():
             tmp = tmp.loc[:, ~tmp.columns.duplicated()].copy()
         tmp = tmp.dropna(subset=[feat, "biomarker_high"])
-        if tmp[unit].nunique() < MIN_CLUSTERS_FOR_ROBUST_SE:
+        n_clusters = tmp[unit].nunique()
+        if n_clusters < MIN_CLUSTERS_FOR_ROBUST_SE:
+            warnings.warn(
+                f"Feature '{feat}' skipped: only {n_clusters} clusters "
+                f"(need >= {MIN_CLUSTERS_FOR_ROBUST_SE} for robust SE).",
+                stacklevel=2,
+            )
             continue
 
         # Handle duplicate column names by selecting the first column

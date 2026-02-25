@@ -409,8 +409,8 @@ def check_covariate_balance(
             mean_c = float(control.mean())
             sd_t = float(treated.std(ddof=1))
             sd_c = float(control.std(ddof=1))
-            pooled = np.sqrt((sd_t**2 + sd_c**2) / 2) if (sd_t > 0 or sd_c > 0) else np.nan
-            smd = (mean_t - mean_c) / pooled if pooled and np.isfinite(pooled) else np.nan
+            pooled = np.sqrt((sd_t**2 + sd_c**2) / 2) if (sd_t > 0 and sd_c > 0) else np.nan
+            smd = (mean_t - mean_c) / pooled if np.isfinite(pooled) and pooled > 0 else np.nan
             rows.append({
                 "covariate": cov,
                 "level": None,

@@ -69,23 +69,24 @@ def pseudobulk_expression(
     if not genes:
         return pd.DataFrame()
 
-    X = _get_layer(adata, counts_layer)
-    gene_idx = [int(adata.var_names.get_loc(g)) for g in genes]
-
     # Group encoding (vectorized aggregation)
     group_df = adata.obs[list(groupby)].copy()
 
     if min_cells_per_group > 1:
         counts = group_df.value_counts().rename("n_cells")
         keep_groups = counts[counts >= min_cells_per_group].index
-        group_df = group_df.merge(
-            keep_groups.to_frame(index=False),
-            on=list(groupby),
-            how="inner",
-        )
+        # Use isin mask instead of merge to preserve the original cell index
+        group_mi = pd.MultiIndex.from_frame(group_df[list(groupby)])
+        mask = group_mi.isin(keep_groups)
+        group_df = group_df[mask]
         adata = adata[group_df.index].copy()
         if group_df.empty:
             return pd.DataFrame()
+
+    # Extract expression matrix AFTER any subsetting so dimensions match
+    X = _get_layer(adata, counts_layer)
+    gene_idx = [int(adata.var_names.get_loc(g)) for g in genes]
+
     group_index = pd.MultiIndex.from_frame(group_df)
     group_index.names = list(groupby)
     group_codes, groups = pd.factorize(group_index)
@@ -198,10 +199,15 @@ def pseudobulk_export(
         log1p=log1p,
     )
 
-    X = df_sum[genes].to_numpy(dtype=float)
+    # Use only genes that survived filtering in pseudobulk_expression
+    available_genes = [g for g in genes if g in df_sum.columns]
+    if not available_genes:
+        raise ValueError("No requested genes found in pseudobulk output.")
+
+    X = df_sum[available_genes].to_numpy(dtype=float)
     obs = df_sum[groupby].copy()
     pb = AnnData(X=X, obs=obs)
-    pb.var_names = list(genes)
+    pb.var_names = list(available_genes)
     return pb
 
 
@@ -213,6 +219,7 @@ def pseudobulk_did(
     *,
     celltype_col: str | None = None,
     counts_layer: str | None = "counts",
+    log1p: bool = True,
     min_cells_per_group: int = 5,
     min_paired: int = 4,
     use_bootstrap: bool = False,
@@ -237,7 +244,7 @@ def pseudobulk_did(
         genes=genes,
         groupby=groupby,
         counts_layer=counts_layer,
-        log1p=True,
+        log1p=log1p,
         include_n_cells=True,
     )
     if pb.empty:
@@ -262,17 +269,14 @@ def pseudobulk_did(
         else:
             df_pool = pb.copy()
 
-        # paired participants
-        wide = df_pool.pivot_table(
-            index=design.participant_col,
-            columns=design.visit_col,
-            values=genes[0],
-            aggfunc="count",
-            observed=True,
-        )
-        has_v0 = wide[visits[0]] > 0 if visits[0] in wide.columns else pd.Series(False, index=wide.index)
-        has_v1 = wide[visits[1]] > 0 if visits[1] in wide.columns else pd.Series(False, index=wide.index)
-        keep = wide[has_v0 & has_v1].index
+        # paired participants: check visit presence using row counts (not a
+        # single gene) so that pairing is consistent across all genes.
+        visit_counts = df_pool.groupby(
+            [design.participant_col, design.visit_col], observed=True
+        ).size().unstack(fill_value=0)
+        has_v0 = visit_counts.get(visits[0], pd.Series(0, index=visit_counts.index)) > 0
+        has_v1 = visit_counts.get(visits[1], pd.Series(0, index=visit_counts.index)) > 0
+        keep = visit_counts.index[has_v0 & has_v1]
         df_pool = df_pool[df_pool[design.participant_col].isin(keep)].copy()
 
         if df_pool[design.participant_col].nunique() < min_paired:

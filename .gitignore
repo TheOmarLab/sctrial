@@ -37,3 +37,7 @@ examples/data/
 .idea/
 .ruff_cache/
 docs/build/
+
+# Jupyter notebook artifacts
+*.nbconvert.ipynb
+.ipynb_checkpoints/

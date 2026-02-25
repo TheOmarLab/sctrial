@@ -182,7 +182,7 @@ def plot_trial_interaction(
         visits = design.primary_visits()
 
     # extract data
-    obs = adata.obs[[design.arm_col, design.visit_col]].copy()
+    obs = adata.obs[[design.participant_col, design.arm_col, design.visit_col]].copy()
     if feature in adata.obs.columns:
         obs[feature] = adata.obs[feature].values
     elif feature in adata.var_names:
@@ -192,6 +192,14 @@ def plot_trial_interaction(
 
     # subset to relevant visits
     obs = obs[obs[design.visit_col].isin(list(visits))].copy()
+
+    # Aggregate to participant-level means to avoid pseudoreplication
+    # (Zimmerman et al., 2021; Squair et al., 2021)
+    obs = (
+        obs.groupby([design.participant_col, design.arm_col, design.visit_col], observed=True)[feature]
+        .mean()
+        .reset_index()
+    )
     obs[design.visit_col] = pd.Categorical(obs[design.visit_col], categories=list(visits), ordered=True)
 
     if ax is None:
@@ -251,7 +259,7 @@ def plot_parallel_trends(
             "Install with: pip install sctrial[plots]"
         )
 
-    obs = adata.obs[[design.arm_col, design.visit_col]].copy()
+    obs = adata.obs[[design.participant_col, design.arm_col, design.visit_col]].copy()
     if feature in adata.obs.columns:
         obs[feature] = adata.obs[feature].values
     elif feature in adata.var_names:
@@ -260,6 +268,14 @@ def plot_parallel_trends(
         raise KeyError(f"Feature '{feature}' not found.")
 
     obs = obs[obs[design.visit_col].isin(list(visits))].copy()
+
+    # Aggregate to participant-level means to avoid pseudoreplication
+    # (Zimmerman et al., 2021; Squair et al., 2021)
+    obs = (
+        obs.groupby([design.participant_col, design.arm_col, design.visit_col], observed=True)[feature]
+        .mean()
+        .reset_index()
+    )
     obs[design.visit_col] = pd.Categorical(obs[design.visit_col], categories=list(visits), ordered=True)
 
     if ax is None:
@@ -347,7 +363,14 @@ def plot_did_forest(
         ax.set_title(title)
         return ax
 
-    df_plot["ci"] = 1.96 * df_plot[se_col]
+    from scipy import stats as sp_stats
+
+    if "n_units" in df_plot.columns:
+        df_vals = (df_plot["n_units"] - 2).clip(lower=1)
+        t_crit = df_vals.apply(lambda d: sp_stats.t.ppf(0.975, d))
+        df_plot["ci"] = t_crit * df_plot[se_col]
+    else:
+        df_plot["ci"] = 1.96 * df_plot[se_col]
     df_plot = df_plot.sort_values(beta_col)
 
     if ax is None:
@@ -457,13 +480,16 @@ def plot_within_arm_comparison(
     if ax is None:
         fig, ax = plt.subplots(figsize=(4, 5))
 
+    # Aggregate to participant-visit means to avoid pseudoreplication
+    # (Zimmerman et al., 2021; Squair et al., 2021)
+    obs_agg = obs.groupby([design.participant_col, design.visit_col], observed=True)[feature].mean().reset_index()
+    obs_agg[design.visit_col] = pd.Categorical(obs_agg[design.visit_col], categories=list(visits), ordered=True)
+
     if plot_type == "box":
-        sns.boxplot(data=obs, x=design.visit_col, y=feature, ax=ax, palette="Set2", showfliers=False)
-        sns.stripplot(data=obs, x=design.visit_col, y=feature, ax=ax, color="black", alpha=0.3)
+        sns.boxplot(data=obs_agg, x=design.visit_col, y=feature, ax=ax, palette="Set2", showfliers=False)
+        sns.stripplot(data=obs_agg, x=design.visit_col, y=feature, ax=ax, color="black", alpha=0.3)
     elif plot_type == "paired":
-        # Group by participant and visit, then plot lines
-        # First, aggregate to participant-visit mean if multiple cells
-        df_paired = obs.groupby([design.participant_col, design.visit_col], observed=True)[feature].mean().reset_index()
+        df_paired = obs_agg
 
         # Plot lines
         for p in df_paired[design.participant_col].unique():
@@ -583,6 +609,8 @@ def plot_gsea_radar(
     term: str,
     pool_col: str = "pool",
     nes_col: str = "NES",
+    term_col: str = "Term",
+    fdr_col: str = "FDR q-val",
     title: str | None = None,
     figsize: tuple[float, float] = (6, 6),
 ) -> Figure:
@@ -598,6 +626,10 @@ def plot_gsea_radar(
         Column identifying cell types or pools.
     nes_col
         Column with NES values.
+    term_col
+        Column containing pathway term names.
+    fdr_col
+        Column containing FDR q-values (used for disambiguation).
     title
         Plot title.
     figsize
@@ -614,16 +646,16 @@ def plot_gsea_radar(
             "Install with: pip install sctrial[plots]"
         )
     from math import pi
-    df_term = gsea_results[gsea_results["Term"].str.contains(term, case=False, na=False)]
+    df_term = gsea_results[gsea_results[term_col].str.contains(term, case=False, na=False)]
     if df_term.empty:
         raise ValueError(f"Term '{term}' not found in results.")
 
     # If multiple matches, take the best one
-    if df_term["Term"].nunique() > 1:
-        best_term = df_term.groupby("Term")["FDR q-val"].min().idxmin()
-        df_term = df_term[df_term["Term"] == best_term]
+    if df_term[term_col].nunique() > 1:
+        best_term = df_term.groupby(term_col)[fdr_col].min().idxmin()
+        df_term = df_term[df_term[term_col] == best_term]
 
-    term_name = df_term["Term"].iloc[0]
+    term_name = df_term[term_col].iloc[0]
 
     vals = df_term.set_index(pool_col)[nes_col]
     categories = vals.index.tolist()
@@ -775,13 +807,22 @@ def plot_abundance_interaction(
     obs = adata.obs[[design.participant_col, design.arm_col, design.visit_col, design.celltype_col]].copy()
     obs = obs[obs[design.visit_col].isin(list(visits))].copy()
 
-    # Calculate proportions per participant-visit
+    # Calculate proportions per participant-visit, ensuring true zeros are
+    # represented (a participant with no cells of a given type has proportion 0,
+    # not a missing row).
     counts = obs.groupby([design.participant_col, design.visit_col, design.arm_col, design.celltype_col], observed=True).size().reset_index(name="n")
-    totals = counts.groupby([design.participant_col, design.visit_col], observed=True)["n"].transform("sum")
-    counts["prop"] = counts["n"] / totals
+    totals = obs.groupby([design.participant_col, design.visit_col], observed=True).size().reset_index(name="total")
+    counts = pd.merge(counts, totals, on=[design.participant_col, design.visit_col], how="right")
+    counts["n"] = counts["n"].fillna(0)
+    counts["prop"] = counts["n"] / counts["total"]
 
-    # Filter for specific celltype
-    df_plot = counts[counts[design.celltype_col] == celltype].copy()
+    # Filter for specific celltype — use merge to keep participant-visits
+    # that have zero cells of this type (they won't appear in counts after
+    # groupby, so we need to fill them in).
+    pv_arm = obs.groupby([design.participant_col, design.visit_col, design.arm_col], observed=True).size().reset_index(name="_n").drop(columns="_n")
+    ct_counts = counts[counts[design.celltype_col] == celltype].copy()
+    df_plot = pd.merge(pv_arm, ct_counts, on=[design.participant_col, design.visit_col, design.arm_col], how="left")
+    df_plot["prop"] = df_plot["prop"].fillna(0.0)
     df_plot[design.visit_col] = pd.Categorical(df_plot[design.visit_col], categories=list(visits), ordered=True)
 
     if ax is None:
@@ -865,21 +906,34 @@ def plot_trial_umap_panel(
 
     # 1. Big Cell Type UMAP on the left
     ax_big = fig.add_subplot(gs[:, 0])
-    if sc is not None:
-        sc.pl.umap(ad, color=design.celltype_col, ax=ax_big, show=False, frameon=False, title="Cell Types")
+    if design.celltype_col and design.celltype_col in ad.obs.columns:
+        if sc is not None:
+            sc.pl.umap(ad, color=design.celltype_col, ax=ax_big, show=False, frameon=False, title="Cell Types")
+        else:
+            if "X_umap" not in ad.obsm:
+                raise KeyError("UMAP coordinates not found in adata.obsm['X_umap'].")
+            ct = ad.obs[design.celltype_col].astype("category")
+            codes = ct.cat.codes
+            ax_big.scatter(
+                ad.obsm["X_umap"][:, 0],
+                ad.obsm["X_umap"][:, 1],
+                c=codes,
+                s=6,
+                cmap="tab20",
+            )
+            ax_big.set_title("Cell Types")
+            ax_big.set_axis_off()
     else:
         if "X_umap" not in ad.obsm:
             raise KeyError("UMAP coordinates not found in adata.obsm['X_umap'].")
-        ct = ad.obs[design.celltype_col].astype("category")
-        codes = ct.cat.codes
         ax_big.scatter(
             ad.obsm["X_umap"][:, 0],
             ad.obsm["X_umap"][:, 1],
-            c=codes,
             s=6,
-            cmap="tab20",
+            c="grey",
+            alpha=0.3,
         )
-        ax_big.set_title("Cell Types")
+        ax_big.set_title("All Cells")
         ax_big.set_axis_off()
 
     # 2. 2x2 Grid on the right
@@ -897,7 +951,7 @@ def plot_trial_umap_panel(
 
     for (arm, visit), (r, c) in positions.items():
         ax = fig.add_subplot(gs[r, c])
-        sub = ad[(ad.obs[design.arm_col] == arm) & (ad.obs[design.visit_col] == visit)]
+        sub = ad[(ad.obs[design.arm_col] == arm) & (ad.obs[design.visit_col] == visit)].copy()
 
         if sub.n_obs > 0:
             if sc is not None:
@@ -1161,11 +1215,22 @@ def plot_did_forest_interactive(
 
     if df.empty:
         raise ValueError("Empty DataFrame provided.")
+    # Fallback for abundance_did which uses 'celltype' instead of 'feature'
     if feature_col not in df.columns:
-        raise KeyError(f"Missing column '{feature_col}'")
+        if feature_col == "feature" and "celltype" in df.columns:
+            feature_col = "celltype"
+        else:
+            raise KeyError(f"Missing column '{feature_col}'")
+
+    from scipy import stats as sp_stats
 
     df_plot = df.dropna(subset=[beta_col, se_col]).copy()
-    df_plot["ci"] = 1.96 * df_plot[se_col]
+    if "n_units" in df_plot.columns:
+        df_vals = (df_plot["n_units"] - 2).clip(lower=1)
+        t_crit = df_vals.apply(lambda d: sp_stats.t.ppf(0.975, d))
+        df_plot["ci"] = t_crit * df_plot[se_col]
+    else:
+        df_plot["ci"] = 1.96 * df_plot[se_col]
     df_plot = df_plot.sort_values(beta_col)
 
     sig = df_plot[p_col] < alpha if p_col in df_plot.columns else False
