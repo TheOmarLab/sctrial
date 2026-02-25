@@ -580,14 +580,19 @@ What if some genes in my gene set are missing?
 
 ``score_gene_sets()`` automatically handles this:
 
-- Uses genes present in ``adata.var_names``
-- Skips missing genes with a warning
-- Requires at least 1 gene to calculate a score
+- Uses only genes present in ``adata.var_names``; missing genes are silently
+  dropped from the set.
+- A warning is logged when any genes are missing (at ``INFO`` level) or when
+  the overlap falls below ``min_genes`` (at ``WARNING`` level).
+- By default, ``min_genes=3`` — at least 3 genes must overlap to compute a
+  score.  If fewer are found, the score is set to ``NaN``.
+- Duplicate gene names within a set are automatically removed.
 
 .. code-block:: python
 
    gene_sets = {"MySet": ["GENE1", "GENE2_MISSING", "GENE3"]}
    # Will score using GENE1 and GENE3, skip GENE2_MISSING
+   # (provided min_genes <= 2; default min_genes=3 would yield NaN here)
 
 Should I use mean or zmean for gene set scoring?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

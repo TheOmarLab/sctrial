@@ -577,7 +577,9 @@ preprocessing, gene scoring, and DiD analysis.</p>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>adata</strong> – AnnData object containing expression data.</p></li>
-<li><p><strong>gene_sets</strong> – Dictionary mapping set names to lists of gene names.</p></li>
+<li><p><strong>gene_sets</strong> – Dictionary mapping set names to lists of gene names.
+Each value must be a <code class="docutils literal notranslate"><span class="pre">list</span></code> (not a bare string).  Duplicate gene
+names within a set are automatically removed.</p></li>
 <li><p><strong>layer</strong> – Expression matrix source. If None, uses <cite>adata.X</cite>.
 For log1p-CPM workflows, use layer=”log1p_cpm”.</p></li>
 <li><p><strong>method</strong> – <p>Scoring method:</p>
@@ -590,7 +592,8 @@ as it accounts for different expression scales across genes.</p></li>
 </p></li>
 <li><p><strong>prefix</strong> – Prefix to add to column names (e.g., <code class="docutils literal notranslate"><span class="pre">ms_</span></code> for module scores).</p></li>
 <li><p><strong>min_genes</strong> – Minimum number of genes from the set that must be present in the data.
-If fewer genes overlap, the score is set to NaN.</p></li>
+If fewer genes overlap, the score is set to NaN and a warning is
+logged.  Default is 3.</p></li>
 <li><p><strong>overwrite</strong> – If False, skip gene sets that already have a column in adata.obs.</p></li>
 </ul>
 </dd>
@@ -608,6 +611,11 @@ the z-mean calculation. If ALL genes in a set have zero variance, the
 score is NaN. This prevents division by zero and ensures meaningful scores.</p>
 <p>The zmean method computes: mean(z_i) where z_i = (x_i - mean(x_i)) / std(x_i)
 for each gene i across all cells.</p>
+<p><strong>Non-finite expression values:</strong>
+NaN and inf values in the expression matrix are excluded from score
+computation (treated as missing).  A warning is logged when non-finite
+values are detected.  If <em>all</em> values for a cell are non-finite the
+resulting score will be NaN.</p>
 </dd></dl>
 
 <dl class="py function">

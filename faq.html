@@ -681,12 +681,17 @@ in linear models (Gelman &amp; Hill, 2006).</p>
 <h3>What if some genes in my gene set are missing?<a class="headerlink" href="#what-if-some-genes-in-my-gene-set-are-missing" title="Link to this heading"></a></h3>
 <p><code class="docutils literal notranslate"><span class="pre">score_gene_sets()</span></code> automatically handles this:</p>
 <ul class="simple">
-<li><p>Uses genes present in <code class="docutils literal notranslate"><span class="pre">adata.var_names</span></code></p></li>
-<li><p>Skips missing genes with a warning</p></li>
-<li><p>Requires at least 1 gene to calculate a score</p></li>
+<li><p>Uses only genes present in <code class="docutils literal notranslate"><span class="pre">adata.var_names</span></code>; missing genes are silently
+dropped from the set.</p></li>
+<li><p>A warning is logged when any genes are missing (at <code class="docutils literal notranslate"><span class="pre">INFO</span></code> level) or when
+the overlap falls below <code class="docutils literal notranslate"><span class="pre">min_genes</span></code> (at <code class="docutils literal notranslate"><span class="pre">WARNING</span></code> level).</p></li>
+<li><p>By default, <code class="docutils literal notranslate"><span class="pre">min_genes=3</span></code> — at least 3 genes must overlap to compute a
+score.  If fewer are found, the score is set to <code class="docutils literal notranslate"><span class="pre">NaN</span></code>.</p></li>
+<li><p>Duplicate gene names within a set are automatically removed.</p></li>
 </ul>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">gene_sets</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;MySet&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;GENE1&quot;</span><span class="p">,</span> <span class="s2">&quot;GENE2_MISSING&quot;</span><span class="p">,</span> <span class="s2">&quot;GENE3&quot;</span><span class="p">]}</span>
 <span class="c1"># Will score using GENE1 and GENE3, skip GENE2_MISSING</span>
+<span class="c1"># (provided min_genes &lt;= 2; default min_genes=3 would yield NaN here)</span>
 </pre></div>
 </div>
 </section>
