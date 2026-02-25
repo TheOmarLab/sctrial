@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Sequence
 from dataclasses import dataclass
 
 import pandas as pd
 from anndata import AnnData
+
+logger = logging.getLogger(__name__)
 
 __all__ = ["TrialDesign"]
 
@@ -61,8 +64,8 @@ class TrialDesign:
             Optional explicit follow-up visit label. If None, uses
             ``self.followup_visit``.
         """
-        b = baseline or self.baseline_visit
-        f = followup or self.followup_visit
+        b = baseline if baseline is not None else self.baseline_visit
+        f = followup if followup is not None else self.followup_visit
         if b is None or f is None:
             raise ValueError(
                 "Primary visits not specified. Provide baseline/followup or set "
@@ -129,6 +132,12 @@ class TrialDesign:
             )
 
         if check_arm_labels:
+            if self.arm_treated == self.arm_control:
+                raise ValueError(
+                    f"arm_treated and arm_control must be distinct for "
+                    f"between-arm analyses, got {self.arm_treated!r} for both. "
+                    f"For single-arm studies, use check_arm_labels=False."
+                )
             arms = set(pd.Series(obs[self.arm_col]).dropna().unique().tolist())
             if (self.arm_treated not in arms) or (self.arm_control not in arms):
                 raise ValueError(
@@ -136,9 +145,26 @@ class TrialDesign:
                     f"Expected treated='{self.arm_treated}', control='{self.arm_control}'. "
                     f"Observed arms: {sorted(arms)}"
                 )
+            extra = arms - {self.arm_treated, self.arm_control}
+            if extra:
+                import warnings
+
+                warnings.warn(
+                    f"obs['{self.arm_col}'] contains arms beyond treated/control: "
+                    f"{sorted(extra)}. These participants will be treated as "
+                    f"control in arm_bin(). Consider subsetting your data to "
+                    f"only the two arms of interest.",
+                    UserWarning,
+                    stacklevel=2,
+                )
 
     def arm_bin(self, obs: pd.DataFrame) -> pd.Series:
         """Return 0/1 treated indicator aligned to obs.index."""
+        if self.arm_treated == self.arm_control:
+            raise ValueError(
+                f"arm_bin() requires distinct arm labels, but "
+                f"arm_treated == arm_control == {self.arm_treated!r}."
+            )
         if self.arm_col not in obs.columns:
             raise KeyError(f"arm_col '{self.arm_col}' not in obs.")
         return (obs[self.arm_col] == self.arm_treated).astype(int)
