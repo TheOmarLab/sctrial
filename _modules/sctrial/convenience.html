@@ -108,12 +108,12 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">quick_did</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
     <span class="n">module_scores</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]],</span>
+    <span class="n">visits</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
     <span class="n">participant_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;participant_id&quot;</span><span class="p">,</span>
     <span class="n">visit_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;visit&quot;</span><span class="p">,</span>
     <span class="n">arm_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;arm&quot;</span><span class="p">,</span>
     <span class="n">arm_treated</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Treated&quot;</span><span class="p">,</span>
     <span class="n">arm_control</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Control&quot;</span><span class="p">,</span>
-    <span class="n">visits</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">celltype_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;log1p_cpm&quot;</span><span class="p">,</span>
     <span class="n">counts_layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;counts&quot;</span><span class="p">,</span>
@@ -132,6 +132,10 @@
 <span class="sd">        AnnData object with trial data.</span>
 <span class="sd">    module_scores</span>
 <span class="sd">        Dictionary mapping module names to gene lists.</span>
+<span class="sd">    visits</span>
+<span class="sd">        Tuple of (baseline, followup) visit labels.  The order matters:</span>
+<span class="sd">        the first element is the baseline visit and the second is the</span>
+<span class="sd">        follow-up, which determines the sign of the DiD estimate.</span>
 <span class="sd">    participant_col</span>
 <span class="sd">        Column name for participant identifiers.</span>
 <span class="sd">    visit_col</span>
@@ -142,15 +146,6 @@
 <span class="sd">        Label for treated arm.</span>
 <span class="sd">    arm_control</span>
 <span class="sd">        Label for control arm.</span>
-<span class="sd">    visits</span>
-<span class="sd">        Tuple of (baseline, followup) visit labels.  Must be specified</span>
-<span class="sd">        explicitly to ensure the correct causal contrast direction.</span>
-
-<span class="sd">        .. deprecated::</span>
-<span class="sd">            Passing ``visits=None`` is deprecated. Lexicographic sorting</span>
-<span class="sd">            of visit labels can silently pick the wrong pair (e.g.</span>
-<span class="sd">            ``&quot;Day10&quot;`` before ``&quot;Day2&quot;``).  Always specify visits</span>
-<span class="sd">            explicitly.</span>
 <span class="sd">    celltype_col</span>
 <span class="sd">        Optional column name for cell types.</span>
 <span class="sd">    layer</span>
@@ -218,40 +213,21 @@
         <span class="n">celltype_col</span><span class="o">=</span><span class="n">celltype_col</span><span class="p">,</span>
     <span class="p">)</span>
 
-    <span class="c1"># 2. Auto-detect visits if not provided (deprecated — warns)</span>
-    <span class="k">if</span> <span class="n">visits</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
-
-        <span class="n">all_visits</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">())</span>
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">all_visits</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Need at least 2 visits for DiD analysis, found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">all_visits</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
-            <span class="p">)</span>
-        <span class="n">visits</span> <span class="o">=</span> <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">all_visits</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">str</span><span class="p">(</span><span class="n">all_visits</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
-        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-            <span class="s2">&quot;visits=None uses lexicographic sorting, which can pick the &quot;</span>
-            <span class="s2">&quot;wrong visit pair (e.g. &#39;Day10&#39; before &#39;Day2&#39;). &quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;Auto-selected visits=</span><span class="si">{</span><span class="n">visits</span><span class="si">!r}</span><span class="s2">. &quot;</span>
-            <span class="s2">&quot;Please specify visits explicitly.&quot;</span><span class="p">,</span>
-            <span class="ne">FutureWarning</span><span class="p">,</span>
-            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-        <span class="p">)</span>
-
-    <span class="c1"># 3. Ensure preprocessing</span>
+    <span class="c1"># 2. Ensure preprocessing</span>
     <span class="k">if</span> <span class="n">layer</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">:</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Creating &#39;</span><span class="si">%s</span><span class="s2">&#39; layer from &#39;</span><span class="si">%s</span><span class="s2">&#39;...&quot;</span><span class="p">,</span> <span class="n">layer</span><span class="p">,</span> <span class="n">counts_layer</span><span class="p">)</span>
         <span class="n">adata</span> <span class="o">=</span> <span class="n">add_log1p_cpm_layer</span><span class="p">(</span>
             <span class="n">adata</span><span class="p">,</span> <span class="n">counts_layer</span><span class="o">=</span><span class="n">counts_layer</span><span class="p">,</span> <span class="n">out_layer</span><span class="o">=</span><span class="n">layer</span>
         <span class="p">)</span>
 
-    <span class="c1"># 4. Score gene sets</span>
+    <span class="c1"># 3. Score gene sets</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Scoring </span><span class="si">%d</span><span class="s2"> gene sets...&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">module_scores</span><span class="p">))</span>
     <span class="n">adata</span> <span class="o">=</span> <span class="n">score_gene_sets</span><span class="p">(</span>
         <span class="n">adata</span><span class="p">,</span> <span class="n">module_scores</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="n">layer</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="n">score_method</span><span class="p">,</span>
         <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;ms_&quot;</span><span class="p">,</span> <span class="n">min_genes</span><span class="o">=</span><span class="n">min_genes</span><span class="p">,</span>
     <span class="p">)</span>
 
-    <span class="c1"># 5. Run DiD</span>
+    <span class="c1"># 4. Run DiD</span>
     <span class="n">features</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;ms_</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">module_scores</span><span class="o">.</span><span class="n">keys</span><span class="p">()]</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Running DiD for </span><span class="si">%d</span><span class="s2"> features...&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">features</span><span class="p">))</span>
     <span class="k">return</span> <span class="n">did_table</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="n">visits</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
