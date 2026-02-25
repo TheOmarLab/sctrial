@@ -223,6 +223,24 @@ class TestZeroLibraryCells:
         assert np.all(result[0] == 0), "Zero-count cell should produce all-zero CPM"
         assert np.all(np.isfinite(result)), "No NaN/inf should be present"
 
+    def test_zero_count_cell_integer_dtype_dense(self):
+        """Integer counts with zero-count cell should not crash (dense)."""
+        X = np.array([[0, 0], [3, 4]], dtype=np.int32)
+        ad = _make_adata(X)
+        st.add_log1p_cpm_layer(ad, counts_layer="counts", out_layer="norm")
+        result = np.asarray(ad.layers["norm"])
+        assert np.all(result[0] == 0)
+        assert np.all(np.isfinite(result))
+
+    def test_zero_count_cell_integer_dtype_sparse(self):
+        """Integer counts with zero-count cell should not crash (sparse)."""
+        X = np.array([[0, 0], [3, 4]], dtype=np.int32)
+        ad = _make_adata(X, sparse=True)
+        st.add_log1p_cpm_layer(ad, counts_layer="counts", out_layer="norm")
+        result = np.asarray(ad.layers["norm"].toarray())
+        assert np.all(result[0] == 0)
+        assert np.all(np.isfinite(result))
+
     def test_zero_count_cell_warns(self, caplog):
         """Zero-count cells should emit a warning."""
         X = np.array([[0.0, 0.0], [3.0, 4.0]])

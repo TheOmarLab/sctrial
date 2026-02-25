@@ -118,7 +118,7 @@ def add_log1p_cpm_layer(
                 n_zero,
             )
         # Safe division: 0/0 → 0 via replacing zero libsizes with inf
-        safe_libsize = libsize.copy()
+        safe_libsize = libsize.astype(float, copy=True)
         safe_libsize[safe_libsize == 0] = np.inf
         X_cpm = X.multiply(scale / safe_libsize.reshape(-1, 1))
         X_log = X_cpm.tocsr()
@@ -135,7 +135,7 @@ def add_log1p_cpm_layer(
                 n_zero,
             )
         # Safe division: 0/0 → 0 via replacing zero libsizes with inf
-        safe_libsize = libsize.copy()
+        safe_libsize = libsize.astype(float, copy=True)
         safe_libsize[safe_libsize == 0] = np.inf
         X_cpm = X / safe_libsize * scale
         X_log = np.log1p(X_cpm)
