@@ -438,6 +438,24 @@ models. Key caveats:
   estimates associations, not causal effects, unless combined with an
   appropriate causal framework.
 
+Can I use categorical covariates in Bayesian DiD?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Yes. ``did_table_bayes()`` automatically dummy-encodes categorical columns
+(e.g., sex, batch, site) using one-hot encoding with the first category
+dropped to avoid multicollinearity with the intercept. You can pass
+categorical columns directly in the ``covariates`` parameter:
+
+.. code-block:: python
+
+   res = st.did_table_bayes(
+       adata, features, design, visits=("V1", "V2"),
+       covariates=["sex", "site"],  # categorical columns are auto-encoded
+   )
+
+This follows standard Bayesian practice for including indicator variables
+in linear models (Gelman & Hill, 2006).
+
 Analysis Questions
 ------------------
 
