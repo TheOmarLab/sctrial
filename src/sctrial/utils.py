@@ -228,7 +228,7 @@ def permutation_pvalue(
 
     Returns
     -------
-    float 
+    float
         Two-sided permutation p-value in ``[0, 1]``.
     Notes
     -----
@@ -269,7 +269,7 @@ def permutation_pvalue_paired(
         Random seed.
 
     Returns
-    ------- 
+    -------
     float
         Two-sided permutation p-value in ``[0, 1]``.
     Notes

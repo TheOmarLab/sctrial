@@ -235,7 +235,7 @@ def run_gsea_did_by_celltype(
     celltypes
         List of cell types to analyze. If None, uses all unique cell types in `design.celltype_col`.
     **kwargs
-        Additional parameters passed to `gseapy.prerank` 
+        Additional parameters passed to `gseapy.prerank`
 
     Returns
     -------
