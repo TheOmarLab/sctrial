@@ -658,6 +658,12 @@ aggregated feature values.</p>
 <dd class="field-odd"><p>pd.DataFrame</p>
 </dd>
 </dl>
+<p class="rubric">Notes</p>
+<p>Aggregation is performed at the <strong>cell level</strong>.  When grouping by
+treatment arm or participant, groups with more cells will dominate
+the aggregate.  For participant-level or balanced comparisons, use
+<a class="reference internal" href="#sctrial.stats.pseudobulk.pseudobulk_expression" title="sctrial.stats.pseudobulk.pseudobulk_expression"><code class="xref py py-func docutils literal notranslate"><span class="pre">pseudobulk_expression()</span></code></a> or
+pre-aggregate to pseudobulk before calling this function.</p>
 </dd></dl>
 
 <dl class="py function">
