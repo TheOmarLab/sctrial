@@ -320,6 +320,16 @@ def between_arm_comparison(
         - 'wilcoxon': Wilcoxon rank-sum test (Mann-Whitney U).
     covariates
         Optional covariate columns to include as fixed effects for OLS.
+
+    Returns
+    -------
+    pd.DataFrame
+        Table with feature, beta_arm, p_arm, FDR_arm, n_units.
+        - feature: Name of the feature.
+        - beta_arm: Effect size (difference in means between arms). Note: This is the difference in means between the treated and control arms.
+        - p_arm: P-value for the between-arm comparison.
+        - FDR_arm: False Discovery Rate corrected p-value.
+        - n_units: Number of unique units (participants) included in the analysis. Note: This is the number of participants that have valid scores for the feature in both arms.
     """
     df_use = _prepare_between_arm_df(
         adata=adata,
