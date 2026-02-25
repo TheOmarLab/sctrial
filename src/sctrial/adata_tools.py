@@ -18,18 +18,26 @@ def _require_cols(obs: pd.DataFrame, cols: list[str]) -> None:
 
 
 def _to_bool_series(s: pd.Series) -> pd.Series:
-    """Best-effort conversion of a metadata column to boolean."""
+    """Best-effort conversion of a metadata column to boolean.
+
+    Handles bool, numeric (any non-zero → True), and string/categorical
+    columns (recognises "true", "t", "yes", "y", "1" as truthy).
+
+    Non-finite numeric values (NaN, inf) are treated as ``False``.
+    """
     if pd.api.types.is_bool_dtype(s):
         return s.fillna(False)
 
-    # numeric 0/1
+    # numeric: any non-zero finite value is truthy
     if pd.api.types.is_numeric_dtype(s):
-        return s.fillna(0).astype(int).astype(bool)
+        filled = s.fillna(0)
+        finite_mask = np.isfinite(filled)
+        return (finite_mask & (filled != 0)).astype(bool)
 
     # strings / categoricals
     ss = s.astype(str).str.strip().str.lower()
     true_vals = {"1", "true", "t", "yes", "y"}
-    out = ss.map(lambda x: x in true_vals)
+    out = ss.isin(true_vals)
     return out.fillna(False).astype(bool)
 
 
@@ -134,6 +142,14 @@ def profile_features(
     pd.DataFrame
         Table with index `groupby` and columns `features`, containing
         aggregated feature values.
+
+    Notes
+    -----
+    Aggregation is performed at the **cell level**.  When grouping by
+    treatment arm or participant, groups with more cells will dominate
+    the aggregate.  For participant-level or balanced comparisons, use
+    :func:`~sctrial.stats.pseudobulk.pseudobulk_expression` or
+    pre-aggregate to pseudobulk before calling this function.
     """
     from .stats._extract import extract_gene_vector
 
