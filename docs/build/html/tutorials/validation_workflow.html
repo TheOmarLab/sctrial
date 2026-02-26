@@ -1,0 +1,202 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Validation Workflow &mdash; sctrial 0.2.1.dev1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=28304322"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="GSEA and Pathway Analysis" href="gsea_analysis.html" />
+    <link rel="prev" title="Basic Workflow Tutorial" href="basic_workflow.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            sctrial
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Tutorials</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="basic_workflow.html">Basic Workflow Tutorial</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Validation Workflow</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#define-the-trial-design">1. Define the trial design</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#validate-the-anndata-object">2. Validate the AnnData object</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#run-a-full-diagnostic-report">3. Run a full diagnostic report</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pairing-checks">4. Pairing checks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#next-steps">Next steps</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="gsea_analysis.html">GSEA and Pathway Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="celltype_did_gsea.html">Celltype‑specific DiD + GSEA</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pseudobulk_did_bootstrap.html">Pseudobulk DiD + Bootstrap</a></li>
+<li class="toctree-l2"><a class="reference internal" href="module_score_did_pipeline.html">Module Score DiD Pipeline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cross_validation.html">Cross-Validation and Robustness</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mixed_effects_models.html">Mixed Effects Models</a></li>
+<li class="toctree-l2"><a class="reference internal" href="multi_timepoint_analysis.html">Multi-Timepoint Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="advanced_designs.html">Advanced Trial Analysis</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api.html">API Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">User Guides:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../best_practices.html">Best Practices Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../troubleshooting.html">Troubleshooting Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">Frequently Asked Questions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../performance.html">Performance Guide</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">sctrial</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Tutorials</a></li>
+      <li class="breadcrumb-item active">Validation Workflow</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/tutorials/validation_workflow.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="validation-workflow">
+<h1>Validation Workflow<a class="headerlink" href="#validation-workflow" title="Link to this heading"></a></h1>
+<p>This tutorial shows how to validate trial data before running inference. The goal is to
+catch common problems early: missing columns, unpaired participants, and features that
+are not present in the dataset.</p>
+<section id="define-the-trial-design">
+<h2>1. Define the trial design<a class="headerlink" href="#define-the-trial-design" title="Link to this heading"></a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">sctrial</span> <span class="k">as</span> <span class="nn">st</span>
+
+<span class="n">design</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">TrialDesign</span><span class="p">(</span>
+    <span class="n">participant_col</span><span class="o">=</span><span class="s2">&quot;participant_id&quot;</span><span class="p">,</span>
+    <span class="n">visit_col</span><span class="o">=</span><span class="s2">&quot;visit&quot;</span><span class="p">,</span>
+    <span class="n">arm_col</span><span class="o">=</span><span class="s2">&quot;arm&quot;</span><span class="p">,</span>
+    <span class="n">arm_treated</span><span class="o">=</span><span class="s2">&quot;Treated&quot;</span><span class="p">,</span>
+    <span class="n">arm_control</span><span class="o">=</span><span class="s2">&quot;Control&quot;</span><span class="p">,</span>
+    <span class="n">celltype_col</span><span class="o">=</span><span class="s2">&quot;cell_type&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="validate-the-anndata-object">
+<h2>2. Validate the AnnData object<a class="headerlink" href="#validate-the-anndata-object" title="Link to this heading"></a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Raises an error if required columns are missing</span>
+<span class="n">st</span><span class="o">.</span><span class="n">validate_adata</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">)</span>
+
+<span class="c1"># Validate a set of features (genes or obs columns)</span>
+<span class="n">valid</span><span class="p">,</span> <span class="n">missing</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">validate_features</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;IFNG&quot;</span><span class="p">,</span> <span class="s2">&quot;CD3D&quot;</span><span class="p">,</span> <span class="s2">&quot;sig_IFN&quot;</span><span class="p">],</span> <span class="n">allow_missing</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Valid features:&quot;</span><span class="p">,</span> <span class="n">valid</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Missing features:&quot;</span><span class="p">,</span> <span class="n">missing</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="run-a-full-diagnostic-report">
+<h2>3. Run a full diagnostic report<a class="headerlink" href="#run-a-full-diagnostic-report" title="Link to this heading"></a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">report</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">diagnose_trial_data</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">report</span><span class="p">[</span><span class="s2">&quot;warnings&quot;</span><span class="p">]:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Warnings:&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">report</span><span class="p">[</span><span class="s2">&quot;warnings&quot;</span><span class="p">]:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="p">,</span> <span class="n">w</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="pairing-checks">
+<h2>4. Pairing checks<a class="headerlink" href="#pairing-checks" title="Link to this heading"></a></h2>
+<p>Pairing is critical for longitudinal analyses. Use the diagnostic output to confirm
+that enough participants have data at both visits. For detailed pairing inspection:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">pairing</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">obs</span>
+    <span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">&quot;participant_id&quot;</span><span class="p">,</span> <span class="s2">&quot;visit&quot;</span><span class="p">])</span>
+    <span class="o">.</span><span class="n">size</span><span class="p">()</span>
+    <span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;n_cells&quot;</span><span class="p">)</span>
+<span class="p">)</span>
+<span class="n">paired</span> <span class="o">=</span> <span class="n">pairing</span><span class="o">.</span><span class="n">pivot</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="s2">&quot;participant_id&quot;</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="s2">&quot;visit&quot;</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="s2">&quot;n_cells&quot;</span><span class="p">)</span>
+<span class="n">paired</span> <span class="o">=</span> <span class="n">paired</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Paired participants: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">paired</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="next-steps">
+<h2>Next steps<a class="headerlink" href="#next-steps" title="Link to this heading"></a></h2>
+<p>Once validation passes, proceed to DiD or within-arm comparisons. For robust inference
+under small samples, enable bootstrap inference in <cite>did_table</cite>.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="basic_workflow.html" class="btn btn-neutral float-left" title="Basic Workflow Tutorial" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="gsea_analysis.html" class="btn btn-neutral float-right" title="GSEA and Pathway Analysis" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
