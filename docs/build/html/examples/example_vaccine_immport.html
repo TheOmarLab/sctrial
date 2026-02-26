@@ -597,6 +597,9 @@ Using 6 validated paired participants for analyses.
 <section id="6.-Within-Arm-Comparisons-(Participant-Level)">
 <h2>6. Within-Arm Comparisons (Participant-Level)<a class="headerlink" href="#6.-Within-Arm-Comparisons-(Participant-Level)" title="Link to this heading"></a></h2>
 <p>Here, we run paired within‑participant analyses to determine which module scores change from Day 0 to Day 7.</p>
+<blockquote>
+<div><p><strong>Statistical caveat:</strong> With only ~6 paired participants, cluster-robust asymptotic p-values are anti-conservative. The package warns about this. For reliable inference, use <code class="docutils literal notranslate"><span class="pre">use_bootstrap=True</span></code> (wild cluster bootstrap). Demo p-values below are illustrative only.</p>
+</div></blockquote>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
 </pre></div>
@@ -702,17 +705,17 @@ WITHIN-ARM COMPARISONS: MODULE SCORES (Day 0 vs Day 7)
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_87925/2077809302.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_62428/2077809302.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_87925/2077809302.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_62428/2077809302.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_87925/2077809302.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_62428/2077809302.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_87925/2077809302.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_62428/2077809302.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_87925/2077809302.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_62428/2077809302.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_87925/2077809302.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_62428/2077809302.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
 </pre></div></div>
 </div>
@@ -1190,43 +1193,43 @@ WITHIN-ARM COMPARISONS: PANEL GENES (Day 0 vs Day 7)
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_87925/1872950338.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_62428/1872950338.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_87925/1872950338.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_62428/1872950338.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_87925/1872950338.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_62428/1872950338.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_87925/1872950338.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_62428/1872950338.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_87925/1872950338.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_62428/1872950338.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_87925/1872950338.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_62428/1872950338.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_87925/1872950338.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_62428/1872950338.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_87925/1872950338.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_62428/1872950338.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_87925/1872950338.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_62428/1872950338.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_87925/1872950338.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_62428/1872950338.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_87925/1872950338.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_62428/1872950338.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_87925/1872950338.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_62428/1872950338.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_87925/1872950338.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_62428/1872950338.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_87925/1872950338.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_62428/1872950338.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_87925/1872950338.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_62428/1872950338.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_87925/1872950338.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_62428/1872950338.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_87925/1872950338.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_62428/1872950338.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_87925/1872950338.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_62428/1872950338.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_87925/1872950338.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_62428/1872950338.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
 </pre></div></div>
 </div>
@@ -1439,6 +1442,9 @@ Boxplots show participant-level log1p CPM by day; points indicate individual par
 <section id="8.-Pseudobulk-Within-Arm-(Panel-Genes)">
 <h2>8. Pseudobulk Within-Arm (Panel Genes)<a class="headerlink" href="#8.-Pseudobulk-Within-Arm-(Panel-Genes)" title="Link to this heading"></a></h2>
 <p>Here, we aggregate counts to pseudobulk profiles and quantify gene‑level shifts by cell type.</p>
+<blockquote>
+<div><p><strong>Exploratory only:</strong> With permissive thresholds (<code class="docutils literal notranslate"><span class="pre">min_cells_per_group=5</span></code>, <code class="docutils literal notranslate"><span class="pre">min_paired=3</span></code>), many cell-type pools have very few paired observations (n≈5), producing discrete p-value distributions and unstable estimates. Treat these as hypothesis-generating, not confirmatory.</p>
+</div></blockquote>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
 </pre></div>
@@ -1884,6 +1890,9 @@ Pseudobulk paired deltas with Wilcoxon signed-rank test (panel genes × cell typ
 <section id="9.-Trial-Interaction-Plot-(Single-Arm)">
 <h2>9. Trial Interaction Plot (Single Arm)<a class="headerlink" href="#9.-Trial-Interaction-Plot-(Single-Arm)" title="Link to this heading"></a></h2>
 <p>Here, we visualize paired trajectories to interpret direction and magnitude of change.</p>
+<blockquote>
+<div><p><strong>Note:</strong> The plot below shows trajectories for the <strong>first module score</strong> (<code class="docutils literal notranslate"><span class="pre">features[0]</span></code>). Change the index to visualize other modules.</p>
+</div></blockquote>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
 </pre></div>
@@ -1921,6 +1930,8 @@ Pseudobulk paired deltas with Wilcoxon signed-rank test (panel genes × cell typ
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">features</span><span class="p">:</span>
     <span class="n">modules</span> <span class="o">=</span> <span class="n">features</span><span class="p">[:</span><span class="mi">4</span><span class="p">]</span>
     <span class="k">if</span> <span class="s2">&quot;X_umap&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">adata_analysis</span><span class="o">.</span><span class="n">obsm</span><span class="p">:</span>
+        <span class="c1"># Ensure UMAP is computed on log1p_cpm (same as Section 4)</span>
+        <span class="n">adata_analysis</span><span class="o">.</span><span class="n">X</span> <span class="o">=</span> <span class="n">adata_analysis</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">&quot;log1p_cpm&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
         <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">pca</span><span class="p">(</span><span class="n">adata_analysis</span><span class="p">)</span>
         <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">neighbors</span><span class="p">(</span><span class="n">adata_analysis</span><span class="p">)</span>
         <span class="n">sc</span><span class="o">.</span><span class="n">tl</span><span class="o">.</span><span class="n">umap</span><span class="p">(</span><span class="n">adata_analysis</span><span class="p">)</span>
@@ -1950,7 +1961,7 @@ Pseudobulk paired deltas with Wilcoxon signed-rank test (panel genes × cell typ
 </section>
 <section id="11.-Dotplot-of-Panel-Genes">
 <h2>11. Dotplot of Panel Genes<a class="headerlink" href="#11.-Dotplot-of-Panel-Genes" title="Link to this heading"></a></h2>
-<p>Here, we summarize gene expression patterns across cell types in a compact dotplot.</p>
+<p>Here, we summarize gene expression patterns <strong>across visits</strong> (Day 0 vs Day 7) in a compact dotplot.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
 </pre></div>
@@ -1984,7 +1995,7 @@ Pseudobulk paired deltas with Wilcoxon signed-rank test (panel genes × cell typ
 </ul>
 <section id="12.1-Effect-Sizes-for-Within-Arm-Changes">
 <h3>12.1 Effect Sizes for Within-Arm Changes<a class="headerlink" href="#12.1-Effect-Sizes-for-Within-Arm-Changes" title="Link to this heading"></a></h3>
-<p>For within-arm studies without a control group, effect sizes quantify the magnitude of change from baseline.</p>
+<p>For within-arm paired studies, <strong>paired</strong> effect sizes quantify the magnitude of change from baseline.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
 </pre></div>
@@ -2014,31 +2025,34 @@ Pseudobulk paired deltas with Wilcoxon signed-rank test (panel genes × cell typ
         <span class="n">post_vals</span> <span class="o">=</span> <span class="n">wide</span><span class="p">[</span><span class="n">visits</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span><span class="o">.</span><span class="n">values</span>
 
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">pre_vals</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">3</span><span class="p">:</span>
-            <span class="c1"># Cohen&#39;s d for paired samples (standardized mean difference)</span>
+            <span class="c1"># Paired effect size: standardized mean of within-subject differences</span>
             <span class="n">delta</span> <span class="o">=</span> <span class="n">post_vals</span> <span class="o">-</span> <span class="n">pre_vals</span>
-            <span class="n">d_paired</span> <span class="o">=</span> <span class="n">delta</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">/</span> <span class="n">delta</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="k">if</span> <span class="n">delta</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+            <span class="n">sd_delta</span> <span class="o">=</span> <span class="n">delta</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">d_paired</span> <span class="o">=</span> <span class="n">delta</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">/</span> <span class="n">sd_delta</span> <span class="k">if</span> <span class="n">sd_delta</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
 
-            <span class="c1"># Also compute Cohen&#39;s d comparing post vs pre distributions</span>
-            <span class="n">d_groups</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">cohens_d</span><span class="p">(</span><span class="n">post_vals</span><span class="p">,</span> <span class="n">pre_vals</span><span class="p">)</span>
-            <span class="n">g_groups</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">hedges_g</span><span class="p">(</span><span class="n">post_vals</span><span class="p">,</span> <span class="n">pre_vals</span><span class="p">)</span>
+            <span class="c1"># Hedge&#39;s correction for small-sample bias (paired df = n-1)</span>
+            <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">delta</span><span class="p">)</span>
+            <span class="n">j</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="mi">3</span> <span class="o">/</span> <span class="p">(</span><span class="mi">4</span> <span class="o">*</span> <span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="k">if</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mi">2</span> <span class="k">else</span> <span class="mf">1.0</span>
+            <span class="n">g_paired</span> <span class="o">=</span> <span class="n">d_paired</span> <span class="o">*</span> <span class="n">j</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">d_paired</span><span class="p">)</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
 
-            <span class="c1"># Bootstrap CI for effect size (returns: effect_size, ci_lower, ci_upper)</span>
-            <span class="k">try</span><span class="p">:</span>
-                <span class="n">_</span><span class="p">,</span> <span class="n">ci_low</span><span class="p">,</span> <span class="n">ci_high</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">bootstrap_effect_size_ci</span><span class="p">(</span>
-                    <span class="n">post_vals</span><span class="p">,</span> <span class="n">pre_vals</span><span class="p">,</span>
-                    <span class="n">n_boot</span><span class="o">=</span><span class="mi">999</span><span class="p">,</span>
-                    <span class="n">alpha</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
-                    <span class="n">seed</span><span class="o">=</span><span class="n">SEED</span>
-                <span class="p">)</span>
-            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
-                <span class="n">ci_low</span><span class="p">,</span> <span class="n">ci_high</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+            <span class="c1"># Bootstrap CI for paired effect size</span>
+            <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">SEED</span><span class="p">)</span>
+            <span class="n">boot_ds</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">999</span><span class="p">):</span>
+                <span class="n">idx</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">replace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">d_boot</span> <span class="o">=</span> <span class="n">delta</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+                <span class="n">sd_b</span> <span class="o">=</span> <span class="n">d_boot</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+                <span class="n">boot_ds</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">d_boot</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">/</span> <span class="n">sd_b</span> <span class="o">*</span> <span class="n">j</span> <span class="k">if</span> <span class="n">sd_b</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+            <span class="n">boot_ds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">boot_ds</span><span class="p">)</span>
+            <span class="n">boot_ds</span> <span class="o">=</span> <span class="n">boot_ds</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">boot_ds</span><span class="p">)]</span>
+            <span class="n">ci_low</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">boot_ds</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">)</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">boot_ds</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+            <span class="n">ci_high</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">boot_ds</span><span class="p">,</span> <span class="mf">97.5</span><span class="p">)</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">boot_ds</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
 
             <span class="n">effect_results</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
                 <span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
                 <span class="s2">&quot;mean_delta&quot;</span><span class="p">:</span> <span class="n">delta</span><span class="o">.</span><span class="n">mean</span><span class="p">(),</span>
                 <span class="s2">&quot;d_paired&quot;</span><span class="p">:</span> <span class="n">d_paired</span><span class="p">,</span>
-                <span class="s2">&quot;cohens_d&quot;</span><span class="p">:</span> <span class="n">d_groups</span><span class="p">,</span>
-                <span class="s2">&quot;hedges_g&quot;</span><span class="p">:</span> <span class="n">g_groups</span><span class="p">,</span>
+                <span class="s2">&quot;g_paired&quot;</span><span class="p">:</span> <span class="n">g_paired</span><span class="p">,</span>
                 <span class="s2">&quot;ci_lower&quot;</span><span class="p">:</span> <span class="n">ci_low</span><span class="p">,</span>
                 <span class="s2">&quot;ci_upper&quot;</span><span class="p">:</span> <span class="n">ci_high</span><span class="p">,</span>
                 <span class="s2">&quot;n_paired&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">pre_vals</span><span class="p">),</span>
@@ -2048,8 +2062,8 @@ Pseudobulk paired deltas with Wilcoxon signed-rank test (panel genes × cell typ
         <span class="n">df_effect</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">effect_results</span><span class="p">)</span>
 
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Effect sizes for Day 0 → Day 7 changes:&quot;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  d_paired: standardized within-subject change&quot;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  Hedge&#39;s g: bias-corrected between-group effect size&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  d_paired: standardized within-subject change (delta_mean / sd_delta)&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  g_paired: bias-corrected paired effect size (Hedge&#39;s J correction)&quot;</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
         <span class="n">display</span><span class="p">(</span><span class="n">df_effect</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>
 
@@ -2057,14 +2071,14 @@ Pseudobulk paired deltas with Wilcoxon signed-rank test (panel genes × cell typ
         <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
         <span class="n">y_pos</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">df_effect</span><span class="p">))</span>
 
-        <span class="n">ax</span><span class="o">.</span><span class="n">barh</span><span class="p">(</span><span class="n">y_pos</span><span class="p">,</span> <span class="n">df_effect</span><span class="p">[</span><span class="s2">&quot;hedges_g&quot;</span><span class="p">],</span> <span class="n">xerr</span><span class="o">=</span><span class="p">[</span>
-            <span class="n">df_effect</span><span class="p">[</span><span class="s2">&quot;hedges_g&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">df_effect</span><span class="p">[</span><span class="s2">&quot;ci_lower&quot;</span><span class="p">],</span>
-            <span class="n">df_effect</span><span class="p">[</span><span class="s2">&quot;ci_upper&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">df_effect</span><span class="p">[</span><span class="s2">&quot;hedges_g&quot;</span><span class="p">]</span>
-        <span class="p">],</span> <span class="n">capsize</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;coral&quot;</span> <span class="k">if</span> <span class="n">g</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;steelblue&quot;</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">df_effect</span><span class="p">[</span><span class="s2">&quot;hedges_g&quot;</span><span class="p">]])</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">barh</span><span class="p">(</span><span class="n">y_pos</span><span class="p">,</span> <span class="n">df_effect</span><span class="p">[</span><span class="s2">&quot;g_paired&quot;</span><span class="p">],</span> <span class="n">xerr</span><span class="o">=</span><span class="p">[</span>
+            <span class="n">df_effect</span><span class="p">[</span><span class="s2">&quot;g_paired&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">df_effect</span><span class="p">[</span><span class="s2">&quot;ci_lower&quot;</span><span class="p">],</span>
+            <span class="n">df_effect</span><span class="p">[</span><span class="s2">&quot;ci_upper&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">df_effect</span><span class="p">[</span><span class="s2">&quot;g_paired&quot;</span><span class="p">]</span>
+        <span class="p">],</span> <span class="n">capsize</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;coral&quot;</span> <span class="k">if</span> <span class="n">g</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;steelblue&quot;</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">df_effect</span><span class="p">[</span><span class="s2">&quot;g_paired&quot;</span><span class="p">]])</span>
         <span class="n">ax</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
         <span class="n">ax</span><span class="o">.</span><span class="n">set_yticks</span><span class="p">(</span><span class="n">y_pos</span><span class="p">)</span>
         <span class="n">ax</span><span class="o">.</span><span class="n">set_yticklabels</span><span class="p">(</span><span class="n">df_effect</span><span class="p">[</span><span class="s2">&quot;feature&quot;</span><span class="p">])</span>
-        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Hedge&#39;s g (95% CI)&quot;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Paired Hedge&#39;s g (95% Bootstrap CI)&quot;</span><span class="p">)</span>
         <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Effect Sizes: Day 7 vs Day 0&quot;</span><span class="p">)</span>
 
         <span class="c1"># Reference lines</span>
@@ -2088,8 +2102,8 @@ EFFECT SIZE ANALYSIS (Within-Arm)
 ============================================================
 
 Effect sizes for Day 0 → Day 7 changes:
-  d_paired: standardized within-subject change
-  Hedge&#39;s g: bias-corrected between-group effect size
+  d_paired: standardized within-subject change (delta_mean / sd_delta)
+  g_paired: bias-corrected paired effect size (Hedge&#39;s J correction)
 
 </pre></div></div>
 </div>
@@ -2118,8 +2132,7 @@ Effect sizes for Day 0 → Day 7 changes:
       <th>feature</th>
       <th>mean_delta</th>
       <th>d_paired</th>
-      <th>cohens_d</th>
-      <th>hedges_g</th>
+      <th>g_paired</th>
       <th>ci_lower</th>
       <th>ci_upper</th>
       <th>n_paired</th>
@@ -2131,10 +2144,9 @@ Effect sizes for Day 0 → Day 7 changes:
       <td>ms_B_Cell_Response</td>
       <td>0.008</td>
       <td>0.075</td>
-      <td>0.106</td>
-      <td>0.098</td>
-      <td>-1.146</td>
-      <td>1.232</td>
+      <td>0.063</td>
+      <td>-1.054</td>
+      <td>0.839</td>
       <td>6</td>
     </tr>
     <tr>
@@ -2142,10 +2154,9 @@ Effect sizes for Day 0 → Day 7 changes:
       <td>ms_IFN_Signature</td>
       <td>0.048</td>
       <td>0.583</td>
-      <td>0.603</td>
-      <td>0.557</td>
-      <td>-0.418</td>
-      <td>2.035</td>
+      <td>0.491</td>
+      <td>-0.213</td>
+      <td>2.571</td>
       <td>6</td>
     </tr>
     <tr>
@@ -2153,10 +2164,9 @@ Effect sizes for Day 0 → Day 7 changes:
       <td>ms_Inflammatory</td>
       <td>-0.017</td>
       <td>-0.071</td>
-      <td>-0.117</td>
-      <td>-0.108</td>
-      <td>-2.003</td>
-      <td>0.776</td>
+      <td>-0.060</td>
+      <td>-1.537</td>
+      <td>0.564</td>
       <td>6</td>
     </tr>
     <tr>
@@ -2164,10 +2174,9 @@ Effect sizes for Day 0 → Day 7 changes:
       <td>ms_T_Cell_Activation</td>
       <td>0.014</td>
       <td>0.682</td>
-      <td>0.784</td>
-      <td>0.723</td>
-      <td>-0.231</td>
-      <td>2.070</td>
+      <td>0.574</td>
+      <td>-0.108</td>
+      <td>2.098</td>
       <td>6</td>
     </tr>
     <tr>
@@ -2175,10 +2184,9 @@ Effect sizes for Day 0 → Day 7 changes:
       <td>ms_Cytotoxic</td>
       <td>0.117</td>
       <td>0.600</td>
-      <td>0.978</td>
-      <td>0.902</td>
-      <td>0.161</td>
-      <td>2.181</td>
+      <td>0.505</td>
+      <td>0.079</td>
+      <td>1.210</td>
       <td>6</td>
     </tr>
     <tr>
@@ -2186,10 +2194,9 @@ Effect sizes for Day 0 → Day 7 changes:
       <td>ms_Memory_T</td>
       <td>-0.049</td>
       <td>-0.292</td>
-      <td>-0.460</td>
-      <td>-0.424</td>
-      <td>-1.853</td>
-      <td>0.586</td>
+      <td>-0.246</td>
+      <td>-1.070</td>
+      <td>0.711</td>
       <td>6</td>
     </tr>
   </tbody>
@@ -2296,12 +2303,15 @@ Effect sizes for Day 0 → Day 7 changes:
 <span class="n">cells_per_participant</span> <span class="o">=</span> <span class="n">adata_analysis</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;participant_id&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">size</span><span class="p">()</span>
 <span class="n">avg_cells</span> <span class="o">=</span> <span class="n">cells_per_participant</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
 <span class="n">total_cells</span> <span class="o">=</span> <span class="n">adata_analysis</span><span class="o">.</span><span class="n">n_obs</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Cells: </span><span class="si">{</span><span class="n">total_cells</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="n">n_participants</span> <span class="o">=</span> <span class="n">adata_analysis</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;participant_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Participants: </span><span class="si">{</span><span class="n">n_participants</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total cells: </span><span class="si">{</span><span class="n">total_cells</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Average cells per participant: </span><span class="si">{</span><span class="n">avg_cells</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Design effect (cells within participant):&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Design effect and effective sample size (cells within participant):&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  n_clusters = number of participants (not total cells)&quot;</span><span class="p">)</span>
 <span class="k">for</span> <span class="n">icc</span> <span class="ow">in</span> <span class="p">[</span><span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="mf">0.10</span><span class="p">,</span> <span class="mf">0.20</span><span class="p">]:</span>
     <span class="n">de</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">design_effect</span><span class="p">(</span><span class="n">avg_cells</span><span class="p">,</span> <span class="n">icc</span><span class="p">)</span>
-    <span class="n">eff_n</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">effective_sample_size</span><span class="p">(</span><span class="n">total_cells</span><span class="p">,</span> <span class="n">avg_cells</span><span class="p">,</span> <span class="n">icc</span><span class="p">)</span>
+    <span class="n">eff_n</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">effective_sample_size</span><span class="p">(</span><span class="n">n_participants</span><span class="p">,</span> <span class="n">avg_cells</span><span class="p">,</span> <span class="n">icc</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  ICC=</span><span class="si">{</span><span class="n">icc</span><span class="si">}</span><span class="s2">: Design effect=</span><span class="si">{</span><span class="n">de</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">, Effective n=</span><span class="si">{</span><span class="n">eff_n</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Note: Participant-level aggregation accounts for clustering automatically.&quot;</span><span class="p">)</span>
 </pre></div>
@@ -2350,14 +2360,16 @@ Sample size needed for 80% power (paired design):
 EFFECTIVE SAMPLE SIZE
 ============================================================
 
-Cells: 21,331
+Participants: 6
+Total cells: 21,331
 Average cells per participant: 3555
 
-Design effect (cells within participant):
-  ICC=0.01: Design effect=36.5, Effective n=2075309
-  ICC=0.05: Design effect=178.7, Effective n=424352
-  ICC=0.1: Design effect=356.4, Effective n=212771
-  ICC=0.2: Design effect=711.8, Effective n=106535
+Design effect and effective sample size (cells within participant):
+  n_clusters = number of participants (not total cells)
+  ICC=0.01: Design effect=36.5, Effective n=584
+  ICC=0.05: Design effect=178.7, Effective n=119
+  ICC=0.1: Design effect=356.4, Effective n=60
+  ICC=0.2: Design effect=711.8, Effective n=30
 
 Note: Participant-level aggregation accounts for clustering automatically.
 </pre></div></div>

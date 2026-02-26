@@ -38,6 +38,9 @@ examples/data/
 .ruff_cache/
 **/.doctrees/
 
+# Run scripts (local convenience only)
+run_nb*.sh
+
 # Jupyter notebook artifacts
 *.nbconvert.ipynb
 .ipynb_checkpoints/
