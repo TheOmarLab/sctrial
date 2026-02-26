@@ -18,7 +18,8 @@ extensions = [
 ]
 
 nbsphinx_allow_errors = True
-nbsphinx_execute = 'auto'  # Or 'always'
+nbsphinx_execute = 'never'  # notebooks are pre-executed locally with outputs saved
+nbsphinx_timeout = 300
 
 
 
