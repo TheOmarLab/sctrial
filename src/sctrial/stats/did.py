@@ -416,10 +416,24 @@ def did_fit(
     fit = model.fit(cov_type=cov_type, cov_kwds={"groups": tmp[unit]} if cov_type == "cluster" else None)
     term = f"{time}:{arm_bin}"
 
+    se_did = float(fit.bse.get(term, np.nan))
+    p_did = float(fit.pvalues.get(term, np.nan))
+
+    # Fallback: if cluster-robust SE is NaN (degenerate, e.g. only 2 obs per
+    # cluster after participant_visit aggregation), re-fit with nonrobust SE.
+    # The participant FE already absorbs within-participant correlation, so
+    # homoskedastic SE is a valid (though conservative) alternative.
+    effective_cov_type = cov_type
+    if cov_type == "cluster" and (not np.isfinite(se_did) or not np.isfinite(p_did)):
+        fit = model.fit()  # nonrobust
+        se_did = float(fit.bse.get(term, np.nan))
+        p_did = float(fit.pvalues.get(term, np.nan))
+        effective_cov_type = "nonrobust"
+
     res = {
         "beta_DiD": float(fit.params.get(term, np.nan)),
-        "se_DiD": float(fit.bse.get(term, np.nan)),
-        "p_DiD": float(fit.pvalues.get(term, np.nan)),
+        "se_DiD": se_did,
+        "p_DiD": p_did,
         "beta_time": float(fit.params.get(time, np.nan)),
         "p_time": float(fit.pvalues.get(time, np.nan)),
         "n_units": int(tmp[unit].nunique()),
@@ -433,7 +447,8 @@ def did_fit(
             clusters=np.asarray(tmp[unit].to_numpy()),
             term_name=term,
             B=n_boot,
-            seed=seed
+            seed=seed,
+            cov_type=effective_cov_type,
         )
         res["p_DiD_boot"] = p_boot
         # Use bootstrap p-value as primary if requested
