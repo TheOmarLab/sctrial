@@ -3,18 +3,18 @@
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" data-content_root="../">
 <head>
-  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GSEA and Pathway Analysis &mdash; sctrial 0.2.1.dev1 documentation</title>
-      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
 
   
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=28304322"></script>
-      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script src="../_static/js/theme.js"></script>
@@ -119,9 +119,9 @@
 1. Runs a DiD model for <strong>every gene</strong> in your dataset (aggregated at the participant-visit level).
 2. Calculates a rank for each gene.
 3. Passes the ranked list to <cite>gseapy.prerank</cite>.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">sctrial</span> <span class="k">as</span> <span class="nn">st</span>
-<span class="kn">import</span> <span class="nn">gseapy</span> <span class="k">as</span> <span class="nn">gp</span>
-<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">sctrial</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">gseapy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">gp</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
 
 <span class="c1"># Assuming &#39;adata&#39; and &#39;design&#39; are already set up as in the Basic Workflow tutorial</span>
 
@@ -162,7 +162,7 @@
 <span class="p">)</span>
 
 <span class="c1"># Plot the enrichment plot for the top pathway</span>
-<span class="kn">from</span> <span class="nn">gseapy</span> <span class="kn">import</span> <span class="n">gseaplot</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">gseapy</span><span class="w"> </span><span class="kn">import</span> <span class="n">gseaplot</span>
 <span class="n">terms</span> <span class="o">=</span> <span class="n">gsea_obj</span><span class="o">.</span><span class="n">res2d</span><span class="o">.</span><span class="n">index</span>
 <span class="n">gseaplot</span><span class="p">(</span><span class="n">rank_metric</span><span class="o">=</span><span class="n">gsea_obj</span><span class="o">.</span><span class="n">ranking</span><span class="p">,</span> <span class="n">term</span><span class="o">=</span><span class="n">terms</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="o">**</span><span class="n">gsea_obj</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="n">terms</span><span class="p">[</span><span class="mi">0</span><span class="p">]])</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
@@ -216,7 +216,7 @@
 <p>When analyzing multiple cell types or cell pools, a heatmap is the best way to compare pathway enrichments across different lineages. The <cite>plot_gsea_heatmap</cite> function allows you to visualize multiple GSEA results in a single, comprehensive view.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Run GSEA for multiple cell types (e.g., T cells, B cells, Monocytes)</span>
 <span class="c1"># and combine the results into a single table</span>
-<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 
 <span class="n">celltypes</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;CD4 T cells&quot;</span><span class="p">,</span> <span class="s2">&quot;B cells&quot;</span><span class="p">,</span> <span class="s2">&quot;Monocytes&quot;</span><span class="p">]</span>
 <span class="n">all_gsea_results</span> <span class="o">=</span> <span class="p">[]</span>

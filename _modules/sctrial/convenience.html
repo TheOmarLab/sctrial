@@ -6,14 +6,14 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>sctrial.convenience &mdash; sctrial 0.2.1.dev1 documentation</title>
-      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
 
   
       <script src="../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../_static/documentation_options.js?v=28304322"></script>
-      <script src="../../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
       <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script src="../../_static/js/theme.js"></script>
@@ -82,18 +82,18 @@
              
   <h1>Source code for sctrial.convenience</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Convenience functions for quick trial analysis workflows.&quot;&quot;&quot;</span>
-<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">import</span> <span class="nn">logging</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Literal</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Literal</span>
 
-<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
-<span class="kn">from</span> <span class="nn">anndata</span> <span class="kn">import</span> <span class="n">AnnData</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">anndata</span><span class="w"> </span><span class="kn">import</span> <span class="n">AnnData</span>
 
-<span class="kn">from</span> <span class="nn">.design</span> <span class="kn">import</span> <span class="n">TrialDesign</span>
-<span class="kn">from</span> <span class="nn">.preprocessing</span> <span class="kn">import</span> <span class="n">add_log1p_cpm_layer</span>
-<span class="kn">from</span> <span class="nn">.scoring</span> <span class="kn">import</span> <span class="n">score_gene_sets</span>
-<span class="kn">from</span> <span class="nn">.stats.did</span> <span class="kn">import</span> <span class="n">did_table</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.design</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrialDesign</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.preprocessing</span><span class="w"> </span><span class="kn">import</span> <span class="n">add_log1p_cpm_layer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.scoring</span><span class="w"> </span><span class="kn">import</span> <span class="n">score_gene_sets</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.stats.did</span><span class="w"> </span><span class="kn">import</span> <span class="n">did_table</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
@@ -105,7 +105,7 @@
 
 <div class="viewcode-block" id="quick_did">
 <a class="viewcode-back" href="../../api.html#sctrial.convenience.quick_did">[docs]</a>
-<span class="k">def</span> <span class="nf">quick_did</span><span class="p">(</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">quick_did</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
     <span class="n">module_scores</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]],</span>
     <span class="n">visits</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
@@ -234,7 +234,7 @@
 
 
 
-<span class="k">def</span> <span class="nf">_detect_column_patterns</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_detect_column_patterns</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return column name patterns for auto-detection.</span>
 
 <span class="sd">    Patterns are tried in order: exact match first, then word-boundary</span>
@@ -280,7 +280,7 @@
     <span class="p">}</span>
 
 
-<span class="k">def</span> <span class="nf">_auto_detect_arm_labels</span><span class="p">(</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_auto_detect_arm_labels</span><span class="p">(</span>
     <span class="n">arms</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
     <span class="n">arm_treated</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">arm_control</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
@@ -297,7 +297,7 @@
     <span class="k">return</span> <span class="n">arm_treated</span><span class="p">,</span> <span class="n">arm_control</span>
 
 
-<span class="k">def</span> <span class="nf">_print_design_summary</span><span class="p">(</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_print_design_summary</span><span class="p">(</span>
     <span class="n">participant_col</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">visit_col</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">arm_col</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
@@ -324,7 +324,7 @@
 
 <div class="viewcode-block" id="auto_detect_design">
 <a class="viewcode-back" href="../../api.html#sctrial.convenience.auto_detect_design">[docs]</a>
-<span class="k">def</span> <span class="nf">auto_detect_design</span><span class="p">(</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">auto_detect_design</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
     <span class="n">arm_treated</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">arm_control</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -466,7 +466,7 @@
 
 
 
-<span class="k">def</span> <span class="nf">_find_column</span><span class="p">(</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_find_column</span><span class="p">(</span>
     <span class="n">columns</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
     <span class="n">columns_lower</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
     <span class="n">patterns</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
@@ -482,7 +482,7 @@
 <span class="sd">       This prevents ``&quot;arm&quot;`` from matching ``&quot;farm_id&quot;`` while still</span>
 <span class="sd">       matching ``&quot;arm_treatment&quot;`` or ``&quot;treatment_arm&quot;``.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="kn">import</span> <span class="nn">re</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
 
     <span class="k">for</span> <span class="n">pattern</span> <span class="ow">in</span> <span class="n">patterns</span><span class="p">:</span>
         <span class="c1"># First try exact match (case-insensitive)</span>

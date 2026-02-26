@@ -7,14 +7,14 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Advanced Trial Analysis &mdash; sctrial 0.2.1.dev1 documentation</title>
-      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
 
   
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=28304322"></script>
-      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script src="../_static/js/theme.js"></script>
@@ -138,8 +138,8 @@
 <code class="docutils literal notranslate"><span class="pre">False</span></code> (i.e. the cell is kept) and a warning is logged. This guards against
 data quality issues without crashing the analysis.</p>
 </div>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">sctrial</span> <span class="k">as</span> <span class="nn">st</span>
-<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">sctrial</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 
 <span class="c1"># Setup design with crossover column</span>
 <span class="n">design</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">TrialDesign</span><span class="p">(</span>
@@ -265,7 +265,7 @@ data quality issues without crashing the analysis.</p>
 <section id="permutation-tests">
 <h2>6. Permutation Tests<a class="headerlink" href="#permutation-tests" title="Link to this heading"></a></h2>
 <p>For non-parametric inference, you can use permutation tests for both two-sample and paired comparisons.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">sctrial.utils</span> <span class="kn">import</span> <span class="n">permutation_pvalue</span><span class="p">,</span> <span class="n">permutation_pvalue_paired</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">sctrial.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">permutation_pvalue</span><span class="p">,</span> <span class="n">permutation_pvalue_paired</span>
 
 <span class="c1"># Two-sample permutation test</span>
 <span class="n">p</span> <span class="o">=</span> <span class="n">permutation_pvalue</span><span class="p">(</span><span class="n">group1_vals</span><span class="p">,</span> <span class="n">group2_vals</span><span class="p">,</span> <span class="n">n_perm</span><span class="o">=</span><span class="mi">10000</span><span class="p">)</span>

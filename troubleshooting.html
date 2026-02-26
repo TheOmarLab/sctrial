@@ -3,18 +3,18 @@
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" data-content_root="./">
 <head>
-  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Troubleshooting Guide &mdash; sctrial 0.2.1.dev1 documentation</title>
-      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
 
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="_static/documentation_options.js?v=28304322"></script>
-      <script src="_static/doctools.js?v=9a2dae69"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
       <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script src="_static/js/theme.js"></script>
@@ -213,7 +213,7 @@ pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;
 <ol class="arabic simple">
 <li><p>Check that you’ve run <code class="docutils literal notranslate"><span class="pre">score_gene_sets()</span></code> before DiD analysis:</p></li>
 </ol>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">sctrial</span> <span class="k">as</span> <span class="nn">st</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">sctrial</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
 
 <span class="c1"># First score gene sets</span>
 <span class="n">gene_sets</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;OXPHOS&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;COX7A1&quot;</span><span class="p">,</span> <span class="s2">&quot;ATP5F1A&quot;</span><span class="p">]}</span>
@@ -306,7 +306,7 @@ pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;
 <li><p><strong>Zero variance in features</strong>:</p></li>
 </ol>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Check feature variance</span>
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="n">feature_var</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;ms_OXPHOS&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">var</span><span class="p">()</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Feature variance: </span><span class="si">{</span><span class="n">feature_var</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
@@ -365,14 +365,14 @@ pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;
 <li><p><strong>Subsample cells</strong> (stratified):</p></li>
 </ol>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Downsample while maintaining structure</span>
-<span class="kn">from</span> <span class="nn">scanpy.pp</span> <span class="kn">import</span> <span class="n">subsample</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scanpy.pp</span><span class="w"> </span><span class="kn">import</span> <span class="n">subsample</span>
 <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">subsample</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">n_obs</span><span class="o">=</span><span class="mi">50000</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
 </pre></div>
 </div>
 <ol class="arabic simple" start="2">
 <li><p><strong>Use sparse layers</strong>:</p></li>
 </ol>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">scipy.sparse</span> <span class="k">as</span> <span class="nn">sp</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">scipy.sparse</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sp</span>
 
 <span class="c1"># Ensure counts are sparse</span>
 <span class="k">if</span> <span class="ow">not</span> <span class="n">sp</span><span class="o">.</span><span class="n">issparse</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">&quot;counts&quot;</span><span class="p">]):</span>
@@ -439,9 +439,9 @@ pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;
 <p><strong>Error</strong>: <code class="docutils literal notranslate"><span class="pre">RuntimeError:</span> <span class="pre">Invalid</span> <span class="pre">DISPLAY</span> <span class="pre">variable</span></code></p>
 <p><strong>Solution</strong>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Use non-interactive backend</span>
-<span class="kn">import</span> <span class="nn">matplotlib</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib</span>
 <span class="n">matplotlib</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="s1">&#39;Agg&#39;</span><span class="p">)</span>
-<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
 </pre></div>
 </div>
 </section>
@@ -528,7 +528,7 @@ pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;
 <li><p><strong>Search issues</strong>: Check <a class="reference external" href="https://github.com/TheOmarLab/sctrial/issues">GitHub Issues</a></p></li>
 <li><p><strong>Report a bug</strong>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Include this information</span>
-<span class="kn">import</span> <span class="nn">sctrial</span> <span class="k">as</span> <span class="nn">st</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sctrial</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;sctrial version: </span><span class="si">{</span><span class="n">st</span><span class="o">.</span><span class="n">__version__</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;AnnData shape: </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Design: </span><span class="si">{</span><span class="n">design</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>

@@ -7,7 +7,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Immunotherapy Response in Melanoma: Longitudinal Single-Cell Analysis &mdash; sctrial 0.2.1.dev1 documentation</title>
-      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css?v=2aa19091" />
 
@@ -15,7 +15,7 @@
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=28304322"></script>
-      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
       <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
@@ -178,21 +178,21 @@
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Imports - consolidated</span>
-<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
 <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">&#39;ignore&#39;</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">FutureWarning</span><span class="p">)</span>
 <span class="c1"># Note: We do NOT suppress UserWarning — sctrial issues important</span>
 <span class="c1"># statistical caveats (e.g. low-cluster reliability) as UserWarnings.</span>
 <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s2">&quot;ignore&quot;</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">RuntimeWarning</span><span class="p">,</span> <span class="n">message</span><span class="o">=</span><span class="s2">&quot;invalid value&quot;</span><span class="p">)</span>
 
-<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
-<span class="kn">import</span> <span class="nn">seaborn</span> <span class="k">as</span> <span class="nn">sns</span>
-<span class="kn">import</span> <span class="nn">scanpy</span> <span class="k">as</span> <span class="nn">sc</span>
-<span class="kn">from</span> <span class="nn">scipy.stats</span> <span class="kn">import</span> <span class="n">wilcoxon</span>
-<span class="kn">from</span> <span class="nn">statsmodels.stats.multitest</span> <span class="kn">import</span> <span class="n">multipletests</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">seaborn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sns</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">scanpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sc</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.stats</span><span class="w"> </span><span class="kn">import</span> <span class="n">wilcoxon</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">statsmodels.stats.multitest</span><span class="w"> </span><span class="kn">import</span> <span class="n">multipletests</span>
 
-<span class="kn">import</span> <span class="nn">sctrial</span> <span class="k">as</span> <span class="nn">st</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sctrial</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
 
 <span class="c1"># Configuration</span>
 <span class="n">MIN_GENES_FOR_SCORE</span> <span class="o">=</span> <span class="mi">5</span>
@@ -203,11 +203,7 @@
 
 <span class="n">pd</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">mode</span><span class="o">.</span><span class="n">chained_assignment</span> <span class="o">=</span> <span class="kc">None</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;sctrial version: </span><span class="si">{</span><span class="n">st</span><span class="o">.</span><span class="n">__version__</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="nb">hasattr</span><span class="p">(</span><span class="n">st</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;__version__&#39;</span><span class="p">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;dev&#39;</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
-<span class="k">def</span> <span class="nf">_fmt_fdr</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Format FDR/p-value: scientific notation for very small values.&quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">v</span><span class="si">:</span><span class="s2">.2e</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">v</span> <span class="o">&lt;</span> <span class="mf">0.001</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">v</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span>
-<br/></pre></div>
+</pre></div>
 </div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -226,7 +222,7 @@ sctrial version: 0.2.1.dev1
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Dataset loader (from sctrial)</span>
-<span class="kn">from</span> <span class="nn">sctrial.datasets</span> <span class="kn">import</span> <span class="n">load_sade_feldman</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sctrial.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_sade_feldman</span>
 <br/></pre></div>
 </div>
 </div>
@@ -698,7 +694,7 @@ Design configured:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Run built-in diagnostics to check data suitability</span>
-<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
 <span class="n">diagnostics</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">diagnose_trial_data</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -1323,7 +1319,7 @@ Results at Post:
             <span class="k">if</span> <span class="ow">not</span> <span class="n">sig</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
                 <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">sig</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
                     <span class="n">direction</span> <span class="o">=</span> <span class="s2">&quot;↑&quot;</span> <span class="k">if</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;mean_delta&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;↓&quot;</span>
-                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;feature&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">direction</span><span class="si">}</span><span class="s2"> (delta=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;mean_delta&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, FDR=</span><span class="si">{</span><span class="n">_fmt_fdr</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;FDR_time&#39;</span><span class="p">])</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;feature&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">direction</span><span class="si">}</span><span class="s2"> (delta=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;mean_delta&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, FDR=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;FDR_time&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
 <span class="k">else</span><span class="p">:</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Insufficient visits or features for within-arm comparison.&quot;</span><span class="p">)</span>
 
@@ -1594,7 +1590,7 @@ Pre→Post changes in Non-responder:
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">sctrial.utils</span> <span class="kn">import</span> <span class="n">permutation_pvalue</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">sctrial.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">permutation_pvalue</span>
 
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;DIFFERENCE-IN-DIFFERENCES ANALYSIS&quot;</span><span class="p">)</span>
@@ -1693,7 +1689,7 @@ Pre→Post changes in Non-responder:
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Significant DiD effects (FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">):&quot;</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">sig</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
                 <span class="n">direction</span> <span class="o">=</span> <span class="s2">&quot;Responders increase more&quot;</span> <span class="k">if</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;beta_DiD&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;Non-responders increase more&quot;</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;feature&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">direction</span><span class="si">}</span><span class="s2"> (beta=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;beta_DiD&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, FDR=</span><span class="si">{</span><span class="n">_fmt_fdr</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;FDR_DiD&#39;</span><span class="p">])</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;feature&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">direction</span><span class="si">}</span><span class="s2"> (beta=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;beta_DiD&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, FDR=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;FDR_DiD&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">No signatures showed significant differential change (FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
 <span class="k">else</span><span class="p">:</span>
@@ -2635,40 +2631,6 @@ Running leave-one-out cross-validation on 10 paired participants...
 This assesses how stable DiD estimates are when each participant is removed.
 
 Feature: sig_Cytotoxicity
-</pre></div></div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area stderr docutils container">
-<div class="highlight"><pre>
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:571: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:571: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:571: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:571: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:571: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:571: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:571: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:571: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:571: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:571: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-</pre></div></div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
 
 LOO-CV Results:
   Full sample beta_DiD: -0.4285
@@ -2876,7 +2838,7 @@ Highly influential participants (|influence| &gt; 2 SD = 0.539):
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_immunotherapy_sade_feldman_35_5.png" src="../_images/examples_example_immunotherapy_sade_feldman_35_5.png" />
+<img alt="../_images/examples_example_immunotherapy_sade_feldman_35_3.png" src="../_images/examples_example_immunotherapy_sade_feldman_35_3.png" />
 </div>
 </div>
 </section>
@@ -3044,10 +3006,10 @@ DiDAnalyzer Results (augmented with permutation p-values and bootstrap SEs):
     <span class="n">df</span><span class="p">[</span><span class="n">feat</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">feat</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
     <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">visits</span><span class="p">)]</span>
     <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">],</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="n">feat</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
-    <span class="kn">from</span> <span class="nn">sctrial.stats._utils</span> <span class="kn">import</span> <span class="n">encode_visit</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">sctrial.stats._utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">encode_visit</span>
     <span class="n">df</span> <span class="o">=</span> <span class="n">encode_visit</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">visits</span><span class="p">))</span>
     <span class="n">df</span><span class="p">[</span><span class="s1">&#39;arm_bin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span> <span class="o">==</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_treated</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
-    <span class="kn">import</span> <span class="nn">statsmodels.formula.api</span> <span class="k">as</span> <span class="nn">smf</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">statsmodels.formula.api</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">smf</span>
     <span class="n">fit</span> <span class="o">=</span> <span class="n">smf</span><span class="o">.</span><span class="n">ols</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">feat</span><span class="si">}</span><span class="s1"> ~ visit_num + visit_num:arm_bin + C(</span><span class="si">{</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="si">}</span><span class="s1">)&#39;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">df</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
     <span class="n">diag</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">check_did_assumptions</span><span class="p">(</span><span class="n">fit</span><span class="p">,</span> <span class="n">return_figures</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">({</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">diag</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span> <span class="o">!=</span> <span class="s1">&#39;figures&#39;</span><span class="p">})</span>
@@ -3068,24 +3030,15 @@ DiDAnalyzer Results (augmented with permutation p-values and bootstrap SEs):
 <div class="nboutput docutils container">
 <div class="prompt empty docutils container">
 </div>
-<div class="output_area stderr docutils container">
-<div class="highlight"><pre>
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_76522/2164163235.py:16: UserWarning: FigureCanvasAgg is non-interactive, and thus cannot be shown
-  fig.show()
-</pre></div></div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_immunotherapy_sade_feldman_39_2.png" src="../_images/examples_example_immunotherapy_sade_feldman_39_2.png" />
+<img alt="../_images/examples_example_immunotherapy_sade_feldman_39_1.png" src="../_images/examples_example_immunotherapy_sade_feldman_39_1.png" />
 </div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_immunotherapy_sade_feldman_39_3.png" src="../_images/examples_example_immunotherapy_sade_feldman_39_3.png" />
+<img alt="../_images/examples_example_immunotherapy_sade_feldman_39_2.png" src="../_images/examples_example_immunotherapy_sade_feldman_39_2.png" />
 </div>
 </div>
 </section>
@@ -3118,7 +3071,7 @@ DiDAnalyzer Results (augmented with permutation p-values and bootstrap SEs):
     <span class="k">if</span> <span class="ow">not</span> <span class="n">sig_het</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Significant heterogeneity (FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">):&quot;</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">sig_het</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;feature&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: beta=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;beta_heterogeneity&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, FDR=</span><span class="si">{</span><span class="n">_fmt_fdr</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;FDR_heterogeneity&#39;</span><span class="p">])</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;feature&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: beta=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;beta_heterogeneity&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, FDR=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;FDR_heterogeneity&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">No significant treatment heterogeneity detected (FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">).&quot;</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;This is expected given the small sample size (n=10 paired).&quot;</span><span class="p">)</span>
@@ -3131,15 +3084,6 @@ DiDAnalyzer Results (augmented with permutation p-values and bootstrap SEs):
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 Biomarker: baseline sig_Cytotoxicity (median split)
-</pre></div></div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area stderr docutils container">
-<div class="highlight"><pre>
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_76522/3047706628.py:9: UserWarning: biomarker_col &#39;biomarker_base&#39; contained non-numeric values that were coerced to NaN.
-  res_het = st.test_treatment_heterogeneity(
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -3293,15 +3237,15 @@ Feature: sig_Activation
 <span class="c1"># NOTE: On some systems, PyTensor may fail to compile C extensions (arch mismatch).</span>
 <span class="c1"># We force a fresh, writable compiledir and disable C compilation to avoid</span>
 <span class="c1"># stale x86_64 artifacts on arm64.</span>
-<span class="kn">import</span> <span class="nn">os</span>
-<span class="kn">import</span> <span class="nn">logging</span>
-<span class="kn">import</span> <span class="nn">tempfile</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
 
 <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;PYTENSOR_FLAGS&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;compiledir=</span><span class="si">{</span><span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;pytensor_&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">,cxx=&quot;</span>
 <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;pytensor&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">ERROR</span><span class="p">)</span>
 
 <span class="k">try</span><span class="p">:</span>
-    <span class="kn">import</span> <span class="nn">pymc</span>  <span class="c1"># noqa: F401</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">pymc</span>  <span class="c1"># noqa: F401</span>
 
     <span class="n">bayes_res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table_bayes</span><span class="p">(</span>
         <span class="n">adata</span><span class="p">,</span>
@@ -3370,52 +3314,52 @@ WARNING:pytensor.tensor.blas:Using NumPy C-API based implementation for BLAS fun
     <tr>
       <th>0</th>
       <td>sig_Activation</td>
-      <td>-1.308934</td>
-      <td>-2.218745</td>
-      <td>-0.178968</td>
-      <td>0.0240</td>
+      <td>-1.308710</td>
+      <td>-2.204246</td>
+      <td>-0.240796</td>
+      <td>0.0205</td>
       <td>10</td>
-      <td>0.12000</td>
+      <td>0.102500</td>
     </tr>
     <tr>
       <th>1</th>
       <td>sig_IFN_Response</td>
-      <td>-0.831203</td>
-      <td>-2.042766</td>
-      <td>0.395837</td>
-      <td>0.1760</td>
+      <td>-0.771057</td>
+      <td>-1.907278</td>
+      <td>0.443958</td>
+      <td>0.1765</td>
       <td>10</td>
-      <td>0.44000</td>
+      <td>0.441250</td>
     </tr>
     <tr>
       <th>2</th>
       <td>sig_Exhaustion</td>
-      <td>-0.376584</td>
-      <td>-1.371484</td>
-      <td>0.716734</td>
-      <td>0.4620</td>
+      <td>-0.405222</td>
+      <td>-1.399095</td>
+      <td>0.664935</td>
+      <td>0.4310</td>
       <td>10</td>
-      <td>0.63125</td>
+      <td>0.718333</td>
     </tr>
     <tr>
       <th>3</th>
       <td>sig_Memory</td>
-      <td>-0.428317</td>
-      <td>-1.683976</td>
-      <td>0.901422</td>
-      <td>0.5050</td>
+      <td>-0.245240</td>
+      <td>-1.456091</td>
+      <td>1.045764</td>
+      <td>0.6905</td>
       <td>10</td>
-      <td>0.63125</td>
+      <td>0.743000</td>
     </tr>
     <tr>
       <th>4</th>
       <td>sig_Cytotoxicity</td>
-      <td>-0.151005</td>
-      <td>-1.406070</td>
-      <td>1.138568</td>
-      <td>0.7955</td>
+      <td>-0.195848</td>
+      <td>-1.427325</td>
+      <td>0.999318</td>
+      <td>0.7430</td>
       <td>10</td>
-      <td>0.79550</td>
+      <td>0.743000</td>
     </tr>
   </tbody>
 </table>

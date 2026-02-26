@@ -6,14 +6,14 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>sctrial.design &mdash; sctrial 0.2.1.dev1 documentation</title>
-      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
 
   
       <script src="../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../_static/documentation_options.js?v=28304322"></script>
-      <script src="../../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
       <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script src="../../_static/js/theme.js"></script>
@@ -81,14 +81,14 @@
            <div itemprop="articleBody">
              
   <h1>Source code for sctrial.design</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">import</span> <span class="nn">logging</span>
-<span class="kn">from</span> <span class="nn">collections.abc</span> <span class="kn">import</span> <span class="n">Sequence</span>
-<span class="kn">from</span> <span class="nn">dataclasses</span> <span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sequence</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
 
-<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
-<span class="kn">from</span> <span class="nn">anndata</span> <span class="kn">import</span> <span class="n">AnnData</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">anndata</span><span class="w"> </span><span class="kn">import</span> <span class="n">AnnData</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
@@ -98,7 +98,7 @@
 <div class="viewcode-block" id="TrialDesign">
 <a class="viewcode-back" href="../../api.html#sctrial.design.TrialDesign">[docs]</a>
 <span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<span class="k">class</span> <span class="nc">TrialDesign</span><span class="p">:</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">TrialDesign</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Describe the trial-design columns and metadata labels in `adata.obs`.</span>
 
 <span class="sd">    The `TrialDesign` object centralizes the mapping of your study design to</span>
@@ -135,7 +135,7 @@
 
 <div class="viewcode-block" id="TrialDesign.primary_visits">
 <a class="viewcode-back" href="../../api.html#sctrial.design.TrialDesign.primary_visits">[docs]</a>
-    <span class="k">def</span> <span class="nf">primary_visits</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">primary_visits</span><span class="p">(</span>
             <span class="bp">self</span><span class="p">,</span>
             <span class="n">baseline</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
             <span class="n">followup</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -163,7 +163,7 @@
 
 <div class="viewcode-block" id="TrialDesign.required_cols">
 <a class="viewcode-back" href="../../api.html#sctrial.design.TrialDesign.required_cols">[docs]</a>
-    <span class="k">def</span> <span class="nf">required_cols</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">required_cols</span><span class="p">(</span>
             <span class="bp">self</span><span class="p">,</span>
             <span class="o">*</span><span class="p">,</span>
             <span class="n">include_celltype</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
@@ -188,7 +188,7 @@
 
 <div class="viewcode-block" id="TrialDesign.validate">
 <a class="viewcode-back" href="../../api.html#sctrial.design.TrialDesign.validate">[docs]</a>
-    <span class="k">def</span> <span class="nf">validate</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">validate</span><span class="p">(</span>
             <span class="bp">self</span><span class="p">,</span>
             <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
             <span class="o">*</span><span class="p">,</span>
@@ -240,7 +240,7 @@
                 <span class="p">)</span>
             <span class="n">extra</span> <span class="o">=</span> <span class="n">arms</span> <span class="o">-</span> <span class="p">{</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_treated</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">arm_control</span><span class="p">}</span>
             <span class="k">if</span> <span class="n">extra</span><span class="p">:</span>
-                <span class="kn">import</span> <span class="nn">warnings</span>
+                <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
 
                 <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
                     <span class="sa">f</span><span class="s2">&quot;obs[&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_col</span><span class="si">}</span><span class="s2">&#39;] contains arms beyond treated/control: &quot;</span>
@@ -254,7 +254,7 @@
 
 <div class="viewcode-block" id="TrialDesign.arm_bin">
 <a class="viewcode-back" href="../../api.html#sctrial.design.TrialDesign.arm_bin">[docs]</a>
-    <span class="k">def</span> <span class="nf">arm_bin</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obs</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">arm_bin</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obs</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return 0/1 treated indicator aligned to obs.index.&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">arm_treated</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">arm_control</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>

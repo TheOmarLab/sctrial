@@ -6,14 +6,14 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>sctrial.stats.mixed_effects &mdash; sctrial 0.2.1.dev1 documentation</title>
-      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
 
   
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../_static/documentation_options.js?v=28304322"></script>
-      <script src="../../../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
       <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script src="../../../_static/js/theme.js"></script>
@@ -138,19 +138,19 @@
 
 <span class="sd">    This allows the time effect to vary by participant.</span>
 <span class="sd">&quot;&quot;&quot;</span>
-<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">import</span> <span class="nn">warnings</span>
-<span class="kn">from</span> <span class="nn">collections.abc</span> <span class="kn">import</span> <span class="n">Sequence</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sequence</span>
 
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
-<span class="kn">from</span> <span class="nn">anndata</span> <span class="kn">import</span> <span class="n">AnnData</span>
-<span class="kn">from</span> <span class="nn">statsmodels.tools.sm_exceptions</span> <span class="kn">import</span> <span class="n">ConvergenceWarning</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">anndata</span><span class="w"> </span><span class="kn">import</span> <span class="n">AnnData</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">statsmodels.tools.sm_exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConvergenceWarning</span>
 
-<span class="kn">from</span> <span class="nn">..design</span> <span class="kn">import</span> <span class="n">TrialDesign</span>
-<span class="kn">from</span> <span class="nn">._utils</span> <span class="kn">import</span> <span class="n">aggregate_features</span><span class="p">,</span> <span class="n">apply_fdr</span><span class="p">,</span> <span class="n">standardize_series</span>
-<span class="kn">from</span> <span class="nn">.did</span> <span class="kn">import</span> <span class="n">AggregateFunc</span><span class="p">,</span> <span class="n">AggregateMode</span><span class="p">,</span> <span class="n">_ensure_paired</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..design</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrialDesign</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">aggregate_features</span><span class="p">,</span> <span class="n">apply_fdr</span><span class="p">,</span> <span class="n">standardize_series</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.did</span><span class="w"> </span><span class="kn">import</span> <span class="n">AggregateFunc</span><span class="p">,</span> <span class="n">AggregateMode</span><span class="p">,</span> <span class="n">_ensure_paired</span>
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
     <span class="s2">&quot;did_mixed&quot;</span><span class="p">,</span>
@@ -161,7 +161,7 @@
 
 <div class="viewcode-block" id="did_mixed">
 <a class="viewcode-back" href="../../../api.html#sctrial.stats.mixed_effects.did_mixed">[docs]</a>
-<span class="k">def</span> <span class="nf">did_mixed</span><span class="p">(</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">did_mixed</span><span class="p">(</span>
     <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">outcome</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">participant_col</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
@@ -213,7 +213,7 @@
 <span class="sd">        - converged: Model convergence status</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">try</span><span class="p">:</span>
-        <span class="kn">import</span> <span class="nn">statsmodels.formula.api</span> <span class="k">as</span> <span class="nn">smf</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">statsmodels.formula.api</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">smf</span>
     <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span><span class="s2">&quot;statsmodels is required for mixed effects models&quot;</span><span class="p">)</span>
 
@@ -357,7 +357,7 @@
 
 <div class="viewcode-block" id="did_table_mixed">
 <a class="viewcode-back" href="../../../api.html#sctrial.stats.mixed_effects.did_table_mixed">[docs]</a>
-<span class="k">def</span> <span class="nf">did_table_mixed</span><span class="p">(</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">did_table_mixed</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
     <span class="n">features</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
     <span class="n">design</span><span class="p">:</span> <span class="n">TrialDesign</span><span class="p">,</span>
@@ -429,8 +429,8 @@
 <span class="sd">    did_table : Fixed effects version (recommended for most applications).</span>
 <span class="sd">    compare_fixed_vs_mixed : Compare both approaches.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="kn">from</span> <span class="nn">..adata_tools</span> <span class="kn">import</span> <span class="n">subset_primary</span>
-    <span class="kn">from</span> <span class="nn">._extract</span> <span class="kn">import</span> <span class="n">extract_gene_matrix</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">..adata_tools</span><span class="w"> </span><span class="kn">import</span> <span class="n">subset_primary</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">._extract</span><span class="w"> </span><span class="kn">import</span> <span class="n">extract_gene_matrix</span>
 
     <span class="c1"># Subset to analysis population</span>
     <span class="n">ad</span> <span class="o">=</span> <span class="n">subset_primary</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="p">,</span> <span class="n">exclude_crossovers</span><span class="o">=</span><span class="n">exclude_crossovers</span><span class="p">)</span>
@@ -530,7 +530,7 @@
 
 <div class="viewcode-block" id="compare_fixed_vs_mixed">
 <a class="viewcode-back" href="../../../api.html#sctrial.stats.mixed_effects.compare_fixed_vs_mixed">[docs]</a>
-<span class="k">def</span> <span class="nf">compare_fixed_vs_mixed</span><span class="p">(</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compare_fixed_vs_mixed</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
     <span class="n">features</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
     <span class="n">design</span><span class="p">:</span> <span class="n">TrialDesign</span><span class="p">,</span>
@@ -573,7 +573,7 @@
 <span class="sd">    &gt;&gt;&gt; # Check agreement</span>
 <span class="sd">    &gt;&gt;&gt; print(f&quot;Methods agree: {comparison[&#39;agreement&#39;].mean():.0%}&quot;)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="kn">from</span> <span class="nn">.did</span> <span class="kn">import</span> <span class="n">did_table</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.did</span><span class="w"> </span><span class="kn">import</span> <span class="n">did_table</span>
 
     <span class="c1"># Split kwargs: &#39;random_slope&#39; is mixed-only and would cause TypeError in did_table</span>
     <span class="n">_MIXED_ONLY_KEYS</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;random_slope&quot;</span><span class="p">}</span>
