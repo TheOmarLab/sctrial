@@ -29,7 +29,7 @@ ENV/
 *.gz
 *.txt.gz
 data/
-examples/data/
+tutorials/data/
 **/__pycache__/
 .DS_Store
 **/.DS_Store
@@ -37,6 +37,7 @@ examples/data/
 .idea/
 .ruff_cache/
 **/.doctrees/
+docs/build/
 
 # Run scripts (local convenience only)
 run_nb*.sh

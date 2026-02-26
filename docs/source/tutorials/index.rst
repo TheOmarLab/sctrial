@@ -1,16 +1,12 @@
 Tutorials
 =========
 
+End-to-end Jupyter Notebook tutorials demonstrating ``sctrial`` on real-world clinical single-cell datasets.
+
 .. toctree::
    :maxdepth: 1
 
-   basic_workflow
-   validation_workflow
-   gsea_analysis
-   celltype_did_gsea
-   pseudobulk_did_bootstrap
-   module_score_did_pipeline
-   cross_validation
-   mixed_effects_models
-   multi_timepoint_analysis
-   advanced_designs
+   example_covid19_stephenson
+   example_immunotherapy_sade_feldman
+   example_vaccine_immport
+   stress_test_real_scale
