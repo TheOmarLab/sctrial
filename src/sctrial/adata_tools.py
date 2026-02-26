@@ -68,6 +68,11 @@ def subset_primary(
         Tuple of (baseline_visit, followup_visit), e.g. ("3/T0", "6/T12w").
     exclude_crossovers:
         If True and design.crossover_col is provided, drop rows where crossover_col is truthy.
+
+    Returns
+    -------
+    AnnData
+        Subsetted AnnData object.
     """
     obs = adata.obs
     _require_cols(obs, [design.visit_col])

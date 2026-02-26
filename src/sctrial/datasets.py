@@ -535,7 +535,29 @@ def count_paired(
     visits: Sequence[str],
     participant_col: str = "participant_id"
 ) -> int:
-    """Count participants with data at both visits."""
+    """Count participants with data at both visits.
+
+    Parameters
+    ----------
+    obs
+        DataFrame containing the participant-visit data.
+    visit_col
+        Column name in `obs` to use for visit labels.
+    visits
+        Sequence of visit labels to check (e.g. ["baseline", "followup"]).
+    participant_col
+        Column name in `obs` to use for participant IDs.
+
+    Returns
+    -------
+    int
+        Number of participants with data at both visits.
+
+    Raises
+    ------
+    ValueError
+        If visits does not contain at least 2 labels (baseline and followup).
+    """
     if len(visits) < 2:
         raise ValueError(
             f"visits must contain at least 2 labels, got {len(visits)}: {list(visits)}"
@@ -560,11 +582,27 @@ def verify_paired_participants(
 ) -> dict:
     """Validate paired participants by visit presence and optional feature completeness.
 
-    Returns:
-      - paired_ids: set of participant IDs with both visits (and non-NaN features if provided)
-      - dropped_ids: list of participant IDs dropped by validation
-      - n_paired: count of paired_ids
-      - n_total: total unique participants
+    Parameters
+    ----------
+    obs
+        DataFrame containing the participant-visit data.
+    visit_col
+        Column name in `obs` to use for visit labels.
+    visits
+        Sequence of visit labels to check (e.g. ["baseline", "followup"]).
+    features
+        Sequence of feature names to check.
+    participant_col
+        Column name in `obs` to use for participant IDs.
+
+    Returns
+    -------
+    dict
+        A dictionary containing the following keys:
+        - paired_ids: set of participant IDs with both visits (and non-NaN features if provided)
+        - dropped_ids: list of participant IDs dropped by validation
+        - n_paired: count of paired_ids
+        - n_total: total unique participants
     """
     if len(visits) < 2:
         raise ValueError(
@@ -608,7 +646,18 @@ def verify_paired_participants(
 
 
 def categorize_celltype(ct: str) -> str:
-    """Map fine-grained cell types to coarse lineages (COVID-19 example)."""
+    """Map fine-grained cell types to coarse lineages (COVID-19 example).
+
+    Parameters
+    ----------
+    ct
+        Cell type string.
+
+    Returns
+    -------
+    str
+        Coarse lineage string.
+    """
     ct_lower = str(ct).lower()
     if "cd4" in ct_lower or "th1" in ct_lower or "th2" in ct_lower or "treg" in ct_lower:
         return "CD4_T"
@@ -628,7 +677,22 @@ def categorize_celltype(ct: str) -> str:
 
 
 def ensure_fdr(df: pd.DataFrame, p_col: str = "p_time", fdr_col: str = "FDR_time") -> pd.DataFrame:
-    """Add Benjamini-Hochberg FDR column for a p-value column."""
+    """Add Benjamini-Hochberg FDR column for a p-value column.
+
+    Parameters
+    ----------
+    df
+        DataFrame containing the p-value column.
+    p_col
+        Column name in `df` to use for p-value column.
+    fdr_col
+        Column name in `df` to use for FDR-corrected p-value column.
+
+    Returns
+    -------
+    pd.DataFrame
+        A copy of the DataFrame with the FDR-corrected p-value column added.
+    """
     if df.empty:
         return df
     if fdr_col in df.columns:

@@ -33,6 +33,11 @@ def safe_filename(s: str, maxlen: int = 180) -> str:
         Input string to sanitize.
     maxlen
         Maximum length of the output string.
+
+    Returns
+    -------
+    str
+        A filesystem-safe filename.
     """
     s = str(s)
     s = s.replace("γ", "gamma").replace("δ", "delta")
@@ -43,15 +48,36 @@ def safe_filename(s: str, maxlen: int = 180) -> str:
 
 
 def intersect_preserve_order(items: Sequence[str], universe: Iterable[str]) -> list[str]:
-    """Return items that appear in universe, preserving original order."""
+    """Return items that appear in universe, preserving original order.
+
+    Parameters
+    ----------
+    items
+        List of items to intersect.
+    universe
+        List of items to intersect with.
+
+    Returns
+    -------
+    list[str]
+        A list of items that appear in universe, preserving original order.
+    """
     u = set(universe)
     return [x for x in items if x in u]
 
 
 def ensure_unique_index(df: pd.DataFrame, *, agg: str = "mean") -> pd.DataFrame:
     """If df.index has duplicates, aggregate duplicates and return a new df.
-
-    agg: "mean" or "sum" (extend later if needed).
+    Parameters
+    ----------
+    df
+        DataFrame to ensure unique index.
+    agg
+        Aggregation method: "mean" or "sum" (extend later if needed).
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame with unique index.
     """
     if df.index.is_unique:
         return df
@@ -63,7 +89,22 @@ def ensure_unique_index(df: pd.DataFrame, *, agg: str = "mean") -> pd.DataFrame:
 
 
 def looks_like_counts(X, sample: int = 10000, seed: int = 0) -> bool:
-    """Check if matrix appears to be raw counts."""
+    """Check if matrix appears to be raw counts.
+
+    Parameters
+    ----------
+    X
+        Matrix to check.
+    sample
+        Number of samples to check.
+    seed
+        Random seed.
+
+    Returns
+    -------
+    bool
+        True if matrix appears to be raw counts, False otherwise.
+    """
     rng = np.random.default_rng(seed)
     if X is None:
         return False
@@ -82,7 +123,22 @@ def looks_like_counts(X, sample: int = 10000, seed: int = 0) -> bool:
 
 
 def get_counts_matrix(adata: AnnData) -> tuple[np.ndarray | None, str | None]:
-    """Return a raw-counts matrix and its source label, if available."""
+    """Return a raw-counts matrix and its source label, if available.
+
+    Parameters
+    ----------
+    adata
+        AnnData object.
+
+    Returns
+    -------
+    tuple[np.ndarray | None, str | None]
+        A tuple containing the counts matrix and its source label.
+        - The counts matrix is the raw counts matrix.
+        - The source label is the layer name where the counts matrix is stored.
+        - If no counts matrix is found, returns (None, None).
+    """
+
     if "counts" in adata.layers and looks_like_counts(adata.layers["counts"]):
         return adata.layers["counts"], "layers['counts']"
     if getattr(adata, "raw", None) is not None:

@@ -63,6 +63,11 @@ class TrialDesign:
         followup
             Optional explicit follow-up visit label. If None, uses
             ``self.followup_visit``.
+
+        Returns
+        -------
+        tuple[str, str]
+            Tuple of (baseline, followup) visit labels.
         """
         b = baseline if baseline is not None else self.baseline_visit
         f = followup if followup is not None else self.followup_visit
@@ -87,6 +92,12 @@ class TrialDesign:
             If True, include ``celltype_col`` when it is defined.
         include_crossover
             If True, include ``crossover_col`` when it is defined.
+
+        Returns
+        ------- 
+        -------
+        list[str]
+            List of required columns.
         """
         cols = [self.participant_col, self.visit_col, self.arm_col]
         if include_celltype and self.celltype_col is not None:
@@ -116,6 +127,10 @@ class TrialDesign:
         check_arm_labels
             If True, verify that treated/control labels are present in ``arm_col``.
 
+        Returns
+        -------
+        None
+       
         Raises
         ------
         KeyError
@@ -166,7 +181,24 @@ class TrialDesign:
                 )
 
     def arm_bin(self, obs: pd.DataFrame) -> pd.Series:
-        """Return 0/1 treated indicator aligned to obs.index."""
+        """Return 0/1 treated indicator aligned to obs.index.
+
+        Parameters
+        ----------
+        obs
+            DataFrame containing the participant-visit data.
+
+        Returns
+        -------
+        pd.Series
+            A Series with 0/1 indicator of treated status.
+        Raises
+        ------
+        ValueError
+            If arm_treated and arm_control are the same.
+        KeyError
+            If arm_col is not in obs.columns.
+        """
         if self.arm_treated == self.arm_control:
             raise ValueError(
                 f"arm_bin() requires distinct arm labels, but "

@@ -30,7 +30,25 @@ def _add_feature_columns(
 
 
 def resolve_gene_name(adata: AnnData, gene_query: str) -> str:
-    """Resolve a gene name in var_names, case-insensitive if needed."""
+    """Resolve a gene name in var_names, case-insensitive if needed.
+
+    Parameters
+    ----------
+    adata
+        AnnData object.
+    gene_query
+        Gene name to resolve (case-insensitive).
+    
+    Returns
+    -------
+    str
+        The resolved gene name (exact match or case-insensitive match).
+
+    Raises
+    ------
+    ValueError
+        If gene_query is not found in adata.var_names or if there are multiple case-insensitive matches.
+    """
     if gene_query in adata.var_names:
         return gene_query
     candidates = [g for g in adata.var_names if g.upper() == gene_query.upper()]
@@ -398,12 +416,41 @@ def compare_gene_in_celltype(
     This aggregates expression per participant (avoids pseudoreplication) and
     tests group differences using Mann-Whitney U on participant-level means.
 
+    Parameters
+    ----------
+    adata
+        AnnData object.
+    gene
+        Gene name.
+    celltypes
+        Cell types to analyze.
+    group_col
+        Column name in adata.obs to use for grouping.
+    group1
+        First group to compare.
+    group2
+        Second group to compare.
+    participant_col
+        Column name in adata.obs to use for participant IDs.
+    celltype_col
+        Column name in adata.obs to use for cell types.
+    layer
+        Layer name in adata.layers to use for expression data.
+    log1p
+        Whether to log1p the expression data.
+    expr_threshold
+        Expression threshold to use for calculating the percentage of expressing cells. This is the minimum expression level to be considered expressing.
+    min_cells_per_patient
+        Minimum number of cells per participant to include in the analysis.
+    min_patients_per_group
+        Minimum number of participants per group to include in the analysis.
+
     Returns
     -------
-    result : dict
-        Summary stats including p-value and group means.
-    df_patient : pd.DataFrame
-        Participant-level summaries (mean, median, % expressing, n_cells).
+    tuple[dict, pd.DataFrame]
+        A tuple containing a dictionary with the results and a DataFrame with the participant-level summaries
+        - The dictionary contains the results of the comparison.
+        - The DataFrame contains the participant-level summaries.
     """
     if isinstance(celltypes, str):
         celltypes = [celltypes]

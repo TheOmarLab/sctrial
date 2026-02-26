@@ -20,7 +20,25 @@ def standardize_series(
     *,
     min_std: float = 1e-12,
 ) -> tuple[pd.Series, bool]:
-    """Z-score a column and report if standardization is valid."""
+    """Z-score a column and report if standardization is valid.
+
+    Parameters
+    ----------
+    df
+        DataFrame containing the column to standardize.
+    col
+        Name of the column to standardize.
+    min_std
+        Minimum standard deviation to consider the column for standardization.
+    
+    Returns
+    -------
+    tuple[pd.Series, bool]
+        A tuple containing the standardized column and a boolean indicating if standardization is valid.
+        - The standardized column is a Series with the same index as df.
+        - The boolean indicates if standardization is valid.
+        - If standardization is not valid, the standardized column is a Series with NaN values.
+    """
     y = df[col].astype(float)
     y_std = y.std(ddof=1)
     if not np.isfinite(y_std) or y_std < min_std:
