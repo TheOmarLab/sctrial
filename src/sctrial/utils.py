@@ -158,6 +158,7 @@ def wild_cluster_bootstrap_t(
     term_name: str,
     B: int = 999,
     seed: int = 42,
+    cov_type: str = "cluster",
 ) -> float:
     r"""Wild cluster bootstrap (Rademacher) for one coefficient.
 
@@ -193,6 +194,11 @@ def wild_cluster_bootstrap_t(
         Number of bootstrap draws.
     seed
         Random seed.
+    cov_type
+        Covariance type for bootstrap refits. Default ``"cluster"`` uses
+        cluster-robust SE (Cameron et al. 2008). Use ``"nonrobust"`` when
+        participant fixed effects already absorb within-cluster correlation
+        (e.g. participant_visit aggregation with 2 obs per cluster).
 
     Returns
     -------
@@ -236,13 +242,14 @@ def wild_cluster_bootstrap_t(
         e_star = resid_r * w_i
         y_star = restricted_fitted + e_star
 
+        cov_kwds = {"groups": clusters} if cov_type == "cluster" else None
         if use_wls:
             fit_b = sm.WLS(y_star, X, weights=weights).fit(
-                cov_type="cluster", cov_kwds={"groups": clusters}
+                cov_type=cov_type, cov_kwds=cov_kwds
             )
         else:
             fit_b = sm.OLS(y_star, X).fit(
-                cov_type="cluster", cov_kwds={"groups": clusters}
+                cov_type=cov_type, cov_kwds=cov_kwds
             )
 
         beta_b = fit_b.params.iloc[j]
