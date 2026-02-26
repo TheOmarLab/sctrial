@@ -248,6 +248,7 @@ class DidFitResult(TypedDict):
     n_units: int
     resid_sd: NotRequired[float]
     p_DiD_boot: NotRequired[float]
+    cov_type_used: NotRequired[str]
 
 def _ensure_paired(df: pd.DataFrame, unit: str, time: str, visits: tuple[str,str]) -> pd.DataFrame:
     wide = df.groupby([unit, time], observed=True).size().unstack(fill_value=0)
@@ -423,8 +424,28 @@ def did_fit(
     # cluster after participant_visit aggregation), re-fit with nonrobust SE.
     # The participant FE already absorbs within-participant correlation, so
     # homoskedastic SE is a valid (though conservative) alternative.
+    #
+    # Justification for nonrobust bootstrap in fallback mode:
+    # When cluster-robust SE is degenerate (typically because each cluster has
+    # only 2 observations after participant_visit aggregation), the wild cluster
+    # bootstrap with nonrobust covariance is methodologically valid because:
+    # (a) participant fixed effects already absorb within-cluster correlation,
+    # (b) with only 2 obs per cluster, heteroskedasticity cannot be estimated
+    #     within clusters anyway, and
+    # (c) the Rademacher sign-flip at the cluster level still provides valid
+    #     finite-sample inference (Webb 2023, J. Econometrics).
     effective_cov_type = cov_type
     if cov_type == "cluster" and (not np.isfinite(se_did) or not np.isfinite(p_did)):
+        warnings.warn(
+            f"Cluster-robust SE is degenerate (NaN) for feature '{y}' with "
+            f"{int(tmp[unit].nunique())} clusters. Falling back to nonrobust "
+            f"(homoskedastic) SE. This typically occurs when each cluster has "
+            f"very few observations (e.g. participant_visit aggregation with "
+            f"2 visits). Participant fixed effects still absorb within-cluster "
+            f"correlation. Set use_bootstrap=True for more reliable p-values.",
+            UserWarning,
+            stacklevel=2,
+        )
         fit = model.fit()  # nonrobust
         se_did = float(fit.bse.get(term, np.nan))
         p_did = float(fit.pvalues.get(term, np.nan))
@@ -438,6 +459,7 @@ def did_fit(
         "p_time": float(fit.pvalues.get(time, np.nan)),
         "n_units": int(tmp[unit].nunique()),
         "resid_sd": float(np.sqrt(fit.scale)),
+        "cov_type_used": effective_cov_type,
     }
 
     if use_bootstrap and term in fit.params:
