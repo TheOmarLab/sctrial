@@ -56,14 +56,21 @@ html_theme_options = {
             "icon": "fa-solid fa-box",
         },
     ],
-    "navbar_align": "left",
+    # Navigation: left sidebar with full toctree, no top-bar section links
+    "navbar_center": [],
     "show_nav_level": 2,
     "show_toc_level": 2,
     "navigation_with_keys": True,
+    "navigation_depth": 3,
     "footer_start": ["copyright"],
     "footer_end": ["last-updated"],
     "secondary_sidebar_items": ["page-toc", "edit-this-page"],
     "use_edit_page_button": True,
+}
+
+# Ensure left sidebar appears on ALL pages including the landing page
+html_sidebars = {
+    "**": ["sidebar-nav-bs.html"],
 }
 
 html_context = {

@@ -1,81 +1,80 @@
-:html_theme.sidebar_secondary.remove:
+sctrial — Trial-Aware Statistical Inference for Single-Cell Data
+================================================================
 
-.. raw:: html
+.. image:: https://github.com/TheOmarLab/sctrial/actions/workflows/test.yml/badge.svg?branch=main
+   :target: https://github.com/TheOmarLab/sctrial/actions/workflows/test.yml
+   :alt: Tests
 
-   <div class="hero-section">
-     <h1>sctrial</h1>
-     <p class="hero-tagline">Trial-Aware Statistical Inference for Single-Cell Data</p>
-     <p class="hero-badges">
-       <a href="https://github.com/TheOmarLab/sctrial/actions/workflows/test.yml">
-         <img src="https://github.com/TheOmarLab/sctrial/actions/workflows/test.yml/badge.svg?branch=main" alt="Tests">
-       </a>
-       <a href="https://github.com/TheOmarLab/sctrial/releases">
-         <img src="https://img.shields.io/github/v/release/TheOmarLab/sctrial?label=version" alt="Version">
-       </a>
-       <img src="https://img.shields.io/badge/python-3.9%2B-blue" alt="Python">
-       <a href="https://opensource.org/licenses/MIT">
-         <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License">
-       </a>
-     </p>
-     <div class="hero-buttons">
-       <a class="btn-hero-primary" href="installation.html">Get Started</a>
-       <a class="btn-hero-secondary" href="tutorials/index.html">Tutorials</a>
-     </div>
-   </div>
+.. image:: https://img.shields.io/badge/python-3.9%2B-blue
+   :alt: Python
 
+.. image:: https://img.shields.io/badge/License-MIT-yellow.svg
+   :target: https://opensource.org/licenses/MIT
+   :alt: License
 
-Key Features
-------------
+**sctrial** is a Python package for rigorous statistical inference on single-cell RNA-seq
+data from clinical trials and longitudinal studies. Built on
+`AnnData <https://anndata.readthedocs.io>`_, it implements trial-aware analytical
+methods that properly account for participant-level replication — a critical requirement
+for valid inference in single-cell experiments where thousands of cells come from each
+of a limited number of participants.
 
-.. grid:: 3
-   :gutter: 3
+The package addresses a common pitfall in single-cell analysis: treating individual cells
+as independent observations inflates statistical power and leads to false discoveries.
+**sctrial** solves this by pseudobulking to participant-level replicates and applying
+methods from causal inference and clinical biostatistics — including difference-in-differences,
+wild cluster bootstrap, and paired contrasts — to deliver reliable, trial-level conclusions.
 
-   .. grid-item-card:: Difference-in-Differences
-      :text-align: center
+.. image:: _static/overview_figure.svg
+   :alt: sctrial overview — from scRNA-seq input through trial-aware analysis to statistical outputs
+   :width: 100%
+   :align: center
 
-      Rigorous DiD analysis with participant fixed effects and wild cluster bootstrap inference.
+Key Applications
+----------------
 
-   .. grid-item-card:: Paired Contrasts
-      :text-align: center
+- **Difference-in-Differences (DiD)** — Participant fixed-effects regression with wild cluster
+  bootstrap inference for treatment effect estimation across arms and timepoints.
 
-      Within-arm pre→post comparisons with paired statistical tests and effect sizes.
+- **Paired Contrasts** — Within-arm pre→post comparisons with paired statistical tests (Wilcoxon,
+  t-test) and effect sizes (Cohen's d, Hedges' g, log₂ fold-change).
 
-   .. grid-item-card:: Between-Arm Tests
-      :text-align: center
+- **Between-Arm Tests** — Cross-sectional comparisons between treatment and control arms at
+  fixed timepoints with proper pseudobulk replication.
 
-      Cross-sectional comparisons between treatment and control arms at fixed timepoints.
+- **Abundance Analysis** — Cell-type composition changes across conditions using proportion-based
+  statistics and participant-level aggregation.
 
-   .. grid-item-card:: Abundance Analysis
-      :text-align: center
+- **Gene Set Enrichment Analysis** — GSEA on DiD-ranked gene lists with support for Hallmark,
+  KEGG, Reactome, and custom gene set collections.
 
-      Cell-type composition changes across conditions with proportion-based statistics.
+- **Power Analysis** — Sample size calculations, power curves, and minimum detectable effect
+  sizes for planning single-cell clinical studies.
 
-   .. grid-item-card:: Gene Set Enrichment
-      :text-align: center
+Getting Started
+---------------
 
-      GSEA on DiD-ranked gene lists with multiple gene set collections.
+Install sctrial and run your first analysis:
 
-   .. grid-item-card:: Power Analysis
-      :text-align: center
+.. code-block:: bash
 
-      Sample size calculations and power curves for planning single-cell clinical studies.
+   pip install sctrial
 
+See the :doc:`installation` guide for optional extras (plotting, GSEA, Bayesian modules),
+then follow the :doc:`quickstart` for a complete walkthrough.
+For end-to-end analyses on real clinical datasets, explore the :doc:`tutorials/index`.
 
-.. grid:: 2
-   :gutter: 3
+Citing sctrial
+--------------
 
-   .. grid-item-card:: Quick Start
-      :link: quickstart
-      :link-type: doc
+If you use **sctrial** in your research, please cite:
 
-      Install sctrial and run your first analysis in minutes.
+.. code-block:: bibtex
 
-   .. grid-item-card:: API Reference
-      :link: api
-      :link-type: doc
-
-      Complete reference for all public functions and classes.
-
+   @software{sctrial,
+     title = {sctrial: Trial-Aware Statistical Inference for Single-Cell Data},
+     url = {https://github.com/TheOmarLab/sctrial}
+   }
 
 .. toctree::
    :maxdepth: 2
