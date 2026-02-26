@@ -19,6 +19,10 @@
   </a>
 </p>
 
+<p align="center">
+  <img src="docs/source/_static/overview_figure.svg" alt="sctrial overview — from scRNA-seq input through trial-aware analysis to statistical outputs" width="100%">
+</p>
+
 ---
 
 ## Overview
