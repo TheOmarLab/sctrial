@@ -56,6 +56,14 @@ all = [
   "lifelines>=0.27",
   "pymc>=5.0",
 ]
+docs = [
+  "sphinx>=7.0",
+  "pydata-sphinx-theme>=0.15",
+  "sphinx-design>=0.5",
+  "sphinx-copybutton>=0.5",
+  "nbsphinx>=0.9",
+  "pandoc",
+]
 dev = [
   "pytest>=7.0",
   "pytest-cov>=4.0",
@@ -65,8 +73,7 @@ dev = [
   "build>=1.0",
   "twine>=5.0",
   "psutil>=5.9",
-  "sphinx>=7.0",
-  "sphinx-rtd-theme>=2.0",
+  "sctrial[docs]",
 ]
 
 [tool.hatch.build.targets.wheel]

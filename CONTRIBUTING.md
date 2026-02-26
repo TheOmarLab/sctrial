@@ -26,7 +26,7 @@ pytest
 ### Coverage Expectations
 - New features must include tests.
 - If you touch statistical logic, add at least one test that verifies a known effect.
-- If you touch tutorials or notebooks, ensure outputs are updated.
+- If you touch tutorial notebooks, ensure outputs are updated.
 
 ## Documentation
 - Update docstrings when modifying function behavior or return values.
@@ -34,7 +34,7 @@ pytest
   ```bash
   sphinx-build -b html docs/source docs/build/html
   ```
-- If you change example notebooks, execute them and sync to `docs/source/examples/`.
+- If you change tutorial notebooks, execute them and sync to `docs/source/tutorials/`.
 
 ## Branch Naming
 Use descriptive branch names:

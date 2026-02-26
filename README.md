@@ -1,7 +1,7 @@
 <p align="center">
-  <h1 align="center">sctrial</h1>
-  <p align="center"><strong>Trial-Aware Statistical Inference for Single-Cell Data</strong></p>
+  <img src="docs/source/_static/logo.svg" alt="sctrial" width="280">
 </p>
+<p align="center"><strong>Trial-Aware Statistical Inference for Single-Cell Data</strong></p>
 
 <p align="center">
   <a href="https://github.com/TheOmarLab/sctrial/actions/workflows/test.yml">
@@ -17,6 +17,10 @@
   <a href="https://TheOmarLab.github.io/sctrial/">
     <img src="https://img.shields.io/badge/docs-latest-brightgreen.svg" alt="Documentation">
   </a>
+</p>
+
+<p align="center">
+  <img src="docs/source/_static/overview_figure.svg" alt="sctrial overview — from scRNA-seq input through trial-aware analysis to statistical outputs" width="100%">
 </p>
 
 ---
@@ -80,14 +84,14 @@ adata = st.score_gene_sets(adata, gene_sets, layer="log1p_cpm", method="zmean")
 results = st.did_table(adata, features, design, visits=("Baseline", "Week12"))
 ```
 
-## Example Notebooks
+## Tutorials
 
 | Notebook | Dataset | Analysis Type |
 |----------|---------|---------------|
-| [COVID-19 Immune Profiling](examples/example_covid19_stephenson.ipynb) | Stephenson et al., Nature 2021 | Cross-sectional severity comparison |
-| [Immunotherapy Response](examples/example_immunotherapy_sade_feldman.ipynb) | Sade-Feldman et al., Cell 2018 | Longitudinal DiD with response groups |
-| [Vaccine Response](examples/example_vaccine_immport.ipynb) | ImmPort GSE171964 | Within-arm paired analysis |
-| [Scalability Benchmark](examples/stress_test_real_scale.ipynb) | Sade-Feldman et al. | Performance and scalability testing |
+| [COVID-19 Immune Profiling](tutorials/example_covid19_stephenson.ipynb) | Stephenson et al., Nature 2021 | Cross-sectional severity comparison |
+| [Immunotherapy Response](tutorials/example_immunotherapy_sade_feldman.ipynb) | Sade-Feldman et al., Cell 2018 | Longitudinal DiD with response groups |
+| [Vaccine Response](tutorials/example_vaccine_immport.ipynb) | ImmPort GSE171964 | Within-arm paired analysis |
+| [Scalability Benchmark](tutorials/stress_test_real_scale.ipynb) | Sade-Feldman et al. | Performance and scalability testing |
 
 ## Documentation
 
