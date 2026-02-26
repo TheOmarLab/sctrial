@@ -152,6 +152,7 @@ def test_did_table_nonrobust_fallback_on_nan_se():
     """
     import warnings as _w
     from unittest.mock import patch
+
     import sctrial.stats.did as did_module
 
     adata = _make_did_adata(n_per_arm=4, seed=42)
