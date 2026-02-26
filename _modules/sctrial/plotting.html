@@ -6,14 +6,14 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>sctrial.plotting &mdash; sctrial 0.2.1.dev1 documentation</title>
-      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=92fd9be5" />
       <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
 
   
       <script src="../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../_static/documentation_options.js?v=28304322"></script>
-      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/doctools.js?v=9a2dae69"></script>
       <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script src="../../_static/js/theme.js"></script>
@@ -81,19 +81,19 @@
            <div itemprop="articleBody">
              
   <h1>Source code for sctrial.plotting</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+<span></span><span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sequence</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">types</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModuleType</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Literal</span>
+<span class="kn">from</span> <span class="nn">collections.abc</span> <span class="kn">import</span> <span class="n">Sequence</span>
+<span class="kn">from</span> <span class="nn">types</span> <span class="kn">import</span> <span class="n">ModuleType</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Literal</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">anndata</span><span class="w"> </span><span class="kn">import</span> <span class="n">AnnData</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">anndata</span> <span class="kn">import</span> <span class="n">AnnData</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">._env</span><span class="w"> </span><span class="kn">import</span> <span class="n">ensure_matplotlib_config_dir</span><span class="p">,</span> <span class="n">ensure_numba_cache_dir</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">.design</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrialDesign</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">.stats._extract</span><span class="w"> </span><span class="kn">import</span> <span class="n">extract_gene_vector</span>
+<span class="kn">from</span> <span class="nn">._env</span> <span class="kn">import</span> <span class="n">ensure_matplotlib_config_dir</span><span class="p">,</span> <span class="n">ensure_numba_cache_dir</span>
+<span class="kn">from</span> <span class="nn">.design</span> <span class="kn">import</span> <span class="n">TrialDesign</span>
+<span class="kn">from</span> <span class="nn">.stats._extract</span> <span class="kn">import</span> <span class="n">extract_gene_vector</span>
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
     <span class="s2">&quot;did_volcano_frame&quot;</span><span class="p">,</span>
@@ -119,9 +119,9 @@
 <span class="n">ensure_numba_cache_dir</span><span class="p">()</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib.axes</span><span class="w"> </span><span class="kn">import</span> <span class="n">Axes</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib.figure</span><span class="w"> </span><span class="kn">import</span> <span class="n">Figure</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib.gridspec</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridSpec</span> <span class="k">as</span> <span class="n">GridSpecType</span>
+    <span class="kn">from</span> <span class="nn">matplotlib.axes</span> <span class="kn">import</span> <span class="n">Axes</span>
+    <span class="kn">from</span> <span class="nn">matplotlib.figure</span> <span class="kn">import</span> <span class="n">Figure</span>
+    <span class="kn">from</span> <span class="nn">matplotlib.gridspec</span> <span class="kn">import</span> <span class="n">GridSpec</span> <span class="k">as</span> <span class="n">GridSpecType</span>
 
 <span class="c1"># Initialize optional plotting dependencies to avoid type errors</span>
 <span class="n">plt</span><span class="p">:</span> <span class="n">ModuleType</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
@@ -131,24 +131,24 @@
 <span class="n">_scanpy_import_error</span><span class="p">:</span> <span class="ne">Exception</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 
 <span class="k">try</span><span class="p">:</span>
-    <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>  <span class="c1"># type: ignore[no-redef]</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib.gridspec</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridSpec</span>  <span class="c1"># type: ignore[no-redef]</span>
+    <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>  <span class="c1"># type: ignore[no-redef]</span>
+    <span class="kn">from</span> <span class="nn">matplotlib.gridspec</span> <span class="kn">import</span> <span class="n">GridSpec</span>  <span class="c1"># type: ignore[no-redef]</span>
 <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
     <span class="k">pass</span>
 
 <span class="k">try</span><span class="p">:</span>
-    <span class="kn">import</span><span class="w"> </span><span class="nn">seaborn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sns</span>  <span class="c1"># type: ignore[no-redef]</span>
+    <span class="kn">import</span> <span class="nn">seaborn</span> <span class="k">as</span> <span class="nn">sns</span>  <span class="c1"># type: ignore[no-redef]</span>
 <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
     <span class="k">pass</span>
 
 <span class="k">try</span><span class="p">:</span>
-    <span class="kn">import</span><span class="w"> </span><span class="nn">scanpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sc</span>  <span class="c1"># type: ignore[no-redef]</span>
+    <span class="kn">import</span> <span class="nn">scanpy</span> <span class="k">as</span> <span class="nn">sc</span>  <span class="c1"># type: ignore[no-redef]</span>
 <span class="k">except</span> <span class="p">(</span><span class="ne">ImportError</span><span class="p">,</span> <span class="ne">RuntimeError</span><span class="p">,</span> <span class="ne">OSError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>  <span class="c1"># ImportError or runtime errors (e.g., numba cache)</span>
     <span class="n">_scanpy_import_error</span> <span class="o">=</span> <span class="n">e</span>
 
 <div class="viewcode-block" id="did_volcano_frame">
 <a class="viewcode-back" href="../../api.html#sctrial.plotting.did_volcano_frame">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">did_volcano_frame</span><span class="p">(</span>
+<span class="k">def</span> <span class="nf">did_volcano_frame</span><span class="p">(</span>
         <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
         <span class="o">*</span><span class="p">,</span>
         <span class="n">effect_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;beta_DiD&quot;</span><span class="p">,</span>
@@ -190,7 +190,7 @@
 
 <div class="viewcode-block" id="signed_logp">
 <a class="viewcode-back" href="../../api.html#sctrial.plotting.signed_logp">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">signed_logp</span><span class="p">(</span>
+<span class="k">def</span> <span class="nf">signed_logp</span><span class="p">(</span>
     <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
     <span class="n">effect_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;beta_DiD&quot;</span><span class="p">,</span>
@@ -228,7 +228,7 @@
 
 <div class="viewcode-block" id="plot_trial_interaction">
 <a class="viewcode-back" href="../../api.html#sctrial.plotting.plot_trial_interaction">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">plot_trial_interaction</span><span class="p">(</span>
+<span class="k">def</span> <span class="nf">plot_trial_interaction</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
     <span class="n">feature</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">design</span><span class="p">:</span> <span class="n">TrialDesign</span><span class="p">,</span>
@@ -313,7 +313,7 @@
 
 <div class="viewcode-block" id="plot_parallel_trends">
 <a class="viewcode-back" href="../../api.html#sctrial.plotting.plot_parallel_trends">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">plot_parallel_trends</span><span class="p">(</span>
+<span class="k">def</span> <span class="nf">plot_parallel_trends</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
     <span class="n">feature</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">design</span><span class="p">:</span> <span class="n">TrialDesign</span><span class="p">,</span>
@@ -391,7 +391,7 @@
 
 <div class="viewcode-block" id="plot_did_forest">
 <a class="viewcode-back" href="../../api.html#sctrial.plotting.plot_did_forest">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">plot_did_forest</span><span class="p">(</span>
+<span class="k">def</span> <span class="nf">plot_did_forest</span><span class="p">(</span>
     <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
     <span class="n">feature_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;feature&quot;</span><span class="p">,</span>
@@ -460,7 +460,7 @@
         <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="n">title</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">ax</span>
 
-    <span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">stats</span> <span class="k">as</span> <span class="n">sp_stats</span>
+    <span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">stats</span> <span class="k">as</span> <span class="n">sp_stats</span>
 
     <span class="k">if</span> <span class="s2">&quot;n_units&quot;</span> <span class="ow">in</span> <span class="n">df_plot</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
         <span class="n">df_vals</span> <span class="o">=</span> <span class="p">(</span><span class="n">df_plot</span><span class="p">[</span><span class="s2">&quot;n_units&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">lower</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
@@ -523,7 +523,7 @@
 
 <div class="viewcode-block" id="plot_within_arm_comparison">
 <a class="viewcode-back" href="../../api.html#sctrial.plotting.plot_within_arm_comparison">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">plot_within_arm_comparison</span><span class="p">(</span>
+<span class="k">def</span> <span class="nf">plot_within_arm_comparison</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
     <span class="n">arm</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">feature</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
@@ -565,7 +565,7 @@
             <span class="s2">&quot;matplotlib and seaborn are required for plotting. &quot;</span>
             <span class="s2">&quot;Install with: pip install sctrial[plots]&quot;</span>
         <span class="p">)</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">.adata_tools</span><span class="w"> </span><span class="kn">import</span> <span class="n">subset_cells</span>
+    <span class="kn">from</span> <span class="nn">.adata_tools</span> <span class="kn">import</span> <span class="n">subset_cells</span>
     <span class="n">ad</span> <span class="o">=</span> <span class="n">subset_cells</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">arm</span><span class="o">=</span><span class="n">arm</span><span class="p">)</span>
     <span class="n">ad</span> <span class="o">=</span> <span class="n">ad</span><span class="p">[</span><span class="n">ad</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">visits</span><span class="p">)]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
@@ -608,7 +608,7 @@
 
 <div class="viewcode-block" id="plot_trial_umap">
 <a class="viewcode-back" href="../../api.html#sctrial.plotting.plot_trial_umap">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">plot_trial_umap</span><span class="p">(</span>
+<span class="k">def</span> <span class="nf">plot_trial_umap</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
     <span class="n">feature</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">design</span><span class="p">:</span> <span class="n">TrialDesign</span><span class="p">,</span>
@@ -710,7 +710,7 @@
 
 <div class="viewcode-block" id="plot_gsea_radar">
 <a class="viewcode-back" href="../../api.html#sctrial.plotting.plot_gsea_radar">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">plot_gsea_radar</span><span class="p">(</span>
+<span class="k">def</span> <span class="nf">plot_gsea_radar</span><span class="p">(</span>
     <span class="n">gsea_results</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">term</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">pool_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;pool&quot;</span><span class="p">,</span>
@@ -751,7 +751,7 @@
             <span class="s2">&quot;matplotlib is required for plotting. &quot;</span>
             <span class="s2">&quot;Install with: pip install sctrial[plots]&quot;</span>
         <span class="p">)</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">math</span><span class="w"> </span><span class="kn">import</span> <span class="n">pi</span>
+    <span class="kn">from</span> <span class="nn">math</span> <span class="kn">import</span> <span class="n">pi</span>
     <span class="n">df_term</span> <span class="o">=</span> <span class="n">gsea_results</span><span class="p">[</span><span class="n">gsea_results</span><span class="p">[</span><span class="n">term_col</span><span class="p">]</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">contains</span><span class="p">(</span><span class="n">term</span><span class="p">,</span> <span class="n">case</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">na</span><span class="o">=</span><span class="kc">False</span><span class="p">)]</span>
     <span class="k">if</span> <span class="n">df_term</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Term &#39;</span><span class="si">{</span><span class="n">term</span><span class="si">}</span><span class="s2">&#39; not found in results.&quot;</span><span class="p">)</span>
@@ -790,7 +790,7 @@
 
 <div class="viewcode-block" id="plot_trial_dotplot">
 <a class="viewcode-back" href="../../api.html#sctrial.plotting.plot_trial_dotplot">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">plot_trial_dotplot</span><span class="p">(</span>
+<span class="k">def</span> <span class="nf">plot_trial_dotplot</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
     <span class="n">features</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
     <span class="n">design</span><span class="p">:</span> <span class="n">TrialDesign</span><span class="p">,</span>
@@ -879,7 +879,7 @@
 
 <div class="viewcode-block" id="plot_abundance_interaction">
 <a class="viewcode-back" href="../../api.html#sctrial.plotting.plot_abundance_interaction">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">plot_abundance_interaction</span><span class="p">(</span>
+<span class="k">def</span> <span class="nf">plot_abundance_interaction</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
     <span class="n">celltype</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">design</span><span class="p">:</span> <span class="n">TrialDesign</span><span class="p">,</span>
@@ -957,7 +957,7 @@
 
 <div class="viewcode-block" id="plot_trial_umap_panel">
 <a class="viewcode-back" href="../../api.html#sctrial.plotting.plot_trial_umap_panel">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">plot_trial_umap_panel</span><span class="p">(</span>
+<span class="k">def</span> <span class="nf">plot_trial_umap_panel</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
     <span class="n">feature</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">design</span><span class="p">:</span> <span class="n">TrialDesign</span><span class="p">,</span>
@@ -1103,7 +1103,7 @@
 
 <div class="viewcode-block" id="plot_module_umap_panel">
 <a class="viewcode-back" href="../../api.html#sctrial.plotting.plot_module_umap_panel">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">plot_module_umap_panel</span><span class="p">(</span>
+<span class="k">def</span> <span class="nf">plot_module_umap_panel</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
     <span class="n">module_cols</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
     <span class="n">celltype_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;celltype&quot;</span><span class="p">,</span>
@@ -1204,7 +1204,7 @@
 
 <div class="viewcode-block" id="plot_gsea_heatmap">
 <a class="viewcode-back" href="../../api.html#sctrial.plotting.plot_gsea_heatmap">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">plot_gsea_heatmap</span><span class="p">(</span>
+<span class="k">def</span> <span class="nf">plot_gsea_heatmap</span><span class="p">(</span>
     <span class="n">gsea_results</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
     <span class="n">collection</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">fdr_thresh</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.25</span><span class="p">,</span>
@@ -1298,7 +1298,7 @@
 
 <div class="viewcode-block" id="plot_did_forest_interactive">
 <a class="viewcode-back" href="../../api.html#sctrial.plotting.plot_did_forest_interactive">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">plot_did_forest_interactive</span><span class="p">(</span>
+<span class="k">def</span> <span class="nf">plot_did_forest_interactive</span><span class="p">(</span>
     <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
     <span class="n">feature_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;feature&quot;</span><span class="p">,</span>
@@ -1333,9 +1333,9 @@
 <span class="sd">        Interactive forest plot.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">try</span><span class="p">:</span>
-        <span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>
+        <span class="kn">import</span> <span class="nn">plotly.graph_objects</span> <span class="k">as</span> <span class="nn">go</span>
     <span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>  <span class="c1"># pragma: no cover</span>
-        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span><span class="s2">&quot;plotly is required for interactive plots&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">e</span>
+        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span><span class="s2">&quot;plotly is required for interactive plots&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
 
     <span class="k">if</span> <span class="n">df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Empty DataFrame provided.&quot;</span><span class="p">)</span>
@@ -1346,7 +1346,7 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing column &#39;</span><span class="si">{</span><span class="n">feature_col</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
 
-    <span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">stats</span> <span class="k">as</span> <span class="n">sp_stats</span>
+    <span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">stats</span> <span class="k">as</span> <span class="n">sp_stats</span>
 
     <span class="n">df_plot</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="n">beta_col</span><span class="p">,</span> <span class="n">se_col</span><span class="p">])</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
     <span class="k">if</span> <span class="s2">&quot;n_units&quot;</span> <span class="ow">in</span> <span class="n">df_plot</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
@@ -1377,7 +1377,7 @@
 
 <div class="viewcode-block" id="plot_did_volcano_interactive">
 <a class="viewcode-back" href="../../api.html#sctrial.plotting.plot_did_volcano_interactive">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">plot_did_volcano_interactive</span><span class="p">(</span>
+<span class="k">def</span> <span class="nf">plot_did_volcano_interactive</span><span class="p">(</span>
     <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
     <span class="n">beta_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;beta_DiD&quot;</span><span class="p">,</span>
@@ -1403,9 +1403,9 @@
 <span class="sd">        Interactive volcano plot.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">try</span><span class="p">:</span>
-        <span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>
+        <span class="kn">import</span> <span class="nn">plotly.graph_objects</span> <span class="k">as</span> <span class="nn">go</span>
     <span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>  <span class="c1"># pragma: no cover</span>
-        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span><span class="s2">&quot;plotly is required for interactive plots&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">e</span>
+        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span><span class="s2">&quot;plotly is required for interactive plots&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
 
     <span class="n">df_plot</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="n">beta_col</span><span class="p">,</span> <span class="n">p_col</span><span class="p">])</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
     <span class="n">df_plot</span><span class="p">[</span><span class="s2">&quot;neglog10p&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">df_plot</span><span class="p">[</span><span class="n">p_col</span><span class="p">]</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">lower</span><span class="o">=</span><span class="mf">1e-12</span><span class="p">))</span>

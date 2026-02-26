@@ -6,14 +6,14 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>sctrial.stats.effect_size &mdash; sctrial 0.2.1.dev1 documentation</title>
-      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=92fd9be5" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
 
   
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../_static/documentation_options.js?v=28304322"></script>
-      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/doctools.js?v=9a2dae69"></script>
       <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script src="../../../_static/js/theme.js"></script>
@@ -119,18 +119,18 @@
 <span class="sd">95% CI via noncentral t-distribution:</span>
 <span class="sd">    SE(d) ≈ sqrt((n₁+n₂)/(n₁×n₂) + d²/(2(n₁+n₂-2)))</span>
 <span class="sd">&quot;&quot;&quot;</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Literal</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Literal</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">stats</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.special</span><span class="w"> </span><span class="kn">import</span> <span class="n">gammaln</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">stats</span>
+<span class="kn">from</span> <span class="nn">scipy.special</span> <span class="kn">import</span> <span class="n">gammaln</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">statsmodels.regression.linear_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">RegressionResultsWrapper</span>
+    <span class="kn">from</span> <span class="nn">statsmodels.regression.linear_model</span> <span class="kn">import</span> <span class="n">RegressionResultsWrapper</span>
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
     <span class="s2">&quot;cohens_d&quot;</span><span class="p">,</span>
@@ -147,7 +147,7 @@
 
 <div class="viewcode-block" id="cohens_d">
 <a class="viewcode-back" href="../../../api.html#sctrial.stats.effect_size.cohens_d">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">cohens_d</span><span class="p">(</span>
+<span class="k">def</span> <span class="nf">cohens_d</span><span class="p">(</span>
     <span class="n">group1</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="n">group2</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="n">pooled</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
@@ -214,7 +214,7 @@
 
 <div class="viewcode-block" id="hedges_g">
 <a class="viewcode-back" href="../../../api.html#sctrial.stats.effect_size.hedges_g">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">hedges_g</span><span class="p">(</span>
+<span class="k">def</span> <span class="nf">hedges_g</span><span class="p">(</span>
     <span class="n">group1</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="n">group2</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
@@ -275,7 +275,7 @@
 
 <div class="viewcode-block" id="effect_size_ci">
 <a class="viewcode-back" href="../../../api.html#sctrial.stats.effect_size.effect_size_ci">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">effect_size_ci</span><span class="p">(</span>
+<span class="k">def</span> <span class="nf">effect_size_ci</span><span class="p">(</span>
     <span class="n">d</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
     <span class="n">n1</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
     <span class="n">n2</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
@@ -334,7 +334,7 @@
 
 <div class="viewcode-block" id="cohens_d_from_did">
 <a class="viewcode-back" href="../../../api.html#sctrial.stats.effect_size.cohens_d_from_did">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">cohens_d_from_did</span><span class="p">(</span>
+<span class="k">def</span> <span class="nf">cohens_d_from_did</span><span class="p">(</span>
     <span class="n">delta_treated</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="n">delta_control</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
@@ -372,7 +372,7 @@
 
 <div class="viewcode-block" id="cohens_d_from_did_approx">
 <a class="viewcode-back" href="../../../api.html#sctrial.stats.effect_size.cohens_d_from_did_approx">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">cohens_d_from_did_approx</span><span class="p">(</span>
+<span class="k">def</span> <span class="nf">cohens_d_from_did_approx</span><span class="p">(</span>
     <span class="n">beta_did</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
     <span class="n">residual_std</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
@@ -397,7 +397,7 @@
 
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">_compute_effect_size_from_fit</span><span class="p">(</span>
+<span class="k">def</span> <span class="nf">_compute_effect_size_from_fit</span><span class="p">(</span>
     <span class="n">fit</span><span class="p">:</span> <span class="n">RegressionResultsWrapper</span><span class="p">,</span>
     <span class="n">term_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">method</span><span class="p">:</span> <span class="n">EffectSizeMethod</span> <span class="o">=</span> <span class="s2">&quot;hedges_g&quot;</span><span class="p">,</span>
@@ -453,7 +453,7 @@
 
 <div class="viewcode-block" id="add_effect_sizes_to_did">
 <a class="viewcode-back" href="../../../api.html#sctrial.stats.effect_size.add_effect_sizes_to_did">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">add_effect_sizes_to_did</span><span class="p">(</span>
+<span class="k">def</span> <span class="nf">add_effect_sizes_to_did</span><span class="p">(</span>
     <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">beta_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;beta_DiD&quot;</span><span class="p">,</span>
     <span class="n">se_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;se_DiD&quot;</span><span class="p">,</span>
@@ -578,7 +578,7 @@
 
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">bootstrap_effect_size_ci</span><span class="p">(</span>
+<span class="k">def</span> <span class="nf">bootstrap_effect_size_ci</span><span class="p">(</span>
     <span class="n">group1</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="n">group2</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="n">method</span><span class="p">:</span> <span class="n">EffectSizeMethod</span> <span class="o">=</span> <span class="s2">&quot;hedges_g&quot;</span><span class="p">,</span>

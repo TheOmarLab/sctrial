@@ -7,7 +7,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Immune Profiling of COVID-19 Severity: A Cross-Sectional Analysis &mdash; sctrial 0.2.1.dev1 documentation</title>
-      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=92fd9be5" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css?v=2aa19091" />
 
@@ -15,7 +15,7 @@
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=28304322"></script>
-      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
       <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
@@ -157,25 +157,25 @@
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Imports - consolidated in one cell</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
 <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">&#39;ignore&#39;</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">FutureWarning</span><span class="p">)</span>
 <span class="c1"># Note: We do NOT suppress UserWarning — sctrial issues important</span>
 <span class="c1"># statistical caveats (e.g. low-cluster reliability) as UserWarnings.</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">scipy.sparse</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sp</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">seaborn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sns</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">scanpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sc</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">statsmodels.formula.api</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">smf</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">statsmodels.stats.multitest</span><span class="w"> </span><span class="kn">import</span> <span class="n">multipletests</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.stats</span><span class="w"> </span><span class="kn">import</span> <span class="n">mannwhitneyu</span>  <span class="c1"># Import here for use across notebook</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">urllib.request</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">scipy.sparse</span> <span class="k">as</span> <span class="nn">sp</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">seaborn</span> <span class="k">as</span> <span class="nn">sns</span>
+<span class="kn">import</span> <span class="nn">scanpy</span> <span class="k">as</span> <span class="nn">sc</span>
+<span class="kn">import</span> <span class="nn">statsmodels.formula.api</span> <span class="k">as</span> <span class="nn">smf</span>
+<span class="kn">from</span> <span class="nn">statsmodels.stats.multitest</span> <span class="kn">import</span> <span class="n">multipletests</span>
+<span class="kn">from</span> <span class="nn">scipy.stats</span> <span class="kn">import</span> <span class="n">mannwhitneyu</span>  <span class="c1"># Import here for use across notebook</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span> <span class="nn">urllib.request</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">sctrial</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">itertools</span>
+<span class="kn">import</span> <span class="nn">sctrial</span> <span class="k">as</span> <span class="nn">st</span>
+<span class="kn">import</span> <span class="nn">itertools</span>
 
 <span class="c1"># Configuration constants</span>
 <span class="n">MIN_GENES_FOR_SCORE</span> <span class="o">=</span> <span class="mi">5</span>
@@ -186,6 +186,11 @@
 
 <span class="n">pd</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">mode</span><span class="o">.</span><span class="n">chained_assignment</span> <span class="o">=</span> <span class="kc">None</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;sctrial version: </span><span class="si">{</span><span class="n">st</span><span class="o">.</span><span class="n">__version__</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="nb">hasattr</span><span class="p">(</span><span class="n">st</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;__version__&#39;</span><span class="p">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;dev&#39;</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_fmt_fdr</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Format FDR/p-value: scientific notation for very small values.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">v</span><span class="si">:</span><span class="s2">.2e</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">v</span> <span class="o">&lt;</span> <span class="mf">0.001</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">v</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span>
 <br/></pre></div>
 </div>
 </div>
@@ -205,7 +210,7 @@ sctrial version: 0.2.1.dev1
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Dataset loaders and helpers (from sctrial)</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">sctrial.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_stephenson_data</span><span class="p">,</span> <span class="n">count_paired</span><span class="p">,</span> <span class="n">categorize_celltype</span>
+<span class="kn">from</span> <span class="nn">sctrial.datasets</span> <span class="kn">import</span> <span class="n">load_stephenson_data</span><span class="p">,</span> <span class="n">count_paired</span><span class="p">,</span> <span class="n">categorize_celltype</span>
 <br/></pre></div>
 </div>
 </div>
@@ -1018,7 +1023,7 @@ DFO_15+:
     <tr>
       <th>2</th>
       <td>sig_Cytotoxicity</td>
-      <td>0.6566</td>
+      <td>0.6567</td>
       <td>0.3939</td>
       <td>0.6136</td>
       <td>8</td>
@@ -1026,25 +1031,25 @@ DFO_15+:
     <tr>
       <th>3</th>
       <td>sig_T_Cell_Exhaustion</td>
-      <td>0.2097</td>
-      <td>0.7916</td>
-      <td>0.7916</td>
+      <td>0.2095</td>
+      <td>0.7917</td>
+      <td>0.7917</td>
       <td>8</td>
     </tr>
     <tr>
       <th>4</th>
       <td>sig_Myeloid_Activation</td>
       <td>0.6372</td>
-      <td>0.4090</td>
+      <td>0.4091</td>
       <td>0.6136</td>
       <td>8</td>
     </tr>
     <tr>
       <th>5</th>
       <td>sig_B_Cell_Activation</td>
-      <td>-1.0563</td>
-      <td>0.1448</td>
-      <td>0.4345</td>
+      <td>-1.0558</td>
+      <td>0.1451</td>
+      <td>0.4352</td>
       <td>8</td>
     </tr>
   </tbody>
@@ -1093,9 +1098,9 @@ DFO_8-14:
     <tr>
       <th>0</th>
       <td>sig_IFN_Response</td>
-      <td>-0.0685</td>
-      <td>0.9041</td>
-      <td>0.9710</td>
+      <td>-0.0684</td>
+      <td>0.9042</td>
+      <td>0.9712</td>
       <td>16</td>
     </tr>
     <tr>
@@ -1103,7 +1108,7 @@ DFO_8-14:
       <td>sig_Inflammation</td>
       <td>-0.0576</td>
       <td>0.9192</td>
-      <td>0.9710</td>
+      <td>0.9712</td>
       <td>16</td>
     </tr>
     <tr>
@@ -1111,31 +1116,31 @@ DFO_8-14:
       <td>sig_Cytotoxicity</td>
       <td>0.1428</td>
       <td>0.8014</td>
-      <td>0.9710</td>
+      <td>0.9712</td>
       <td>16</td>
     </tr>
     <tr>
       <th>3</th>
       <td>sig_T_Cell_Exhaustion</td>
-      <td>0.7137</td>
+      <td>0.7136</td>
       <td>0.1953</td>
-      <td>0.5858</td>
+      <td>0.5860</td>
       <td>16</td>
     </tr>
     <tr>
       <th>4</th>
       <td>sig_Myeloid_Activation</td>
-      <td>0.0206</td>
-      <td>0.9710</td>
-      <td>0.9710</td>
+      <td>0.0205</td>
+      <td>0.9712</td>
+      <td>0.9712</td>
       <td>16</td>
     </tr>
     <tr>
       <th>5</th>
       <td>sig_B_Cell_Activation</td>
-      <td>1.0749</td>
+      <td>1.0750</td>
       <td>0.0414</td>
-      <td>0.2485</td>
+      <td>0.2483</td>
       <td>16</td>
     </tr>
   </tbody>
@@ -1229,7 +1234,7 @@ Adjusted results at visit: DFO_0-7
     <tr>
       <th>0</th>
       <td>sig_IFN_Response</td>
-      <td>0.0001</td>
+      <td>0.0000</td>
       <td>0.9999</td>
       <td>0.9999</td>
       <td>10</td>
@@ -1237,9 +1242,9 @@ Adjusted results at visit: DFO_0-7
     <tr>
       <th>1</th>
       <td>sig_Inflammation</td>
-      <td>-0.6616</td>
-      <td>0.5036</td>
-      <td>0.7554</td>
+      <td>-0.6617</td>
+      <td>0.5035</td>
+      <td>0.7553</td>
       <td>10</td>
     </tr>
     <tr>
@@ -1247,14 +1252,14 @@ Adjusted results at visit: DFO_0-7
       <td>sig_Cytotoxicity</td>
       <td>1.5344</td>
       <td>0.3092</td>
-      <td>0.7017</td>
+      <td>0.7016</td>
       <td>10</td>
     </tr>
     <tr>
       <th>3</th>
       <td>sig_T_Cell_Exhaustion</td>
-      <td>0.0722</td>
-      <td>0.9350</td>
+      <td>0.0728</td>
+      <td>0.9344</td>
       <td>0.9999</td>
       <td>10</td>
     </tr>
@@ -1263,7 +1268,7 @@ Adjusted results at visit: DFO_0-7
       <td>sig_Myeloid_Activation</td>
       <td>-0.8469</td>
       <td>0.2063</td>
-      <td>0.7017</td>
+      <td>0.7016</td>
       <td>10</td>
     </tr>
     <tr>
@@ -1271,7 +1276,7 @@ Adjusted results at visit: DFO_0-7
       <td>sig_B_Cell_Activation</td>
       <td>-1.4705</td>
       <td>0.3508</td>
-      <td>0.7017</td>
+      <td>0.7016</td>
       <td>10</td>
     </tr>
   </tbody>
@@ -1330,7 +1335,7 @@ Adjusted results at visit: DFO_15+
       <td>sig_Inflammation</td>
       <td>1.0656</td>
       <td>0.0663</td>
-      <td>0.2053</td>
+      <td>0.2047</td>
       <td>8</td>
     </tr>
     <tr>
@@ -1338,14 +1343,14 @@ Adjusted results at visit: DFO_15+
       <td>sig_Cytotoxicity</td>
       <td>0.8534</td>
       <td>0.4450</td>
-      <td>0.6778</td>
+      <td>0.6782</td>
       <td>8</td>
     </tr>
     <tr>
       <th>3</th>
       <td>sig_T_Cell_Exhaustion</td>
-      <td>0.2500</td>
-      <td>0.7734</td>
+      <td>0.2498</td>
+      <td>0.7735</td>
       <td>0.7917</td>
       <td>8</td>
     </tr>
@@ -1353,16 +1358,16 @@ Adjusted results at visit: DFO_15+
       <th>4</th>
       <td>sig_Myeloid_Activation</td>
       <td>0.3073</td>
-      <td>0.0684</td>
-      <td>0.2053</td>
+      <td>0.0682</td>
+      <td>0.2047</td>
       <td>8</td>
     </tr>
     <tr>
       <th>5</th>
       <td>sig_B_Cell_Activation</td>
-      <td>-0.9182</td>
-      <td>0.4519</td>
-      <td>0.6778</td>
+      <td>-0.9177</td>
+      <td>0.4522</td>
+      <td>0.6782</td>
       <td>8</td>
     </tr>
   </tbody>
@@ -1465,8 +1470,31 @@ Adjusted results at visit: DFO_15+
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_covid19_stephenson_25_1.png" src="../_images/examples_example_covid19_stephenson_25_1.png" />
-</div>
+<div class="highlight"><pre>
+<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
+<span class="ansi-red-fg">ValueError</span>                                Traceback (most recent call last)
+Cell <span class="ansi-green-fg">In[13], line 54</span>
+<span class="ansi-green-intense-fg ansi-bold">     52</span> pivot <span style="color: rgb(98,98,98)">=</span> df_heatmap<span style="color: rgb(98,98,98)">.</span>pivot(index<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">feature</span><span style="color: rgb(175,0,0)">&#34;</span>, columns<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">timepoint</span><span style="color: rgb(175,0,0)">&#34;</span>, values<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">diff</span><span style="color: rgb(175,0,0)">&#34;</span>)
+<span class="ansi-green-intense-fg ansi-bold">     53</span> <span style="color: rgb(95,135,135)"># Sort columns chronologically (alphabetical puts DFO_15-27 before DFO_8-14)</span>
+<span class="ansi-green-fg">---&gt; 54</span> pivot <span style="color: rgb(98,98,98)">=</span> pivot[<span style="color: rgb(0,135,0)">sorted</span>(pivot<span style="color: rgb(98,98,98)">.</span>columns, key<span style="color: rgb(98,98,98)">=</span><span class="ansi-bold" style="color: rgb(0,135,0)">lambda</span> c: <span style="color: rgb(0,135,0)">int</span>(c<span style="color: rgb(98,98,98)">.</span>split(<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">_</span><span style="color: rgb(175,0,0)">&#34;</span>)[<span style="color: rgb(98,98,98)">1</span>]<span style="color: rgb(98,98,98)">.</span>split(<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">-</span><span style="color: rgb(175,0,0)">&#34;</span>)[<span style="color: rgb(98,98,98)">0</span>]))]
+<span class="ansi-green-intense-fg ansi-bold">     56</span> plt<span style="color: rgb(98,98,98)">.</span>figure(figsize<span style="color: rgb(98,98,98)">=</span>(<span style="color: rgb(98,98,98)">8</span>, <span style="color: rgb(98,98,98)">6</span>))
+<span class="ansi-green-intense-fg ansi-bold">     57</span> sns<span style="color: rgb(98,98,98)">.</span>heatmap(
+<span class="ansi-green-intense-fg ansi-bold">     58</span>     pivot, cmap<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">RdBu_r</span><span style="color: rgb(175,0,0)">&#34;</span>, center<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(98,98,98)">0</span>, annot<span style="color: rgb(98,98,98)">=</span><span class="ansi-bold" style="color: rgb(0,135,0)">True</span>, fmt<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">.2f</span><span style="color: rgb(175,0,0)">&#34;</span>,
+<span class="ansi-green-intense-fg ansi-bold">     59</span>     cbar_kws<span style="color: rgb(98,98,98)">=</span>{<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">label</span><span style="color: rgb(175,0,0)">&#34;</span>: <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">Mean difference (Severe - Mild)</span><span style="color: rgb(175,0,0)">&#34;</span>}
+<span class="ansi-green-intense-fg ansi-bold">     60</span> )
+
+Cell <span class="ansi-green-fg">In[13], line 54</span>, in <span class="ansi-cyan-fg">&lt;lambda&gt;</span><span class="ansi-blue-fg">(c)</span>
+<span class="ansi-green-intense-fg ansi-bold">     52</span> pivot <span style="color: rgb(98,98,98)">=</span> df_heatmap<span style="color: rgb(98,98,98)">.</span>pivot(index<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">feature</span><span style="color: rgb(175,0,0)">&#34;</span>, columns<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">timepoint</span><span style="color: rgb(175,0,0)">&#34;</span>, values<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">diff</span><span style="color: rgb(175,0,0)">&#34;</span>)
+<span class="ansi-green-intense-fg ansi-bold">     53</span> <span style="color: rgb(95,135,135)"># Sort columns chronologically (alphabetical puts DFO_15-27 before DFO_8-14)</span>
+<span class="ansi-green-fg">---&gt; 54</span> pivot <span style="color: rgb(98,98,98)">=</span> pivot[<span style="color: rgb(0,135,0)">sorted</span>(pivot<span style="color: rgb(98,98,98)">.</span>columns, key<span style="color: rgb(98,98,98)">=</span><span class="ansi-bold" style="color: rgb(0,135,0)">lambda</span> c: <span style="color: rgb(0,135,0)">int</span>(c<span style="color: rgb(98,98,98)">.</span>split(<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">_</span><span style="color: rgb(175,0,0)">&#34;</span>)[<span style="color: rgb(98,98,98)">1</span>]<span style="color: rgb(98,98,98)">.</span>split(<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">-</span><span style="color: rgb(175,0,0)">&#34;</span>)[<span style="color: rgb(98,98,98)">0</span>]))]
+<span class="ansi-green-intense-fg ansi-bold">     56</span> plt<span style="color: rgb(98,98,98)">.</span>figure(figsize<span style="color: rgb(98,98,98)">=</span>(<span style="color: rgb(98,98,98)">8</span>, <span style="color: rgb(98,98,98)">6</span>))
+<span class="ansi-green-intense-fg ansi-bold">     57</span> sns<span style="color: rgb(98,98,98)">.</span>heatmap(
+<span class="ansi-green-intense-fg ansi-bold">     58</span>     pivot, cmap<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">RdBu_r</span><span style="color: rgb(175,0,0)">&#34;</span>, center<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(98,98,98)">0</span>, annot<span style="color: rgb(98,98,98)">=</span><span class="ansi-bold" style="color: rgb(0,135,0)">True</span>, fmt<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">.2f</span><span style="color: rgb(175,0,0)">&#34;</span>,
+<span class="ansi-green-intense-fg ansi-bold">     59</span>     cbar_kws<span style="color: rgb(98,98,98)">=</span>{<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">label</span><span style="color: rgb(175,0,0)">&#34;</span>: <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">Mean difference (Severe - Mild)</span><span style="color: rgb(175,0,0)">&#34;</span>}
+<span class="ansi-green-intense-fg ansi-bold">     60</span> )
+
+<span class="ansi-red-fg">ValueError</span>: invalid literal for int() with base 10: &#39;15+&#39;
+</pre></div></div>
 </div>
 </section>
 <section id="10.-Cell-Type-Specific-Analysis">
@@ -1691,7 +1719,7 @@ Results (participant-level Mann-Whitney U):
       <th>6</th>
       <td>CD8_T</td>
       <td>Cytotoxicity</td>
-      <td>0.2082</td>
+      <td>0.2083</td>
       <td>0.2212</td>
       <td>11</td>
       <td>5</td>
@@ -1902,7 +1930,7 @@ Note: Each data point = one participant&#39;s cell type proportion
 <span class="n">covariates_ab</span> <span class="o">=</span> <span class="p">[]</span>
 <span class="k">if</span> <span class="s1">&#39;Age_interval&#39;</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
     <span class="c1"># Convert intervals like &#39;(50, 59]&#39; to midpoint</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_age_mid</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_age_mid</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">s</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s1">&#39;()[]&#39;</span><span class="p">)</span>
             <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">)</span>
@@ -1932,7 +1960,7 @@ Note: Each data point = one participant&#39;s cell type proportion
     <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Participant counts per cell type (treated/control):&#39;</span><span class="p">)</span>
     <span class="n">display</span><span class="p">(</span><span class="n">diag</span><span class="p">)</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_run_ab</span><span class="p">(</span><span class="n">covs</span><span class="p">,</span> <span class="n">label</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_run_ab</span><span class="p">(</span><span class="n">covs</span><span class="p">,</span> <span class="n">label</span><span class="p">):</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Attempt: </span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s1"> covariates -&gt; </span><span class="si">{</span><span class="n">covs</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">st</span><span class="o">.</span><span class="n">abundance_did</span><span class="p">(</span>
             <span class="n">adata</span><span class="p">,</span>
@@ -2023,7 +2051,7 @@ Note: Each data point = one participant&#39;s cell type proportion
                 <span class="n">formula</span> <span class="o">=</span> <span class="s1">&#39;prop ~ arm_bin&#39;</span>
                 <span class="k">if</span> <span class="n">covariates_ab</span><span class="p">:</span>
                     <span class="n">formula</span> <span class="o">+=</span> <span class="s1">&#39; + &#39;</span> <span class="o">+</span> <span class="s1">&#39; + &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">covariates_ab</span><span class="p">)</span>
-                <span class="kn">import</span><span class="w"> </span><span class="nn">statsmodels.formula.api</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">smf</span>
+                <span class="kn">import</span> <span class="nn">statsmodels.formula.api</span> <span class="k">as</span> <span class="nn">smf</span>
                 <span class="n">fit</span> <span class="o">=</span> <span class="n">smf</span><span class="o">.</span><span class="n">ols</span><span class="p">(</span><span class="n">formula</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">tmp</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
                 <span class="k">if</span> <span class="s1">&#39;arm_bin&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">fit</span><span class="o">.</span><span class="n">params</span> <span class="ow">or</span> <span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;arm_bin&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                     <span class="k">continue</span>
@@ -2034,8 +2062,8 @@ Note: Each data point = one participant&#39;s cell type proportion
                     <span class="s1">&#39;p_arm&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">pvalues</span><span class="p">[</span><span class="s1">&#39;arm_bin&#39;</span><span class="p">]),</span>
                 <span class="p">})</span>
             <span class="k">if</span> <span class="n">rows</span><span class="p">:</span>
-                <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
-                <span class="kn">from</span><span class="w"> </span><span class="nn">statsmodels.stats.multitest</span><span class="w"> </span><span class="kn">import</span> <span class="n">multipletests</span>
+                <span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+                <span class="kn">from</span> <span class="nn">statsmodels.stats.multitest</span> <span class="kn">import</span> <span class="n">multipletests</span>
                 <span class="n">res_xs</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
                 <span class="n">mask</span> <span class="o">=</span> <span class="n">res_xs</span><span class="p">[</span><span class="s1">&#39;p_arm&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span>
                 <span class="n">res_xs</span><span class="p">[</span><span class="s1">&#39;FDR_arm&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">NA</span>
@@ -2640,11 +2668,20 @@ Analyzing 12 COVID-relevant genes
 <img alt="../_images/examples_example_covid19_stephenson_33_1.png" src="../_images/examples_example_covid19_stephenson_33_1.png" />
 </div>
 </div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/opt/anaconda3/lib/python3.12/site-packages/anndata/_core/anndata.py:1190: ImplicitModificationWarning: Trying to modify attribute `.obs` of view, initializing view as actual.
+  df[key] = c
+</pre></div></div>
+</div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_covid19_stephenson_33_2.png" src="../_images/examples_example_covid19_stephenson_33_2.png" />
+<img alt="../_images/examples_example_covid19_stephenson_33_3.png" src="../_images/examples_example_covid19_stephenson_33_3.png" />
 </div>
 </div>
 </section>
@@ -2816,7 +2853,7 @@ Effect sizes (Severe vs Mild):
       <td>0.453</td>
       <td>0.393</td>
       <td>-0.730</td>
-      <td>4.211</td>
+      <td>4.212</td>
       <td>4</td>
       <td>4</td>
     </tr>
@@ -2827,7 +2864,7 @@ Effect sizes (Severe vs Mild):
       <td>1.787</td>
       <td>1.552</td>
       <td>0.527</td>
-      <td>5.781</td>
+      <td>5.782</td>
       <td>4</td>
       <td>4</td>
     </tr>
@@ -2838,7 +2875,7 @@ Effect sizes (Severe vs Mild):
       <td>0.649</td>
       <td>0.564</td>
       <td>-1.608</td>
-      <td>5.716</td>
+      <td>5.717</td>
       <td>4</td>
       <td>4</td>
     </tr>
@@ -2848,7 +2885,7 @@ Effect sizes (Severe vs Mild):
       <td>sig_T_Cell_Exhaustion</td>
       <td>0.195</td>
       <td>0.170</td>
-      <td>-1.176</td>
+      <td>-1.177</td>
       <td>2.273</td>
       <td>4</td>
       <td>4</td>
@@ -2860,7 +2897,7 @@ Effect sizes (Severe vs Mild):
       <td>0.627</td>
       <td>0.545</td>
       <td>-0.630</td>
-      <td>12.711</td>
+      <td>12.730</td>
       <td>4</td>
       <td>4</td>
     </tr>
@@ -2868,9 +2905,9 @@ Effect sizes (Severe vs Mild):
       <th>5</th>
       <td>DFO_15+</td>
       <td>sig_B_Cell_Activation</td>
-      <td>-1.185</td>
-      <td>-1.029</td>
-      <td>-4.995</td>
+      <td>-1.184</td>
+      <td>-1.028</td>
+      <td>-4.996</td>
       <td>0.038</td>
       <td>4</td>
       <td>4</td>
@@ -2937,7 +2974,7 @@ Effect sizes (Severe vs Mild):
       <td>1.211</td>
       <td>1.145</td>
       <td>0.164</td>
-      <td>3.558</td>
+      <td>3.557</td>
       <td>11</td>
       <td>5</td>
     </tr>
@@ -2945,19 +2982,35 @@ Effect sizes (Severe vs Mild):
 </table>
 </div></div>
 </div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<img alt="../_images/examples_example_covid19_stephenson_36_2.png" src="../_images/examples_example_covid19_stephenson_36_2.png" />
-</div>
-</div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_covid19_stephenson_36_3.png" src="../_images/examples_example_covid19_stephenson_36_3.png" />
-</div>
+<div class="highlight"><pre>
+<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
+<span class="ansi-red-fg">ValueError</span>                                Traceback (most recent call last)
+Cell <span class="ansi-green-fg">In[18], line 62</span>
+<span class="ansi-green-intense-fg ansi-bold">     60</span> pivot <span style="color: rgb(98,98,98)">=</span> df_effect<span style="color: rgb(98,98,98)">.</span>pivot(index<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">feature</span><span style="color: rgb(175,0,0)">&#34;</span>, columns<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">timepoint</span><span style="color: rgb(175,0,0)">&#34;</span>, values<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">hedges_g</span><span style="color: rgb(175,0,0)">&#34;</span>)
+<span class="ansi-green-intense-fg ansi-bold">     61</span> <span style="color: rgb(95,135,135)"># Sort columns chronologically</span>
+<span class="ansi-green-fg">---&gt; 62</span> pivot <span style="color: rgb(98,98,98)">=</span> pivot[<span style="color: rgb(0,135,0)">sorted</span>(pivot<span style="color: rgb(98,98,98)">.</span>columns, key<span style="color: rgb(98,98,98)">=</span><span class="ansi-bold" style="color: rgb(0,135,0)">lambda</span> c: <span style="color: rgb(0,135,0)">int</span>(c<span style="color: rgb(98,98,98)">.</span>split(<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">_</span><span style="color: rgb(175,0,0)">&#34;</span>)[<span style="color: rgb(98,98,98)">1</span>]<span style="color: rgb(98,98,98)">.</span>split(<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">-</span><span style="color: rgb(175,0,0)">&#34;</span>)[<span style="color: rgb(98,98,98)">0</span>]))]
+<span class="ansi-green-intense-fg ansi-bold">     64</span> plt<span style="color: rgb(98,98,98)">.</span>figure(figsize<span style="color: rgb(98,98,98)">=</span>(<span style="color: rgb(98,98,98)">8</span>, <span style="color: rgb(98,98,98)">6</span>))
+<span class="ansi-green-intense-fg ansi-bold">     65</span> sns<span style="color: rgb(98,98,98)">.</span>heatmap(
+<span class="ansi-green-intense-fg ansi-bold">     66</span>     pivot, cmap<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">RdBu_r</span><span style="color: rgb(175,0,0)">&#34;</span>, center<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(98,98,98)">0</span>, annot<span style="color: rgb(98,98,98)">=</span><span class="ansi-bold" style="color: rgb(0,135,0)">True</span>, fmt<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">.2f</span><span style="color: rgb(175,0,0)">&#34;</span>,
+<span class="ansi-green-intense-fg ansi-bold">     67</span>     cbar_kws<span style="color: rgb(98,98,98)">=</span>{<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">label</span><span style="color: rgb(175,0,0)">&#34;</span>: <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">Hedge</span><span style="color: rgb(175,0,0)">&#39;</span><span style="color: rgb(175,0,0)">s g</span><span style="color: rgb(175,0,0)">&#34;</span>}
+<span class="ansi-green-intense-fg ansi-bold">     68</span> )
+
+Cell <span class="ansi-green-fg">In[18], line 62</span>, in <span class="ansi-cyan-fg">&lt;lambda&gt;</span><span class="ansi-blue-fg">(c)</span>
+<span class="ansi-green-intense-fg ansi-bold">     60</span> pivot <span style="color: rgb(98,98,98)">=</span> df_effect<span style="color: rgb(98,98,98)">.</span>pivot(index<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">feature</span><span style="color: rgb(175,0,0)">&#34;</span>, columns<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">timepoint</span><span style="color: rgb(175,0,0)">&#34;</span>, values<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">hedges_g</span><span style="color: rgb(175,0,0)">&#34;</span>)
+<span class="ansi-green-intense-fg ansi-bold">     61</span> <span style="color: rgb(95,135,135)"># Sort columns chronologically</span>
+<span class="ansi-green-fg">---&gt; 62</span> pivot <span style="color: rgb(98,98,98)">=</span> pivot[<span style="color: rgb(0,135,0)">sorted</span>(pivot<span style="color: rgb(98,98,98)">.</span>columns, key<span style="color: rgb(98,98,98)">=</span><span class="ansi-bold" style="color: rgb(0,135,0)">lambda</span> c: <span style="color: rgb(0,135,0)">int</span>(c<span style="color: rgb(98,98,98)">.</span>split(<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">_</span><span style="color: rgb(175,0,0)">&#34;</span>)[<span style="color: rgb(98,98,98)">1</span>]<span style="color: rgb(98,98,98)">.</span>split(<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">-</span><span style="color: rgb(175,0,0)">&#34;</span>)[<span style="color: rgb(98,98,98)">0</span>]))]
+<span class="ansi-green-intense-fg ansi-bold">     64</span> plt<span style="color: rgb(98,98,98)">.</span>figure(figsize<span style="color: rgb(98,98,98)">=</span>(<span style="color: rgb(98,98,98)">8</span>, <span style="color: rgb(98,98,98)">6</span>))
+<span class="ansi-green-intense-fg ansi-bold">     65</span> sns<span style="color: rgb(98,98,98)">.</span>heatmap(
+<span class="ansi-green-intense-fg ansi-bold">     66</span>     pivot, cmap<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">RdBu_r</span><span style="color: rgb(175,0,0)">&#34;</span>, center<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(98,98,98)">0</span>, annot<span style="color: rgb(98,98,98)">=</span><span class="ansi-bold" style="color: rgb(0,135,0)">True</span>, fmt<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">.2f</span><span style="color: rgb(175,0,0)">&#34;</span>,
+<span class="ansi-green-intense-fg ansi-bold">     67</span>     cbar_kws<span style="color: rgb(98,98,98)">=</span>{<span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">label</span><span style="color: rgb(175,0,0)">&#34;</span>: <span style="color: rgb(175,0,0)">&#34;</span><span style="color: rgb(175,0,0)">Hedge</span><span style="color: rgb(175,0,0)">&#39;</span><span style="color: rgb(175,0,0)">s g</span><span style="color: rgb(175,0,0)">&#34;</span>}
+<span class="ansi-green-intense-fg ansi-bold">     68</span> )
+
+<span class="ansi-red-fg">ValueError</span>: invalid literal for int() with base 10: &#39;15+&#39;
+</pre></div></div>
 </div>
 </section>
 <section id="13.2-Power-Analysis">
@@ -3194,9 +3247,9 @@ KEY INSIGHTS
 <span class="n">celltypes</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;lineage&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">unique</span><span class="p">())</span>
 
 <span class="c1"># Compute participant-level means per celltype and group</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">sctrial.stats.comparisons</span><span class="w"> </span><span class="kn">import</span> <span class="n">resolve_gene_name</span>
+<span class="kn">from</span> <span class="nn">sctrial.stats.comparisons</span> <span class="kn">import</span> <span class="n">resolve_gene_name</span>
 <span class="n">gene_name</span> <span class="o">=</span> <span class="n">resolve_gene_name</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">gene</span><span class="p">)</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">sctrial.stats._extract</span><span class="w"> </span><span class="kn">import</span> <span class="n">extract_gene_vector</span>
+<span class="kn">from</span> <span class="nn">sctrial.stats._extract</span> <span class="kn">import</span> <span class="n">extract_gene_vector</span>
 <span class="n">expr</span> <span class="o">=</span> <span class="n">extract_gene_vector</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">gene_name</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;counts&quot;</span><span class="p">)</span>
 <span class="n">expr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log1p</span><span class="p">(</span><span class="n">expr</span><span class="p">)</span>
 <span class="n">df_expr</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[[</span><span class="s2">&quot;participant_id&quot;</span><span class="p">,</span> <span class="s2">&quot;severity&quot;</span><span class="p">,</span> <span class="s2">&quot;lineage&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
@@ -3505,7 +3558,7 @@ KEY INSIGHTS
     <span class="p">)</span>
     <span class="n">display</span><span class="p">(</span><span class="n">pb_mod</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_run_mod_did</span><span class="p">(</span><span class="n">pb_df</span><span class="p">,</span> <span class="n">allow_unpaired_flag</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_run_mod_did</span><span class="p">(</span><span class="n">pb_df</span><span class="p">,</span> <span class="n">allow_unpaired_flag</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">st</span><span class="o">.</span><span class="n">module_score_did_by_pool</span><span class="p">(</span>
             <span class="n">pb_df</span><span class="p">,</span>
             <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
@@ -3608,7 +3661,7 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
       <td>Severe</td>
       <td>B_cells</td>
       <td>sig_B_Cell_Activation</td>
-      <td>0.899707</td>
+      <td>0.899969</td>
       <td>65</td>
     </tr>
     <tr>
@@ -3618,7 +3671,7 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
       <td>Severe</td>
       <td>B_cells</td>
       <td>sig_Cytotoxicity</td>
-      <td>-0.434216</td>
+      <td>-0.434286</td>
       <td>65</td>
     </tr>
     <tr>
@@ -3628,7 +3681,7 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
       <td>Severe</td>
       <td>B_cells</td>
       <td>sig_IFN_Response</td>
-      <td>-0.220464</td>
+      <td>-0.220424</td>
       <td>65</td>
     </tr>
     <tr>
@@ -3638,7 +3691,7 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
       <td>Severe</td>
       <td>B_cells</td>
       <td>sig_Inflammation</td>
-      <td>-0.356539</td>
+      <td>-0.356552</td>
       <td>65</td>
     </tr>
     <tr>
@@ -3648,12 +3701,21 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
       <td>Severe</td>
       <td>B_cells</td>
       <td>sig_Myeloid_Activation</td>
-      <td>-0.215178</td>
+      <td>-0.215348</td>
       <td>65</td>
     </tr>
   </tbody>
 </table>
 </div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_87590/2438914800.py:67: UserWarning: FDR correction is applied within each &#39;module&#39; group (column FDR_DiD). Per-group FDR does not control the overall false discovery rate across all tests. Consult FDR_DiD_global (when fdr_global=True) for a globally corrected q-value.
+  return st.module_score_did_by_pool(
+</pre></div></div>
 </div>
 <div class="nboutput docutils container">
 <div class="prompt empty docutils container">
@@ -3695,281 +3757,281 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
       <th>10</th>
       <td>CD4_T</td>
       <td>sig_Myeloid_Activation</td>
-      <td>0.033535</td>
-      <td>-0.022402</td>
-      <td>0.055937</td>
+      <td>0.033539</td>
+      <td>-0.022396</td>
+      <td>0.055934</td>
       <td>0.005882</td>
-      <td>1.449762e-02</td>
-      <td>1.434237e-01</td>
+      <td>1.448392e-02</td>
+      <td>1.435256e-01</td>
       <td>18</td>
-      <td>0.041172</td>
-      <td>0.247029</td>
+      <td>0.041177</td>
+      <td>0.247059</td>
     </tr>
     <tr>
       <th>39</th>
       <td>Other</td>
       <td>sig_Inflammation</td>
       <td>0.063717</td>
-      <td>-0.031188</td>
-      <td>0.094905</td>
-      <td>0.060225</td>
-      <td>9.329306e-02</td>
-      <td>3.733759e-01</td>
+      <td>-0.031208</td>
+      <td>0.094925</td>
+      <td>0.060188</td>
+      <td>9.327552e-02</td>
+      <td>3.731571e-01</td>
       <td>18</td>
-      <td>0.421574</td>
-      <td>0.766222</td>
+      <td>0.421313</td>
+      <td>0.766013</td>
     </tr>
     <tr>
       <th>0</th>
       <td>B_cells</td>
       <td>sig_B_Cell_Activation</td>
-      <td>0.023329</td>
-      <td>0.316794</td>
-      <td>-0.293465</td>
-      <td>0.088894</td>
-      <td>7.926669e-01</td>
-      <td>3.061661e-02</td>
+      <td>0.023480</td>
+      <td>0.316719</td>
+      <td>-0.293239</td>
+      <td>0.088852</td>
+      <td>7.913530e-01</td>
+      <td>3.046176e-02</td>
       <td>18</td>
-      <td>0.287393</td>
-      <td>0.766222</td>
+      <td>0.287586</td>
+      <td>0.766013</td>
     </tr>
     <tr>
       <th>12</th>
       <td>CD8_T</td>
       <td>sig_B_Cell_Activation</td>
-      <td>0.084310</td>
-      <td>-0.041164</td>
-      <td>0.125474</td>
-      <td>0.090422</td>
-      <td>1.523519e-01</td>
-      <td>3.957648e-01</td>
+      <td>0.084332</td>
+      <td>-0.041179</td>
+      <td>0.125511</td>
+      <td>0.090395</td>
+      <td>1.523304e-01</td>
+      <td>3.956929e-01</td>
       <td>18</td>
-      <td>0.287393</td>
-      <td>0.766222</td>
+      <td>0.287586</td>
+      <td>0.766013</td>
     </tr>
     <tr>
       <th>36</th>
       <td>Other</td>
       <td>sig_B_Cell_Activation</td>
-      <td>-0.062262</td>
-      <td>0.331850</td>
-      <td>-0.394112</td>
-      <td>0.123168</td>
-      <td>7.676010e-01</td>
-      <td>3.764963e-02</td>
+      <td>-0.062174</td>
+      <td>0.331806</td>
+      <td>-0.393980</td>
+      <td>0.123251</td>
+      <td>7.678999e-01</td>
+      <td>3.764561e-02</td>
       <td>18</td>
-      <td>0.287393</td>
-      <td>0.766222</td>
+      <td>0.287586</td>
+      <td>0.766013</td>
     </tr>
     <tr>
       <th>9</th>
       <td>CD4_T</td>
       <td>sig_Inflammation</td>
-      <td>0.025533</td>
-      <td>-0.057082</td>
-      <td>0.082616</td>
-      <td>0.148379</td>
-      <td>5.668223e-01</td>
-      <td>1.351592e-01</td>
+      <td>0.025529</td>
+      <td>-0.057104</td>
+      <td>0.082633</td>
+      <td>0.148328</td>
+      <td>5.669148e-01</td>
+      <td>1.350545e-01</td>
       <td>18</td>
-      <td>0.454896</td>
-      <td>0.766222</td>
+      <td>0.454691</td>
+      <td>0.766013</td>
     </tr>
     <tr>
       <th>22</th>
       <td>DCs</td>
       <td>sig_Myeloid_Activation</td>
-      <td>0.342057</td>
-      <td>0.152192</td>
-      <td>0.189865</td>
-      <td>0.163751</td>
-      <td>4.232195e-03</td>
-      <td>4.771629e-02</td>
+      <td>0.342098</td>
+      <td>0.152212</td>
+      <td>0.189887</td>
+      <td>0.163697</td>
+      <td>4.228575e-03</td>
+      <td>4.767019e-02</td>
       <td>18</td>
-      <td>0.306489</td>
-      <td>0.766222</td>
+      <td>0.306405</td>
+      <td>0.766013</td>
     </tr>
     <tr>
       <th>40</th>
       <td>Other</td>
       <td>sig_Myeloid_Activation</td>
-      <td>0.032736</td>
-      <td>-0.017218</td>
-      <td>0.049954</td>
-      <td>0.177815</td>
-      <td>2.537165e-01</td>
-      <td>4.908473e-01</td>
+      <td>0.032732</td>
+      <td>-0.017220</td>
+      <td>0.049952</td>
+      <td>0.177722</td>
+      <td>2.535658e-01</td>
+      <td>4.907715e-01</td>
       <td>18</td>
-      <td>0.306489</td>
-      <td>0.766222</td>
+      <td>0.306405</td>
+      <td>0.766013</td>
     </tr>
     <tr>
       <th>5</th>
       <td>B_cells</td>
       <td>sig_T_Cell_Exhaustion</td>
-      <td>0.161459</td>
-      <td>-0.061516</td>
-      <td>0.222974</td>
-      <td>0.186234</td>
-      <td>2.114484e-01</td>
-      <td>5.923986e-01</td>
+      <td>0.161363</td>
+      <td>-0.061513</td>
+      <td>0.222876</td>
+      <td>0.186291</td>
+      <td>2.116081e-01</td>
+      <td>5.922744e-01</td>
       <td>18</td>
-      <td>0.906928</td>
-      <td>0.766222</td>
+      <td>0.906840</td>
+      <td>0.766013</td>
     </tr>
     <tr>
       <th>33</th>
       <td>NK</td>
       <td>sig_Inflammation</td>
-      <td>0.108501</td>
-      <td>0.020546</td>
-      <td>0.087955</td>
-      <td>0.194956</td>
-      <td>2.098208e-02</td>
-      <td>6.829833e-01</td>
+      <td>0.108476</td>
+      <td>0.020518</td>
+      <td>0.087958</td>
+      <td>0.194868</td>
+      <td>2.098862e-02</td>
+      <td>6.833466e-01</td>
       <td>18</td>
-      <td>0.454896</td>
-      <td>0.766222</td>
+      <td>0.454691</td>
+      <td>0.766013</td>
     </tr>
     <tr>
       <th>16</th>
       <td>CD8_T</td>
       <td>sig_Myeloid_Activation</td>
-      <td>0.125033</td>
-      <td>-0.265537</td>
-      <td>0.390571</td>
-      <td>0.204754</td>
-      <td>6.135455e-01</td>
-      <td>1.815146e-01</td>
+      <td>0.125039</td>
+      <td>-0.265575</td>
+      <td>0.390613</td>
+      <td>0.204761</td>
+      <td>6.135721e-01</td>
+      <td>1.815111e-01</td>
       <td>18</td>
-      <td>0.306489</td>
-      <td>0.766222</td>
+      <td>0.306405</td>
+      <td>0.766013</td>
     </tr>
     <tr>
       <th>4</th>
       <td>B_cells</td>
       <td>sig_Myeloid_Activation</td>
-      <td>0.051385</td>
-      <td>-0.035334</td>
-      <td>0.086719</td>
-      <td>0.218921</td>
-      <td>3.390866e-01</td>
-      <td>4.643997e-01</td>
+      <td>0.051348</td>
+      <td>-0.035312</td>
+      <td>0.086660</td>
+      <td>0.218861</td>
+      <td>3.390088e-01</td>
+      <td>4.643447e-01</td>
       <td>18</td>
-      <td>0.306489</td>
-      <td>0.766222</td>
+      <td>0.306405</td>
+      <td>0.766013</td>
     </tr>
     <tr>
       <th>15</th>
       <td>CD8_T</td>
       <td>sig_Inflammation</td>
-      <td>0.158560</td>
-      <td>-0.197558</td>
-      <td>0.356118</td>
-      <td>0.291181</td>
-      <td>6.090837e-01</td>
-      <td>2.486603e-01</td>
+      <td>0.158589</td>
+      <td>-0.197572</td>
+      <td>0.356161</td>
+      <td>0.291135</td>
+      <td>6.090213e-01</td>
+      <td>2.486595e-01</td>
       <td>18</td>
-      <td>0.509567</td>
-      <td>0.831972</td>
+      <td>0.509486</td>
+      <td>0.831897</td>
     </tr>
     <tr>
       <th>14</th>
       <td>CD8_T</td>
       <td>sig_IFN_Response</td>
-      <td>-0.576169</td>
-      <td>-0.744328</td>
-      <td>0.168159</td>
-      <td>0.305052</td>
-      <td>7.526322e-08</td>
-      <td>3.597705e-09</td>
+      <td>-0.576200</td>
+      <td>-0.744433</td>
+      <td>0.168233</td>
+      <td>0.304934</td>
+      <td>7.579125e-08</td>
+      <td>3.598030e-09</td>
       <td>18</td>
-      <td>0.735324</td>
-      <td>0.831972</td>
+      <td>0.735373</td>
+      <td>0.831897</td>
     </tr>
     <tr>
       <th>38</th>
       <td>Other</td>
       <td>sig_IFN_Response</td>
-      <td>-0.369377</td>
-      <td>-0.517288</td>
-      <td>0.147911</td>
-      <td>0.305084</td>
-      <td>4.895593e-09</td>
-      <td>4.882568e-05</td>
+      <td>-0.369401</td>
+      <td>-0.517339</td>
+      <td>0.147938</td>
+      <td>0.305060</td>
+      <td>4.902311e-09</td>
+      <td>4.886264e-05</td>
       <td>18</td>
-      <td>0.735324</td>
-      <td>0.831972</td>
+      <td>0.735373</td>
+      <td>0.831897</td>
     </tr>
     <tr>
       <th>23</th>
       <td>DCs</td>
       <td>sig_T_Cell_Exhaustion</td>
-      <td>0.103681</td>
-      <td>0.183520</td>
-      <td>-0.079840</td>
-      <td>0.316942</td>
-      <td>1.868072e-01</td>
-      <td>7.134282e-09</td>
+      <td>0.103597</td>
+      <td>0.183398</td>
+      <td>-0.079801</td>
+      <td>0.316913</td>
+      <td>1.869413e-01</td>
+      <td>7.120731e-09</td>
       <td>18</td>
-      <td>0.906928</td>
-      <td>0.831972</td>
+      <td>0.906840</td>
+      <td>0.831897</td>
     </tr>
     <tr>
       <th>3</th>
       <td>B_cells</td>
       <td>sig_Inflammation</td>
-      <td>-0.011176</td>
-      <td>-0.056984</td>
-      <td>0.045808</td>
-      <td>0.405408</td>
-      <td>7.452527e-01</td>
-      <td>1.890818e-01</td>
+      <td>-0.011181</td>
+      <td>-0.056999</td>
+      <td>0.045818</td>
+      <td>0.405382</td>
+      <td>7.451818e-01</td>
+      <td>1.890339e-01</td>
       <td>18</td>
-      <td>0.567571</td>
-      <td>0.872670</td>
+      <td>0.567535</td>
+      <td>0.872738</td>
     </tr>
     <tr>
       <th>25</th>
       <td>Monocytes</td>
       <td>sig_Cytotoxicity</td>
-      <td>-0.039192</td>
-      <td>-0.010548</td>
-      <td>-0.028644</td>
-      <td>0.410010</td>
-      <td>1.600545e-01</td>
-      <td>6.390095e-01</td>
+      <td>-0.039196</td>
+      <td>-0.010555</td>
+      <td>-0.028641</td>
+      <td>0.409974</td>
+      <td>1.599962e-01</td>
+      <td>6.386748e-01</td>
       <td>18</td>
-      <td>0.967153</td>
-      <td>0.872670</td>
+      <td>0.967076</td>
+      <td>0.872738</td>
     </tr>
     <tr>
       <th>13</th>
       <td>CD8_T</td>
       <td>sig_Cytotoxicity</td>
-      <td>-0.280620</td>
-      <td>0.020920</td>
-      <td>-0.301540</td>
-      <td>0.429192</td>
-      <td>4.224492e-01</td>
-      <td>9.144025e-01</td>
+      <td>-0.280668</td>
+      <td>0.020925</td>
+      <td>-0.301593</td>
+      <td>0.429210</td>
+      <td>4.224859e-01</td>
+      <td>9.143946e-01</td>
       <td>18</td>
-      <td>0.967153</td>
-      <td>0.872670</td>
+      <td>0.967076</td>
+      <td>0.872738</td>
     </tr>
     <tr>
       <th>11</th>
       <td>CD4_T</td>
       <td>sig_T_Cell_Exhaustion</td>
-      <td>0.049776</td>
-      <td>0.007541</td>
-      <td>0.042235</td>
-      <td>0.440004</td>
-      <td>2.531422e-01</td>
-      <td>8.327001e-01</td>
+      <td>0.049772</td>
+      <td>0.007516</td>
+      <td>0.042256</td>
+      <td>0.439720</td>
+      <td>2.531214e-01</td>
+      <td>8.332307e-01</td>
       <td>18</td>
-      <td>0.906928</td>
-      <td>0.872670</td>
+      <td>0.906840</td>
+      <td>0.872738</td>
     </tr>
   </tbody>
 </table>
@@ -3979,7 +4041,7 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_covid19_stephenson_42_3.png" src="../_images/examples_example_covid19_stephenson_42_3.png" />
+<img alt="../_images/examples_example_covid19_stephenson_42_4.png" src="../_images/examples_example_covid19_stephenson_42_4.png" />
 </div>
 </div>
 </section>
