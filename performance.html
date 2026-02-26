@@ -1,131 +1,348 @@
 
-
 <!DOCTYPE html>
-<html class="writer-html5" lang="en" data-content_root="./">
-<head>
-  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Performance Guide &mdash; sctrial 0.2.1.dev1 documentation</title>
-      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
-      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
 
+<html lang="en" data-content_root="./" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Performance Guide &#8212; sctrial 0.2.1.dev1 documentation</title>
   
-      <script src="_static/jquery.js?v=5d32c60e"></script>
-      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="_static/documentation_options.js?v=28304322"></script>
-      <script src="_static/doctools.js?v=9bcbadda"></script>
-      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
-      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
-    <script src="_static/js/theme.js"></script>
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=44e57e90" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="_static/documentation_options.js?v=227ef001"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'performance';</script>
+    <link rel="icon" href="_static/logo_icon.svg"/>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="prev" title="Frequently Asked Questions" href="faq.html" /> 
-</head>
+    <link rel="prev" title="Frequently Asked Questions" href="faq.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
 
-<body class="wy-body-for-nav"> 
-  <div class="wy-grid-for-nav">
-    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
-      <div class="wy-side-scroll">
-        <div class="wy-side-nav-search" >
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
 
-          
-          
-          <a href="index.html" class="icon icon-home">
-            sctrial
-          </a>
-<div role="search">
-  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
-    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
-    <input type="hidden" name="check_keywords" value="yes" />
-    <input type="hidden" name="area" value="default" />
-  </form>
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
 </div>
-        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
-<ul>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="_static/logo.svg" class="logo__image only-light" alt="sctrial 0.2.1.dev1 documentation - Home"/>
+    <img src="_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.2.1.dev1 documentation - Home"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tutorials/index.html">Tutorials</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples/index.html">Examples</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="tutorials/index.html">Tutorials</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/example_covid19_stephenson.html">Immune Profiling of COVID-19 Severity: A Cross-Sectional Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/example_immunotherapy_sade_feldman.html">Immunotherapy Response in Melanoma: Longitudinal Single-Cell Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/example_vaccine_immport.html">Vaccine Response Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/stress_test_real_scale.html">Scalability Analysis</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
 </ul>
-<p class="caption" role="heading"><span class="caption-text">User Guides:</span></p>
-<ul class="current">
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
+<ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="best_practices.html">Best Practices Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="faq.html">Frequently Asked Questions</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Performance Guide</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#performance-overview">Performance Overview</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#typical-performance">Typical Performance</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Performance Guide</a></li>
 </ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="#optimization-strategies">Optimization Strategies</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#use-pseudobulk-aggregation-most-important">1. Use Pseudobulk Aggregation (Most Important!)</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#analyze-gene-sets-not-all-genes">2. Analyze Gene Sets, Not All Genes</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#use-sparse-matrices">3. Use Sparse Matrices</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#subsample-strategically">4. Subsample Strategically</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="#for-large-scale-analysis">For Large-Scale Analysis</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#workflow-for-1m-cells">Workflow for 1M+ Cells</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#batch-processing">Batch Processing</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="#memory-management">Memory Management</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#monitor-memory-usage">Monitor Memory Usage</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#reduce-memory-footprint">Reduce Memory Footprint</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#out-of-core-processing">Out-of-Core Processing</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="#gsea-performance">GSEA Performance</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#optimize-gsea-analysis">Optimize GSEA Analysis</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="#parallel-processing-advanced">Parallel Processing (Advanced)</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#parallelize-across-cell-types">Parallelize Across Cell Types</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="#benchmarking">Benchmarking</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#benchmark-your-analysis">Benchmark Your Analysis</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#profiling">Profiling</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="#hardware-recommendations">Hardware Recommendations</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#for-different-dataset-sizes">For Different Dataset Sizes</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="#quick-performance-checklist">Quick Performance Checklist</a></li>
-</ul>
-</li>
-</ul>
-
-        </div>
-      </div>
-    </nav>
-
-    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
-          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="index.html">sctrial</a>
-      </nav>
-
-      <div class="wy-nav-content">
-        <div class="rst-content">
-          <div role="navigation" aria-label="Page navigation">
-  <ul class="wy-breadcrumbs">
-      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
-      <li class="breadcrumb-item active">Performance Guide</li>
-      <li class="wy-breadcrumbs-aside">
-            <a href="_sources/performance.rst.txt" rel="nofollow"> View page source</a>
-      </li>
-  </ul>
-  <hr/>
 </div>
-          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
-           <div itemprop="articleBody">
-             
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      <main id="main-content" class="bd-main" role="main">
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Performance Guide</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
   <section id="performance-guide">
-<h1>Performance Guide<a class="headerlink" href="#performance-guide" title="Link to this heading"></a></h1>
+<h1>Performance Guide<a class="headerlink" href="#performance-guide" title="Link to this heading">#</a></h1>
 <p>This guide covers performance optimization strategies for large-scale single-cell trial analysis.</p>
 <nav class="contents local" id="table-of-contents">
 <p class="topic-title">Table of Contents</p>
@@ -181,9 +398,9 @@
 </ul>
 </nav>
 <section id="performance-overview">
-<h2><a class="toc-backref" href="#id1" role="doc-backlink">Performance Overview</a><a class="headerlink" href="#performance-overview" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id1" role="doc-backlink">Performance Overview</a><a class="headerlink" href="#performance-overview" title="Link to this heading">#</a></h2>
 <section id="typical-performance">
-<h3><a class="toc-backref" href="#id2" role="doc-backlink">Typical Performance</a><a class="headerlink" href="#typical-performance" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id2" role="doc-backlink">Typical Performance</a><a class="headerlink" href="#typical-performance" title="Link to this heading">#</a></h3>
 <p>On a standard laptop (16GB RAM):</p>
 <ul class="simple">
 <li><p><strong>10K cells, 50 features</strong>: &lt; 5 seconds</p></li>
@@ -199,9 +416,9 @@
 </section>
 </section>
 <section id="optimization-strategies">
-<h2><a class="toc-backref" href="#id3" role="doc-backlink">Optimization Strategies</a><a class="headerlink" href="#optimization-strategies" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id3" role="doc-backlink">Optimization Strategies</a><a class="headerlink" href="#optimization-strategies" title="Link to this heading">#</a></h2>
 <section id="use-pseudobulk-aggregation-most-important">
-<h3><a class="toc-backref" href="#id4" role="doc-backlink">1. Use Pseudobulk Aggregation (Most Important!)</a><a class="headerlink" href="#use-pseudobulk-aggregation-most-important" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id4" role="doc-backlink">1. Use Pseudobulk Aggregation (Most Important!)</a><a class="headerlink" href="#use-pseudobulk-aggregation-most-important" title="Link to this heading">#</a></h3>
 <p><strong>Always use</strong> <code class="docutils literal notranslate"><span class="pre">aggregate=&quot;participant_visit&quot;</span></code> (the default):</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ✓ FAST: Aggregates to ~100-1000 participant-visit combinations</span>
 <span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span>
@@ -226,7 +443,7 @@
 <p><strong>Performance impact</strong>: 10-100x faster with pseudobulk</p>
 </section>
 <section id="analyze-gene-sets-not-all-genes">
-<h3><a class="toc-backref" href="#id5" role="doc-backlink">2. Analyze Gene Sets, Not All Genes</a><a class="headerlink" href="#analyze-gene-sets-not-all-genes" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id5" role="doc-backlink">2. Analyze Gene Sets, Not All Genes</a><a class="headerlink" href="#analyze-gene-sets-not-all-genes" title="Link to this heading">#</a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ✓ FAST: Test 10-50 gene sets</span>
 <span class="n">gene_sets</span> <span class="o">=</span> <span class="p">{</span>
     <span class="s2">&quot;OXPHOS&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;COX7A1&quot;</span><span class="p">,</span> <span class="s2">&quot;ATP5F1A&quot;</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
@@ -249,7 +466,7 @@
 <p><strong>Performance impact</strong>: 100-400x faster with gene sets</p>
 </section>
 <section id="use-sparse-matrices">
-<h3><a class="toc-backref" href="#id6" role="doc-backlink">3. Use Sparse Matrices</a><a class="headerlink" href="#use-sparse-matrices" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id6" role="doc-backlink">3. Use Sparse Matrices</a><a class="headerlink" href="#use-sparse-matrices" title="Link to this heading">#</a></h3>
 <p>Ensure counts are stored as sparse matrices:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">scipy.sparse</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sp</span>
 
@@ -264,7 +481,7 @@
 <p><strong>Memory savings</strong>: 10-50x reduction for typical scRNA-seq data</p>
 </section>
 <section id="subsample-strategically">
-<h3><a class="toc-backref" href="#id7" role="doc-backlink">4. Subsample Strategically</a><a class="headerlink" href="#subsample-strategically" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id7" role="doc-backlink">4. Subsample Strategically</a><a class="headerlink" href="#subsample-strategically" title="Link to this heading">#</a></h3>
 <p>For very large datasets, subsample while maintaining trial structure:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
@@ -303,9 +520,9 @@
 </section>
 </section>
 <section id="for-large-scale-analysis">
-<h2><a class="toc-backref" href="#id8" role="doc-backlink">For Large-Scale Analysis</a><a class="headerlink" href="#for-large-scale-analysis" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id8" role="doc-backlink">For Large-Scale Analysis</a><a class="headerlink" href="#for-large-scale-analysis" title="Link to this heading">#</a></h2>
 <section id="workflow-for-1m-cells">
-<h3><a class="toc-backref" href="#id9" role="doc-backlink">Workflow for 1M+ Cells</a><a class="headerlink" href="#workflow-for-1m-cells" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id9" role="doc-backlink">Workflow for 1M+ Cells</a><a class="headerlink" href="#workflow-for-1m-cells" title="Link to this heading">#</a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">sctrial</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">scanpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sc</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
@@ -345,7 +562,7 @@
 <p><strong>Expected time</strong>: 1-2 minutes for 1M cells → 50K subsampled cells</p>
 </section>
 <section id="batch-processing">
-<h3><a class="toc-backref" href="#id10" role="doc-backlink">Batch Processing</a><a class="headerlink" href="#batch-processing" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id10" role="doc-backlink">Batch Processing</a><a class="headerlink" href="#batch-processing" title="Link to this heading">#</a></h3>
 <p>For genome-wide analysis, process genes in batches:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 
@@ -401,9 +618,9 @@
 </section>
 </section>
 <section id="memory-management">
-<h2><a class="toc-backref" href="#id11" role="doc-backlink">Memory Management</a><a class="headerlink" href="#memory-management" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id11" role="doc-backlink">Memory Management</a><a class="headerlink" href="#memory-management" title="Link to this heading">#</a></h2>
 <section id="monitor-memory-usage">
-<h3><a class="toc-backref" href="#id12" role="doc-backlink">Monitor Memory Usage</a><a class="headerlink" href="#monitor-memory-usage" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id12" role="doc-backlink">Monitor Memory Usage</a><a class="headerlink" href="#monitor-memory-usage" title="Link to this heading">#</a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">psutil</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 
@@ -420,7 +637,7 @@
 </div>
 </section>
 <section id="reduce-memory-footprint">
-<h3><a class="toc-backref" href="#id13" role="doc-backlink">Reduce Memory Footprint</a><a class="headerlink" href="#reduce-memory-footprint" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id13" role="doc-backlink">Reduce Memory Footprint</a><a class="headerlink" href="#reduce-memory-footprint" title="Link to this heading">#</a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 1. Use float32 instead of float64</span>
 <span class="n">adata</span><span class="o">.</span><span class="n">X</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">X</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
 
@@ -439,7 +656,7 @@
 </div>
 </section>
 <section id="out-of-core-processing">
-<h3><a class="toc-backref" href="#id14" role="doc-backlink">Out-of-Core Processing</a><a class="headerlink" href="#out-of-core-processing" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id14" role="doc-backlink">Out-of-Core Processing</a><a class="headerlink" href="#out-of-core-processing" title="Link to this heading">#</a></h3>
 <p>For datasets too large to fit in memory, use backed mode:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">scanpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sc</span>
 
@@ -457,9 +674,9 @@
 </section>
 </section>
 <section id="gsea-performance">
-<h2><a class="toc-backref" href="#id15" role="doc-backlink">GSEA Performance</a><a class="headerlink" href="#gsea-performance" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id15" role="doc-backlink">GSEA Performance</a><a class="headerlink" href="#gsea-performance" title="Link to this heading">#</a></h2>
 <section id="optimize-gsea-analysis">
-<h3><a class="toc-backref" href="#id16" role="doc-backlink">Optimize GSEA Analysis</a><a class="headerlink" href="#optimize-gsea-analysis" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id16" role="doc-backlink">Optimize GSEA Analysis</a><a class="headerlink" href="#optimize-gsea-analysis" title="Link to this heading">#</a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 1. Pre-filter low-expression genes</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">scanpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sc</span>
 <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">filter_genes</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">min_counts</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
@@ -488,10 +705,10 @@
 </section>
 </section>
 <section id="parallel-processing-advanced">
-<h2><a class="toc-backref" href="#id17" role="doc-backlink">Parallel Processing (Advanced)</a><a class="headerlink" href="#parallel-processing-advanced" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id17" role="doc-backlink">Parallel Processing (Advanced)</a><a class="headerlink" href="#parallel-processing-advanced" title="Link to this heading">#</a></h2>
 <p>Currently, <code class="docutils literal notranslate"><span class="pre">sctrial</span></code> doesn’t have built-in parallelization. For advanced users:</p>
 <section id="parallelize-across-cell-types">
-<h3><a class="toc-backref" href="#id18" role="doc-backlink">Parallelize Across Cell Types</a><a class="headerlink" href="#parallelize-across-cell-types" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id18" role="doc-backlink">Parallelize Across Cell Types</a><a class="headerlink" href="#parallelize-across-cell-types" title="Link to this heading">#</a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">joblib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Parallel</span><span class="p">,</span> <span class="n">delayed</span>
 
 <span class="k">def</span><span class="w"> </span><span class="nf">run_did_for_celltype</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">celltype</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="p">):</span>
@@ -526,9 +743,9 @@
 </section>
 </section>
 <section id="benchmarking">
-<h2><a class="toc-backref" href="#id19" role="doc-backlink">Benchmarking</a><a class="headerlink" href="#benchmarking" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id19" role="doc-backlink">Benchmarking</a><a class="headerlink" href="#benchmarking" title="Link to this heading">#</a></h2>
 <section id="benchmark-your-analysis">
-<h3><a class="toc-backref" href="#id20" role="doc-backlink">Benchmark Your Analysis</a><a class="headerlink" href="#benchmark-your-analysis" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id20" role="doc-backlink">Benchmark Your Analysis</a><a class="headerlink" href="#benchmark-your-analysis" title="Link to this heading">#</a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
 
 <span class="c1"># Time your analysis</span>
@@ -548,7 +765,7 @@
 </div>
 </section>
 <section id="profiling">
-<h3><a class="toc-backref" href="#id21" role="doc-backlink">Profiling</a><a class="headerlink" href="#profiling" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id21" role="doc-backlink">Profiling</a><a class="headerlink" href="#profiling" title="Link to this heading">#</a></h3>
 <p>For detailed performance analysis:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">cProfile</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pstats</span>
@@ -570,9 +787,9 @@
 </section>
 </section>
 <section id="hardware-recommendations">
-<h2><a class="toc-backref" href="#id22" role="doc-backlink">Hardware Recommendations</a><a class="headerlink" href="#hardware-recommendations" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id22" role="doc-backlink">Hardware Recommendations</a><a class="headerlink" href="#hardware-recommendations" title="Link to this heading">#</a></h2>
 <section id="for-different-dataset-sizes">
-<h3><a class="toc-backref" href="#id23" role="doc-backlink">For Different Dataset Sizes</a><a class="headerlink" href="#for-different-dataset-sizes" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id23" role="doc-backlink">For Different Dataset Sizes</a><a class="headerlink" href="#for-different-dataset-sizes" title="Link to this heading">#</a></h3>
 <p><strong>Small datasets (&lt; 100K cells)</strong>:</p>
 <ul class="simple">
 <li><p>CPU: Any modern laptop</p></li>
@@ -600,7 +817,7 @@
 </section>
 </section>
 <section id="quick-performance-checklist">
-<h2><a class="toc-backref" href="#id24" role="doc-backlink">Quick Performance Checklist</a><a class="headerlink" href="#quick-performance-checklist" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id24" role="doc-backlink">Quick Performance Checklist</a><a class="headerlink" href="#quick-performance-checklist" title="Link to this heading">#</a></h2>
 <p>Before running large-scale analysis:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ✓ 1. Check data format</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">scipy.sparse</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sp</span>
@@ -634,33 +851,135 @@
 </section>
 
 
-           </div>
-          </div>
-          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="faq.html" class="btn btn-neutral float-left" title="Frequently Asked Questions" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-    </div>
-
-  <hr/>
-
-  <div role="contentinfo">
-    <p>&#169; Copyright 2026, Contributors.</p>
-  </div>
-
-  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
-    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
-    provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
-
-</footer>
-        </div>
+                </article>
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="faq.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Frequently Asked Questions</p>
       </div>
-    </section>
-  </div>
-  <script>
-      jQuery(function () {
-          SphinxRtdTheme.Navigation.enable(true);
-      });
-  </script> 
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
 
-</body>
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#performance-overview">Performance Overview</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#typical-performance">Typical Performance</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#optimization-strategies">Optimization Strategies</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#use-pseudobulk-aggregation-most-important">1. Use Pseudobulk Aggregation (Most Important!)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#analyze-gene-sets-not-all-genes">2. Analyze Gene Sets, Not All Genes</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#use-sparse-matrices">3. Use Sparse Matrices</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#subsample-strategically">4. Subsample Strategically</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#for-large-scale-analysis">For Large-Scale Analysis</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#workflow-for-1m-cells">Workflow for 1M+ Cells</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#batch-processing">Batch Processing</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#memory-management">Memory Management</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#monitor-memory-usage">Monitor Memory Usage</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#reduce-memory-footprint">Reduce Memory Footprint</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#out-of-core-processing">Out-of-Core Processing</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#gsea-performance">GSEA Performance</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#optimize-gsea-analysis">Optimize GSEA Analysis</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#parallel-processing-advanced">Parallel Processing (Advanced)</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#parallelize-across-cell-types">Parallelize Across Cell Types</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#benchmarking">Benchmarking</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#benchmark-your-analysis">Benchmark Your Analysis</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#profiling">Profiling</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#hardware-recommendations">Hardware Recommendations</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#for-different-dataset-sizes">For Different Dataset Sizes</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#quick-performance-checklist">Quick Performance Checklist</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+
+  
+  <div class="tocsection editthispage">
+    <a href="https://github.com/TheOmarLab/sctrial/edit/main/docs/source/performance.rst">
+      <i class="fa-solid fa-pencil"></i>
+      
+      
+        
+          Edit on GitHub
+        
+      
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2026, Contributors.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+</div>
+
+  </footer>
+  </body>
 </html>
