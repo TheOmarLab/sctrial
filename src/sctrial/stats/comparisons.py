@@ -38,7 +38,6 @@ def resolve_gene_name(adata: AnnData, gene_query: str) -> str:
         AnnData object.
     gene_query
         Gene name to resolve (case-insensitive).
-    
     Returns
     -------
     str

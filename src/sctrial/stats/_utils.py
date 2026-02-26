@@ -30,7 +30,6 @@ def standardize_series(
         Name of the column to standardize.
     min_std
         Minimum standard deviation to consider the column for standardization.
-    
     Returns
     -------
     tuple[pd.Series, bool]

@@ -299,7 +299,6 @@ def cohens_d_from_did_approx(
     ------
     DeprecationWarning
         If cohens_d_from_did_approx() is used (deprecated).
-    
     Notes
     -----
     Deprecated: use ``cohens_d_from_did(delta_treated, delta_control)`` instead.

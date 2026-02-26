@@ -94,7 +94,6 @@ class TrialDesign:
             If True, include ``crossover_col`` when it is defined.
 
         Returns
-        ------- 
         -------
         list[str]
             List of required columns.
@@ -130,7 +129,6 @@ class TrialDesign:
         Returns
         -------
         None
-       
         Raises
         ------
         KeyError
