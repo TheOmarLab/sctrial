@@ -103,7 +103,7 @@ def wild_cluster_bootstrap_t(
     B: int = 999,
     seed: int = 42,
 ) -> float:
-    """Wild cluster bootstrap (Rademacher) for one coefficient.
+    r"""Wild cluster bootstrap (Rademacher) for one coefficient.
 
     Notes
     -----
