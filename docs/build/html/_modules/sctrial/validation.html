@@ -1,0 +1,627 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>sctrial.validation &mdash; sctrial 0.2.1.dev1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=28304322"></script>
+      <script src="../../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            sctrial
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">API Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">User Guides:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../best_practices.html">Best Practices Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../troubleshooting.html">Troubleshooting Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq.html">Frequently Asked Questions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../performance.html">Performance Guide</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">sctrial</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">sctrial.validation</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for sctrial.validation</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Data validation utilities for trial analysis.&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">from</span> <span class="nn">collections.abc</span> <span class="kn">import</span> <span class="n">Sequence</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">anndata</span> <span class="kn">import</span> <span class="n">AnnData</span>
+
+<span class="kn">from</span> <span class="nn">.datasets</span> <span class="kn">import</span> <span class="n">count_paired</span>
+<span class="kn">from</span> <span class="nn">.design</span> <span class="kn">import</span> <span class="n">TrialDesign</span>
+<span class="kn">from</span> <span class="nn">.utils</span> <span class="kn">import</span> <span class="n">get_counts_matrix</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;TrialDataValidator&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;validate_adata&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;validate_features&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;diagnose_trial_data&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;check_covariate_balance&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+
+
+<div class="viewcode-block" id="TrialDataValidator">
+<a class="viewcode-back" href="../../api.html#sctrial.validation.TrialDataValidator">[docs]</a>
+<span class="k">class</span> <span class="nc">TrialDataValidator</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Comprehensive validation for trial analysis data.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TrialDataValidator.validate_adata">
+<a class="viewcode-back" href="../../api.html#sctrial.validation.TrialDataValidator.validate_adata">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">validate_adata</span><span class="p">(</span>
+        <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
+        <span class="n">design</span><span class="p">:</span> <span class="n">TrialDesign</span><span class="p">,</span>
+        <span class="n">strict</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Validate AnnData object for trial analysis.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        adata</span>
+<span class="sd">            AnnData object to validate.</span>
+<span class="sd">        design</span>
+<span class="sd">            TrialDesign specifying column names.</span>
+<span class="sd">        strict</span>
+<span class="sd">            If True, raises exceptions. If False, returns warnings.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        List of warning/error messages.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        &gt;&gt;&gt; validator = TrialDataValidator()</span>
+<span class="sd">        &gt;&gt;&gt; issues = validator.validate_adata(adata, design, strict=False)</span>
+<span class="sd">        &gt;&gt;&gt; if issues:</span>
+<span class="sd">        ...     print(f&quot;Found {len(issues)} issues:&quot;)</span>
+<span class="sd">        ...     for issue in issues:</span>
+<span class="sd">        ...         print(f&quot;  - {issue}&quot;)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">issues</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># Check required columns</span>
+        <span class="n">required_cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">required_cols</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Required column &#39;</span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">&#39; not found in adata.obs&quot;</span>
+                <span class="k">if</span> <span class="n">strict</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+                <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+        <span class="c1"># Check for missing data</span>
+        <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">required_cols</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="n">n_missing</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">n_missing</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">pct</span> <span class="o">=</span> <span class="mi">100</span> <span class="o">*</span> <span class="n">n_missing</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+                    <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">n_missing</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">pct</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%) missing values in &#39;</span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">&#39;&quot;</span>
+                    <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+        <span class="c1"># Check sample size</span>
+        <span class="k">if</span> <span class="n">design</span><span class="o">.</span><span class="n">participant_col</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">n_participants</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">n_participants</span> <span class="o">&lt;</span> <span class="mi">4</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Only </span><span class="si">{</span><span class="n">n_participants</span><span class="si">}</span><span class="s2"> participants (minimum 4 required for DiD)&quot;</span>
+                <span class="k">if</span> <span class="n">strict</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+                <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">n_participants</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">:</span>
+                <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Only </span><span class="si">{</span><span class="n">n_participants</span><span class="si">}</span><span class="s2"> participants; consider using &quot;</span>
+                    <span class="s2">&quot;bootstrap (use_bootstrap=True) for robust inference&quot;</span>
+                <span class="p">)</span>
+
+        <span class="c1"># Check paired data</span>
+        <span class="k">if</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">visits</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">visits</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Only </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">visits</span><span class="p">)</span><span class="si">}</span><span class="s2"> visit(s) found (need &gt;= 2 for longitudinal analysis)&quot;</span>
+                <span class="k">if</span> <span class="n">strict</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+                <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+        <span class="c1"># Check for counts layer</span>
+        <span class="n">counts</span><span class="p">,</span> <span class="n">_source</span> <span class="o">=</span> <span class="n">get_counts_matrix</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">counts</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="s2">&quot;No raw counts found in adata.layers[&#39;counts&#39;], adata.raw.X, adata.layers[&#39;raw&#39;], or adata.X. &quot;</span>
+                <span class="s2">&quot;For best results, provide raw counts in adata.layers[&#39;counts&#39;]&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Check cell type column if specified</span>
+        <span class="k">if</span> <span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Cell type column &#39;</span><span class="si">{</span><span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="si">}</span><span class="s2">&#39; not found in adata.obs&quot;</span>
+                <span class="k">if</span> <span class="n">strict</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+                <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">issues</span></div>
+
+
+<div class="viewcode-block" id="TrialDataValidator.validate_features">
+<a class="viewcode-back" href="../../api.html#sctrial.validation.TrialDataValidator.validate_features">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">validate_features</span><span class="p">(</span>
+        <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
+        <span class="n">features</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+        <span class="n">allow_missing</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Validate feature names.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        adata</span>
+<span class="sd">            AnnData object.</span>
+<span class="sd">        features</span>
+<span class="sd">            List of feature names to validate.</span>
+<span class="sd">        allow_missing</span>
+<span class="sd">            If False, raises error for missing features.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Tuple of (valid_features, missing_features).</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        &gt;&gt;&gt; valid, missing = TrialDataValidator.validate_features(</span>
+<span class="sd">        ...     adata, [&quot;Gene1&quot;, &quot;Gene2&quot;, &quot;NonExistent&quot;]</span>
+<span class="sd">        ... )</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Valid: {valid}, Missing: {missing}&quot;)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">valid</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">missing</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">feat</span> <span class="ow">in</span> <span class="n">features</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">feat</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span> <span class="ow">or</span> <span class="n">feat</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="p">:</span>
+                <span class="n">valid</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">feat</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">missing</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">feat</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">missing</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">allow_missing</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Features not found: </span><span class="si">{</span><span class="n">missing</span><span class="p">[:</span><span class="mi">10</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;Available obs columns: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">)[:</span><span class="mi">10</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;Available var names: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="p">)[:</span><span class="mi">10</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;Hint: Check spelling and case sensitivity&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">valid</span><span class="p">,</span> <span class="n">missing</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="validate_adata">
+<a class="viewcode-back" href="../../api.html#sctrial.validation.validate_adata">[docs]</a>
+<span class="k">def</span> <span class="nf">validate_adata</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
+    <span class="n">design</span><span class="p">:</span> <span class="n">TrialDesign</span><span class="p">,</span>
+    <span class="n">strict</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Validate AnnData object for trial analysis.</span>
+
+<span class="sd">    Convenience wrapper around TrialDataValidator.validate_adata().</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    adata</span>
+<span class="sd">        AnnData object to validate.</span>
+<span class="sd">    design</span>
+<span class="sd">        TrialDesign specifying column names.</span>
+<span class="sd">    strict</span>
+<span class="sd">        If True, raises exceptions. If False, returns warnings.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    List of warning/error messages.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">TrialDataValidator</span><span class="o">.</span><span class="n">validate_adata</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="n">strict</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="validate_features">
+<a class="viewcode-back" href="../../api.html#sctrial.validation.validate_features">[docs]</a>
+<span class="k">def</span> <span class="nf">validate_features</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
+    <span class="n">features</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="n">allow_missing</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Validate feature names.</span>
+
+<span class="sd">    Convenience wrapper around TrialDataValidator.validate_features().</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    adata</span>
+<span class="sd">        AnnData object.</span>
+<span class="sd">    features</span>
+<span class="sd">        List of feature names to validate.</span>
+<span class="sd">    allow_missing</span>
+<span class="sd">        If False, raises error for missing features.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    Tuple of (valid_features, missing_features).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">TrialDataValidator</span><span class="o">.</span><span class="n">validate_features</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="n">allow_missing</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="diagnose_trial_data">
+<a class="viewcode-back" href="../../api.html#sctrial.validation.diagnose_trial_data">[docs]</a>
+<span class="k">def</span> <span class="nf">diagnose_trial_data</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
+    <span class="n">design</span><span class="p">:</span> <span class="n">TrialDesign</span><span class="p">,</span>
+    <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Comprehensive diagnostic report for trial data.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    adata</span>
+<span class="sd">        AnnData object to diagnose.</span>
+<span class="sd">    design</span>
+<span class="sd">        TrialDesign object.</span>
+<span class="sd">    verbose</span>
+<span class="sd">        If True, prints diagnostic report.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict</span>
+<span class="sd">        Diagnostic summary with keys including:</span>
+<span class="sd">        - n_cells, n_genes, n_participants, n_visits, n_arms</span>
+<span class="sd">        - paired_participants (dict of visit pairs -&gt; counts)</span>
+<span class="sd">        - cells_per_participant (pd.Series)</span>
+<span class="sd">        - warnings (list of strings)</span>
+<span class="sd">        - recommendations (list of strings)</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; diagnostics = diagnose_trial_data(adata, design, verbose=True)</span>
+<span class="sd">    &gt;&gt;&gt; if diagnostics[&#39;warnings&#39;]:</span>
+<span class="sd">    ...     print(&quot;Warnings found:&quot;)</span>
+<span class="sd">    ...     for w in diagnostics[&#39;warnings&#39;]:</span>
+<span class="sd">    ...         print(f&quot;  - {w}&quot;)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">report</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">warnings_list</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">recommendations</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="c1"># Basic counts</span>
+    <span class="n">report</span><span class="p">[</span><span class="s2">&quot;n_cells&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span>
+    <span class="n">report</span><span class="p">[</span><span class="s2">&quot;n_genes&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span>
+
+    <span class="k">if</span> <span class="n">design</span><span class="o">.</span><span class="n">participant_col</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">report</span><span class="p">[</span><span class="s2">&quot;n_participants&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">report</span><span class="p">[</span><span class="s2">&quot;n_participants&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">4</span><span class="p">:</span>
+            <span class="n">warnings_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Only </span><span class="si">{</span><span class="n">report</span><span class="p">[</span><span class="s1">&#39;n_participants&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> participants (minimum 4 required)&quot;</span>
+            <span class="p">)</span>
+            <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Consider pooling data from multiple cohorts&quot;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">report</span><span class="p">[</span><span class="s2">&quot;n_participants&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">:</span>
+            <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="s2">&quot;Sample size is small; use bootstrap inference (use_bootstrap=True)&quot;</span>
+            <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">visits</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">())</span>
+        <span class="n">report</span><span class="p">[</span><span class="s2">&quot;n_visits&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">visits</span><span class="p">)</span>
+        <span class="n">report</span><span class="p">[</span><span class="s2">&quot;visits&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">visits</span>
+
+        <span class="c1"># Check paired participants for all visit pairs</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">visits</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">paired_counts</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">v1</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">visits</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">v2</span> <span class="ow">in</span> <span class="n">visits</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span> <span class="p">:]:</span>
+                    <span class="n">n_paired</span> <span class="o">=</span> <span class="n">count_paired</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="p">[</span><span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">],</span> <span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">)</span>
+                    <span class="n">paired_counts</span><span class="p">[(</span><span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">)]</span> <span class="o">=</span> <span class="n">n_paired</span>
+
+                    <span class="k">if</span> <span class="n">n_paired</span> <span class="o">&lt;</span> <span class="mi">4</span><span class="p">:</span>
+                        <span class="n">warnings_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                            <span class="sa">f</span><span class="s2">&quot;Only </span><span class="si">{</span><span class="n">n_paired</span><span class="si">}</span><span class="s2"> paired participants for </span><span class="si">{</span><span class="n">v1</span><span class="si">}</span><span class="s2"> vs </span><span class="si">{</span><span class="n">v2</span><span class="si">}</span><span class="s2">&quot;</span>
+                        <span class="p">)</span>
+
+            <span class="n">report</span><span class="p">[</span><span class="s2">&quot;paired_participants&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">paired_counts</span>
+
+    <span class="k">if</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_col</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">arms</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">())</span>
+        <span class="n">report</span><span class="p">[</span><span class="s2">&quot;n_arms&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">arms</span><span class="p">)</span>
+        <span class="n">report</span><span class="p">[</span><span class="s2">&quot;arms&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">arms</span>
+
+    <span class="c1"># Check cell counts per participant</span>
+    <span class="k">if</span> <span class="n">design</span><span class="o">.</span><span class="n">participant_col</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">cells_per_pv</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span>
+                <span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">],</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">size</span><span class="p">()</span>
+            <span class="n">report</span><span class="p">[</span><span class="s2">&quot;cells_per_participant_visit_mean&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">cells_per_pv</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="n">report</span><span class="p">[</span><span class="s2">&quot;cells_per_participant_visit_median&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">cells_per_pv</span><span class="o">.</span><span class="n">median</span><span class="p">()</span>
+            <span class="n">report</span><span class="p">[</span><span class="s2">&quot;cells_per_participant_visit_min&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">cells_per_pv</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="n">cells_per_pv</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">:</span>
+                <span class="n">warnings_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Some participant-visits have &lt; 10 cells (min: </span><span class="si">{</span><span class="n">cells_per_pv</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="si">}</span><span class="s2">)&quot;</span>
+                <span class="p">)</span>
+                <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Consider QC filtering to remove low-quality samples&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">cells_per_p</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">size</span><span class="p">()</span>
+            <span class="n">report</span><span class="p">[</span><span class="s2">&quot;cells_per_participant_mean&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">cells_per_p</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+
+    <span class="c1"># Check cell type distribution if available</span>
+    <span class="k">if</span> <span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span> <span class="ow">and</span> <span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">celltype_counts</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">]</span><span class="o">.</span><span class="n">value_counts</span><span class="p">()</span>
+        <span class="n">report</span><span class="p">[</span><span class="s2">&quot;n_celltypes&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">celltype_counts</span><span class="p">)</span>
+        <span class="n">report</span><span class="p">[</span><span class="s2">&quot;celltype_distribution&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">celltype_counts</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
+
+    <span class="n">report</span><span class="p">[</span><span class="s2">&quot;warnings&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">warnings_list</span>
+    <span class="n">report</span><span class="p">[</span><span class="s2">&quot;recommendations&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">recommendations</span>
+
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="n">_print_diagnostic_report</span><span class="p">(</span><span class="n">report</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">report</span></div>
+
+
+
+<div class="viewcode-block" id="check_covariate_balance">
+<a class="viewcode-back" href="../../api.html#sctrial.validation.check_covariate_balance">[docs]</a>
+<span class="k">def</span> <span class="nf">check_covariate_balance</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
+    <span class="n">design</span><span class="p">:</span> <span class="n">TrialDesign</span><span class="p">,</span>
+    <span class="n">covariates</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">visit</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">dropna</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">smd_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute standardized mean differences (SMD) for baseline covariates.</span>
+
+<span class="sd">    This compares treated vs control arms at a single visit (usually baseline)</span>
+<span class="sd">    and reports SMD values that quantify imbalance.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    adata</span>
+<span class="sd">        AnnData object with trial metadata in ``adata.obs``.</span>
+<span class="sd">    design</span>
+<span class="sd">        TrialDesign describing participant, visit, and arm columns.</span>
+<span class="sd">    covariates</span>
+<span class="sd">        List of covariate column names in ``adata.obs``.</span>
+<span class="sd">    visit</span>
+<span class="sd">        Visit label to use for balance checks. If None, uses</span>
+<span class="sd">        ``design.baseline_visit``; otherwise raises if not available.</span>
+<span class="sd">    dropna</span>
+<span class="sd">        If True, drop rows with missing covariate values for each covariate.</span>
+<span class="sd">    smd_threshold</span>
+<span class="sd">        Absolute SMD threshold for &quot;balanced&quot; flag (default 0.1).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.DataFrame</span>
+<span class="sd">        Table with SMD values. Numeric covariates produce one row per covariate.</span>
+<span class="sd">        Categorical covariates produce one row per level with proportions.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;visit_col &#39;</span><span class="si">{</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="si">}</span><span class="s2">&#39; not in adata.obs&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;arm_col &#39;</span><span class="si">{</span><span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="si">}</span><span class="s2">&#39; not in adata.obs&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">visit</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">design</span><span class="o">.</span><span class="n">baseline_visit</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;visit must be provided or design.baseline_visit must be set.&quot;</span><span class="p">)</span>
+        <span class="n">visit</span> <span class="o">=</span> <span class="n">design</span><span class="o">.</span><span class="n">baseline_visit</span>
+
+    <span class="n">obs</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">obs</span> <span class="o">=</span> <span class="n">obs</span><span class="p">[</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span> <span class="o">==</span> <span class="n">visit</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">obs</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No observations found for visit &#39;</span><span class="si">{</span><span class="n">visit</span><span class="si">}</span><span class="s2">&#39;.&quot;</span><span class="p">)</span>
+
+    <span class="c1"># collapse to participant-level to avoid pseudoreplication</span>
+    <span class="n">group_cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span>
+    <span class="n">base</span> <span class="o">=</span> <span class="n">obs</span><span class="p">[</span><span class="n">group_cols</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="n">covariates</span><span class="p">)]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="n">rows</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">cov</span> <span class="ow">in</span> <span class="n">covariates</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">cov</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">base</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Covariate &#39;</span><span class="si">{</span><span class="n">cov</span><span class="si">}</span><span class="s2">&#39; not found in adata.obs&quot;</span><span class="p">)</span>
+        <span class="n">sub</span> <span class="o">=</span> <span class="n">base</span><span class="p">[</span><span class="n">group_cols</span> <span class="o">+</span> <span class="p">[</span><span class="n">cov</span><span class="p">]]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">dropna</span><span class="p">:</span>
+            <span class="n">sub</span> <span class="o">=</span> <span class="n">sub</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="n">cov</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">sub</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="k">continue</span>
+
+        <span class="c1"># reduce to participant-level</span>
+        <span class="n">sub</span> <span class="o">=</span> <span class="n">sub</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">group_cols</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="n">cov</span><span class="p">]</span><span class="o">.</span><span class="n">first</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+
+        <span class="n">treated</span> <span class="o">=</span> <span class="n">sub</span><span class="p">[</span><span class="n">sub</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span> <span class="o">==</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_treated</span><span class="p">][</span><span class="n">cov</span><span class="p">]</span>
+        <span class="n">control</span> <span class="o">=</span> <span class="n">sub</span><span class="p">[</span><span class="n">sub</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span> <span class="o">==</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_control</span><span class="p">][</span><span class="n">cov</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">treated</span><span class="o">.</span><span class="n">empty</span> <span class="ow">or</span> <span class="n">control</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="k">continue</span>
+
+        <span class="k">if</span> <span class="n">pd</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">types</span><span class="o">.</span><span class="n">is_numeric_dtype</span><span class="p">(</span><span class="n">sub</span><span class="p">[</span><span class="n">cov</span><span class="p">]):</span>
+            <span class="n">mean_t</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">treated</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span>
+            <span class="n">mean_c</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">control</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span>
+            <span class="n">sd_t</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">treated</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+            <span class="n">sd_c</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">control</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+            <span class="n">pooled</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">sd_t</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">sd_c</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="k">if</span> <span class="p">(</span><span class="n">sd_t</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">sd_c</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+            <span class="n">smd</span> <span class="o">=</span> <span class="p">(</span><span class="n">mean_t</span> <span class="o">-</span> <span class="n">mean_c</span><span class="p">)</span> <span class="o">/</span> <span class="n">pooled</span> <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">pooled</span><span class="p">)</span> <span class="ow">and</span> <span class="n">pooled</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+            <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                <span class="s2">&quot;covariate&quot;</span><span class="p">:</span> <span class="n">cov</span><span class="p">,</span>
+                <span class="s2">&quot;level&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="s2">&quot;mean_treated&quot;</span><span class="p">:</span> <span class="n">mean_t</span><span class="p">,</span>
+                <span class="s2">&quot;mean_control&quot;</span><span class="p">:</span> <span class="n">mean_c</span><span class="p">,</span>
+                <span class="s2">&quot;smd&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">smd</span><span class="p">)</span> <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">smd</span><span class="p">)</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                <span class="s2">&quot;n_treated&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">treated</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span>
+                <span class="s2">&quot;n_control&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">control</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span>
+                <span class="s2">&quot;balanced&quot;</span><span class="p">:</span> <span class="nb">bool</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">smd</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">abs</span><span class="p">(</span><span class="n">smd</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">smd_threshold</span><span class="p">),</span>
+            <span class="p">})</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># categorical: compute SMD for each level via proportions</span>
+            <span class="n">levels</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">sub</span><span class="p">[</span><span class="n">cov</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">))</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">lvl</span> <span class="ow">in</span> <span class="n">levels</span><span class="p">:</span>
+                <span class="n">p_t</span> <span class="o">=</span> <span class="nb">float</span><span class="p">((</span><span class="n">treated</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span> <span class="o">==</span> <span class="n">lvl</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span>
+                <span class="n">p_c</span> <span class="o">=</span> <span class="nb">float</span><span class="p">((</span><span class="n">control</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span> <span class="o">==</span> <span class="n">lvl</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span>
+                <span class="n">p_pool</span> <span class="o">=</span> <span class="p">(</span><span class="n">p_t</span> <span class="o">+</span> <span class="n">p_c</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+                <span class="n">denom</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">p_pool</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">p_pool</span><span class="p">))</span> <span class="k">if</span> <span class="mi">0</span> <span class="o">&lt;</span> <span class="n">p_pool</span> <span class="o">&lt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+                <span class="n">smd</span> <span class="o">=</span> <span class="p">(</span><span class="n">p_t</span> <span class="o">-</span> <span class="n">p_c</span><span class="p">)</span> <span class="o">/</span> <span class="n">denom</span> <span class="k">if</span> <span class="n">denom</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">denom</span><span class="p">)</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+                <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                    <span class="s2">&quot;covariate&quot;</span><span class="p">:</span> <span class="n">cov</span><span class="p">,</span>
+                    <span class="s2">&quot;level&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">lvl</span><span class="p">),</span>
+                    <span class="s2">&quot;mean_treated&quot;</span><span class="p">:</span> <span class="n">p_t</span><span class="p">,</span>
+                    <span class="s2">&quot;mean_control&quot;</span><span class="p">:</span> <span class="n">p_c</span><span class="p">,</span>
+                    <span class="s2">&quot;smd&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">smd</span><span class="p">)</span> <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">smd</span><span class="p">)</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                    <span class="s2">&quot;n_treated&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">treated</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span>
+                    <span class="s2">&quot;n_control&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">control</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span>
+                    <span class="s2">&quot;balanced&quot;</span><span class="p">:</span> <span class="nb">bool</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">smd</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">abs</span><span class="p">(</span><span class="n">smd</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">smd_threshold</span><span class="p">),</span>
+                <span class="p">})</span>
+
+    <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span></div>
+
+
+
+<span class="k">def</span> <span class="nf">_print_diagnostic_report</span><span class="p">(</span><span class="n">report</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Print formatted diagnostic report.&quot;&quot;&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;TRIAL DATA DIAGNOSTIC REPORT&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;DATA SUMMARY&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Cells:        </span><span class="si">{</span><span class="n">report</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;n_cells&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;N/A&#39;</span><span class="p">)</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Genes:        </span><span class="si">{</span><span class="n">report</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;n_genes&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;N/A&#39;</span><span class="p">)</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Participants: </span><span class="si">{</span><span class="n">report</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;n_participants&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;N/A&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Visits:       </span><span class="si">{</span><span class="n">report</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;n_visits&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;N/A&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Arms:         </span><span class="si">{</span><span class="n">report</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;n_arms&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;N/A&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="s2">&quot;visits&quot;</span> <span class="ow">in</span> <span class="n">report</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    Visit labels: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span><span class="w"> </span><span class="n">report</span><span class="p">[</span><span class="s1">&#39;visits&#39;</span><span class="p">]))</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="s2">&quot;arms&quot;</span> <span class="ow">in</span> <span class="n">report</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    Arm labels: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span><span class="w"> </span><span class="n">report</span><span class="p">[</span><span class="s1">&#39;arms&#39;</span><span class="p">]))</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="s2">&quot;paired_participants&quot;</span> <span class="ow">in</span> <span class="n">report</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;PAIRED PARTICIPANTS&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">),</span> <span class="n">count</span> <span class="ow">in</span> <span class="n">report</span><span class="p">[</span><span class="s2">&quot;paired_participants&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">status</span> <span class="o">=</span> <span class="s2">&quot;OK&quot;</span> <span class="k">if</span> <span class="n">count</span> <span class="o">&gt;=</span> <span class="mi">4</span> <span class="k">else</span> <span class="s2">&quot;LOW&quot;</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  [</span><span class="si">{</span><span class="n">status</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="n">v1</span><span class="si">}</span><span class="s2"> &lt;-&gt; </span><span class="si">{</span><span class="n">v2</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">count</span><span class="si">}</span><span class="s2"> paired&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="s2">&quot;cells_per_participant_visit_mean&quot;</span> <span class="ow">in</span> <span class="n">report</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;CELLS PER PARTICIPANT-VISIT&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Mean:   </span><span class="si">{</span><span class="n">report</span><span class="p">[</span><span class="s1">&#39;cells_per_participant_visit_mean&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Median: </span><span class="si">{</span><span class="n">report</span><span class="p">[</span><span class="s1">&#39;cells_per_participant_visit_median&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Min:    </span><span class="si">{</span><span class="n">report</span><span class="p">[</span><span class="s1">&#39;cells_per_participant_visit_min&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="s2">&quot;celltype_distribution&quot;</span> <span class="ow">in</span> <span class="n">report</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;CELL TYPE DISTRIBUTION&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">ct</span><span class="p">,</span> <span class="n">count</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">report</span><span class="p">[</span><span class="s2">&quot;celltype_distribution&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">())[:</span><span class="mi">10</span><span class="p">]:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">ct</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">count</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">report</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;warnings&quot;</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;WARNINGS (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">report</span><span class="p">[</span><span class="s1">&#39;warnings&#39;</span><span class="p">])</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">report</span><span class="p">[</span><span class="s2">&quot;warnings&quot;</span><span class="p">]:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  - </span><span class="si">{</span><span class="n">w</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">report</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;recommendations&quot;</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;RECOMMENDATIONS&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">report</span><span class="p">[</span><span class="s2">&quot;recommendations&quot;</span><span class="p">]:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  - </span><span class="si">{</span><span class="n">r</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

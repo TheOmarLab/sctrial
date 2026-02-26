@@ -5,7 +5,7 @@ __pycache__/
 
 # Distribution / packaging
 dist/
-build/
+/build/
 *.egg-info/
 .eggs/
 
@@ -36,7 +36,7 @@ examples/data/
 .vscode/
 .idea/
 .ruff_cache/
-docs/build/
+**/.doctrees/
 
 # Jupyter notebook artifacts
 *.nbconvert.ipynb
