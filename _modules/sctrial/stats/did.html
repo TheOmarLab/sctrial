@@ -593,7 +593,8 @@
     <span class="n">p_time</span><span class="p">:</span> <span class="nb">float</span>
     <span class="n">n_units</span><span class="p">:</span> <span class="nb">int</span>
     <span class="n">resid_sd</span><span class="p">:</span> <span class="n">NotRequired</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>
-    <span class="n">p_DiD_boot</span><span class="p">:</span> <span class="n">NotRequired</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span></div>
+    <span class="n">p_DiD_boot</span><span class="p">:</span> <span class="n">NotRequired</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>
+    <span class="n">cov_type_used</span><span class="p">:</span> <span class="n">NotRequired</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span></div>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_ensure_paired</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">unit</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">time</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">visits</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
@@ -765,14 +766,49 @@
     <span class="n">fit</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">cov_type</span><span class="o">=</span><span class="n">cov_type</span><span class="p">,</span> <span class="n">cov_kwds</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;groups&quot;</span><span class="p">:</span> <span class="n">tmp</span><span class="p">[</span><span class="n">unit</span><span class="p">]}</span> <span class="k">if</span> <span class="n">cov_type</span> <span class="o">==</span> <span class="s2">&quot;cluster&quot;</span> <span class="k">else</span> <span class="kc">None</span><span class="p">)</span>
     <span class="n">term</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">time</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">arm_bin</span><span class="si">}</span><span class="s2">&quot;</span>
 
+    <span class="n">se_did</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">bse</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">term</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">))</span>
+    <span class="n">p_did</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">pvalues</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">term</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">))</span>
+
+    <span class="c1"># Fallback: if cluster-robust SE is NaN (degenerate, e.g. only 2 obs per</span>
+    <span class="c1"># cluster after participant_visit aggregation), re-fit with nonrobust SE.</span>
+    <span class="c1"># The participant FE already absorbs within-participant correlation, so</span>
+    <span class="c1"># homoskedastic SE is a valid (though conservative) alternative.</span>
+    <span class="c1">#</span>
+    <span class="c1"># Justification for nonrobust bootstrap in fallback mode:</span>
+    <span class="c1"># When cluster-robust SE is degenerate (typically because each cluster has</span>
+    <span class="c1"># only 2 observations after participant_visit aggregation), the wild cluster</span>
+    <span class="c1"># bootstrap with nonrobust covariance is methodologically valid because:</span>
+    <span class="c1"># (a) participant fixed effects already absorb within-cluster correlation,</span>
+    <span class="c1"># (b) with only 2 obs per cluster, heteroskedasticity cannot be estimated</span>
+    <span class="c1">#     within clusters anyway, and</span>
+    <span class="c1"># (c) the Rademacher sign-flip at the cluster level still provides valid</span>
+    <span class="c1">#     finite-sample inference (Webb 2023, J. Econometrics).</span>
+    <span class="n">effective_cov_type</span> <span class="o">=</span> <span class="n">cov_type</span>
+    <span class="k">if</span> <span class="n">cov_type</span> <span class="o">==</span> <span class="s2">&quot;cluster&quot;</span> <span class="ow">and</span> <span class="p">(</span><span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">se_did</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">p_did</span><span class="p">)):</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Cluster-robust SE is degenerate (NaN) for feature &#39;</span><span class="si">{</span><span class="n">y</span><span class="si">}</span><span class="s2">&#39; with &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">tmp</span><span class="p">[</span><span class="n">unit</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">())</span><span class="si">}</span><span class="s2"> clusters. Falling back to nonrobust &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;(homoskedastic) SE. This typically occurs when each cluster has &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;very few observations (e.g. participant_visit aggregation with &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;2 visits). Participant fixed effects still absorb within-cluster &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;correlation. Set use_bootstrap=True for more reliable p-values.&quot;</span><span class="p">,</span>
+            <span class="ne">UserWarning</span><span class="p">,</span>
+            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">fit</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>  <span class="c1"># nonrobust</span>
+        <span class="n">se_did</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">bse</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">term</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">))</span>
+        <span class="n">p_did</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">pvalues</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">term</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">))</span>
+        <span class="n">effective_cov_type</span> <span class="o">=</span> <span class="s2">&quot;nonrobust&quot;</span>
+
     <span class="n">res</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;beta_DiD&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">term</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)),</span>
-        <span class="s2">&quot;se_DiD&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">bse</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">term</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)),</span>
-        <span class="s2">&quot;p_DiD&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">pvalues</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">term</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)),</span>
+        <span class="s2">&quot;se_DiD&quot;</span><span class="p">:</span> <span class="n">se_did</span><span class="p">,</span>
+        <span class="s2">&quot;p_DiD&quot;</span><span class="p">:</span> <span class="n">p_did</span><span class="p">,</span>
         <span class="s2">&quot;beta_time&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">time</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)),</span>
         <span class="s2">&quot;p_time&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">pvalues</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">time</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)),</span>
         <span class="s2">&quot;n_units&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">tmp</span><span class="p">[</span><span class="n">unit</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()),</span>
         <span class="s2">&quot;resid_sd&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">scale</span><span class="p">)),</span>
+        <span class="s2">&quot;cov_type_used&quot;</span><span class="p">:</span> <span class="n">effective_cov_type</span><span class="p">,</span>
     <span class="p">}</span>
 
     <span class="k">if</span> <span class="n">use_bootstrap</span> <span class="ow">and</span> <span class="n">term</span> <span class="ow">in</span> <span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="p">:</span>
@@ -782,7 +818,8 @@
             <span class="n">clusters</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">tmp</span><span class="p">[</span><span class="n">unit</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()),</span>
             <span class="n">term_name</span><span class="o">=</span><span class="n">term</span><span class="p">,</span>
             <span class="n">B</span><span class="o">=</span><span class="n">n_boot</span><span class="p">,</span>
-            <span class="n">seed</span><span class="o">=</span><span class="n">seed</span>
+            <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span>
+            <span class="n">cov_type</span><span class="o">=</span><span class="n">effective_cov_type</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">res</span><span class="p">[</span><span class="s2">&quot;p_DiD_boot&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">p_boot</span>
         <span class="c1"># Use bootstrap p-value as primary if requested</span>
