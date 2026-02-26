@@ -138,6 +138,9 @@
 <h1>Immunotherapy Response in Melanoma: Longitudinal Single-Cell Analysis<a class="headerlink" href="#Immunotherapy-Response-in-Melanoma:-Longitudinal-Single-Cell-Analysis" title="Link to this heading"></a></h1>
 <p><strong>Dataset</strong>: Sade-Feldman et al., Cell 2018 (GSE120575)</p>
 <p>This notebook demonstrates how to analyze longitudinal single-cell data from a clinical immunotherapy study, comparing immune dynamics between responders and non-responders to anti-PD-1 therapy.</p>
+<blockquote>
+<div><p><strong>⚠️ Observational comparison, not a randomized experiment.</strong> Response status is a <em>post-treatment outcome</em>, not a randomly assigned treatment. DiD contrasts here estimate <em>associations</em> between response and immune trajectory — they do not identify causal treatment effects. See Limitations for details.</p>
+</div></blockquote>
 <section id="Background">
 <h2>Background<a class="headerlink" href="#Background" title="Link to this heading"></a></h2>
 <p>Sade-Feldman et al. (Cell 2018) profiled tumor-infiltrating immune cells from melanoma patients <strong>before and during</strong> anti-PD-1 checkpoint inhibitor therapy. This landmark study identified transcriptional programs associated with clinical response.</p>
@@ -155,6 +158,9 @@
 <li><p>How does the immune microenvironment change with therapy?</p></li>
 <li><p>Are there response-specific trajectories (Difference-in-Differences)?</p></li>
 </ul>
+<blockquote>
+<div><p><strong>Note on study design</strong>: Because response is defined <em>post-treatment</em> (RECIST criteria), groups are <em>observational</em>, not randomized. The DiD framework tests whether immune trajectories <em>differ by response status</em> — it cannot establish that treatment <em>caused</em> those differences. Confounders correlated with both response and immune dynamics remain possible.</p>
+</div></blockquote>
 </section>
 <section id="Analysis-Strategy">
 <h3>Analysis Strategy<a class="headerlink" href="#Analysis-Strategy" title="Link to this heading"></a></h3>
@@ -197,13 +203,19 @@
 <span class="c1"># Configuration</span>
 <span class="n">MIN_GENES_FOR_SCORE</span> <span class="o">=</span> <span class="mi">5</span>
 <span class="n">MIN_PARTICIPANTS_FOR_COMPARISON</span> <span class="o">=</span> <span class="mi">3</span>
-<span class="n">FDR_ALPHA</span> <span class="o">=</span> <span class="mf">0.25</span>  <span class="c1"># Exploratory threshold; use 0.05 for confirmatory analyses</span>
+<span class="n">FDR_ALPHA</span> <span class="o">=</span> <span class="mf">0.25</span>  <span class="c1"># Exploratory threshold — all results flagged at this level</span>
+                   <span class="c1"># are hypothesis-generating, NOT confirmatory. Use 0.05 for</span>
+                   <span class="c1"># confirmatory analyses. See GSEA FAQ for precedent.</span>
 <span class="n">SEED</span> <span class="o">=</span> <span class="mi">42</span>
 <span class="n">RESPONSE_COL</span> <span class="o">=</span> <span class="s2">&quot;response_harmonized&quot;</span>
 
 <span class="n">pd</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">mode</span><span class="o">.</span><span class="n">chained_assignment</span> <span class="o">=</span> <span class="kc">None</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;sctrial version: </span><span class="si">{</span><span class="n">st</span><span class="o">.</span><span class="n">__version__</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="nb">hasattr</span><span class="p">(</span><span class="n">st</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;__version__&#39;</span><span class="p">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;dev&#39;</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</pre></div>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_fmt_fdr</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Format FDR/p-value: scientific notation for very small values.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">v</span><span class="si">:</span><span class="s2">.2e</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">v</span> <span class="o">&lt;</span> <span class="mf">0.001</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">v</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span>
+<br/></pre></div>
 </div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -1319,7 +1331,7 @@ Results at Post:
             <span class="k">if</span> <span class="ow">not</span> <span class="n">sig</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
                 <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">sig</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
                     <span class="n">direction</span> <span class="o">=</span> <span class="s2">&quot;↑&quot;</span> <span class="k">if</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;mean_delta&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;↓&quot;</span>
-                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;feature&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">direction</span><span class="si">}</span><span class="s2"> (delta=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;mean_delta&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, FDR=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;FDR_time&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;feature&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">direction</span><span class="si">}</span><span class="s2"> (delta=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;mean_delta&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, FDR=</span><span class="si">{</span><span class="n">_fmt_fdr</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;FDR_time&#39;</span><span class="p">])</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
 <span class="k">else</span><span class="p">:</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Insufficient visits or features for within-arm comparison.&quot;</span><span class="p">)</span>
 
@@ -1586,6 +1598,7 @@ Pre→Post changes in Non-responder:
 <h2>7. Difference-in-Differences (Frequentist DiD)<a class="headerlink" href="#7.-Difference-in-Differences-(Frequentist-DiD)" title="Link to this heading"></a></h2>
 <p>With only 10 paired participants (3 vs 7), the fixed-effects OLS model used by <code class="docutils literal notranslate"><span class="pre">st.did_table()</span></code> produces a rank-deficient design matrix (10 participant dummies + 2 covariates for 20 observations), resulting in NaN standard errors. This is a known limitation for very small samples.</p>
 <p><strong>Our approach</strong>: We use <code class="docutils literal notranslate"><span class="pre">st.did_table()</span></code> for the point estimates (<code class="docutils literal notranslate"><span class="pre">beta_DiD</span></code>), then compute p-values via <strong>permutation testing</strong> on participant-level deltas — a non-parametric approach that is valid regardless of sample size.</p>
+<p><strong>Important</strong>: Because response status is a <em>post-treatment outcome</em> (not a randomized arm), the DiD here tests for <em>association</em> between response and immune trajectory — it does <strong>not</strong> establish a causal treatment effect. The “treated/control” labels below refer to Responder/Non-responder groups for the purpose of the DiD model specification.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
 </pre></div>
@@ -1689,7 +1702,7 @@ Pre→Post changes in Non-responder:
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Significant DiD effects (FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">):&quot;</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">sig</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
                 <span class="n">direction</span> <span class="o">=</span> <span class="s2">&quot;Responders increase more&quot;</span> <span class="k">if</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;beta_DiD&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;Non-responders increase more&quot;</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;feature&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">direction</span><span class="si">}</span><span class="s2"> (beta=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;beta_DiD&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, FDR=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;FDR_DiD&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;feature&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">direction</span><span class="si">}</span><span class="s2"> (beta=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;beta_DiD&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, FDR=</span><span class="si">{</span><span class="n">_fmt_fdr</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;FDR_DiD&#39;</span><span class="p">])</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">No signatures showed significant differential change (FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
 <span class="k">else</span><span class="p">:</span>
@@ -1949,7 +1962,12 @@ Significant DiD effects (FDR &lt; 0.25):
 </ul>
 <section id="Effect-Sizes-with-Confidence-Intervals">
 <h3>Effect Sizes with Confidence Intervals<a class="headerlink" href="#Effect-Sizes-with-Confidence-Intervals" title="Link to this heading"></a></h3>
-<p>Effect sizes (Cohen’s d, Hedge’s g) provide standardized measures of treatment effects that are independent of sample size and complement p-values.</p>
+<p>Effect sizes (Cohen’s d, Hedge’s g) provide standardized measures of the DiD contrast.</p>
+<p><strong>Two effect-size scales appear in this notebook:</strong></p>
+<ul class="simple">
+<li><p><strong>Delta-based</strong> (this section): <code class="docutils literal notranslate"><span class="pre">cohens_d_from_did</span></code> and <code class="docutils literal notranslate"><span class="pre">hedges_g</span></code> are computed from the pooled SD of participant-level change scores. These are the standard effect sizes.</p></li>
+<li><p><strong>Regression-based</strong> (<code class="docutils literal notranslate"><span class="pre">add_effect_sizes_to_did</span></code>, Section 7): divides <code class="docutils literal notranslate"><span class="pre">beta_DiD</span></code> by the OLS residual SD. Because participant fixed effects absorb much variance, the residual SD is small, making the regression-based effect size <em>not directly comparable</em> to the delta-based Hedge’s g. The delta-based values are preferred for interpretation and E-value.</p></li>
+</ul>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
 </pre></div>
@@ -2298,6 +2316,7 @@ is already accounted for. Cell counts help reduce within-participant noise.
 <li><p>Estimation of intraclass correlation (ICC)</p></li>
 <li><p>Better handling of unbalanced designs</p></li>
 </ul>
+<p><strong>Caveat — asymptotic p-values</strong>: <code class="docutils literal notranslate"><span class="pre">statsmodels</span></code> MixedLM uses Wald z-tests with asymptotic standard errors. Small-sample corrections (Kenward–Roger, Satterthwaite) are not available in this implementation. With n=10 participants, p-values may be anti-conservative (too small). Treat mixed-effects p-values as supportive of the permutation-based inference, not as standalone confirmatory evidence.</p>
 <p><strong>Note on sign discrepancy</strong>: The fixed and mixed effects models may show opposite signs for <code class="docutils literal notranslate"><span class="pre">beta_DiD</span></code> due to different parameterizations of the interaction term. The fixed effects model uses participant dummies that absorb baseline differences, while the mixed model estimates participant effects as random. With very small samples (n=3 vs 7), the two approaches can diverge substantially — this is expected and is a limitation of the sample size, not a bug.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
@@ -2330,7 +2349,7 @@ is already accounted for. Cell counts help reduce within-participant noise.
             <span class="c1"># Highlight significant mixed effects results</span>
             <span class="n">sig_mixed</span> <span class="o">=</span> <span class="n">comparison</span><span class="p">[</span><span class="n">comparison</span><span class="p">[</span><span class="s2">&quot;p_mixed&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">FDR_ALPHA</span><span class="p">]</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">sig_mixed</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Significant mixed-effects DiD (p &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">):&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Notable mixed-effects DiD (p &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">, exploratory; Wald z, no small-sample correction):&quot;</span><span class="p">)</span>
                 <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">sig_mixed</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
                     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;feature&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: beta=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;beta_mixed&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, p=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;p_mixed&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">, ICC=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;icc&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
@@ -2444,7 +2463,7 @@ Mixed Effects DiD Results:
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 
-Significant mixed-effects DiD (p &lt; 0.25):
+Notable mixed-effects DiD (p &lt; 0.25, exploratory; Wald z, no small-sample correction):
   sig_Activation: beta=-2.005, p=0.0000, ICC=0.663
   sig_IFN_Response: beta=-1.408, p=0.0929, ICC=0.263
   sig_Memory: beta=-1.123, p=0.2186, ICC=0.000
@@ -2526,6 +2545,7 @@ Point Estimate Comparison (fixed vs mixed):
 <section id="Cross-Validation-for-Effect-Stability">
 <h3>Cross-Validation for Effect Stability<a class="headerlink" href="#Cross-Validation-for-Effect-Stability" title="Link to this heading"></a></h3>
 <p>Leave-one-out cross-validation (LOO-CV) helps assess the stability of DiD estimates and identify influential participants.</p>
+<p><strong>Note</strong>: We run LOO-CV on the lead DiD signal (the feature with the lowest permutation FDR) rather than a fixed index, so diagnostics target the primary finding.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
 </pre></div>
@@ -2538,7 +2558,11 @@ Point Estimate Comparison (fixed vs mixed):
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Running leave-one-out cross-validation on </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">VALID_PAIRED_ALL</span><span class="p">)</span><span class="si">}</span><span class="s2"> paired participants...&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;This assesses how stable DiD estimates are when each participant is removed.&quot;</span><span class="p">)</span>
 
-    <span class="n">test_feature</span> <span class="o">=</span> <span class="n">features_use</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="c1"># Use the lead DiD signal (lowest FDR) rather than features_use[0]</span>
+    <span class="k">if</span> <span class="s2">&quot;did_results&quot;</span> <span class="ow">in</span> <span class="nb">locals</span><span class="p">()</span> <span class="ow">and</span> <span class="n">did_results</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">did_results</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="n">test_feature</span> <span class="o">=</span> <span class="n">did_results</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s2">&quot;FDR_DiD&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;feature&quot;</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">test_feature</span> <span class="o">=</span> <span class="n">features_use</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Feature: </span><span class="si">{</span><span class="n">test_feature</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
     <span class="k">try</span><span class="p">:</span>
@@ -2630,13 +2654,47 @@ CROSS-VALIDATION: EFFECT STABILITY
 Running leave-one-out cross-validation on 10 paired participants...
 This assesses how stable DiD estimates are when each participant is removed.
 
-Feature: sig_Cytotoxicity
+Feature: sig_Activation
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:571: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:571: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:571: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:571: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:571: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:571: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:571: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:571: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:571: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:571: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
 
 LOO-CV Results:
-  Full sample beta_DiD: -0.4285
-  Mean LOO beta_DiD:    -0.4183
-  Std of LOO estimates: 0.2748
-  CV (coefficient of variation): 65.69%
+  Full sample beta_DiD: -2.0677
+  Mean LOO beta_DiD:    -2.0695
+  Std of LOO estimates: 0.1113
+  CV (coefficient of variation): 5.38%
 
 Influence Diagnostics (beta_full - beta_loo):
 </pre></div></div>
@@ -2672,151 +2730,151 @@ Influence Diagnostics (beta_full - beta_loo):
     <tr>
       <th>0</th>
       <td>P1</td>
-      <td>-0.3854</td>
-      <td>-0.0431</td>
+      <td>-1.6532</td>
+      <td>-0.4144</td>
     </tr>
     <tr>
       <th>1</th>
       <td>P2</td>
-      <td>-0.5432</td>
-      <td>0.1147</td>
+      <td>-2.0451</td>
+      <td>-0.0226</td>
     </tr>
     <tr>
       <th>2</th>
       <td>P3</td>
-      <td>-0.4605</td>
-      <td>0.0319</td>
+      <td>-2.1708</td>
+      <td>0.1031</td>
     </tr>
     <tr>
       <th>3</th>
       <td>P4</td>
-      <td>0.5289</td>
-      <td>-0.9575</td>
+      <td>-2.0788</td>
+      <td>0.0112</td>
     </tr>
     <tr>
       <th>4</th>
       <td>P6</td>
-      <td>0.0017</td>
-      <td>-0.4303</td>
+      <td>-1.9992</td>
+      <td>-0.0684</td>
     </tr>
     <tr>
       <th>5</th>
       <td>P7</td>
-      <td>-1.2078</td>
-      <td>0.7793</td>
+      <td>-2.3185</td>
+      <td>0.2509</td>
     </tr>
     <tr>
       <th>6</th>
       <td>P11</td>
-      <td>-0.4285</td>
-      <td>-0.0000</td>
+      <td>-2.0677</td>
+      <td>0.0000</td>
     </tr>
     <tr>
       <th>7</th>
       <td>P12</td>
-      <td>-0.4403</td>
-      <td>0.0118</td>
+      <td>-2.0737</td>
+      <td>0.0061</td>
     </tr>
     <tr>
       <th>8</th>
       <td>P13</td>
-      <td>-0.4285</td>
+      <td>-2.0677</td>
       <td>0.0000</td>
     </tr>
     <tr>
       <th>9</th>
       <td>P14</td>
-      <td>-0.4285</td>
+      <td>-2.0677</td>
       <td>0.0000</td>
     </tr>
     <tr>
       <th>10</th>
       <td>P15</td>
-      <td>-0.4487</td>
-      <td>0.0201</td>
+      <td>-2.1298</td>
+      <td>0.0621</td>
     </tr>
     <tr>
       <th>11</th>
       <td>P18</td>
-      <td>-0.4285</td>
-      <td>-0.0000</td>
+      <td>-2.0677</td>
+      <td>0.0000</td>
     </tr>
     <tr>
       <th>12</th>
       <td>P20</td>
-      <td>-0.3561</td>
-      <td>-0.0724</td>
+      <td>-1.9920</td>
+      <td>-0.0756</td>
     </tr>
     <tr>
       <th>13</th>
       <td>P21</td>
-      <td>-0.4285</td>
+      <td>-2.0677</td>
       <td>0.0000</td>
     </tr>
     <tr>
       <th>14</th>
       <td>P23</td>
-      <td>-0.4285</td>
+      <td>-2.0677</td>
       <td>0.0000</td>
     </tr>
     <tr>
       <th>15</th>
       <td>P24</td>
-      <td>-0.4285</td>
+      <td>-2.0677</td>
       <td>0.0000</td>
     </tr>
     <tr>
       <th>16</th>
       <td>P25</td>
-      <td>-0.4285</td>
+      <td>-2.0677</td>
       <td>0.0000</td>
     </tr>
     <tr>
       <th>17</th>
       <td>P26</td>
-      <td>-0.4285</td>
+      <td>-2.0677</td>
       <td>0.0000</td>
     </tr>
     <tr>
       <th>18</th>
       <td>P27</td>
-      <td>-0.4285</td>
+      <td>-2.0677</td>
       <td>0.0000</td>
     </tr>
     <tr>
       <th>19</th>
       <td>P28</td>
-      <td>-0.7188</td>
-      <td>0.2902</td>
+      <td>-2.2608</td>
+      <td>0.1932</td>
     </tr>
     <tr>
       <th>20</th>
       <td>P29</td>
-      <td>-0.4285</td>
+      <td>-2.0677</td>
       <td>0.0000</td>
     </tr>
     <tr>
       <th>21</th>
       <td>P30</td>
-      <td>-0.4285</td>
+      <td>-2.0677</td>
       <td>0.0000</td>
     </tr>
     <tr>
       <th>22</th>
       <td>P31</td>
-      <td>-0.4285</td>
+      <td>-2.0677</td>
       <td>0.0000</td>
     </tr>
     <tr>
       <th>23</th>
       <td>P33</td>
-      <td>-0.4285</td>
+      <td>-2.0677</td>
       <td>0.0000</td>
     </tr>
     <tr>
       <th>24</th>
       <td>P35</td>
-      <td>-0.4285</td>
+      <td>-2.0677</td>
       <td>0.0000</td>
     </tr>
   </tbody>
@@ -2829,16 +2887,16 @@ Influence Diagnostics (beta_full - beta_loo):
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 
-Highly influential participants (|influence| &gt; 2 SD = 0.539):
-  P4: removing decreases estimate by 0.957
-  P7: removing increases estimate by 0.779
+Highly influential participants (|influence| &gt; 2 SD = 0.218):
+  P1: removing decreases estimate by 0.414
+  P7: removing increases estimate by 0.251
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_immunotherapy_sade_feldman_35_3.png" src="../_images/examples_example_immunotherapy_sade_feldman_35_3.png" />
+<img alt="../_images/examples_example_immunotherapy_sade_feldman_35_5.png" src="../_images/examples_example_immunotherapy_sade_feldman_35_5.png" />
 </div>
 </div>
 </section>
@@ -3001,7 +3059,11 @@ DiDAnalyzer Results (augmented with permutation p-values and bootstrap SEs):
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">features_use</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">visits</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
-    <span class="n">feat</span> <span class="o">=</span> <span class="n">features_use</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="c1"># Use the lead DiD signal (lowest FDR) for diagnostics</span>
+    <span class="k">if</span> <span class="s2">&quot;did_results&quot;</span> <span class="ow">in</span> <span class="nb">locals</span><span class="p">()</span> <span class="ow">and</span> <span class="n">did_results</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">did_results</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="n">feat</span> <span class="o">=</span> <span class="n">did_results</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s2">&quot;FDR_DiD&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;feature&quot;</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">feat</span> <span class="o">=</span> <span class="n">features_use</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
     <span class="n">df</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
     <span class="n">df</span><span class="p">[</span><span class="n">feat</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">feat</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
     <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">visits</span><span class="p">)]</span>
@@ -3024,27 +3086,37 @@ DiDAnalyzer Results (augmented with permutation p-values and bootstrap SEs):
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-{&#39;bp_pvalue&#39;: 0.1116488510841677, &#39;jb_pvalue&#39;: 0.06168329354351301, &#39;resid_mean&#39;: -6.026924990822278e-17, &#39;resid_std&#39;: 0.11152634579204851}
+{&#39;bp_pvalue&#39;: 0.1116488510841677, &#39;jb_pvalue&#39;: 0.9679380796482168, &#39;resid_mean&#39;: -3.241454723682377e-17, &#39;resid_std&#39;: 0.030560006415365375}
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_78839/320937397.py:20: UserWarning: FigureCanvasAgg is non-interactive, and thus cannot be shown
+  fig.show()
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_immunotherapy_sade_feldman_39_1.png" src="../_images/examples_example_immunotherapy_sade_feldman_39_1.png" />
+<img alt="../_images/examples_example_immunotherapy_sade_feldman_39_2.png" src="../_images/examples_example_immunotherapy_sade_feldman_39_2.png" />
 </div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_example_immunotherapy_sade_feldman_39_2.png" src="../_images/examples_example_immunotherapy_sade_feldman_39_2.png" />
+<img alt="../_images/examples_example_immunotherapy_sade_feldman_39_3.png" src="../_images/examples_example_immunotherapy_sade_feldman_39_3.png" />
 </div>
 </div>
 </section>
 <section id="Treatment-Heterogeneity">
 <h3>Treatment Heterogeneity<a class="headerlink" href="#Treatment-Heterogeneity" title="Link to this heading"></a></h3>
 <p>Here we test whether the DiD effect differs by a baseline biomarker (median split at baseline).</p>
+<p><strong>Caveat</strong>: The biomarker is the baseline (Pre-treatment) mean of <code class="docutils literal notranslate"><span class="pre">features_use[0]</span></code>. Participants without a Pre-treatment observation will have NaN biomarker values, which are dropped during model fitting. With n=10 paired participants, even one missing value substantially reduces power. Interpret heterogeneity results cautiously.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
 </pre></div>
@@ -3071,7 +3143,7 @@ DiDAnalyzer Results (augmented with permutation p-values and bootstrap SEs):
     <span class="k">if</span> <span class="ow">not</span> <span class="n">sig_het</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Significant heterogeneity (FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">):&quot;</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">sig_het</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;feature&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: beta=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;beta_heterogeneity&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, FDR=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;FDR_heterogeneity&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;feature&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: beta=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;beta_heterogeneity&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, FDR=</span><span class="si">{</span><span class="n">_fmt_fdr</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;FDR_heterogeneity&#39;</span><span class="p">])</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">No significant treatment heterogeneity detected (FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">).&quot;</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;This is expected given the small sample size (n=10 paired).&quot;</span><span class="p">)</span>
@@ -3084,6 +3156,15 @@ DiDAnalyzer Results (augmented with permutation p-values and bootstrap SEs):
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 Biomarker: baseline sig_Cytotoxicity (median split)
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_78839/3047706628.py:9: UserWarning: biomarker_col &#39;biomarker_base&#39; contained non-numeric values that were coerced to NaN.
+  res_het = st.test_treatment_heterogeneity(
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -3179,18 +3260,28 @@ This is expected given the small sample size (n=10 paired).
 </section>
 <section id="Sensitivity-to-Unmeasured-Confounding-(E-value)">
 <h3>Sensitivity to Unmeasured Confounding (E-value)<a class="headerlink" href="#Sensitivity-to-Unmeasured-Confounding-(E-value)" title="Link to this heading"></a></h3>
-<p>The E-value measures how strong unmeasured confounding would need to be to explain away an observed association. We convert the standardized effect size (Hedge’s g) to an approximate risk ratio using the formula RR = exp(0.91 * g), which is valid for continuous outcomes.</p>
+<p>The E-value measures how strong unmeasured confounding would need to be to explain away an observed association. We convert the <strong>delta-based</strong> Hedge’s g (from the Effect Sizes section) to an approximate risk ratio using the formula RR = exp(0.91 * g), which is valid for continuous outcomes.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[22]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">did_results</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">did_results</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
-    <span class="c1"># Use the most significant feature</span>
-    <span class="n">row</span> <span class="o">=</span> <span class="n">did_results</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="c1"># Use delta-based Hedge&#39;s g (from Effect Size section) rather than</span>
+    <span class="c1"># regression-based effect_size, which uses a different denominator.</span>
+    <span class="n">lead_feature</span> <span class="o">=</span> <span class="n">did_results</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;feature&quot;</span><span class="p">]</span>
 
-    <span class="c1"># Convert effect size (Hedge&#39;s g from add_effect_sizes_to_did) to approximate RR</span>
-    <span class="c1"># via VanderWeele &amp; Ding (2017): RR ~ exp(0.91 * |d|) for continuous outcomes</span>
-    <span class="n">g_val</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;effect_size&quot;</span><span class="p">,</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;beta_DiD&quot;</span><span class="p">])))</span>
+    <span class="c1"># Look up delta-based Hedge&#39;s g if available</span>
+    <span class="k">if</span> <span class="s2">&quot;df_effect&quot;</span> <span class="ow">in</span> <span class="nb">locals</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">df_effect</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">df_effect</span><span class="p">[</span><span class="n">df_effect</span><span class="p">[</span><span class="s2">&quot;feature&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">lead_feature</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">match</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="n">g_val</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;hedges_g&quot;</span><span class="p">]))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">g_val</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">did_results</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;effect_size&quot;</span><span class="p">,</span> <span class="n">did_results</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;beta_DiD&quot;</span><span class="p">])))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">g_val</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">did_results</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;effect_size&quot;</span><span class="p">,</span> <span class="n">did_results</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;beta_DiD&quot;</span><span class="p">])))</span>
+
+    <span class="c1"># Convert to approximate RR via VanderWeele &amp; Ding (2017):</span>
+    <span class="c1"># RR ~ exp(0.91 * |d|) for continuous outcomes</span>
     <span class="n">rr</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="mf">0.91</span> <span class="o">*</span> <span class="n">g_val</span><span class="p">))</span>
 
     <span class="n">e_val</span><span class="p">,</span> <span class="n">e_ci</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">e_value_rr</span><span class="p">(</span><span class="n">rr</span><span class="p">)</span>
@@ -3212,19 +3303,20 @@ This is expected given the small sample size (n=10 paired).
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 Feature: sig_Activation
-  |Effect size| = 0.206
-  Approximate RR = exp(0.91 * 0.206) = 1.206
-  E-value = 1.705
+  |Effect size| = 2.564
+  Approximate RR = exp(0.91 * 2.564) = 10.307
+  E-value = 20.102
 
   Interpretation: An unmeasured confounder would need to be associated
-  with both treatment and outcome by a risk ratio of at least 1.71
+  with both treatment and outcome by a risk ratio of at least 20.10
   to explain away this observed effect.
 </pre></div></div>
 </div>
 </section>
 <section id="Bayesian-DiD-Forest-Plot">
 <h3>Bayesian DiD Forest Plot<a class="headerlink" href="#Bayesian-DiD-Forest-Plot" title="Link to this heading"></a></h3>
-<p>Here we visualize <strong>Bayesian DiD</strong> effect estimates (posterior means with 95% credible intervals). This differs from the earlier frequentist DiD tables, which report point estimates and p-values from fixed-effects or permutation-based inference. The Bayesian plot summarizes the posterior distribution for the treatment-time interaction, providing interval estimates that directly represent uncertainty.</p>
+<p>Here we visualize <strong>Bayesian DiD</strong> effect estimates (posterior means with 95% credible intervals). <strong>Interpreting the plot</strong>: Coefficients are on a <em>standardized</em> outcome scale (SD units) because <code class="docutils literal notranslate"><span class="pre">standardize=True</span></code> is used in the Bayesian fit. Intervals excluding zero indicate a directional posterior signal, but consult the <code class="docutils literal notranslate"><span class="pre">p_bayes</span></code> and <code class="docutils literal notranslate"><span class="pre">FDR_bayes</span></code> columns for multiplicity-adjusted evidence (e.g., a 95% CI excluding zero with FDR_bayes &gt; 0.05 is exploratory at best).</p>
+<p>This differs from the earlier frequentist DiD tables, which report point estimates and p-values from fixed-effects or permutation-based inference. The Bayesian plot summarizes the posterior distribution for the treatment-time interaction, providing interval estimates that directly represent uncertainty.</p>
 <p>If PyMC is not installed, we fall back to the <strong>frequentist DiD</strong> forest plot using permutation-based estimates and bootstrap 95% confidence intervals from Section 7.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[23]:
@@ -3314,52 +3406,52 @@ WARNING:pytensor.tensor.blas:Using NumPy C-API based implementation for BLAS fun
     <tr>
       <th>0</th>
       <td>sig_Activation</td>
-      <td>-1.308710</td>
-      <td>-2.204246</td>
-      <td>-0.240796</td>
-      <td>0.0205</td>
+      <td>-1.308934</td>
+      <td>-2.218745</td>
+      <td>-0.178968</td>
+      <td>0.0240</td>
       <td>10</td>
-      <td>0.102500</td>
+      <td>0.12000</td>
     </tr>
     <tr>
       <th>1</th>
       <td>sig_IFN_Response</td>
-      <td>-0.771057</td>
-      <td>-1.907278</td>
-      <td>0.443958</td>
-      <td>0.1765</td>
+      <td>-0.831203</td>
+      <td>-2.042766</td>
+      <td>0.395837</td>
+      <td>0.1760</td>
       <td>10</td>
-      <td>0.441250</td>
+      <td>0.44000</td>
     </tr>
     <tr>
       <th>2</th>
       <td>sig_Exhaustion</td>
-      <td>-0.405222</td>
-      <td>-1.399095</td>
-      <td>0.664935</td>
-      <td>0.4310</td>
+      <td>-0.376584</td>
+      <td>-1.371484</td>
+      <td>0.716734</td>
+      <td>0.4620</td>
       <td>10</td>
-      <td>0.718333</td>
+      <td>0.63125</td>
     </tr>
     <tr>
       <th>3</th>
       <td>sig_Memory</td>
-      <td>-0.245240</td>
-      <td>-1.456091</td>
-      <td>1.045764</td>
-      <td>0.6905</td>
+      <td>-0.428317</td>
+      <td>-1.683976</td>
+      <td>0.901422</td>
+      <td>0.5050</td>
       <td>10</td>
-      <td>0.743000</td>
+      <td>0.63125</td>
     </tr>
     <tr>
       <th>4</th>
       <td>sig_Cytotoxicity</td>
-      <td>-0.195848</td>
-      <td>-1.427325</td>
-      <td>0.999318</td>
-      <td>0.7430</td>
+      <td>-0.151005</td>
+      <td>-1.406070</td>
+      <td>1.138568</td>
+      <td>0.7955</td>
       <td>10</td>
-      <td>0.743000</td>
+      <td>0.79550</td>
     </tr>
   </tbody>
 </table>
@@ -3387,8 +3479,8 @@ If rhat &gt; 1.01 or ESS is low, increase draws/tune or consider stronger priors
     <span class="k">try</span><span class="p">:</span>
         <span class="n">df_forest</span> <span class="o">=</span> <span class="n">bayes_res</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s2">&quot;beta_DiD&quot;</span><span class="p">)</span>
         <span class="n">ci_lo</span><span class="p">,</span> <span class="n">ci_hi</span> <span class="o">=</span> <span class="n">df_forest</span><span class="p">[</span><span class="s2">&quot;ci_low&quot;</span><span class="p">],</span> <span class="n">df_forest</span><span class="p">[</span><span class="s2">&quot;ci_high&quot;</span><span class="p">]</span>
-        <span class="n">title</span> <span class="o">=</span> <span class="s2">&quot;Bayesian DiD Forest Plot (95% Credible Intervals)&quot;</span>
-        <span class="n">xlabel</span> <span class="o">=</span> <span class="s2">&quot;Posterior mean beta (DiD)&quot;</span>
+        <span class="n">title</span> <span class="o">=</span> <span class="s2">&quot;Bayesian DiD Forest Plot (95% Credible Intervals)</span><span class="se">\n</span><span class="s2">Note: β on standardized outcome scale; see p_bayes &amp; FDR_bayes columns for posterior direction probabilities&quot;</span>
+        <span class="n">xlabel</span> <span class="o">=</span> <span class="s2">&quot;Posterior mean β (DiD) [SD units]&quot;</span>
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Bayesian forest plot failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="n">has_bayes</span> <span class="o">=</span> <span class="kc">False</span>
@@ -3435,13 +3527,14 @@ If rhat &gt; 1.01 or ESS is low, increase draws/tune or consider stronger priors
 <ol class="arabic simple">
 <li><p><strong>Cross-sectional (Pre-treatment)</strong>: Non-responders showed significantly higher Cytotoxicity and lower Memory scores at baseline (FDR &lt; 0.05), consistent with the original Sade-Feldman paper’s finding that memory-like CD8 T cells predict response.</p></li>
 <li><p><strong>Within-arm changes</strong>: Non-responders showed a significant increase in Activation from Pre to Post (FDR = 0.078). Responder within-arm tests were uninformative due to n=3.</p></li>
-<li><p><strong>Difference-in-Differences</strong>: The Activation signature showed a significant differential trajectory (permutation FDR &lt; 0.05) — Non-responders increased more than Responders. Mixed effects models confirmed this finding (p &lt; 0.001 for Activation).</p></li>
-<li><p><strong>Effect sizes</strong>: Activation showed a large effect (Hedge’s g = -2.56), while other signatures had small to medium effects with wide confidence intervals.</p></li>
+<li><p><strong>Difference-in-Differences</strong>: The Activation signature showed a nominally significant differential trajectory (permutation FDR &lt; 0.05). However, with only 3 vs 7 paired participants, this result is exploratory and sensitive to individual participants (see LOO-CV diagnostics). Mixed effects models showed a consistent direction.</p></li>
+<li><p><strong>Effect sizes</strong>: Activation showed a large delta-based Hedge’s g, while other signatures had smaller effects with wide confidence intervals. Note that the regression-based effect size (<code class="docutils literal notranslate"><span class="pre">add_effect_sizes_to_did</span></code>) uses a different denominator (residual SD) and yields smaller values — see the Effect Sizes section for discussion.</p></li>
 </ol>
 </section>
 <section id="Limitations">
 <h3>Limitations<a class="headerlink" href="#Limitations" title="Link to this heading"></a></h3>
 <ul class="simple">
+<li><p><strong>Observational, not causal</strong>: Response status is a <em>post-treatment outcome</em>, not a randomized treatment. All DiD contrasts here are <em>associational</em> — confounders correlated with both response and immune dynamics cannot be ruled out.</p></li>
 <li><p><strong>Very small sample</strong>: Only 3 paired Responders vs 7 Non-responders. This study is severely underpowered for detecting medium effects (d = 0.5). Power analysis shows that detecting d = 0.5 at 80% power would require ~64 participants per arm.</p></li>
 <li><p><strong>Rank-deficient fixed effects</strong>: The OLS DiD model produces NaN standard errors with n=10 participants (20 observations, 12+ parameters). We addressed this with permutation p-values and bootstrap standard errors.</p></li>
 <li><p><strong>Exploratory FDR threshold</strong>: We used FDR &lt; 0.25 (exploratory). At the conventional FDR &lt; 0.05, only Activation remains significant.</p></li>
