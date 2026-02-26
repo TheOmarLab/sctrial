@@ -43,7 +43,7 @@ jobs:
     - name: Build documentation
       run: |
         pip install -e .[plots,gsea]
-        pip install sphinx sphinx_rtd_theme nbsphinx
+        pip install .[docs]
         cd docs && sphinx-build -b html -d build/doctrees source build/html
         touch build/html/.nojekyll
 
@@ -60,8 +60,8 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update && sudo apt-get install -y pandoc
-        pip install .[plots,gsea]
-        pip install sphinx sphinx_rtd_theme nbsphinx ipykernel
+        pip install .[plots,gsea,docs]
+        pip install ipykernel
         python -m ipykernel install --user --name python3
     - name: Build documentation
       run: |

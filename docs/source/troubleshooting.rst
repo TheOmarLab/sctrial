@@ -381,10 +381,9 @@ Getting Help
 
 If you're still stuck:
 
-1. **Check the examples**:
+1. **Check the tutorials**:
 
-   - Browse the :doc:`examples/index` for working code
-   - See :doc:`tutorials/basic_workflow` for step-by-step guides
+   - Browse the :doc:`tutorials/index` for end-to-end notebook walkthroughs
 
 2. **Search issues**: Check `GitHub Issues <https://github.com/TheOmarLab/sctrial/issues>`_
 

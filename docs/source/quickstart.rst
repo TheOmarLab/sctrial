@@ -120,6 +120,6 @@ Common add‑ons
 Next steps
 ----------
 
-- :doc:`tutorials/basic_workflow` for a full pipeline.
-- :doc:`tutorials/celltype_did_gsea` for cell‑type‑specific DiD + GSEA.
-- :doc:`tutorials/module_score_did_pipeline` for module‑score workflows.
+- :doc:`tutorials/example_vaccine_immport` — vaccine trial with paired longitudinal data.
+- :doc:`tutorials/example_immunotherapy_sade_feldman` — immunotherapy observational study.
+- :doc:`tutorials/example_covid19_stephenson` — COVID-19 cross-sectional severity comparison.

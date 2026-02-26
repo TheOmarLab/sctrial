@@ -5,7 +5,7 @@ __pycache__/
 
 # Distribution / packaging
 dist/
-build/
+/build/
 *.egg-info/
 .eggs/
 
@@ -29,14 +29,18 @@ ENV/
 *.gz
 *.txt.gz
 data/
-examples/data/
+tutorials/data/
 **/__pycache__/
 .DS_Store
 **/.DS_Store
 .vscode/
 .idea/
 .ruff_cache/
+**/.doctrees/
 docs/build/
+
+# Run scripts (local convenience only)
+run_nb*.sh
 
 # Jupyter notebook artifacts
 *.nbconvert.ipynb
