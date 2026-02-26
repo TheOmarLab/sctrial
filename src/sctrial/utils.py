@@ -116,7 +116,7 @@ def wild_cluster_bootstrap_t(
     probability), re-fits the full model via OLS (or WLS when the
     original fit used weights) with **per-iteration cluster-robust SE**,
     and forms a bootstrap t-statistic.  The two-sided p-value is the
-    fraction of bootstrap |t*| values that exceed the observed |t|.
+    fraction of bootstrap \|t*\| values that exceed the observed \|t\|.
 
     Reference:
     Cameron, A.C., Gelbach, J.B., & Miller, D.L. (2008).
