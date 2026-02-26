@@ -1,7 +1,7 @@
 <p align="center">
-  <h1 align="center">sctrial</h1>
-  <p align="center"><strong>Trial-Aware Statistical Inference for Single-Cell Data</strong></p>
+  <img src="docs/source/_static/logo.svg" alt="sctrial" width="280">
 </p>
+<p align="center"><strong>Trial-Aware Statistical Inference for Single-Cell Data</strong></p>
 
 <p align="center">
   <a href="https://github.com/TheOmarLab/sctrial/actions/workflows/test.yml">

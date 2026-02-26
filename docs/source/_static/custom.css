@@ -1,0 +1,153 @@
+/* sctrial docs – custom styles */
+
+/* ── Hero section ─────────────────────────────────────────────────────── */
+
+.hero-section {
+  text-align: center;
+  padding: 3rem 1.5rem 2.5rem;
+  margin-bottom: 2rem;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #f0f4ff 100%);
+  border-radius: 12px;
+}
+
+html[data-theme="dark"] .hero-section {
+  background: linear-gradient(135deg, #0c1929 0%, #0a1628 50%, #0e1a2e 100%);
+}
+
+.hero-section h1 {
+  font-size: 3rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #0077B6, #023E8A);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 0.5rem;
+}
+
+html[data-theme="dark"] .hero-section h1 {
+  background: linear-gradient(135deg, #48CAE4, #90E0EF);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+.hero-tagline {
+  font-size: 1.25rem;
+  color: #334155;
+  margin-bottom: 1.25rem;
+  font-weight: 400;
+}
+
+html[data-theme="dark"] .hero-tagline {
+  color: #94a3b8;
+}
+
+.hero-badges {
+  margin-bottom: 1.5rem;
+}
+
+.hero-badges img {
+  margin: 0 3px;
+}
+
+.hero-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn-hero-primary,
+.btn-hero-secondary {
+  display: inline-block;
+  padding: 0.65rem 1.75rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1rem;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.btn-hero-primary {
+  background: linear-gradient(135deg, #0077B6, #023E8A);
+  color: #ffffff !important;
+}
+
+.btn-hero-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 119, 182, 0.35);
+  text-decoration: none;
+  color: #ffffff !important;
+}
+
+.btn-hero-secondary {
+  background: #ffffff;
+  color: #023E8A !important;
+  border: 2px solid #0077B6;
+}
+
+html[data-theme="dark"] .btn-hero-secondary {
+  background: transparent;
+  color: #48CAE4 !important;
+  border-color: #48CAE4;
+}
+
+.btn-hero-secondary:hover {
+  background: #0077B6;
+  color: #ffffff !important;
+  text-decoration: none;
+}
+
+/* ── Feature cards ────────────────────────────────────────────────────── */
+
+.sd-card {
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 10px !important;
+  transition: all 0.2s ease;
+}
+
+html[data-theme="dark"] .sd-card {
+  border-color: #334155 !important;
+}
+
+.sd-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 119, 182, 0.12);
+  border-color: #0077B6 !important;
+}
+
+html[data-theme="dark"] .sd-card:hover {
+  box-shadow: 0 6px 20px rgba(72, 202, 228, 0.12);
+  border-color: #48CAE4 !important;
+}
+
+.sd-card .sd-card-title {
+  font-weight: 700;
+  color: #023E8A;
+}
+
+html[data-theme="dark"] .sd-card .sd-card-title {
+  color: #48CAE4;
+}
+
+/* ── Copy button refinements ──────────────────────────────────────────── */
+
+.copybtn {
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+div.highlight:hover .copybtn {
+  opacity: 0.7;
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .hero-section h1 {
+    font-size: 2rem;
+  }
+
+  .hero-tagline {
+    font-size: 1rem;
+  }
+}
