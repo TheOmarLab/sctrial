@@ -6,7 +6,7 @@ heterogeneous study designs and disease contexts.
 
 Layout
 ------
-Top row : A (COVID-19 cross-sectional), B (Vaccine paired), C (AML)
+Top row : A (COVID-19 cross-sectional), B (Vaccine paired), C (AML within-arm)
 Bottom row : D (CAR-T), E (Melanoma DiD), F (Cross-dataset effect-size heatmap)
 """
 
@@ -187,8 +187,17 @@ def _prepare_data() -> dict[str, Any]:
 
         # Pick a DFO bin where both Mild & Severe have patients
         target_visit = "DFO_8-14"
-        if target_visit not in adata_covid.obs["dfo_bin"].unique():
-            target_visit = adata_covid.obs["dfo_bin"].unique()[0]
+        available_bins = adata_covid.obs["dfo_bin"].unique()
+        if target_visit not in available_bins:
+            # Fallback: pick the first bin that has both severity groups
+            for _bin in available_bins:
+                _sub = adata_covid[adata_covid.obs["dfo_bin"] == _bin]
+                if set(_sub.obs["severity"].unique()) >= {"Mild", "Severe"}:
+                    target_visit = _bin
+                    break
+            else:
+                # Last resort: pick any bin (will likely fail downstream)
+                target_visit = available_bins[0]
 
         ad_visit = adata_covid[adata_covid.obs["dfo_bin"] == target_visit].copy()
 
@@ -292,11 +301,18 @@ def _prepare_data() -> dict[str, Any]:
                 visits=("Pre", "Post"),
                 layer=None,
                 standardize=True,
+                use_bootstrap=True,
             )
             res_vax["label"] = res_vax["feature"].apply(sig_display)
-            # Use SE/CI columns returned by within_arm_comparison
-            res_vax["ci_lo"] = res_vax["ci_lo_time"]
-            res_vax["ci_hi"] = res_vax["ci_hi_time"]
+            # Prefer bootstrap CIs, fall back to analytical per-row
+            if "ci_lo_boot" in res_vax.columns:
+                res_vax["ci_lo"] = res_vax["ci_lo_boot"].fillna(
+                    res_vax["ci_lo_time"])
+                res_vax["ci_hi"] = res_vax["ci_hi_boot"].fillna(
+                    res_vax["ci_hi_time"])
+            else:
+                res_vax["ci_lo"] = res_vax["ci_lo_time"]
+                res_vax["ci_hi"] = res_vax["ci_hi_time"]
             data["vax_effects"] = res_vax
         except Exception as exc_inner:
             # Fallback: manual paired computation
@@ -353,11 +369,17 @@ def _prepare_data() -> dict[str, Any]:
         data["vax_effects"] = None
 
     # ── Panels C & D: AML and CAR-T ──────────────────────────────────────
+    # Both use within-arm (Treatment only) Pre→Post comparisons.
+    # AML has two nominal arms but Control has no Post timepoint
+    # (healthy BM donors at baseline only), so a DiD interaction is
+    # degenerate (beta_DiD == beta_time).  We therefore analyse the
+    # Treatment arm longitudinally, matching CAR-T's single-arm design.
+    _TREATED_ARM = {"aml": "Treatment", "cart": None}  # None → auto-detect
     for tag, name, panel_label in [("aml", "aml", "C"), ("cart", "cart", "D")]:
         try:
             print(f"  [{panel_label}] Loading {name.upper()} ...")
             adata_clin = load_clinical_trial_dataset(name)
-            adata_clin, sig_cols_clin = score_clinical_signatures(adata_clin)
+            adata_clin, sig_cols_clin = score_signatures(adata_clin)
 
             # Harmonise column names
             pid_col = (
@@ -388,73 +410,48 @@ def _prepare_data() -> dict[str, Any]:
                 visits_sorted = sorted(visits_avail, key=_sort_key)
                 pre_v, post_v = visits_sorted[0], visits_sorted[-1]
 
-            # Detect whether this is a two-arm or single-arm dataset
+            # Identify the treated arm for within-arm analysis
             arm_col = "response" if "response" in adata_clin.obs.columns else "arm"
             arm_values = list(adata_clin.obs[arm_col].dropna().unique())
-            is_two_arm = len(arm_values) >= 2
+            treated_arm = _TREATED_ARM.get(tag)
+            if treated_arm is None:
+                treated_arm = arm_values[0]
 
-            if is_two_arm:
-                # Two-arm design (e.g. AML: Treatment vs Control) → use did_table
-                # Explicit arm mapping to avoid order-dependent sign flips
-                _KNOWN_TREATED = {"Treatment", "Treated", "Responder"}
-                _KNOWN_CONTROL = {"Control", "Untreated", "Non-responder"}
-                treated = next(
-                    (v for v in arm_values if v in _KNOWN_TREATED),
-                    arm_values[0],
-                )
-                control = next(
-                    (v for v in arm_values if v in _KNOWN_CONTROL),
-                    arm_values[1],
-                )
-                clin_design = TrialDesign(
-                    participant_col=pid_col,
-                    visit_col=visit_col,
-                    arm_col=arm_col,
-                    arm_treated=treated,
-                    arm_control=control,
-                )
-                res_clin = did_table(
-                    adata_clin,
-                    features=sig_cols_clin,
-                    design=clin_design,
-                    visits=(pre_v, post_v),
-                    layer=None,
-                    standardize=True,
-                    aggregate="participant_visit",
-                )
-                res_clin["label"] = res_clin["feature"].apply(sig_display)
-                # Compute CIs from SE
-                res_clin["ci_lo"] = res_clin["beta_DiD"] - 1.96 * res_clin["se_DiD"]
-                res_clin["ci_hi"] = res_clin["beta_DiD"] + 1.96 * res_clin["se_DiD"]
-                data[f"{tag}_effects"] = res_clin
+            # Within-arm (treated only) Pre→Post comparison
+            if "arm" not in adata_clin.obs.columns:
+                adata_clin.obs["arm"] = adata_clin.obs[arm_col]
+            clin_design = TrialDesign(
+                participant_col=pid_col,
+                visit_col=visit_col,
+                arm_col="arm" if arm_col != "arm" else arm_col,
+                arm_treated=treated_arm,
+                arm_control=treated_arm,  # single-arm
+            )
+            res_clin = within_arm_comparison(
+                adata_clin,
+                arm=treated_arm,
+                features=sig_cols_clin,
+                design=clin_design,
+                visits=(pre_v, post_v),
+                layer=None,
+                standardize=True,
+                use_bootstrap=True,
+            )
+            res_clin["label"] = res_clin["feature"].apply(sig_display)
+            # Prefer bootstrap CIs, fall back to analytical per-row
+            if "ci_lo_boot" in res_clin.columns:
+                res_clin["ci_lo"] = res_clin["ci_lo_boot"].fillna(
+                    res_clin["ci_lo_time"])
+                res_clin["ci_hi"] = res_clin["ci_hi_boot"].fillna(
+                    res_clin["ci_hi_time"])
             else:
-                # Single-arm design (e.g. CAR-T) → use within_arm_comparison
-                if "arm" not in adata_clin.obs.columns:
-                    adata_clin.obs["arm"] = arm_values[0]
-                clin_design = TrialDesign(
-                    participant_col=pid_col,
-                    visit_col=visit_col,
-                    arm_col="arm" if "arm" in adata_clin.obs.columns else arm_col,
-                    arm_treated=arm_values[0],
-                    arm_control=arm_values[0],
-                )
-                res_clin = within_arm_comparison(
-                    adata_clin,
-                    arm=arm_values[0],
-                    features=sig_cols_clin,
-                    design=clin_design,
-                    visits=(pre_v, post_v),
-                    layer=None,
-                    standardize=True,
-                )
-                res_clin["label"] = res_clin["feature"].apply(sig_display)
-                # Use SE/CI columns returned by within_arm_comparison
                 res_clin["ci_lo"] = res_clin["ci_lo_time"]
                 res_clin["ci_hi"] = res_clin["ci_hi_time"]
-                data[f"{tag}_effects"] = res_clin
+            data[f"{tag}_effects"] = res_clin
 
             print(f"       {adata_clin.n_obs:,} cells, "
-                  f"{adata_clin.obs[pid_col].nunique()} participants")
+                  f"{adata_clin.obs[pid_col].nunique()} participants "
+                  f"(analysing '{treated_arm}' arm)")
         except Exception as exc:
             print(f"  [{panel_label}] {name.upper()} error: {exc}")
             import traceback; traceback.print_exc()
@@ -527,10 +524,12 @@ def _build_heatmap_data(
 ) -> tuple[pd.DataFrame | None, pd.DataFrame | None]:
     """Compile standardised effect sizes across datasets.
 
-    COVID-19 uses Hedges' g; Vaccine/CAR-T use within-arm β (standardised);
-    AML/Melanoma use DiD β (standardised).  All are on a roughly comparable
-    standardised scale but derive from different estimators — the panel
-    footnote communicates this.
+    COVID-19 uses Hedges' g; Vaccine/AML/CAR-T use within-arm β
+    (standardised); Melanoma uses DiD β (standardised).  AML is
+    analysed within-arm (Treatment only) because the Control arm
+    lacks Post timepoint data, making DiD degenerate.  All metrics
+    are on a roughly comparable standardised scale — the panel
+    footnote communicates the estimator differences.
     """
 
     records: list[dict[str, Any]] = []
@@ -559,18 +558,29 @@ def _build_heatmap_data(
                     "p": row.get("FDR_time", row.get("p_time", np.nan)),
                 })
 
-    # AML / Melanoma: DiD beta
-    for tag, ds_name in [("aml", "AML"), ("mel", "Melanoma")]:
-        df = data.get(f"{tag}_effects")
-        if df is not None and len(df):
-            for _, row in df.iterrows():
-                lbl = row.get("label", sig_display(row["feature"]))
-                records.append({
-                    "dataset": ds_name,
-                    "signature": lbl,
-                    "effect": row.get("beta_DiD", np.nan),
-                    "p": row.get("FDR_DiD", row.get("p_DiD", np.nan)),
-                })
+    # AML: within-arm beta_time (no valid Control-Post for DiD)
+    df = data.get("aml_effects")
+    if df is not None and len(df):
+        for _, row in df.iterrows():
+            lbl = row.get("label", sig_display(row["feature"]))
+            records.append({
+                "dataset": "AML",
+                "signature": lbl,
+                "effect": row["beta_time"],
+                "p": row.get("FDR_time", row.get("p_time", np.nan)),
+            })
+
+    # Melanoma: DiD beta (true two-arm: Responder vs Non-responder)
+    df = data.get("mel_effects")
+    if df is not None and len(df):
+        for _, row in df.iterrows():
+            lbl = row.get("label", sig_display(row["feature"]))
+            records.append({
+                "dataset": "Melanoma",
+                "signature": lbl,
+                "effect": row.get("beta_DiD", np.nan),
+                "p": row.get("FDR_DiD", row.get("p_DiD", np.nan)),
+            })
 
     if not records:
         return None, None
@@ -654,7 +664,7 @@ def panel_b_vaccine(ax, data: dict[str, Any]) -> None:
 
 
 def panel_c_aml(ax, data: dict[str, Any]) -> None:
-    """Panel C: AML clinical dataset (two-arm DiD)."""
+    """Panel C: AML clinical dataset (within-arm Pre→Post)."""
     ax.set_title("AML (GSE116256)", fontsize=10, loc="left", pad=8)
     ax.text(-0.12, 1.05, "C", transform=ax.transAxes, fontsize=14,
             fontweight="bold", va="bottom")
@@ -668,15 +678,15 @@ def panel_c_aml(ax, data: dict[str, Any]) -> None:
 
     _forest_plot(
         ax, df,
-        effect_col="beta_DiD",
+        effect_col="beta_time",
         ci_lo_col="ci_lo",
         ci_hi_col="ci_hi",
         label_col="label",
-        xlabel="DiD effect (Treatment vs Control)",
+        xlabel="Standardised $\\Delta$ (Post $-$ Pre)",
         color_pos=COLORS["treated"],
         color_neg=COLORS["control"],
-        legend_pos_label="Treatment $\\uparrow$",
-        legend_neg_label="Control $\\uparrow$",
+        legend_pos_label="Post $\\uparrow$",
+        legend_neg_label="Pre $\\uparrow$",
     )
 
 
@@ -789,7 +799,7 @@ def panel_f_heatmap(ax, data: dict[str, Any]) -> None:
     # Footnote: metrics differ across datasets
     ax.text(
         0.5, -0.32,
-        "Hedges' g (COVID-19); within-arm β (Vaccine, CAR-T); DiD β (AML, Melanoma)",
+        "Hedges' g (COVID-19); within-arm β (Vaccine, AML, CAR-T); DiD β (Melanoma)",
         transform=ax.transAxes, fontsize=6, ha="center", va="top",
         fontstyle="italic", color="0.4",
     )
