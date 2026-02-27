@@ -261,7 +261,8 @@ def _panel_c(ax, data: dict) -> None:
         if obs_row.empty:
             continue
         obs_beta = obs_row["beta_DiD"].values[0]
-        perm_p = (np.abs(null_betas) >= np.abs(obs_beta)).mean()
+        # Finite-sample correction (Phipson & Smyth 2010)
+        perm_p = (np.sum(np.abs(null_betas) >= np.abs(obs_beta)) + 1) / (len(null_betas) + 1)
         perm_pvals[feat] = perm_p
 
     if not perm_pvals:
@@ -327,7 +328,8 @@ def _panel_d(ax, data: dict) -> None:
         if len(null_betas) < 10:
             continue
         lo, hi = np.percentile(null_betas, [2.5, 97.5])
-        perm_p = (np.abs(null_betas) >= np.abs(obs_beta)).mean()
+        # Finite-sample correction (Phipson & Smyth 2010)
+        perm_p = (np.sum(np.abs(null_betas) >= np.abs(obs_beta)) + 1) / (len(null_betas) + 1)
         records.append({
             "feature": feat,
             "display": sig_display(feat),
