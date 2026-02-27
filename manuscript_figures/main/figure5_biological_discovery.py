@@ -3,24 +3,27 @@ Figure 5 -- Biological Discovery
 =================================
 
 Four-panel figure (2x2) combining GSEA pathway enrichment, leading-edge
-gene analysis, cell-type abundance changes, and gene-level volcano plots.
+gene analysis, signature-level DiD effects, and gene-level volcano plots.
 
 Panels
 ------
-A  GSEA enrichment heatmap (Hallmark pathways).
-B  Leading-edge gene overlap / top-pathway summary.
-C  Cell-type abundance changes (Responders vs Non-responders, Pre vs Post).
-D  Gene-level volcano plot from within-arm CAR-T analysis.
+A  GSEA enrichment bar chart (Hallmark pathways, balanced up/down selection).
+B  Leading-edge gene overlap heatmap across top enriched pathways.
+C  Signature DiD effects with bootstrap CIs (forest plot).
+D  Gene-level volcano plot (Sade-Feldman DiD, protein-coding gene labels).
 """
 
 from __future__ import annotations
 
 import gc
+import re
+import traceback
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
 import pandas as pd
+import seaborn as sns
 
 from .._shared import *  # noqa: F401,F403
 
@@ -28,15 +31,42 @@ from .._shared import *  # noqa: F401,F403
 FIGURE_NAME = "Figure5_biological_discovery"
 FIGSIZE = (18, 14)
 
+# Pseudogene / non-coding RNA patterns to deprioritize in volcano labels
+_NONCODING_PATTERN = re.compile(
+    r"^(RNU\d|RNA5SP|RNY\d|RN7SL|SNOR[AD]|MIR\d|LINC\d|LOC\d|"
+    r"AC\d{6}|AL\d{6}|AP\d{6}|"
+    r"RP\d+-|RP[SL]\d+P|CT[ABCD]-|XXbac-|KB-|LA16c-|GS\d-|"
+    r"HIGD1AP|MTCO\d|RMVSL|BCRP|NAMA$|SLMO|"
+    r"IGH[VDJGM]|IGK[VJC]|IGL[VJC]|"  # Ig variable/joining/constant regions
+    r"TRB[VDJ]|TRA[VDJ]|TRG[VDJ]|TRD[VDJ]|"  # TCR regions
+    r"OR\d+[A-Z])",  # olfactory receptors
+    re.IGNORECASE,
+)
+# Suffix patterns for processed pseudogenes (e.g. PRPS1P1, RPS2P1, HCG17)
+_PSEUDOGENE_SUFFIX = re.compile(r"P\d+$", re.IGNORECASE)
+
+
+def _is_likely_protein_coding(gene: str) -> bool:
+    """Heuristic: return True if gene name looks protein-coding."""
+    if _NONCODING_PATTERN.match(gene) is not None:
+        return False
+    # Catch processed pseudogenes ending with P + digits (e.g., PRPS1P1, RPS2P1)
+    # but exclude genuine genes like TP53, APC, etc. (short suffix, common genes)
+    if _PSEUDOGENE_SUFFIX.search(gene) and len(gene) > 4:
+        # Only flag if the P-digit suffix is preceded by another digit
+        # (e.g., PRPS1P1 → "1P1", but not APC → no match)
+        base = _PSEUDOGENE_SUFFIX.sub("", gene)
+        if base and base[-1].isdigit():
+            return False
+    return True
+
 
 # ======================================================================
 # Data preparation
 # ======================================================================
 
 def _prepare_data() -> dict:
-    """Load datasets, run DiD, GSEA, within-arm gene analysis, and compute
-    cell-type proportions.
-    """
+    """Load datasets, run DiD, GSEA, and gene-level analysis."""
     # ------------------------------------------------------------------
     # 1. Sade-Feldman: signature-level DiD + GSEA
     # ------------------------------------------------------------------
@@ -57,7 +87,7 @@ def _prepare_data() -> dict:
     )
     visits = ("Pre", "Post")
 
-    # Signature-level DiD
+    # Signature-level DiD with bootstrap for small-sample CIs
     did_sig = did_table(
         adata,
         features=sig_cols,
@@ -66,48 +96,54 @@ def _prepare_data() -> dict:
         layer="log1p_tpm",
         standardize=True,
         aggregate="participant_visit",
+        use_bootstrap=True,
+        n_boot=999,
+        seed=42,
     )
 
-    # GSEA on Hallmark gene sets
+    # GSEA on multiple gene-set libraries for comprehensive pathway analysis
+    gsea_libraries = [
+        "MSigDB_Hallmark_2020",
+        "KEGG_2021_Human",
+        "Reactome_2022",
+        "GO_Biological_Process_2023",
+    ]
     gsea_results = None
-    try:
-        gsea_results = run_gsea_did(
-            adata,
-            gene_sets="MSigDB_Hallmark_2020",
-            design=design,
-            visits=visits,
-            layer="log1p_tpm",
-            min_size=10,
-            max_size=500,
-            permutation_num=1000,
-            outdir=None,
-            no_plot=True,
-        )
-        if isinstance(gsea_results, pd.DataFrame) and len(gsea_results) > 0:
-            print(f"  GSEA: {len(gsea_results)} pathways tested")
-        else:
-            gsea_results = None
-    except Exception as exc:
-        print(f"  GSEA unavailable: {exc}")
+    gsea_all = {}  # per-library results for Panel B
+    for lib in gsea_libraries:
+        try:
+            res = run_gsea_did(
+                adata,
+                gene_sets=lib,
+                design=design,
+                visits=visits,
+                layer="log1p_tpm",
+                min_size=10,
+                max_size=500,
+                permutation_num=1000,
+                outdir=None,
+                no_plot=True,
+            )
+            if isinstance(res, pd.DataFrame) and len(res) > 0:
+                res["library"] = lib
+                gsea_all[lib] = res
+                print(f"  GSEA {lib}: {len(res)} pathways tested")
+        except Exception as exc:
+            print(f"  GSEA {lib} unavailable: {exc}")
+
+    if gsea_all:
+        gsea_results = pd.concat(gsea_all.values(), ignore_index=True)
+        print(f"  GSEA total: {len(gsea_results)} pathways across {len(gsea_all)} libraries")
+    else:
         gsea_results = None
 
     # ------------------------------------------------------------------
-    # 2. DiD signature ranking for panel C (dot-plot style)
-    # ------------------------------------------------------------------
-    # (Cell-type proportions are not informative for Sade-Feldman
-    #  since all cells are annotated as "Immune" without subtypes.
-    #  We use the DiD results as a ranked effect-size dot plot instead.)
-    ct_props = None
-    celltype_col = None
-
-    # ------------------------------------------------------------------
-    # 3. Sade-Feldman gene-level DiD (top variable genes)
+    # 2. Sade-Feldman gene-level DiD (top variable genes)
     # ------------------------------------------------------------------
     gene_results = None
     try:
         import scanpy as sc
 
-        # Select top variable genes from Sade-Feldman
         adata_genes = adata.copy()
         sc.pp.highly_variable_genes(
             adata_genes, n_top_genes=2000, layer="log1p_tpm", flavor="seurat",
@@ -127,18 +163,7 @@ def _prepare_data() -> dict:
             aggregate="participant_visit",
         )
 
-        # Normalize column names for panel_D
-        rename_map = {}
-        if "beta_DiD" not in gene_results.columns and "beta_time" in gene_results.columns:
-            rename_map["beta_time"] = "beta_DiD"
-        if "FDR_DiD" in gene_results.columns:
-            rename_map["FDR_DiD"] = "fdr"
-        if "p_DiD" in gene_results.columns:
-            rename_map["p_DiD"] = "p_value"
-        if rename_map:
-            gene_results = gene_results.rename(columns=rename_map)
-
-        n_sig = (gene_results["fdr"] < 0.1).sum() if "fdr" in gene_results.columns else 0
+        n_sig = (gene_results["FDR_DiD"] < 0.1).sum()
         print(f"  Gene-level results: {len(gene_results)} genes, {n_sig} FDR<0.1")
 
         del adata_genes
@@ -146,7 +171,7 @@ def _prepare_data() -> dict:
 
     except Exception as exc:
         print(f"  Gene-level analysis unavailable: {exc}")
-        import traceback; traceback.print_exc()
+        traceback.print_exc()
         gene_results = None
 
     return dict(
@@ -156,122 +181,186 @@ def _prepare_data() -> dict:
         visits=visits,
         did_sig=did_sig,
         gsea_results=gsea_results,
-        ct_props=ct_props,
-        celltype_col=celltype_col,
         gene_results=gene_results,
     )
 
 
 # ======================================================================
-# Panel A -- GSEA Enrichment Heatmap
+# GSEA column detection helper
+# ======================================================================
+
+def _detect_gsea_columns(df: pd.DataFrame) -> dict:
+    """Detect NES, FDR, Term, Tag, and Lead_genes columns from GSEA output."""
+    cols = {"nes": None, "fdr": None, "term": None, "tag": None, "lead": None}
+
+    # Exact match pass
+    for c in df.columns:
+        cl = c.lower().strip()
+        if cl == "nes":
+            cols["nes"] = c
+        elif cl in ("fdr q-val", "fdr"):
+            cols["fdr"] = c
+        elif cl == "term":
+            cols["term"] = c
+        elif cl.startswith("tag"):
+            cols["tag"] = c
+        elif cl in ("lead_genes", "leading_edge"):
+            cols["lead"] = c
+
+    # Fuzzy fallback
+    if cols["nes"] is None:
+        for c in df.columns:
+            if c.lower() in ("nes", "normalized_enrichment_score"):
+                cols["nes"] = c
+                break
+    if cols["fdr"] is None:
+        for c in df.columns:
+            if "fdr" in c.lower():
+                cols["fdr"] = c
+                break
+    if cols["term"] is None:
+        for c in df.columns:
+            if c.lower() in ("name", "pathway"):
+                cols["term"] = c
+                break
+        if cols["term"] is None:
+            cols["term"] = df.columns[0]
+    if cols["lead"] is None:
+        for c in df.columns:
+            if "lead" in c.lower() and "gene" in c.lower():
+                cols["lead"] = c
+                break
+
+    return cols
+
+
+def _clean_pathway_name(s: str, max_len: int = 38) -> str:
+    """Clean pathway names for display."""
+    s = str(s).replace("_", " ").title()
+    return s[:max_len] + "…" if len(s) > max_len + 2 else s
+
+
+# ======================================================================
+# Panel A -- GSEA Enrichment Bar Chart
 # ======================================================================
 
 def panel_A(ax, data: dict):
-    """GSEA Hallmark pathway enrichment bar chart."""
+    """GSEA Hallmark pathway enrichment bar chart with balanced up/down."""
     gsea_results = data["gsea_results"]
 
     if gsea_results is None or len(gsea_results) == 0:
-        # Fallback: show signature DiD waterfall
         _panel_A_signature_waterfall(ax, data)
         return
 
     df = gsea_results.copy()
-
-    # Identify columns — exact match first, then fuzzy
-    nes_col = fdr_col = term_col = None
-    for c in df.columns:
-        cl = c.lower().strip()
-        if cl == "nes":
-            nes_col = c
-        elif cl == "fdr q-val" or cl == "fdr":
-            fdr_col = c
-        elif cl == "term":
-            term_col = c
-
-    # Fuzzy fallback (but avoid Lead_genes matching "nes")
-    if nes_col is None:
-        for c in df.columns:
-            if c.lower() in ("nes", "normalized_enrichment_score"):
-                nes_col = c
-                break
-    if fdr_col is None:
-        for c in df.columns:
-            if "fdr" in c.lower():
-                fdr_col = c
-                break
-    if term_col is None:
-        for c in df.columns:
-            cl = c.lower()
-            if cl == "name" or cl == "pathway":
-                term_col = c
-                break
-        if term_col is None:
-            term_col = df.columns[0]
+    cols = _detect_gsea_columns(df)
+    nes_col, fdr_col, term_col = cols["nes"], cols["fdr"], cols["term"]
 
     if nes_col is None:
         _panel_A_signature_waterfall(ax, data)
         return
 
-    # CRITICAL: convert NES to numeric (gseapy sometimes returns object dtype)
+    # Convert to numeric
     df[nes_col] = pd.to_numeric(df[nes_col], errors="coerce")
     if fdr_col is not None:
         df[fdr_col] = pd.to_numeric(df[fdr_col], errors="coerce")
-
     df = df.dropna(subset=[nes_col])
 
-    # Top 15 pathways by absolute NES
-    df["abs_nes"] = df[nes_col].abs()
-    df = df.sort_values("abs_nes", ascending=False).head(15)
-    df = df.sort_values(nes_col, ascending=True)
+    # Balanced selection: top N up + top N down by |NES|
+    n_show = 15
+    df_pos = df[df[nes_col] > 0].nlargest(n_show // 2 + 1, nes_col)
+    df_neg = df[df[nes_col] < 0].nsmallest(n_show - len(df_pos), nes_col)
+    # If one direction is sparse, fill from the other
+    if len(df_pos) + len(df_neg) < n_show:
+        remainder = n_show - len(df_pos) - len(df_neg)
+        already = set(df_pos.index) | set(df_neg.index)
+        extra = (
+            df[~df.index.isin(already)]
+            .assign(_abs=df[nes_col].abs())
+            .nlargest(remainder, "_abs")
+        )
+        df_selected = pd.concat([df_pos, df_neg, extra.drop(columns="_abs")])
+    else:
+        df_selected = pd.concat([df_pos, df_neg])
+    df_selected = df_selected.drop_duplicates().sort_values(nes_col, ascending=True)
 
     # Clean pathway names
-    df["pathway"] = (
-        df[term_col]
-        .str.replace("_", " ")
-        .str.title()
-        .apply(lambda s: s[:38] + "…" if len(str(s)) > 40 else s)
-    )
+    df_selected["pathway"] = df_selected[term_col].apply(_clean_pathway_name)
 
-    # Color by direction — strong, vivid colors for significant; muted for n.s.
+    # Color by direction and significance
     colors = []
-    for _, row in df.iterrows():
-        sig = fdr_col is not None and row[fdr_col] < 0.25
+    for _, row in df_selected.iterrows():
+        sig = fdr_col is not None and pd.notna(row.get(fdr_col)) and row[fdr_col] < 0.25
         if row[nes_col] > 0:
-            colors.append("#C0392B" if sig else "#E6B0AA")  # vivid red / muted red
+            colors.append("#C0392B" if sig else "#E6B0AA")
         else:
-            colors.append("#2471A3" if sig else "#AED6F1")  # vivid blue / muted blue
+            colors.append("#2471A3" if sig else "#AED6F1")
 
-    y_pos = np.arange(len(df))
-    ax.barh(y_pos, df[nes_col].values, color=colors, alpha=0.9,
+    y_pos = np.arange(len(df_selected))
+    ax.barh(y_pos, df_selected[nes_col].values, color=colors, alpha=0.9,
             edgecolor="white", linewidth=0.5, height=0.7)
 
-    # Significance stars
+    # Significance stars — position outside bar end
     if fdr_col is not None:
-        for i, (_, row) in enumerate(df.iterrows()):
+        for i, (_, row) in enumerate(df_selected.iterrows()):
             fdr_val = row[fdr_col]
             if pd.notna(fdr_val) and fdr_val < 0.25:
-                star = "***" if fdr_val < 0.001 else "**" if fdr_val < 0.01 else "*" if fdr_val < 0.05 else "†"
+                if fdr_val < 0.001:
+                    star = "***"
+                elif fdr_val < 0.01:
+                    star = "**"
+                elif fdr_val < 0.05:
+                    star = "*"
+                else:
+                    star = "†"
                 x_pos = row[nes_col]
-                ha = "left" if x_pos > 0 else "right"
-                offset = 0.05 if x_pos > 0 else -0.05
-                ax.text(x_pos + offset, i, star, ha=ha, va="center",
-                        fontsize=9, fontweight="bold", color="black")
+                # Place star on the side away from zero (outside the bar)
+                if x_pos > 0:
+                    ax.text(x_pos + 0.08, i, star, ha="left", va="center",
+                            fontsize=8, fontweight="bold", color="#333333")
+                else:
+                    ax.text(x_pos - 0.08, i, star, ha="right", va="center",
+                            fontsize=8, fontweight="bold", color="#333333")
 
     ax.axvline(0, color="black", lw=0.8)
     ax.set_yticks(y_pos)
-    ax.set_yticklabels(df["pathway"].values, fontsize=8)
+    ax.set_yticklabels(df_selected["pathway"].values, fontsize=8)
     ax.set_xlabel("Normalized Enrichment Score (NES)")
-    ax.set_title("GSEA Hallmark Pathway Enrichment", fontsize=11)
+    ax.set_title("GSEA Pathway Enrichment (Multi-Library)", fontsize=11)
 
-    # Legend
-    legend_handles = [
-        mpatches.Patch(color="#C0392B", alpha=0.9, label="Up (FDR < 0.25)"),
-        mpatches.Patch(color="#E6B0AA", alpha=0.9, label="Up (n.s.)"),
-        mpatches.Patch(color="#2471A3", alpha=0.9, label="Down (FDR < 0.25)"),
-        mpatches.Patch(color="#AED6F1", alpha=0.9, label="Down (n.s.)"),
-    ]
-    ax.legend(handles=legend_handles, fontsize=7, loc="lower right",
-              frameon=True, framealpha=0.9)
+    # Build legend only for categories present
+    def _is_sig(row):
+        return (fdr_col and pd.notna(row.get(fdr_col))
+                and row[fdr_col] < 0.25)
+
+    has_up_sig = any(
+        row[nes_col] > 0 and _is_sig(row)
+        for _, row in df_selected.iterrows()
+    )
+    has_up_ns = any(
+        row[nes_col] > 0 and not _is_sig(row)
+        for _, row in df_selected.iterrows()
+    )
+    has_down_sig = any(
+        row[nes_col] < 0 and _is_sig(row)
+        for _, row in df_selected.iterrows()
+    )
+    has_down_ns = any(
+        row[nes_col] < 0 and not _is_sig(row)
+        for _, row in df_selected.iterrows()
+    )
+    legend_handles = []
+    if has_up_sig:
+        legend_handles.append(mpatches.Patch(color="#C0392B", alpha=0.9, label="Up (FDR < 0.25)"))
+    if has_up_ns:
+        legend_handles.append(mpatches.Patch(color="#E6B0AA", alpha=0.9, label="Up (n.s.)"))
+    if has_down_sig:
+        legend_handles.append(mpatches.Patch(color="#2471A3", alpha=0.9, label="Down (FDR < 0.25)"))
+    if has_down_ns:
+        legend_handles.append(mpatches.Patch(color="#AED6F1", alpha=0.9, label="Down (n.s.)"))
+    if legend_handles:
+        ax.legend(handles=legend_handles, fontsize=7, loc="lower right",
+                  frameon=True, framealpha=0.9)
     despine(ax)
 
 
@@ -297,11 +386,11 @@ def _panel_A_signature_waterfall(ax, data: dict):
 
 
 # ======================================================================
-# Panel B -- Leading-edge / pathway summary
+# Panel B -- Leading-edge gene overlap heatmap
 # ======================================================================
 
 def panel_B(ax, data: dict):
-    """GSEA dot plot: top enriched pathways (up and down) with dot size by gene-set overlap."""
+    """Leading-edge gene overlap heatmap across top enriched pathways."""
     gsea_results = data["gsea_results"]
 
     if gsea_results is None or len(gsea_results) == 0:
@@ -309,105 +398,89 @@ def panel_B(ax, data: dict):
         return
 
     df = gsea_results.copy()
+    cols = _detect_gsea_columns(df)
+    nes_col, fdr_col, term_col, lead_col = (
+        cols["nes"], cols["fdr"], cols["term"], cols["lead"]
+    )
 
-    # Identify columns — exact match to avoid Lead_genes matching "nes"
-    nes_col = fdr_col = term_col = tag_col = None
-    for c in df.columns:
-        cl = c.lower().strip()
-        if cl == "nes":
-            nes_col = c
-        elif cl == "fdr q-val" or cl == "fdr":
-            fdr_col = c
-        elif cl == "term":
-            term_col = c
-        elif cl.startswith("tag"):
-            tag_col = c
-
-    # Fuzzy fallback
-    if nes_col is None:
-        for c in df.columns:
-            if c.lower() in ("nes", "normalized_enrichment_score"):
-                nes_col = c
-                break
-    if term_col is None:
-        for c in df.columns:
-            if c.lower() in ("name", "pathway"):
-                term_col = c
-                break
-
-    if nes_col is None or term_col is None:
+    if nes_col is None or lead_col is None or lead_col not in df.columns:
         _panel_B_did_summary(ax, data)
         return
 
-    # Convert to numeric
     df[nes_col] = pd.to_numeric(df[nes_col], errors="coerce")
     if fdr_col is not None:
         df[fdr_col] = pd.to_numeric(df[fdr_col], errors="coerce")
     df = df.dropna(subset=[nes_col])
 
-    # Top 5 up and top 5 down (by NES, excluding near-zero)
-    df_pos = df[df[nes_col] > 0.1]
-    df_neg = df[df[nes_col] < -0.1]
-    df_up = df_pos.nlargest(min(5, len(df_pos)), nes_col) if len(df_pos) else pd.DataFrame()
-    df_down = df_neg.nsmallest(min(5, len(df_neg)), nes_col) if len(df_neg) else pd.DataFrame()
-    selected = pd.concat([df_up, df_down]).drop_duplicates()
-
-    if len(selected) == 0:
-        # Fallback: just take top 10 by absolute NES
-        selected = df.assign(_abs=df[nes_col].abs()).nlargest(10, "_abs").drop(columns="_abs")
-
-    selected = selected.sort_values(nes_col, ascending=True)
-
-    # Clean names
-    selected["pathway"] = (
-        selected[term_col]
-        .str.replace("_", " ")
-        .str.title()
-        .apply(lambda s: s[:35] + "…" if len(str(s)) > 37 else s)
-    )
-
-    # Extract gene set overlap sizes from Tag % (format: "12/45")
-    sizes = np.full(len(selected), 100.0)
-    if tag_col is not None:
-        for i, (_, row) in enumerate(selected.iterrows()):
-            try:
-                parts = str(row[tag_col]).split("/")
-                sizes[i] = int(parts[1]) if len(parts) == 2 else 100
-            except (ValueError, IndexError):
-                sizes[i] = 100
-        sizes = np.clip(sizes / 2, 30, 250)
-
-    y_pos = np.arange(len(selected))
-
-    # Color by -log10(FDR)
-    if fdr_col is not None and fdr_col in selected.columns:
-        fdr_vals = pd.to_numeric(selected[fdr_col], errors="coerce").clip(lower=1e-10).values
-        nlog_fdr = -np.log10(fdr_vals)
+    # Select top 8 pathways by |NES| (FDR < 0.25 preferred)
+    if fdr_col is not None:
+        sig_df = df[df[fdr_col] < 0.25]
     else:
-        nlog_fdr = np.ones(len(selected))
+        sig_df = df
+    if len(sig_df) < 4:
+        sig_df = df  # fall back to all
 
-    vmax_val = max(3.0, float(np.nanmax(nlog_fdr))) if len(nlog_fdr) > 0 else 3.0
+    selected = sig_df.assign(_abs=sig_df[nes_col].abs()).nlargest(8, "_abs").drop(columns="_abs")
+    selected = selected.sort_values(nes_col, ascending=False)
 
-    scatter = ax.scatter(
-        selected[nes_col].values, y_pos,
-        s=sizes, c=nlog_fdr, cmap="RdYlBu_r",
-        edgecolor="black", linewidth=0.6, alpha=0.9,
-        vmin=0, vmax=vmax_val,
-        zorder=3,
+    # Parse leading-edge genes
+    pathway_genes = {}
+    all_genes = set()
+    for _, row in selected.iterrows():
+        pname = _clean_pathway_name(str(row[term_col]), max_len=30)
+        genes_str = str(row[lead_col])
+        genes = [g.strip() for g in genes_str.replace(";", ",").split(",") if g.strip()]
+        # Keep only protein-coding-looking genes
+        genes = [g for g in genes if _is_likely_protein_coding(g)]
+        pathway_genes[pname] = set(genes)
+        all_genes.update(genes)
+
+    if not all_genes or not pathway_genes:
+        _panel_B_did_summary(ax, data)
+        return
+
+    # Select genes appearing in ≥2 pathways for the heatmap (most informative)
+    gene_counts = {}
+    for genes in pathway_genes.values():
+        for g in genes:
+            gene_counts[g] = gene_counts.get(g, 0) + 1
+
+    shared_genes = sorted([g for g, c in gene_counts.items() if c >= 2],
+                          key=lambda g: -gene_counts[g])
+    if len(shared_genes) < 5:
+        # Too few shared genes; show top genes by frequency
+        shared_genes = sorted(gene_counts.keys(), key=lambda g: -gene_counts[g])[:25]
+    shared_genes = shared_genes[:25]  # cap at 25 for readability
+
+    if not shared_genes:
+        _panel_B_did_summary(ax, data)
+        return
+
+    # Build binary matrix
+    pathways = list(pathway_genes.keys())
+    matrix = np.zeros((len(pathways), len(shared_genes)), dtype=int)
+    for i, pw in enumerate(pathways):
+        for j, gene in enumerate(shared_genes):
+            if gene in pathway_genes[pw]:
+                matrix[i, j] = 1
+
+    # Plot heatmap
+    sns.heatmap(
+        matrix,
+        ax=ax,
+        xticklabels=shared_genes,
+        yticklabels=pathways,
+        cmap="YlOrRd",
+        cbar=False,
+        linewidths=0.5,
+        linecolor="white",
+        square=False,
     )
-
-    ax.axvline(0, color="black", lw=0.8, zorder=0)
-    ax.set_yticks(y_pos)
-    ax.set_yticklabels(selected["pathway"].values, fontsize=8)
-    ax.set_xlabel("Normalized Enrichment Score (NES)")
-    ax.set_title("Top Enriched Pathways (Up & Down)", fontsize=11)
-
-    # Colorbar
-    cbar = plt.colorbar(scatter, ax=ax, shrink=0.6, pad=0.02)
-    cbar.set_label("−log₁₀(FDR)", fontsize=8)
-    cbar.ax.tick_params(labelsize=7)
-
-    despine(ax)
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right", fontsize=7)
+    ax.set_yticklabels(ax.get_yticklabels(), fontsize=8)
+    ax.set_title("Leading-Edge Gene Overlap", fontsize=11)
+    ax.set_xlabel("")
+    ax.set_ylabel("")
 
 
 def _panel_B_did_summary(ax, data: dict):
@@ -431,11 +504,16 @@ def _panel_B_did_summary(ax, data: dict):
 
 
 # ======================================================================
-# Panel C -- Cell-type abundance changes
+# Panel C -- Signature DiD forest plot with bootstrap CIs
 # ======================================================================
 
 def panel_C(ax, data: dict):
-    """DiD effect size dot plot with FDR annotation."""
+    """DiD effect size forest plot with bootstrap CIs.
+
+    Coloring matches Figure 2 forest plot: blue = Responder ↑ (β > 0),
+    orange = Non-responder ↑ (β < 0). All signatures are colored by
+    direction regardless of significance.
+    """
     did_sig = data["did_sig"]
 
     df = did_sig.copy()
@@ -443,37 +521,55 @@ def panel_C(ax, data: dict):
     df = df.sort_values("beta_DiD", ascending=True).reset_index(drop=True)
 
     y = np.arange(len(df))
-    ci_lo = df["beta_DiD"] - 1.96 * df["se_DiD"]
-    ci_hi = df["beta_DiD"] + 1.96 * df["se_DiD"]
 
-    # Significance colouring
-    sig_mask = df["FDR_DiD"] < 0.1
+    # Use bootstrap CIs if available; fall back to Wald
+    has_boot_ci = "ci_lo_boot" in df.columns and "ci_hi_boot" in df.columns
+    if has_boot_ci:
+        ci_lo = df["ci_lo_boot"]
+        ci_hi = df["ci_hi_boot"]
+        ci_label = "95% Bootstrap CI"
+    else:
+        ci_lo = df["beta_DiD"] - 1.96 * df["se_DiD"]
+        ci_hi = df["beta_DiD"] + 1.96 * df["se_DiD"]
+        ci_label = "95% Wald CI"
 
-    # Non-significant
-    if (~sig_mask).any():
-        ns = df.index[~sig_mask]
-        ax.hlines(y[ns], ci_lo.iloc[ns], ci_hi.iloc[ns],
-                  color=COLORS["gray"], lw=1.5, zorder=1)
-        ax.scatter(df.loc[ns, "beta_DiD"], y[ns],
-                   color=COLORS["gray"], s=40, zorder=2,
+    # Use bootstrap p-values for significance annotation if available
+    if "p_DiD_boot" in df.columns:
+        from statsmodels.stats.multitest import multipletests
+        _, fdr_boot, _, _ = multipletests(
+            df["p_DiD_boot"].fillna(1).values, method="fdr_bh"
+        )
+        fdr_vals = fdr_boot
+    else:
+        fdr_vals = df["FDR_DiD"].values
+
+    sig_mask = pd.Series(fdr_vals < 0.1, index=df.index)
+
+    # Color ALL signatures by direction (matching Figure 2 style)
+    for i in df.index:
+        clr = COLORS["treated"] if df.loc[i, "beta_DiD"] > 0 else COLORS["control"]
+        lw = 2.0 if sig_mask.iloc[i] else 1.5
+        ax.hlines(y[i], ci_lo.iloc[i], ci_hi.iloc[i],
+                  color=clr, lw=lw, zorder=1)
+        ax.scatter(df.loc[i, "beta_DiD"], y[i],
+                   color=clr, s=50, zorder=2,
                    edgecolors="white", linewidths=0.5)
 
-    # Significant
-    if sig_mask.any():
-        s = df.index[sig_mask]
-        for i in s:
-            clr = COLORS["treated"] if df.loc[i, "beta_DiD"] > 0 else COLORS["control"]
-            ax.hlines(y[i], ci_lo.iloc[i], ci_hi.iloc[i],
-                      color=clr, lw=2, zorder=1)
-            ax.scatter(df.loc[i, "beta_DiD"], y[i],
-                       color=clr, s=55, zorder=2,
-                       edgecolors="white", linewidths=0.5)
-
-    ax.axvline(0, color="black", ls="--", lw=0.8, zorder=0)
+    ax.axvline(0, color="black", ls=":", lw=0.8, zorder=0)
     ax.set_yticks(y)
     ax.set_yticklabels(df["display"].values, fontsize=9)
     ax.set_xlabel(r"DiD coefficient ($\beta$, standardised)")
-    ax.set_title("Signature DiD Effects (95% CI)", fontsize=11)
+    ax.set_title(f"Signature DiD Effects ({ci_label})", fontsize=11)
+
+    # Legend matching Figure 2 style
+    legend_handles = [
+        plt.Line2D([0], [0], marker="o", color=COLORS["treated"], lw=1.5,
+                   markersize=6, label="Responder ↑"),
+        plt.Line2D([0], [0], marker="o", color=COLORS["control"], lw=1.5,
+                   markersize=6, label="Non-responder ↑"),
+    ]
+    ax.legend(handles=legend_handles, fontsize=8, loc="lower right",
+              frameon=True, framealpha=0.9)
 
     n_sig = sig_mask.sum()
     ax.text(0.97, 0.03, f"{n_sig}/{len(df)} FDR < 0.1",
@@ -487,7 +583,10 @@ def panel_C(ax, data: dict):
 # ======================================================================
 
 def panel_D(ax, data: dict):
-    """Volcano plot of gene-level DiD effects (Sade-Feldman)."""
+    """Volcano plot of gene-level DiD effects (Sade-Feldman).
+
+    Labels prioritize protein-coding genes over pseudogenes/lncRNAs.
+    """
     gene_results = data["gene_results"]
 
     if gene_results is None or len(gene_results) == 0:
@@ -504,45 +603,33 @@ def panel_D(ax, data: dict):
         return
 
     df = gene_results.copy()
-
-    # Determine significance column
-    if "fdr" in df.columns:
-        sig_col = "fdr"
-    elif "FDR_DiD" in df.columns:
-        sig_col = "FDR_DiD"
-    else:
-        sig_col = "p_value"
-
-    # Determine beta column
-    if "beta_DiD" in df.columns:
-        beta_col = "beta_DiD"
-    elif "beta_time" in df.columns:
-        beta_col = "beta_time"
-    else:
-        ax.text(0.5, 0.5, "No beta column found",
-                transform=ax.transAxes, ha="center", va="center", fontsize=10)
-        ax.axis("off")
-        return
+    beta_col = "beta_DiD"
+    sig_col = "FDR_DiD"
+    p_col = "p_DiD"
 
     df = df.dropna(subset=[beta_col, sig_col])
-    df["nlog10"] = -np.log10(df[sig_col].clip(lower=1e-300))
 
     # Determine significance threshold
     n_fdr_sig = (df[sig_col] < 0.1).sum()
-    if n_fdr_sig >= 3 and sig_col == "fdr":
+    if n_fdr_sig >= 3:
         threshold = 0.1
         thresh_label = "FDR < 0.1"
+        df["nlog10"] = -np.log10(df[sig_col].clip(lower=1e-300))
+        use_fdr = True
     else:
         # Fall back to nominal p-value
-        if "p_value" in df.columns:
-            sig_col = "p_value"
-            df["nlog10"] = -np.log10(df[sig_col].clip(lower=1e-300))
         threshold = 0.05
         thresh_label = "p < 0.05"
+        df["nlog10"] = -np.log10(df[p_col].clip(lower=1e-300))
+        use_fdr = False
 
     # Classify genes
+    if use_fdr:
+        sig_mask = df[sig_col] < threshold
+    else:
+        sig_mask = df[p_col] < threshold
+
     df["category"] = "ns"
-    sig_mask = df[sig_col] < threshold
     df.loc[sig_mask & (df[beta_col] > 0), "category"] = "up"
     df.loc[sig_mask & (df[beta_col] < 0), "category"] = "down"
 
@@ -565,16 +652,37 @@ def panel_D(ax, data: dict):
             s=size_map[cat], edgecolors="none", rasterized=True,
         )
 
-    # Label top genes — more labels, use adjustText to avoid overlaps
+    # Label top genes — protein-coding first, fill with non-coding
     texts = []
     for direction, n_label in [("up", 8), ("down", 8)]:
-        sub = df[df["category"] == direction]
+        sub = df[df["category"] == direction].copy()
         if len(sub) == 0:
             continue
+
+        # Separate protein-coding from non-coding
+        sub["_pc"] = sub["feature"].apply(_is_likely_protein_coding)
+        pc = sub[sub["_pc"]]
+        nc = sub[~sub["_pc"]]
+
+        # Take protein-coding first, fill remaining with non-coding
         if direction == "up":
-            top = sub.nlargest(n_label, beta_col)
+            top_pc = pc.nlargest(min(n_label, len(pc)), beta_col)
         else:
-            top = sub.nsmallest(n_label, beta_col)
+            top_pc = pc.nsmallest(min(n_label, len(pc)), beta_col)
+
+        remaining = n_label - len(top_pc)
+        if remaining > 0 and len(nc) > 0:
+            if direction == "up":
+                top_nc = nc.nlargest(
+                    min(remaining, len(nc)), beta_col,
+                )
+            else:
+                top_nc = nc.nsmallest(
+                    min(remaining, len(nc)), beta_col,
+                )
+            top = pd.concat([top_pc, top_nc])
+        else:
+            top = top_pc
 
         for _, row in top.iterrows():
             t = ax.text(
@@ -584,20 +692,31 @@ def panel_D(ax, data: dict):
             )
             texts.append(t)
 
-    # Attempt adjustText for non-overlapping labels
+    # Use adjustText with small arrows pointing from labels to dots
     try:
         from adjustText import adjust_text
-        adjust_text(texts, ax=ax, arrowprops=dict(arrowstyle="-", color=COLORS["gray"], lw=0.4))
+        adjust_text(
+            texts, ax=ax,
+            arrowprops=dict(
+                arrowstyle="-|>", color="#555555",
+                lw=0.6, mutation_scale=6,
+            ),
+            force_text=(1.5, 2.0),
+            force_points=(0.5, 0.5),
+            expand_text=(1.5, 1.8),
+            min_arrow_len=5,
+        )
     except ImportError:
-        pass  # fall back to raw placement
+        pass
 
     # Threshold line
     thresh_y = -np.log10(threshold)
     ax.axhline(thresh_y, color=COLORS["gray"], ls="--", lw=0.8, zorder=0)
     ax.axvline(0, color="black", lw=0.6, zorder=0)
 
-    ax.set_xlabel(r"Effect size ($\beta$)")
-    ax.set_ylabel(r"$-\log_{10}$(" + ("FDR" if "fdr" in sig_col.lower() else "p") + ")")
+    ax.set_xlabel(r"Effect size ($\beta_{\mathrm{DiD}}$)")
+    y_label = r"$-\log_{10}$" + ("(FDR)" if use_fdr else "(p)")
+    ax.set_ylabel(y_label)
     ax.set_title("Gene-Level Volcano (Sade-Feldman DiD)", fontsize=11)
 
     # Summary annotation
