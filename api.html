@@ -995,6 +995,16 @@ pre-aggregate to pseudobulk before calling this function.</p>
 <dd></dd></dl>
 
 <dl class="py attribute">
+<dt class="sig sig-object py" id="sctrial.stats.did.DidFitResult.ci_hi_boot">
+<span class="sig-name descname"><span class="pre">ci_hi_boot</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">NotRequired</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#sctrial.stats.did.DidFitResult.ci_hi_boot" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sctrial.stats.did.DidFitResult.ci_lo_boot">
+<span class="sig-name descname"><span class="pre">ci_lo_boot</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">NotRequired</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#sctrial.stats.did.DidFitResult.ci_lo_boot" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
 <dt class="sig sig-object py" id="sctrial.stats.did.DidFitResult.cov_type_used">
 <span class="sig-name descname"><span class="pre">cov_type_used</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">NotRequired</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#sctrial.stats.did.DidFitResult.cov_type_used" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
@@ -1027,6 +1037,11 @@ pre-aggregate to pseudobulk before calling this function.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="sctrial.stats.did.DidFitResult.se_DiD">
 <span class="sig-name descname"><span class="pre">se_DiD</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><a class="headerlink" href="#sctrial.stats.did.DidFitResult.se_DiD" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sctrial.stats.did.DidFitResult.se_DiD_boot">
+<span class="sig-name descname"><span class="pre">se_DiD_boot</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">NotRequired</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#sctrial.stats.did.DidFitResult.se_DiD_boot" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -1075,7 +1090,7 @@ Returns NaN for all estimates if n_units &lt; 4.</p></li>
 Weights are proportional to n_cells (inverse-variance weighting for
 participant-level means, since Var(mean) = σ²/n).</p></li>
 </ul>
-<dl class="field-list simple">
+<dl class="field-list">
 <dt class="field-odd">param df<span class="colon">:</span></dt>
 <dd class="field-odd"><p>Long-format data with columns for unit, time, arm_bin, y, and covariates.</p>
 </dd>
@@ -1147,11 +1162,23 @@ when n_participants &lt; 15).</p>
 <dt class="field-odd">returns<span class="colon">:</span></dt>
 <dd class="field-odd"><p>Keys:
 - beta_DiD: DiD coefficient (β₂)
-- se_DiD: Standard error of β₂
-- p_DiD: P-value for H₀: β₂ = 0
+- se_DiD: Analytical standard error of β₂
+- p_DiD: P-value for H₀: β₂ = 0 (bootstrap if <code class="docutils literal notranslate"><span class="pre">use_bootstrap=True</span></code>)
 - beta_time: Main time effect (β₁)
 - p_time: P-value for time effect
-- n_units: Number of participants used</p>
+- n_units: Number of participants used
+- cov_type_used: Covariance type used (<code class="docutils literal notranslate"><span class="pre">&quot;cluster&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;nonrobust&quot;</span></code>)
+- p_DiD_boot: Bootstrap p-value (only if <code class="docutils literal notranslate"><span class="pre">use_bootstrap=True</span></code>)
+- se_DiD_boot: Bootstrap SE from coefficient distribution</p>
+<blockquote>
+<div><p>(only if <code class="docutils literal notranslate"><span class="pre">use_bootstrap=True</span></code>)</p>
+</div></blockquote>
+<ul class="simple">
+<li><p>ci_lo_boot: Lower 95% bootstrap-t CI
+(only if <code class="docutils literal notranslate"><span class="pre">use_bootstrap=True</span></code>)</p></li>
+<li><p>ci_hi_boot: Upper 95% bootstrap-t CI
+(only if <code class="docutils literal notranslate"><span class="pre">use_bootstrap=True</span></code>)</p></li>
+</ul>
 </dd>
 <dt class="field-even">rtype<span class="colon">:</span></dt>
 <dd class="field-even"><p>DidFitResult</p>
@@ -3657,6 +3684,97 @@ right.</p>
 </section>
 <section id="module-sctrial.utils">
 <span id="utilities"></span><h2>Utilities<a class="headerlink" href="#module-sctrial.utils" title="Link to this heading">#</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="sctrial.utils.BootstrapResult">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">sctrial.utils.</span></span><span class="sig-name descname"><span class="pre">BootstrapResult</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p_boot</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">se_boot</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">ci_lo</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">ci_hi</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">boot_distribution</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">np.ndarray</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sctrial/utils.html#BootstrapResult"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.utils.BootstrapResult" title="Link to this definition">#</a></dt>
+<dd><p>Result of a wild cluster bootstrap procedure.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sctrial.utils.BootstrapResult.p_boot">
+<span class="sig-name descname"><span class="pre">p_boot</span></span><a class="headerlink" href="#sctrial.utils.BootstrapResult.p_boot" title="Link to this definition">#</a></dt>
+<dd><p>Two-sided bootstrap p-value.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sctrial.utils.BootstrapResult.se_boot">
+<span class="sig-name descname"><span class="pre">se_boot</span></span><a class="headerlink" href="#sctrial.utils.BootstrapResult.se_boot" title="Link to this definition">#</a></dt>
+<dd><p>Bootstrap standard error (SD of bootstrap coefficient distribution).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sctrial.utils.BootstrapResult.ci_lo">
+<span class="sig-name descname"><span class="pre">ci_lo</span></span><a class="headerlink" href="#sctrial.utils.BootstrapResult.ci_lo" title="Link to this definition">#</a></dt>
+<dd><p>Lower bound of the bootstrap-t confidence interval.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sctrial.utils.BootstrapResult.ci_hi">
+<span class="sig-name descname"><span class="pre">ci_hi</span></span><a class="headerlink" href="#sctrial.utils.BootstrapResult.ci_hi" title="Link to this definition">#</a></dt>
+<dd><p>Upper bound of the bootstrap-t confidence interval.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sctrial.utils.BootstrapResult.boot_distribution">
+<span class="sig-name descname"><span class="pre">boot_distribution</span></span><a class="headerlink" href="#sctrial.utils.BootstrapResult.boot_distribution" title="Link to this definition">#</a></dt>
+<dd><p>Array of bootstrap coefficient estimates (valid draws only).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id0">
+<span class="sig-name descname"><span class="pre">boot_distribution</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ndarray</span></em><a class="headerlink" href="#id0" title="Link to this definition">#</a></dt>
+<dd><p>Alias for field number 4</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id4">
+<span class="sig-name descname"><span class="pre">ci_hi</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><a class="headerlink" href="#id4" title="Link to this definition">#</a></dt>
+<dd><p>Alias for field number 3</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id5">
+<span class="sig-name descname"><span class="pre">ci_lo</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><a class="headerlink" href="#id5" title="Link to this definition">#</a></dt>
+<dd><p>Alias for field number 2</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id6">
+<span class="sig-name descname"><span class="pre">p_boot</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><a class="headerlink" href="#id6" title="Link to this definition">#</a></dt>
+<dd><p>Alias for field number 0</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id7">
+<span class="sig-name descname"><span class="pre">se_boot</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><a class="headerlink" href="#id7" title="Link to this definition">#</a></dt>
+<dd><p>Alias for field number 1</p>
+</dd></dl>
+
+</dd></dl>
+
 <dl class="py function">
 <dt class="sig sig-object py" id="sctrial.utils.ensure_unique_index">
 <span class="sig-prename descclassname"><span class="pre">sctrial.utils.</span></span><span class="sig-name descname"><span class="pre">ensure_unique_index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'mean'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="reference internal" href="_modules/sctrial/utils.html#ensure_unique_index"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.utils.ensure_unique_index" title="Link to this definition">#</a></dt>
@@ -3826,7 +3944,7 @@ right.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="sctrial.utils.wild_cluster_bootstrap_t">
-<span class="sig-prename descclassname"><span class="pre">sctrial.utils.</span></span><span class="sig-name descname"><span class="pre">wild_cluster_bootstrap_t</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">RegressionResultsWrapper</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">X</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clusters</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">term_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">B</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">999</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">42</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cov_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cluster'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></span><a class="reference internal" href="_modules/sctrial/utils.html#wild_cluster_bootstrap_t"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.utils.wild_cluster_bootstrap_t" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">sctrial.utils.</span></span><span class="sig-name descname"><span class="pre">wild_cluster_bootstrap_t</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">RegressionResultsWrapper</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">X</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clusters</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">term_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">B</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">999</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">42</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cov_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cluster'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ci_level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.95</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#sctrial.utils.BootstrapResult" title="sctrial.utils.BootstrapResult"><span class="pre">BootstrapResult</span></a></span></span><a class="reference internal" href="_modules/sctrial/utils.html#wild_cluster_bootstrap_t"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.utils.wild_cluster_bootstrap_t" title="Link to this definition">#</a></dt>
 <dd><p>Wild cluster bootstrap (Rademacher) for one coefficient.</p>
 <p class="rubric">Notes</p>
 <p>Implements a <strong>wild cluster bootstrap-t</strong> using Rademacher weights at the
@@ -3838,6 +3956,14 @@ probability), re-fits the full model via OLS (or WLS when the
 original fit used weights) with <strong>per-iteration cluster-robust SE</strong>,
 and forms a bootstrap t-statistic.  The two-sided p-value is the
 fraction of bootstrap |t*| values that exceed the observed |t|.</p>
+<p>Bootstrap confidence intervals use the bootstrap-t (studentized) method:
+quantiles of the bootstrap t-distribution are applied to the observed
+point estimate and SE, yielding asymmetry-respecting CIs that are
+approximately consistent with the bootstrap p-value (Hall, 1992).
+Note: this is not exact test-inversion; a full inversion CI would
+require re-running the bootstrap at every candidate null, which is
+computationally prohibitive.  The bootstrap-t is the standard
+practical approach recommended by Cameron et al. (2008).</p>
 <p>Reference:
 Cameron, A.C., Gelbach, J.B., &amp; Miller, D.L. (2008).
 Bootstrap-based improvements for inference with clustered errors.
@@ -3855,13 +3981,15 @@ The Review of Economics and Statistics, 90(3), 414–427.</p>
 cluster-robust SE (Cameron et al. 2008). Use <code class="docutils literal notranslate"><span class="pre">&quot;nonrobust&quot;</span></code> when
 participant fixed effects already absorb within-cluster correlation
 (e.g. participant_visit aggregation with 2 obs per cluster).</p></li>
+<li><p><strong>ci_level</strong> – Confidence level for the bootstrap-t CI (default 0.95 → 95 % CI).</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p><strong>p_boot</strong> – Two-sided wild cluster bootstrap p-value.</p>
+<dd class="field-even"><p>Named tuple with <code class="docutils literal notranslate"><span class="pre">p_boot</span></code>, <code class="docutils literal notranslate"><span class="pre">se_boot</span></code>, <code class="docutils literal notranslate"><span class="pre">ci_lo</span></code>, <code class="docutils literal notranslate"><span class="pre">ci_hi</span></code>,
+and <code class="docutils literal notranslate"><span class="pre">boot_distribution</span></code>.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+<dd class="field-odd"><p><a class="reference internal" href="#sctrial.utils.BootstrapResult" title="sctrial.utils.BootstrapResult">BootstrapResult</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -4429,6 +4557,8 @@ Default is 3.</p></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.stats.did.DidFitResult"><code class="docutils literal notranslate"><span class="pre">DidFitResult</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.stats.did.DidFitResult.beta_DiD"><code class="docutils literal notranslate"><span class="pre">DidFitResult.beta_DiD</span></code></a></li>
 <li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.stats.did.DidFitResult.beta_time"><code class="docutils literal notranslate"><span class="pre">DidFitResult.beta_time</span></code></a></li>
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.stats.did.DidFitResult.ci_hi_boot"><code class="docutils literal notranslate"><span class="pre">DidFitResult.ci_hi_boot</span></code></a></li>
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.stats.did.DidFitResult.ci_lo_boot"><code class="docutils literal notranslate"><span class="pre">DidFitResult.ci_lo_boot</span></code></a></li>
 <li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.stats.did.DidFitResult.cov_type_used"><code class="docutils literal notranslate"><span class="pre">DidFitResult.cov_type_used</span></code></a></li>
 <li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.stats.did.DidFitResult.n_units"><code class="docutils literal notranslate"><span class="pre">DidFitResult.n_units</span></code></a></li>
 <li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.stats.did.DidFitResult.p_DiD"><code class="docutils literal notranslate"><span class="pre">DidFitResult.p_DiD</span></code></a></li>
@@ -4436,6 +4566,7 @@ Default is 3.</p></li>
 <li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.stats.did.DidFitResult.p_time"><code class="docutils literal notranslate"><span class="pre">DidFitResult.p_time</span></code></a></li>
 <li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.stats.did.DidFitResult.resid_sd"><code class="docutils literal notranslate"><span class="pre">DidFitResult.resid_sd</span></code></a></li>
 <li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.stats.did.DidFitResult.se_DiD"><code class="docutils literal notranslate"><span class="pre">DidFitResult.se_DiD</span></code></a></li>
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.stats.did.DidFitResult.se_DiD_boot"><code class="docutils literal notranslate"><span class="pre">DidFitResult.se_DiD_boot</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.stats.did.did_fit"><code class="docutils literal notranslate"><span class="pre">did_fit()</span></code></a></li>
@@ -4565,6 +4696,19 @@ Default is 3.</p></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-sctrial.utils">Utilities</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.utils.BootstrapResult"><code class="docutils literal notranslate"><span class="pre">BootstrapResult</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.utils.BootstrapResult.p_boot"><code class="docutils literal notranslate"><span class="pre">BootstrapResult.p_boot</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.utils.BootstrapResult.se_boot"><code class="docutils literal notranslate"><span class="pre">BootstrapResult.se_boot</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.utils.BootstrapResult.ci_lo"><code class="docutils literal notranslate"><span class="pre">BootstrapResult.ci_lo</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.utils.BootstrapResult.ci_hi"><code class="docutils literal notranslate"><span class="pre">BootstrapResult.ci_hi</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.utils.BootstrapResult.boot_distribution"><code class="docutils literal notranslate"><span class="pre">BootstrapResult.boot_distribution</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id0"><code class="docutils literal notranslate"><span class="pre">BootstrapResult.boot_distribution</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id4"><code class="docutils literal notranslate"><span class="pre">BootstrapResult.ci_hi</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id5"><code class="docutils literal notranslate"><span class="pre">BootstrapResult.ci_lo</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id6"><code class="docutils literal notranslate"><span class="pre">BootstrapResult.p_boot</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id7"><code class="docutils literal notranslate"><span class="pre">BootstrapResult.se_boot</span></code></a></li>
+</ul>
+</li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.utils.ensure_unique_index"><code class="docutils literal notranslate"><span class="pre">ensure_unique_index()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.utils.get_counts_matrix"><code class="docutils literal notranslate"><span class="pre">get_counts_matrix()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.utils.intersect_preserve_order"><code class="docutils literal notranslate"><span class="pre">intersect_preserve_order()</span></code></a></li>

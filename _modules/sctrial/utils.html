@@ -343,7 +343,7 @@
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Sequence</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">NamedTuple</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
@@ -353,6 +353,7 @@
     <span class="kn">from</span><span class="w"> </span><span class="nn">anndata</span><span class="w"> </span><span class="kn">import</span> <span class="n">AnnData</span>
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;BootstrapResult&quot;</span><span class="p">,</span>
     <span class="s2">&quot;safe_filename&quot;</span><span class="p">,</span>
     <span class="s2">&quot;intersect_preserve_order&quot;</span><span class="p">,</span>
     <span class="s2">&quot;ensure_unique_index&quot;</span><span class="p">,</span>
@@ -363,6 +364,33 @@
     <span class="s2">&quot;permutation_pvalue_paired&quot;</span><span class="p">,</span>
     <span class="s2">&quot;resolve_feature&quot;</span><span class="p">,</span>
 <span class="p">]</span>
+
+
+<div class="viewcode-block" id="BootstrapResult">
+<a class="viewcode-back" href="../../api.html#sctrial.utils.BootstrapResult">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">BootstrapResult</span><span class="p">(</span><span class="n">NamedTuple</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Result of a wild cluster bootstrap procedure.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    p_boot : float</span>
+<span class="sd">        Two-sided bootstrap p-value.</span>
+<span class="sd">    se_boot : float</span>
+<span class="sd">        Bootstrap standard error (SD of bootstrap coefficient distribution).</span>
+<span class="sd">    ci_lo : float</span>
+<span class="sd">        Lower bound of the bootstrap-t confidence interval.</span>
+<span class="sd">    ci_hi : float</span>
+<span class="sd">        Upper bound of the bootstrap-t confidence interval.</span>
+<span class="sd">    boot_distribution : np.ndarray</span>
+<span class="sd">        Array of bootstrap coefficient estimates (valid draws only).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">p_boot</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">se_boot</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">ci_lo</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">ci_hi</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">boot_distribution</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span></div>
+
 
 
 <div class="viewcode-block" id="safe_filename">
@@ -517,7 +545,8 @@
     <span class="n">B</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">999</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">42</span><span class="p">,</span>
     <span class="n">cov_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;cluster&quot;</span><span class="p">,</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+    <span class="n">ci_level</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.95</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BootstrapResult</span><span class="p">:</span>
 <span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Wild cluster bootstrap (Rademacher) for one coefficient.</span>
 
 <span class="sd">    Notes</span>
@@ -532,6 +561,15 @@
 <span class="sd">    original fit used weights) with **per-iteration cluster-robust SE**,</span>
 <span class="sd">    and forms a bootstrap t-statistic.  The two-sided p-value is the</span>
 <span class="sd">    fraction of bootstrap \|t*\| values that exceed the observed \|t\|.</span>
+
+<span class="sd">    Bootstrap confidence intervals use the bootstrap-t (studentized) method:</span>
+<span class="sd">    quantiles of the bootstrap t-distribution are applied to the observed</span>
+<span class="sd">    point estimate and SE, yielding asymmetry-respecting CIs that are</span>
+<span class="sd">    approximately consistent with the bootstrap p-value (Hall, 1992).</span>
+<span class="sd">    Note: this is not exact test-inversion; a full inversion CI would</span>
+<span class="sd">    require re-running the bootstrap at every candidate null, which is</span>
+<span class="sd">    computationally prohibitive.  The bootstrap-t is the standard</span>
+<span class="sd">    practical approach recommended by Cameron et al. (2008).</span>
 
 <span class="sd">    Reference:</span>
 <span class="sd">    Cameron, A.C., Gelbach, J.B., &amp; Miller, D.L. (2008).</span>
@@ -557,23 +595,32 @@
 <span class="sd">        cluster-robust SE (Cameron et al. 2008). Use ``&quot;nonrobust&quot;`` when</span>
 <span class="sd">        participant fixed effects already absorb within-cluster correlation</span>
 <span class="sd">        (e.g. participant_visit aggregation with 2 obs per cluster).</span>
+<span class="sd">    ci_level</span>
+<span class="sd">        Confidence level for the bootstrap-t CI (default 0.95 → 95 % CI).</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    p_boot : float</span>
-<span class="sd">        Two-sided wild cluster bootstrap p-value.</span>
+<span class="sd">    BootstrapResult</span>
+<span class="sd">        Named tuple with ``p_boot``, ``se_boot``, ``ci_lo``, ``ci_hi``,</span>
+<span class="sd">        and ``boot_distribution``.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_nan_result</span> <span class="o">=</span> <span class="n">BootstrapResult</span><span class="p">(</span>
+        <span class="n">p_boot</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">se_boot</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+        <span class="n">ci_lo</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">ci_hi</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+        <span class="n">boot_distribution</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">),</span>
+    <span class="p">)</span>
+
     <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
     <span class="n">coef_names</span> <span class="o">=</span> <span class="n">fit</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">exog_names</span>
     <span class="k">if</span> <span class="n">term_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">coef_names</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+        <span class="k">return</span> <span class="n">_nan_result</span>
 
     <span class="n">j</span> <span class="o">=</span> <span class="n">coef_names</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">term_name</span><span class="p">)</span>
     <span class="n">beta_hat</span> <span class="o">=</span> <span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
     <span class="n">se_hat</span> <span class="o">=</span> <span class="n">fit</span><span class="o">.</span><span class="n">bse</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
 
     <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">se_hat</span><span class="p">)</span> <span class="ow">or</span> <span class="n">se_hat</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+        <span class="k">return</span> <span class="n">_nan_result</span>
 
     <span class="n">t_obs</span> <span class="o">=</span> <span class="n">beta_hat</span> <span class="o">/</span> <span class="n">se_hat</span>
     <span class="n">uniq_cl</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">clusters</span><span class="p">)</span>
@@ -591,6 +638,7 @@
     <span class="n">resid_r</span> <span class="o">=</span> <span class="n">fit</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">endog</span> <span class="o">-</span> <span class="n">restricted_fitted</span>
 
     <span class="n">t_boot</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">beta_boot</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
 
     <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">B</span><span class="p">):</span>
         <span class="n">w_g</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">choice</span><span class="p">([</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">size</span><span class="o">=</span><span class="n">G</span><span class="p">)</span>
@@ -612,21 +660,52 @@
 
         <span class="n">beta_b</span> <span class="o">=</span> <span class="n">fit_b</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
         <span class="n">se_b</span> <span class="o">=</span> <span class="n">fit_b</span><span class="o">.</span><span class="n">bse</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
+        <span class="n">beta_boot</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="o">=</span> <span class="n">beta_b</span>
         <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">se_b</span><span class="p">)</span> <span class="ow">and</span> <span class="n">se_b</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">t_boot</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="o">=</span> <span class="n">beta_b</span> <span class="o">/</span> <span class="n">se_b</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">t_boot</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
 
-    <span class="c1"># Drop failed draws (non-finite SE) before computing p-value</span>
-    <span class="n">valid</span> <span class="o">=</span> <span class="n">t_boot</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">t_boot</span><span class="p">)]</span>
-    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+    <span class="c1"># Drop failed draws (non-finite SE → NaN t) before computing p-value.</span>
+    <span class="c1"># Use the same mask for beta so that se_boot/distribution are based on</span>
+    <span class="c1"># exactly the draws that contributed to the p-value and CI.</span>
+    <span class="n">valid_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">t_boot</span><span class="p">)</span>
+    <span class="n">valid_t</span> <span class="o">=</span> <span class="n">t_boot</span><span class="p">[</span><span class="n">valid_mask</span><span class="p">]</span>
+    <span class="n">valid_beta</span> <span class="o">=</span> <span class="n">beta_boot</span><span class="p">[</span><span class="n">valid_mask</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid_t</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_nan_result</span>
 
     <span class="c1"># +1 correction (same as permutation_pvalue) to avoid p=0 and ensure</span>
     <span class="c1"># the observed statistic is included in the reference distribution.</span>
-    <span class="n">count</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">valid</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">t_obs</span><span class="p">))</span>
-    <span class="n">p_boot</span> <span class="o">=</span> <span class="p">(</span><span class="n">count</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">valid</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
-    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">p_boot</span><span class="p">)</span></div>
+    <span class="n">count</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">valid_t</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">t_obs</span><span class="p">))</span>
+    <span class="n">p_boot</span> <span class="o">=</span> <span class="nb">float</span><span class="p">((</span><span class="n">count</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">valid_t</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+
+    <span class="c1"># Bootstrap SE: standard deviation of bootstrap coefficient estimates</span>
+    <span class="n">se_boot</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">valid_beta</span><span class="p">,</span> <span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid_beta</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+    <span class="c1"># Bootstrap-t confidence interval (Hall 1992):</span>
+    <span class="c1"># Use quantiles of the bootstrap t-distribution to construct CI around</span>
+    <span class="c1"># the point estimate. This is the &quot;bootstrap-t&quot; or &quot;studentized bootstrap&quot;</span>
+    <span class="c1"># CI, which respects the same pivotal quantity used for p-value computation.</span>
+    <span class="c1">#   CI = [beta_hat - t*(1-alpha/2) * se_hat, beta_hat - t*(alpha/2) * se_hat]</span>
+    <span class="c1"># Note the reversal of quantiles (standard bootstrap-t construction).</span>
+    <span class="n">alpha</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">ci_level</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid_t</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="n">t_lo</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">valid_t</span><span class="p">,</span> <span class="mi">100</span> <span class="o">*</span> <span class="n">alpha</span> <span class="o">/</span> <span class="mi">2</span><span class="p">))</span>
+        <span class="n">t_hi</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">valid_t</span><span class="p">,</span> <span class="mi">100</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">alpha</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)))</span>
+        <span class="n">ci_lo</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">beta_hat</span> <span class="o">-</span> <span class="n">t_hi</span> <span class="o">*</span> <span class="n">se_hat</span><span class="p">)</span>
+        <span class="n">ci_hi</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">beta_hat</span> <span class="o">-</span> <span class="n">t_lo</span> <span class="o">*</span> <span class="n">se_hat</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">ci_lo</span><span class="p">,</span> <span class="n">ci_hi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+    <span class="k">return</span> <span class="n">BootstrapResult</span><span class="p">(</span>
+        <span class="n">p_boot</span><span class="o">=</span><span class="n">p_boot</span><span class="p">,</span>
+        <span class="n">se_boot</span><span class="o">=</span><span class="n">se_boot</span><span class="p">,</span>
+        <span class="n">ci_lo</span><span class="o">=</span><span class="n">ci_lo</span><span class="p">,</span>
+        <span class="n">ci_hi</span><span class="o">=</span><span class="n">ci_hi</span><span class="p">,</span>
+        <span class="n">boot_distribution</span><span class="o">=</span><span class="n">valid_beta</span><span class="p">,</span>
+    <span class="p">)</span></div>
 
 
 

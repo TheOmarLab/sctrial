@@ -576,6 +576,12 @@
     <span class="n">n_boot</span><span class="o">=</span><span class="mi">9999</span><span class="p">,</span>  <span class="c1"># Higher for more accuracy</span>
     <span class="n">seed</span><span class="o">=</span><span class="mi">42</span>  <span class="c1"># For reproducibility</span>
 <span class="p">)</span>
+
+<span class="c1"># Bootstrap adds extra columns to the result DataFrame:</span>
+<span class="c1">#   p_DiD_boot   — bootstrap p-value</span>
+<span class="c1">#   se_DiD_boot  — bootstrap standard error</span>
+<span class="c1">#   ci_lo_boot   — lower bound of bootstrap-t 95% CI</span>
+<span class="c1">#   ci_hi_boot   — upper bound of bootstrap-t 95% CI</span>
 </pre></div>
 </div>
 </section>

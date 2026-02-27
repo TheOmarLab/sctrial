@@ -461,7 +461,7 @@ already on disk are reused.</p>
 <li><p>Few clusters (&lt; 15 participants per arm)</p></li>
 <li><p>Unbalanced sample sizes</p></li>
 <li><p>Concerned about finite-sample bias</p></li>
-<li><p>Need more accurate p-values for publication</p></li>
+<li><p>Need more accurate p-values and confidence intervals for publication</p></li>
 </ul>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Default: Cluster-robust SEs (fast, adequate for larger samples)</span>
 <span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="n">visits</span><span class="p">)</span>
@@ -619,8 +619,18 @@ This gives more weight to participant-visit groups with more cells (lower varian
 </section>
 <section id="what-are-wild-cluster-bootstrap-p-values">
 <h3>What are Wild Cluster Bootstrap p-values?<a class="headerlink" href="#what-are-wild-cluster-bootstrap-p-values" title="Link to this heading">#</a></h3>
-<p>A resampling method that provides more accurate p-values when you have few participants (&lt; 15). Enable with <code class="docutils literal notranslate"><span class="pre">use_bootstrap=True</span></code>.</p>
-<p>It resamples at the participant level (not cell level) to respect clustering.</p>
+<p>A resampling method that provides more accurate p-values <strong>and confidence
+intervals</strong> when you have few participants (&lt; 15). Enable with
+<code class="docutils literal notranslate"><span class="pre">use_bootstrap=True</span></code>.</p>
+<p>It resamples at the participant level (not cell level) to respect clustering.
+When enabled, the output DataFrame includes additional columns:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">p_DiD_boot</span></code>: bootstrap p-value</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">se_DiD_boot</span></code>: bootstrap standard error</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ci_lo_boot</span></code> / <code class="docutils literal notranslate"><span class="pre">ci_hi_boot</span></code>: bootstrap-t confidence interval</p></li>
+</ul>
+<p>The CI uses the bootstrap-t method (Hall, 1992), which applies quantiles of the
+bootstrap <em>t</em>-distribution to the observed point estimate and standard error.</p>
 </section>
 <section id="how-do-i-interpret-beta-did">
 <h3>How do I interpret beta_DiD?<a class="headerlink" href="#how-do-i-interpret-beta-did" title="Link to this heading">#</a></h3>
