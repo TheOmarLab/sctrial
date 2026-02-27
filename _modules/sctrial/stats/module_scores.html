@@ -586,7 +586,7 @@
             <span class="k">continue</span>
 
         <span class="k">if</span> <span class="n">allow_unpaired</span><span class="p">:</span>
-            <span class="n">df</span> <span class="o">=</span> <span class="n">encode_visit</span><span class="p">(</span><span class="n">sub</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="n">visits</span><span class="p">)</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">encode_visit</span><span class="p">(</span><span class="n">sub</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="n">visits</span><span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
             <span class="n">df</span><span class="p">[</span><span class="s2">&quot;arm_bin&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span> <span class="o">==</span> <span class="n">arm_treated</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
             <span class="n">model</span> <span class="o">=</span> <span class="n">smf</span><span class="o">.</span><span class="n">ols</span><span class="p">(</span><span class="s2">&quot;module_score ~ visit_num + arm_bin + visit_num:arm_bin&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">df</span><span class="p">)</span>
             <span class="n">fit</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">cov_type</span><span class="o">=</span><span class="s2">&quot;HC1&quot;</span><span class="p">)</span>
@@ -617,6 +617,9 @@
             <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
                 <span class="n">p_control</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
 
+            <span class="c1"># Report effective participant count after model row drops</span>
+            <span class="n">model_row_idx</span> <span class="o">=</span> <span class="n">fit</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">row_labels</span>
+            <span class="n">n_units_eff</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">model_row_idx</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">())</span>
             <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
                 <span class="s2">&quot;pool&quot;</span><span class="p">:</span> <span class="n">pool</span><span class="p">,</span>
                 <span class="s2">&quot;module&quot;</span><span class="p">:</span> <span class="n">module</span><span class="p">,</span>
@@ -626,7 +629,7 @@
                 <span class="s2">&quot;p_DiD&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">pvalues</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;visit_num:arm_bin&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)),</span>
                 <span class="s2">&quot;p_treated&quot;</span><span class="p">:</span> <span class="n">p_treated</span><span class="p">,</span>
                 <span class="s2">&quot;p_control&quot;</span><span class="p">:</span> <span class="n">p_control</span><span class="p">,</span>
-                <span class="s2">&quot;n_units&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()),</span>
+                <span class="s2">&quot;n_units&quot;</span><span class="p">:</span> <span class="n">n_units_eff</span><span class="p">,</span>
             <span class="p">})</span>
             <span class="k">continue</span>
 

@@ -683,7 +683,7 @@
             <span class="p">)</span>
             <span class="n">row</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
             <span class="n">row</span><span class="p">[</span><span class="s2">&quot;feature&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">g</span>
-            <span class="n">row</span><span class="p">[</span><span class="s2">&quot;n_units&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">df_pool</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">())</span>
+            <span class="c1"># n_units is already set by did_fit (post-row-drop count)</span>
             <span class="k">if</span> <span class="n">pool</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">row</span><span class="p">[</span><span class="s2">&quot;celltype&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pool</span>
             <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
