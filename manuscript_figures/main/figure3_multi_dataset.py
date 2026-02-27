@@ -1,13 +1,13 @@
 """
 Figure 3 — Multi-Dataset Generalization.
 
-Five panels demonstrating that sctrial analyses generalise across
+Six panels demonstrating that sctrial analyses generalise across
 heterogeneous study designs and disease contexts.
 
 Layout
 ------
 Top row : A (COVID-19 cross-sectional), B (Vaccine paired), C (AML)
-Bottom row : D (CAR-T), E (Cross-dataset effect-size heatmap)
+Bottom row : D (CAR-T), E (Melanoma DiD), F (Cross-dataset effect-size heatmap)
 """
 
 from __future__ import annotations
@@ -53,7 +53,7 @@ from .._shared import (
 # ---------------------------------------------------------------------------
 
 def effect_size_ci(g: float, n1: int, n2: int, alpha: float = 0.05):
-    """Approximate CI for Hedges' g using the non-central t approach."""
+    """Approximate CI for Hedges' g (Hedges & Olkin 1985, normal approx)."""
     from scipy.stats import norm
     se = np.sqrt(1 / n1 + 1 / n2 + g ** 2 / (2 * (n1 + n2)))
     z = norm.ppf(1 - alpha / 2)
@@ -106,6 +106,7 @@ def _forest_plot(
 ) -> None:
     """Draw a horizontal forest plot on *ax*."""
     df = df.sort_values(effect_col, ascending=True).reset_index(drop=True)
+    n_rows = len(df)
 
     for i, row in df.iterrows():
         es = row[effect_col]
@@ -116,36 +117,50 @@ def _forest_plot(
         sig = False
         if fdr_col and fdr_col in row.index and pd.notna(row[fdr_col]):
             sig = row[fdr_col] < 0.05
-        lw = 3.0 if sig else 1.8
-        ms = 10 if sig else 7
+        lw = 2.5 if sig else 1.5
+        ms = 8 if sig else 5.5
 
         ax.plot([lo, hi], [i, i], color=color, lw=lw, solid_capstyle="round")
         ax.plot(
             es, i, "o", color=color, markersize=ms,
-            markeredgecolor="white", markeredgewidth=1.2,
+            markeredgecolor="white", markeredgewidth=0.8,
         )
 
-        # Significance annotation
-        if fdr_col and fdr_col in row.index:
-            star = _stars(row[fdr_col])
-            if star:
-                x_txt = max(hi, 0) + 0.04 * (ax.get_xlim()[1] - ax.get_xlim()[0] or 1)
-                ax.text(x_txt, i, star, fontsize=9, va="center",
-                        fontweight="bold", color=color)
+    # Set axis limits *before* placing stars so we know the data range
+    ax.axvline(0, color="black", ls="-", lw=0.8, alpha=0.5)
+    ax.set_yticks(np.arange(n_rows))
+    ax.set_yticklabels(df[label_col].values, fontsize=8)
+    ax.set_xlabel(xlabel, fontsize=9)
+    ax.tick_params(axis="x", labelsize=7)
 
-    ax.axvline(0, color="black", ls="-", lw=1.2, alpha=0.6)
-    ax.set_yticks(np.arange(len(df)))
-    ax.set_yticklabels(df[label_col].values, fontsize=9)
-    ax.set_xlabel(xlabel, fontsize=10)
+    # Expand x-limits to leave room for stars on the right
+    x_lo, x_hi = ax.get_xlim()
+    x_range = x_hi - x_lo
+    ax.set_xlim(x_lo, x_hi + 0.12 * x_range)
 
+    # Place significance stars (after xlim is set)
+    if fdr_col:
+        for i, row in df.iterrows():
+            if fdr_col in row.index:
+                star = _stars(row[fdr_col])
+                if star:
+                    hi = row[ci_hi_col]
+                    es = row[effect_col]
+                    x_txt = max(hi, es) + 0.03 * x_range
+                    ax.text(x_txt, i, star, fontsize=8, va="center",
+                            fontweight="bold", color=(
+                                color_pos if es > 0 else color_neg))
+
+    # Compact legend
     legend_elements = [
-        Line2D([0], [0], marker="o", color=color_pos, lw=2.5, markersize=8,
+        Line2D([0], [0], marker="o", color=color_pos, lw=1.8, markersize=6,
                markeredgecolor="white", label=legend_pos_label),
-        Line2D([0], [0], marker="o", color=color_neg, lw=2.5, markersize=8,
+        Line2D([0], [0], marker="o", color=color_neg, lw=1.8, markersize=6,
                markeredgecolor="white", label=legend_neg_label),
     ]
     ax.legend(handles=legend_elements, loc="lower right", frameon=True,
-              facecolor="white", edgecolor="0.8", fontsize=8)
+              facecolor="white", edgecolor="0.85", fontsize=7,
+              handlelength=1.5, borderpad=0.4, labelspacing=0.3)
     despine(ax)
 
 
@@ -174,45 +189,77 @@ def _prepare_data() -> dict[str, Any]:
             target_visit = adata_covid.obs["dfo_bin"].unique()[0]
 
         ad_visit = adata_covid[adata_covid.obs["dfo_bin"] == target_visit].copy()
+
+        # Use sctrial between_arm_comparison API
+        covid_design = TrialDesign(
+            participant_col="participant_id",
+            visit_col="dfo_bin",
+            arm_col="severity",
+            arm_treated="Severe",
+            arm_control="Mild",
+        )
+        res_covid = between_arm_comparison(
+            ad_visit,
+            visit=target_visit,
+            features=sig_cols,
+            design=covid_design,
+            layer="log1p_cpm",
+            standardize=True,
+        )
+        res_covid["label"] = res_covid["feature"].apply(sig_display)
+
+        # Compute Hedges' g effect sizes + Welch t-test p-values
+        # (both from the same participant-level means for consistency)
         df_agg = (
             ad_visit.obs
             .groupby(["participant_id", "severity"], observed=True)[sig_cols]
             .mean()
             .reset_index()
         )
-
-        rows = []
-        for sig in sig_cols:
+        g_rows = []
+        for _, row in res_covid.iterrows():
+            sig = row["feature"]
             mild = df_agg.loc[df_agg["severity"] == "Mild", sig].dropna().values
             severe = df_agg.loc[df_agg["severity"] == "Severe", sig].dropna().values
             if len(mild) >= 3 and len(severe) >= 3:
                 g = hedges_g(severe, mild)
                 n1, n2 = len(severe), len(mild)
                 ci_lo, ci_hi = effect_size_ci(g, n1, n2)
-                _, p_val = stats.mannwhitneyu(
-                    severe, mild, alternative="two-sided",
-                )
-                rows.append({
-                    "label": sig_display(sig),
+                _, p_welch = stats.ttest_ind(severe, mild, equal_var=False)
+                g_rows.append({
+                    "feature": sig,
                     "hedges_g": g,
                     "ci_lo": ci_lo,
                     "ci_hi": ci_hi,
-                    "p_value": p_val,
+                    "p_welch": p_welch,
+                })
+            else:
+                g_rows.append({
                     "feature": sig,
+                    "hedges_g": row["beta_arm"],
+                    "ci_lo": np.nan,
+                    "ci_hi": np.nan,
+                    "p_welch": np.nan,
                 })
 
-        if rows:
-            df_eff = pd.DataFrame(rows)
-            _, fdr, *_ = multipletests(df_eff["p_value"], method="fdr_bh")
-            df_eff["fdr"] = fdr
-            data["covid_effects"] = df_eff
+        g_df = pd.DataFrame(g_rows)
+        # FDR-correct the Welch p-values (consistent with Hedges' g)
+        valid_p = g_df["p_welch"].dropna()
+        if len(valid_p):
+            _, fdr_vals, *_ = multipletests(valid_p, method="fdr_bh")
+            g_df.loc[valid_p.index, "fdr_welch"] = fdr_vals
         else:
-            data["covid_effects"] = None
+            g_df["fdr_welch"] = np.nan
+
+        res_covid = res_covid.merge(g_df, on="feature", how="left")
+        res_covid["fdr"] = res_covid["fdr_welch"]
+        data["covid_effects"] = res_covid
 
         print(f"       {adata_covid.n_obs:,} cells, "
               f"{adata_covid.obs['participant_id'].nunique()} participants")
     except Exception as exc:
         print(f"  [A] COVID-19 error: {exc}")
+        import traceback; traceback.print_exc()
         data["covid_effects"] = None
 
     # ── Panel B: Vaccine within-arm paired ────────────────────────────────
@@ -245,28 +292,9 @@ def _prepare_data() -> dict[str, Any]:
                 standardize=True,
             )
             res_vax["label"] = res_vax["feature"].apply(sig_display)
-            # Compute CIs from beta_time and its SE approximation
-            # within_arm_comparison returns beta_time; derive CI from n_units
-            ci_rows = []
-            for _, row in res_vax.iterrows():
-                beta = row["beta_time"]
-                n = row["n_units"]
-                # Approximate SE from p-value and t-distribution
-                p = row["p_time"]
-                if pd.notna(p) and p > 0 and pd.notna(beta) and n > 2:
-                    t_stat = stats.t.ppf(1 - p / 2, n - 1)
-                    se = abs(beta) / t_stat if t_stat > 0 else np.nan
-                    t_crit = stats.t.ppf(0.975, n - 1)
-                    ci_rows.append({
-                        "ci_lo": beta - t_crit * se,
-                        "ci_hi": beta + t_crit * se,
-                    })
-                else:
-                    ci_rows.append({"ci_lo": np.nan, "ci_hi": np.nan})
-            ci_df = pd.DataFrame(ci_rows)
-            res_vax = pd.concat(
-                [res_vax.reset_index(drop=True), ci_df], axis=1,
-            )
+            # Use SE/CI columns returned by within_arm_comparison
+            res_vax["ci_lo"] = res_vax["ci_lo_time"]
+            res_vax["ci_hi"] = res_vax["ci_hi_time"]
             data["vax_effects"] = res_vax
         except Exception as exc_inner:
             # Fallback: manual paired computation
@@ -365,12 +393,23 @@ def _prepare_data() -> dict[str, Any]:
 
             if is_two_arm:
                 # Two-arm design (e.g. AML: Treatment vs Control) → use did_table
+                # Explicit arm mapping to avoid order-dependent sign flips
+                _KNOWN_TREATED = {"Treatment", "Treated", "Responder"}
+                _KNOWN_CONTROL = {"Control", "Untreated", "Non-responder"}
+                treated = next(
+                    (v for v in arm_values if v in _KNOWN_TREATED),
+                    arm_values[0],
+                )
+                control = next(
+                    (v for v in arm_values if v in _KNOWN_CONTROL),
+                    arm_values[1],
+                )
                 clin_design = TrialDesign(
                     participant_col=pid_col,
                     visit_col=visit_col,
                     arm_col=arm_col,
-                    arm_treated=arm_values[0],
-                    arm_control=arm_values[1],
+                    arm_treated=treated,
+                    arm_control=control,
                 )
                 res_clin = did_table(
                     adata_clin,
@@ -385,10 +424,6 @@ def _prepare_data() -> dict[str, Any]:
                 # Compute CIs from SE
                 res_clin["ci_lo"] = res_clin["beta_DiD"] - 1.96 * res_clin["se_DiD"]
                 res_clin["ci_hi"] = res_clin["beta_DiD"] + 1.96 * res_clin["se_DiD"]
-                # Rename to common schema for heatmap
-                res_clin["beta_time"] = res_clin["beta_DiD"]
-                res_clin["p_time"] = res_clin["p_DiD"]
-                res_clin["FDR_time"] = res_clin["FDR_DiD"]
                 data[f"{tag}_effects"] = res_clin
             else:
                 # Single-arm design (e.g. CAR-T) → use within_arm_comparison
@@ -411,26 +446,9 @@ def _prepare_data() -> dict[str, Any]:
                     standardize=True,
                 )
                 res_clin["label"] = res_clin["feature"].apply(sig_display)
-                # Derive CIs from p-value (inverting t-test)
-                ci_rows_c = []
-                for _, row in res_clin.iterrows():
-                    beta = row["beta_time"]
-                    n = row["n_units"]
-                    p = row["p_time"]
-                    if pd.notna(p) and p > 0 and pd.notna(beta) and n > 2:
-                        t_stat = stats.t.ppf(1 - p / 2, n - 1)
-                        se = abs(beta) / t_stat if t_stat > 0 else np.nan
-                        t_crit = stats.t.ppf(0.975, n - 1)
-                        ci_rows_c.append({
-                            "ci_lo": beta - t_crit * se,
-                            "ci_hi": beta + t_crit * se,
-                        })
-                    else:
-                        ci_rows_c.append({"ci_lo": np.nan, "ci_hi": np.nan})
-                ci_df_c = pd.DataFrame(ci_rows_c)
-                res_clin = pd.concat(
-                    [res_clin.reset_index(drop=True), ci_df_c], axis=1,
-                )
+                # Use SE/CI columns returned by within_arm_comparison
+                res_clin["ci_lo"] = res_clin["ci_lo_time"]
+                res_clin["ci_hi"] = res_clin["ci_hi_time"]
                 data[f"{tag}_effects"] = res_clin
 
             print(f"       {adata_clin.n_obs:,} cells, "
@@ -465,13 +483,9 @@ def _prepare_data() -> dict[str, Any]:
             layer="log1p_tpm",
             standardize=True,
             aggregate="participant_visit",
-            use_bootstrap=False,
+            use_bootstrap=True,
         )
         res_mel["label"] = res_mel["feature"].apply(sig_display)
-        # Map to common schema
-        res_mel["beta_time"] = res_mel["beta_DiD"]
-        res_mel["p_time"] = res_mel["p_DiD"]
-        res_mel["FDR_time"] = res_mel["FDR_DiD"]
         data["mel_effects"] = res_mel
 
         print(f"       {adata_mel.n_obs:,} cells, "
@@ -481,7 +495,26 @@ def _prepare_data() -> dict[str, Any]:
         import traceback; traceback.print_exc()
         data["mel_effects"] = None
 
-    # ── Panel E: cross-dataset effect-size matrix ─────────────────────────
+    # ── Compute CIs for melanoma DiD results ────────────────────────────
+    if data.get("mel_effects") is not None:
+        mel = data["mel_effects"]
+        # Prefer bootstrap CIs, fall back to analytical per-row
+        analytical_lo = mel["beta_DiD"] - 1.96 * mel["se_DiD"]
+        analytical_hi = mel["beta_DiD"] + 1.96 * mel["se_DiD"]
+        if "ci_lo_boot" in mel.columns and "ci_hi_boot" in mel.columns:
+            mel["ci_lo"] = mel["ci_lo_boot"].fillna(analytical_lo)
+            mel["ci_hi"] = mel["ci_hi_boot"].fillna(analytical_hi)
+        else:
+            mel["ci_lo"] = analytical_lo
+            mel["ci_hi"] = analytical_hi
+        # Prefer bootstrap p-values / FDR where available
+        if "p_DiD_boot" in mel.columns:
+            mel["p_DiD"] = mel["p_DiD_boot"].fillna(mel["p_DiD"])
+        if "FDR_DiD_boot" in mel.columns:
+            mel["FDR_DiD"] = mel["FDR_DiD_boot"].fillna(mel["FDR_DiD"])
+        data["mel_effects"] = mel
+
+    # ── Panel F: cross-dataset effect-size matrix ─────────────────────────
     data["heatmap_matrix"], data["heatmap_stars"] = _build_heatmap_data(data)
 
     return data
@@ -490,56 +523,82 @@ def _prepare_data() -> dict[str, Any]:
 def _build_heatmap_data(
     data: dict[str, Any],
 ) -> tuple[pd.DataFrame | None, pd.DataFrame | None]:
-    """Compile effect sizes across datasets into a (datasets x signatures) matrix."""
+    """Compile signed −log10(FDR) across datasets into a comparable matrix.
+
+    Different datasets use different effect-size metrics (Hedges' g,
+    within-arm β, DiD β), so raw effects are not directly comparable on
+    a single colour scale.  Signed −log10(FDR) provides a common
+    significance-and-direction metric.
+    """
 
     records: list[dict[str, Any]] = []
 
-    # COVID-19: Hedge's g (cross-sectional)
+    # COVID-19: direction from Hedges' g, FDR from OLS
     df = data.get("covid_effects")
     if df is not None and len(df):
         for _, row in df.iterrows():
+            fdr = row.get("fdr", np.nan)
+            sign = np.sign(row["hedges_g"]) if pd.notna(row["hedges_g"]) else 0
             records.append({
                 "dataset": "COVID-19",
                 "signature": row["label"],
-                "effect": row["hedges_g"],
-                "p": row.get("fdr", row.get("p_value", np.nan)),
+                "fdr": fdr,
+                "sign": sign,
             })
 
-    # Vaccine, AML, CAR-T, Melanoma: beta_time (within-arm or DiD)
-    for tag, ds_name in [("vax", "Vaccine"), ("aml", "AML"), ("cart", "CAR-T"),
-                         ("mel", "Melanoma")]:
+    # Vaccine / CAR-T: within-arm beta_time
+    for tag, ds_name in [("vax", "Vaccine"), ("cart", "CAR-T")]:
         df = data.get(f"{tag}_effects")
         if df is not None and len(df):
             for _, row in df.iterrows():
                 lbl = row.get("label", sig_display(row["feature"]))
+                fdr = row.get("FDR_time", row.get("p_time", np.nan))
+                sign = np.sign(row["beta_time"]) if pd.notna(row["beta_time"]) else 0
                 records.append({
                     "dataset": ds_name,
                     "signature": lbl,
-                    "effect": row["beta_time"],
-                    "p": row.get("FDR_time", row.get("p_time", np.nan)),
+                    "fdr": fdr,
+                    "sign": sign,
+                })
+
+    # AML / Melanoma: DiD beta
+    for tag, ds_name in [("aml", "AML"), ("mel", "Melanoma")]:
+        df = data.get(f"{tag}_effects")
+        if df is not None and len(df):
+            for _, row in df.iterrows():
+                lbl = row.get("label", sig_display(row["feature"]))
+                fdr = row.get("FDR_DiD", row.get("p_DiD", np.nan))
+                sign = np.sign(row["beta_DiD"]) if pd.notna(row.get("beta_DiD")) else 0
+                records.append({
+                    "dataset": ds_name,
+                    "signature": lbl,
+                    "fdr": fdr,
+                    "sign": sign,
                 })
 
     if not records:
         return None, None
 
     df_all = pd.DataFrame(records)
+    # Compute signed −log10(FDR), clamping FDR floor at 1e-10
+    df_all["slog"] = df_all["sign"] * -np.log10(df_all["fdr"].clip(lower=1e-10))
 
     # Pivot to matrix form
     mat = df_all.pivot_table(
-        index="dataset", columns="signature", values="effect", aggfunc="first",
+        index="dataset", columns="signature", values="slog", aggfunc="first",
     )
-    pmat = df_all.pivot_table(
-        index="dataset", columns="signature", values="p", aggfunc="first",
+    fdr_mat = df_all.pivot_table(
+        index="dataset", columns="signature", values="fdr", aggfunc="first",
     )
 
     # Order datasets consistently
     ds_order = [d for d in ["COVID-19", "Vaccine", "AML", "CAR-T", "Melanoma"]
                 if d in mat.index]
     mat = mat.loc[ds_order]
-    pmat = pmat.loc[ds_order]
+    fdr_mat = fdr_mat.loc[ds_order]
 
     # Build star annotation matrix
-    star_mat = pmat.map(lambda v: _stars(v) if pd.notna(v) else "")
+    star_mat = fdr_mat.map(lambda v: _stars(v) if pd.notna(v) else "")
 
     return mat, star_mat
 
@@ -548,8 +607,9 @@ def _build_heatmap_data(
 
 def panel_a_covid(ax, data: dict[str, Any]) -> None:
     """Panel A: COVID-19 Stephenson cross-sectional (Severe vs Mild)."""
-    ax.set_title("A. COVID-19 (Stephenson)", fontweight="bold", fontsize=11,
-                 loc="left")
+    ax.set_title("COVID-19 (Stephenson)", fontsize=10, loc="left", pad=8)
+    ax.text(-0.12, 1.05, "A", transform=ax.transAxes, fontsize=14,
+            fontweight="bold", va="bottom")
 
     df = data.get("covid_effects")
     if df is None or len(df) == 0:
@@ -575,8 +635,9 @@ def panel_a_covid(ax, data: dict[str, Any]) -> None:
 
 def panel_b_vaccine(ax, data: dict[str, Any]) -> None:
     """Panel B: Vaccine within-arm paired Pre->Post."""
-    ax.set_title("B. Vaccine (GSE171964)", fontweight="bold", fontsize=11,
-                 loc="left")
+    ax.set_title("Vaccine (GSE171964)", fontsize=10, loc="left", pad=8)
+    ax.text(-0.12, 1.05, "B", transform=ax.transAxes, fontsize=14,
+            fontweight="bold", va="bottom")
 
     df = data.get("vax_effects")
     if df is None or len(df) == 0:
@@ -601,9 +662,10 @@ def panel_b_vaccine(ax, data: dict[str, Any]) -> None:
 
 
 def panel_c_aml(ax, data: dict[str, Any]) -> None:
-    """Panel C: AML clinical dataset (within-arm)."""
-    ax.set_title("C. AML (GSE116256)", fontweight="bold", fontsize=11,
-                 loc="left")
+    """Panel C: AML clinical dataset (two-arm DiD)."""
+    ax.set_title("AML (GSE116256)", fontsize=10, loc="left", pad=8)
+    ax.text(-0.12, 1.05, "C", transform=ax.transAxes, fontsize=14,
+            fontweight="bold", va="bottom")
 
     df = data.get("aml_effects")
     if df is None or len(df) == 0:
@@ -614,23 +676,24 @@ def panel_c_aml(ax, data: dict[str, Any]) -> None:
 
     _forest_plot(
         ax, df,
-        effect_col="beta_time",
+        effect_col="beta_DiD",
         ci_lo_col="ci_lo",
         ci_hi_col="ci_hi",
         label_col="label",
-        fdr_col="FDR_time",
-        xlabel="Standardised $\\Delta$ (Post $-$ Pre)",
+        fdr_col="FDR_DiD",
+        xlabel="DiD effect (Treatment vs Control)",
         color_pos=COLORS["treated"],
         color_neg=COLORS["control"],
-        legend_pos_label="Post $\\uparrow$",
-        legend_neg_label="Pre $\\uparrow$",
+        legend_pos_label="Treatment $\\uparrow$",
+        legend_neg_label="Control $\\uparrow$",
     )
 
 
 def panel_d_cart(ax, data: dict[str, Any]) -> None:
     """Panel D: CAR-T clinical dataset (within-arm)."""
-    ax.set_title("D. CAR-T (GSE290722)", fontweight="bold", fontsize=11,
-                 loc="left")
+    ax.set_title("CAR-T (GSE290722)", fontsize=10, loc="left", pad=8)
+    ax.text(-0.12, 1.05, "D", transform=ax.transAxes, fontsize=14,
+            fontweight="bold", va="bottom")
 
     df = data.get("cart_effects")
     if df is None or len(df) == 0:
@@ -654,12 +717,41 @@ def panel_d_cart(ax, data: dict[str, Any]) -> None:
     )
 
 
-def panel_e_heatmap(ax, data: dict[str, Any]) -> None:
-    """Panel E: Cross-dataset effect-size comparison heatmap."""
+def panel_e_melanoma(ax, data: dict[str, Any]) -> None:
+    """Panel E: Melanoma (Sade-Feldman) DiD — Responder vs Non-responder."""
+    ax.set_title("Melanoma (Sade-Feldman)", fontsize=10, loc="left", pad=8)
+    ax.text(-0.12, 1.05, "E", transform=ax.transAxes, fontsize=14,
+            fontweight="bold", va="bottom")
+
+    df = data.get("mel_effects")
+    if df is None or len(df) == 0:
+        ax.text(0.5, 0.5, "Melanoma data not available",
+                ha="center", va="center", transform=ax.transAxes)
+        ax.axis("off")
+        return
+
+    _forest_plot(
+        ax, df,
+        effect_col="beta_DiD",
+        ci_lo_col="ci_lo",
+        ci_hi_col="ci_hi",
+        label_col="label",
+        fdr_col="FDR_DiD",
+        xlabel="DiD effect (Responder vs Non-responder)",
+        color_pos=COLORS["treated"],
+        color_neg=COLORS["control"],
+        legend_pos_label="Responder $\\uparrow$",
+        legend_neg_label="Non-resp. $\\uparrow$",
+    )
+
+
+def panel_f_heatmap(ax, data: dict[str, Any]) -> None:
+    """Panel F: Cross-dataset signed −log10(FDR) heatmap."""
     import seaborn as sns
 
-    ax.set_title("E. Cross-Dataset Effect Sizes", fontweight="bold",
-                 fontsize=11, loc="left")
+    ax.set_title("Cross-Dataset Significance", fontsize=10, loc="left", pad=8)
+    ax.text(-0.12, 1.05, "F", transform=ax.transAxes, fontsize=14,
+            fontweight="bold", va="bottom")
 
     mat = data.get("heatmap_matrix")
     star_mat = data.get("heatmap_stars")
@@ -668,6 +760,17 @@ def panel_e_heatmap(ax, data: dict[str, Any]) -> None:
                 ha="center", va="center", transform=ax.transAxes)
         ax.axis("off")
         return
+
+    # Build combined annotation: signed −log10(FDR) value + stars
+    annot_combined = mat.copy().astype(object)
+    for r in mat.index:
+        for c in mat.columns:
+            val = mat.loc[r, c]
+            star = star_mat.loc[r, c] if star_mat is not None else ""
+            if pd.isna(val):
+                annot_combined.loc[r, c] = ""
+            else:
+                annot_combined.loc[r, c] = f"{val:.1f}{star}"
 
     # Determine colour limits symmetrically
     vmax = max(abs(np.nanmin(mat.values)), abs(np.nanmax(mat.values)), 0.5)
@@ -681,17 +784,22 @@ def panel_e_heatmap(ax, data: dict[str, Any]) -> None:
         vmax=vmax,
         linewidths=0.8,
         linecolor="white",
-        cbar_kws={"label": "Effect size", "shrink": 0.8},
-        annot=star_mat.values if star_mat is not None else False,
+        cbar_kws={
+            "label": "Signed $-\\log_{10}$(FDR)",
+            "shrink": 0.7,
+            "aspect": 20,
+        },
+        annot=annot_combined.values,
         fmt="",
-        annot_kws={"fontsize": 10, "fontweight": "bold", "color": "black"},
+        annot_kws={"fontsize": 7, "fontweight": "bold"},
+        mask=mat.isna(),  # grey out missing cells
     )
 
     ax.set_xlabel("")
     ax.set_ylabel("")
-    ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right",
-                       fontsize=9)
-    ax.set_yticklabels(ax.get_yticklabels(), rotation=0, fontsize=9)
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=40, ha="right",
+                       fontsize=7.5)
+    ax.set_yticklabels(ax.get_yticklabels(), rotation=0, fontsize=8.5)
 
 
 # ── composite figure ──────────────────────────────────────────────────────
@@ -705,17 +813,26 @@ def generate(*, save: bool = True) -> None:
     data = _prepare_data()
 
     if save:
-        # Save individual panels
-        for panel_fn, panel_name in [
-            (panel_a_covid, "A_covid_severity"),
-            (panel_b_vaccine, "B_vaccine_paired"),
-            (panel_c_aml, "C_aml_clinical"),
-            (panel_d_cart, "D_cart_clinical"),
-            (panel_e_heatmap, "E_heatmap"),
-        ]:
-            fig_p, ax_p = plt.subplots(figsize=(7, 6))
+        # Adaptive height based on the number of features in each panel
+        def _n_features(key: str) -> int:
+            df = data.get(key)
+            return len(df) if df is not None else 6
+
+        panel_specs = [
+            (panel_a_covid, "A_covid_severity", _n_features("covid_effects")),
+            (panel_b_vaccine, "B_vaccine_paired", _n_features("vax_effects")),
+            (panel_c_aml, "C_aml_clinical", _n_features("aml_effects")),
+            (panel_d_cart, "D_cart_clinical", _n_features("cart_effects")),
+            (panel_e_melanoma, "E_melanoma_did", _n_features("mel_effects")),
+            (panel_f_heatmap, "F_heatmap", 8),  # heatmap uses fixed size
+        ]
+
+        for panel_fn, panel_name, n_feat in panel_specs:
+            # Adaptive height: ~0.38 inches per feature row, min 2.8
+            h = max(2.8, 0.38 * n_feat + 1.1)
+            fig_p, ax_p = plt.subplots(figsize=(6.5, h))
             panel_fn(ax_p, data)
-            fig_p.tight_layout()
+            fig_p.tight_layout(pad=0.6)
             save_panel(fig_p, panel_name, FIG_NAME, MAIN_OUTPUT)
 
 
