@@ -249,3 +249,58 @@ def test_between_arm_wilcoxon_has_se_ci(sample_adata, trial_design):
     lo, hi = res.iloc[0]["ci_lo_arm"], res.iloc[0]["ci_hi_arm"]
     beta = res.iloc[0]["beta_arm"]
     assert lo < beta < hi, "CI must bracket the point estimate"
+
+
+def test_within_arm_n_units_post_drop(sample_adata, trial_design):
+    """n_units must reflect effective cluster count after statsmodels row drops."""
+    from scipy import sparse
+
+    X = sample_adata.X.toarray()
+    # Inject NaN into BOTH visits of one Treated participant to force full drop
+    pid_target = "P0"
+    target_mask = (sample_adata.obs["arm"] == "Treated") & (
+        sample_adata.obs["participant_id"] == pid_target
+    )
+    X[target_mask, 0] = np.nan
+    sample_adata.X = sparse.csr_matrix(X)
+
+    res = st.within_arm_comparison(
+        sample_adata,
+        arm="Treated",
+        features=["G0"],
+        design=trial_design,
+        visits=("V1", "V2"),
+    )
+
+    # Both visits for P0 have NaN, so statsmodels drops both rows.
+    # n_units must be 9 (not 10).
+    assert res.iloc[0]["n_units"] == 9, (
+        f"n_units should be 9 (one participant fully dropped), got {res.iloc[0]['n_units']}"
+    )
+
+
+def test_between_arm_n_units_post_drop(sample_adata, trial_design):
+    """n_units in between_arm_comparison must reflect post-drop cluster count."""
+    from scipy import sparse
+
+    X = sample_adata.X.toarray()
+    # Inject NaN into one participant's V2 data (this participant only has
+    # one row at V2, so the NaN fully removes them from the model)
+    pid_target = "P0"
+    target_mask = (sample_adata.obs["participant_id"] == pid_target) & (
+        sample_adata.obs["visit"] == "V2"
+    )
+    X[target_mask, 0] = np.nan
+    sample_adata.X = sparse.csr_matrix(X)
+
+    res = st.between_arm_comparison(
+        sample_adata,
+        visit="V2",
+        features=["G0"],
+        design=trial_design,
+    )
+
+    # P0's V2 row has NaN, so model drops it → 19 participants
+    assert res.iloc[0]["n_units"] == 19, (
+        f"n_units should be 19 (one participant dropped), got {res.iloc[0]['n_units']}"
+    )

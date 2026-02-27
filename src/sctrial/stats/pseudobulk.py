@@ -334,7 +334,7 @@ def pseudobulk_did(
             )
             row = dict(out)
             row["feature"] = g
-            row["n_units"] = int(df_pool[design.participant_col].nunique())
+            # n_units is already set by did_fit (post-row-drop count)
             if pool is not None:
                 row["celltype"] = pool
             rows.append(row)
