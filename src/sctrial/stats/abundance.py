@@ -290,6 +290,7 @@ def abundance_did(
                 "p_time": float(fit.pvalues.get("visit_num", np.nan)),
             }
             if use_bootstrap:
+                row_dict["p_DiD_boot"] = p_val
                 row_dict["se_DiD_boot"] = se_boot
                 row_dict["ci_lo_boot"] = ci_lo_boot
                 row_dict["ci_hi_boot"] = ci_hi_boot
@@ -346,6 +347,7 @@ def abundance_did(
                     "p_time": np.nan,
                 }
                 if use_bootstrap:
+                    fallback_row["p_DiD_boot"] = np.nan
                     fallback_row["se_DiD_boot"] = np.nan
                     fallback_row["ci_lo_boot"] = np.nan
                     fallback_row["ci_hi_boot"] = np.nan

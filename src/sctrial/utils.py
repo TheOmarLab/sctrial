@@ -148,7 +148,11 @@ def wild_cluster_bootstrap_t(
     Bootstrap confidence intervals use the bootstrap-t (studentized) method:
     quantiles of the bootstrap t-distribution are applied to the observed
     point estimate and SE, yielding asymmetry-respecting CIs that are
-    consistent with the bootstrap p-value (Hall, 1992).
+    approximately consistent with the bootstrap p-value (Hall, 1992).
+    Note: this is not exact test-inversion; a full inversion CI would
+    require re-running the bootstrap at every candidate null, which is
+    computationally prohibitive.  The bootstrap-t is the standard
+    practical approach recommended by Cameron et al. (2008).
 
     Reference:
     Cameron, A.C., Gelbach, J.B., & Miller, D.L. (2008).
