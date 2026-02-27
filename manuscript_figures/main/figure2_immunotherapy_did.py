@@ -55,7 +55,14 @@ FIGURE_NAME = "Figure2_immunotherapy_did"
 # ── Data preparation ─────────────────────────────────────────────────────
 
 def _prepare_data() -> tuple:
-    """Load Sade-Feldman data, score signatures, and run DiD."""
+    """Load Sade-Feldman data, score signatures, and run DiD.
+
+    Note on inference: with only 10 paired participants, cluster-robust
+    SEs are degenerate (NaN) for all signatures, so the model falls back
+    to homoskedastic (nonrobust) SEs.  Wild-cluster bootstrap (n=999)
+    provides the primary p-values.  CIs in the forest plot use the
+    analytical nonrobust SE.
+    """
     adata = get_sade_feldman()
     if "log1p_tpm" not in adata.layers:
         raise RuntimeError("log1p_tpm layer missing from Sade-Feldman dataset.")
@@ -110,7 +117,13 @@ def _pseudobulk_all(adata, sig_cols: list[str]) -> pd.DataFrame:
 # ── Panel A: Forest plot ─────────────────────────────────────────────────
 
 def panel_forest(ax: plt.Axes, did_res: pd.DataFrame) -> None:
-    """Horizontal forest plot — full-opacity, Nature-quality."""
+    """Horizontal forest plot — full-opacity, Nature-quality.
+
+    CIs use OLS standard errors (nonrobust, as cluster-robust SE is
+    degenerate with only 10 paired participants).  P-values come from
+    wild-cluster bootstrap (999 replicates) and may not align exactly
+    with the analytical CIs — this is standard practice.
+    """
     df = did_res.sort_values("beta_DiD").reset_index(drop=True)
     y_pos = np.arange(len(df))
 
