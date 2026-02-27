@@ -9,6 +9,7 @@ import pandas as pd
 import statsmodels.formula.api as smf
 from anndata import AnnData
 from scipy.stats import mannwhitneyu
+from scipy.stats import t as t_dist
 
 from ..adata_tools import subset_cells
 from ..design import TrialDesign
@@ -129,7 +130,8 @@ def _ols_between_arm(
     Returns
     -------
     dict
-        Dictionary with keys: feature, beta_arm, p_arm, n_units.
+        Dictionary with keys: feature, beta_arm, se_arm, ci_lo_arm,
+        ci_hi_arm, p_arm, n_units.
     """
     df_feat = df_use.copy()
     if standardize:
@@ -138,6 +140,9 @@ def _ols_between_arm(
             return {
                 "feature": feat,
                 "beta_arm": np.nan,
+                "se_arm": np.nan,
+                "ci_lo_arm": np.nan,
+                "ci_hi_arm": np.nan,
                 "p_arm": np.nan,
                 "n_units": int(df_feat[design.participant_col].nunique()),
             }
@@ -150,9 +155,16 @@ def _ols_between_arm(
         formula += " + " + " + ".join(covariates)
     model = smf.ols(formula, data=df_feat)
     fit = model.fit()
+
+    beta = float(fit.params.get("arm_bin", np.nan))
+    se = float(fit.bse.get("arm_bin", np.nan))
+    t_crit = float(t_dist.ppf(0.975, fit.df_resid))
     return {
         "feature": feat,
-        "beta_arm": float(fit.params.get("arm_bin", np.nan)),
+        "beta_arm": beta,
+        "se_arm": se,
+        "ci_lo_arm": beta - t_crit * se,
+        "ci_hi_arm": beta + t_crit * se,
         "p_arm": float(fit.pvalues.get("arm_bin", np.nan)),
         "n_units": int(df_feat[design.participant_col].nunique()),
     }
@@ -203,7 +215,17 @@ def within_arm_comparison(
     Returns
     -------
     pd.DataFrame
-        Table with beta_time and p_time.
+        Table with columns:
+
+        - **feature** : Name of the feature.
+        - **beta_time** : Estimated pre→post change (visit coefficient).
+        - **se_time** : Cluster-robust standard error of the time coefficient.
+        - **ci_lo_time** / **ci_hi_time** : 95 % confidence interval bounds
+          (``beta ± t_crit × se`` with residual df from the OLS fit).
+        - **p_time** : P-value for the time coefficient
+          (cluster-robust Wald test).
+        - **n_units** : Number of unique participants.
+        - **FDR_time** : Benjamini–Hochberg corrected p-value.
     """
     # Subset to arm and visits
     ad = subset_cells(adata, design, arm=arm, exclude_crossovers=False)
@@ -262,6 +284,9 @@ def within_arm_comparison(
                 rows.append({
                     "feature": feat,
                     "beta_time": np.nan,
+                    "se_time": np.nan,
+                    "ci_lo_time": np.nan,
+                    "ci_hi_time": np.nan,
                     "p_time": np.nan,
                     "n_units": int(df_feat[unit].nunique()),
                 })
@@ -285,9 +310,15 @@ def within_arm_comparison(
             )
         fit = model.fit(cov_type="cluster", cov_kwds={"groups": df_feat[unit]})
 
+        beta = float(fit.params.get("visit_num", np.nan))
+        se = float(fit.bse.get("visit_num", np.nan))
+        t_crit = float(t_dist.ppf(0.975, fit.df_resid))
         rows.append({
             "feature": feat,
-            "beta_time": float(fit.params.get("visit_num", np.nan)),
+            "beta_time": beta,
+            "se_time": se,
+            "ci_lo_time": beta - t_crit * se,
+            "ci_hi_time": beta + t_crit * se,
             "p_time": float(fit.pvalues.get("visit_num", np.nan)),
             "n_units": int(df_use[unit].nunique()),
         })
@@ -341,12 +372,19 @@ def between_arm_comparison(
     Returns
     -------
     pd.DataFrame
-        Table with feature, beta_arm, p_arm, FDR_arm, n_units.
-        - feature: Name of the feature.
-        - beta_arm: Effect size (difference in means between arms). Note: This is the difference in means between the treated and control arms.
-        - p_arm: P-value for the between-arm comparison.
-        - FDR_arm: False Discovery Rate corrected p-value.
-        - n_units: Number of unique units (participants) included in the analysis. Note: This is the number of participants that have valid scores for the feature in both arms.
+        Table with columns:
+
+        - **feature** : Name of the feature.
+        - **beta_arm** : Effect size (treated − control difference in means).
+        - **se_arm** : Standard error of the arm coefficient. For OLS this is
+          the analytical SE from the model fit; for Wilcoxon it is the pooled
+          SE of the difference in means (√(s₁²/n₁ + s₂²/n₂)).
+        - **ci_lo_arm** / **ci_hi_arm** : 95 % confidence interval bounds.
+          For OLS: ``beta ± t_crit × se`` with residual df. For Wilcoxon:
+          ``beta ± t_crit × se`` with Welch–Satterthwaite df.
+        - **p_arm** : P-value for the between-arm comparison.
+        - **FDR_arm** : Benjamini–Hochberg corrected p-value.
+        - **n_units** : Number of unique participants.
     """
     df_use = _prepare_between_arm_df(
         adata=adata,
@@ -369,9 +407,20 @@ def between_arm_comparison(
 
             if len(g1) > 0 and len(g2) > 0:
                 stat, p_val = mannwhitneyu(g1, g2, alternative="two-sided")
+                beta = float(np.mean(g1) - np.mean(g2))
+                # Pooled SE for the difference in means
+                n1, n2 = len(g1), len(g2)
+                se = float(np.sqrt(np.var(g1, ddof=1) / n1 + np.var(g2, ddof=1) / n2))
+                # Welch-Satterthwaite df for CI
+                v1, v2 = np.var(g1, ddof=1) / n1, np.var(g2, ddof=1) / n2
+                df_ws = float((v1 + v2) ** 2 / (v1**2 / (n1 - 1) + v2**2 / (n2 - 1))) if (v1 + v2) > 0 else max(n1 + n2 - 2, 1)
+                t_crit = float(t_dist.ppf(0.975, df_ws))
                 rows.append({
                     "feature": feat,
-                    "beta_arm": float(np.mean(g1) - np.mean(g2)),
+                    "beta_arm": beta,
+                    "se_arm": se,
+                    "ci_lo_arm": beta - t_crit * se,
+                    "ci_hi_arm": beta + t_crit * se,
                     "p_arm": float(p_val),
                     "n_units": int(df_use[design.participant_col].nunique()),
                 })
@@ -385,6 +434,9 @@ def between_arm_comparison(
                 rows.append({
                     "feature": feat,
                     "beta_arm": np.nan,
+                    "se_arm": np.nan,
+                    "ci_lo_arm": np.nan,
+                    "ci_hi_arm": np.nan,
                     "p_arm": np.nan,
                     "n_units": int(df_use[design.participant_col].nunique()),
                 })
