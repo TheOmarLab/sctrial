@@ -112,12 +112,17 @@ def _prepare_data() -> dict:
     gsea_all = {}  # per-library results for Panel B
     for lib in gsea_libraries:
         try:
+            # Use tstat ranking to reduce ties in the preranked list.
+            # signed_confidence produces many ties when n_units is small
+            # because p-values cluster (23%+ duplicate rate).  The
+            # t-statistic (beta/SE) varies continuously and breaks ties.
             res = run_gsea_did(
                 adata,
                 gene_sets=lib,
                 design=design,
                 visits=visits,
                 layer="log1p_tpm",
+                rank_by="tstat",
                 min_size=10,
                 max_size=500,
                 permutation_num=1000,
@@ -133,7 +138,52 @@ def _prepare_data() -> dict:
 
     if gsea_all:
         gsea_results = pd.concat(gsea_all.values(), ignore_index=True)
-        print(f"  GSEA total: {len(gsea_results)} pathways across {len(gsea_all)} libraries")
+        # Recompute FDR across the *pooled* pathway universe to control
+        # multiplicity properly when combining libraries.
+        fdr_col_name = None
+        for c in gsea_results.columns:
+            if c.lower().strip() in ("fdr q-val", "fdr"):
+                fdr_col_name = c
+                break
+        if fdr_col_name is None:
+            for c in gsea_results.columns:
+                if "fdr" in c.lower():
+                    fdr_col_name = c
+                    break
+        if fdr_col_name is not None:
+            from statsmodels.stats.multitest import multipletests
+            # Preserve per-library FDR, add pooled FDR
+            gsea_results["FDR_per_library"] = gsea_results[fdr_col_name]
+            pvals = gsea_results[fdr_col_name].fillna(1).values
+            # Use BH on the raw NES p-values (FDR q-val from gseapy is
+            # already per-library BH; we re-correct across the pool).
+            # gseapy's FDR q-val is the corrected p-value, so we use
+            # the NOM p-val column if available for proper re-correction.
+            nom_col = None
+            for c in gsea_results.columns:
+                cl = c.lower().strip()
+                if cl in ("nom p-val", "pval", "p-value", "nom_pval"):
+                    nom_col = c
+                    break
+            if nom_col is not None:
+                pvals = pd.to_numeric(
+                    gsea_results[nom_col], errors="coerce"
+                ).fillna(1).values
+            _, fdr_pooled, _, _ = multipletests(
+                pvals, method="fdr_bh",
+            )
+            gsea_results[fdr_col_name] = fdr_pooled
+            n_sig_pooled = (fdr_pooled < 0.25).sum()
+            print(
+                f"  GSEA total: {len(gsea_results)} pathways across "
+                f"{len(gsea_all)} libraries "
+                f"({n_sig_pooled} FDR<0.25 after pooled correction)"
+            )
+        else:
+            print(
+                f"  GSEA total: {len(gsea_results)} pathways across "
+                f"{len(gsea_all)} libraries"
+            )
     else:
         gsea_results = None
 
@@ -161,10 +211,26 @@ def _prepare_data() -> dict:
             layer="log1p_tpm",
             standardize=True,
             aggregate="participant_visit",
+            use_bootstrap=True,
+            n_boot=999,
+            seed=42,
         )
 
         n_sig = (gene_results["FDR_DiD"] < 0.1).sum()
-        print(f"  Gene-level results: {len(gene_results)} genes, {n_sig} FDR<0.1")
+        n_boot_sig = 0
+        if "p_DiD_boot" in gene_results.columns:
+            from statsmodels.stats.multitest import multipletests
+            _, fdr_boot, _, _ = multipletests(
+                gene_results["p_DiD_boot"].fillna(1).values,
+                method="fdr_bh",
+            )
+            gene_results["FDR_DiD_boot"] = fdr_boot
+            n_boot_sig = (fdr_boot < 0.1).sum()
+        print(
+            f"  Gene-level results: {len(gene_results)} genes, "
+            f"{n_sig} FDR<0.1 (analytical), "
+            f"{n_boot_sig} FDR<0.1 (bootstrap)"
+        )
 
         del adata_genes
         gc.collect()
@@ -234,10 +300,45 @@ def _detect_gsea_columns(df: pd.DataFrame) -> dict:
     return cols
 
 
-def _clean_pathway_name(s: str, max_len: int = 38) -> str:
-    """Clean pathway names for display."""
+def _clean_pathway_name(s: str, max_len: int = 55) -> str:
+    """Clean pathway names for display.
+
+    Strips GO IDs (GO:NNNNNNN), Reactome IDs (R-HSA-NNNNN), and
+    trailing parenthetical accession numbers to save label space.
+    """
     s = str(s).replace("_", " ").title()
+    # Strip accession IDs that bloat labels
+    s = re.sub(r"\s*\(Go:\d+\)", "", s, flags=re.IGNORECASE)
+    s = re.sub(r"\s*R-Hsa-\d+", "", s, flags=re.IGNORECASE)
+    s = s.strip()
     return s[:max_len] + "…" if len(s) > max_len + 2 else s
+
+
+# Irrelevant pathway terms for an immunotherapy/immune context.
+# These appear when broad GO libraries surface tissue-specific or
+# developmental terms that are biologically implausible for melanoma
+# scRNA-seq.  Matching is case-insensitive substring.
+_IRRELEVANT_PATHWAY_TERMS = [
+    "sperm", "spermat", "flagell", "cilium assembly",
+    "odontogenesis", "amelogenesis", "enamel",
+    "cardiac chamber", "heart jogging",
+    "embryonic digit", "limb morphogenesis",
+    "sensory perception of smell", "olfactory",
+    "lens fiber", "lens development",
+    "photoreceptor", "retinal",
+    "keratinocyte", "cornification",
+    "skeletal muscle contraction",
+    "flight", "insemination",
+]
+_IRRELEVANT_RE = re.compile(
+    "|".join(re.escape(t) for t in _IRRELEVANT_PATHWAY_TERMS),
+    re.IGNORECASE,
+)
+
+
+def _is_relevant_pathway(term: str) -> bool:
+    """Return False for pathways implausible in immunotherapy context."""
+    return _IRRELEVANT_RE.search(str(term)) is None
 
 
 # ======================================================================
@@ -266,6 +367,14 @@ def panel_A(ax, data: dict):
         df[fdr_col] = pd.to_numeric(df[fdr_col], errors="coerce")
     df = df.dropna(subset=[nes_col])
 
+    # Filter out biologically implausible pathways for this context
+    if term_col is not None:
+        n_before = len(df)
+        df = df[df[term_col].apply(_is_relevant_pathway)]
+        n_dropped = n_before - len(df)
+        if n_dropped > 0:
+            print(f"  Panel A: dropped {n_dropped} irrelevant pathways")
+
     # Balanced selection: top N up + top N down by |NES|
     n_show = 15
     df_pos = df[df[nes_col] > 0].nlargest(n_show // 2 + 1, nes_col)
@@ -287,14 +396,23 @@ def panel_A(ax, data: dict):
     # Clean pathway names
     df_selected["pathway"] = df_selected[term_col].apply(_clean_pathway_name)
 
-    # Color by direction and significance
+    # Color by direction and significance — use project palette
+    # treated (blue) = Responder ↑, control (orange) = Non-responder ↑
+    clr_up_sig = COLORS["treated"]
+    clr_up_ns = COLORS["treated"] + "66"  # 40% alpha hex
+    clr_dn_sig = COLORS["control"]
+    clr_dn_ns = COLORS["control"] + "66"
     colors = []
     for _, row in df_selected.iterrows():
-        sig = fdr_col is not None and pd.notna(row.get(fdr_col)) and row[fdr_col] < 0.25
+        sig = (
+            fdr_col is not None
+            and pd.notna(row.get(fdr_col))
+            and row[fdr_col] < 0.25
+        )
         if row[nes_col] > 0:
-            colors.append("#C0392B" if sig else "#E6B0AA")
+            colors.append(clr_up_sig if sig else clr_up_ns)
         else:
-            colors.append("#2471A3" if sig else "#AED6F1")
+            colors.append(clr_dn_sig if sig else clr_dn_ns)
 
     y_pos = np.arange(len(df_selected))
     ax.barh(y_pos, df_selected[nes_col].values, color=colors, alpha=0.9,
@@ -326,7 +444,7 @@ def panel_A(ax, data: dict):
     ax.set_yticks(y_pos)
     ax.set_yticklabels(df_selected["pathway"].values, fontsize=8)
     ax.set_xlabel("Normalized Enrichment Score (NES)")
-    ax.set_title("GSEA Pathway Enrichment (Multi-Library)", fontsize=11)
+    ax.set_title("GSEA Pathway Enrichment (Pooled FDR)", fontsize=11)
 
     # Build legend only for categories present
     def _is_sig(row):
@@ -351,13 +469,25 @@ def panel_A(ax, data: dict):
     )
     legend_handles = []
     if has_up_sig:
-        legend_handles.append(mpatches.Patch(color="#C0392B", alpha=0.9, label="Up (FDR < 0.25)"))
+        legend_handles.append(mpatches.Patch(
+            color=COLORS["treated"], alpha=0.9,
+            label="Responder ↑ (FDR < 0.25)",
+        ))
     if has_up_ns:
-        legend_handles.append(mpatches.Patch(color="#E6B0AA", alpha=0.9, label="Up (n.s.)"))
+        legend_handles.append(mpatches.Patch(
+            color=COLORS["treated"], alpha=0.4,
+            label="Responder ↑ (n.s.)",
+        ))
     if has_down_sig:
-        legend_handles.append(mpatches.Patch(color="#2471A3", alpha=0.9, label="Down (FDR < 0.25)"))
+        legend_handles.append(mpatches.Patch(
+            color=COLORS["control"], alpha=0.9,
+            label="Non-responder ↑ (FDR < 0.25)",
+        ))
     if has_down_ns:
-        legend_handles.append(mpatches.Patch(color="#AED6F1", alpha=0.9, label="Down (n.s.)"))
+        legend_handles.append(mpatches.Patch(
+            color=COLORS["control"], alpha=0.4,
+            label="Non-responder ↑ (n.s.)",
+        ))
     if legend_handles:
         ax.legend(handles=legend_handles, fontsize=7, loc="lower right",
                   frameon=True, framealpha=0.9)
@@ -412,6 +542,10 @@ def panel_B(ax, data: dict):
         df[fdr_col] = pd.to_numeric(df[fdr_col], errors="coerce")
     df = df.dropna(subset=[nes_col])
 
+    # Filter irrelevant pathways (same as Panel A)
+    if term_col is not None:
+        df = df[df[term_col].apply(_is_relevant_pathway)]
+
     # Select top 8 pathways by |NES| (FDR < 0.25 preferred)
     if fdr_col is not None:
         sig_df = df[df[fdr_col] < 0.25]
@@ -420,16 +554,29 @@ def panel_B(ax, data: dict):
     if len(sig_df) < 4:
         sig_df = df  # fall back to all
 
-    selected = sig_df.assign(_abs=sig_df[nes_col].abs()).nlargest(8, "_abs").drop(columns="_abs")
+    selected = sig_df.assign(
+        _abs=sig_df[nes_col].abs(),
+    ).nlargest(8, "_abs").drop(columns="_abs")
     selected = selected.sort_values(nes_col, ascending=False)
 
-    # Parse leading-edge genes
-    pathway_genes = {}
-    all_genes = set()
+    # Parse leading-edge genes — use unique display names to avoid
+    # key collisions when two pathways truncate to the same label.
+    pathway_genes: dict[str, set[str]] = {}
+    all_genes: set[str] = set()
+    _seen_names: set[str] = set()
     for _, row in selected.iterrows():
         pname = _clean_pathway_name(str(row[term_col]), max_len=30)
+        # Disambiguate duplicate display names
+        if pname in _seen_names:
+            lib = str(row.get("library", ""))
+            pname = f"{pname} [{lib[:8]}]" if lib else f"{pname} (2)"
+        _seen_names.add(pname)
         genes_str = str(row[lead_col])
-        genes = [g.strip() for g in genes_str.replace(";", ",").split(",") if g.strip()]
+        genes = [
+            g.strip()
+            for g in genes_str.replace(";", ",").split(",")
+            if g.strip()
+        ]
         # Keep only protein-coding-looking genes
         genes = [g for g in genes if _is_likely_protein_coding(g)]
         pathway_genes[pname] = set(genes)
@@ -464,23 +611,40 @@ def panel_B(ax, data: dict):
             if gene in pathway_genes[pw]:
                 matrix[i, j] = 1
 
-    # Plot heatmap
+    # Plot heatmap with explicit legend for binary values
+    from matplotlib.colors import ListedColormap
+    binary_cmap = ListedColormap(["#FFF8DC", "#8B0000"])  # cream / dark red
     sns.heatmap(
         matrix,
         ax=ax,
         xticklabels=shared_genes,
         yticklabels=pathways,
-        cmap="YlOrRd",
+        cmap=binary_cmap,
+        vmin=0, vmax=1,
         cbar=False,
         linewidths=0.5,
         linecolor="white",
         square=False,
     )
-    ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right", fontsize=7)
+    ax.set_xticklabels(
+        ax.get_xticklabels(), rotation=45, ha="right", fontsize=7,
+    )
     ax.set_yticklabels(ax.get_yticklabels(), fontsize=8)
     ax.set_title("Leading-Edge Gene Overlap", fontsize=11)
     ax.set_xlabel("")
     ax.set_ylabel("")
+
+    # Binary legend (■ present / □ absent)
+    legend_handles = [
+        mpatches.Patch(facecolor="#8B0000", edgecolor="grey",
+                       label="In leading edge"),
+        mpatches.Patch(facecolor="#FFF8DC", edgecolor="grey",
+                       label="Absent"),
+    ]
+    ax.legend(
+        handles=legend_handles, fontsize=7, loc="lower right",
+        frameon=True, framealpha=0.9,
+    )
 
 
 def _panel_B_did_summary(ax, data: dict):
@@ -604,30 +768,23 @@ def panel_D(ax, data: dict):
 
     df = gene_results.copy()
     beta_col = "beta_DiD"
-    sig_col = "FDR_DiD"
-    p_col = "p_DiD"
 
-    df = df.dropna(subset=[beta_col, sig_col])
-
-    # Determine significance threshold
-    n_fdr_sig = (df[sig_col] < 0.1).sum()
-    if n_fdr_sig >= 3:
-        threshold = 0.1
-        thresh_label = "FDR < 0.1"
-        df["nlog10"] = -np.log10(df[sig_col].clip(lower=1e-300))
-        use_fdr = True
+    # Use bootstrap p-values when available (more reliable with small
+    # cluster counts); fall back to analytical Wald inference.
+    if "p_DiD_boot" in df.columns:
+        p_col = "p_DiD_boot"
     else:
-        # Fall back to nominal p-value
-        threshold = 0.05
-        thresh_label = "p < 0.05"
-        df["nlog10"] = -np.log10(df[p_col].clip(lower=1e-300))
-        use_fdr = False
+        p_col = "p_DiD"
 
-    # Classify genes
-    if use_fdr:
-        sig_mask = df[sig_col] < threshold
-    else:
-        sig_mask = df[p_col] < threshold
+    df = df.dropna(subset=[beta_col, p_col])
+
+    # Standard volcano: nominal p on y-axis, colour by nominal p < 0.05.
+    # FDR is too conservative for gene-level display (0 hits after
+    # correcting 2000 tests with n=10 clusters).  We note in the
+    # manuscript that no genes survive FDR correction.
+    p_thresh = 0.05
+    df["nlog10"] = -np.log10(df[p_col].clip(lower=1e-300))
+    sig_mask = df[p_col] < p_thresh
 
     df["category"] = "ns"
     df.loc[sig_mask & (df[beta_col] > 0), "category"] = "up"
@@ -652,43 +809,48 @@ def panel_D(ax, data: dict):
             s=size_map[cat], edgecolors="none", rasterized=True,
         )
 
-    # Label top genes — protein-coding first, fill with non-coding
+    # Label top genes by |effect size|, regardless of significance.
+    # With n=10 clusters and bootstrap p-values, very few genes pass
+    # p<0.05 — but extreme effect sizes are still informative.
+    # Protein-coding genes are prioritised; non-coding backfills.
     texts = []
-    for direction, n_label in [("up", 8), ("down", 8)]:
-        sub = df[df["category"] == direction].copy()
+    for sign, n_label in [("pos", 8), ("neg", 8)]:
+        if sign == "pos":
+            sub = df[df[beta_col] > 0].copy()
+            top_func = "nlargest"
+        else:
+            sub = df[df[beta_col] < 0].copy()
+            top_func = "nsmallest"
         if len(sub) == 0:
             continue
 
-        # Separate protein-coding from non-coding
         sub["_pc"] = sub["feature"].apply(_is_likely_protein_coding)
         pc = sub[sub["_pc"]]
         nc = sub[~sub["_pc"]]
 
-        # Take protein-coding first, fill remaining with non-coding
-        if direction == "up":
-            top_pc = pc.nlargest(min(n_label, len(pc)), beta_col)
-        else:
-            top_pc = pc.nsmallest(min(n_label, len(pc)), beta_col)
-
+        top_pc = getattr(pc, top_func)(
+            min(n_label, len(pc)), beta_col,
+        )
         remaining = n_label - len(top_pc)
         if remaining > 0 and len(nc) > 0:
-            if direction == "up":
-                top_nc = nc.nlargest(
-                    min(remaining, len(nc)), beta_col,
-                )
-            else:
-                top_nc = nc.nsmallest(
-                    min(remaining, len(nc)), beta_col,
-                )
+            top_nc = getattr(nc, top_func)(
+                min(remaining, len(nc)), beta_col,
+            )
             top = pd.concat([top_pc, top_nc])
         else:
             top = top_pc
 
         for _, row in top.iterrows():
+            is_pc = _is_likely_protein_coding(row["feature"])
+            # Color by direction regardless of significance
+            dir_clr = (COLORS["treated"] if row[beta_col] > 0
+                       else COLORS["control"])
             t = ax.text(
                 row[beta_col], row["nlog10"], row["feature"],
-                fontsize=6.5, fontweight="bold",
-                color=color_map[direction],
+                fontsize=6.5,
+                fontweight="bold" if is_pc else "normal",
+                fontstyle="normal" if is_pc else "italic",
+                color=dir_clr,
             )
             texts.append(t)
 
@@ -710,34 +872,22 @@ def panel_D(ax, data: dict):
         pass
 
     # Threshold line
-    thresh_y = -np.log10(threshold)
+    thresh_y = -np.log10(p_thresh)
     ax.axhline(thresh_y, color=COLORS["gray"], ls="--", lw=0.8, zorder=0)
     ax.axvline(0, color="black", lw=0.6, zorder=0)
 
     ax.set_xlabel(r"Effect size ($\beta_{\mathrm{DiD}}$)")
-    y_label = r"$-\log_{10}$" + ("(FDR)" if use_fdr else "(p)")
-    ax.set_ylabel(y_label)
+    ax.set_ylabel(r"$-\log_{10}$(p)")
     ax.set_title("Gene-Level Volcano (Sade-Feldman DiD)", fontsize=11)
 
-    # Summary annotation
-    n_up = (df["category"] == "up").sum()
-    n_down = (df["category"] == "down").sum()
-    ax.text(
-        0.97, 0.97,
-        f"{thresh_label}:\n"
-        f"  {n_up} up, {n_down} down\n"
-        f"  {len(df)} total genes",
-        transform=ax.transAxes, fontsize=8, va="top", ha="right",
-        bbox=dict(boxstyle="round,pad=0.4", facecolor="white",
-                  edgecolor=COLORS["gray"], alpha=0.8),
-        family="monospace",
-    )
-
-    # Legend
+    # Legend — no footnotes, no summary boxes
     legend_handles = [
-        mpatches.Patch(color=COLORS["treated"], alpha=0.8, label="Upregulated"),
-        mpatches.Patch(color=COLORS["control"], alpha=0.8, label="Downregulated"),
-        mpatches.Patch(color=COLORS["gray"], alpha=0.3, label="Not significant"),
+        mpatches.Patch(color=COLORS["treated"], alpha=0.8,
+                       label="Responder ↑"),
+        mpatches.Patch(color=COLORS["control"], alpha=0.8,
+                       label="Non-responder ↑"),
+        mpatches.Patch(color=COLORS["gray"], alpha=0.3,
+                       label="Not significant"),
     ]
     ax.legend(handles=legend_handles, fontsize=8, loc="upper left",
               frameon=True, framealpha=0.9)
