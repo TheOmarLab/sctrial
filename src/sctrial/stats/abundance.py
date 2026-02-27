@@ -231,14 +231,12 @@ def abundance_did(
             if covariates:
                 formula += " + " + " + ".join(covariates)
             model = smf.ols(formula, data=df_delta)
-            clusters_use = diff_pids
         else:
             tmp = tmp.reset_index(drop=True)  # unique int index for .loc
             formula = f"y ~ visit_num + visit_num:arm_bin + C({design.participant_col})"
             if covariates:
                 formula += " + " + " + ".join(covariates)
             model = smf.ols(formula, data=tmp)
-            clusters_use = tmp[design.participant_col].values
 
         try:
             # Warn if using cluster-robust SE with few clusters
