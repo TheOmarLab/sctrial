@@ -336,7 +336,7 @@ def abundance_did(
                 term = "arm_bin"
                 if term not in fit.params or np.isnan(fit.params[term]):
                     continue
-                rows.append({
+                fallback_row: dict = {
                     "celltype": ct,
                     "n_participants": int(df_delta.shape[0]),
                     "beta_DiD": float(fit.params[term]),
@@ -344,7 +344,12 @@ def abundance_did(
                     "p_DiD": float(fit.pvalues[term]),
                     "beta_time": np.nan,
                     "p_time": np.nan,
-                })
+                }
+                if use_bootstrap:
+                    fallback_row["se_DiD_boot"] = np.nan
+                    fallback_row["ci_lo_boot"] = np.nan
+                    fallback_row["ci_hi_boot"] = np.nan
+                rows.append(fallback_row)
             except (ValueError, np.linalg.LinAlgError, KeyError):
                 continue
 

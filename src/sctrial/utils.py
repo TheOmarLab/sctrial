@@ -245,9 +245,12 @@ def wild_cluster_bootstrap_t(
         else:
             t_boot[b] = np.nan
 
-    # Drop failed draws (non-finite SE) before computing p-value
-    valid_t = t_boot[np.isfinite(t_boot)]
-    valid_beta = beta_boot[np.isfinite(beta_boot)]
+    # Drop failed draws (non-finite SE → NaN t) before computing p-value.
+    # Use the same mask for beta so that se_boot/distribution are based on
+    # exactly the draws that contributed to the p-value and CI.
+    valid_mask = np.isfinite(t_boot)
+    valid_t = t_boot[valid_mask]
+    valid_beta = beta_boot[valid_mask]
 
     if len(valid_t) == 0:
         return _nan_result
