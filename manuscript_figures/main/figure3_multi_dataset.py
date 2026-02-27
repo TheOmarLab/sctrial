@@ -113,12 +113,8 @@ def _forest_plot(
         lo, hi = row[ci_lo_col], row[ci_hi_col]
         color = color_pos if es > 0 else color_neg
 
-        # Thicker line / larger marker when FDR < 0.05
-        sig = False
-        if fdr_col and fdr_col in row.index and pd.notna(row[fdr_col]):
-            sig = row[fdr_col] < 0.05
-        lw = 2.5 if sig else 1.5
-        ms = 8 if sig else 5.5
+        lw = 1.8
+        ms = 6.5
 
         ax.plot([lo, hi], [i, i], color=color, lw=lw, solid_capstyle="round")
         ax.plot(
@@ -523,27 +519,25 @@ def _prepare_data() -> dict[str, Any]:
 def _build_heatmap_data(
     data: dict[str, Any],
 ) -> tuple[pd.DataFrame | None, pd.DataFrame | None]:
-    """Compile signed −log10(FDR) across datasets into a comparable matrix.
+    """Compile standardised effect sizes across datasets.
 
-    Different datasets use different effect-size metrics (Hedges' g,
-    within-arm β, DiD β), so raw effects are not directly comparable on
-    a single colour scale.  Signed −log10(FDR) provides a common
-    significance-and-direction metric.
+    COVID-19 uses Hedges' g; Vaccine/CAR-T use within-arm β (standardised);
+    AML/Melanoma use DiD β (standardised).  All are on a roughly comparable
+    standardised scale but derive from different estimators — the panel
+    footnote communicates this.
     """
 
     records: list[dict[str, Any]] = []
 
-    # COVID-19: direction from Hedges' g, FDR from OLS
+    # COVID-19: Hedges' g (cross-sectional)
     df = data.get("covid_effects")
     if df is not None and len(df):
         for _, row in df.iterrows():
-            fdr = row.get("fdr", np.nan)
-            sign = np.sign(row["hedges_g"]) if pd.notna(row["hedges_g"]) else 0
             records.append({
                 "dataset": "COVID-19",
                 "signature": row["label"],
-                "fdr": fdr,
-                "sign": sign,
+                "effect": row["hedges_g"],
+                "p": row.get("fdr", np.nan),
             })
 
     # Vaccine / CAR-T: within-arm beta_time
@@ -552,13 +546,11 @@ def _build_heatmap_data(
         if df is not None and len(df):
             for _, row in df.iterrows():
                 lbl = row.get("label", sig_display(row["feature"]))
-                fdr = row.get("FDR_time", row.get("p_time", np.nan))
-                sign = np.sign(row["beta_time"]) if pd.notna(row["beta_time"]) else 0
                 records.append({
                     "dataset": ds_name,
                     "signature": lbl,
-                    "fdr": fdr,
-                    "sign": sign,
+                    "effect": row["beta_time"],
+                    "p": row.get("FDR_time", row.get("p_time", np.nan)),
                 })
 
     # AML / Melanoma: DiD beta
@@ -567,38 +559,34 @@ def _build_heatmap_data(
         if df is not None and len(df):
             for _, row in df.iterrows():
                 lbl = row.get("label", sig_display(row["feature"]))
-                fdr = row.get("FDR_DiD", row.get("p_DiD", np.nan))
-                sign = np.sign(row["beta_DiD"]) if pd.notna(row.get("beta_DiD")) else 0
                 records.append({
                     "dataset": ds_name,
                     "signature": lbl,
-                    "fdr": fdr,
-                    "sign": sign,
+                    "effect": row.get("beta_DiD", np.nan),
+                    "p": row.get("FDR_DiD", row.get("p_DiD", np.nan)),
                 })
 
     if not records:
         return None, None
 
     df_all = pd.DataFrame(records)
-    # Compute signed −log10(FDR), clamping FDR floor at 1e-10
-    df_all["slog"] = df_all["sign"] * -np.log10(df_all["fdr"].clip(lower=1e-10))
 
     # Pivot to matrix form
     mat = df_all.pivot_table(
-        index="dataset", columns="signature", values="slog", aggfunc="first",
+        index="dataset", columns="signature", values="effect", aggfunc="first",
     )
-    fdr_mat = df_all.pivot_table(
-        index="dataset", columns="signature", values="fdr", aggfunc="first",
+    pmat = df_all.pivot_table(
+        index="dataset", columns="signature", values="p", aggfunc="first",
     )
 
     # Order datasets consistently
     ds_order = [d for d in ["COVID-19", "Vaccine", "AML", "CAR-T", "Melanoma"]
                 if d in mat.index]
     mat = mat.loc[ds_order]
-    fdr_mat = fdr_mat.loc[ds_order]
+    pmat = pmat.loc[ds_order]
 
     # Build star annotation matrix
-    star_mat = fdr_mat.map(lambda v: _stars(v) if pd.notna(v) else "")
+    star_mat = pmat.map(lambda v: _stars(v) if pd.notna(v) else "")
 
     return mat, star_mat
 
@@ -746,10 +734,10 @@ def panel_e_melanoma(ax, data: dict[str, Any]) -> None:
 
 
 def panel_f_heatmap(ax, data: dict[str, Any]) -> None:
-    """Panel F: Cross-dataset signed −log10(FDR) heatmap."""
+    """Panel F: Cross-dataset standardised effect-size heatmap."""
     import seaborn as sns
 
-    ax.set_title("Cross-Dataset Significance", fontsize=10, loc="left", pad=8)
+    ax.set_title("Cross-Dataset Effect Sizes", fontsize=10, loc="left", pad=8)
     ax.text(-0.12, 1.05, "F", transform=ax.transAxes, fontsize=14,
             fontweight="bold", va="bottom")
 
@@ -761,7 +749,7 @@ def panel_f_heatmap(ax, data: dict[str, Any]) -> None:
         ax.axis("off")
         return
 
-    # Build combined annotation: signed −log10(FDR) value + stars
+    # Build combined annotation: effect size + stars
     annot_combined = mat.copy().astype(object)
     for r in mat.index:
         for c in mat.columns:
@@ -784,11 +772,7 @@ def panel_f_heatmap(ax, data: dict[str, Any]) -> None:
         vmax=vmax,
         linewidths=0.8,
         linecolor="white",
-        cbar_kws={
-            "label": "Signed $-\\log_{10}$(FDR)",
-            "shrink": 0.7,
-            "aspect": 20,
-        },
+        cbar_kws={"label": "Standardised effect", "shrink": 0.7, "aspect": 20},
         annot=annot_combined.values,
         fmt="",
         annot_kws={"fontsize": 7, "fontweight": "bold"},
@@ -800,6 +784,14 @@ def panel_f_heatmap(ax, data: dict[str, Any]) -> None:
     ax.set_xticklabels(ax.get_xticklabels(), rotation=40, ha="right",
                        fontsize=7.5)
     ax.set_yticklabels(ax.get_yticklabels(), rotation=0, fontsize=8.5)
+
+    # Footnote: metrics differ across datasets
+    ax.text(
+        0.5, -0.32,
+        "Hedges' g (COVID-19); within-arm β (Vaccine, CAR-T); DiD β (AML, Melanoma)",
+        transform=ax.transAxes, fontsize=6, ha="center", va="top",
+        fontstyle="italic", color="0.4",
+    )
 
 
 # ── composite figure ──────────────────────────────────────────────────────
