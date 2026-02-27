@@ -179,7 +179,7 @@ def wild_cluster_bootstrap_t(
         participant fixed effects already absorb within-cluster correlation
         (e.g. participant_visit aggregation with 2 obs per cluster).
     ci_level
-        Confidence level for bootstrap percentile CI (default 0.95 → 95% CI).
+        Confidence level for the bootstrap-t CI (default 0.95 → 95 % CI).
 
     Returns
     -------
