@@ -145,6 +145,46 @@ def test_within_arm_bootstrap_nan_feature(sample_adata, trial_design):
     assert np.isnan(res.iloc[0]["p_time"])
 
 
+def test_within_arm_bootstrap_nondefault_index(sample_adata, trial_design):
+    """Bootstrap works when statsmodels drops rows with NaN values."""
+    from scipy import sparse
+
+    # Add signal
+    treated_v2_mask = (sample_adata.obs["arm"] == "Treated") & (
+        sample_adata.obs["visit"] == "V2"
+    )
+    X = sample_adata.X.toarray()
+    X[treated_v2_mask, 0] += 10.0
+
+    # Inject a NaN into one cell's expression to force statsmodels row-drop.
+    # This creates a mismatch between df_feat rows and fit.model.exog rows
+    # that would crash if .iloc were used instead of .loc for cluster alignment.
+    treated_v1_idx = np.where(
+        (sample_adata.obs["arm"] == "Treated") & (sample_adata.obs["visit"] == "V1")
+    )[0]
+    if len(treated_v1_idx) > 0:
+        X[treated_v1_idx[0], 0] = np.nan
+    sample_adata.X = sparse.csr_matrix(X)
+
+    res = st.within_arm_comparison(
+        sample_adata,
+        arm="Treated",
+        features=["G0"],
+        design=trial_design,
+        visits=("V1", "V2"),
+        use_bootstrap=True,
+        n_boot=99,
+        seed=42,
+    )
+
+    assert len(res) == 1
+    # Should not crash and should produce finite results
+    # (the NaN cell is dropped, but remaining data has strong signal)
+    row = res.iloc[0]
+    assert np.isfinite(row["beta_time"])
+    assert "p_time_boot" in res.columns
+
+
 def test_between_arm_comparison(sample_adata, trial_design):
     # Add some signal for Treated group in V2
     v2_mask = (sample_adata.obs["visit"] == "V2")

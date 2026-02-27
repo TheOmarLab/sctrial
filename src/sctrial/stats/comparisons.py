@@ -318,7 +318,16 @@ def within_arm_comparison(
         if covariates:
             formula += " + " + " + ".join(covariates)
         model = smf.ols(formula, data=df_feat)
-        n_units_feat = df_feat[unit].nunique()
+
+        # Align cluster vector with fitted model rows: statsmodels may
+        # drop rows with missing values during formula parsing, so
+        # df_feat can be longer than model.exog.
+        model_row_idx = model.data.row_labels
+        clusters_aligned = np.asarray(
+            df_feat[unit].loc[model_row_idx].to_numpy()
+        )
+
+        n_units_feat = len(np.unique(clusters_aligned))
         if n_units_feat < MIN_CLUSTERS_FOR_ROBUST_SE:
             warnings.warn(
                 f"Only {n_units_feat} clusters (participants) available. Cluster-robust "
@@ -329,7 +338,7 @@ def within_arm_comparison(
                 UserWarning,
                 stacklevel=2,
             )
-        fit = model.fit(cov_type="cluster", cov_kwds={"groups": df_feat[unit]})
+        fit = model.fit(cov_type="cluster", cov_kwds={"groups": clusters_aligned})
 
         beta = float(fit.params.get("visit_num", np.nan))
         se = float(fit.bse.get("visit_num", np.nan))
@@ -370,21 +379,15 @@ def within_arm_comparison(
             "ci_hi_time": ci_hi,
             "p_time": p_val,
             "n_units": int(df_use[unit].nunique()),
+            "cov_type_used": effective_cov_type,
         }
 
         # Wild cluster bootstrap
         if use_bootstrap and "visit_num" in fit.params:
-            # Align cluster vector with fitted model rows: statsmodels may
-            # drop rows with missing covariates/outcomes during formula
-            # parsing, so df_feat can be longer than fit.model.exog.
-            model_row_idx = fit.model.data.row_labels
-            clusters_aligned = np.asarray(
-                df_feat[unit].iloc[model_row_idx].to_numpy()
-            )
             boot_res = wild_cluster_bootstrap_t(
                 fit,
                 X=fit.model.exog,
-                clusters=clusters_aligned,
+                clusters=clusters_aligned,  # already aligned above
                 term_name="visit_num",
                 B=n_boot,
                 seed=seed,
@@ -394,8 +397,10 @@ def within_arm_comparison(
             row_dict["se_time_boot"] = boot_res.se_boot
             row_dict["ci_lo_boot"] = boot_res.ci_lo
             row_dict["ci_hi_boot"] = boot_res.ci_hi
-            # Use bootstrap p-value as primary when requested
-            row_dict["p_time"] = boot_res.p_boot
+            # Use bootstrap p-value as primary when available;
+            # preserve analytical p_time if bootstrap returned NaN
+            if np.isfinite(boot_res.p_boot):
+                row_dict["p_time"] = boot_res.p_boot
 
         rows.append(row_dict)
 
