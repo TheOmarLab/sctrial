@@ -363,6 +363,7 @@
     <span class="n">features</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
     <span class="n">layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Add feature columns to the DataFrame.&quot;&quot;&quot;</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">.did</span><span class="w"> </span><span class="kn">import</span> <span class="n">_add_feature_columns</span> <span class="k">as</span> <span class="n">_add_feature_columns_did</span>
 
     <span class="n">df</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">_add_feature_columns_did</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">ad</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="n">layer</span><span class="p">)</span>
@@ -372,7 +373,24 @@
 <div class="viewcode-block" id="resolve_gene_name">
 <a class="viewcode-back" href="../../../api.html#sctrial.stats.comparisons.resolve_gene_name">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">resolve_gene_name</span><span class="p">(</span><span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span> <span class="n">gene_query</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve a gene name in var_names, case-insensitive if needed.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve a gene name in var_names, case-insensitive if needed.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    adata</span>
+<span class="sd">        AnnData object.</span>
+<span class="sd">    gene_query</span>
+<span class="sd">        Gene name to resolve (case-insensitive).</span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    str</span>
+<span class="sd">        The resolved gene name (exact match or case-insensitive match).</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If gene_query is not found in adata.var_names or if there are multiple case-insensitive matches.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">gene_query</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">gene_query</span>
     <span class="n">candidates</span> <span class="o">=</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">var_names</span> <span class="k">if</span> <span class="n">g</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="n">gene_query</span><span class="o">.</span><span class="n">upper</span><span class="p">()]</span>
@@ -394,6 +412,7 @@
     <span class="n">agg</span><span class="p">:</span> <span class="n">AggregateFunc</span><span class="p">,</span>
     <span class="n">covariates</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Prepare the data for between-arm comparison.&quot;&quot;&quot;</span>
     <span class="n">ad</span> <span class="o">=</span> <span class="n">subset_cells</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visit</span><span class="o">=</span><span class="n">visit</span><span class="p">,</span> <span class="n">exclude_crossovers</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
     <span class="n">obs</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
     <span class="n">obs</span><span class="p">[</span><span class="s2">&quot;arm_bin&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span> <span class="o">==</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_treated</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
@@ -667,6 +686,16 @@
 <span class="sd">        - &#39;wilcoxon&#39;: Wilcoxon rank-sum test (Mann-Whitney U).</span>
 <span class="sd">    covariates</span>
 <span class="sd">        Optional covariate columns to include as fixed effects for OLS.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.DataFrame</span>
+<span class="sd">        Table with feature, beta_arm, p_arm, FDR_arm, n_units.</span>
+<span class="sd">        - feature: Name of the feature.</span>
+<span class="sd">        - beta_arm: Effect size (difference in means between arms). Note: This is the difference in means between the treated and control arms.</span>
+<span class="sd">        - p_arm: P-value for the between-arm comparison.</span>
+<span class="sd">        - FDR_arm: False Discovery Rate corrected p-value.</span>
+<span class="sd">        - n_units: Number of unique units (participants) included in the analysis. Note: This is the number of participants that have valid scores for the feature in both arms.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">df_use</span> <span class="o">=</span> <span class="n">_prepare_between_arm_df</span><span class="p">(</span>
         <span class="n">adata</span><span class="o">=</span><span class="n">adata</span><span class="p">,</span>
@@ -738,12 +767,41 @@
 <span class="sd">    This aggregates expression per participant (avoids pseudoreplication) and</span>
 <span class="sd">    tests group differences using Mann-Whitney U on participant-level means.</span>
 
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    adata</span>
+<span class="sd">        AnnData object.</span>
+<span class="sd">    gene</span>
+<span class="sd">        Gene name.</span>
+<span class="sd">    celltypes</span>
+<span class="sd">        Cell types to analyze.</span>
+<span class="sd">    group_col</span>
+<span class="sd">        Column name in adata.obs to use for grouping.</span>
+<span class="sd">    group1</span>
+<span class="sd">        First group to compare.</span>
+<span class="sd">    group2</span>
+<span class="sd">        Second group to compare.</span>
+<span class="sd">    participant_col</span>
+<span class="sd">        Column name in adata.obs to use for participant IDs.</span>
+<span class="sd">    celltype_col</span>
+<span class="sd">        Column name in adata.obs to use for cell types.</span>
+<span class="sd">    layer</span>
+<span class="sd">        Layer name in adata.layers to use for expression data.</span>
+<span class="sd">    log1p</span>
+<span class="sd">        Whether to log1p the expression data.</span>
+<span class="sd">    expr_threshold</span>
+<span class="sd">        Expression threshold to use for calculating the percentage of expressing cells. This is the minimum expression level to be considered expressing.</span>
+<span class="sd">    min_cells_per_patient</span>
+<span class="sd">        Minimum number of cells per participant to include in the analysis.</span>
+<span class="sd">    min_patients_per_group</span>
+<span class="sd">        Minimum number of participants per group to include in the analysis.</span>
+
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    result : dict</span>
-<span class="sd">        Summary stats including p-value and group means.</span>
-<span class="sd">    df_patient : pd.DataFrame</span>
-<span class="sd">        Participant-level summaries (mean, median, % expressing, n_cells).</span>
+<span class="sd">    tuple[dict, pd.DataFrame]</span>
+<span class="sd">        A tuple containing a dictionary with the results and a DataFrame with the participant-level summaries</span>
+<span class="sd">        - The dictionary contains the results of the comparison.</span>
+<span class="sd">        - The DataFrame contains the participant-level summaries.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">celltypes</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
         <span class="n">celltypes</span> <span class="o">=</span> <span class="p">[</span><span class="n">celltypes</span><span class="p">]</span>

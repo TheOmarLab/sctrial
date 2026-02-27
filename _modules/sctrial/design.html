@@ -408,6 +408,11 @@
 <span class="sd">        followup</span>
 <span class="sd">            Optional explicit follow-up visit label. If None, uses</span>
 <span class="sd">            ``self.followup_visit``.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        tuple[str, str]</span>
+<span class="sd">            Tuple of (baseline, followup) visit labels.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">b</span> <span class="o">=</span> <span class="n">baseline</span> <span class="k">if</span> <span class="n">baseline</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">baseline_visit</span>
         <span class="n">f</span> <span class="o">=</span> <span class="n">followup</span> <span class="k">if</span> <span class="n">followup</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">followup_visit</span>
@@ -435,6 +440,11 @@
 <span class="sd">            If True, include ``celltype_col`` when it is defined.</span>
 <span class="sd">        include_crossover</span>
 <span class="sd">            If True, include ``crossover_col`` when it is defined.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        list[str]</span>
+<span class="sd">            List of required columns.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">include_celltype</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">celltype_col</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -466,6 +476,16 @@
 <span class="sd">            If True, require ``crossover_col`` in ``adata.obs``.</span>
 <span class="sd">        check_arm_labels</span>
 <span class="sd">            If True, verify that treated/control labels are present in ``arm_col``.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        KeyError</span>
+<span class="sd">            If required columns are missing.</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            If arm labels are not found in ``adata.obs[self.arm_col]``.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">obs</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span>
         <span class="n">missing</span> <span class="o">=</span> <span class="p">[</span>
@@ -513,7 +533,24 @@
 <div class="viewcode-block" id="TrialDesign.arm_bin">
 <a class="viewcode-back" href="../../api.html#sctrial.design.TrialDesign.arm_bin">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">arm_bin</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obs</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return 0/1 treated indicator aligned to obs.index.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return 0/1 treated indicator aligned to obs.index.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        obs</span>
+<span class="sd">            DataFrame containing the participant-visit data.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        pd.Series</span>
+<span class="sd">            A Series with 0/1 indicator of treated status.</span>
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            If arm_treated and arm_control are the same.</span>
+<span class="sd">        KeyError</span>
+<span class="sd">            If arm_col is not in obs.columns.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">arm_treated</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">arm_control</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                 <span class="sa">f</span><span class="s2">&quot;arm_bin() requires distinct arm labels, but &quot;</span>

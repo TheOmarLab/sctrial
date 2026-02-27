@@ -368,6 +368,7 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_ensure_gseapy</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Ensure gseapy is installed.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">gp</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span><span class="s2">&quot;gseapy is required for GSEA functions. Install with &#39;pip install gseapy&#39;.&quot;</span><span class="p">)</span>
 
@@ -377,6 +378,7 @@
     <span class="n">rank_by</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">min_units</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Rank the DiD results.&quot;&quot;&quot;</span>
     <span class="n">valid</span> <span class="o">=</span> <span class="n">res</span><span class="p">[</span><span class="n">res</span><span class="p">[</span><span class="s2">&quot;n_units&quot;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">min_units</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
@@ -522,7 +524,27 @@
     <span class="n">visits</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
     <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="n">gp</span><span class="o">.</span><span class="n">Prerank</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Run GSEA across multiple gene-set collections.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Run GSEA across multiple gene-set collections.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    adata</span>
+<span class="sd">        AnnData object.</span>
+<span class="sd">    gene_sets</span>
+<span class="sd">        Dictionary of gene-set collections.</span>
+<span class="sd">    design</span>
+<span class="sd">        TrialDesign object.</span>
+<span class="sd">    visits</span>
+<span class="sd">        Tuple of (baseline, followup) visit labels.</span>
+<span class="sd">    **kwargs</span>
+<span class="sd">        Additional parameters passed to `gseapy.prerank` (e.g., `permutation_num`,</span>
+<span class="sd">        `outdir`, `min_size`, `max_size`).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict[str, pd.DataFrame | gp.Prerank]</span>
+<span class="sd">        Dictionary of GSEA results.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">_ensure_gseapy</span><span class="p">()</span>
     <span class="n">results</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="n">gp</span><span class="o">.</span><span class="n">Prerank</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="n">gs</span> <span class="ow">in</span> <span class="n">gene_sets</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
@@ -547,7 +569,28 @@
     <span class="n">celltypes</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="n">gp</span><span class="o">.</span><span class="n">Prerank</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Run GSEA on DiD rankings separately for each cell type.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Run GSEA on DiD rankings separately for each cell type.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    adata</span>
+<span class="sd">        AnnData object.</span>
+<span class="sd">    gene_sets</span>
+<span class="sd">        Dictionary of gene-set collections.</span>
+<span class="sd">    design</span>
+<span class="sd">        TrialDesign object.</span>
+<span class="sd">    visits</span>
+<span class="sd">        Tuple of (baseline, followup) visit labels.</span>
+<span class="sd">    celltypes</span>
+<span class="sd">        List of cell types to analyze. If None, uses all unique cell types in `design.celltype_col`.</span>
+<span class="sd">    **kwargs</span>
+<span class="sd">        Additional parameters passed to `gseapy.prerank`</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict[str, pd.DataFrame | gp.Prerank]</span>
+<span class="sd">        Dictionary of GSEA results.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">_ensure_gseapy</span><span class="p">()</span>
     <span class="k">if</span> <span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;design.celltype_col must be set for celltype GSEA.&quot;</span><span class="p">)</span>
@@ -582,7 +625,41 @@
     <span class="n">return_obj</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="n">gp</span><span class="o">.</span><span class="n">Prerank</span> <span class="o">|</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">gp</span><span class="o">.</span><span class="n">Prerank</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Run GSEA using pseudobulk DiD results.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Run GSEA using pseudobulk DiD results.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    adata</span>
+<span class="sd">        AnnData object.</span>
+<span class="sd">    gene_sets</span>
+<span class="sd">        Dictionary of gene-set collections.</span>
+<span class="sd">    design</span>
+<span class="sd">        TrialDesign object.</span>
+<span class="sd">    visits</span>
+<span class="sd">        Tuple of (baseline, followup) visit labels.</span>
+<span class="sd">    celltype_col</span>
+<span class="sd">        If provided and results contain per-celltype rows, run GSEA separately for each cell type and concatenate results.</span>
+<span class="sd">    rank_by</span>
+<span class="sd">        Metric for ranking genes:</span>
+<span class="sd">        - &#39;signed_confidence&#39;: sign(beta_DiD) * -log10(p_DiD). Highlights</span>
+<span class="sd">          genes with high effect and high significance.</span>
+<span class="sd">        - &#39;beta&#39;: ranks genes solely by the DiD effect size.</span>
+<span class="sd">        - &#39;tstat&#39;: ranks genes by the t-statistic (beta_DiD / se_DiD).</span>
+<span class="sd">    min_units</span>
+<span class="sd">        Minimum number of paired participants required for a gene to be included in the ranking.</span>
+<span class="sd">    return_obj</span>
+<span class="sd">        Whether to return the full gseapy object. If False (default),</span>
+<span class="sd">        returns the results DataFrame (`res2d`).</span>
+<span class="sd">    **kwargs</span>
+<span class="sd">        Additional parameters passed to `gseapy.prerank` (e.g., `permutation_num`,</span>
+<span class="sd">        `outdir`, `min_size`, `max_size`).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.DataFrame | gp.Prerank | dict[str, gp.Prerank]</span>
+<span class="sd">        A DataFrame of enrichment results (if return_obj=False) or the</span>
+<span class="sd">        gseapy result object.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">_ensure_gseapy</span><span class="p">()</span>
 
     <span class="n">res</span> <span class="o">=</span> <span class="n">pseudobulk_did</span><span class="p">(</span>

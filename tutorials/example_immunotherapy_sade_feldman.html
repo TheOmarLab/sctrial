@@ -470,8 +470,9 @@ sctrial version: 0.2.1.dev1
     <span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;n_cells&quot;</span><span class="p">)</span>
 <span class="p">)</span>
 <span class="n">resp_n</span> <span class="o">=</span> <span class="n">resp_counts</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;participant_id&quot;</span><span class="p">)[</span><span class="s2">&quot;response&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span>
-<span class="n">mixed_ids</span> <span class="o">=</span> <span class="n">resp_n</span><span class="p">[</span><span class="n">resp_n</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+<span class="n">mixed_ids</span> <span class="o">=</span> <span class="n">resp_n</span><span class="p">[</span><span class="n">resp_n</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span> <span class="c1"># Some participants have mixed response labels</span>
 
+<span class="c1"># Since some participants have mixed response labels, we assign a single harmonized dominant response label per participant and store it in the `RESPONSE_COL` column</span>
 <span class="n">dominant_response</span> <span class="o">=</span> <span class="p">(</span>
     <span class="n">resp_counts</span>
     <span class="o">.</span><span class="n">sort_values</span><span class="p">([</span><span class="s2">&quot;participant_id&quot;</span><span class="p">,</span> <span class="s2">&quot;n_cells&quot;</span><span class="p">],</span> <span class="n">ascending</span><span class="o">=</span><span class="p">[</span><span class="kc">True</span><span class="p">,</span> <span class="kc">False</span><span class="p">])</span>
@@ -481,7 +482,7 @@ sctrial version: 0.2.1.dev1
 
 <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">RESPONSE_COL</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;participant_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">dominant_response</span><span class="p">)</span>
 <span class="n">missing_resp</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">RESPONSE_COL</span><span class="p">]</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
-
+<span class="c1"># Print dataset summary</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=== Dataset Summary ===&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cells: </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -490,7 +491,7 @@ sctrial version: 0.2.1.dev1
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Original response labels: </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s1">&#39;response&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Harmonized response labels: </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">RESPONSE_COL</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Visits: </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s1">&#39;visit&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
+<span class="c1"># Print response label consistency - show which label was chosen using majority rule</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=== Response Label Consistency ===&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Participants with mixed response labels: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">mixed_ids</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -503,7 +504,7 @@ sctrial version: 0.2.1.dev1
 <span class="k">if</span> <span class="n">missing_resp</span><span class="p">:</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;WARNING: </span><span class="si">{</span><span class="n">missing_resp</span><span class="si">}</span><span class="s2"> cells are missing harmonized response labels.&quot;</span><span class="p">)</span>
 
-<span class="c1"># Detailed pairing analysis</span>
+<span class="c1"># Detailed pairing analysis - Identifies participants with Pre-only, Post-only or both</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=== Longitudinal Pairing Analysis ===&quot;</span><span class="p">)</span>
 <span class="n">participant_visits</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;participant_id&quot;</span><span class="p">)[</span><span class="s2">&quot;visit&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="nb">set</span><span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
@@ -840,6 +841,7 @@ Participants per Response x Visit:
 <span class="n">n_paired</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">paired_ids</span><span class="p">)</span>
 
 <span class="c1"># Paired participants by response (harmonized)</span>
+<span class="c1"># Dict of response -&gt; number of paired participants</span>
 <span class="n">paired_by_response</span> <span class="o">=</span> <span class="p">(</span>
     <span class="n">participant_summary</span><span class="p">[</span><span class="n">participant_summary</span><span class="p">[</span><span class="s2">&quot;is_paired&quot;</span><span class="p">]]</span>
     <span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">RESPONSE_COL</span><span class="p">)</span>
@@ -847,6 +849,8 @@ Participants per Response x Visit:
     <span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
 <span class="p">)</span>
 
+
+<span class="c1"># Dict of response -&gt; set of paired participant IDs</span>
 <span class="n">paired_ids_by_response</span> <span class="o">=</span> <span class="p">{</span>
     <span class="n">arm</span><span class="p">:</span> <span class="nb">set</span><span class="p">(</span>
         <span class="n">participant_summary</span><span class="p">[</span>
@@ -856,13 +860,14 @@ Participants per Response x Visit:
     <span class="k">for</span> <span class="n">arm</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;Responder&quot;</span><span class="p">,</span> <span class="s2">&quot;Non-responder&quot;</span><span class="p">]</span>
 <span class="p">}</span>
 
+
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Longitudinal pairing:&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Total paired participants (Pre + Post): </span><span class="si">{</span><span class="n">n_paired</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Paired Responders: </span><span class="si">{</span><span class="n">paired_by_response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Responder&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Paired Non-responders: </span><span class="si">{</span><span class="n">paired_by_response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Non-responder&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-<span class="c1"># Check if DiD analysis is feasible</span>
+<span class="c1"># Check if DiD analysis is feasible - DiD analysis requires at least 3 paired participants per arm</span>
 <span class="n">MIN_PAIRED_PER_ARM</span> <span class="o">=</span> <span class="mi">3</span>
 <span class="n">can_do_did</span> <span class="o">=</span> <span class="p">(</span>
     <span class="n">paired_by_response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Responder&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">MIN_PAIRED_PER_ARM</span> <span class="ow">and</span>
@@ -876,7 +881,10 @@ Participants per Response x Visit:
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  WARNING: DiD analysis may be underpowered (&lt;</span><span class="si">{</span><span class="n">MIN_PAIRED_PER_ARM</span><span class="si">}</span><span class="s2"> paired in one arm)&quot;</span><span class="p">)</span>
 
-<span class="c1"># Define trial design for sctrial</span>
+<span class="c1"># Configure the sctrial.TrialDesign object that centralizes study design metadata</span>
+<span class="c1"># This design object is used for all downstream analyses</span>
+
+<span class="c1"># Refer to the sctrial.TrialDesign documentation and basic workflow tutorial for more details</span>
 <span class="c1"># Note: &quot;Responder&quot; is the group of interest (like &quot;treated&quot; in a trial context)</span>
 <span class="n">design</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">TrialDesign</span><span class="p">(</span>
     <span class="n">participant_col</span><span class="o">=</span><span class="s2">&quot;participant_id&quot;</span><span class="p">,</span>
@@ -920,9 +928,12 @@ Design configured:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Run built-in diagnostics to check data suitability</span>
+<span class="c1"># This includes checks for basic counts (paired participants, cells per arm, genes)</span>
+
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
+<span class="c1"># Built-in diagnostics check data suitability for longitudinal analysis</span>
 <span class="n">diagnostics</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">diagnose_trial_data</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
 <span class="c1"># Reset logging to avoid cluttering subsequent output</span>
@@ -977,14 +988,17 @@ INFO:sctrial.validation:========================================================
 <span class="n">gene_signatures</span> <span class="o">=</span> <span class="p">{</span>
     <span class="s2">&quot;Cytotoxicity&quot;</span><span class="p">:</span> <span class="p">[</span>
         <span class="s2">&quot;GZMB&quot;</span><span class="p">,</span> <span class="s2">&quot;GZMA&quot;</span><span class="p">,</span> <span class="s2">&quot;GZMH&quot;</span><span class="p">,</span> <span class="s2">&quot;GZMK&quot;</span><span class="p">,</span> <span class="s2">&quot;PRF1&quot;</span><span class="p">,</span> <span class="s2">&quot;GNLY&quot;</span><span class="p">,</span>
+
         <span class="s2">&quot;IFNG&quot;</span><span class="p">,</span> <span class="s2">&quot;NKG7&quot;</span><span class="p">,</span> <span class="s2">&quot;KLRD1&quot;</span><span class="p">,</span> <span class="s2">&quot;KLRB1&quot;</span><span class="p">,</span> <span class="s2">&quot;FASLG&quot;</span>
     <span class="p">],</span>
     <span class="s2">&quot;Exhaustion&quot;</span><span class="p">:</span> <span class="p">[</span>
         <span class="s2">&quot;PDCD1&quot;</span><span class="p">,</span> <span class="s2">&quot;LAG3&quot;</span><span class="p">,</span> <span class="s2">&quot;HAVCR2&quot;</span><span class="p">,</span> <span class="s2">&quot;TIGIT&quot;</span><span class="p">,</span> <span class="s2">&quot;CTLA4&quot;</span><span class="p">,</span>
+
         <span class="s2">&quot;TOX&quot;</span><span class="p">,</span> <span class="s2">&quot;ENTPD1&quot;</span><span class="p">,</span> <span class="s2">&quot;CXCL13&quot;</span><span class="p">,</span> <span class="s2">&quot;EOMES&quot;</span>
     <span class="p">],</span>
     <span class="s2">&quot;IFN_Response&quot;</span><span class="p">:</span> <span class="p">[</span>
         <span class="s2">&quot;ISG15&quot;</span><span class="p">,</span> <span class="s2">&quot;IFI6&quot;</span><span class="p">,</span> <span class="s2">&quot;IFIT1&quot;</span><span class="p">,</span> <span class="s2">&quot;IFIT2&quot;</span><span class="p">,</span> <span class="s2">&quot;IFIT3&quot;</span><span class="p">,</span>
+
         <span class="s2">&quot;MX1&quot;</span><span class="p">,</span> <span class="s2">&quot;MX2&quot;</span><span class="p">,</span> <span class="s2">&quot;STAT1&quot;</span><span class="p">,</span> <span class="s2">&quot;OAS1&quot;</span><span class="p">,</span> <span class="s2">&quot;IRF7&quot;</span>
     <span class="p">],</span>
     <span class="s2">&quot;Memory&quot;</span><span class="p">:</span> <span class="p">[</span>
@@ -1010,11 +1024,16 @@ INFO:sctrial.validation:========================================================
 <span class="c1"># Score gene sets using z-mean method</span>
 <span class="c1"># zmean: z-score each gene across cells, then average z-scores</span>
 <span class="c1"># This accounts for different expression scales across genes</span>
+<span class="c1"># For each signature, finds which genes are present in the dataset and calculated coverage percentage.</span>
+<span class="c1"># Only keeps signatures with ≥ MIN_GENES_FOR_SCORE genes</span>
 <span class="k">if</span> <span class="n">filtered_signatures</span><span class="p">:</span>
     <span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">score_gene_sets</span><span class="p">(</span>
         <span class="n">adata</span><span class="p">,</span>
+
         <span class="n">filtered_signatures</span><span class="p">,</span>
+
         <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;log1p_tpm&quot;</span><span class="p">,</span>
+
         <span class="n">method</span><span class="o">=</span><span class="s2">&quot;zmean&quot;</span><span class="p">,</span>  <span class="c1"># Better than &quot;mean&quot; for combining genes</span>
         <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;sig_&quot;</span>
     <span class="p">)</span>
@@ -1033,13 +1052,14 @@ INFO:sctrial.validation:========================================================
     <span class="n">df_feat</span> <span class="o">=</span> <span class="n">df_feat</span><span class="p">[</span><span class="n">df_feat</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">visits</span><span class="p">)]</span>
     <span class="n">df_agg</span> <span class="o">=</span> <span class="n">df_feat</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">],</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="n">signature_cols</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
 
+
     <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">signature_cols</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">df_agg</span><span class="p">[</span><span class="n">f</span><span class="p">]</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">1e-6</span><span class="p">:</span>
             <span class="n">features_use</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Dropping </span><span class="si">{</span><span class="n">f</span><span class="si">}</span><span class="s2">: near-zero variance&quot;</span><span class="p">)</span>
 
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Features for analysis: </span><span class="si">{</span><span class="n">features_use</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Features for analysis (after filtering): </span><span class="si">{</span><span class="n">features_use</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -1069,7 +1089,7 @@ Features for analysis: [&#39;sig_Cytotoxicity&#39;, &#39;sig_Exhaustion&#39;, &#
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># =============================================================================</span>
 <span class="c1"># VERIFICATION: Compute TRUE paired participants based on valid signature scores</span>
 <span class="c1"># =============================================================================</span>
-<span class="c1"># This ensures consistency between reported pairing and actual analysis</span>
+<span class="c1"># This ensures consistency between reported pairing and actual analysis - to ensure pairing is based on usable data, not just cell presence.</span>
 
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;PAIRING VERIFICATION (based on valid signature scores)&quot;</span><span class="p">)</span>
@@ -1093,15 +1113,18 @@ Features for analysis: [&#39;sig_Cytotoxicity&#39;, &#39;sig_Exhaustion&#39;, &#
         <span class="n">values</span><span class="o">=</span><span class="n">feat</span>
     <span class="p">)</span>
 
+
     <span class="k">if</span> <span class="n">visits</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">wide</span><span class="o">.</span><span class="n">columns</span> <span class="ow">or</span> <span class="n">visits</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">wide</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
         <span class="n">valid_paired</span><span class="p">[</span><span class="n">feat</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
         <span class="k">continue</span>
+
 
     <span class="c1"># Participants with non-NaN at BOTH visits</span>
     <span class="n">mask</span> <span class="o">=</span> <span class="n">wide</span><span class="p">[</span><span class="n">visits</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span> <span class="o">&amp;</span> <span class="n">wide</span><span class="p">[</span><span class="n">visits</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span>
     <span class="n">valid_paired</span><span class="p">[</span><span class="n">feat</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">wide</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
 
 <span class="c1"># Get intersection across all features (participants valid for ALL features)</span>
+<span class="c1"># Only participants with valid scores for every signature are included - Ensures all features can be analyzed for the same set of participants</span>
 <span class="k">if</span> <span class="n">features_use</span><span class="p">:</span>
     <span class="n">all_features_valid</span> <span class="o">=</span> <span class="nb">set</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="o">*</span><span class="p">[</span><span class="n">valid_paired</span><span class="p">[</span><span class="n">f</span><span class="p">]</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">features_use</span><span class="p">])</span>
 <span class="k">else</span><span class="p">:</span>
@@ -1122,7 +1145,7 @@ Features for analysis: [&#39;sig_Cytotoxicity&#39;, &#39;sig_Exhaustion&#39;, &#
     <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid_paired_by_response</span><span class="p">[</span><span class="n">arm</span><span class="p">])</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">arm</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-<span class="c1"># Compare with cell-level pairing</span>
+<span class="c1"># Compare with cell-level pairing - shows how many participants were dropped due to missing signature scores</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Comparison with cell-level pairing (from cell-11):&quot;</span><span class="p">)</span>
 <span class="k">for</span> <span class="n">arm</span> <span class="ow">in</span> <span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">arm_treated</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_control</span><span class="p">]:</span>
@@ -1201,39 +1224,45 @@ Using VALID_PAIRED_BY_RESPONSE for all subsequent analyses.
 
 <span class="k">if</span> <span class="n">features_use</span><span class="p">:</span>
     <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">visits</span><span class="p">:</span>
-        <span class="c1"># Check sample sizes</span>
+        <span class="c1"># Check sample sizes - counts unique participants per arm at that visit</span>
         <span class="n">sub</span> <span class="o">=</span> <span class="n">adata</span><span class="p">[</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span> <span class="o">==</span> <span class="n">v</span><span class="p">]</span>
         <span class="n">n_per_arm</span> <span class="o">=</span> <span class="n">sub</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">)[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
         <span class="n">n_resp</span> <span class="o">=</span> <span class="n">n_per_arm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">arm_treated</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
         <span class="n">n_nonresp</span> <span class="o">=</span> <span class="n">n_per_arm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">arm_control</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
 
+
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s2">: Responders=</span><span class="si">{</span><span class="n">n_resp</span><span class="si">}</span><span class="s2">, Non-responders=</span><span class="si">{</span><span class="n">n_nonresp</span><span class="si">}</span><span class="s2"> participants&quot;</span><span class="p">)</span>
+
 
         <span class="k">if</span> <span class="n">n_resp</span> <span class="o">&lt;</span> <span class="n">MIN_PARTICIPANTS_FOR_COMPARISON</span> <span class="ow">or</span> <span class="n">n_nonresp</span> <span class="o">&lt;</span> <span class="n">MIN_PARTICIPANTS_FOR_COMPARISON</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Skipping: insufficient participants (need &gt;=</span><span class="si">{</span><span class="n">MIN_PARTICIPANTS_FOR_COMPARISON</span><span class="si">}</span><span class="s2"> per arm)&quot;</span><span class="p">)</span>
             <span class="k">continue</span>
 
-        <span class="c1"># Use sctrial&#39;s built-in function</span>
+
+        <span class="c1"># Use sctrial&#39;s built-in function to run between arm comparisons</span>
         <span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">between_arm_comparison</span><span class="p">(</span>
             <span class="n">adata</span><span class="p">,</span>
             <span class="n">visit</span><span class="o">=</span><span class="n">v</span><span class="p">,</span>
             <span class="n">features</span><span class="o">=</span><span class="n">features_use</span><span class="p">,</span>
             <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
-            <span class="n">aggregate</span><span class="o">=</span><span class="s2">&quot;participant_visit&quot;</span><span class="p">,</span>
-            <span class="n">standardize</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-            <span class="n">method</span><span class="o">=</span><span class="s2">&quot;ols&quot;</span><span class="p">,</span>
-        <span class="p">)</span>
+            <span class="n">aggregate</span><span class="o">=</span><span class="s2">&quot;participant_visit&quot;</span><span class="p">,</span> <span class="c1"># Aggregate signature scores by participant-visit level</span>
+            <span class="n">standardize</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="c1"># Whether to z-score the outcome variable (for ols)</span>
+            <span class="n">method</span><span class="o">=</span><span class="s2">&quot;ols&quot;</span><span class="p">,</span> <span class="c1"># Use ordinary least squares regression. Other option is &#39;wilcoxon&#39; for Wilcoxon rank-sum test (Mann-Whitney U)</span>
+        <span class="p">)</span> <span class="c1"># Returns a dataframe with the results (beta (effect size), p-value for the between-arm comparison, False Discovery Rate corrected p-value, Number of participants included in the analysis)</span>
+
 
         <span class="k">if</span> <span class="ow">not</span> <span class="n">res</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
             <span class="n">res</span><span class="p">[</span><span class="s2">&quot;visit&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
             <span class="n">cross_sectional_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+
 
             <span class="c1"># Display</span>
             <span class="n">display_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;feature&quot;</span><span class="p">,</span> <span class="s2">&quot;beta_arm&quot;</span><span class="p">,</span> <span class="s2">&quot;p_arm&quot;</span><span class="p">,</span> <span class="s2">&quot;FDR_arm&quot;</span><span class="p">,</span> <span class="s2">&quot;n_units&quot;</span><span class="p">]</span>
             <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Results at </span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s2">:&quot;</span><span class="p">)</span>
             <span class="n">display</span><span class="p">(</span><span class="n">res</span><span class="p">[</span><span class="n">display_cols</span><span class="p">]</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">4</span><span class="p">))</span>
+
 
             <span class="c1"># Highlight significant</span>
             <span class="n">sig</span> <span class="o">=</span> <span class="n">res</span><span class="p">[</span><span class="n">res</span><span class="p">[</span><span class="s2">&quot;FDR_arm&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">FDR_ALPHA</span><span class="p">]</span>
@@ -1457,9 +1486,11 @@ Results at Post:
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">arm</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">n_paired_arm</span><span class="si">}</span><span class="s2"> paired participants (valid scores)&quot;</span><span class="p">)</span>
 
+
         <span class="k">if</span> <span class="n">n_paired_arm</span> <span class="o">&lt;</span> <span class="n">MIN_PARTICIPANTS_FOR_COMPARISON</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Skipping: need &gt;= </span><span class="si">{</span><span class="n">MIN_PARTICIPANTS_FOR_COMPARISON</span><span class="si">}</span><span class="s2"> paired participants&quot;</span><span class="p">)</span>
             <span class="k">continue</span>
+
 
         <span class="c1"># Subset to this arm and paired participants</span>
         <span class="n">ad_arm</span> <span class="o">=</span> <span class="n">adata</span><span class="p">[</span>
@@ -1468,7 +1499,8 @@ Results at Post:
         <span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
         <span class="n">ad_arm</span> <span class="o">=</span> <span class="n">ad_arm</span><span class="p">[</span><span class="n">ad_arm</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">visits</span><span class="p">)]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
-        <span class="c1"># Aggregate to participant-visit level</span>
+
+        <span class="c1"># Aggregate to participant-visit level - Computes mean signature scores per participant-visit</span>
         <span class="n">df_agg</span> <span class="o">=</span> <span class="p">(</span>
             <span class="n">ad_arm</span><span class="o">.</span><span class="n">obs</span>
             <span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">],</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="n">features_use</span><span class="p">]</span>
@@ -1476,19 +1508,24 @@ Results at Post:
             <span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
         <span class="p">)</span>
 
+
         <span class="c1"># Pivot to wide format for paired testing</span>
         <span class="n">arm_rows</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">feat</span> <span class="ow">in</span> <span class="n">features_use</span><span class="p">:</span>
             <span class="n">wide</span> <span class="o">=</span> <span class="n">df_agg</span><span class="o">.</span><span class="n">pivot</span><span class="p">(</span>
                 <span class="n">index</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span>
+
                 <span class="n">columns</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span>
+
                 <span class="n">values</span><span class="o">=</span><span class="n">feat</span>
             <span class="p">)</span>
+
 
             <span class="c1"># Keep only paired (have both Pre and Post)</span>
             <span class="k">if</span> <span class="n">visits</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">wide</span><span class="o">.</span><span class="n">columns</span> <span class="ow">or</span> <span class="n">visits</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">wide</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
                 <span class="k">continue</span>
             <span class="n">wide</span> <span class="o">=</span> <span class="n">wide</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+
 
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">wide</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
                 <span class="n">arm_rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
@@ -1501,15 +1538,18 @@ Results at Post:
                 <span class="p">})</span>
                 <span class="k">continue</span>
 
+
             <span class="n">pre_vals</span> <span class="o">=</span> <span class="n">wide</span><span class="p">[</span><span class="n">visits</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">.</span><span class="n">values</span>
             <span class="n">post_vals</span> <span class="o">=</span> <span class="n">wide</span><span class="p">[</span><span class="n">visits</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span><span class="o">.</span><span class="n">values</span>
             <span class="n">delta</span> <span class="o">=</span> <span class="n">post_vals</span> <span class="o">-</span> <span class="n">pre_vals</span>
+
 
             <span class="c1"># Wilcoxon signed-rank test (paired, non-parametric)</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">stat</span><span class="p">,</span> <span class="n">p_val</span> <span class="o">=</span> <span class="n">wilcoxon</span><span class="p">(</span><span class="n">delta</span><span class="p">)</span>
             <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
                 <span class="n">p_val</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
 
             <span class="n">arm_rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
                 <span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
@@ -1520,10 +1560,12 @@ Results at Post:
                 <span class="s2">&quot;p_time&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">p_val</span><span class="p">),</span>
             <span class="p">})</span>
 
+
         <span class="k">if</span> <span class="n">arm_rows</span><span class="p">:</span>
             <span class="n">df_arm</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">arm_rows</span><span class="p">)</span>
 
-            <span class="c1"># FDR correction</span>
+
+            <span class="c1"># FDR correction - Benjamini-Hochberg FDR correction across all features within the arm</span>
             <span class="n">mask</span> <span class="o">=</span> <span class="n">df_arm</span><span class="p">[</span><span class="s2">&quot;p_time&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span>
             <span class="n">df_arm</span><span class="p">[</span><span class="s2">&quot;FDR_time&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
             <span class="k">if</span> <span class="n">mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
@@ -1531,14 +1573,17 @@ Results at Post:
                     <span class="n">df_arm</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="s2">&quot;p_time&quot;</span><span class="p">],</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;fdr_bh&quot;</span>
                 <span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
 
+
             <span class="n">df_arm</span><span class="p">[</span><span class="s2">&quot;arm&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">arm</span>
             <span class="n">within_arm_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">df_arm</span><span class="p">)</span>
+
 
             <span class="c1"># Display</span>
             <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Pre→Post changes in </span><span class="si">{</span><span class="n">arm</span><span class="si">}</span><span class="s2">:&quot;</span><span class="p">)</span>
             <span class="n">display_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;feature&quot;</span><span class="p">,</span> <span class="s2">&quot;n_paired&quot;</span><span class="p">,</span> <span class="s2">&quot;mean_delta&quot;</span><span class="p">,</span> <span class="s2">&quot;p_time&quot;</span><span class="p">,</span> <span class="s2">&quot;FDR_time&quot;</span><span class="p">]</span>
             <span class="n">display</span><span class="p">(</span><span class="n">df_arm</span><span class="p">[</span><span class="n">display_cols</span><span class="p">]</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">4</span><span class="p">))</span>
+
 
             <span class="c1"># Highlight significant</span>
             <span class="n">sig</span> <span class="o">=</span> <span class="n">df_arm</span><span class="p">[(</span><span class="n">df_arm</span><span class="p">[</span><span class="s2">&quot;FDR_time&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">())</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">df_arm</span><span class="p">[</span><span class="s2">&quot;FDR_time&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">FDR_ALPHA</span><span class="p">)]</span>
@@ -1753,15 +1798,19 @@ Pre→Post changes in Non-responder:
     <span class="n">n_cols</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">n_features</span><span class="p">)</span>
     <span class="n">n_rows</span> <span class="o">=</span> <span class="p">(</span><span class="n">n_features</span> <span class="o">+</span> <span class="n">n_cols</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">//</span> <span class="n">n_cols</span>
 
+
     <span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">n_rows</span><span class="p">,</span> <span class="n">n_cols</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">5</span><span class="o">*</span><span class="n">n_cols</span><span class="p">,</span> <span class="mi">4</span><span class="o">*</span><span class="n">n_rows</span><span class="p">))</span>
     <span class="k">if</span> <span class="n">n_features</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
         <span class="n">axes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">axes</span><span class="p">]])</span>
     <span class="n">axes</span> <span class="o">=</span> <span class="n">axes</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span> <span class="k">if</span> <span class="n">n_features</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="p">[</span><span class="n">axes</span><span class="p">]</span>
 
+
     <span class="n">palette</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;Responder&quot;</span><span class="p">:</span> <span class="s2">&quot;forestgreen&quot;</span><span class="p">,</span> <span class="s2">&quot;Non-responder&quot;</span><span class="p">:</span> <span class="s2">&quot;coral&quot;</span><span class="p">}</span>
+
 
     <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">feat</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">features_use</span><span class="p">):</span>
         <span class="n">ax</span> <span class="o">=</span> <span class="n">axes</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
 
         <span class="c1"># Aggregate to participant level for visualization</span>
         <span class="n">df_plot</span> <span class="o">=</span> <span class="p">(</span>
@@ -1770,6 +1819,7 @@ Pre→Post changes in Non-responder:
             <span class="o">.</span><span class="n">mean</span><span class="p">()</span>
             <span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
         <span class="p">)</span>
+
 
         <span class="n">sns</span><span class="o">.</span><span class="n">boxplot</span><span class="p">(</span>
             <span class="n">data</span><span class="o">=</span><span class="n">df_plot</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="s2">&quot;visit&quot;</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">feat</span><span class="p">,</span> <span class="n">hue</span><span class="o">=</span><span class="n">RESPONSE_COL</span><span class="p">,</span>
@@ -1788,9 +1838,11 @@ Pre→Post changes in Non-responder:
         <span class="k">if</span> <span class="n">i</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">ax</span><span class="o">.</span><span class="n">get_legend</span><span class="p">()</span><span class="o">.</span><span class="n">remove</span><span class="p">()</span>
 
+
     <span class="c1"># Hide unused axes</span>
     <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">axes</span><span class="p">)):</span>
         <span class="n">axes</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s2">&quot;off&quot;</span><span class="p">)</span>
+
 
     <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
     <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
@@ -1830,18 +1882,19 @@ Pre→Post changes in Non-responder:
     <span class="n">n_nonresp_valid</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">VALID_PAIRED_BY_RESPONSE</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">arm_control</span><span class="p">,</span> <span class="nb">set</span><span class="p">()))</span>
 
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Paired participants: Responders=</span><span class="si">{</span><span class="n">n_resp_valid</span><span class="si">}</span><span class="s2">, Non-responders=</span><span class="si">{</span><span class="n">n_nonresp_valid</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
+    <span class="c1"># Check feasibility of DiD analysis - requires at least 3 paired participants per arm</span>
     <span class="k">if</span> <span class="n">n_resp_valid</span> <span class="o">&lt;</span> <span class="mi">3</span> <span class="ow">or</span> <span class="n">n_nonresp_valid</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Insufficient paired participants for DiD analysis.&quot;</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="c1"># Step 1: Get point estimates from st.did_table()</span>
+        <span class="c1"># Step 1: Get point estimates from st.did_table() - fits a fixed-effects DiD model to test for treatment-induced longitudinal changes</span>
+        <span class="c1"># Returns a table with one row per feature containing beta_DiD, p_DiD, and FDR-corrected significance</span>
         <span class="n">did_results</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span>
             <span class="n">adata</span><span class="p">,</span>
             <span class="n">features</span><span class="o">=</span><span class="n">features_use</span><span class="p">,</span>
             <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
             <span class="n">visits</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">visits</span><span class="p">),</span>
-            <span class="n">aggregate</span><span class="o">=</span><span class="s2">&quot;participant_visit&quot;</span><span class="p">,</span>
-            <span class="n">standardize</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">aggregate</span><span class="o">=</span><span class="s2">&quot;participant_visit&quot;</span><span class="p">,</span> <span class="c1">#Average features per participant-visit before fitting</span>
+            <span class="n">standardize</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="c1">#If True, z-scores the outcome variable before fitting to provide standardized effect sizes</span>
         <span class="p">)</span>
 
         <span class="c1"># Step 2: Compute permutation p-values on participant-level deltas</span>
@@ -1872,10 +1925,12 @@ Pre→Post changes in Non-responder:
             <span class="n">delta_nonresp</span> <span class="o">=</span> <span class="n">wide</span><span class="p">[</span><span class="n">wide</span><span class="p">[</span><span class="s2">&quot;arm&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_control</span><span class="p">][</span><span class="s2">&quot;delta&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
 
             <span class="c1"># Permutation p-value (non-parametric, valid for any n)</span>
+
+            <span class="c1"># Tests H0: mean(delta_resp) = mean(delta_nonresp) by permuting 9,999 times</span>
             <span class="n">p_perm</span> <span class="o">=</span> <span class="n">permutation_pvalue</span><span class="p">(</span><span class="n">delta_resp</span><span class="p">,</span> <span class="n">delta_nonresp</span><span class="p">,</span> <span class="n">n_perm</span><span class="o">=</span><span class="mi">9999</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">SEED</span><span class="p">)</span>
             <span class="n">perm_pvals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p_perm</span><span class="p">)</span>
 
-            <span class="c1"># Bootstrap SE</span>
+            <span class="c1"># Bootstrap SE - Resamples participants with replacement 999 times</span>
             <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">SEED</span><span class="p">)</span>
             <span class="n">boot_dids</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">999</span><span class="p">):</span>
@@ -1887,7 +1942,8 @@ Pre→Post changes in Non-responder:
         <span class="n">did_results</span><span class="p">[</span><span class="s2">&quot;p_DiD&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">perm_pvals</span>
         <span class="n">did_results</span><span class="p">[</span><span class="s2">&quot;se_DiD&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">boot_ses</span>
 
-        <span class="c1"># FDR correction on permutation p-values</span>
+        <span class="c1"># FDR correction on permutation p-values - Benjamini-Hochberg FDR correction</span>
+
         <span class="n">mask</span> <span class="o">=</span> <span class="n">did_results</span><span class="p">[</span><span class="s2">&quot;p_DiD&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span>
         <span class="n">did_results</span><span class="p">[</span><span class="s2">&quot;FDR_DiD&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
         <span class="k">if</span> <span class="n">mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
@@ -2432,6 +2488,7 @@ Effect sizes for DiD (Responder vs Non-responder change):
 <span class="k">if</span> <span class="n">idx_80</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
     <span class="n">detectable_effect</span> <span class="o">=</span> <span class="n">effect_range</span><span class="p">[</span><span class="n">idx_80</span><span class="p">]</span>
     <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">detectable_effect</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;coral&quot;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s2">&quot;:&quot;</span><span class="p">,</span>
+
                     <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Min detectable d=</span><span class="si">{</span><span class="n">detectable_effect</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
 
@@ -3117,7 +3174,10 @@ Highly influential participants (|influence| &gt; 2 SD = 0.218):
 <section id="DiDAnalyzer-Example">
 <h3>DiDAnalyzer Example<a class="headerlink" href="#DiDAnalyzer-Example" title="Link to this heading">#</a></h3>
 <p>Here we run DiD using the high-level analyzer interface and render a forest plot.</p>
-<p><strong>Note</strong>: With very small samples (n=10 paired), the fixed effects DiD model may produce NaN standard errors due to rank-deficient design matrices. The point estimates (beta_DiD) remain valid, but confidence intervals and p-values require larger samples or alternative methods (e.g., bootstrap, mixed effects).</p>
+<p><strong>Note</strong>: With very small samples (n=10 paired), the fixed effects DiD model may produce</p>
+<p>NaN standard errors due to rank-deficient design matrices. The point estimates (beta_DiD)</p>
+<p>remain valid, but confidence intervals and p-values require larger samples or</p>
+<p>alternative methods (e.g., bootstrap, mixed effects).</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
 </pre></div>
@@ -3484,6 +3544,7 @@ This is expected given the small sample size (n=10 paired).
     <span class="c1"># regression-based effect_size, which uses a different denominator.</span>
     <span class="n">lead_feature</span> <span class="o">=</span> <span class="n">did_results</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;feature&quot;</span><span class="p">]</span>
 
+
     <span class="c1"># Look up delta-based Hedge&#39;s g if available</span>
     <span class="k">if</span> <span class="s2">&quot;df_effect&quot;</span> <span class="ow">in</span> <span class="nb">locals</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">df_effect</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
         <span class="n">match</span> <span class="o">=</span> <span class="n">df_effect</span><span class="p">[</span><span class="n">df_effect</span><span class="p">[</span><span class="s2">&quot;feature&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">lead_feature</span><span class="p">]</span>
@@ -3494,9 +3555,11 @@ This is expected given the small sample size (n=10 paired).
     <span class="k">else</span><span class="p">:</span>
         <span class="n">g_val</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">did_results</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;effect_size&quot;</span><span class="p">,</span> <span class="n">did_results</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;beta_DiD&quot;</span><span class="p">])))</span>
 
+
     <span class="c1"># Convert to approximate RR via VanderWeele &amp; Ding (2017):</span>
     <span class="c1"># RR ~ exp(0.91 * |d|) for continuous outcomes</span>
     <span class="n">rr</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="mf">0.91</span> <span class="o">*</span> <span class="n">g_val</span><span class="p">))</span>
+
 
     <span class="n">e_val</span><span class="p">,</span> <span class="n">e_ci</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">e_value_rr</span><span class="p">(</span><span class="n">rr</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Feature: </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;feature&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>

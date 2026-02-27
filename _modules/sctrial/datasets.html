@@ -372,6 +372,7 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_resolve_dir_with_files</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">required_files</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve a directory path with required files.&quot;&quot;&quot;</span>
     <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">is_absolute</span><span class="p">():</span>
         <span class="k">if</span> <span class="nb">all</span><span class="p">((</span><span class="n">path</span> <span class="o">/</span> <span class="n">f</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">required_files</span><span class="p">):</span>
@@ -425,6 +426,7 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_looks_log1p</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">sample</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10000</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Check if a matrix looks like log-transformed counts.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">X</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">return</span> <span class="kc">False</span>
     <span class="k">if</span> <span class="n">sp</span><span class="o">.</span><span class="n">issparse</span><span class="p">(</span><span class="n">X</span><span class="p">):</span>
@@ -468,6 +470,7 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_get_counts_matrix</span><span class="p">(</span><span class="n">adata</span><span class="p">:</span> <span class="n">ad</span><span class="o">.</span><span class="n">AnnData</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get the counts matrix from the AnnData object.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">get_counts_matrix</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
 
 
@@ -884,7 +887,29 @@
     <span class="n">visits</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
     <span class="n">participant_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;participant_id&quot;</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Count participants with data at both visits.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Count participants with data at both visits.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    obs</span>
+<span class="sd">        DataFrame containing the participant-visit data.</span>
+<span class="sd">    visit_col</span>
+<span class="sd">        Column name in `obs` to use for visit labels.</span>
+<span class="sd">    visits</span>
+<span class="sd">        Sequence of visit labels to check (e.g. [&quot;baseline&quot;, &quot;followup&quot;]).</span>
+<span class="sd">    participant_col</span>
+<span class="sd">        Column name in `obs` to use for participant IDs.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    int</span>
+<span class="sd">        Number of participants with data at both visits.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If visits does not contain at least 2 labels (baseline and followup).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">visits</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
             <span class="sa">f</span><span class="s2">&quot;visits must contain at least 2 labels, got </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">visits</span><span class="p">)</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">visits</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
@@ -912,11 +937,27 @@
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Validate paired participants by visit presence and optional feature completeness.</span>
 
-<span class="sd">    Returns:</span>
-<span class="sd">      - paired_ids: set of participant IDs with both visits (and non-NaN features if provided)</span>
-<span class="sd">      - dropped_ids: list of participant IDs dropped by validation</span>
-<span class="sd">      - n_paired: count of paired_ids</span>
-<span class="sd">      - n_total: total unique participants</span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    obs</span>
+<span class="sd">        DataFrame containing the participant-visit data.</span>
+<span class="sd">    visit_col</span>
+<span class="sd">        Column name in `obs` to use for visit labels.</span>
+<span class="sd">    visits</span>
+<span class="sd">        Sequence of visit labels to check (e.g. [&quot;baseline&quot;, &quot;followup&quot;]).</span>
+<span class="sd">    features</span>
+<span class="sd">        Sequence of feature names to check.</span>
+<span class="sd">    participant_col</span>
+<span class="sd">        Column name in `obs` to use for participant IDs.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict</span>
+<span class="sd">        A dictionary containing the following keys:</span>
+<span class="sd">        - paired_ids: set of participant IDs with both visits (and non-NaN features if provided)</span>
+<span class="sd">        - dropped_ids: list of participant IDs dropped by validation</span>
+<span class="sd">        - n_paired: count of paired_ids</span>
+<span class="sd">        - n_total: total unique participants</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">visits</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
@@ -963,7 +1004,18 @@
 <div class="viewcode-block" id="categorize_celltype">
 <a class="viewcode-back" href="../../api.html#sctrial.datasets.categorize_celltype">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">categorize_celltype</span><span class="p">(</span><span class="n">ct</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Map fine-grained cell types to coarse lineages (COVID-19 example).&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Map fine-grained cell types to coarse lineages (COVID-19 example).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ct</span>
+<span class="sd">        Cell type string.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    str</span>
+<span class="sd">        Coarse lineage string.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">ct_lower</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">ct</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
     <span class="k">if</span> <span class="s2">&quot;cd4&quot;</span> <span class="ow">in</span> <span class="n">ct_lower</span> <span class="ow">or</span> <span class="s2">&quot;th1&quot;</span> <span class="ow">in</span> <span class="n">ct_lower</span> <span class="ow">or</span> <span class="s2">&quot;th2&quot;</span> <span class="ow">in</span> <span class="n">ct_lower</span> <span class="ow">or</span> <span class="s2">&quot;treg&quot;</span> <span class="ow">in</span> <span class="n">ct_lower</span><span class="p">:</span>
         <span class="k">return</span> <span class="s2">&quot;CD4_T&quot;</span>
@@ -986,7 +1038,22 @@
 <div class="viewcode-block" id="ensure_fdr">
 <a class="viewcode-back" href="../../api.html#sctrial.datasets.ensure_fdr">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">ensure_fdr</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">p_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;p_time&quot;</span><span class="p">,</span> <span class="n">fdr_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;FDR_time&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Add Benjamini-Hochberg FDR column for a p-value column.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Add Benjamini-Hochberg FDR column for a p-value column.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    df</span>
+<span class="sd">        DataFrame containing the p-value column.</span>
+<span class="sd">    p_col</span>
+<span class="sd">        Column name in `df` to use for p-value column.</span>
+<span class="sd">    fdr_col</span>
+<span class="sd">        Column name in `df` to use for FDR-corrected p-value column.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.DataFrame</span>
+<span class="sd">        A copy of the DataFrame with the FDR-corrected p-value column added.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">df</span>
     <span class="k">if</span> <span class="n">fdr_col</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>

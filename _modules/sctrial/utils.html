@@ -376,6 +376,11 @@
 <span class="sd">        Input string to sanitize.</span>
 <span class="sd">    maxlen</span>
 <span class="sd">        Maximum length of the output string.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    str</span>
+<span class="sd">        A filesystem-safe filename.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">s</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
     <span class="n">s</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;γ&quot;</span><span class="p">,</span> <span class="s2">&quot;gamma&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;δ&quot;</span><span class="p">,</span> <span class="s2">&quot;delta&quot;</span><span class="p">)</span>
@@ -389,7 +394,20 @@
 <div class="viewcode-block" id="intersect_preserve_order">
 <a class="viewcode-back" href="../../api.html#sctrial.utils.intersect_preserve_order">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">intersect_preserve_order</span><span class="p">(</span><span class="n">items</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">universe</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return items that appear in universe, preserving original order.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return items that appear in universe, preserving original order.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    items</span>
+<span class="sd">        List of items to intersect.</span>
+<span class="sd">    universe</span>
+<span class="sd">        List of items to intersect with.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    list[str]</span>
+<span class="sd">        A list of items that appear in universe, preserving original order.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">u</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">universe</span><span class="p">)</span>
     <span class="k">return</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">items</span> <span class="k">if</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">u</span><span class="p">]</span></div>
 
@@ -399,8 +417,16 @@
 <a class="viewcode-back" href="../../api.html#sctrial.utils.ensure_unique_index">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">ensure_unique_index</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">agg</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;mean&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;If df.index has duplicates, aggregate duplicates and return a new df.</span>
-
-<span class="sd">    agg: &quot;mean&quot; or &quot;sum&quot; (extend later if needed).</span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    df</span>
+<span class="sd">        DataFrame to ensure unique index.</span>
+<span class="sd">    agg</span>
+<span class="sd">        Aggregation method: &quot;mean&quot; or &quot;sum&quot; (extend later if needed).</span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.DataFrame</span>
+<span class="sd">        A DataFrame with unique index.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">is_unique</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">df</span>
@@ -415,7 +441,22 @@
 <div class="viewcode-block" id="looks_like_counts">
 <a class="viewcode-back" href="../../api.html#sctrial.utils.looks_like_counts">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">looks_like_counts</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">sample</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10000</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Check if matrix appears to be raw counts.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Check if matrix appears to be raw counts.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    X</span>
+<span class="sd">        Matrix to check.</span>
+<span class="sd">    sample</span>
+<span class="sd">        Number of samples to check.</span>
+<span class="sd">    seed</span>
+<span class="sd">        Random seed.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    bool</span>
+<span class="sd">        True if matrix appears to be raw counts, False otherwise.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">X</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">return</span> <span class="kc">False</span>
@@ -437,7 +478,22 @@
 <div class="viewcode-block" id="get_counts_matrix">
 <a class="viewcode-back" href="../../api.html#sctrial.utils.get_counts_matrix">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_counts_matrix</span><span class="p">(</span><span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a raw-counts matrix and its source label, if available.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a raw-counts matrix and its source label, if available.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    adata</span>
+<span class="sd">        AnnData object.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple[np.ndarray | None, str | None]</span>
+<span class="sd">        A tuple containing the counts matrix and its source label.</span>
+<span class="sd">        - The counts matrix is the raw counts matrix.</span>
+<span class="sd">        - The source label is the layer name where the counts matrix is stored.</span>
+<span class="sd">        - If no counts matrix is found, returns (None, None).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="k">if</span> <span class="s2">&quot;counts&quot;</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">layers</span> <span class="ow">and</span> <span class="n">looks_like_counts</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">&quot;counts&quot;</span><span class="p">]):</span>
         <span class="k">return</span> <span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">&quot;counts&quot;</span><span class="p">],</span> <span class="s2">&quot;layers[&#39;counts&#39;]&quot;</span>
     <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="s2">&quot;raw&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -583,7 +639,23 @@
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">42</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Two-sample permutation test for difference in means.</span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    group1</span>
+<span class="sd">        First group of values.</span>
+<span class="sd">    group2</span>
+<span class="sd">        Second group of values.</span>
+<span class="sd">    n_perm</span>
+<span class="sd">        Number of permutations.</span>
+<span class="sd">    seed</span>
+<span class="sd">        Random seed.</span>
 
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    float</span>
+<span class="sd">        Two-sided permutation p-value in ``[0, 1]``.</span>
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
 <span class="sd">    H0: mean(group1) = mean(group2)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
@@ -612,6 +684,23 @@
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Paired permutation test (sign-flip test) for difference in means.</span>
 
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x</span>
+<span class="sd">        First group of values.</span>
+<span class="sd">    y</span>
+<span class="sd">        Second group of values.</span>
+<span class="sd">    n_perm</span>
+<span class="sd">        Number of permutations.</span>
+<span class="sd">    seed</span>
+<span class="sd">        Random seed.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    float</span>
+<span class="sd">        Two-sided permutation p-value in ``[0, 1]``.</span>
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
 <span class="sd">    H0: mean(y - x) = 0</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
@@ -634,7 +723,24 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">resolve_feature</span><span class="p">(</span><span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span> <span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve a feature name in adata.var_names or adata.obs.columns (case-insensitive).</span>
 
-<span class="sd">    Returns the exact name string to use. Raises KeyError if not found.</span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    adata</span>
+<span class="sd">        AnnData object.</span>
+<span class="sd">    query</span>
+<span class="sd">        Feature name to resolve.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    str</span>
+<span class="sd">        The exact name string to use.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    KeyError</span>
+<span class="sd">        If the feature is not found in adata.var_names or adata.obs.columns.</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If the feature query is an empty string.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">query</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">query</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span><span class="p">):</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Feature query must be a non-empty string.&quot;</span><span class="p">)</span>

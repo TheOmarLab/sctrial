@@ -368,7 +368,18 @@
 <div class="viewcode-block" id="TrialWorkflow.add_log1p_cpm_layer">
 <a class="viewcode-back" href="../../api.html#sctrial.workflow.TrialWorkflow.add_log1p_cpm_layer">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">add_log1p_cpm_layer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">counts_layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;counts&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TrialWorkflow</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Add a log1p-CPM layer to the workflow AnnData.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Add a log1p-CPM layer to the workflow AnnData.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        counts_layer</span>
+<span class="sd">            Layer name in `adata.layers` to use for counts data.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        TrialWorkflow</span>
+<span class="sd">            The workflow object with the new log1p-CPM layer added.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">adata</span> <span class="o">=</span> <span class="n">add_log1p_cpm_layer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">adata</span><span class="p">,</span> <span class="n">counts_layer</span><span class="o">=</span><span class="n">counts_layer</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span></div>
 
@@ -385,7 +396,38 @@
         <span class="n">min_genes</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
         <span class="n">overwrite</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TrialWorkflow</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Score gene sets and store module scores in `adata.obs`.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Score gene sets and store module scores in `adata.obs`.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        gene_sets</span>
+<span class="sd">            Dictionary mapping set names to lists of gene names.</span>
+<span class="sd">            Each value must be a ``list`` (not a bare string).  Duplicate gene</span>
+<span class="sd">            names within a set are automatically removed.</span>
+<span class="sd">        layer</span>
+<span class="sd">            Layer name in `adata.layers` to use for expression data.</span>
+<span class="sd">            If None, uses `adata.X`.</span>
+<span class="sd">            For log1p-CPM workflows, use layer=&quot;log1p_cpm&quot;.</span>
+<span class="sd">        method</span>
+<span class="sd">            Scoring method:</span>
+<span class="sd">            - &quot;zmean&quot;: Z-score each gene across cells (within the current AnnData),</span>
+<span class="sd">              then average z-scores across genes. This is the recommended method</span>
+<span class="sd">              as it accounts for different expression scales across genes.</span>
+<span class="sd">            - &quot;mean&quot;: Mean expression across genes.</span>
+<span class="sd">        prefix</span>
+<span class="sd">            Prefix to add to column names (e.g., ``ms_`` for module scores).</span>
+<span class="sd">        min_genes</span>
+<span class="sd">            Minimum number of genes from the set that must be present in the data.</span>
+<span class="sd">            Default is 5.</span>
+<span class="sd">        overwrite</span>
+<span class="sd">            If False, skip gene sets that already have a column in `adata.obs`.</span>
+<span class="sd">            Default is True.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        TrialWorkflow</span>
+<span class="sd">            The workflow object with the gene sets scored and module scores stored in ``adata.obs``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">adata</span> <span class="o">=</span> <span class="n">score_gene_sets</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">adata</span><span class="p">,</span>
             <span class="n">gene_sets</span><span class="p">,</span>
@@ -408,7 +450,25 @@
         <span class="n">visits</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
         <span class="n">config</span><span class="p">:</span> <span class="n">DiDConfig</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TrialWorkflow</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run DiD and store the result on the workflow.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run DiD and store the result on the workflow.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        features</span>
+<span class="sd">            List of feature names to analyze.</span>
+<span class="sd">        design</span>
+<span class="sd">            Trial design object.</span>
+<span class="sd">        visits</span>
+<span class="sd">            Tuple of (baseline, followup) visit labels.</span>
+<span class="sd">        config</span>
+<span class="sd">            Configuration for the DiD analysis. See `sctrial.stats.did.DiDConfig` for more details.</span>
+<span class="sd">            If None, uses the default configuration.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        TrialWorkflow</span>
+<span class="sd">            The workflow object with the DiD result stored in ``self.last_result``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">last_result</span> <span class="o">=</span> <span class="n">did_table</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">adata</span><span class="p">,</span>
             <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span>
@@ -422,7 +482,13 @@
 <div class="viewcode-block" id="TrialWorkflow.result">
 <a class="viewcode-back" href="../../api.html#sctrial.workflow.TrialWorkflow.result">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">result</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the last result computed in the workflow.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the last result computed in the workflow.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Any</span>
+<span class="sd">            The last result computed in the workflow (e.g., a DataFrame).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_result</span></div>
 </div>
 
@@ -431,7 +497,18 @@
 <div class="viewcode-block" id="workflow">
 <a class="viewcode-back" href="../../api.html#sctrial.workflow.workflow">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">workflow</span><span class="p">(</span><span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TrialWorkflow</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a TrialWorkflow for fluent chaining.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a TrialWorkflow for fluent chaining.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    adata</span>
+<span class="sd">        AnnData object with trial data.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    TrialWorkflow</span>
+<span class="sd">        A TrialWorkflow object with the AnnData object set.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">TrialWorkflow</span><span class="p">(</span><span class="n">adata</span><span class="o">=</span><span class="n">adata</span><span class="p">)</span></div>
 
 </pre></div>

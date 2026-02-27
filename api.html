@@ -359,6 +359,23 @@ functions in <cite>sctrial</cite>.</p>
 <dt class="sig sig-object py" id="sctrial.design.TrialDesign.arm_bin">
 <span class="sig-name descname"><span class="pre">arm_bin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Series</span></span></span><a class="reference internal" href="_modules/sctrial/design.html#TrialDesign.arm_bin"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.design.TrialDesign.arm_bin" title="Link to this definition">#</a></dt>
 <dd><p>Return 0/1 treated indicator aligned to obs.index.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>obs</strong> – DataFrame containing the participant-visit data.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A Series with 0/1 indicator of treated status.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.Series</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If arm_treated and arm_control are the same.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#KeyError" title="(in Python v3.14)"><strong>KeyError</strong></a> – If arm_col is not in obs.columns.</p></li>
+</ul>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py attribute">
@@ -422,6 +439,12 @@ functions in <cite>sctrial</cite>.</p>
 <code class="docutils literal notranslate"><span class="pre">self.followup_visit</span></code>.</p></li>
 </ul>
 </dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Tuple of (baseline, followup) visit labels.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>]</p>
+</dd>
 </dl>
 </dd></dl>
 
@@ -435,6 +458,12 @@ functions in <cite>sctrial</cite>.</p>
 <li><p><strong>include_celltype</strong> – If True, include <code class="docutils literal notranslate"><span class="pre">celltype_col</span></code> when it is defined.</p></li>
 <li><p><strong>include_crossover</strong> – If True, include <code class="docutils literal notranslate"><span class="pre">crossover_col</span></code> when it is defined.</p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of required columns.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -450,6 +479,15 @@ functions in <cite>sctrial</cite>.</p>
 <li><p><strong>include_celltype</strong> – If True, require <code class="docutils literal notranslate"><span class="pre">celltype_col</span></code> in <code class="docutils literal notranslate"><span class="pre">adata.obs</span></code>.</p></li>
 <li><p><strong>include_crossover</strong> – If True, require <code class="docutils literal notranslate"><span class="pre">crossover_col</span></code> in <code class="docutils literal notranslate"><span class="pre">adata.obs</span></code>.</p></li>
 <li><p><strong>check_arm_labels</strong> – If True, verify that treated/control labels are present in <code class="docutils literal notranslate"><span class="pre">arm_col</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#KeyError" title="(in Python v3.14)"><strong>KeyError</strong></a> – If required columns are missing.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If arm labels are not found in <code class="docutils literal notranslate"><span class="pre">adata.obs[self.arm_col]</span></code>.</p></li>
 </ul>
 </dd>
 </dl>
@@ -486,12 +524,39 @@ functions in <cite>sctrial</cite>.</p>
 <dd><p>Run DiD and store results.</p>
 <p>Returns a <em>copy</em> of the results DataFrame so that external
 mutations do not alter the analyzer’s internal state.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>features</strong> – List of features to analyze.</p></li>
+<li><p><strong>visits</strong> – Tuple of (baseline, followup) visit labels.</p></li>
+<li><p><strong>config</strong> – Configuration for the DiD analysis. See <cite>sctrial.stats.did.DiDConfig</cite> for more details.</p></li>
+<li><p><strong>celltype</strong> – Cell type to analyze. If None, all cell types are analyzed.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A copy of the results DataFrame.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="sctrial.analysis.DiDAnalyzer.plot_forest">
 <span class="sig-name descname"><span class="pre">plot_forest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sctrial/analysis.html#DiDAnalyzer.plot_forest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.analysis.DiDAnalyzer.plot_forest" title="Link to this definition">#</a></dt>
 <dd><p>Plot a forest plot of the last DiD results.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>**kwargs</strong> – Additional keyword arguments passed to <cite>sctrial.plotting.plot_did_forest</cite>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The axes containing the forest plot.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>matplotlib.axes.Axes</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py attribute">
@@ -503,6 +568,14 @@ mutations do not alter the analyzer’s internal state.</p>
 <dt class="sig sig-object py" id="sctrial.analysis.DiDAnalyzer.summarize">
 <span class="sig-name descname"><span class="pre">summarize</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="_modules/sctrial/analysis.html#DiDAnalyzer.summarize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.analysis.DiDAnalyzer.summarize" title="Link to this definition">#</a></dt>
 <dd><p>Summarize the last DiD results.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A summary of the DiD results.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
 </dd></dl>
 
 </dd></dl>
@@ -525,12 +598,40 @@ preprocessing, gene scoring, and DiD analysis.</p>
 <dt class="sig sig-object py" id="sctrial.workflow.TrialWorkflow.add_log1p_cpm_layer">
 <span class="sig-name descname"><span class="pre">add_log1p_cpm_layer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">counts_layer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'counts'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#sctrial.workflow.TrialWorkflow" title="sctrial.workflow.TrialWorkflow"><span class="pre">TrialWorkflow</span></a></span></span><a class="reference internal" href="_modules/sctrial/workflow.html#TrialWorkflow.add_log1p_cpm_layer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.workflow.TrialWorkflow.add_log1p_cpm_layer" title="Link to this definition">#</a></dt>
 <dd><p>Add a log1p-CPM layer to the workflow AnnData.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>counts_layer</strong> – Layer name in <cite>adata.layers</cite> to use for counts data.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The workflow object with the new log1p-CPM layer added.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#sctrial.workflow.TrialWorkflow" title="sctrial.workflow.TrialWorkflow">TrialWorkflow</a></p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="sctrial.workflow.TrialWorkflow.did_table">
 <span class="sig-name descname"><span class="pre">did_table</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">features</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">design</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#sctrial.design.TrialDesign" title="sctrial.design.TrialDesign"><span class="pre">TrialDesign</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">visits</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#sctrial.stats.did.DiDConfig" title="sctrial.stats.did.DiDConfig"><span class="pre">DiDConfig</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#sctrial.workflow.TrialWorkflow" title="sctrial.workflow.TrialWorkflow"><span class="pre">TrialWorkflow</span></a></span></span><a class="reference internal" href="_modules/sctrial/workflow.html#TrialWorkflow.did_table"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.workflow.TrialWorkflow.did_table" title="Link to this definition">#</a></dt>
 <dd><p>Run DiD and store the result on the workflow.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>features</strong> – List of feature names to analyze.</p></li>
+<li><p><strong>design</strong> – Trial design object.</p></li>
+<li><p><strong>visits</strong> – Tuple of (baseline, followup) visit labels.</p></li>
+<li><p><strong>config</strong> – Configuration for the DiD analysis. See <cite>sctrial.stats.did.DiDConfig</cite> for more details.
+If None, uses the default configuration.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The workflow object with the DiD result stored in <code class="docutils literal notranslate"><span class="pre">self.last_result</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#sctrial.workflow.TrialWorkflow" title="sctrial.workflow.TrialWorkflow">TrialWorkflow</a></p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py attribute">
@@ -542,12 +643,53 @@ preprocessing, gene scoring, and DiD analysis.</p>
 <dt class="sig sig-object py" id="sctrial.workflow.TrialWorkflow.result">
 <span class="sig-name descname"><span class="pre">result</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></span><a class="reference internal" href="_modules/sctrial/workflow.html#TrialWorkflow.result"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.workflow.TrialWorkflow.result" title="Link to this definition">#</a></dt>
 <dd><p>Return the last result computed in the workflow.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The last result computed in the workflow (e.g., a DataFrame).</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Any</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="sctrial.workflow.TrialWorkflow.score_gene_sets">
 <span class="sig-name descname"><span class="pre">score_gene_sets</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">gene_sets</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'zmean'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'mean'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'zmean'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prefix</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'ms_'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_genes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#sctrial.workflow.TrialWorkflow" title="sctrial.workflow.TrialWorkflow"><span class="pre">TrialWorkflow</span></a></span></span><a class="reference internal" href="_modules/sctrial/workflow.html#TrialWorkflow.score_gene_sets"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.workflow.TrialWorkflow.score_gene_sets" title="Link to this definition">#</a></dt>
 <dd><p>Score gene sets and store module scores in <cite>adata.obs</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>gene_sets</strong> – Dictionary mapping set names to lists of gene names.
+Each value must be a <code class="docutils literal notranslate"><span class="pre">list</span></code> (not a bare string).  Duplicate gene
+names within a set are automatically removed.</p></li>
+<li><p><strong>layer</strong> – Layer name in <cite>adata.layers</cite> to use for expression data.
+If None, uses <cite>adata.X</cite>.
+For log1p-CPM workflows, use layer=”log1p_cpm”.</p></li>
+<li><p><strong>method</strong> – <p>Scoring method:
+- “zmean”: Z-score each gene across cells (within the current AnnData),</p>
+<blockquote>
+<div><p>then average z-scores across genes. This is the recommended method
+as it accounts for different expression scales across genes.</p>
+</div></blockquote>
+<ul>
+<li><p>”mean”: Mean expression across genes.</p></li>
+</ul>
+</p></li>
+<li><p><strong>prefix</strong> – Prefix to add to column names (e.g., <code class="docutils literal notranslate"><span class="pre">ms_</span></code> for module scores).</p></li>
+<li><p><strong>min_genes</strong> – Minimum number of genes from the set that must be present in the data.
+Default is 5.</p></li>
+<li><p><strong>overwrite</strong> – If False, skip gene sets that already have a column in <cite>adata.obs</cite>.
+Default is True.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The workflow object with the gene sets scored and module scores stored in <code class="docutils literal notranslate"><span class="pre">adata.obs</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#sctrial.workflow.TrialWorkflow" title="sctrial.workflow.TrialWorkflow">TrialWorkflow</a></p>
+</dd>
+</dl>
 </dd></dl>
 
 </dd></dl>
@@ -556,6 +698,17 @@ preprocessing, gene scoring, and DiD analysis.</p>
 <dt class="sig sig-object py" id="sctrial.workflow.workflow">
 <span class="sig-prename descclassname"><span class="pre">sctrial.workflow.</span></span><span class="sig-name descname"><span class="pre">workflow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">adata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">AnnData</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#sctrial.workflow.TrialWorkflow" title="sctrial.workflow.TrialWorkflow"><span class="pre">TrialWorkflow</span></a></span></span><a class="reference internal" href="_modules/sctrial/workflow.html#workflow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.workflow.workflow" title="Link to this definition">#</a></dt>
 <dd><p>Create a TrialWorkflow for fluent chaining.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>adata</strong> – AnnData object with trial data.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A TrialWorkflow object with the AnnData object set.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#sctrial.workflow.TrialWorkflow" title="sctrial.workflow.TrialWorkflow">TrialWorkflow</a></p>
+</dd>
+</dl>
 </dd></dl>
 
 </section>
@@ -707,6 +860,24 @@ pre-aggregate to pseudobulk before calling this function.</p>
 <dt class="sig sig-object py" id="sctrial.adata_tools.subset_cells">
 <span class="sig-prename descclassname"><span class="pre">sctrial.adata_tools.</span></span><span class="sig-name descname"><span class="pre">subset_cells</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">adata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">AnnData</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">design</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#sctrial.design.TrialDesign" title="sctrial.design.TrialDesign"><span class="pre">TrialDesign</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">arm</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">visit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">celltype</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclude_crossovers</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">AnnData</span></span></span><a class="reference internal" href="_modules/sctrial/adata_tools.html#subset_cells"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.adata_tools.subset_cells" title="Link to this definition">#</a></dt>
 <dd><p>General-purpose subsetting helper by arm/visit/celltype (+ optional crossover exclusion).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>adata</strong> – AnnData object.</p></li>
+<li><p><strong>design</strong> – TrialDesign object.</p></li>
+<li><p><strong>arm</strong> – Arm to subset by.</p></li>
+<li><p><strong>visit</strong> – Visit to subset by.</p></li>
+<li><p><strong>celltype</strong> – Celltype to subset by.</p></li>
+<li><p><strong>exclude_crossovers</strong> – If True, exclude crossovers.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Subsetted AnnData object.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>AnnData</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -719,6 +890,12 @@ pre-aggregate to pseudobulk before calling this function.</p>
 <li><p><strong>visits</strong> – Tuple of (baseline_visit, followup_visit), e.g. (“3/T0”, “6/T12w”).</p></li>
 <li><p><strong>exclude_crossovers</strong> – If True and design.crossover_col is provided, drop rows where crossover_col is truthy.</p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Subsetted AnnData object.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>AnnData</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1346,6 +1523,17 @@ is a cross-sectional comparison (no participant fixed effects).</p>
 <li><p><strong>covariates</strong> – Optional covariate columns to include as fixed effects for OLS.</p></li>
 </ul>
 </dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Table with feature, beta_arm, p_arm, FDR_arm, n_units.
+- feature: Name of the feature.
+- beta_arm: Effect size (difference in means between arms). Note: This is the difference in means between the treated and control arms.
+- p_arm: P-value for the between-arm comparison.
+- FDR_arm: False Discovery Rate corrected p-value.
+- n_units: Number of unique units (participants) included in the analysis. Note: This is the number of participants that have valid scores for the feature in both arms.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
 </dl>
 </dd></dl>
 
@@ -1356,12 +1544,30 @@ is a cross-sectional comparison (no participant fixed effects).</p>
 <p>This aggregates expression per participant (avoids pseudoreplication) and
 tests group differences using Mann-Whitney U on participant-level means.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p><ul class="simple">
-<li><p><strong>result</strong> (<em>dict</em>) – Summary stats including p-value and group means.</p></li>
-<li><p><strong>df_patient</strong> (<em>pd.DataFrame</em>) – Participant-level summaries (mean, median, % expressing, n_cells).</p></li>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>adata</strong> – AnnData object.</p></li>
+<li><p><strong>gene</strong> – Gene name.</p></li>
+<li><p><strong>celltypes</strong> – Cell types to analyze.</p></li>
+<li><p><strong>group_col</strong> – Column name in adata.obs to use for grouping.</p></li>
+<li><p><strong>group1</strong> – First group to compare.</p></li>
+<li><p><strong>group2</strong> – Second group to compare.</p></li>
+<li><p><strong>participant_col</strong> – Column name in adata.obs to use for participant IDs.</p></li>
+<li><p><strong>celltype_col</strong> – Column name in adata.obs to use for cell types.</p></li>
+<li><p><strong>layer</strong> – Layer name in adata.layers to use for expression data.</p></li>
+<li><p><strong>log1p</strong> – Whether to log1p the expression data.</p></li>
+<li><p><strong>expr_threshold</strong> – Expression threshold to use for calculating the percentage of expressing cells. This is the minimum expression level to be considered expressing.</p></li>
+<li><p><strong>min_cells_per_patient</strong> – Minimum number of cells per participant to include in the analysis.</p></li>
+<li><p><strong>min_patients_per_group</strong> – Minimum number of participants per group to include in the analysis.</p></li>
 </ul>
-</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A tuple containing a dictionary with the results and a DataFrame with the participant-level summaries
+- The dictionary contains the results of the comparison.
+- The DataFrame contains the participant-level summaries.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a>, pd.DataFrame]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1370,6 +1576,23 @@ tests group differences using Mann-Whitney U on participant-level means.</p>
 <dt class="sig sig-object py" id="sctrial.stats.comparisons.resolve_gene_name">
 <span class="sig-prename descclassname"><span class="pre">sctrial.stats.comparisons.</span></span><span class="sig-name descname"><span class="pre">resolve_gene_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">adata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">AnnData</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gene_query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="_modules/sctrial/stats/comparisons.html#resolve_gene_name"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.stats.comparisons.resolve_gene_name" title="Link to this definition">#</a></dt>
 <dd><p>Resolve a gene name in var_names, case-insensitive if needed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>adata</strong> – AnnData object.</p></li>
+<li><p><strong>gene_query</strong> – Gene name to resolve (case-insensitive).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The resolved gene name (exact match or case-insensitive match).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If gene_query is not found in adata.var_names or if there are multiple case-insensitive matches.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -1541,6 +1764,23 @@ If False, use only group1’s standard deviation (Glass’s delta).</p></li>
 <dd><p>Approximate Cohen’s d from a DiD regression coefficient (deprecated).</p>
 <p>This uses the regression residual SD instead of pooled SD of change scores,
 which can mis-scale effect sizes when designs are imbalanced or heteroscedastic.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>beta_did</strong> – DiD regression coefficient.</p></li>
+<li><p><strong>residual_std</strong> – Residual standard deviation from the DiD model.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Approximate Cohen’s d effect size.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+<dt class="field-even">Warns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>DeprecationWarning</strong> – Always raised; use <code class="docutils literal notranslate"><span class="pre">cohens_d_from_did</span></code> instead.</p>
+</dd>
+</dl>
 <p class="rubric">Notes</p>
 <p>Deprecated: use <code class="docutils literal notranslate"><span class="pre">cohens_d_from_did(delta_treated,</span> <span class="pre">delta_control)</span></code> instead.</p>
 </dd></dl>
@@ -2108,7 +2348,11 @@ biomarkers (0/1 or True/False), values are used directly.</p></li>
 <dl class="py function">
 <dt class="sig sig-object py" id="sctrial.stats.sensitivity.e_value_rr">
 <span class="sig-prename descclassname"><span class="pre">sctrial.stats.sensitivity.</span></span><span class="sig-name descname"><span class="pre">e_value_rr</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">estimate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ci_lower</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ci_upper</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/sctrial/stats/sensitivity.html#e_value_rr"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.stats.sensitivity.e_value_rr" title="Link to this definition">#</a></dt>
-<dd><p>Compute the E-value for a risk ratio estimate (VanderWeele &amp; Ding).</p>
+<dd><p>Compute the E-value for a risk ratio estimate (VanderWeele &amp; Ding).
+Ref:VanderWeele, Tyler J., and Peng Ding. “Sensitivity analysis in observational research: introducing the E-value.”</p>
+<blockquote>
+<div><p>Annals of internal medicine 167.4 (2017): 268-274.</p>
+</div></blockquote>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -2671,18 +2915,87 @@ gseapy result object.</p>
 <dt class="sig sig-object py" id="sctrial.stats.gsea.run_gsea_did_by_celltype">
 <span class="sig-prename descclassname"><span class="pre">sctrial.stats.gsea.</span></span><span class="sig-name descname"><span class="pre">run_gsea_did_by_celltype</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">adata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">AnnData</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gene_sets</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">design</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#sctrial.design.TrialDesign" title="sctrial.design.TrialDesign"><span class="pre">TrialDesign</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">visits</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">celltypes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">DataFrame</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Prerank</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/sctrial/stats/gsea.html#run_gsea_did_by_celltype"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.stats.gsea.run_gsea_did_by_celltype" title="Link to this definition">#</a></dt>
 <dd><p>Run GSEA on DiD rankings separately for each cell type.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>adata</strong> – AnnData object.</p></li>
+<li><p><strong>gene_sets</strong> – Dictionary of gene-set collections.</p></li>
+<li><p><strong>design</strong> – TrialDesign object.</p></li>
+<li><p><strong>visits</strong> – Tuple of (baseline, followup) visit labels.</p></li>
+<li><p><strong>celltypes</strong> – List of cell types to analyze. If None, uses all unique cell types in <cite>design.celltype_col</cite>.</p></li>
+<li><p><strong>**kwargs</strong> – Additional parameters passed to <cite>gseapy.prerank</cite></p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dictionary of GSEA results.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>, pd.DataFrame | gp.Prerank]</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="sctrial.stats.gsea.run_gsea_did_multi">
 <span class="sig-prename descclassname"><span class="pre">sctrial.stats.gsea.</span></span><span class="sig-name descname"><span class="pre">run_gsea_did_multi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">adata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">AnnData</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gene_sets</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">design</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#sctrial.design.TrialDesign" title="sctrial.design.TrialDesign"><span class="pre">TrialDesign</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">visits</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">DataFrame</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Prerank</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/sctrial/stats/gsea.html#run_gsea_did_multi"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.stats.gsea.run_gsea_did_multi" title="Link to this definition">#</a></dt>
 <dd><p>Run GSEA across multiple gene-set collections.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>adata</strong> – AnnData object.</p></li>
+<li><p><strong>gene_sets</strong> – Dictionary of gene-set collections.</p></li>
+<li><p><strong>design</strong> – TrialDesign object.</p></li>
+<li><p><strong>visits</strong> – Tuple of (baseline, followup) visit labels.</p></li>
+<li><p><strong>**kwargs</strong> – Additional parameters passed to <cite>gseapy.prerank</cite> (e.g., <cite>permutation_num</cite>,
+<cite>outdir</cite>, <cite>min_size</cite>, <cite>max_size</cite>).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dictionary of GSEA results.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>, pd.DataFrame | gp.Prerank]</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="sctrial.stats.gsea.run_gsea_pseudobulk">
 <span class="sig-prename descclassname"><span class="pre">sctrial.stats.gsea.</span></span><span class="sig-name descname"><span class="pre">run_gsea_pseudobulk</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">adata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">AnnData</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gene_sets</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">design</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#sctrial.design.TrialDesign" title="sctrial.design.TrialDesign"><span class="pre">TrialDesign</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">visits</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">celltype_col</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rank_by</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'signed_confidence'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_units</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">4</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_obj</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Prerank</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Prerank</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/sctrial/stats/gsea.html#run_gsea_pseudobulk"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.stats.gsea.run_gsea_pseudobulk" title="Link to this definition">#</a></dt>
 <dd><p>Run GSEA using pseudobulk DiD results.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>adata</strong> – AnnData object.</p></li>
+<li><p><strong>gene_sets</strong> – Dictionary of gene-set collections.</p></li>
+<li><p><strong>design</strong> – TrialDesign object.</p></li>
+<li><p><strong>visits</strong> – Tuple of (baseline, followup) visit labels.</p></li>
+<li><p><strong>celltype_col</strong> – If provided and results contain per-celltype rows, run GSEA separately for each cell type and concatenate results.</p></li>
+<li><p><strong>rank_by</strong> – <p>Metric for ranking genes:
+- ‘signed_confidence’: sign(beta_DiD) * -log10(p_DiD). Highlights</p>
+<blockquote>
+<div><p>genes with high effect and high significance.</p>
+</div></blockquote>
+<ul>
+<li><p>’beta’: ranks genes solely by the DiD effect size.</p></li>
+<li><p>’tstat’: ranks genes by the t-statistic (beta_DiD / se_DiD).</p></li>
+</ul>
+</p></li>
+<li><p><strong>min_units</strong> – Minimum number of paired participants required for a gene to be included in the ranking.</p></li>
+<li><p><strong>return_obj</strong> – Whether to return the full gseapy object. If False (default),
+returns the results DataFrame (<cite>res2d</cite>).</p></li>
+<li><p><strong>**kwargs</strong> – Additional parameters passed to <cite>gseapy.prerank</cite> (e.g., <cite>permutation_num</cite>,
+<cite>outdir</cite>, <cite>min_size</cite>, <cite>max_size</cite>).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A DataFrame of enrichment results (if return_obj=False) or the
+gseapy result object.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame | gp.Prerank | <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>, gp.Prerank]</p>
+</dd>
+</dl>
 </dd></dl>
 
 </section>
@@ -2694,6 +3007,35 @@ gseapy result object.</p>
 <dd><p>Run DiD on pseudobulk expression (participant-level aggregates).</p>
 <p>This mirrors subject-level pseudobulk DiD workflows where each participant×visit
 (optionally per cell type) is one observation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>adata</strong> – AnnData object.</p></li>
+<li><p><strong>genes</strong> – List of genes to analyze.</p></li>
+<li><p><strong>design</strong> – TrialDesign object.</p></li>
+<li><p><strong>visits</strong> – Tuple of (baseline, followup) visit labels.</p></li>
+<li><p><strong>celltype_col</strong> – Column name in adata.obs to use for cell types.</p></li>
+<li><p><strong>counts_layer</strong> – Layer name in adata.layers to use for expression data.</p></li>
+<li><p><strong>log1p</strong> – Whether to log1p the expression data.</p></li>
+<li><p><strong>min_cells_per_group</strong> – Minimum number of cells per group to include in the analysis.</p></li>
+<li><p><strong>min_paired</strong> – Minimum number of paired participants to include in the analysis.</p></li>
+<li><p><strong>use_bootstrap</strong> – Whether to use bootstrap to calculate p-values. Recommended for small sample sizes.</p></li>
+<li><p><strong>n_boot</strong> – Number of bootstrap permutations.</p></li>
+<li><p><strong>seed</strong> – Random seed for reproducibility.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A DataFrame with the results of the DiD analysis.
+- feature: Name of the feature.
+- beta_DiD: Effect size (difference in means between arms).
+- p_DiD: P-value for the DiD analysis.
+- FDR_DiD: False Discovery Rate corrected p-value.
+- n_units: Number of unique units (participants) included in the analysis.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -2735,7 +3077,15 @@ gseapy result object.</p>
 <li><p><strong>counts_layer</strong> – Layer containing raw counts. Defaults to “counts”.</p></li>
 <li><p><strong>scale</strong> – CPM scale factor (default 1e6).</p></li>
 <li><p><strong>log1p</strong> – If True, apply log1p to CPM.</p></li>
+<li><p><strong>min_cells_per_group</strong> – Minimum cells per group to include.</p></li>
+<li><p><strong>include_n_cells</strong> – If True, include the number of cells per group.</p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>DataFrame with pseudobulk expression.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
 </dd>
 </dl>
 </dd></dl>
@@ -2744,7 +3094,52 @@ gseapy result object.</p>
 <dt class="sig sig-object py" id="sctrial.stats.pseudobulk.pseudobulk_within_arm">
 <span class="sig-prename descclassname"><span class="pre">sctrial.stats.pseudobulk.</span></span><span class="sig-name descname"><span class="pre">pseudobulk_within_arm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">adata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">AnnData</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">genes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Sequence" title="(in Python v3.14)"><span class="pre">Sequence</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">participant_col</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">visit_col</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">visits</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Sequence" title="(in Python v3.14)"><span class="pre">Sequence</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">celltype_col</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">counts_layer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'counts'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_paired</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><span class="pre">DataFrame</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">DataFrame</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/sctrial/stats/pseudobulk.html#pseudobulk_within_arm"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.stats.pseudobulk.pseudobulk_within_arm" title="Link to this definition">#</a></dt>
 <dd><p>Compute within-arm pseudobulk deltas and Wilcoxon tests.</p>
-<p>Returns (summary_df, delta_long_df).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>adata</strong> – AnnData object.</p></li>
+<li><p><strong>genes</strong> – List of genes to analyze.</p></li>
+<li><p><strong>participant_col</strong> – Column name in adata.obs to use for participant IDs.</p></li>
+<li><p><strong>visit_col</strong> – Column name in adata.obs to use for visit labels.</p></li>
+<li><p><strong>visits</strong> – Tuple of (baseline, followup) visit labels.</p></li>
+<li><p><strong>celltype_col</strong> – Column name in adata.obs to use for cell types.</p></li>
+<li><p><strong>counts_layer</strong> – Layer name in adata.layers to use for expression data.</p></li>
+<li><p><strong>min_paired</strong> – Minimum number of paired participants to include in the analysis.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><p>A tuple containing the summary DataFrame and the delta long DataFrame.
+- The summary DataFrame contains the summary statistics for each gene:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>celltype: Cell type.</p></li>
+<li><p>feature: Gene name.</p></li>
+<li><p>n_units: Number of unique units (participants) included in the analysis.</p></li>
+<li><p>mean_delta: Mean delta value.</p></li>
+<li><p>median_delta: Median delta value.</p></li>
+<li><p>p_time: P-value for the Wilcoxon signed-rank test.</p></li>
+<li><p>FDR_time: False Discovery Rate corrected p-value.</p></li>
+</ul>
+</div></blockquote>
+<ul class="simple">
+<li><dl class="simple">
+<dt>The delta long DataFrame contains the delta values for each gene:</dt><dd><ul>
+<li><p>celltype: Cell type.</p></li>
+<li><p>feature: Gene name.</p></li>
+<li><p>participant_id: Participant ID.</p></li>
+<li><p>delta: Delta value.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p>If there are no valid pairs, returns empty DataFrames.</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[pd.DataFrame, pd.DataFrame]</p>
+</dd>
+</dl>
 </dd></dl>
 
 </section>
@@ -3265,32 +3660,97 @@ right.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="sctrial.utils.ensure_unique_index">
 <span class="sig-prename descclassname"><span class="pre">sctrial.utils.</span></span><span class="sig-name descname"><span class="pre">ensure_unique_index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'mean'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="reference internal" href="_modules/sctrial/utils.html#ensure_unique_index"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.utils.ensure_unique_index" title="Link to this definition">#</a></dt>
-<dd><p>If df.index has duplicates, aggregate duplicates and return a new df.</p>
-<p>agg: “mean” or “sum” (extend later if needed).</p>
+<dd><p>If df.index has duplicates, aggregate duplicates and return a new df.
+:param df: DataFrame to ensure unique index.
+:param agg: Aggregation method: “mean” or “sum” (extend later if needed).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A DataFrame with unique index.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>pd.DataFrame</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="sctrial.utils.get_counts_matrix">
 <span class="sig-prename descclassname"><span class="pre">sctrial.utils.</span></span><span class="sig-name descname"><span class="pre">get_counts_matrix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">adata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">AnnData</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><span class="pre">np.ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/sctrial/utils.html#get_counts_matrix"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.utils.get_counts_matrix" title="Link to this definition">#</a></dt>
 <dd><p>Return a raw-counts matrix and its source label, if available.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>adata</strong> – AnnData object.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A tuple containing the counts matrix and its source label.
+- The counts matrix is the raw counts matrix.
+- The source label is the layer name where the counts matrix is stored.
+- If no counts matrix is found, returns (None, None).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[np.ndarray | None, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a> | None]</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="sctrial.utils.intersect_preserve_order">
 <span class="sig-prename descclassname"><span class="pre">sctrial.utils.</span></span><span class="sig-name descname"><span class="pre">intersect_preserve_order</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">items</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Sequence" title="(in Python v3.14)"><span class="pre">Sequence</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">universe</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Iterable" title="(in Python v3.14)"><span class="pre">Iterable</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/sctrial/utils.html#intersect_preserve_order"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.utils.intersect_preserve_order" title="Link to this definition">#</a></dt>
 <dd><p>Return items that appear in universe, preserving original order.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>items</strong> – List of items to intersect.</p></li>
+<li><p><strong>universe</strong> – List of items to intersect with.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A list of items that appear in universe, preserving original order.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>]</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="sctrial.utils.looks_like_counts">
 <span class="sig-prename descclassname"><span class="pre">sctrial.utils.</span></span><span class="sig-name descname"><span class="pre">looks_like_counts</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="_modules/sctrial/utils.html#looks_like_counts"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.utils.looks_like_counts" title="Link to this definition">#</a></dt>
 <dd><p>Check if matrix appears to be raw counts.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>X</strong> – Matrix to check.</p></li>
+<li><p><strong>sample</strong> – Number of samples to check.</p></li>
+<li><p><strong>seed</strong> – Random seed.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>True if matrix appears to be raw counts, False otherwise.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)">bool</a></p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="sctrial.utils.permutation_pvalue">
 <span class="sig-prename descclassname"><span class="pre">sctrial.utils.</span></span><span class="sig-name descname"><span class="pre">permutation_pvalue</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">group1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">group2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_perm</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">42</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></span><a class="reference internal" href="_modules/sctrial/utils.html#permutation_pvalue"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.utils.permutation_pvalue" title="Link to this definition">#</a></dt>
-<dd><p>Two-sample permutation test for difference in means.</p>
+<dd><p>Two-sample permutation test for difference in means.
+:param group1: First group of values.
+:param group2: Second group of values.
+:param n_perm: Number of permutations.
+:param seed: Random seed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Two-sided permutation p-value in <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code>.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
 <p>H0: mean(group1) = mean(group2)</p>
 </dd></dl>
 
@@ -3298,6 +3758,23 @@ right.</p>
 <dt class="sig sig-object py" id="sctrial.utils.permutation_pvalue_paired">
 <span class="sig-prename descclassname"><span class="pre">sctrial.utils.</span></span><span class="sig-name descname"><span class="pre">permutation_pvalue_paired</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_perm</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">42</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></span><a class="reference internal" href="_modules/sctrial/utils.html#permutation_pvalue_paired"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.utils.permutation_pvalue_paired" title="Link to this definition">#</a></dt>
 <dd><p>Paired permutation test (sign-flip test) for difference in means.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> – First group of values.</p></li>
+<li><p><strong>y</strong> – Second group of values.</p></li>
+<li><p><strong>n_perm</strong> – Number of permutations.</p></li>
+<li><p><strong>seed</strong> – Random seed.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Two-sided permutation p-value in <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
 <p>H0: mean(y - x) = 0</p>
 </dd></dl>
 
@@ -3305,7 +3782,26 @@ right.</p>
 <dt class="sig sig-object py" id="sctrial.utils.resolve_feature">
 <span class="sig-prename descclassname"><span class="pre">sctrial.utils.</span></span><span class="sig-name descname"><span class="pre">resolve_feature</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">adata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">AnnData</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="_modules/sctrial/utils.html#resolve_feature"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.utils.resolve_feature" title="Link to this definition">#</a></dt>
 <dd><p>Resolve a feature name in adata.var_names or adata.obs.columns (case-insensitive).</p>
-<p>Returns the exact name string to use. Raises KeyError if not found.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>adata</strong> – AnnData object.</p></li>
+<li><p><strong>query</strong> – Feature name to resolve.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The exact name string to use.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#KeyError" title="(in Python v3.14)"><strong>KeyError</strong></a> – If the feature is not found in adata.var_names or adata.obs.columns.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If the feature query is an empty string.</p></li>
+</ul>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -3318,6 +3814,12 @@ right.</p>
 <li><p><strong>s</strong> – Input string to sanitize.</p></li>
 <li><p><strong>maxlen</strong> – Maximum length of the output string.</p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A filesystem-safe filename.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -3644,18 +4146,63 @@ Default is 3.</p></li>
 <dt class="sig sig-object py" id="sctrial.datasets.categorize_celltype">
 <span class="sig-prename descclassname"><span class="pre">sctrial.datasets.</span></span><span class="sig-name descname"><span class="pre">categorize_celltype</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ct</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="_modules/sctrial/datasets.html#categorize_celltype"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.datasets.categorize_celltype" title="Link to this definition">#</a></dt>
 <dd><p>Map fine-grained cell types to coarse lineages (COVID-19 example).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ct</strong> – Cell type string.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Coarse lineage string.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="sctrial.datasets.count_paired">
 <span class="sig-prename descclassname"><span class="pre">sctrial.datasets.</span></span><span class="sig-name descname"><span class="pre">count_paired</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">visit_col</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">visits</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Sequence" title="(in Python v3.14)"><span class="pre">Sequence</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">participant_col</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'participant_id'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="reference internal" href="_modules/sctrial/datasets.html#count_paired"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.datasets.count_paired" title="Link to this definition">#</a></dt>
 <dd><p>Count participants with data at both visits.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>obs</strong> – DataFrame containing the participant-visit data.</p></li>
+<li><p><strong>visit_col</strong> – Column name in <cite>obs</cite> to use for visit labels.</p></li>
+<li><p><strong>visits</strong> – Sequence of visit labels to check (e.g. [“baseline”, “followup”]).</p></li>
+<li><p><strong>participant_col</strong> – Column name in <cite>obs</cite> to use for participant IDs.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Number of participants with data at both visits.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If visits does not contain at least 2 labels (baseline and followup).</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="sctrial.datasets.ensure_fdr">
 <span class="sig-prename descclassname"><span class="pre">sctrial.datasets.</span></span><span class="sig-name descname"><span class="pre">ensure_fdr</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p_col</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'p_time'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fdr_col</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'FDR_time'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="reference internal" href="_modules/sctrial/datasets.html#ensure_fdr"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.datasets.ensure_fdr" title="Link to this definition">#</a></dt>
 <dd><p>Add Benjamini-Hochberg FDR column for a p-value column.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>df</strong> – DataFrame containing the p-value column.</p></li>
+<li><p><strong>p_col</strong> – Column name in <cite>df</cite> to use for p-value column.</p></li>
+<li><p><strong>fdr_col</strong> – Column name in <cite>df</cite> to use for FDR-corrected p-value column.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A copy of the DataFrame with the FDR-corrected p-value column added.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -3735,17 +4282,24 @@ Default is 3.</p></li>
 <span class="sig-prename descclassname"><span class="pre">sctrial.datasets.</span></span><span class="sig-name descname"><span class="pre">verify_paired_participants</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">visit_col</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">visits</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Sequence" title="(in Python v3.14)"><span class="pre">Sequence</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">features</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Sequence" title="(in Python v3.14)"><span class="pre">Sequence</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">participant_col</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'participant_id'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></span></span><a class="reference internal" href="_modules/sctrial/datasets.html#verify_paired_participants"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.datasets.verify_paired_participants" title="Link to this definition">#</a></dt>
 <dd><p>Validate paired participants by visit presence and optional feature completeness.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>set of participant IDs with both visits (and non-NaN features if provided)
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>obs</strong> – DataFrame containing the participant-visit data.</p></li>
+<li><p><strong>visit_col</strong> – Column name in <cite>obs</cite> to use for visit labels.</p></li>
+<li><p><strong>visits</strong> – Sequence of visit labels to check (e.g. [“baseline”, “followup”]).</p></li>
+<li><p><strong>features</strong> – Sequence of feature names to check.</p></li>
+<li><p><strong>participant_col</strong> – Column name in <cite>obs</cite> to use for participant IDs.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A dictionary containing the following keys:
+- paired_ids: set of participant IDs with both visits (and non-NaN features if provided)
 - dropped_ids: list of participant IDs dropped by validation
 - n_paired: count of paired_ids
 - n_total: total unique participants</p>
 </dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><ul class="simple">
-<li><p>paired_ids</p></li>
-</ul>
-</p>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a></p>
 </dd>
 </dl>
 </dd></dl>

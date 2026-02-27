@@ -362,6 +362,7 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_get_layer</span><span class="p">(</span><span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span> <span class="n">layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="n">sp</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get the layer from the AnnData object.&quot;&quot;&quot;</span>
     <span class="n">X</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="n">layer</span><span class="p">]</span> <span class="k">if</span> <span class="n">layer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">adata</span><span class="o">.</span><span class="n">X</span>
     <span class="k">if</span> <span class="n">sp</span><span class="o">.</span><span class="n">issparse</span><span class="p">(</span><span class="n">X</span><span class="p">):</span>
         <span class="n">X</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">tocsr</span><span class="p">()</span>
@@ -396,6 +397,16 @@
 <span class="sd">        CPM scale factor (default 1e6).</span>
 <span class="sd">    log1p</span>
 <span class="sd">        If True, apply log1p to CPM.</span>
+<span class="sd">    min_cells_per_group</span>
+<span class="sd">        Minimum cells per group to include.</span>
+<span class="sd">    include_n_cells</span>
+<span class="sd">        If True, include the number of cells per group.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.DataFrame</span>
+<span class="sd">        DataFrame with pseudobulk expression.</span>
+
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">genes</span> <span class="o">=</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">genes</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="p">]</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">genes</span><span class="p">:</span>
@@ -568,6 +579,43 @@
 
 <span class="sd">    This mirrors subject-level pseudobulk DiD workflows where each participant×visit</span>
 <span class="sd">    (optionally per cell type) is one observation.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    adata</span>
+<span class="sd">        AnnData object.</span>
+<span class="sd">    genes</span>
+<span class="sd">        List of genes to analyze.</span>
+<span class="sd">    design</span>
+<span class="sd">        TrialDesign object.</span>
+<span class="sd">    visits</span>
+<span class="sd">        Tuple of (baseline, followup) visit labels.</span>
+<span class="sd">    celltype_col</span>
+<span class="sd">        Column name in adata.obs to use for cell types.</span>
+<span class="sd">    counts_layer</span>
+<span class="sd">        Layer name in adata.layers to use for expression data.</span>
+<span class="sd">    log1p</span>
+<span class="sd">        Whether to log1p the expression data.</span>
+<span class="sd">    min_cells_per_group</span>
+<span class="sd">        Minimum number of cells per group to include in the analysis.</span>
+<span class="sd">    min_paired</span>
+<span class="sd">        Minimum number of paired participants to include in the analysis.</span>
+<span class="sd">    use_bootstrap</span>
+<span class="sd">        Whether to use bootstrap to calculate p-values. Recommended for small sample sizes.</span>
+<span class="sd">    n_boot</span>
+<span class="sd">        Number of bootstrap permutations.</span>
+<span class="sd">    seed</span>
+<span class="sd">        Random seed for reproducibility.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.DataFrame</span>
+<span class="sd">        A DataFrame with the results of the DiD analysis.</span>
+<span class="sd">        - feature: Name of the feature.</span>
+<span class="sd">        - beta_DiD: Effect size (difference in means between arms).</span>
+<span class="sd">        - p_DiD: P-value for the DiD analysis.</span>
+<span class="sd">        - FDR_DiD: False Discovery Rate corrected p-value.</span>
+<span class="sd">        - n_units: Number of unique units (participants) included in the analysis.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">genes</span> <span class="o">=</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">genes</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="p">]</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">genes</span><span class="p">:</span>
@@ -674,7 +722,43 @@
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute within-arm pseudobulk deltas and Wilcoxon tests.</span>
 
-<span class="sd">    Returns (summary_df, delta_long_df).</span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    adata</span>
+<span class="sd">        AnnData object.</span>
+<span class="sd">    genes</span>
+<span class="sd">        List of genes to analyze.</span>
+<span class="sd">    participant_col</span>
+<span class="sd">        Column name in adata.obs to use for participant IDs.</span>
+<span class="sd">    visit_col</span>
+<span class="sd">        Column name in adata.obs to use for visit labels.</span>
+<span class="sd">    visits</span>
+<span class="sd">        Tuple of (baseline, followup) visit labels.</span>
+<span class="sd">    celltype_col</span>
+<span class="sd">        Column name in adata.obs to use for cell types.</span>
+<span class="sd">    counts_layer</span>
+<span class="sd">        Layer name in adata.layers to use for expression data.</span>
+<span class="sd">    min_paired</span>
+<span class="sd">        Minimum number of paired participants to include in the analysis.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple[pd.DataFrame, pd.DataFrame]</span>
+<span class="sd">        A tuple containing the summary DataFrame and the delta long DataFrame.</span>
+<span class="sd">        - The summary DataFrame contains the summary statistics for each gene:</span>
+<span class="sd">            - celltype: Cell type.</span>
+<span class="sd">            - feature: Gene name.</span>
+<span class="sd">            - n_units: Number of unique units (participants) included in the analysis.</span>
+<span class="sd">            - mean_delta: Mean delta value.</span>
+<span class="sd">            - median_delta: Median delta value.</span>
+<span class="sd">            - p_time: P-value for the Wilcoxon signed-rank test.</span>
+<span class="sd">            - FDR_time: False Discovery Rate corrected p-value.</span>
+<span class="sd">        - The delta long DataFrame contains the delta values for each gene:</span>
+<span class="sd">            - celltype: Cell type.</span>
+<span class="sd">            - feature: Gene name.</span>
+<span class="sd">            - participant_id: Participant ID.</span>
+<span class="sd">            - delta: Delta value.</span>
+<span class="sd">        - If there are no valid pairs, returns empty DataFrames.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">pb</span> <span class="o">=</span> <span class="n">pseudobulk_expression</span><span class="p">(</span>
         <span class="n">adata</span><span class="p">,</span>

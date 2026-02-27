@@ -639,6 +639,23 @@
 <span class="sd">    This uses the regression residual SD instead of pooled SD of change scores,</span>
 <span class="sd">    which can mis-scale effect sizes when designs are imbalanced or heteroscedastic.</span>
 
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    beta_did</span>
+<span class="sd">        DiD regression coefficient.</span>
+<span class="sd">    residual_std</span>
+<span class="sd">        Residual standard deviation from the DiD model.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    float</span>
+<span class="sd">        Approximate Cohen&#39;s d effect size.</span>
+
+<span class="sd">    Warns</span>
+<span class="sd">    -----</span>
+<span class="sd">    DeprecationWarning</span>
+<span class="sd">        Always raised; use ``cohens_d_from_did`` instead.</span>
+
 <span class="sd">    Notes</span>
 <span class="sd">    -----</span>
 <span class="sd">    Deprecated: use ``cohens_d_from_did(delta_treated, delta_control)`` instead.</span>
