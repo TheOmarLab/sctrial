@@ -312,13 +312,21 @@ def within_arm_comparison(
 
         beta = float(fit.params.get("visit_num", np.nan))
         se = float(fit.bse.get("visit_num", np.nan))
-        t_crit = float(t_dist.ppf(0.975, fit.df_resid))
+        # Use robust conf_int() to ensure CI is consistent with the
+        # cluster-robust SE / p-value (avoids df_resid mismatch).
+        ci_bounds = fit.conf_int(alpha=0.05)
+        if "visit_num" in ci_bounds.index:
+            ci_lo = float(ci_bounds.loc["visit_num", 0])
+            ci_hi = float(ci_bounds.loc["visit_num", 1])
+        else:
+            ci_lo = np.nan
+            ci_hi = np.nan
         rows.append({
             "feature": feat,
             "beta_time": beta,
             "se_time": se,
-            "ci_lo_time": beta - t_crit * se,
-            "ci_hi_time": beta + t_crit * se,
+            "ci_lo_time": ci_lo,
+            "ci_hi_time": ci_hi,
             "p_time": float(fit.pvalues.get("visit_num", np.nan)),
             "n_units": int(df_use[unit].nunique()),
         })
@@ -408,19 +416,31 @@ def between_arm_comparison(
             if len(g1) > 0 and len(g2) > 0:
                 stat, p_val = mannwhitneyu(g1, g2, alternative="two-sided")
                 beta = float(np.mean(g1) - np.mean(g2))
-                # Pooled SE for the difference in means
                 n1, n2 = len(g1), len(g2)
-                se = float(np.sqrt(np.var(g1, ddof=1) / n1 + np.var(g2, ddof=1) / n2))
-                # Welch-Satterthwaite df for CI
-                v1, v2 = np.var(g1, ddof=1) / n1, np.var(g2, ddof=1) / n2
-                df_ws = float((v1 + v2) ** 2 / (v1**2 / (n1 - 1) + v2**2 / (n2 - 1))) if (v1 + v2) > 0 else max(n1 + n2 - 2, 1)
-                t_crit = float(t_dist.ppf(0.975, df_ws))
+
+                if n1 >= 2 and n2 >= 2:
+                    # Pooled SE for the difference in means
+                    v1 = np.var(g1, ddof=1) / n1
+                    v2 = np.var(g2, ddof=1) / n2
+                    se = float(np.sqrt(v1 + v2))
+                    # Welch-Satterthwaite df for CI
+                    denom = v1**2 / (n1 - 1) + v2**2 / (n2 - 1)
+                    df_ws = float((v1 + v2) ** 2 / denom) if denom > 0 else max(n1 + n2 - 2, 1)
+                    t_crit = float(t_dist.ppf(0.975, df_ws))
+                    ci_lo = beta - t_crit * se
+                    ci_hi = beta + t_crit * se
+                else:
+                    # Singleton arm: variance undefined with ddof=1
+                    se = np.nan
+                    ci_lo = np.nan
+                    ci_hi = np.nan
+
                 rows.append({
                     "feature": feat,
                     "beta_arm": beta,
                     "se_arm": se,
-                    "ci_lo_arm": beta - t_crit * se,
-                    "ci_hi_arm": beta + t_crit * se,
+                    "ci_lo_arm": ci_lo,
+                    "ci_hi_arm": ci_hi,
                     "p_arm": float(p_val),
                     "n_units": int(df_use[design.participant_col].nunique()),
                 })
