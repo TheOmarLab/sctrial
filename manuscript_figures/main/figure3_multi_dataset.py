@@ -77,7 +77,11 @@ _DATASET_COLORS = {
 # ── helpers ────────────────────────────────────────────────────────────────
 
 def _stars(p: float) -> str:
-    """Return significance stars for a p-value."""
+    """Return significance stars for a p-value.
+
+    Uses conventional thresholds plus a marginal indicator (†) for
+    0.05 ≤ FDR < 0.1 to highlight near-significant trends.
+    """
     if pd.isna(p):
         return ""
     if p < 0.001:
@@ -86,6 +90,8 @@ def _stars(p: float) -> str:
         return "**"
     if p < 0.05:
         return "*"
+    if p < 0.1:
+        return "†"
     return ""
 
 
@@ -612,7 +618,6 @@ def panel_a_covid(ax, data: dict[str, Any]) -> None:
         ci_lo_col="ci_lo",
         ci_hi_col="ci_hi",
         label_col="label",
-        fdr_col="fdr",
         xlabel="Hedge's g (Severe vs Mild)",
         color_pos=COLORS["treated"],
         color_neg=COLORS["control"],
@@ -640,7 +645,6 @@ def panel_b_vaccine(ax, data: dict[str, Any]) -> None:
         ci_lo_col="ci_lo",
         ci_hi_col="ci_hi",
         label_col="label",
-        fdr_col="FDR_time",
         xlabel="Standardised $\\Delta$ (Post $-$ Pre)",
         color_pos=COLORS["treated"],
         color_neg=COLORS["control"],
@@ -668,7 +672,6 @@ def panel_c_aml(ax, data: dict[str, Any]) -> None:
         ci_lo_col="ci_lo",
         ci_hi_col="ci_hi",
         label_col="label",
-        fdr_col="FDR_DiD",
         xlabel="DiD effect (Treatment vs Control)",
         color_pos=COLORS["treated"],
         color_neg=COLORS["control"],
@@ -696,7 +699,6 @@ def panel_d_cart(ax, data: dict[str, Any]) -> None:
         ci_lo_col="ci_lo",
         ci_hi_col="ci_hi",
         label_col="label",
-        fdr_col="FDR_time",
         xlabel="Standardised $\\Delta$ (Post $-$ Pre)",
         color_pos=COLORS["treated"],
         color_neg=COLORS["control"],
@@ -724,7 +726,6 @@ def panel_e_melanoma(ax, data: dict[str, Any]) -> None:
         ci_lo_col="ci_lo",
         ci_hi_col="ci_hi",
         label_col="label",
-        fdr_col="FDR_DiD",
         xlabel="DiD effect (Responder vs Non-responder)",
         color_pos=COLORS["treated"],
         color_neg=COLORS["control"],
