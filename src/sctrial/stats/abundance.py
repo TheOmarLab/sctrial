@@ -224,12 +224,16 @@ def abundance_did(
             df_delta = df_delta.dropna()
             if df_delta.shape[0] < min_units:
                 continue
+            # Preserve participant IDs before resetting index for safe .loc
+            diff_pids = df_delta.index.to_numpy()
+            df_delta = df_delta.reset_index(drop=True)
             formula = "delta ~ arm_bin"
             if covariates:
                 formula += " + " + " + ".join(covariates)
             model = smf.ols(formula, data=df_delta)
-            clusters_use = df_delta.index.to_numpy()
+            clusters_use = diff_pids
         else:
+            tmp = tmp.reset_index(drop=True)  # unique int index for .loc
             formula = f"y ~ visit_num + visit_num:arm_bin + C({design.participant_col})"
             if covariates:
                 formula += " + " + " + ".join(covariates)
@@ -262,6 +266,15 @@ def abundance_did(
             if term not in fit.params or np.isnan(fit.params[term]):
                 raise ValueError("DiD term not estimable")
 
+            # Align clusters with actual model rows (statsmodels may drop rows).
+            # DataFrames have been reset_index'd so row_labels are integer positions.
+            model_row_idx = fit.model.data.row_labels
+            if use_diff:
+                clusters_aligned = diff_pids[model_row_idx]
+            else:
+                clusters_aligned = tmp[design.participant_col].loc[model_row_idx].to_numpy()
+            n_units_eff = int(len(np.unique(clusters_aligned)))
+
             p_val = float(fit.pvalues[term])
             se_boot = np.nan
             ci_lo_boot = np.nan
@@ -270,7 +283,7 @@ def abundance_did(
                 boot_res = wild_cluster_bootstrap_t(
                     fit,
                     X=fit.model.exog,
-                    clusters=clusters_use,
+                    clusters=clusters_aligned,
                     term_name=term,
                     B=n_boot,
                     seed=seed
@@ -282,7 +295,7 @@ def abundance_did(
 
             row_dict: dict = {
                 "celltype": ct,
-                "n_participants": int(n_units),
+                "n_participants": n_units_eff,
                 "beta_DiD": float(fit.params[term]),
                 "se_DiD": float(fit.bse[term]),
                 "p_DiD": p_val,

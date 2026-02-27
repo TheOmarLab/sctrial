@@ -134,7 +134,7 @@ def _ols_between_arm(
         Dictionary with keys: feature, beta_arm, se_arm, ci_lo_arm,
         ci_hi_arm, p_arm, n_units.
     """
-    df_feat = df_use.copy()
+    df_feat = df_use.copy().reset_index(drop=True)  # unique int index for .loc
     if standardize:
         y_std, ok = standardize_series(df_feat, feat, min_std=1e-12)
         if not ok:
@@ -160,6 +160,9 @@ def _ols_between_arm(
     beta = float(fit.params.get("arm_bin", np.nan))
     se = float(fit.bse.get("arm_bin", np.nan))
     t_crit = float(t_dist.ppf(0.975, fit.df_resid))
+    # Report effective participant count after model row drops
+    model_row_idx = fit.model.data.row_labels
+    n_units_eff = int(df_feat[design.participant_col].loc[model_row_idx].nunique())
     return {
         "feature": feat,
         "beta_arm": beta,
@@ -167,7 +170,7 @@ def _ols_between_arm(
         "ci_lo_arm": beta - t_crit * se,
         "ci_hi_arm": beta + t_crit * se,
         "p_arm": float(fit.pvalues.get("arm_bin", np.nan)),
-        "n_units": int(df_feat[design.participant_col].nunique()),
+        "n_units": n_units_eff,
     }
 
 
@@ -290,6 +293,7 @@ def within_arm_comparison(
 
     df_use = _ensure_paired(df_use, unit=unit, time=design.visit_col, visits=visits)
     df_use = encode_visit(df_use, design.visit_col, visits)
+    df_use = df_use.reset_index(drop=True)  # ensure unique integer index for .loc
 
     rows = []
     for feat in features:
@@ -378,7 +382,7 @@ def within_arm_comparison(
             "ci_lo_time": ci_lo,
             "ci_hi_time": ci_hi,
             "p_time": p_val,
-            "n_units": int(df_use[unit].nunique()),
+            "n_units": n_units_feat,  # post-row-drop cluster count
             "cov_type_used": effective_cov_type,
         }
 

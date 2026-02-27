@@ -240,7 +240,7 @@ def module_score_did_by_pool(
             continue
 
         if allow_unpaired:
-            df = encode_visit(sub.copy(), design.visit_col, visits)
+            df = encode_visit(sub.copy(), design.visit_col, visits).reset_index(drop=True)
             df["arm_bin"] = (df[design.arm_col] == arm_treated).astype(int)
             model = smf.ols("module_score ~ visit_num + arm_bin + visit_num:arm_bin", data=df)
             fit = model.fit(cov_type="HC1")
@@ -271,6 +271,9 @@ def module_score_did_by_pool(
             except (ValueError, TypeError):
                 p_control = np.nan
 
+            # Report effective participant count after model row drops
+            model_row_idx = fit.model.data.row_labels
+            n_units_eff = int(df[design.participant_col].loc[model_row_idx].nunique())
             rows.append({
                 "pool": pool,
                 "module": module,
@@ -280,7 +283,7 @@ def module_score_did_by_pool(
                 "p_DiD": float(fit.pvalues.get("visit_num:arm_bin", np.nan)),
                 "p_treated": p_treated,
                 "p_control": p_control,
-                "n_units": int(df[design.participant_col].nunique()),
+                "n_units": n_units_eff,
             })
             continue
 
