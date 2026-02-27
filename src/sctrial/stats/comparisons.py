@@ -374,10 +374,17 @@ def within_arm_comparison(
 
         # Wild cluster bootstrap
         if use_bootstrap and "visit_num" in fit.params:
+            # Align cluster vector with fitted model rows: statsmodels may
+            # drop rows with missing covariates/outcomes during formula
+            # parsing, so df_feat can be longer than fit.model.exog.
+            model_row_idx = fit.model.data.row_labels
+            clusters_aligned = np.asarray(
+                df_feat[unit].iloc[model_row_idx].to_numpy()
+            )
             boot_res = wild_cluster_bootstrap_t(
                 fit,
                 X=fit.model.exog,
-                clusters=np.asarray(df_feat[unit].to_numpy()),
+                clusters=clusters_aligned,
                 term_name="visit_num",
                 B=n_boot,
                 seed=seed,
