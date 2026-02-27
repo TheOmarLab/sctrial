@@ -381,7 +381,7 @@ def did_fit(
 
     _validate_did_fit_inputs(df, cols)
 
-    tmp = df[cols].dropna().copy()
+    tmp = df[cols].dropna().copy().reset_index(drop=True)
     n_units = tmp[unit].nunique()
     if n_units < 4:
         return {

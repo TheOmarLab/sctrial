@@ -134,7 +134,7 @@ def _ols_between_arm(
         Dictionary with keys: feature, beta_arm, se_arm, ci_lo_arm,
         ci_hi_arm, p_arm, n_units.
     """
-    df_feat = df_use.copy()
+    df_feat = df_use.copy().reset_index(drop=True)  # unique int index for .loc
     if standardize:
         y_std, ok = standardize_series(df_feat, feat, min_std=1e-12)
         if not ok:
@@ -293,6 +293,7 @@ def within_arm_comparison(
 
     df_use = _ensure_paired(df_use, unit=unit, time=design.visit_col, visits=visits)
     df_use = encode_visit(df_use, design.visit_col, visits)
+    df_use = df_use.reset_index(drop=True)  # ensure unique integer index for .loc
 
     rows = []
     for feat in features:

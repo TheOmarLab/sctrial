@@ -240,7 +240,7 @@ def module_score_did_by_pool(
             continue
 
         if allow_unpaired:
-            df = encode_visit(sub.copy(), design.visit_col, visits)
+            df = encode_visit(sub.copy(), design.visit_col, visits).reset_index(drop=True)
             df["arm_bin"] = (df[design.arm_col] == arm_treated).astype(int)
             model = smf.ols("module_score ~ visit_num + arm_bin + visit_num:arm_bin", data=df)
             fit = model.fit(cov_type="HC1")

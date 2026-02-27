@@ -160,7 +160,7 @@ def test_treatment_heterogeneity(
         else:
             tmp["outcome_std"] = tmp[feat].astype(float)
 
-        df = tmp.dropna(subset=["outcome_std"])
+        df = tmp.dropna(subset=["outcome_std"]).reset_index(drop=True)
 
         if df["biomarker_high"].nunique() < 2:
             continue
