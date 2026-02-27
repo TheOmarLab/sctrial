@@ -350,6 +350,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">statsmodels.formula.api</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">smf</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">anndata</span><span class="w"> </span><span class="kn">import</span> <span class="n">AnnData</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">scipy.stats</span><span class="w"> </span><span class="kn">import</span> <span class="n">mannwhitneyu</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.stats</span><span class="w"> </span><span class="kn">import</span> <span class="n">t</span> <span class="k">as</span> <span class="n">t_dist</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..adata_tools</span><span class="w"> </span><span class="kn">import</span> <span class="n">subset_cells</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..design</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrialDesign</span>
@@ -473,7 +474,8 @@
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    dict</span>
-<span class="sd">        Dictionary with keys: feature, beta_arm, p_arm, n_units.</span>
+<span class="sd">        Dictionary with keys: feature, beta_arm, se_arm, ci_lo_arm,</span>
+<span class="sd">        ci_hi_arm, p_arm, n_units.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">df_feat</span> <span class="o">=</span> <span class="n">df_use</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
     <span class="k">if</span> <span class="n">standardize</span><span class="p">:</span>
@@ -482,6 +484,9 @@
             <span class="k">return</span> <span class="p">{</span>
                 <span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
                 <span class="s2">&quot;beta_arm&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                <span class="s2">&quot;se_arm&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                <span class="s2">&quot;ci_lo_arm&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                <span class="s2">&quot;ci_hi_arm&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
                 <span class="s2">&quot;p_arm&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
                 <span class="s2">&quot;n_units&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">df_feat</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()),</span>
             <span class="p">}</span>
@@ -494,9 +499,16 @@
         <span class="n">formula</span> <span class="o">+=</span> <span class="s2">&quot; + &quot;</span> <span class="o">+</span> <span class="s2">&quot; + &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">covariates</span><span class="p">)</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">smf</span><span class="o">.</span><span class="n">ols</span><span class="p">(</span><span class="n">formula</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">df_feat</span><span class="p">)</span>
     <span class="n">fit</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
+
+    <span class="n">beta</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;arm_bin&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">))</span>
+    <span class="n">se</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">bse</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;arm_bin&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">))</span>
+    <span class="n">t_crit</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">t_dist</span><span class="o">.</span><span class="n">ppf</span><span class="p">(</span><span class="mf">0.975</span><span class="p">,</span> <span class="n">fit</span><span class="o">.</span><span class="n">df_resid</span><span class="p">))</span>
     <span class="k">return</span> <span class="p">{</span>
         <span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
-        <span class="s2">&quot;beta_arm&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;arm_bin&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)),</span>
+        <span class="s2">&quot;beta_arm&quot;</span><span class="p">:</span> <span class="n">beta</span><span class="p">,</span>
+        <span class="s2">&quot;se_arm&quot;</span><span class="p">:</span> <span class="n">se</span><span class="p">,</span>
+        <span class="s2">&quot;ci_lo_arm&quot;</span><span class="p">:</span> <span class="n">beta</span> <span class="o">-</span> <span class="n">t_crit</span> <span class="o">*</span> <span class="n">se</span><span class="p">,</span>
+        <span class="s2">&quot;ci_hi_arm&quot;</span><span class="p">:</span> <span class="n">beta</span> <span class="o">+</span> <span class="n">t_crit</span> <span class="o">*</span> <span class="n">se</span><span class="p">,</span>
         <span class="s2">&quot;p_arm&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">pvalues</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;arm_bin&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)),</span>
         <span class="s2">&quot;n_units&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">df_feat</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()),</span>
     <span class="p">}</span>
@@ -549,7 +561,17 @@
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    pd.DataFrame</span>
-<span class="sd">        Table with beta_time and p_time.</span>
+<span class="sd">        Table with columns:</span>
+
+<span class="sd">        - **feature** : Name of the feature.</span>
+<span class="sd">        - **beta_time** : Estimated pre→post change (visit coefficient).</span>
+<span class="sd">        - **se_time** : Cluster-robust standard error of the time coefficient.</span>
+<span class="sd">        - **ci_lo_time** / **ci_hi_time** : 95 % confidence interval bounds</span>
+<span class="sd">          (``beta ± t_crit × se`` with residual df from the OLS fit).</span>
+<span class="sd">        - **p_time** : P-value for the time coefficient</span>
+<span class="sd">          (cluster-robust Wald test).</span>
+<span class="sd">        - **n_units** : Number of unique participants.</span>
+<span class="sd">        - **FDR_time** : Benjamini–Hochberg corrected p-value.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># Subset to arm and visits</span>
     <span class="n">ad</span> <span class="o">=</span> <span class="n">subset_cells</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">arm</span><span class="o">=</span><span class="n">arm</span><span class="p">,</span> <span class="n">exclude_crossovers</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
@@ -608,6 +630,9 @@
                 <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
                     <span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
                     <span class="s2">&quot;beta_time&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                    <span class="s2">&quot;se_time&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                    <span class="s2">&quot;ci_lo_time&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                    <span class="s2">&quot;ci_hi_time&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
                     <span class="s2">&quot;p_time&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
                     <span class="s2">&quot;n_units&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">df_feat</span><span class="p">[</span><span class="n">unit</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()),</span>
                 <span class="p">})</span>
@@ -631,9 +656,23 @@
             <span class="p">)</span>
         <span class="n">fit</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">cov_type</span><span class="o">=</span><span class="s2">&quot;cluster&quot;</span><span class="p">,</span> <span class="n">cov_kwds</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;groups&quot;</span><span class="p">:</span> <span class="n">df_feat</span><span class="p">[</span><span class="n">unit</span><span class="p">]})</span>
 
+        <span class="n">beta</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;visit_num&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">))</span>
+        <span class="n">se</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">bse</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;visit_num&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">))</span>
+        <span class="c1"># Use robust conf_int() to ensure CI is consistent with the</span>
+        <span class="c1"># cluster-robust SE / p-value (avoids df_resid mismatch).</span>
+        <span class="n">ci_bounds</span> <span class="o">=</span> <span class="n">fit</span><span class="o">.</span><span class="n">conf_int</span><span class="p">(</span><span class="n">alpha</span><span class="o">=</span><span class="mf">0.05</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;visit_num&quot;</span> <span class="ow">in</span> <span class="n">ci_bounds</span><span class="o">.</span><span class="n">index</span><span class="p">:</span>
+            <span class="n">ci_lo</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">ci_bounds</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s2">&quot;visit_num&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+            <span class="n">ci_hi</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">ci_bounds</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s2">&quot;visit_num&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ci_lo</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+            <span class="n">ci_hi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
         <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
             <span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
-            <span class="s2">&quot;beta_time&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;visit_num&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)),</span>
+            <span class="s2">&quot;beta_time&quot;</span><span class="p">:</span> <span class="n">beta</span><span class="p">,</span>
+            <span class="s2">&quot;se_time&quot;</span><span class="p">:</span> <span class="n">se</span><span class="p">,</span>
+            <span class="s2">&quot;ci_lo_time&quot;</span><span class="p">:</span> <span class="n">ci_lo</span><span class="p">,</span>
+            <span class="s2">&quot;ci_hi_time&quot;</span><span class="p">:</span> <span class="n">ci_hi</span><span class="p">,</span>
             <span class="s2">&quot;p_time&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">pvalues</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;visit_num&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)),</span>
             <span class="s2">&quot;n_units&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">df_use</span><span class="p">[</span><span class="n">unit</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()),</span>
         <span class="p">})</span>
@@ -690,12 +729,19 @@
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    pd.DataFrame</span>
-<span class="sd">        Table with feature, beta_arm, p_arm, FDR_arm, n_units.</span>
-<span class="sd">        - feature: Name of the feature.</span>
-<span class="sd">        - beta_arm: Effect size (difference in means between arms). Note: This is the difference in means between the treated and control arms.</span>
-<span class="sd">        - p_arm: P-value for the between-arm comparison.</span>
-<span class="sd">        - FDR_arm: False Discovery Rate corrected p-value.</span>
-<span class="sd">        - n_units: Number of unique units (participants) included in the analysis. Note: This is the number of participants that have valid scores for the feature in both arms.</span>
+<span class="sd">        Table with columns:</span>
+
+<span class="sd">        - **feature** : Name of the feature.</span>
+<span class="sd">        - **beta_arm** : Effect size (treated − control difference in means).</span>
+<span class="sd">        - **se_arm** : Standard error of the arm coefficient. For OLS this is</span>
+<span class="sd">          the analytical SE from the model fit; for Wilcoxon it is the pooled</span>
+<span class="sd">          SE of the difference in means (√(s₁²/n₁ + s₂²/n₂)).</span>
+<span class="sd">        - **ci_lo_arm** / **ci_hi_arm** : 95 % confidence interval bounds.</span>
+<span class="sd">          For OLS: ``beta ± t_crit × se`` with residual df. For Wilcoxon:</span>
+<span class="sd">          ``beta ± t_crit × se`` with Welch–Satterthwaite df.</span>
+<span class="sd">        - **p_arm** : P-value for the between-arm comparison.</span>
+<span class="sd">        - **FDR_arm** : Benjamini–Hochberg corrected p-value.</span>
+<span class="sd">        - **n_units** : Number of unique participants.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">df_use</span> <span class="o">=</span> <span class="n">_prepare_between_arm_df</span><span class="p">(</span>
         <span class="n">adata</span><span class="o">=</span><span class="n">adata</span><span class="p">,</span>
@@ -718,9 +764,32 @@
 
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">g1</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">g2</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="n">stat</span><span class="p">,</span> <span class="n">p_val</span> <span class="o">=</span> <span class="n">mannwhitneyu</span><span class="p">(</span><span class="n">g1</span><span class="p">,</span> <span class="n">g2</span><span class="p">,</span> <span class="n">alternative</span><span class="o">=</span><span class="s2">&quot;two-sided&quot;</span><span class="p">)</span>
+                <span class="n">beta</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">g1</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">g2</span><span class="p">))</span>
+                <span class="n">n1</span><span class="p">,</span> <span class="n">n2</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">g1</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">g2</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">n1</span> <span class="o">&gt;=</span> <span class="mi">2</span> <span class="ow">and</span> <span class="n">n2</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+                    <span class="c1"># Pooled SE for the difference in means</span>
+                    <span class="n">v1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">var</span><span class="p">(</span><span class="n">g1</span><span class="p">,</span> <span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="n">n1</span>
+                    <span class="n">v2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">var</span><span class="p">(</span><span class="n">g2</span><span class="p">,</span> <span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="n">n2</span>
+                    <span class="n">se</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">v1</span> <span class="o">+</span> <span class="n">v2</span><span class="p">))</span>
+                    <span class="c1"># Welch-Satterthwaite df for CI</span>
+                    <span class="n">denom</span> <span class="o">=</span> <span class="n">v1</span><span class="o">**</span><span class="mi">2</span> <span class="o">/</span> <span class="p">(</span><span class="n">n1</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">v2</span><span class="o">**</span><span class="mi">2</span> <span class="o">/</span> <span class="p">(</span><span class="n">n2</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+                    <span class="n">df_ws</span> <span class="o">=</span> <span class="nb">float</span><span class="p">((</span><span class="n">v1</span> <span class="o">+</span> <span class="n">v2</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">/</span> <span class="n">denom</span><span class="p">)</span> <span class="k">if</span> <span class="n">denom</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="nb">max</span><span class="p">(</span><span class="n">n1</span> <span class="o">+</span> <span class="n">n2</span> <span class="o">-</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+                    <span class="n">t_crit</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">t_dist</span><span class="o">.</span><span class="n">ppf</span><span class="p">(</span><span class="mf">0.975</span><span class="p">,</span> <span class="n">df_ws</span><span class="p">))</span>
+                    <span class="n">ci_lo</span> <span class="o">=</span> <span class="n">beta</span> <span class="o">-</span> <span class="n">t_crit</span> <span class="o">*</span> <span class="n">se</span>
+                    <span class="n">ci_hi</span> <span class="o">=</span> <span class="n">beta</span> <span class="o">+</span> <span class="n">t_crit</span> <span class="o">*</span> <span class="n">se</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># Singleton arm: variance undefined with ddof=1</span>
+                    <span class="n">se</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+                    <span class="n">ci_lo</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+                    <span class="n">ci_hi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
                 <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
                     <span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
-                    <span class="s2">&quot;beta_arm&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">g1</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">g2</span><span class="p">)),</span>
+                    <span class="s2">&quot;beta_arm&quot;</span><span class="p">:</span> <span class="n">beta</span><span class="p">,</span>
+                    <span class="s2">&quot;se_arm&quot;</span><span class="p">:</span> <span class="n">se</span><span class="p">,</span>
+                    <span class="s2">&quot;ci_lo_arm&quot;</span><span class="p">:</span> <span class="n">ci_lo</span><span class="p">,</span>
+                    <span class="s2">&quot;ci_hi_arm&quot;</span><span class="p">:</span> <span class="n">ci_hi</span><span class="p">,</span>
                     <span class="s2">&quot;p_arm&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">p_val</span><span class="p">),</span>
                     <span class="s2">&quot;n_units&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">df_use</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()),</span>
                 <span class="p">})</span>
@@ -734,6 +803,9 @@
                 <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
                     <span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
                     <span class="s2">&quot;beta_arm&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                    <span class="s2">&quot;se_arm&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                    <span class="s2">&quot;ci_lo_arm&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                    <span class="s2">&quot;ci_hi_arm&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
                     <span class="s2">&quot;p_arm&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
                     <span class="s2">&quot;n_units&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">df_use</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()),</span>
                 <span class="p">})</span>

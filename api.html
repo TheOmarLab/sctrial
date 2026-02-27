@@ -1551,12 +1551,21 @@ is a cross-sectional comparison (no participant fixed effects).</p>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Table with feature, beta_arm, p_arm, FDR_arm, n_units.
-- feature: Name of the feature.
-- beta_arm: Effect size (difference in means between arms). Note: This is the difference in means between the treated and control arms.
-- p_arm: P-value for the between-arm comparison.
-- FDR_arm: False Discovery Rate corrected p-value.
-- n_units: Number of unique units (participants) included in the analysis. Note: This is the number of participants that have valid scores for the feature in both arms.</p>
+<dd class="field-even"><p><p>Table with columns:</p>
+<ul class="simple">
+<li><p><strong>feature</strong> : Name of the feature.</p></li>
+<li><p><strong>beta_arm</strong> : Effect size (treated − control difference in means).</p></li>
+<li><p><strong>se_arm</strong> : Standard error of the arm coefficient. For OLS this is
+the analytical SE from the model fit; for Wilcoxon it is the pooled
+SE of the difference in means (√(s₁²/n₁ + s₂²/n₂)).</p></li>
+<li><p><strong>ci_lo_arm</strong> / <strong>ci_hi_arm</strong> : 95 % confidence interval bounds.
+For OLS: <code class="docutils literal notranslate"><span class="pre">beta</span> <span class="pre">±</span> <span class="pre">t_crit</span> <span class="pre">×</span> <span class="pre">se</span></code> with residual df. For Wilcoxon:
+<code class="docutils literal notranslate"><span class="pre">beta</span> <span class="pre">±</span> <span class="pre">t_crit</span> <span class="pre">×</span> <span class="pre">se</span></code> with Welch–Satterthwaite df.</p></li>
+<li><p><strong>p_arm</strong> : P-value for the between-arm comparison.</p></li>
+<li><p><strong>FDR_arm</strong> : Benjamini–Hochberg corrected p-value.</p></li>
+<li><p><strong>n_units</strong> : Number of unique participants.</p></li>
+</ul>
+</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>pd.DataFrame</p>
@@ -1646,7 +1655,19 @@ covariates must be constant within participant-visit.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Table with beta_time and p_time.</p>
+<dd class="field-even"><p><p>Table with columns:</p>
+<ul class="simple">
+<li><p><strong>feature</strong> : Name of the feature.</p></li>
+<li><p><strong>beta_time</strong> : Estimated pre→post change (visit coefficient).</p></li>
+<li><p><strong>se_time</strong> : Cluster-robust standard error of the time coefficient.</p></li>
+<li><p><strong>ci_lo_time</strong> / <strong>ci_hi_time</strong> : 95 % confidence interval bounds
+(<code class="docutils literal notranslate"><span class="pre">beta</span> <span class="pre">±</span> <span class="pre">t_crit</span> <span class="pre">×</span> <span class="pre">se</span></code> with residual df from the OLS fit).</p></li>
+<li><p><strong>p_time</strong> : P-value for the time coefficient
+(cluster-robust Wald test).</p></li>
+<li><p><strong>n_units</strong> : Number of unique participants.</p></li>
+<li><p><strong>FDR_time</strong> : Benjamini–Hochberg corrected p-value.</p></li>
+</ul>
+</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>pd.DataFrame</p>
