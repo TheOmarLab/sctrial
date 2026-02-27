@@ -31,14 +31,15 @@ warnings.filterwarnings("ignore", message=".*Glyph.*missing.*")
 
 SCRIPT_DIR = Path(__file__).parent.resolve()            # manuscript_figures/
 PROJECT_DIR = SCRIPT_DIR.parent.resolve()               # sc_trial_inference/
-REPO_ROOT = PROJECT_DIR.parent.parent.resolve()         # sc-trialdiff/  (up from sctrial/)
+REPO_ROOT = PROJECT_DIR.parent.resolve()         # sc-trialdiff/  (up from sctrial/)
 
 # Figures are saved to sc-trialdiff/manuscript/{main,supp}/
-MANUSCRIPT_DIR = REPO_ROOT / "manuscript"
+MANUSCRIPT_DIR = PROJECT_DIR / "manuscript"
 MAIN_OUTPUT = MANUSCRIPT_DIR / "main"
 SUPP_OUTPUT = MANUSCRIPT_DIR / "supp"
+DATA_DIR = PROJECT_DIR / "data"
 
-for _d in (MAIN_OUTPUT, SUPP_OUTPUT):
+for _d in (MAIN_OUTPUT, SUPP_OUTPUT, DATA_DIR):
     _d.mkdir(parents=True, exist_ok=True)
 
 # ---------------------------------------------------------------------------
@@ -287,6 +288,8 @@ def get_sade_feldman():
         return _DATA_CACHE["sf"]
     from sctrial.datasets import load_sade_feldman
     adata = load_sade_feldman(
+        data_dir=DATA_DIR,
+        allow_download=True,
         max_cells_per_participant_visit=None,
         processed_name="sade_feldman_tpm_v5_full.h5ad",
         force_reprocess=False,
@@ -301,7 +304,7 @@ def get_stephenson():
     if "steph" in _DATA_CACHE:
         return _DATA_CACHE["steph"]
     from sctrial.datasets import load_stephenson_data
-    adata = load_stephenson_data(force_reprocess=False)
+    adata = load_stephenson_data(data_dir=DATA_DIR, allow_download=True, force_reprocess=False)
     print(f"  Stephenson: {adata.n_obs:,} cells, {adata.n_vars:,} genes")
     _DATA_CACHE["steph"] = adata
     return adata
@@ -313,6 +316,8 @@ def get_vaccine():
         return _DATA_CACHE["vax"]
     from sctrial.datasets import load_vaccine_gse171964
     adata = load_vaccine_gse171964(
+        data_dir=DATA_DIR,
+        allow_download=True,
         max_participants=None,
         max_cells_per_group=None,
         processed_name="vaccine_gse171964_day0_day7_full.h5ad",
