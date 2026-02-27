@@ -77,15 +77,16 @@ dev = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/sctrial"]
+packages = ["src/sctrial", "manuscript_figures"]
 
 [tool.hatch.build.targets.sdist]
 include = [
-  "src/sctrial",
-  "tests",
-  "README.md",
-  "LICENSE",
-  "pyproject.toml",
+    "src/sctrial",
+    "manuscript_figures",
+    "tests",
+    "README.md",
+    "LICENSE",
+    "pyproject.toml",
 ]
 
 [tool.pytest.ini_options]
