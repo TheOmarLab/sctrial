@@ -248,6 +248,9 @@ class DidFitResult(TypedDict):
     n_units: int
     resid_sd: NotRequired[float]
     p_DiD_boot: NotRequired[float]
+    se_DiD_boot: NotRequired[float]
+    ci_lo_boot: NotRequired[float]
+    ci_hi_boot: NotRequired[float]
     cov_type_used: NotRequired[str]
 
 def _ensure_paired(df: pd.DataFrame, unit: str, time: str, visits: tuple[str,str]) -> pd.DataFrame:
@@ -343,11 +346,19 @@ def did_fit(
     DidFitResult
         Keys:
         - beta_DiD: DiD coefficient (β₂)
-        - se_DiD: Standard error of β₂
-        - p_DiD: P-value for H₀: β₂ = 0
+        - se_DiD: Analytical standard error of β₂
+        - p_DiD: P-value for H₀: β₂ = 0 (bootstrap if ``use_bootstrap=True``)
         - beta_time: Main time effect (β₁)
         - p_time: P-value for time effect
         - n_units: Number of participants used
+        - cov_type_used: Covariance type used (``"cluster"`` or ``"nonrobust"``)
+        - p_DiD_boot: Bootstrap p-value (only if ``use_bootstrap=True``)
+        - se_DiD_boot: Bootstrap SE from coefficient distribution
+          (only if ``use_bootstrap=True``)
+        - ci_lo_boot: Lower 95% bootstrap-t CI
+          (only if ``use_bootstrap=True``)
+        - ci_hi_boot: Upper 95% bootstrap-t CI
+          (only if ``use_bootstrap=True``)
     """
     if df is None or df.empty:
         raise ValueError("df must be a non-empty DataFrame.")
@@ -463,7 +474,7 @@ def did_fit(
     }
 
     if use_bootstrap and term in fit.params:
-        p_boot = wild_cluster_bootstrap_t(
+        boot_res = wild_cluster_bootstrap_t(
             fit,
             X=fit.model.exog,
             clusters=np.asarray(tmp[unit].to_numpy()),
@@ -472,9 +483,12 @@ def did_fit(
             seed=seed,
             cov_type=effective_cov_type,
         )
-        res["p_DiD_boot"] = p_boot
+        res["p_DiD_boot"] = boot_res.p_boot
+        res["se_DiD_boot"] = boot_res.se_boot
+        res["ci_lo_boot"] = boot_res.ci_lo
+        res["ci_hi_boot"] = boot_res.ci_hi
         # Use bootstrap p-value as primary if requested
-        res["p_DiD"] = p_boot
+        res["p_DiD"] = boot_res.p_boot
 
     return cast(DidFitResult, res)
 

@@ -263,8 +263,11 @@ def abundance_did(
                 raise ValueError("DiD term not estimable")
 
             p_val = float(fit.pvalues[term])
+            se_boot = np.nan
+            ci_lo_boot = np.nan
+            ci_hi_boot = np.nan
             if use_bootstrap:
-                p_val = wild_cluster_bootstrap_t(
+                boot_res = wild_cluster_bootstrap_t(
                     fit,
                     X=fit.model.exog,
                     clusters=clusters_use,
@@ -272,8 +275,12 @@ def abundance_did(
                     B=n_boot,
                     seed=seed
                 )
+                p_val = boot_res.p_boot
+                se_boot = boot_res.se_boot
+                ci_lo_boot = boot_res.ci_lo
+                ci_hi_boot = boot_res.ci_hi
 
-            rows.append({
+            row_dict: dict = {
                 "celltype": ct,
                 "n_participants": int(n_units),
                 "beta_DiD": float(fit.params[term]),
@@ -281,7 +288,12 @@ def abundance_did(
                 "p_DiD": p_val,
                 "beta_time": float(fit.params.get("visit_num", np.nan)),
                 "p_time": float(fit.pvalues.get("visit_num", np.nan)),
-            })
+            }
+            if use_bootstrap:
+                row_dict["se_DiD_boot"] = se_boot
+                row_dict["ci_lo_boot"] = ci_lo_boot
+                row_dict["ci_hi_boot"] = ci_hi_boot
+            rows.append(row_dict)
         except (ValueError, np.linalg.LinAlgError, KeyError):
             # Fallback: delta model without fixed effects
             try:

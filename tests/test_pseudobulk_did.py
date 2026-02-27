@@ -232,3 +232,56 @@ def test_did_table_bootstrap_with_nonrobust_fallback():
     assert np.isfinite(res.loc[0, "p_DiD"]), "Bootstrap p_DiD is not finite"
     assert np.isfinite(res.loc[0, "se_DiD"]), "se_DiD is not finite"
     assert "cov_type_used" in res.columns
+
+
+def test_did_table_bootstrap_returns_ci_columns():
+    """Bootstrap mode should populate se_DiD_boot, ci_lo_boot, ci_hi_boot."""
+    adata = _make_did_adata(n_per_arm=5, seed=42)
+    design = st.TrialDesign(
+        participant_col="participant_id", visit_col="visit", arm_col="arm",
+        arm_treated="Treated", arm_control="Control",
+    )
+
+    import warnings as _w
+    with _w.catch_warnings(record=True):
+        _w.simplefilter("always")
+        res = st.did_table(
+            adata, features=["GENE1"], design=design, visits=("Pre", "Post"),
+            aggregate="participant_visit", use_bootstrap=True, n_boot=199, seed=42,
+        )
+
+    assert not res.empty
+    # New bootstrap CI columns must be present
+    for col in ["se_DiD_boot", "ci_lo_boot", "ci_hi_boot", "p_DiD_boot"]:
+        assert col in res.columns, f"{col} missing from bootstrap results"
+        assert np.isfinite(res.loc[0, col]), f"{col} is not finite"
+
+    # CI should bracket the point estimate for a clear signal
+    beta = res.loc[0, "beta_DiD"]
+    assert res.loc[0, "ci_lo_boot"] < res.loc[0, "ci_hi_boot"]
+    # With 5 per arm and effect=5, CI should contain the estimate
+    assert res.loc[0, "ci_lo_boot"] <= beta <= res.loc[0, "ci_hi_boot"]
+    # Bootstrap SE should be positive
+    assert res.loc[0, "se_DiD_boot"] > 0
+
+
+def test_did_table_no_bootstrap_omits_ci_columns():
+    """Without bootstrap, CI columns should not be present."""
+    adata = _make_did_adata(n_per_arm=5, seed=42)
+    design = st.TrialDesign(
+        participant_col="participant_id", visit_col="visit", arm_col="arm",
+        arm_treated="Treated", arm_control="Control",
+    )
+
+    import warnings as _w
+    with _w.catch_warnings(record=True):
+        _w.simplefilter("always")
+        res = st.did_table(
+            adata, features=["GENE1"], design=design, visits=("Pre", "Post"),
+            aggregate="participant_visit", use_bootstrap=False,
+        )
+
+    assert not res.empty
+    # Without bootstrap, these columns should not exist
+    for col in ["se_DiD_boot", "ci_lo_boot", "ci_hi_boot", "p_DiD_boot"]:
+        assert col not in res.columns, f"{col} should not be present without bootstrap"

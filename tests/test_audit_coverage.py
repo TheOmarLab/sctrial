@@ -112,19 +112,53 @@ class TestWildClusterBootstrap:
 
     def test_known_data_p_in_range(self):
         fit, X, clusters = self._fit_clustered_ols(effect=2.0)
-        p = wild_cluster_bootstrap_t(
+        result = wild_cluster_bootstrap_t(
             fit, X, clusters, term_name="arm_bin", B=299, seed=42
         )
-        assert 0.0 <= p <= 1.0
+        assert 0.0 <= result.p_boot <= 1.0
 
     def test_no_effect_p_in_range(self):
         fit, X, clusters = self._fit_clustered_ols(effect=0.0, seed=7)
-        p = wild_cluster_bootstrap_t(
+        result = wild_cluster_bootstrap_t(
             fit, X, clusters, term_name="arm_bin", B=299, seed=42
         )
         # With zero true effect, p may occasionally be small due to noise;
         # just verify it's a valid p-value.
-        assert 0.0 <= p <= 1.0
+        assert 0.0 <= result.p_boot <= 1.0
+
+    def test_returns_bootstrap_result_with_ci(self):
+        fit, X, clusters = self._fit_clustered_ols(effect=2.0)
+        result = wild_cluster_bootstrap_t(
+            fit, X, clusters, term_name="arm_bin", B=299, seed=42
+        )
+        # Check BootstrapResult fields exist and are finite
+        assert np.isfinite(result.p_boot)
+        assert np.isfinite(result.se_boot)
+        assert np.isfinite(result.ci_lo)
+        assert np.isfinite(result.ci_hi)
+        assert result.ci_lo < result.ci_hi
+        assert len(result.boot_distribution) > 0
+        assert result.se_boot > 0
+
+    def test_ci_contains_point_estimate(self):
+        fit, X, clusters = self._fit_clustered_ols(effect=2.0, seed=0)
+        result = wild_cluster_bootstrap_t(
+            fit, X, clusters, term_name="arm_bin", B=999, seed=42
+        )
+        beta_hat = fit.params["arm_bin"]
+        # 95% CI should contain the point estimate for a well-powered test
+        assert result.ci_lo <= beta_hat <= result.ci_hi
+
+    def test_missing_term_returns_nan_result(self):
+        fit, X, clusters = self._fit_clustered_ols(effect=2.0)
+        result = wild_cluster_bootstrap_t(
+            fit, X, clusters, term_name="nonexistent_term", B=99, seed=42
+        )
+        assert np.isnan(result.p_boot)
+        assert np.isnan(result.se_boot)
+        assert np.isnan(result.ci_lo)
+        assert np.isnan(result.ci_hi)
+        assert len(result.boot_distribution) == 0
 
 
 # ---------------------------------------------------------------------------
