@@ -243,14 +243,14 @@ def score_signatures(adata, *, layer=None, min_genes=3):
             col = f"sig_{name}"
             try:
                 sc.tl.score_genes(adata, available, score_name=col,
-                                  use_raw=False)
+                                  use_raw=False, layer=layer)
                 sig_cols.append(col)
             except Exception as exc:
                 print(f"    Warning: could not score {name}: {exc}")
     return adata, sig_cols
 
 
-def score_clinical_signatures(adata, *, min_genes=3):
+def score_clinical_signatures(adata, *, layer=None, min_genes=3):
     """Score the smaller clinical-trial signature set."""
     import scanpy as sc
 
@@ -261,7 +261,7 @@ def score_clinical_signatures(adata, *, min_genes=3):
             col = f"sig_{name}"
             try:
                 sc.tl.score_genes(adata, available, score_name=col,
-                                  use_raw=False)
+                                  use_raw=False, layer=layer)
                 sig_cols.append(col)
             except Exception:
                 pass
