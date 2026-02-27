@@ -20,7 +20,6 @@ from __future__ import annotations
 import gc
 
 import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
 import numpy as np
 import pandas as pd
 from scipy import stats
@@ -34,7 +33,6 @@ from .._shared import (
     did_table,
     get_sade_feldman,
     harmonize_response,
-    save_figure,
     save_panel,
     score_signatures,
     sig_display,
@@ -311,74 +309,15 @@ def _panel_correlation_bar(ax, results: dict):
 # ======================================================================
 
 def generate():
-    """Create and save Supplementary Figure 2."""
+    """Create and save Supplementary Figure 2 individual panels."""
     print("Supplementary Figure 2: Aggregation Sensitivity")
     results = _prepare_data()
     if results is None or not results:
         print("  No data; skipping figure.")
         return
 
-    fig = plt.figure(figsize=FIGSIZE, constrained_layout=False)
-    gs = gridspec.GridSpec(2, 3, figure=fig, hspace=0.38, wspace=0.35)
-
     ecol = _effect_col(results.get("mean", pd.DataFrame()))
     pcol = _pval_col(results.get("mean", pd.DataFrame()))
-
-    # ── Panel A: mean vs median effect sizes ─────────────────────────
-    ax_a = fig.add_subplot(gs[0, 0])
-    if "mean" in results and "median" in results:
-        _scatter_comparison(
-            ax_a, results["mean"], results["median"], col=ecol,
-            xlabel="Effect size (mean)", ylabel="Effect size (median)",
-            title="A  Mean vs Median",
-        )
-    else:
-        ax_a.set_title("A  Mean vs Median")
-
-    # ── Panel B: mean vs trimmed_mean effect sizes ───────────────────
-    ax_b = fig.add_subplot(gs[0, 1])
-    if "mean" in results and "trimmed_mean" in results:
-        _scatter_comparison(
-            ax_b, results["mean"], results["trimmed_mean"], col=ecol,
-            xlabel="Effect size (mean)", ylabel="Effect size (trimmed mean)",
-            title="B  Mean vs Trimmed Mean",
-        )
-    else:
-        ax_b.set_title("B  Mean vs Trimmed Mean")
-
-    # ── Panel C: p-value mean vs median ──────────────────────────────
-    ax_c = fig.add_subplot(gs[0, 2])
-    if "mean" in results and "median" in results and pcol in results["mean"].columns:
-        _scatter_comparison(
-            ax_c, results["mean"], results["median"], col=pcol,
-            xlabel=r"$-\log_{10}(p)$ (mean)", ylabel=r"$-\log_{10}(p)$ (median)",
-            title="C  P-values: Mean vs Median", log_scale=True,
-        )
-    else:
-        ax_c.set_title("C  P-values: Mean vs Median")
-
-    # ── Panel D: p-value mean vs trimmed mean ────────────────────────
-    ax_d = fig.add_subplot(gs[1, 0])
-    if "mean" in results and "trimmed_mean" in results and pcol in results["mean"].columns:
-        _scatter_comparison(
-            ax_d, results["mean"], results["trimmed_mean"], col=pcol,
-            xlabel=r"$-\log_{10}(p)$ (mean)",
-            ylabel=r"$-\log_{10}(p)$ (trimmed mean)",
-            title="D  P-values: Mean vs Trimmed Mean", log_scale=True,
-        )
-    else:
-        ax_d.set_title("D  P-values: Mean vs Trimmed Mean")
-
-    # ── Panel E: forest plot ─────────────────────────────────────────
-    ax_e = fig.add_subplot(gs[1, 1])
-    _panel_forest(ax_e, results)
-
-    # ── Panel F: correlation bar ─────────────────────────────────────
-    ax_f = fig.add_subplot(gs[1, 2])
-    _panel_correlation_bar(ax_f, results)
-
-    # ── Save composite ────────────────────────────────────────────────
-    save_figure(fig, FIGURE_NAME, SUPP_OUTPUT, close=False)
 
     # ── Save individual panels ────────────────────────────────────────
     panel_specs = [
@@ -410,8 +349,6 @@ def generate():
             save_panel(fig_p, f"panel_{label}", FIGURE_NAME, SUPP_OUTPUT)
         except Exception:
             pass
-
-    plt.close(fig)
 
     # ── Cleanup ───────────────────────────────────────────────────────
     clear_cache()

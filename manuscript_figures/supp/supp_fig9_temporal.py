@@ -18,7 +18,6 @@ from __future__ import annotations
 import gc
 
 import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
 import matplotlib.patches as mpatches
 import numpy as np
 import pandas as pd
@@ -336,7 +335,7 @@ def panel_C(ax, data: dict):
 # ======================================================================
 
 def generate():
-    """Create and save the composite Supplementary Figure 9."""
+    """Create and save Supplementary Figure 9 individual panels."""
     print("Supplementary Figure 9: Temporal Dynamics")
     apply_style()
 
@@ -345,34 +344,6 @@ def generate():
     except Exception as exc:
         print(f"  ERROR: {exc}")
         return
-
-    fig = plt.figure(figsize=FIGSIZE, constrained_layout=False)
-    gs = gridspec.GridSpec(
-        2, 2, figure=fig, hspace=0.38, wspace=0.30,
-        height_ratios=[1.0, 1.0],
-    )
-
-    # Panel A (top left)
-    ax_a = fig.add_subplot(gs[0, 0])
-    # Panel B (top right)
-    ax_b = fig.add_subplot(gs[0, 1])
-    # Panel C (bottom, spans full width)
-    ax_c = fig.add_subplot(gs[1, :])
-
-    panel_A(ax_a, data)
-    panel_B(ax_b, data)
-    panel_C(ax_c, data)
-
-    # Panel labels
-    for label, (x, y) in zip(
-        ["A", "B", "C"],
-        [(0.02, 0.97), (0.52, 0.97), (0.02, 0.48)],
-    ):
-        fig.text(x, y, label, fontsize=18, fontweight="bold",
-                 va="top", ha="left")
-
-    # ── Save composite ────────────────────────────────────────────────
-    save_figure(fig, FIGURE_NAME, SUPP_OUTPUT, close=False)
 
     # ── Save individual panels ────────────────────────────────────────
     for panel_label, panel_func, psize in [
@@ -384,8 +355,6 @@ def generate():
         panel_func(ax_p, data)
         fig_p.tight_layout()
         save_panel(fig_p, f"panel_{panel_label}", FIGURE_NAME, SUPP_OUTPUT)
-
-    plt.close(fig)
 
     # ── Cleanup ───────────────────────────────────────────────────────
     if "adata" in data:

@@ -18,7 +18,6 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
 from matplotlib.lines import Line2D
 from scipy import stats
 from statsmodels.stats.multitest import multipletests
@@ -29,7 +28,6 @@ from .._shared import (
     SCTRIAL_AVAILABLE,
     apply_style,
     despine,
-    save_figure,
     save_panel,
     # data loading
     get_sade_feldman,
@@ -698,44 +696,15 @@ def panel_e_heatmap(ax, data: dict[str, Any]) -> None:
 
 # ── composite figure ──────────────────────────────────────────────────────
 
-def generate(*, save: bool = True) -> plt.Figure:
-    """Create the composite Figure 3 (18 x 14 in)."""
+def generate(*, save: bool = True) -> None:
+    """Create and save Figure 3 individual panels."""
     print("=" * 60)
     print("Figure 3: Multi-Dataset Generalization")
     print("=" * 60)
 
     data = _prepare_data()
 
-    fig = plt.figure(figsize=(18, 14))
-    gs = gridspec.GridSpec(
-        2, 3,
-        figure=fig,
-        hspace=0.35,
-        wspace=0.35,
-        left=0.06,
-        right=0.97,
-        top=0.95,
-        bottom=0.06,
-    )
-
-    # Top row: A, B, C
-    ax_a = fig.add_subplot(gs[0, 0])
-    ax_b = fig.add_subplot(gs[0, 1])
-    ax_c = fig.add_subplot(gs[0, 2])
-
-    # Bottom row: D, E (E spans 2 columns for the heatmap)
-    ax_d = fig.add_subplot(gs[1, 0])
-    ax_e = fig.add_subplot(gs[1, 1:])
-
-    panel_a_covid(ax_a, data)
-    panel_b_vaccine(ax_b, data)
-    panel_c_aml(ax_c, data)
-    panel_d_cart(ax_d, data)
-    panel_e_heatmap(ax_e, data)
-
     if save:
-        save_figure(fig, FIG_NAME, MAIN_OUTPUT, close=False)
-
         # Save individual panels
         for panel_fn, panel_name in [
             (panel_a_covid, "A_covid_severity"),
@@ -748,8 +717,6 @@ def generate(*, save: bool = True) -> plt.Figure:
             panel_fn(ax_p, data)
             fig_p.tight_layout()
             save_panel(fig_p, panel_name, FIG_NAME, MAIN_OUTPUT)
-
-    return fig
 
 
 # ── entry point ───────────────────────────────────────────────────────────

@@ -19,7 +19,6 @@ import gc
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
-import matplotlib.gridspec as gridspec
 import numpy as np
 import pandas as pd
 from scipy import stats
@@ -388,36 +387,9 @@ def panel_D(ax, data: dict):
 # ======================================================================
 
 def generate():
-    """Create and save the composite Figure 1."""
+    """Create and save Figure 1 individual panels."""
     print("Figure 1: The Problem & sctrial Framework")
     data = _prepare_data()
-
-    fig = plt.figure(figsize=FIGSIZE, constrained_layout=False)
-    gs = gridspec.GridSpec(
-        2, 2, figure=fig, hspace=0.35, wspace=0.30,
-        left=0.06, right=0.97, top=0.95, bottom=0.06,
-    )
-
-    ax_a = fig.add_subplot(gs[0, 0])
-    ax_b = fig.add_subplot(gs[0, 1])
-    ax_c = fig.add_subplot(gs[1, 0])
-    ax_d = fig.add_subplot(gs[1, 1])
-
-    panel_A(ax_a)
-    panel_B(ax_b, data)
-    panel_C(ax_c, data)
-    panel_D(ax_d, data)
-
-    # Panel labels
-    for label, (x, y) in zip(
-        ["A", "B", "C", "D"],
-        [(0.02, 0.97), (0.52, 0.97), (0.02, 0.48), (0.52, 0.48)],
-    ):
-        fig.text(x, y, label, fontsize=18, fontweight="bold",
-                 va="top", ha="left")
-
-    # ── Save composite ────────────────────────────────────────────────
-    save_figure(fig, FIGURE_NAME, MAIN_OUTPUT, close=False)
 
     # ── Save individual panels ────────────────────────────────────────
     for panel_label, panel_func, needs_data in [
@@ -433,8 +405,6 @@ def generate():
             panel_func(ax_p)
         fig_p.tight_layout()
         save_panel(fig_p, f"panel_{panel_label}", FIGURE_NAME, MAIN_OUTPUT)
-
-    plt.close(fig)
 
     # ── Cleanup ───────────────────────────────────────────────────────
     del data["adata"]

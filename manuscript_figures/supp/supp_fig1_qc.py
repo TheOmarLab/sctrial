@@ -16,7 +16,6 @@ from __future__ import annotations
 import gc
 
 import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -26,7 +25,6 @@ from .._shared import (
     SUPP_OUTPUT,
     apply_style,
     despine,
-    save_figure,
     save_panel,
     get_sade_feldman,
     get_stephenson,
@@ -221,7 +219,7 @@ def _panel_cells_per_participant(ax, datasets: dict):
 # ======================================================================
 
 def generate():
-    """Create and save Supplementary Figure 1."""
+    """Create and save Supplementary Figure 1 individual panels."""
     print("Supplementary Figure 1: QC Metrics")
     datasets = _load_qc_data()
 
@@ -229,35 +227,7 @@ def generate():
         print("  No datasets loaded; skipping figure.")
         return
 
-    fig = plt.figure(figsize=FIGSIZE, constrained_layout=False)
-    gs = gridspec.GridSpec(2, 3, figure=fig, hspace=0.38, wspace=0.32)
-
     ds_names = list(datasets.keys())
-
-    # Row 1: per-dataset scatters
-    for i, ds_name in enumerate(ds_names[:3]):
-        ax = fig.add_subplot(gs[0, i])
-        _panel_scatter(ax, datasets[ds_name], ds_name)
-
-    # Row 2: cross-dataset comparisons
-    ax_d = fig.add_subplot(gs[1, 0])
-    _panel_violin(ax_d, datasets, "n_genes", "Genes detected",
-                  "D  Genes Detected")
-
-    ax_e = fig.add_subplot(gs[1, 1])
-    _panel_violin(ax_e, datasets, "total_counts", "Total UMI counts",
-                  "E  Total UMI Counts")
-
-    ax_f = fig.add_subplot(gs[1, 2])
-    _panel_cells_per_participant(ax_f, datasets)
-
-    # Panel labels (row 1)
-    for i, label in enumerate(["A", "B", "C"]):
-        fig.text(0.02 + i * 0.33, 0.97, label, fontsize=16,
-                 fontweight="bold", va="top", ha="left")
-
-    # ── Save composite ────────────────────────────────────────────────
-    save_figure(fig, FIGURE_NAME, SUPP_OUTPUT, close=False)
 
     # ── Save individual panels ────────────────────────────────────────
     # Row 1 panels
@@ -284,8 +254,6 @@ def generate():
     _panel_cells_per_participant(ax_f2, datasets)
     fig_f.tight_layout()
     save_panel(fig_f, "panel_F", FIGURE_NAME, SUPP_OUTPUT)
-
-    plt.close(fig)
 
     # ── Cleanup ───────────────────────────────────────────────────────
     clear_cache()

@@ -37,7 +37,6 @@ from .._shared import (
     get_vaccine,
     harmonize_response,
     load_clinical_trial_dataset,
-    save_figure,
     save_panel,
     score_signatures,
 )
@@ -704,26 +703,9 @@ def panel_effect_sizes(ax: plt.Axes, effect_df: pd.DataFrame) -> None:
 # ======================================================================
 
 def generate() -> None:
-    """Create and save the four-panel Figure 6."""
+    """Create and save Figure 6 individual panels."""
     apply_style()
     data = _prepare_data()
-
-    fig, axes = plt.subplots(2, 2, figsize=FIGSIZE)
-    fig.subplots_adjust(hspace=0.38, wspace=0.32)
-
-    panel_runtime(axes[0, 0], data["timing_df"])
-    panel_memory(axes[0, 1], data["memory_df"])
-    panel_power_curves(axes[1, 0], data["power_df"])
-    panel_effect_sizes(axes[1, 1], data["effect_df"])
-
-    # Panel labels
-    for label, ax in zip("ABCD", axes.flat):
-        ax.text(
-            -0.08, 1.08, label, transform=ax.transAxes,
-            fontsize=16, fontweight="bold", va="top",
-        )
-
-    save_figure(fig, FIGURE_NAME, MAIN_OUTPUT)
 
     # ── Individual panels ─────────────────────────────────────────────
     for name, draw_fn, args in [

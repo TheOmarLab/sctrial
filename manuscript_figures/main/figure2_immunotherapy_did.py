@@ -28,7 +28,6 @@ from .._shared import (
     did_table,
     get_sade_feldman,
     harmonize_response,
-    save_figure,
     save_panel,
     score_signatures,
     sig_display,
@@ -381,41 +380,9 @@ def panel_heatmap(
 # ── Composite figure ─────────────────────────────────────────────────────
 
 def generate() -> None:
-    """Create and save the three-panel Figure 2."""
+    """Create and save Figure 2 individual panels."""
     print("Figure 2: Immunotherapy DiD Analysis")
     adata, sig_cols, did_res = _prepare_data()
-
-    # Layout: top = A (full width); bottom = B (left 50%) + C (right 50%)
-    # Give B and C equal width so both are spacious
-    fig = plt.figure(figsize=(18, 18))
-    gs = gridspec.GridSpec(
-        2, 2, figure=fig,
-        height_ratios=[0.28, 0.72],
-        width_ratios=[0.50, 0.50],
-        hspace=0.30, wspace=0.30,
-    )
-
-    # Panel A — Forest plot (spanning full top row)
-    ax_a = fig.add_subplot(gs[0, :])
-    panel_forest(ax_a, did_res)
-
-    # Panel B — Interaction grid (bottom-left)
-    gs_b = gs[1, 0]
-    axes_b = panel_interaction_grid(fig, gs_b, adata, did_res, n_sigs=6)
-
-    # Panel C — Heatmap (bottom-right)
-    ax_c = fig.add_subplot(gs[1, 1])
-    panel_heatmap(ax_c, adata, sig_cols, did_res)
-
-    # Panel labels
-    ax_a.text(-0.04, 1.08, "A", transform=ax_a.transAxes,
-              fontsize=20, fontweight="bold", va="top")
-    axes_b[0].text(-0.22, 1.22, "B", transform=axes_b[0].transAxes,
-                   fontsize=20, fontweight="bold", va="top")
-    ax_c.text(-0.10, 1.08, "C", transform=ax_c.transAxes,
-              fontsize=20, fontweight="bold", va="top")
-
-    save_figure(fig, FIGURE_NAME, MAIN_OUTPUT)
 
     # ── Individual panels ────────────────────────────────────────────────
     pfig_a, pax_a = plt.subplots(figsize=(12, 5))

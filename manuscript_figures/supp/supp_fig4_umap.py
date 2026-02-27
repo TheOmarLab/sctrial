@@ -27,7 +27,6 @@ from .._shared import (
     apply_style,
     clear_cache,
     despine,
-    save_figure,
     save_panel,
 )
 
@@ -174,16 +173,10 @@ def _panel_umap(ax, sim: dict):
 # ======================================================================
 
 def generate():
-    """Create and save Supplementary Figure 4."""
+    """Create and save Supplementary Figure 4 individual panels."""
     print("Supplementary Figure 4: UMAP Hierarchical Data Structure")
 
     sim = _simulate_hierarchical_data()
-
-    # ── Composite (single panel) ──────────────────────────────────────
-    fig, ax = plt.subplots(figsize=FIGSIZE)
-    _panel_umap(ax, sim)
-    fig.tight_layout()
-    save_figure(fig, FIGURE_NAME, SUPP_OUTPUT)
 
     # ── Individual panel ──────────────────────────────────────────────
     fig_p, ax_p = plt.subplots(figsize=FIGSIZE)

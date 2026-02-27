@@ -18,7 +18,6 @@ import gc
 import re as _re
 
 import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -28,7 +27,6 @@ from .._shared import (
     SUPP_OUTPUT,
     apply_style,
     despine,
-    save_figure,
     save_panel,
     load_clinical_trial_dataset,
     clear_cache,
@@ -240,7 +238,7 @@ def _panel_structure(ax, adata, title: str):
 # ======================================================================
 
 def generate():
-    """Create and save Supplementary Figure 3."""
+    """Create and save Supplementary Figure 3 individual panels."""
     print("Supplementary Figure 3: Clinical Dataset Details")
 
     loaded = {}
@@ -254,38 +252,7 @@ def generate():
         print("  No clinical datasets available; skipping figure.")
         return
 
-    n_rows = len(loaded)
-    fig = plt.figure(figsize=(16, 5 * n_rows), constrained_layout=False)
-    gs = gridspec.GridSpec(n_rows, 3, figure=fig, hspace=0.42, wspace=0.35)
-
-    panel_idx = 0
-    for row, (name, adata) in enumerate(loaded.items()):
-        ds_label = DATASET_LABELS.get(name, name.upper())
-
-        ax1 = fig.add_subplot(gs[row, 0])
-        _panel_celltype(ax1, adata, f"{ds_label} — Cell Types")
-
-        ax2 = fig.add_subplot(gs[row, 1])
-        _panel_qc(ax2, adata, f"{ds_label} — QC Metrics")
-
-        ax3 = fig.add_subplot(gs[row, 2])
-        _panel_structure(ax3, adata, f"{ds_label} — Sample Structure")
-
-        panel_idx += 1
-
-    # Row labels
     label_chars = "ABCDEFGHIJKL"
-    for row in range(n_rows):
-        for col in range(3):
-            idx = row * 3 + col
-            if idx < len(label_chars):
-                x = 0.02 + col * 0.33
-                y = 1.0 - row * (1.0 / n_rows) - 0.01
-                fig.text(x, y, label_chars[idx], fontsize=16,
-                         fontweight="bold", va="top", ha="left")
-
-    # ── Save composite ────────────────────────────────────────────────
-    save_figure(fig, FIGURE_NAME, SUPP_OUTPUT, close=False)
 
     # ── Save individual panels ────────────────────────────────────────
     for row, (name, adata) in enumerate(loaded.items()):
@@ -308,8 +275,6 @@ def generate():
         fig_st.tight_layout()
         save_panel(fig_st, f"panel_{label_chars[row * 3 + 2]}", FIGURE_NAME,
                    SUPP_OUTPUT)
-
-    plt.close(fig)
 
     # ── Cleanup ───────────────────────────────────────────────────────
     for adata in loaded.values():

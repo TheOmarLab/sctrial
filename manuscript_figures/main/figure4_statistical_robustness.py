@@ -29,7 +29,6 @@ from .._shared import (
     np,
     pd,
     plt,
-    save_figure,
     save_panel,
     score_signatures,
     sig_display,
@@ -422,26 +421,10 @@ def _panel_d(ax, data: dict) -> None:
 
 # ── Composite generation ─────────────────────────────────────────────────
 
-def generate() -> plt.Figure:
-    """Create and save the 2x2 composite figure."""
+def generate() -> None:
+    """Create and save Figure 4 individual panels."""
     apply_style()
     data = _prepare_data()
-
-    fig, axes = plt.subplots(2, 2, figsize=(14, 11))
-    fig.subplots_adjust(hspace=0.35, wspace=0.40)
-
-    _panel_a(axes[0, 0], data)
-    _panel_b(axes[0, 1], data)
-    _panel_c(axes[1, 0], data)
-    _panel_d(axes[1, 1], data)
-
-    # Panel labels
-    for label, ax in zip("ABCD", axes.flat):
-        ax.text(-0.12, 1.08, label, transform=ax.transAxes,
-                fontsize=16, fontweight="bold", va="top", ha="left")
-
-    # ── Save composite --------------------------------------------------
-    save_figure(fig, FIGURE_NAME, MAIN_OUTPUT, close=False)
 
     # ── Save individual panels ------------------------------------------
     panel_funcs = [
@@ -463,4 +446,3 @@ def generate() -> plt.Figure:
     gc.collect()
 
     print(f"  Figure 4 complete: {FIGURE_NAME}")
-    return fig

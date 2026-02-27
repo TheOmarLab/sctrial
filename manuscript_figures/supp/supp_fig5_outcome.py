@@ -21,7 +21,6 @@ from __future__ import annotations
 import gc
 
 import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
 import matplotlib.patches as mpatches
 import numpy as np
 import pandas as pd
@@ -37,7 +36,6 @@ from .._shared import (
     despine,
     get_sade_feldman,
     harmonize_response,
-    save_figure,
     save_panel,
     score_signatures,
     sig_display,
@@ -350,46 +348,16 @@ def panel_C(ax, data: dict):
 # ======================================================================
 
 def generate():
-    """Create and save Supplementary Figure 5."""
+    """Create and save Supplementary Figure 5 individual panels."""
     print("Supplementary Figure 5: Outcome Correlation Details")
 
     try:
         data = _prepare_data()
     except Exception as exc:
         print(f"  ERROR preparing data: {exc}")
-        # Create placeholder figure
-        fig, axes = plt.subplots(1, 3, figsize=FIGSIZE)
-        for ax in axes:
-            ax.text(0.5, 0.5, f"No data\n{exc}",
-                    transform=ax.transAxes, ha="center", va="center",
-                    fontsize=10, color=COLORS["gray"])
-            ax.axis("off")
-        save_figure(fig, FIGURE_NAME, SUPP_OUTPUT)
         gc.collect()
-        print("  Done (placeholder).\n")
+        print("  Done (no data).\n")
         return
-
-    fig = plt.figure(figsize=FIGSIZE, constrained_layout=False)
-    gs = gridspec.GridSpec(1, 3, figure=fig, wspace=0.40)
-
-    ax_a = fig.add_subplot(gs[0, 0])
-    ax_b = fig.add_subplot(gs[0, 1])
-    ax_c = fig.add_subplot(gs[0, 2])
-
-    panel_A(ax_a, data)
-    panel_B(ax_b, data)
-    panel_C(ax_c, data)
-
-    # Panel labels
-    for label, (x, y) in zip(
-        ["A", "B", "C"],
-        [(0.01, 0.97), (0.35, 0.97), (0.68, 0.97)],
-    ):
-        fig.text(x, y, label, fontsize=18, fontweight="bold",
-                 va="top", ha="left")
-
-    # ── Save composite ────────────────────────────────────────────────
-    save_figure(fig, FIGURE_NAME, SUPP_OUTPUT, close=False)
 
     # ── Save individual panels ────────────────────────────────────────
     for panel_label, panel_func in [("A", panel_A), ("B", panel_B),
@@ -398,8 +366,6 @@ def generate():
         panel_func(ax_p, data)
         fig_p.tight_layout()
         save_panel(fig_p, f"panel_{panel_label}", FIGURE_NAME, SUPP_OUTPUT)
-
-    plt.close(fig)
 
     # ── Cleanup ───────────────────────────────────────────────────────
     if "adata" in data:
