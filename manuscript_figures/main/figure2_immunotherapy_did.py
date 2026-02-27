@@ -114,8 +114,14 @@ def panel_forest(ax: plt.Axes, did_res: pd.DataFrame) -> None:
     df = did_res.sort_values("beta_DiD").reset_index(drop=True)
     y_pos = np.arange(len(df))
 
-    ci_lo = df["beta_DiD"] - 1.96 * df["se_DiD"]
-    ci_hi = df["beta_DiD"] + 1.96 * df["se_DiD"]
+    # Use bootstrap-t CIs when available (from use_bootstrap=True),
+    # otherwise fall back to analytical ±1.96·SE.
+    if "ci_lo_boot" in df.columns and "ci_hi_boot" in df.columns:
+        ci_lo = df["ci_lo_boot"]
+        ci_hi = df["ci_hi_boot"]
+    else:
+        ci_lo = df["beta_DiD"] - 1.96 * df["se_DiD"]
+        ci_hi = df["beta_DiD"] + 1.96 * df["se_DiD"]
 
     for i, (_, row) in enumerate(df.iterrows()):
         color = COL_RESP if row["beta_DiD"] > 0 else COL_NRESP
@@ -163,7 +169,8 @@ def panel_interaction_grid(
     n_sigs: int = 6,
 ) -> list[plt.Axes]:
     """2×3 grid of interaction plots for the top *n_sigs* signatures (by p)."""
-    top = did_res.sort_values("p_DiD").head(n_sigs)
+    p_col = "p_DiD_boot" if "p_DiD_boot" in did_res.columns else "p_DiD"
+    top = did_res.sort_values(p_col).head(n_sigs)
 
     nrows, ncols = 2, 3
     gs_inner = gs_parent.subgridspec(nrows, ncols, hspace=0.55, wspace=0.35)
@@ -219,8 +226,8 @@ def panel_interaction_grid(
         ax.set_xlim(-0.35, 1.35)
         ax.tick_params(axis="y", labelsize=8)
 
-        # Title with nominal p-value (all FDR > 0.9, noted in panel header)
-        p_val = row["p_DiD"]
+        # Title with bootstrap p-value when available
+        p_val = row.get("p_DiD_boot", row["p_DiD"])
         p_str = f"p = {p_val:.3f}" if p_val >= 0.001 else f"p = {p_val:.1e}"
         ax.set_title(
             f"{sig_display(sig_col)}\n{p_str}",
