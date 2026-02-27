@@ -9,7 +9,7 @@ Panels
 ------
 A : Bootstrap vs analytical standard-error comparison
 B : FDR calibration — cell-level vs participant-level p-values
-C : Permutation null distribution (most significant signature)
+C : Permutation null distribution (top 3 most significant signatures)
 D : Observed effects vs 95 % null range for all signatures
 """
 
@@ -40,8 +40,8 @@ warnings.filterwarnings("ignore")
 
 FIGURE_NAME = "Figure4_statistical_robustness"
 VISITS: tuple[str, str] = ("Pre", "Post")
-N_PERM = 100
-N_BOOT = 200
+N_PERM = 999
+N_BOOT = 999
 
 
 # ── data preparation ─────────────────────────────────────────────────────
@@ -96,85 +96,29 @@ def _prepare_data() -> dict:
     df_part = did_table(adata, aggregate="participant_visit", **common_kw)
 
     # 5. Participant-level DiD (wild cluster bootstrap) -----------------
+    #    Uses the sctrial API directly — provides se_DiD_boot, p_DiD_boot,
+    #    and bootstrap confidence intervals alongside the analytical SE.
     print("  Running bootstrap DiD ...")
     df_boot = did_table(
         adata, aggregate="participant_visit", use_bootstrap=True,
-        n_boot=N_BOOT, **common_kw,
+        n_boot=N_BOOT, seed=42, **common_kw,
     )
 
-    # 6. Pairs cluster bootstrap for SE estimation ----------------------
-    #    Resample participants with replacement, refit OLS each time,
-    #    and take the SD of beta_DiD across resamples as bootstrap SE.
-    print("  Running pairs cluster bootstrap for SE estimation ...")
-    boot_betas = {feat: [] for feat in sig_cols}
-    np.random.seed(42)
-    participants = adata.obs["participant_id"].unique()
-
-    # Build pseudobulk once for fast resampling
-    _pb_data = (
-        adata.obs[["participant_id", "visit", "response"] + sig_cols]
-        .groupby(["participant_id", "visit", "response"], observed=True)[sig_cols]
-        .mean()
-        .reset_index()
-    )
-
-    n_success = 0
-    for b in range(N_BOOT):
-        boot_pids = np.random.choice(participants, size=len(participants),
-                                     replace=True)
-        # Resample pseudobulk rows (much faster than resampling cells)
-        boot_rows = []
-        pid_counts: dict[str, int] = {}
-        for pid in boot_pids:
-            pid_counts[pid] = pid_counts.get(pid, 0) + 1
-            sub = _pb_data[_pb_data["participant_id"] == pid].copy()
-            sub["participant_id"] = f"{pid}__{pid_counts[pid]}"
-            boot_rows.append(sub)
-        boot_pb = pd.concat(boot_rows, ignore_index=True)
-
-        try:
-            # Manual OLS DiD on pseudobulk
-            boot_pb["visit_num"] = (boot_pb["visit"] == "Post").astype(int)
-            boot_pb["arm_num"] = (boot_pb["response"] == "Responder").astype(int)
-            boot_pb["interaction"] = boot_pb["visit_num"] * boot_pb["arm_num"]
-
-            for feat in sig_cols:
-                y = boot_pb[feat].values
-                X = np.column_stack([
-                    np.ones(len(boot_pb)),
-                    boot_pb["visit_num"].values,
-                    boot_pb["arm_num"].values,
-                    boot_pb["interaction"].values,
-                ])
-                if np.any(np.isnan(y)):
-                    continue
-                try:
-                    beta, _, _, _ = np.linalg.lstsq(X, y, rcond=None)
-                    if np.isfinite(beta[3]):
-                        boot_betas[feat].append(beta[3])
-                except np.linalg.LinAlgError:
-                    pass
-            n_success += 1
-        except Exception:
-            pass
-
-    print(f"  Bootstrap: {n_success}/{N_BOOT} successful replicates")
-    boot_se = {
-        feat: np.nanstd(vals) if len(vals) >= 5 else np.nan
-        for feat, vals in boot_betas.items()
-    }
-
-    # 7. Permutation test -----------------------------------------------
+    # 6. Permutation test -----------------------------------------------
+    #    Shuffle response_harmonized (the arm column used by TrialDesign)
+    #    at the participant level to build the null distribution.
     print("  Running permutation test ...")
     np.random.seed(42)
-    original_response = adata.obs["response"].copy()
+    arm_col = design.arm_col  # "response_harmonized"
+    original_arm = adata.obs[arm_col].copy()
     perm_results: list[pd.DataFrame] = []
 
     for i in range(N_PERM):
-        pid_response = adata.obs.groupby("participant_id")["response"].first()
-        shuffled = pid_response.sample(frac=1, replace=False)
-        shuffled.index = pid_response.index
-        adata.obs["response"] = adata.obs["participant_id"].map(shuffled)
+        # Get participant-level arm assignment and shuffle
+        pid_arm = adata.obs.groupby("participant_id", observed=True)[arm_col].first()
+        shuffled = pid_arm.sample(frac=1, replace=False)
+        shuffled.index = pid_arm.index  # reassign shuffled labels to original PIDs
+        adata.obs[arm_col] = adata.obs["participant_id"].map(shuffled)
         try:
             df_perm = did_table(
                 adata, aggregate="participant_visit", **common_kw,
@@ -183,8 +127,10 @@ def _prepare_data() -> dict:
             perm_results.append(df_perm)
         except Exception:
             pass
+        if (i + 1) % 100 == 0:
+            print(f"    permutation {i + 1}/{N_PERM}")
 
-    adata.obs["response"] = original_response  # restore
+    adata.obs[arm_col] = original_arm  # restore
 
     df_perm_all = pd.concat(perm_results, ignore_index=True)
     print(f"  Completed {df_perm_all['permutation'].nunique()} permutations")
@@ -193,7 +139,6 @@ def _prepare_data() -> dict:
         "df_cell": df_cell,
         "df_part": df_part,
         "df_boot": df_boot,
-        "boot_se": boot_se,
         "df_perm_all": df_perm_all,
         "sig_cols": sig_cols,
         "adata": adata,
@@ -203,17 +148,16 @@ def _prepare_data() -> dict:
 # ── Panel A: Bootstrap vs Analytical SE ──────────────────────────────────
 
 def _panel_a(ax, data: dict) -> None:
-    """Scatter of analytical SE vs pairs-cluster-bootstrap SE."""
-    df_part = data["df_part"]
-    boot_se = data["boot_se"]
+    """Scatter of analytical SE vs wild-cluster-bootstrap SE (sctrial API)."""
+    df_boot = data["df_boot"]
 
+    # Extract analytical and bootstrap SEs from the same did_table() call
     feats, analytical, bootstrap = [], [], []
-    for _, row in df_part.iterrows():
-        feat = row["feature"]
+    for _, row in df_boot.iterrows():
         se_an = row["se_DiD"]
-        se_bt = boot_se.get(feat, np.nan)
+        se_bt = row.get("se_DiD_boot", np.nan)
         if np.isfinite(se_an) and np.isfinite(se_bt):
-            feats.append(feat)
+            feats.append(row["feature"])
             analytical.append(se_an)
             bootstrap.append(se_bt)
 
@@ -236,12 +180,12 @@ def _panel_a(ax, data: dict) -> None:
     ax.scatter(analytical, bootstrap, s=50, color=COLORS["treated"],
                edgecolor="white", linewidth=0.5, zorder=3)
 
-    # Labels
+    # Labels — plain annotations, offset to top-right of each point
     for feat, x, y in zip(feats, analytical, bootstrap):
         ax.annotate(
             sig_display(feat), (x, y),
-            fontsize=6.5, ha="left", va="bottom",
-            xytext=(3, 3), textcoords="offset points",
+            fontsize=6, ha="left", va="bottom",
+            xytext=(4, 4), textcoords="offset points",
         )
 
     # Correlation
@@ -253,8 +197,8 @@ def _panel_a(ax, data: dict) -> None:
         bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="none", alpha=0.8),
     )
 
-    ax.set_xlabel("Analytical SE")
-    ax.set_ylabel("Bootstrap SE")
+    ax.set_xlabel("Analytical SE (cluster-robust)")
+    ax.set_ylabel("Bootstrap SE (wild cluster)")
     ax.set_title("Bootstrap vs Analytical SE", fontsize=10)
     despine(ax)
 
@@ -336,15 +280,26 @@ def _panel_c(ax, data: dict) -> None:
         null_betas = df_perm.loc[df_perm["feature"] == feat, "beta_DiD"].dropna()
         color = hist_colors[idx % len(hist_colors)]
 
-        ax.hist(null_betas, bins=20, color=color, alpha=0.35,
+        ax.hist(null_betas, bins=25, color=color, alpha=0.35,
                 edgecolor="none", density=True, zorder=2,
                 label=f"{sig_display(feat)} null")
 
         # Observed effect as vertical line
         ax.axvline(obs_beta, color=color, lw=2, ls="-", zorder=4)
-        # Small label near the line
-        ax.text(obs_beta, ax.get_ylim()[1] * 0.9 - idx * 0.15 * ax.get_ylim()[1],
-                f"p={perm_p:.3f}", fontsize=7, color=color, ha="left",
+
+    # Add p-value labels after all histograms are drawn (so ylim is set)
+    ylim = ax.get_ylim()
+    y_top = ylim[1]
+    for idx, feat in enumerate(top_feats):
+        perm_p = perm_pvals[feat]
+        obs_beta = df_part.loc[df_part["feature"] == feat, "beta_DiD"].values[0]
+        color = hist_colors[idx % len(hist_colors)]
+        # Place labels at staggered heights; alternate left/right of line
+        y_label = y_top * (0.93 - idx * 0.15)
+        ha = "left"
+        offset = "  "
+        ax.text(obs_beta, y_label,
+                f"{offset}p = {perm_p:.3f}", fontsize=7, color=color, ha=ha,
                 fontweight="bold")
 
     ax.set_xlabel(r"$\beta_{\mathrm{DiD}}$ (null distribution)")
@@ -372,6 +327,7 @@ def _panel_d(ax, data: dict) -> None:
         if len(null_betas) < 10:
             continue
         lo, hi = np.percentile(null_betas, [2.5, 97.5])
+        perm_p = (np.abs(null_betas) >= np.abs(obs_beta)).mean()
         records.append({
             "feature": feat,
             "display": sig_display(feat),
@@ -379,6 +335,7 @@ def _panel_d(ax, data: dict) -> None:
             "null_lo": lo,
             "null_hi": hi,
             "significant": (obs_beta < lo) or (obs_beta > hi),
+            "perm_p": perm_p,
         })
 
     rec_df = pd.DataFrame(records).sort_values("obs_beta", ascending=True)
