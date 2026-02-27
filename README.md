@@ -101,6 +101,18 @@ Full documentation: [https://TheOmarLab.github.io/sctrial/](https://TheOmarLab.g
 - [Tutorials](https://TheOmarLab.github.io/sctrial/tutorials/index.html)
 - [FAQ](https://TheOmarLab.github.io/sctrial/faq.html)
 
+
+## Regenerate the figures and tables in the publication:
+
+```bash
+python -m manuscript_figures.run_all              # everything
+python -m manuscript_figures.run_all --main       # figures and tables in main file only
+python -m manuscript_figures.run_all --supp       # figures and tables in supplementary document only
+python -m manuscript_figures.run_all --figure 2   # single figure/table in main document file
+python -m manuscript_figures.run_all --supp-fig 7 # single file/table in supplementary file
+
+```
+
 ## Citation
 
 If you use **sctrial** in your research, please cite:
