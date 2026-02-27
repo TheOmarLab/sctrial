@@ -116,12 +116,16 @@ def panel_forest(ax: plt.Axes, did_res: pd.DataFrame) -> None:
 
     # Use bootstrap-t CIs when available (from use_bootstrap=True),
     # otherwise fall back to analytical ±1.96·SE.
+    # Per-row fallback: if bootstrap CI is NaN for a given feature
+    # (e.g. failed bootstrap draw), use analytical CI for that row.
+    analytical_lo = df["beta_DiD"] - 1.96 * df["se_DiD"]
+    analytical_hi = df["beta_DiD"] + 1.96 * df["se_DiD"]
     if "ci_lo_boot" in df.columns and "ci_hi_boot" in df.columns:
-        ci_lo = df["ci_lo_boot"]
-        ci_hi = df["ci_hi_boot"]
+        ci_lo = df["ci_lo_boot"].fillna(analytical_lo)
+        ci_hi = df["ci_hi_boot"].fillna(analytical_hi)
     else:
-        ci_lo = df["beta_DiD"] - 1.96 * df["se_DiD"]
-        ci_hi = df["beta_DiD"] + 1.96 * df["se_DiD"]
+        ci_lo = analytical_lo
+        ci_hi = analytical_hi
 
     for i, (_, row) in enumerate(df.iterrows()):
         color = COL_RESP if row["beta_DiD"] > 0 else COL_NRESP
@@ -169,8 +173,13 @@ def panel_interaction_grid(
     n_sigs: int = 6,
 ) -> list[plt.Axes]:
     """2×3 grid of interaction plots for the top *n_sigs* signatures (by p)."""
-    p_col = "p_DiD_boot" if "p_DiD_boot" in did_res.columns else "p_DiD"
-    top = did_res.sort_values(p_col).head(n_sigs)
+    # Prefer bootstrap p-values for ranking but fall back to analytical
+    # per-row when bootstrap p is NaN (e.g. failed bootstrap draw).
+    if "p_DiD_boot" in did_res.columns:
+        rank_p = did_res["p_DiD_boot"].fillna(did_res["p_DiD"])
+    else:
+        rank_p = did_res["p_DiD"]
+    top = did_res.assign(_rank_p=rank_p).sort_values("_rank_p").head(n_sigs).drop(columns="_rank_p")
 
     nrows, ncols = 2, 3
     gs_inner = gs_parent.subgridspec(nrows, ncols, hspace=0.55, wspace=0.35)
@@ -226,8 +235,11 @@ def panel_interaction_grid(
         ax.set_xlim(-0.35, 1.35)
         ax.tick_params(axis="y", labelsize=8)
 
-        # Title with bootstrap p-value when available
-        p_val = row.get("p_DiD_boot", row["p_DiD"])
+        # Title with bootstrap p-value when available; fall back to
+        # analytical if bootstrap p is NaN for this feature.
+        p_val = row.get("p_DiD_boot", np.nan)
+        if pd.isna(p_val):
+            p_val = row["p_DiD"]
         p_str = f"p = {p_val:.3f}" if p_val >= 0.001 else f"p = {p_val:.1e}"
         ax.set_title(
             f"{sig_display(sig_col)}\n{p_str}",
