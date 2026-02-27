@@ -354,6 +354,7 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..adata_tools</span><span class="w"> </span><span class="kn">import</span> <span class="n">subset_cells</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..design</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrialDesign</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">wild_cluster_bootstrap_t</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">apply_fdr</span><span class="p">,</span> <span class="n">encode_visit</span><span class="p">,</span> <span class="n">standardize_series</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.did</span><span class="w"> </span><span class="kn">import</span> <span class="n">MIN_CLUSTERS_FOR_ROBUST_SE</span><span class="p">,</span> <span class="n">AggregateFunc</span><span class="p">,</span> <span class="n">AggregateMode</span><span class="p">,</span> <span class="n">_ensure_paired</span>
 
@@ -527,6 +528,9 @@
     <span class="n">agg</span><span class="p">:</span> <span class="n">AggregateFunc</span> <span class="o">=</span> <span class="s2">&quot;mean&quot;</span><span class="p">,</span>
     <span class="n">standardize</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
     <span class="n">covariates</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">use_bootstrap</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">n_boot</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">999</span><span class="p">,</span>
+    <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">42</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Paired within-arm pre-&gt;post contrast.</span>
 
@@ -557,6 +561,15 @@
 <span class="sd">    covariates</span>
 <span class="sd">        Optional covariate columns to include as fixed effects. Non-numeric</span>
 <span class="sd">        covariates must be constant within participant-visit.</span>
+<span class="sd">    use_bootstrap</span>
+<span class="sd">        Whether to use wild cluster bootstrap for p-values and CIs.</span>
+<span class="sd">        Recommended when the number of participants (clusters) is small</span>
+<span class="sd">        (&lt; 10).  When enabled, bootstrap p-values replace the analytical</span>
+<span class="sd">        p-values as the primary ``p_time`` column.</span>
+<span class="sd">    n_boot</span>
+<span class="sd">        Number of bootstrap iterations (999 or 1999 for publication).</span>
+<span class="sd">    seed</span>
+<span class="sd">        Random seed for bootstrap reproducibility.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -569,9 +582,15 @@
 <span class="sd">        - **ci_lo_time** / **ci_hi_time** : 95 % confidence interval bounds</span>
 <span class="sd">          (``beta ± t_crit × se`` with residual df from the OLS fit).</span>
 <span class="sd">        - **p_time** : P-value for the time coefficient</span>
-<span class="sd">          (cluster-robust Wald test).</span>
+<span class="sd">          (cluster-robust Wald test; bootstrap if ``use_bootstrap=True``).</span>
 <span class="sd">        - **n_units** : Number of unique participants.</span>
 <span class="sd">        - **FDR_time** : Benjamini–Hochberg corrected p-value.</span>
+
+<span class="sd">        When ``use_bootstrap=True``, additional columns are included:</span>
+
+<span class="sd">        - **p_time_boot** : Bootstrap p-value.</span>
+<span class="sd">        - **se_time_boot** : Bootstrap SE from coefficient distribution.</span>
+<span class="sd">        - **ci_lo_boot** / **ci_hi_boot** : Bootstrap-t 95 % CI.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># Subset to arm and visits</span>
     <span class="n">ad</span> <span class="o">=</span> <span class="n">subset_cells</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">arm</span><span class="o">=</span><span class="n">arm</span><span class="p">,</span> <span class="n">exclude_crossovers</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
@@ -645,19 +664,49 @@
         <span class="k">if</span> <span class="n">covariates</span><span class="p">:</span>
             <span class="n">formula</span> <span class="o">+=</span> <span class="s2">&quot; + &quot;</span> <span class="o">+</span> <span class="s2">&quot; + &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">covariates</span><span class="p">)</span>
         <span class="n">model</span> <span class="o">=</span> <span class="n">smf</span><span class="o">.</span><span class="n">ols</span><span class="p">(</span><span class="n">formula</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">df_feat</span><span class="p">)</span>
-        <span class="n">n_units_feat</span> <span class="o">=</span> <span class="n">df_feat</span><span class="p">[</span><span class="n">unit</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span>
+
+        <span class="c1"># Align cluster vector with fitted model rows: statsmodels may</span>
+        <span class="c1"># drop rows with missing values during formula parsing, so</span>
+        <span class="c1"># df_feat can be longer than model.exog.</span>
+        <span class="n">model_row_idx</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">row_labels</span>
+        <span class="n">clusters_aligned</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span>
+            <span class="n">df_feat</span><span class="p">[</span><span class="n">unit</span><span class="p">]</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">model_row_idx</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+        <span class="p">)</span>
+
+        <span class="n">n_units_feat</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">clusters_aligned</span><span class="p">))</span>
         <span class="k">if</span> <span class="n">n_units_feat</span> <span class="o">&lt;</span> <span class="n">MIN_CLUSTERS_FOR_ROBUST_SE</span><span class="p">:</span>
             <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
                 <span class="sa">f</span><span class="s2">&quot;Only </span><span class="si">{</span><span class="n">n_units_feat</span><span class="si">}</span><span class="s2"> clusters (participants) available. Cluster-robust &quot;</span>
                 <span class="sa">f</span><span class="s2">&quot;standard errors are unreliable with fewer than </span><span class="si">{</span><span class="n">MIN_CLUSTERS_FOR_ROBUST_SE</span><span class="si">}</span><span class="s2"> &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;clusters.&quot;</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;clusters.&quot;</span>
+                <span class="o">+</span> <span class="p">(</span><span class="s2">&quot; Consider using use_bootstrap=True for more reliable p-values.&quot;</span>
+                   <span class="k">if</span> <span class="ow">not</span> <span class="n">use_bootstrap</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
                 <span class="ne">UserWarning</span><span class="p">,</span>
                 <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
             <span class="p">)</span>
-        <span class="n">fit</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">cov_type</span><span class="o">=</span><span class="s2">&quot;cluster&quot;</span><span class="p">,</span> <span class="n">cov_kwds</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;groups&quot;</span><span class="p">:</span> <span class="n">df_feat</span><span class="p">[</span><span class="n">unit</span><span class="p">]})</span>
+        <span class="n">fit</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">cov_type</span><span class="o">=</span><span class="s2">&quot;cluster&quot;</span><span class="p">,</span> <span class="n">cov_kwds</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;groups&quot;</span><span class="p">:</span> <span class="n">clusters_aligned</span><span class="p">})</span>
 
         <span class="n">beta</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;visit_num&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">))</span>
         <span class="n">se</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">bse</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;visit_num&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">))</span>
+        <span class="n">p_val</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">pvalues</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;visit_num&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">))</span>
+
+        <span class="c1"># Fallback: if cluster-robust SE is degenerate (NaN), re-fit</span>
+        <span class="c1"># with nonrobust SE.  Participant FE already absorbs within-</span>
+        <span class="c1"># cluster correlation so homoskedastic SE is valid.</span>
+        <span class="n">effective_cov_type</span> <span class="o">=</span> <span class="s2">&quot;cluster&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">se</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">p_val</span><span class="p">):</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Cluster-robust SE is degenerate (NaN) for feature &#39;</span><span class="si">{</span><span class="n">feat</span><span class="si">}</span><span class="s2">&#39; &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;with </span><span class="si">{</span><span class="n">n_units_feat</span><span class="si">}</span><span class="s2"> clusters. Falling back to nonrobust &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;(homoskedastic) SE.&quot;</span><span class="p">,</span>
+                <span class="ne">UserWarning</span><span class="p">,</span>
+                <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">fit</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>  <span class="c1"># nonrobust</span>
+            <span class="n">se</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">bse</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;visit_num&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">))</span>
+            <span class="n">p_val</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">pvalues</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;visit_num&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">))</span>
+            <span class="n">effective_cov_type</span> <span class="o">=</span> <span class="s2">&quot;nonrobust&quot;</span>
+
         <span class="c1"># Use robust conf_int() to ensure CI is consistent with the</span>
         <span class="c1"># cluster-robust SE / p-value (avoids df_resid mismatch).</span>
         <span class="n">ci_bounds</span> <span class="o">=</span> <span class="n">fit</span><span class="o">.</span><span class="n">conf_int</span><span class="p">(</span><span class="n">alpha</span><span class="o">=</span><span class="mf">0.05</span><span class="p">)</span>
@@ -667,15 +716,39 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="n">ci_lo</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
             <span class="n">ci_hi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
-        <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+
+        <span class="n">row_dict</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
             <span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
             <span class="s2">&quot;beta_time&quot;</span><span class="p">:</span> <span class="n">beta</span><span class="p">,</span>
             <span class="s2">&quot;se_time&quot;</span><span class="p">:</span> <span class="n">se</span><span class="p">,</span>
             <span class="s2">&quot;ci_lo_time&quot;</span><span class="p">:</span> <span class="n">ci_lo</span><span class="p">,</span>
             <span class="s2">&quot;ci_hi_time&quot;</span><span class="p">:</span> <span class="n">ci_hi</span><span class="p">,</span>
-            <span class="s2">&quot;p_time&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">pvalues</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;visit_num&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)),</span>
+            <span class="s2">&quot;p_time&quot;</span><span class="p">:</span> <span class="n">p_val</span><span class="p">,</span>
             <span class="s2">&quot;n_units&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">df_use</span><span class="p">[</span><span class="n">unit</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()),</span>
-        <span class="p">})</span>
+            <span class="s2">&quot;cov_type_used&quot;</span><span class="p">:</span> <span class="n">effective_cov_type</span><span class="p">,</span>
+        <span class="p">}</span>
+
+        <span class="c1"># Wild cluster bootstrap</span>
+        <span class="k">if</span> <span class="n">use_bootstrap</span> <span class="ow">and</span> <span class="s2">&quot;visit_num&quot;</span> <span class="ow">in</span> <span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="p">:</span>
+            <span class="n">boot_res</span> <span class="o">=</span> <span class="n">wild_cluster_bootstrap_t</span><span class="p">(</span>
+                <span class="n">fit</span><span class="p">,</span>
+                <span class="n">X</span><span class="o">=</span><span class="n">fit</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">exog</span><span class="p">,</span>
+                <span class="n">clusters</span><span class="o">=</span><span class="n">clusters_aligned</span><span class="p">,</span>  <span class="c1"># already aligned above</span>
+                <span class="n">term_name</span><span class="o">=</span><span class="s2">&quot;visit_num&quot;</span><span class="p">,</span>
+                <span class="n">B</span><span class="o">=</span><span class="n">n_boot</span><span class="p">,</span>
+                <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span>
+                <span class="n">cov_type</span><span class="o">=</span><span class="n">effective_cov_type</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">row_dict</span><span class="p">[</span><span class="s2">&quot;p_time_boot&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">boot_res</span><span class="o">.</span><span class="n">p_boot</span>
+            <span class="n">row_dict</span><span class="p">[</span><span class="s2">&quot;se_time_boot&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">boot_res</span><span class="o">.</span><span class="n">se_boot</span>
+            <span class="n">row_dict</span><span class="p">[</span><span class="s2">&quot;ci_lo_boot&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">boot_res</span><span class="o">.</span><span class="n">ci_lo</span>
+            <span class="n">row_dict</span><span class="p">[</span><span class="s2">&quot;ci_hi_boot&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">boot_res</span><span class="o">.</span><span class="n">ci_hi</span>
+            <span class="c1"># Use bootstrap p-value as primary when available;</span>
+            <span class="c1"># preserve analytical p_time if bootstrap returned NaN</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">boot_res</span><span class="o">.</span><span class="n">p_boot</span><span class="p">):</span>
+                <span class="n">row_dict</span><span class="p">[</span><span class="s2">&quot;p_time&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">boot_res</span><span class="o">.</span><span class="n">p_boot</span>
+
+        <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row_dict</span><span class="p">)</span>
 
     <span class="n">res</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
     <span class="n">res</span> <span class="o">=</span> <span class="n">apply_fdr</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="n">p_col</span><span class="o">=</span><span class="s2">&quot;p_time&quot;</span><span class="p">,</span> <span class="n">fdr_col</span><span class="o">=</span><span class="s2">&quot;FDR_time&quot;</span><span class="p">)</span>
