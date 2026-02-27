@@ -284,6 +284,23 @@ def cohens_d_from_did_approx(
     This uses the regression residual SD instead of pooled SD of change scores,
     which can mis-scale effect sizes when designs are imbalanced or heteroscedastic.
 
+    Parameters
+    ----------
+    beta_did
+        DiD regression coefficient.
+    residual_std
+        Residual standard deviation from the DiD model.
+
+    Returns
+    -------
+    float
+        Approximate Cohen's d effect size.
+
+    Warns
+    -----
+    DeprecationWarning
+        Always raised; use ``cohens_d_from_did`` instead.
+
     Notes
     -----
     Deprecated: use ``cohens_d_from_did(delta_treated, delta_control)`` instead.

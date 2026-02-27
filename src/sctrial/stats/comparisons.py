@@ -22,6 +22,7 @@ def _add_feature_columns(
     features: Sequence[str],
     layer: str | None,
 ) -> pd.DataFrame:
+    """Add feature columns to the DataFrame."""
     from .did import _add_feature_columns as _add_feature_columns_did
 
     df, _ = _add_feature_columns_did(df, ad, features, layer)
@@ -29,7 +30,24 @@ def _add_feature_columns(
 
 
 def resolve_gene_name(adata: AnnData, gene_query: str) -> str:
-    """Resolve a gene name in var_names, case-insensitive if needed."""
+    """Resolve a gene name in var_names, case-insensitive if needed.
+
+    Parameters
+    ----------
+    adata
+        AnnData object.
+    gene_query
+        Gene name to resolve (case-insensitive).
+    Returns
+    -------
+    str
+        The resolved gene name (exact match or case-insensitive match).
+
+    Raises
+    ------
+    ValueError
+        If gene_query is not found in adata.var_names or if there are multiple case-insensitive matches.
+    """
     if gene_query in adata.var_names:
         return gene_query
     candidates = [g for g in adata.var_names if g.upper() == gene_query.upper()]
@@ -50,6 +68,7 @@ def _prepare_between_arm_df(
     agg: AggregateFunc,
     covariates: list[str] | None,
 ) -> pd.DataFrame:
+    """Prepare the data for between-arm comparison."""
     ad = subset_cells(adata, design, visit=visit, exclude_crossovers=False)
     obs = ad.obs.copy()
     obs["arm_bin"] = (obs[design.arm_col] == design.arm_treated).astype(int)
@@ -318,6 +337,16 @@ def between_arm_comparison(
         - 'wilcoxon': Wilcoxon rank-sum test (Mann-Whitney U).
     covariates
         Optional covariate columns to include as fixed effects for OLS.
+
+    Returns
+    -------
+    pd.DataFrame
+        Table with feature, beta_arm, p_arm, FDR_arm, n_units.
+        - feature: Name of the feature.
+        - beta_arm: Effect size (difference in means between arms). Note: This is the difference in means between the treated and control arms.
+        - p_arm: P-value for the between-arm comparison.
+        - FDR_arm: False Discovery Rate corrected p-value.
+        - n_units: Number of unique units (participants) included in the analysis. Note: This is the number of participants that have valid scores for the feature in both arms.
     """
     df_use = _prepare_between_arm_df(
         adata=adata,
@@ -386,12 +415,41 @@ def compare_gene_in_celltype(
     This aggregates expression per participant (avoids pseudoreplication) and
     tests group differences using Mann-Whitney U on participant-level means.
 
+    Parameters
+    ----------
+    adata
+        AnnData object.
+    gene
+        Gene name.
+    celltypes
+        Cell types to analyze.
+    group_col
+        Column name in adata.obs to use for grouping.
+    group1
+        First group to compare.
+    group2
+        Second group to compare.
+    participant_col
+        Column name in adata.obs to use for participant IDs.
+    celltype_col
+        Column name in adata.obs to use for cell types.
+    layer
+        Layer name in adata.layers to use for expression data.
+    log1p
+        Whether to log1p the expression data.
+    expr_threshold
+        Expression threshold to use for calculating the percentage of expressing cells. This is the minimum expression level to be considered expressing.
+    min_cells_per_patient
+        Minimum number of cells per participant to include in the analysis.
+    min_patients_per_group
+        Minimum number of participants per group to include in the analysis.
+
     Returns
     -------
-    result : dict
-        Summary stats including p-value and group means.
-    df_patient : pd.DataFrame
-        Participant-level summaries (mean, median, % expressing, n_cells).
+    tuple[dict, pd.DataFrame]
+        A tuple containing a dictionary with the results and a DataFrame with the participant-level summaries
+        - The dictionary contains the results of the comparison.
+        - The DataFrame contains the participant-level summaries.
     """
     if isinstance(celltypes, str):
         celltypes = [celltypes]

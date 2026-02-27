@@ -33,6 +33,11 @@ def safe_filename(s: str, maxlen: int = 180) -> str:
         Input string to sanitize.
     maxlen
         Maximum length of the output string.
+
+    Returns
+    -------
+    str
+        A filesystem-safe filename.
     """
     s = str(s)
     s = s.replace("γ", "gamma").replace("δ", "delta")
@@ -43,15 +48,36 @@ def safe_filename(s: str, maxlen: int = 180) -> str:
 
 
 def intersect_preserve_order(items: Sequence[str], universe: Iterable[str]) -> list[str]:
-    """Return items that appear in universe, preserving original order."""
+    """Return items that appear in universe, preserving original order.
+
+    Parameters
+    ----------
+    items
+        List of items to intersect.
+    universe
+        List of items to intersect with.
+
+    Returns
+    -------
+    list[str]
+        A list of items that appear in universe, preserving original order.
+    """
     u = set(universe)
     return [x for x in items if x in u]
 
 
 def ensure_unique_index(df: pd.DataFrame, *, agg: str = "mean") -> pd.DataFrame:
     """If df.index has duplicates, aggregate duplicates and return a new df.
-
-    agg: "mean" or "sum" (extend later if needed).
+    Parameters
+    ----------
+    df
+        DataFrame to ensure unique index.
+    agg
+        Aggregation method: "mean" or "sum" (extend later if needed).
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame with unique index.
     """
     if df.index.is_unique:
         return df
@@ -63,7 +89,22 @@ def ensure_unique_index(df: pd.DataFrame, *, agg: str = "mean") -> pd.DataFrame:
 
 
 def looks_like_counts(X, sample: int = 10000, seed: int = 0) -> bool:
-    """Check if matrix appears to be raw counts."""
+    """Check if matrix appears to be raw counts.
+
+    Parameters
+    ----------
+    X
+        Matrix to check.
+    sample
+        Number of samples to check.
+    seed
+        Random seed.
+
+    Returns
+    -------
+    bool
+        True if matrix appears to be raw counts, False otherwise.
+    """
     rng = np.random.default_rng(seed)
     if X is None:
         return False
@@ -82,7 +123,22 @@ def looks_like_counts(X, sample: int = 10000, seed: int = 0) -> bool:
 
 
 def get_counts_matrix(adata: AnnData) -> tuple[np.ndarray | None, str | None]:
-    """Return a raw-counts matrix and its source label, if available."""
+    """Return a raw-counts matrix and its source label, if available.
+
+    Parameters
+    ----------
+    adata
+        AnnData object.
+
+    Returns
+    -------
+    tuple[np.ndarray | None, str | None]
+        A tuple containing the counts matrix and its source label.
+        - The counts matrix is the raw counts matrix.
+        - The source label is the layer name where the counts matrix is stored.
+        - If no counts matrix is found, returns (None, None).
+    """
+
     if "counts" in adata.layers and looks_like_counts(adata.layers["counts"]):
         return adata.layers["counts"], "layers['counts']"
     if getattr(adata, "raw", None) is not None:
@@ -222,7 +278,23 @@ def permutation_pvalue(
     seed: int = 42,
 ) -> float:
     """Two-sample permutation test for difference in means.
+    Parameters
+    ----------
+    group1
+        First group of values.
+    group2
+        Second group of values.
+    n_perm
+        Number of permutations.
+    seed
+        Random seed.
 
+    Returns
+    -------
+    float
+        Two-sided permutation p-value in ``[0, 1]``.
+    Notes
+    -----
     H0: mean(group1) = mean(group2)
     """
     rng = np.random.default_rng(seed)
@@ -248,6 +320,23 @@ def permutation_pvalue_paired(
 ) -> float:
     """Paired permutation test (sign-flip test) for difference in means.
 
+    Parameters
+    ----------
+    x
+        First group of values.
+    y
+        Second group of values.
+    n_perm
+        Number of permutations.
+    seed
+        Random seed.
+
+    Returns
+    -------
+    float
+        Two-sided permutation p-value in ``[0, 1]``.
+    Notes
+    -----
     H0: mean(y - x) = 0
     """
     rng = np.random.default_rng(seed)
@@ -267,7 +356,24 @@ def permutation_pvalue_paired(
 def resolve_feature(adata: AnnData, query: str) -> str:
     """Resolve a feature name in adata.var_names or adata.obs.columns (case-insensitive).
 
-    Returns the exact name string to use. Raises KeyError if not found.
+    Parameters
+    ----------
+    adata
+        AnnData object.
+    query
+        Feature name to resolve.
+
+    Returns
+    -------
+    str
+        The exact name string to use.
+
+    Raises
+    ------
+    KeyError
+        If the feature is not found in adata.var_names or adata.obs.columns.
+    ValueError
+        If the feature query is an empty string.
     """
     if query is None or (isinstance(query, str) and query.strip() == ""):
         raise ValueError("Feature query must be a non-empty string.")

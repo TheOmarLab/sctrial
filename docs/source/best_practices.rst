@@ -10,6 +10,20 @@ This guide provides recommendations for robust and reproducible trial analysis w
 Study Design
 ------------
 
+Data Format Requirements
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+An ``AnnData`` object with:
+
+- Raw counts in ``adata.layers["counts"]`` (recommended)
+- Trial metadata in ``adata.obs``:
+
+  - Participant identifiers (e.g., "participant_id")
+  - Visit labels (e.g., "visit")
+  - Treatment arm (e.g., "arm")
+  - Cell-type annotations (optional, e.g., "celltype")
+
+
 Sample Size Recommendations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
