@@ -33,6 +33,7 @@ from .._shared import (
     despine,
     did_table,
     get_sade_feldman,
+    harmonize_response,
     save_panel,
     score_signatures,
     sig_display,
@@ -56,6 +57,7 @@ def _prepare_did_data() -> dict:
     bootstrap SEs.
     """
     adata = get_sade_feldman()
+    adata = harmonize_response(adata)
 
     if "log1p_tpm" not in adata.layers and "tpm" in adata.layers:
         adata.layers["log1p_tpm"] = np.log1p(adata.layers["tpm"])
@@ -65,7 +67,7 @@ def _prepare_did_data() -> dict:
     design = TrialDesign(
         participant_col="participant_id",
         visit_col="visit",
-        arm_col="response",
+        arm_col="response_harmonized",
         arm_treated="Responder",
         arm_control="Non-responder",
     )

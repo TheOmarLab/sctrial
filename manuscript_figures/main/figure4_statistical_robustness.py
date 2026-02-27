@@ -26,6 +26,7 @@ from .._shared import (
     despine,
     did_table,
     get_sade_feldman,
+    harmonize_response,
     np,
     pd,
     plt,
@@ -49,6 +50,7 @@ def _prepare_data() -> dict:
     """Load data and run all analyses required by the four panels."""
     # 1. Load and score -------------------------------------------------
     adata = get_sade_feldman()
+    adata = harmonize_response(adata)
 
     # Ensure log1p_tpm layer exists
     if "log1p_tpm" not in adata.layers:
@@ -72,7 +74,7 @@ def _prepare_data() -> dict:
     design = TrialDesign(
         participant_col="participant_id",
         visit_col="visit",
-        arm_col="response",
+        arm_col="response_harmonized",
         arm_treated="Responder",
         arm_control="Non-responder",
     )

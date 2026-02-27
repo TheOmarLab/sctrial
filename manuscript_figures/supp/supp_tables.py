@@ -85,7 +85,7 @@ def _build_design_sf():
     return TrialDesign(
         participant_col="participant_id",
         visit_col="visit",
-        arm_col="response",
+        arm_col="response_harmonized",
         arm_treated="Responder",
         arm_control="Non-responder",
     )

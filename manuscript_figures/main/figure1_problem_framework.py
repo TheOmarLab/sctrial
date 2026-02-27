@@ -37,6 +37,7 @@ FIGSIZE = (16, 11)
 def _prepare_data() -> dict:
     """Load Sade-Feldman, score signatures, run DiD at both aggregation levels."""
     adata = get_sade_feldman()
+    adata = harmonize_response(adata)
 
     # Ensure log1p_tpm layer exists
     if "log1p_tpm" not in adata.layers and "tpm" in adata.layers:
@@ -47,7 +48,7 @@ def _prepare_data() -> dict:
     design = TrialDesign(
         participant_col="participant_id",
         visit_col="visit",
-        arm_col="response",
+        arm_col="response_harmonized",
         arm_treated="Responder",
         arm_control="Non-responder",
     )
