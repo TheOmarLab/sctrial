@@ -470,22 +470,28 @@ def did_fit(
         p_did = float(fit.pvalues.get(term, np.nan))
         effective_cov_type = "nonrobust"
 
+    # Report the effective participant count after any model row drops
+    # (statsmodels may drop rows during formula parsing, e.g. singular FE levels)
+    model_row_idx = fit.model.data.row_labels
+    n_units_eff = int(tmp[unit].loc[model_row_idx].nunique())
+
     res = {
         "beta_DiD": float(fit.params.get(term, np.nan)),
         "se_DiD": se_did,
         "p_DiD": p_did,
         "beta_time": float(fit.params.get(time, np.nan)),
         "p_time": float(fit.pvalues.get(time, np.nan)),
-        "n_units": int(tmp[unit].nunique()),
+        "n_units": n_units_eff,
         "resid_sd": float(np.sqrt(fit.scale)),
         "cov_type_used": effective_cov_type,
     }
 
     if use_bootstrap and term in fit.params:
+        # Use model_row_idx to align clusters with the actual rows used in the fit
         boot_res = wild_cluster_bootstrap_t(
             fit,
             X=fit.model.exog,
-            clusters=np.asarray(tmp[unit].to_numpy()),
+            clusters=np.asarray(tmp[unit].loc[model_row_idx].to_numpy()),
             term_name=term,
             B=n_boot,
             seed=seed,

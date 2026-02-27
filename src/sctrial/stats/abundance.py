@@ -262,6 +262,15 @@ def abundance_did(
             if term not in fit.params or np.isnan(fit.params[term]):
                 raise ValueError("DiD term not estimable")
 
+            # Align clusters with actual model rows (statsmodels may drop rows)
+            model_row_idx = fit.model.data.row_labels
+            if use_diff:
+                # df_delta has participant_id as index; model_row_idx ARE the labels
+                clusters_aligned = np.asarray(model_row_idx)
+            else:
+                clusters_aligned = tmp[design.participant_col].loc[model_row_idx].to_numpy()
+            n_units_eff = int(len(np.unique(clusters_aligned)))
+
             p_val = float(fit.pvalues[term])
             se_boot = np.nan
             ci_lo_boot = np.nan
@@ -270,7 +279,7 @@ def abundance_did(
                 boot_res = wild_cluster_bootstrap_t(
                     fit,
                     X=fit.model.exog,
-                    clusters=clusters_use,
+                    clusters=clusters_aligned,
                     term_name=term,
                     B=n_boot,
                     seed=seed
@@ -282,7 +291,7 @@ def abundance_did(
 
             row_dict: dict = {
                 "celltype": ct,
-                "n_participants": int(n_units),
+                "n_participants": n_units_eff,
                 "beta_DiD": float(fit.params[term]),
                 "se_DiD": float(fit.bse[term]),
                 "p_DiD": p_val,
