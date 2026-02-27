@@ -13,6 +13,7 @@ from scipy.stats import t as t_dist
 
 from ..adata_tools import subset_cells
 from ..design import TrialDesign
+from ..utils import wild_cluster_bootstrap_t
 from ._utils import apply_fdr, encode_visit, standardize_series
 from .did import MIN_CLUSTERS_FOR_ROBUST_SE, AggregateFunc, AggregateMode, _ensure_paired
 
@@ -181,6 +182,9 @@ def within_arm_comparison(
     agg: AggregateFunc = "mean",
     standardize: bool = True,
     covariates: list[str] | None = None,
+    use_bootstrap: bool = False,
+    n_boot: int = 999,
+    seed: int = 42,
 ) -> pd.DataFrame:
     """Paired within-arm pre->post contrast.
 
@@ -211,6 +215,15 @@ def within_arm_comparison(
     covariates
         Optional covariate columns to include as fixed effects. Non-numeric
         covariates must be constant within participant-visit.
+    use_bootstrap
+        Whether to use wild cluster bootstrap for p-values and CIs.
+        Recommended when the number of participants (clusters) is small
+        (< 10).  When enabled, bootstrap p-values replace the analytical
+        p-values as the primary ``p_time`` column.
+    n_boot
+        Number of bootstrap iterations (999 or 1999 for publication).
+    seed
+        Random seed for bootstrap reproducibility.
 
     Returns
     -------
@@ -223,9 +236,15 @@ def within_arm_comparison(
         - **ci_lo_time** / **ci_hi_time** : 95 % confidence interval bounds
           (``beta ± t_crit × se`` with residual df from the OLS fit).
         - **p_time** : P-value for the time coefficient
-          (cluster-robust Wald test).
+          (cluster-robust Wald test; bootstrap if ``use_bootstrap=True``).
         - **n_units** : Number of unique participants.
         - **FDR_time** : Benjamini–Hochberg corrected p-value.
+
+        When ``use_bootstrap=True``, additional columns are included:
+
+        - **p_time_boot** : Bootstrap p-value.
+        - **se_time_boot** : Bootstrap SE from coefficient distribution.
+        - **ci_lo_boot** / **ci_hi_boot** : Bootstrap-t 95 % CI.
     """
     # Subset to arm and visits
     ad = subset_cells(adata, design, arm=arm, exclude_crossovers=False)
@@ -299,19 +318,49 @@ def within_arm_comparison(
         if covariates:
             formula += " + " + " + ".join(covariates)
         model = smf.ols(formula, data=df_feat)
-        n_units_feat = df_feat[unit].nunique()
+
+        # Align cluster vector with fitted model rows: statsmodels may
+        # drop rows with missing values during formula parsing, so
+        # df_feat can be longer than model.exog.
+        model_row_idx = model.data.row_labels
+        clusters_aligned = np.asarray(
+            df_feat[unit].loc[model_row_idx].to_numpy()
+        )
+
+        n_units_feat = len(np.unique(clusters_aligned))
         if n_units_feat < MIN_CLUSTERS_FOR_ROBUST_SE:
             warnings.warn(
                 f"Only {n_units_feat} clusters (participants) available. Cluster-robust "
                 f"standard errors are unreliable with fewer than {MIN_CLUSTERS_FOR_ROBUST_SE} "
-                f"clusters.",
+                f"clusters."
+                + (" Consider using use_bootstrap=True for more reliable p-values."
+                   if not use_bootstrap else ""),
                 UserWarning,
                 stacklevel=2,
             )
-        fit = model.fit(cov_type="cluster", cov_kwds={"groups": df_feat[unit]})
+        fit = model.fit(cov_type="cluster", cov_kwds={"groups": clusters_aligned})
 
         beta = float(fit.params.get("visit_num", np.nan))
         se = float(fit.bse.get("visit_num", np.nan))
+        p_val = float(fit.pvalues.get("visit_num", np.nan))
+
+        # Fallback: if cluster-robust SE is degenerate (NaN), re-fit
+        # with nonrobust SE.  Participant FE already absorbs within-
+        # cluster correlation so homoskedastic SE is valid.
+        effective_cov_type = "cluster"
+        if not np.isfinite(se) or not np.isfinite(p_val):
+            warnings.warn(
+                f"Cluster-robust SE is degenerate (NaN) for feature '{feat}' "
+                f"with {n_units_feat} clusters. Falling back to nonrobust "
+                f"(homoskedastic) SE.",
+                UserWarning,
+                stacklevel=2,
+            )
+            fit = model.fit()  # nonrobust
+            se = float(fit.bse.get("visit_num", np.nan))
+            p_val = float(fit.pvalues.get("visit_num", np.nan))
+            effective_cov_type = "nonrobust"
+
         # Use robust conf_int() to ensure CI is consistent with the
         # cluster-robust SE / p-value (avoids df_resid mismatch).
         ci_bounds = fit.conf_int(alpha=0.05)
@@ -321,15 +370,39 @@ def within_arm_comparison(
         else:
             ci_lo = np.nan
             ci_hi = np.nan
-        rows.append({
+
+        row_dict: dict[str, object] = {
             "feature": feat,
             "beta_time": beta,
             "se_time": se,
             "ci_lo_time": ci_lo,
             "ci_hi_time": ci_hi,
-            "p_time": float(fit.pvalues.get("visit_num", np.nan)),
+            "p_time": p_val,
             "n_units": int(df_use[unit].nunique()),
-        })
+            "cov_type_used": effective_cov_type,
+        }
+
+        # Wild cluster bootstrap
+        if use_bootstrap and "visit_num" in fit.params:
+            boot_res = wild_cluster_bootstrap_t(
+                fit,
+                X=fit.model.exog,
+                clusters=clusters_aligned,  # already aligned above
+                term_name="visit_num",
+                B=n_boot,
+                seed=seed,
+                cov_type=effective_cov_type,
+            )
+            row_dict["p_time_boot"] = boot_res.p_boot
+            row_dict["se_time_boot"] = boot_res.se_boot
+            row_dict["ci_lo_boot"] = boot_res.ci_lo
+            row_dict["ci_hi_boot"] = boot_res.ci_hi
+            # Use bootstrap p-value as primary when available;
+            # preserve analytical p_time if bootstrap returned NaN
+            if np.isfinite(boot_res.p_boot):
+                row_dict["p_time"] = boot_res.p_boot
+
+        rows.append(row_dict)
 
     res = pd.DataFrame(rows)
     res = apply_fdr(res, p_col="p_time", fdr_col="FDR_time")
