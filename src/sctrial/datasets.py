@@ -287,7 +287,7 @@ def load_sade_feldman(
 
 
 def load_stephenson_data(
-    data_path: str = "data/stephenson/covid_portal_210320_with_raw.h5ad",
+    data_dir: str = "data/stephenson",
     processed_name: str = "stephenson_covid19_v3.h5ad",
     seed: int = 42,
     allow_download: bool = False,
@@ -297,7 +297,8 @@ def load_stephenson_data(
 
     Parameters
     ----------
-    data_path : str
+    data_dir : str
+        Directory containing the raw data files.
         Path to the raw h5ad data file.
     processed_name : str
         Filename for the cached processed h5ad file.
@@ -313,11 +314,11 @@ def load_stephenson_data(
     AnnData
         The processed AnnData object.
     """
-    data_path_resolved = _resolve_file(data_path)
+    data_dir_path = _resolve_dir_with_files(data_dir, ["covid_portal_210320_with_raw.h5ad"])
+    data_path_resolved = data_dir_path / "covid_portal_210320_with_raw.h5ad"
     # Derive processed cache location from the user-provided path so it
     # respects custom directory layouts even when the raw file is missing.
-    data_root = Path(data_path).parent.parent if not data_path_resolved.exists() else data_path_resolved.parent.parent
-    processed_path = data_root / "processed" / processed_name
+    processed_path = data_dir_path.parent / "processed" / processed_name
 
     if processed_path.exists() and not force_reprocess:
         adata = ad.read_h5ad(processed_path)
@@ -330,8 +331,9 @@ def load_stephenson_data(
             raise FileNotFoundError(
                 f"Data not found at {data_path_resolved}. Download from: https://www.ebi.ac.uk/biostudies/files/E-MTAB-10026/"
             )
-        data_path_resolved.parent.mkdir(parents=True, exist_ok=True)
+        data_dir_path.mkdir(parents=True, exist_ok=True)
         url = "https://www.ebi.ac.uk/biostudies/files/E-MTAB-10026/covid_portal_210320_with_raw.h5ad"
+        logger.info(f"downloading data from {url} to {data_path_resolved}")
         _download_file(url, data_path_resolved, "Stephenson COVID-19 data")
     logger.info("Processing raw data...")
     adata = ad.read_h5ad(data_path_resolved)
