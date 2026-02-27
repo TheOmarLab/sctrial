@@ -295,10 +295,12 @@ def cohens_d_from_did_approx(
     -------
     float
         Approximate Cohen's d effect size.
-    Raises
-    ------
+
+    Warns
+    -----
     DeprecationWarning
-        If cohens_d_from_did_approx() is used (deprecated).
+        Always raised; use ``cohens_d_from_did`` instead.
+
     Notes
     -----
     Deprecated: use ``cohens_d_from_did(delta_treated, delta_control)`` instead.
