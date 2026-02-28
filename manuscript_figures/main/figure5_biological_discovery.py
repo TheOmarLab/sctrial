@@ -31,7 +31,8 @@ from .._shared import *  # noqa: F401,F403
 FIGURE_NAME = "Figure5_biological_discovery"
 FIGSIZE = (18, 14)
 
-# Pseudogene / non-coding RNA patterns to deprioritize in volcano labels
+# Pseudogene / non-coding RNA / mitochondrial / ribosomal patterns to
+# EXCLUDE from volcano labels — only protein-coding genes get labelled.
 _NONCODING_PATTERN = re.compile(
     r"^(RNU\d|RNA5SP|RNY\d|RN7SL|SNOR[AD]|MIR\d|LINC\d|LOC\d|"
     r"AC\d{6}|AL\d{6}|AP\d{6}|"
@@ -39,7 +40,12 @@ _NONCODING_PATTERN = re.compile(
     r"HIGD1AP|MTCO\d|RMVSL|BCRP|NAMA$|SLMO|"
     r"IGH[VDJGM]|IGK[VJC]|IGL[VJC]|"  # Ig variable/joining/constant regions
     r"TRB[VDJ]|TRA[VDJ]|TRG[VDJ]|TRD[VDJ]|"  # TCR regions
-    r"OR\d+[A-Z])",  # olfactory receptors
+    r"OR\d+[A-Z]|"  # olfactory receptors
+    r"MT-|"  # mitochondrial genes
+    r"RPS\d|RPL\d|"  # ribosomal protein genes
+    r"HCG\d|SPRR\d|"  # HLA complex group pseudogenes, small proline-rich
+    r"HLA-|"  # HLA genes (highly polymorphic, not discovery-informative)
+    r"[A-Z]\d{5}\.\d)",  # Ensembl-style identifiers (e.g., Z95704.4)
     re.IGNORECASE,
 )
 # Suffix patterns for processed pseudogenes (e.g. PRPS1P1, RPS2P1, HCG17)
@@ -788,63 +794,67 @@ def panel_D(ax, data: dict):
             s=size_map[cat], edgecolors="none", rasterized=True,
         )
 
-    # Label top genes by |effect size|, regardless of significance.
-    # With n=10 clusters and bootstrap p-values, very few genes pass
-    # p<0.05 — but extreme effect sizes are still informative.
-    # Protein-coding genes are prioritised; non-coding backfills.
+    # Label top PROTEIN-CODING genes per direction.  Priority:
+    #   1. Most significant protein-coding genes (lowest p, p < 0.05)
+    #   2. Largest |effect size| protein-coding genes
+    # Non-coding, mitochondrial, ribosomal, and Ig/TCR genes are never
+    # labelled — their dots remain visible but unnamed.
+    N_LABELS = 8  # per direction
     texts = []
-    for sign, n_label in [("pos", 8), ("neg", 8)]:
-        if sign == "pos":
-            sub = df[df[beta_col] > 0].copy()
-            top_func = "nlargest"
-        else:
-            sub = df[df[beta_col] < 0].copy()
-            top_func = "nsmallest"
+    labelled_genes: set[str] = set()
+
+    for sign in ("pos", "neg"):
+        sub = df[df[beta_col] > 0].copy() if sign == "pos" else df[df[beta_col] < 0].copy()
+        if len(sub) == 0:
+            continue
+        # Restrict to protein-coding genes only
+        sub = sub[sub["feature"].apply(_is_likely_protein_coding)]
         if len(sub) == 0:
             continue
 
-        sub["_pc"] = sub["feature"].apply(_is_likely_protein_coding)
-        pc = sub[sub["_pc"]]
-        nc = sub[~sub["_pc"]]
+        picks: list[str] = []
 
-        top_pc = getattr(pc, top_func)(
-            min(n_label, len(pc)), beta_col,
+        # 1) Most significant protein-coding, sorted by p
+        sig = sub[sub[p_col] < p_thresh]
+        picks.extend(
+            sig.nsmallest(min(N_LABELS, len(sig)), p_col)["feature"].tolist()
         )
-        remaining = n_label - len(top_pc)
-        if remaining > 0 and len(nc) > 0:
-            top_nc = getattr(nc, top_func)(
-                min(remaining, len(nc)), beta_col,
-            )
-            top = pd.concat([top_pc, top_nc])
-        else:
-            top = top_pc
 
-        for _, row in top.iterrows():
-            is_pc = _is_likely_protein_coding(row["feature"])
-            # Color by direction regardless of significance
-            dir_clr = (COLORS["treated"] if row[beta_col] > 0
-                       else COLORS["control"])
-            t = ax.text(
-                row[beta_col], row["nlog10"], row["feature"],
-                fontsize=6.5,
-                fontweight="bold" if is_pc else "normal",
-                fontstyle="normal" if is_pc else "italic",
-                color=dir_clr,
+        # 2) Largest |beta| protein-coding (not yet picked)
+        remaining = N_LABELS - len(picks)
+        if remaining > 0:
+            pool = sub[~sub["feature"].isin(picks)]
+            top_func = "nlargest" if sign == "pos" else "nsmallest"
+            picks.extend(
+                getattr(pool, top_func)(
+                    min(remaining, len(pool)), beta_col
+                )["feature"].tolist()
             )
-            texts.append(t)
 
-    # Use adjustText with small arrows pointing from labels to dots
+        labelled_genes.update(picks)
+
+    # --- Render labels (all protein-coding, bold) ---
+    for _, row in df[df["feature"].isin(labelled_genes)].iterrows():
+        dir_clr = (COLORS["treated"] if row[beta_col] > 0
+                   else COLORS["control"])
+        t = ax.text(
+            row[beta_col], row["nlog10"], row["feature"],
+            fontsize=8, fontweight="bold", color=dir_clr,
+        )
+        texts.append(t)
+
+    # Use adjustText with arrows pointing from labels to dots
     try:
         from adjustText import adjust_text
         adjust_text(
             texts, ax=ax,
             arrowprops=dict(
-                arrowstyle="-|>", color="#555555",
-                lw=0.6, mutation_scale=6,
+                arrowstyle="-|>", color="#444444",
+                lw=0.7, mutation_scale=7,
             ),
-            force_text=(1.5, 2.0),
-            force_points=(0.5, 0.5),
-            expand_text=(1.5, 1.8),
+            force_text=(2.0, 2.5),
+            force_points=(0.8, 0.8),
+            expand_text=(1.8, 2.0),
             min_arrow_len=5,
         )
     except ImportError:
@@ -868,7 +878,7 @@ def panel_D(ax, data: dict):
         mpatches.Patch(color=COLORS["gray"], alpha=0.3,
                        label="Not significant"),
     ]
-    ax.legend(handles=legend_handles, fontsize=8, loc="upper left",
+    ax.legend(handles=legend_handles, fontsize=8, loc="lower left",
               frameon=True, framealpha=0.9)
     despine(ax)
 
