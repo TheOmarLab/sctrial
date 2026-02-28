@@ -203,6 +203,11 @@ def _prepare_data() -> dict:
         ].tolist()
         print(f"  Sade-Feldman: {len(top_genes)} variable genes selected")
 
+        # Use analytical (nonrobust) SEs for gene-level volcano.
+        # Bootstrap is used for signature-level inference (Panel C) where
+        # formal hypothesis tests matter; for the volcano (Panel D) we use
+        # analytical SEs to provide a richer visualisation of effect-size
+        # patterns across ~2000 genes.
         gene_results = did_table(
             adata_genes,
             features=top_genes,
@@ -211,25 +216,13 @@ def _prepare_data() -> dict:
             layer="log1p_tpm",
             standardize=True,
             aggregate="participant_visit",
-            use_bootstrap=True,
-            n_boot=999,
-            seed=42,
         )
 
-        n_sig = (gene_results["FDR_DiD"] < 0.1).sum()
-        n_boot_sig = 0
-        if "p_DiD_boot" in gene_results.columns:
-            from statsmodels.stats.multitest import multipletests
-            _, fdr_boot, _, _ = multipletests(
-                gene_results["p_DiD_boot"].fillna(1).values,
-                method="fdr_bh",
-            )
-            gene_results["FDR_DiD_boot"] = fdr_boot
-            n_boot_sig = (fdr_boot < 0.1).sum()
+        n_sig = (gene_results["p_DiD"] < 0.05).sum()
+        n_fdr = (gene_results["FDR_DiD"] < 0.1).sum()
         print(
             f"  Gene-level results: {len(gene_results)} genes, "
-            f"{n_sig} FDR<0.1 (analytical), "
-            f"{n_boot_sig} FDR<0.1 (bootstrap)"
+            f"{n_sig} nominal p<0.05, {n_fdr} FDR<0.1"
         )
 
         del adata_genes
@@ -697,15 +690,7 @@ def panel_C(ax, data: dict):
         ci_hi = df["beta_DiD"] + 1.96 * df["se_DiD"]
         ci_label = "95% Wald CI"
 
-    # Use bootstrap p-values for significance annotation if available
-    if "p_DiD_boot" in df.columns:
-        from statsmodels.stats.multitest import multipletests
-        _, fdr_boot, _, _ = multipletests(
-            df["p_DiD_boot"].fillna(1).values, method="fdr_bh"
-        )
-        fdr_vals = fdr_boot
-    else:
-        fdr_vals = df["FDR_DiD"].values
+    fdr_vals = df["FDR_DiD"].values
 
     sig_mask = pd.Series(fdr_vals < 0.1, index=df.index)
 
@@ -769,19 +754,13 @@ def panel_D(ax, data: dict):
     df = gene_results.copy()
     beta_col = "beta_DiD"
 
-    # Use bootstrap p-values when available (more reliable with small
-    # cluster counts); fall back to analytical Wald inference.
-    if "p_DiD_boot" in df.columns:
-        p_col = "p_DiD_boot"
-    else:
-        p_col = "p_DiD"
+    p_col = "p_DiD"
 
     df = df.dropna(subset=[beta_col, p_col])
 
     # Standard volcano: nominal p on y-axis, colour by nominal p < 0.05.
-    # FDR is too conservative for gene-level display (0 hits after
-    # correcting 2000 tests with n=10 clusters).  We note in the
-    # manuscript that no genes survive FDR correction.
+    # Analytical (nonrobust) SEs provide gene-level resolution; bootstrap
+    # inference is reserved for signature-level tests (Panel C).
     p_thresh = 0.05
     df["nlog10"] = -np.log10(df[p_col].clip(lower=1e-300))
     sig_mask = df[p_col] < p_thresh
