@@ -411,7 +411,7 @@ def panel_B(ax, data: dict):
     if term_col is not None:
         df = df[df[term_col].apply(_is_relevant_pathway_cart)]
 
-    # Select top 8 pathways by |NES|
+    # Select top 8 pathways by |NES| (agnostic, no hand-picking)
     if fdr_col is not None:
         sig_df = df[df[fdr_col] < 0.25]
     else:
@@ -452,9 +452,26 @@ def panel_B(ax, data: dict):
         for g in genes:
             gene_counts[g] = gene_counts.get(g, 0) + 1
 
-    shared_genes = sorted([g for g, c in gene_counts.items() if c >= 2],
-                          key=lambda g: -gene_counts[g])
+    n_pw = len(pathway_genes)
+
+    # Prefer genes that DISCRIMINATE between pathways (present in some,
+    # absent in others) over genes shared by all.  Score each gene by
+    # how close its count is to n_pw/2 (maximum discrimination).
+    def _discrim_score(gene: str) -> float:
+        c = gene_counts[gene]
+        # Must appear in ≥2 pathways to be "shared"
+        if c < 2:
+            return -999
+        # Maximise discrimination: distance from n/2 is BAD
+        return -abs(c - n_pw / 2)
+
+    shared_genes = sorted(
+        [g for g, c in gene_counts.items() if c >= 2],
+        key=lambda g: (_discrim_score(g), -gene_counts[g]),
+        reverse=True,
+    )
     if len(shared_genes) < 5:
+        # Fallback: just take the most frequent genes
         shared_genes = sorted(gene_counts.keys(),
                               key=lambda g: -gene_counts[g])[:25]
     shared_genes = shared_genes[:25]
