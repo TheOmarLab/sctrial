@@ -297,12 +297,14 @@ def _run_scalability_benchmark(
 
 def _identify_best_feature(
     adata, sigs: list[str], design, visits: tuple, dtype: str,
-) -> str | None:
+) -> tuple[str, float] | None:
     """Run a full analysis on all data and return the most significant feature.
 
     This identifies the "oracle" feature for power analysis — simulating a
     scenario where a researcher pre-registers the best signature.
     Always uses the raw (unadjusted) p-value to pick the best feature.
+
+    Returns (feature_name, p_value) or None if no feature found.
     """
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
@@ -326,7 +328,8 @@ def _identify_best_feature(
     )
     if p_col is None:
         return None
-    return res.loc[res[p_col].idxmin(), "feature"]
+    best_idx = res[p_col].idxmin()
+    return res.loc[best_idx, "feature"], float(res.loc[best_idx, p_col])
 
 
 def _compute_subsampling_power(
@@ -373,9 +376,16 @@ def _compute_subsampling_power(
             continue
 
         # Identify best feature from full sample
-        best_feat = _identify_best_feature(adata, sigs, design, visits, dtype)
-        if best_feat is None:
-            print(f"    {name}: no significant feature found, skipping")
+        result = _identify_best_feature(adata, sigs, design, visits, dtype)
+        if result is None:
+            print(f"    {name}: no feature found, skipping")
+            continue
+        best_feat, best_p = result
+
+        # Skip if even the full sample doesn't reach significance
+        if best_p >= 0.05:
+            print(f"    {name}: best feature not significant at full sample "
+                  f"(p={best_p:.3f}), skipping power analysis")
             continue
 
         # Choose subsample sizes: from 4 up to n_total
@@ -691,8 +701,12 @@ def _scaling_scatter(
     y_col: str,
     y_label: str,
     title: str,
+    y_ticks: list[float] | None = None,
+    y_tick_labels: list[str] | None = None,
 ) -> None:
     """Shared helper: log-log scatter of (n_cells × n_genes) vs metric."""
+    from matplotlib.ticker import FixedLocator, NullLocator
+
     dtype_colors = {
         "two_arm_did": COLORS["control"],
         "paired": COLORS["treated"],
@@ -708,6 +722,14 @@ def _scaling_scatter(
     matrix_size = (df["n_cells"] * df["n_genes"]).values.astype(float)
     y_vals = df[y_col].values.astype(float)
 
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+
+    # ── Subtle grid ──
+    ax.grid(True, which="major", axis="both", color="#e0e0e0",
+            linewidth=0.5, zorder=0)
+    ax.set_axisbelow(True)
+
     # ── Fit power-law trend:  y = a * (cells×genes)^b ──
     log_x = np.log10(matrix_size)
     log_y = np.log10(np.clip(y_vals, 1e-6, None))
@@ -719,11 +741,11 @@ def _scaling_scatter(
         100,
     )
     y_trend = 10 ** (log_a + b * np.log10(x_trend))
-    ax.plot(x_trend, y_trend, "--", color=COLORS["gray"], alpha=0.45,
+    ax.plot(x_trend, y_trend, "--", color="#999", alpha=0.6,
             linewidth=1.2, zorder=1,
-            label=f"Fit: $\\propto n^{{{b:.2f}}}$")
+            label=f"$\\propto n^{{{b:.2f}}}$")
 
-    # ── Scatter points: color = design type, fixed size ──
+    # ── Scatter points: color = design type ──
     plotted_dtypes: set = set()
     for i, (_, row) in enumerate(df.iterrows()):
         dt = row.get("design_type", "paired")
@@ -732,8 +754,8 @@ def _scaling_scatter(
         plotted_dtypes.add(dt)
         ax.scatter(
             matrix_size[i], y_vals[i],
-            s=70, color=c, edgecolors="white", linewidths=0.6,
-            zorder=4, label=lbl, alpha=0.9,
+            s=80, color=c, edgecolors="white", linewidths=0.8,
+            zorder=4, label=lbl, alpha=0.92,
         )
 
     # ── Dataset labels with adjustText ──
@@ -749,22 +771,37 @@ def _scaling_scatter(
         texts.append(
             ax.text(
                 matrix_size[i], y_vals[i], lbl,
-                fontsize=6, color="#333",
+                fontsize=7, color="#444", fontstyle="italic",
             )
         )
     adjust_text(
         texts, ax=ax,
-        arrowprops=dict(arrowstyle="-", color="#aaa", lw=0.5),
+        arrowprops=dict(arrowstyle="-", color="#bbb", lw=0.6),
         ensure_inside_axes=True,
         min_arrow_len=5,
     )
 
-    ax.set_xscale("log")
-    ax.set_yscale("log")
+    # ── Explicit x-axis ticks (scientific notation via LaTeX) ──
+    x_ticks = [3e8, 5e8, 1e9, 2e9, 5e9]
+    x_labels = [
+        r"$3{\times}10^8$", r"$5{\times}10^8$", r"$10^9$",
+        r"$2{\times}10^9$", r"$5{\times}10^9$",
+    ]
+    ax.xaxis.set_major_locator(FixedLocator(x_ticks))
+    ax.set_xticklabels(x_labels)
+    ax.xaxis.set_minor_locator(NullLocator())
+
+    # ── Explicit y-axis ticks ──
+    if y_ticks is not None and y_tick_labels is not None:
+        ax.yaxis.set_major_locator(FixedLocator(y_ticks))
+        ax.set_yticklabels(y_tick_labels)
+        ax.yaxis.set_minor_locator(NullLocator())
+
     ax.set_xlabel("Matrix size  (cells × genes)")
     ax.set_ylabel(y_label)
-    ax.set_title(title, fontsize=10, fontweight="bold")
-    ax.legend(fontsize=7, frameon=False, loc="lower right")
+    ax.set_title(title, fontsize=11, fontweight="bold", pad=10)
+    ax.legend(fontsize=8, frameon=True, fancybox=True,
+              framealpha=0.85, edgecolor="#ddd", loc="lower right")
     despine(ax)
 
 
@@ -773,7 +810,9 @@ def panel_A(ax: plt.Axes, data: dict) -> None:
     _scaling_scatter(
         ax, data["timing_df"],
         y_col="time_s", y_label="Runtime (seconds)",
-        title="Runtime scaling (real datasets)",
+        title="Computational scaling",
+        y_ticks=[0.1, 0.2, 0.5, 1.0, 2.0],
+        y_tick_labels=["0.1", "0.2", "0.5", "1.0", "2.0"],
     )
 
 
@@ -781,23 +820,25 @@ def panel_B(ax: plt.Axes, data: dict) -> None:
     """Panel B: Memory scaling — log-log scatter with trend line."""
     _scaling_scatter(
         ax, data["memory_df"],
-        y_col="peak_mb", y_label="Peak memory (MB)",
-        title="Memory scaling (real datasets)",
+        y_col="peak_mb", y_label="Peak memory",
+        title="Memory scaling",
+        y_ticks=[512, 1024, 2048, 4096, 8192, 12288],
+        y_tick_labels=["0.5 GB", "1 GB", "2 GB", "4 GB", "8 GB", "12 GB"],
     )
 
 
 def panel_C(ax: plt.Axes, data: dict) -> None:
-    """Panel C: Empirical power via participant subsampling (real data)."""
+    """Panel C: Empirical power via participant subsampling."""
     power_df = data["power_df"]
     if power_df.empty:
         ax.text(0.5, 0.5, "Insufficient data\nfor power analysis",
                 ha="center", va="center", transform=ax.transAxes,
                 fontsize=10, color=COLORS["gray"])
-        ax.set_title("Empirical power", fontsize=10, fontweight="bold")
+        ax.set_title("Empirical power", fontsize=11, fontweight="bold")
         despine(ax)
         return
 
-    # One curve per dataset — use dataset_colors consistent with Panel D
+    # Color palette consistent with Panel D
     dataset_colors = {
         "Sade-Feldman": COLORS["control"],
         "Vaccine":      COLORS["treated"],
@@ -813,14 +854,19 @@ def panel_C(ax: plt.Axes, data: dict) -> None:
         "COVID-19":     "v",
     }
 
+    # Subtle grid
+    ax.grid(True, which="major", axis="y", color="#e8e8e8",
+            linewidth=0.5, zorder=0)
+    ax.set_axisbelow(True)
+
     for ds_name, grp in power_df.groupby("dataset", sort=False):
         color = dataset_colors.get(ds_name, COLORS["gray"])
         marker = markers.get(ds_name, "o")
         ax.plot(
             grp["n_participants"], grp["power"],
-            color=color, marker=marker, markersize=5,
-            markeredgecolor="white", markeredgewidth=0.5,
-            linewidth=1.8, zorder=3, label=ds_name,
+            color=color, marker=marker, markersize=6,
+            markeredgecolor="white", markeredgewidth=0.6,
+            linewidth=2.0, zorder=3, label=ds_name,
         )
 
     # 80% power threshold
@@ -828,15 +874,15 @@ def panel_C(ax: plt.Axes, data: dict) -> None:
                linestyle="--", zorder=1, alpha=0.5)
     x_max = power_df["n_participants"].max()
     ax.text(x_max * 0.98, 0.82,
-            "80% power", ha="right", va="bottom", fontsize=7,
+            "80% power", ha="right", va="bottom", fontsize=7.5,
             color=COLORS["gray"], fontstyle="italic")
 
-    ax.set_xlabel("Number of participants (subsampled)")
-    ax.set_ylabel(r"Power (1 – $\beta$)")
+    ax.set_xlabel("Number of participants")
+    ax.set_ylabel(r"Power (1 − $\beta$)")
     ax.set_ylim(-0.02, 1.05)
-    ax.set_title("Empirical power (participant subsampling)",
-                 fontsize=10, fontweight="bold")
-    ax.legend(frameon=False, fontsize=8, loc="lower right")
+    ax.set_title("Empirical power", fontsize=11, fontweight="bold", pad=10)
+    ax.legend(frameon=True, fancybox=True, framealpha=0.85,
+              edgecolor="#ddd", fontsize=8, loc="lower right")
     despine(ax)
 
 
@@ -903,9 +949,14 @@ def panel_D(ax: plt.Axes, data: dict) -> None:
             data_rows.append((len(y_positions) - 1, r))
             y += 1
 
+    # Subtle grid
+    ax.grid(True, which="major", axis="x", color="#e8e8e8",
+            linewidth=0.4, zorder=0)
+    ax.set_axisbelow(True)
+
     # Zero line
-    ax.axvline(0, color=COLORS["gray"], linewidth=0.7, linestyle="-",
-               zorder=0, alpha=0.4)
+    ax.axvline(0, color="#666", linewidth=0.9, linestyle="-",
+               zorder=1, alpha=0.5)
 
     # Plot data points and CIs
     for idx, row in data_rows:
@@ -953,8 +1004,8 @@ def panel_D(ax: plt.Axes, data: dict) -> None:
                    linestyle=":", zorder=0, alpha=0.3)
 
     ax.set_xlabel("Cohen's d  (signed effect size)")
-    ax.set_title("Observed effect sizes across datasets",
-                 fontsize=10, fontweight="bold")
+    ax.set_title("Observed effect sizes",
+                 fontsize=11, fontweight="bold", pad=10)
 
     # Symmetric x-limits around data range
     all_vals = effect_df[["d_lower", "d_upper", "d"]].values.flatten()
