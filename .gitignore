@@ -39,6 +39,10 @@ tutorials/data/
 **/.doctrees/
 docs/build/
 
+# Manuscript figure computation cache
+_cache/
+manuscript_figures/_cache/
+
 # Run scripts (local convenience only)
 run_nb*.sh
 

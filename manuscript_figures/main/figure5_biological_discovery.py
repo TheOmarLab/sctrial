@@ -18,9 +18,13 @@ E  Gene-level volcano plot (Sade-Feldman DiD, protein-coding gene labels).
 from __future__ import annotations
 
 import gc
+import hashlib
+import os
+import pickle  # noqa: S403 — local dev cache of our own DataFrames
 import re
 import traceback
 import warnings
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
@@ -30,6 +34,9 @@ import seaborn as sns
 
 from .._shared import *  # noqa: F401,F403
 
+# ── Cache directory for expensive computations ─────────────────────────
+_CACHE_DIR = Path(__file__).resolve().parent.parent / "_cache"
+
 # ── Figure-level constants ────────────────────────────────────────────
 FIGURE_NAME = "Figure5_biological_discovery"
 FIGSIZE = (18, 14)
@@ -37,17 +44,18 @@ FIGSIZE = (18, 14)
 # Pseudogene / non-coding RNA / mitochondrial / ribosomal patterns to
 # EXCLUDE from volcano labels — only protein-coding genes get labelled.
 _NONCODING_PATTERN = re.compile(
-    r"^(RNU\d|RNA5SP|RNY\d|RN7SL|SNOR[AD]|MIR\d|LINC\d|LOC\d|"
+    r"^(RNU\d|RNA5SP|RNY\d|RN7S[LK]|SNOR[AD]|MIR\d|LINC\d|LOC\d|"
     r"AC\d{6}|AL\d{6}|AP\d{6}|"
     r"RP\d+-|RP[SL]\d+P|CT[ABCD]-|XXbac-|KB-|LA16c-|GS\d-|"
     r"HIGD1AP|MTCO\d|RMVSL|BCRP|NAMA$|SLMO|"
-    r"IGH[VDJGM]|IGK[VJC]|IGL[VJC]|"  # Ig variable/joining/constant regions
-    r"TRB[VDJ]|TRA[VDJ]|TRG[VDJ]|TRD[VDJ]|"  # TCR regions
-    r"OR\d+[A-Z]|"  # olfactory receptors
+    r"IGH[VDJ]|IGKV|IGLV|IGKJ|IGLJ|"  # Ig V/D/J segments (NOT constant regions)
+    r"TRB[VDJ]|TRA[VDJ]|TRG[VDJ]|TRD[VDJ]|"  # TCR V/D/J segments
+    r"OR\d+[A-Z]|VN\d+R|"  # olfactory/vomeronasal receptors
     r"MT-|"  # mitochondrial genes
     r"RPS\d|RPL\d|"  # ribosomal protein genes
     r"HCG\d|SPRR\d|"  # HLA complex group pseudogenes, small proline-rich
     r"HLA-|"  # HLA genes (highly polymorphic, not discovery-informative)
+    r"[A-Z]{1,2}\d{2}NC\d|"  # contig-derived lncRNAs (e.g., LL22NC03-75A1.9)
     r"[A-Z]\d{5}\.\d)",  # Ensembl-style identifiers (e.g., Z95704.4)
     re.IGNORECASE,
 )
@@ -116,8 +124,30 @@ def _is_immune_or_metabolic(term: str) -> bool:
 # Data preparation
 # ======================================================================
 
-def _prepare_data() -> dict:
-    """Load datasets, run DiD, GSEA, and gene-level analysis."""
+def _prepare_data(*, use_cache: bool = True) -> dict:
+    """Load datasets, run DiD, GSEA, and gene-level analysis.
+
+    Results are cached to disk (pickle) because gene-level DiD across
+    ~2000 genes takes several minutes.  Set ``use_cache=False`` to
+    force recomputation.
+    """
+    cache_key = "figure5_sade_feldman_v3"
+    cache_path = _CACHE_DIR / f"{cache_key}.pkl"
+
+    if use_cache and cache_path.exists():
+        print(f"  Loading cached data from {cache_path.name}")
+        with open(cache_path, "rb") as f:
+            cached = pickle.load(f)  # noqa: S301 — trusted local cache
+        # Reload adata (not cached — too large) for any panel that needs it
+        adata = get_sade_feldman()
+        if "log1p_tpm" not in adata.layers and "tpm" in adata.layers:
+            adata.layers["log1p_tpm"] = np.log1p(adata.layers["tpm"])
+        adata, sig_cols = score_signatures(adata, layer="log1p_tpm")
+        adata = harmonize_response(adata)
+        cached["adata"] = adata
+        cached["sig_cols"] = sig_cols
+        return cached
+
     # ------------------------------------------------------------------
     # 1. Sade-Feldman: signature-level DiD + GSEA
     # ------------------------------------------------------------------
@@ -420,7 +450,7 @@ def _prepare_data() -> dict:
         traceback.print_exc()
         gene_results = None
 
-    return dict(
+    result = dict(
         adata=adata,
         sig_cols=sig_cols,
         design=design,
@@ -429,6 +459,17 @@ def _prepare_data() -> dict:
         gsea_results=gsea_results,
         gene_results=gene_results,
     )
+
+    # Cache everything except adata (too large) and sig_cols (recomputed)
+    if use_cache:
+        _CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        to_cache = {k: v for k, v in result.items()
+                    if k not in ("adata", "sig_cols")}
+        with open(cache_path, "wb") as f:
+            pickle.dump(to_cache, f, protocol=pickle.HIGHEST_PROTOCOL)
+        print(f"  Cached results to {cache_path.name}")
+
+    return result
 
 
 # ======================================================================
@@ -812,17 +853,32 @@ def panel_C(ax, data: dict):
         df[fdr_col] = pd.to_numeric(df[fdr_col], errors="coerce")
     df = df.dropna(subset=[nes_col])
 
-    # Select top 8 pathways by |NES| (FDR < 0.25 preferred)
-    if fdr_col is not None:
-        sig_df = df[df[fdr_col] < 0.25]
-    else:
-        sig_df = df
-    if len(sig_df) < 4:
-        sig_df = df
+    # Select top 8 pathways balanced across NES directions.
+    # Take up to 4 from each direction (NES>0 and NES<0), filling
+    # remaining slots from the other direction if one has fewer.
+    # NOTE: We do NOT pre-filter by FDR here — we want both directions
+    # represented (matching Panel B). FDR is shown in the annotation.
+    MAX_PW = 8
+    work_df = df.assign(_abs=df[nes_col].abs())
+    pos_df = work_df[work_df[nes_col] > 0].nlargest(MAX_PW, "_abs")
+    neg_df = work_df[work_df[nes_col] < 0].nlargest(MAX_PW, "_abs")
 
-    selected = sig_df.assign(
-        _abs=sig_df[nes_col].abs(),
-    ).nlargest(8, "_abs").drop(columns="_abs")
+    n_pos = min(len(pos_df), MAX_PW // 2)
+    n_neg = min(len(neg_df), MAX_PW // 2)
+    # Fill remaining slots from whichever side has more
+    remaining = MAX_PW - n_pos - n_neg
+    if remaining > 0:
+        if len(pos_df) > n_pos:
+            extra_pos = min(remaining, len(pos_df) - n_pos)
+            n_pos += extra_pos
+            remaining -= extra_pos
+        if remaining > 0 and len(neg_df) > n_neg:
+            n_neg += min(remaining, len(neg_df) - n_neg)
+
+    selected = pd.concat([
+        pos_df.head(n_pos),
+        neg_df.head(n_neg),
+    ]).drop(columns="_abs", errors="ignore")
     selected = selected.sort_values(nes_col, ascending=True)
 
     # Parse leading-edge genes
@@ -851,50 +907,78 @@ def panel_C(ax, data: dict):
         _panel_C_did_summary(ax, data)
         return
 
-    # Select genes appearing in ≥2 pathways (most informative)
-    gene_counts: dict[str, int] = {}
-    for genes in pathway_genes.values():
-        for g in genes:
-            gene_counts[g] = gene_counts.get(g, 0) + 1
-
-    shared_genes = sorted([g for g, c in gene_counts.items() if c >= 2],
-                          key=lambda g: -gene_counts[g])
-    if len(shared_genes) < 5:
-        shared_genes = sorted(gene_counts.keys(),
-                              key=lambda g: -gene_counts[g])[:20]
-    shared_genes = shared_genes[:20]  # cap at 20
-
-    if not shared_genes:
-        _panel_C_did_summary(ax, data)
-        return
-
-    # Build binary matrix
+    # Select informative genes — guarantee BOTH NES directions are
+    # represented by selecting top genes PER direction then merging.
+    # This avoids the problem where one direction's highly-overlapping
+    # gene sets dominate a global top-N selection.
     pathways = list(pathway_genes.keys())
+    pos_pathways = [p for p in pathways if pathway_nes.get(p, 0) > 0]
+    neg_pathways = [p for p in pathways if pathway_nes.get(p, 0) <= 0]
+
+    def _count_genes_in_group(pw_list):
+        """Count gene occurrences within a group of pathways."""
+        counts: dict[str, int] = {}
+        for pw in pw_list:
+            for g in pathway_genes.get(pw, set()):
+                counts[g] = counts.get(g, 0) + 1
+        return counts
+
+    TOTAL_GENES = 20
+    half = TOTAL_GENES // 2
+    pos_counts = _count_genes_in_group(pos_pathways)
+    neg_counts = _count_genes_in_group(neg_pathways)
+
+    # Take top genes from each direction
+    pos_genes = sorted(pos_counts.keys(),
+                       key=lambda g: -pos_counts[g])[:half]
+    neg_genes = sorted(neg_counts.keys(),
+                       key=lambda g: -neg_counts[g])[:half]
+
+    # Merge, removing duplicates (keep order)
+    seen: set[str] = set()
+    shared_genes: list[str] = []
+    for g in pos_genes + neg_genes:
+        if g not in seen:
+            shared_genes.append(g)
+            seen.add(g)
+
+    # If one direction had fewer than half genes, fill from the other
+    if len(shared_genes) < TOTAL_GENES:
+        all_counts: dict[str, int] = {}
+        for pw in pathways:
+            for g in pathway_genes.get(pw, set()):
+                all_counts[g] = all_counts.get(g, 0) + 1
+        for g in sorted(all_counts.keys(), key=lambda g: -all_counts[g]):
+            if g not in seen:
+                shared_genes.append(g)
+                seen.add(g)
+            if len(shared_genes) >= TOTAL_GENES:
+                break
+
+    print(f"  Panel C: {len(pos_genes)} genes from NES>0 pathways, "
+          f"{len(neg_genes)} genes from NES≤0 pathways")
+
+    # Build binary matrix and prune zero rows/cols
     matrix = np.zeros((len(pathways), len(shared_genes)), dtype=int)
     for i, pw in enumerate(pathways):
-        for j, gene in enumerate(shared_genes):
-            if gene in pathway_genes[pw]:
+        for j, g in enumerate(shared_genes):
+            if g in pathway_genes[pw]:
                 matrix[i, j] = 1
+    # Prune zero rows (pathways with no genes in selection)
+    row_ok = matrix.sum(axis=1) > 0
+    matrix = matrix[row_ok]
+    pathways = [p for p, k in zip(pathways, row_ok) if k]
+    # Prune zero cols
+    col_ok = matrix.sum(axis=0) > 0
+    matrix = matrix[:, col_ok]
+    shared_genes = [g for g, k in zip(shared_genes, col_ok) if k]
 
-    # Prune zero-information rows
-    row_sums = matrix.sum(axis=1)
-    keep_rows = row_sums > 0
-    if keep_rows.sum() < len(pathways):
-        n_pruned = len(pathways) - keep_rows.sum()
-        print(f"  Panel C: pruned {n_pruned} pathways with no shared genes")
-        mask_list = keep_rows.tolist()
-        matrix = matrix[keep_rows]
-        pathways = [p for p, k in zip(pathways, mask_list) if k]
+    n_pw_kept = sum(1 for p in pathways if pathway_nes.get(p, 0) > 0)
+    n_neg_kept = sum(1 for p in pathways if pathway_nes.get(p, 0) <= 0)
+    print(f"  Panel C: {n_pw_kept} NES>0 + {n_neg_kept} NES≤0 pathways "
+          f"retained, {len(shared_genes)} genes")
 
-    # Prune zero-information columns
-    col_sums = matrix.sum(axis=0)
-    keep_cols = col_sums > 0
-    if keep_cols.sum() < len(shared_genes):
-        mask_list = keep_cols.tolist()
-        matrix = matrix[:, keep_cols]
-        shared_genes = [g for g, k in zip(shared_genes, mask_list) if k]
-
-    if matrix.size == 0:
+    if matrix.size == 0 or not shared_genes:
         _panel_C_did_summary(ax, data)
         return
 
@@ -918,11 +1002,28 @@ def panel_C(ax, data: dict):
     # Recompute column counts after clustering
     col_counts = matrix.sum(axis=0)
 
-    # ── Colour constants ──
-    BLUE = (0.122, 0.471, 0.706)   # steel blue (Responder ↑)
-    ORANGE = (0.878, 0.478, 0.184)  # warm orange (Non-responder ↑)
+    # ── Sort pathways: NES>0 block on top, NES<0 on bottom ──
+    pos_pws = [p for p in pathways if pathway_nes.get(p, 0) > 0]
+    neg_pws = [p for p in pathways if pathway_nes.get(p, 0) <= 0]
+    # Sort within each block by |NES|
+    pos_pws.sort(key=lambda p: pathway_nes.get(p, 0))
+    neg_pws.sort(key=lambda p: pathway_nes.get(p, 0))
+    pathways_sorted = neg_pws + pos_pws
+    row_idx = [pathways.index(p) for p in pathways_sorted]
+    matrix = matrix[row_idx]
+    pathways = pathways_sorted
+    n_sep = len(neg_pws)  # separator position between blocks
 
-    # ── Colour matrix: NES direction per pathway ──
+    # Recompute column counts after reorder
+    col_counts = matrix.sum(axis=0)
+
+    # ── Colour constants ──
+    BLUE = (0.122, 0.471, 0.706)   # steel blue (Responder ↑ / NES>0)
+    ORANGE = (0.878, 0.478, 0.184)  # warm orange (Non-responder ↑ / NES<0)
+    FILL_COLOR = (0.200, 0.400, 0.600)  # single muted blue for "in leading edge"
+    EMPTY_COLOR = (0.94, 0.94, 0.94)    # light gray for "not in leading edge"
+
+    # ── Colour matrix: in leading edge (filled) vs not (empty) ──
     rgb = np.full((n_pw, n_genes, 3), 0.94)  # light gray for empty
     for i, pw in enumerate(pathways):
         nes_val = pathway_nes.get(pw, 0)
@@ -940,14 +1041,27 @@ def panel_C(ax, data: dict):
     for j in range(n_genes + 1):
         ax.axvline(j - 0.5, color="white", linewidth=0.8, zorder=2)
 
+    # Separator line between NES<0 and NES>0 blocks
+    if n_sep > 0 and n_sep < n_pw:
+        ax.axhline(n_sep - 0.5, color="black", linewidth=1.5, zorder=3)
+
     # X-axis: gene labels
     ax.set_xticks(range(n_genes))
     ax.set_xticklabels(shared_genes, rotation=55, ha="right", fontsize=6,
                        style="italic")
 
-    # Y-axis: pathway labels coloured by NES direction
+    # Y-axis: pathway labels with FDR annotation, coloured by NES direction
+    pw_labels = []
+    for pw in pathways:
+        fdr_val = pathway_fdr.get(pw)
+        if fdr_val is not None and fdr_val < 0.25:
+            fdr_str = f" (FDR={fdr_val:.2f})" if fdr_val >= 0.01 else " (FDR<0.01)"
+        else:
+            fdr_str = ""
+        pw_labels.append(f"{pw}{fdr_str}")
+
     ax.set_yticks(range(n_pw))
-    ax.set_yticklabels(pathways, fontsize=6.5)
+    ax.set_yticklabels(pw_labels, fontsize=6)
     for i, (pw, label) in enumerate(zip(pathways, ax.get_yticklabels())):
         label.set_color(BLUE if pathway_nes.get(pw, 0) > 0 else ORANGE)
         label.set_fontweight("bold")
@@ -979,14 +1093,23 @@ def panel_C(ax, data: dict):
     ax.set_xlabel("")
     ax.set_ylabel("")
 
-    # Legend
+    # Legend — positioned above the top marginal bar
     legend_handles = [
-        mpatches.Patch(facecolor=BLUE, label="Responder ↑"),
-        mpatches.Patch(facecolor=ORANGE, label="Non-responder ↑"),
+        mpatches.Patch(facecolor=BLUE, label="In leading edge (Resp. ↑)"),
+        mpatches.Patch(facecolor=ORANGE, label="In leading edge (Non-resp. ↑)"),
+        mpatches.Patch(facecolor=EMPTY_COLOR, edgecolor="#CCCCCC",
+                       label="Not in leading edge"),
     ]
-    ax.legend(handles=legend_handles, fontsize=6, loc="upper right",
-              frameon=True, framealpha=0.9, edgecolor="#CCCCCC",
-              handlelength=1.0, handleheight=0.7)
+    bar_ax_pos = bar_ax.get_position()
+    ax.legend(
+        handles=legend_handles, fontsize=5.5, loc="lower right",
+        bbox_to_anchor=(
+            (bar_ax_pos.x1 - ax_pos.x0) / ax_pos.width,
+            (bar_ax_pos.y1 + 0.005 - ax_pos.y0) / ax_pos.height,
+        ),
+        frameon=True, framealpha=0.9, edgecolor="#CCCCCC",
+        handlelength=1.0, handleheight=0.7,
+    )
     for spine in ax.spines.values():
         spine.set_visible(False)
 
@@ -1139,14 +1262,13 @@ def panel_E(ax, data: dict):
             s=size_map[cat], edgecolors="none", rasterized=True,
         )
 
-    # Label top PROTEIN-CODING genes per direction.  Priority:
-    #   1. Most significant protein-coding genes (lowest p, p < 0.05)
-    #   2. Largest |effect size| protein-coding genes
-    # Non-coding, mitochondrial, ribosomal, and Ig/TCR genes are never
-    # labelled — their dots remain visible but unnamed.
-    N_LABELS = 8  # per direction
+    # Label top PROTEIN-CODING genes using a combined score that weights
+    # both statistical significance and effect size.  This ensures genes
+    # at the "tips" of the volcano (high |β| AND high -log10(p)) are
+    # always labelled — the exact genes a reader's eye is drawn to.
+    N_LABELS = 10  # per direction
     texts = []
-    labelled_genes: set[str] = set()
+    labelled_genes: list[str] = []  # ordered by score (highest first)
 
     for sign in ("pos", "neg"):
         sub = df[df[beta_col] > 0].copy() if sign == "pos" else df[df[beta_col] < 0].copy()
@@ -1157,38 +1279,51 @@ def panel_E(ax, data: dict):
         if len(sub) == 0:
             continue
 
+        # Combined score: rank-normalised |β| + rank-normalised -log10(p)
+        # This naturally selects genes at volcano tips (high on both axes).
+        sub = sub.copy()
+        sub["_rank_beta"] = sub[beta_col].abs().rank(pct=True)
+        sub["_rank_sig"] = sub["nlog10"].rank(pct=True)
+        sub["_score"] = sub["_rank_beta"] + sub["_rank_sig"]
+
+        candidates = sub.nlargest(min(N_LABELS * 2, len(sub)), "_score")
+
+        # Deduplicate: skip genes too close to an already-selected one
+        # (prevents overlapping arrows pointing to the same spot).
+        x_range = df[beta_col].max() - df[beta_col].min()
+        y_range = df["nlog10"].max() - df["nlog10"].min()
+        min_dx = x_range * 0.03  # ~3% of axis range
+        min_dy = y_range * 0.03
+        selected_coords: list[tuple[float, float]] = []
         picks: list[str] = []
+        for _, cand in candidates.iterrows():
+            cx, cy = cand[beta_col], cand["nlog10"]
+            too_close = False
+            for sx, sy in selected_coords:
+                if abs(cx - sx) < min_dx and abs(cy - sy) < min_dy:
+                    too_close = True
+                    break
+            if not too_close:
+                picks.append(cand["feature"])
+                selected_coords.append((cx, cy))
+                if len(picks) >= N_LABELS:
+                    break
 
-        # 1) Most significant protein-coding, sorted by p
-        sig = sub[sub[p_col] < p_thresh]
-        picks.extend(
-            sig.nsmallest(min(N_LABELS, len(sig)), p_col)["feature"].tolist()
-        )
+        labelled_genes.extend(picks)
 
-        # 2) Largest |beta| protein-coding (not yet picked)
-        remaining = N_LABELS - len(picks)
-        if remaining > 0:
-            pool = sub[~sub["feature"].isin(picks)]
-            top_func = "nlargest" if sign == "pos" else "nsmallest"
-            picks.extend(
-                getattr(pool, top_func)(
-                    min(remaining, len(pool)), beta_col
-                )["feature"].tolist()
-            )
-
-        labelled_genes.update(picks)
+    labelled_set = set(labelled_genes)
 
     # --- Render labels (all protein-coding, bold) ---
-    for _, row in df[df["feature"].isin(labelled_genes)].iterrows():
+    for _, row in df[df["feature"].isin(labelled_set)].iterrows():
         dir_clr = (COLORS["treated"] if row[beta_col] > 0
                    else COLORS["control"])
         t = ax.text(
             row[beta_col], row["nlog10"], row["feature"],
-            fontsize=8, fontweight="bold", color=dir_clr,
+            fontsize=7, fontweight="bold", color=dir_clr,
         )
         texts.append(t)
 
-    # Fix #5: Suppress adjustText FancyArrowPatch transform warning
+    # Suppress adjustText FancyArrowPatch transform warning
     try:
         from adjustText import adjust_text
         with warnings.catch_warnings():
@@ -1203,10 +1338,10 @@ def panel_E(ax, data: dict):
                     arrowstyle="-|>", color="#444444",
                     lw=0.7, mutation_scale=7,
                 ),
-                force_text=(2.0, 2.5),
-                force_points=(0.8, 0.8),
-                expand_text=(1.8, 2.0),
-                min_arrow_len=5,
+                force_text=(2.5, 3.0),
+                force_points=(1.0, 1.0),
+                expand_text=(2.0, 2.5),
+                min_arrow_len=8,
             )
     except ImportError:
         pass
