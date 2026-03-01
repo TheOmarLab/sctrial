@@ -685,89 +685,105 @@ def _fmt_cells(n: int) -> str:
     return f"{n / 1_000:.0f}K"
 
 
-def panel_A(ax: plt.Axes, data: dict) -> None:
-    """Panel A: Runtime scaling — bar chart by dataset (sorted by cell count)."""
-    timing_df = data["timing_df"]
-
-    x = np.arange(len(timing_df))
-
-    # Color by design type
+def _scaling_scatter(
+    ax: plt.Axes,
+    df: pd.DataFrame,
+    y_col: str,
+    y_label: str,
+    title: str,
+) -> None:
+    """Shared helper: log-log scatter of (n_cells × n_genes) vs metric."""
     dtype_colors = {
         "two_arm_did": COLORS["control"],
         "paired": COLORS["treated"],
         "cross_sectional": COLORS["highlight"],
     }
-    bar_colors = [dtype_colors.get(row.get("design_type", ""), COLORS["treated"])
-                  for _, row in timing_df.iterrows()]
-    ax.bar(
-        x, timing_df["time_s"].values,
-        color=bar_colors, edgecolor="white", linewidth=0.8,
-        width=0.65, zorder=3, alpha=0.85,
+    dtype_labels = {
+        "two_arm_did": "Two-arm DiD",
+        "paired": "Paired pre/post",
+        "cross_sectional": "Cross-sectional",
+    }
+
+    # x-axis = n_cells × n_genes (proportional to matrix size)
+    matrix_size = (df["n_cells"] * df["n_genes"]).values.astype(float)
+    y_vals = df[y_col].values.astype(float)
+
+    # ── Fit power-law trend:  y = a * (cells×genes)^b ──
+    log_x = np.log10(matrix_size)
+    log_y = np.log10(np.clip(y_vals, 1e-6, None))
+    b, log_a = np.polyfit(log_x, log_y, 1)
+
+    x_trend = np.logspace(
+        np.log10(matrix_size.min() * 0.5),
+        np.log10(matrix_size.max() * 2.0),
+        100,
+    )
+    y_trend = 10 ** (log_a + b * np.log10(x_trend))
+    ax.plot(x_trend, y_trend, "--", color=COLORS["gray"], alpha=0.45,
+            linewidth=1.2, zorder=1,
+            label=f"Fit: $\\propto n^{{{b:.2f}}}$")
+
+    # ── Scatter points: color = design type, fixed size ──
+    plotted_dtypes: set = set()
+    for i, (_, row) in enumerate(df.iterrows()):
+        dt = row.get("design_type", "paired")
+        c = dtype_colors.get(dt, COLORS["treated"])
+        lbl = dtype_labels.get(dt) if dt not in plotted_dtypes else None
+        plotted_dtypes.add(dt)
+        ax.scatter(
+            matrix_size[i], y_vals[i],
+            s=70, color=c, edgecolors="white", linewidths=0.6,
+            zorder=4, label=lbl, alpha=0.9,
+        )
+
+    # ── Dataset labels with adjustText ──
+    from adjustText import adjust_text  # noqa: E402
+    texts = []
+    for i, (_, row) in enumerate(df.iterrows()):
+        n_c = row["n_cells"]
+        n_g = row["n_genes"]
+        cell_str = (f"{n_c / 1_000_000:.0f}M" if n_c >= 1_000_000
+                    else f"{n_c / 1_000:.0f}K")
+        gene_str = f"{n_g // 1000}K"
+        lbl = f"{row['dataset']}  ({cell_str} × {gene_str})"
+        texts.append(
+            ax.text(
+                matrix_size[i], y_vals[i], lbl,
+                fontsize=6, color="#333",
+            )
+        )
+    adjust_text(
+        texts, ax=ax,
+        arrowprops=dict(arrowstyle="-", color="#aaa", lw=0.5),
+        ensure_inside_axes=True,
+        min_arrow_len=5,
     )
 
-    # Annotate each bar with runtime
-    for xi, (_, row) in zip(x, timing_df.iterrows()):
-        ax.text(xi, row["time_s"] + 0.02,
-                f"{row['time_s']:.2f}s",
-                ha="center", va="bottom", fontsize=7, fontweight="bold",
-                color="#333")
-
-    ax.set_xticks(x)
-    n_genes_col = "n_genes" if "n_genes" in timing_df.columns else None
-    ax.set_xticklabels(
-        [f"{row['dataset']}\n{_fmt_cells(row['n_cells'])} cells"
-         + (f", {row['n_genes'] // 1000}K genes" if n_genes_col else "")
-         for _, row in timing_df.iterrows()],
-        fontsize=6.5,
-    )
-    ax.set_ylabel("Runtime (seconds)")
-    ax.set_title("Runtime scaling (real datasets)", fontsize=10,
-                 fontweight="bold")
-    ax.set_ylim(bottom=0)
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_xlabel("Matrix size  (cells × genes)")
+    ax.set_ylabel(y_label)
+    ax.set_title(title, fontsize=10, fontweight="bold")
+    ax.legend(fontsize=7, frameon=False, loc="lower right")
     despine(ax)
+
+
+def panel_A(ax: plt.Axes, data: dict) -> None:
+    """Panel A: Runtime scaling — log-log scatter with trend line."""
+    _scaling_scatter(
+        ax, data["timing_df"],
+        y_col="time_s", y_label="Runtime (seconds)",
+        title="Runtime scaling (real datasets)",
+    )
 
 
 def panel_B(ax: plt.Axes, data: dict) -> None:
-    """Panel B: Memory scaling — bar chart by dataset (sorted by cell count)."""
-    memory_df = data["memory_df"]
-
-    x = np.arange(len(memory_df))
-
-    # Color by design type
-    dtype_colors = {
-        "two_arm_did": COLORS["control"],
-        "paired": COLORS["treated"],
-        "cross_sectional": COLORS["highlight"],
-    }
-    bar_colors = [dtype_colors.get(row.get("design_type", ""), COLORS["neutral"])
-                  for _, row in memory_df.iterrows()]
-    ax.bar(
-        x, memory_df["peak_mb"].values,
-        color=bar_colors, edgecolor="white", linewidth=0.8,
-        width=0.65, zorder=3, alpha=0.85,
+    """Panel B: Memory scaling — log-log scatter with trend line."""
+    _scaling_scatter(
+        ax, data["memory_df"],
+        y_col="peak_mb", y_label="Peak memory (MB)",
+        title="Memory scaling (real datasets)",
     )
-
-    # Annotate each bar with memory
-    for xi, (_, row) in zip(x, memory_df.iterrows()):
-        val = row["peak_mb"]
-        label = f"{val:.0f} MB" if val < 1024 else f"{val / 1024:.1f} GB"
-        ax.text(xi, val + val * 0.03,
-                label, ha="center", va="bottom", fontsize=7,
-                fontweight="bold", color="#333")
-
-    ax.set_xticks(x)
-    n_genes_col = "n_genes" if "n_genes" in memory_df.columns else None
-    ax.set_xticklabels(
-        [f"{row['dataset']}\n{_fmt_cells(row['n_cells'])} cells"
-         + (f", {row['n_genes'] // 1000}K genes" if n_genes_col else "")
-         for _, row in memory_df.iterrows()],
-        fontsize=6.5,
-    )
-    ax.set_ylabel("Peak memory (MB)")
-    ax.set_title("Memory scaling (real datasets)", fontsize=10,
-                 fontweight="bold")
-    ax.set_ylim(bottom=0)
-    despine(ax)
 
 
 def panel_C(ax: plt.Axes, data: dict) -> None:
