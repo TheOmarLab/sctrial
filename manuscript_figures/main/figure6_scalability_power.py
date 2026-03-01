@@ -2,13 +2,13 @@
 Figure 6 -- Scalability & Power Analysis
 =========================================
 
-Four-panel (2x2) figure combining computational scalability benchmarks
+Four-panel (2×2) figure combining computational scalability benchmarks
 with empirical power analysis and observed effect sizes:
 
-    A  Runtime scaling (cells vs time)
-    B  Memory scaling (cells vs peak memory)
+    A  Runtime scaling (cells vs time, log–log with reference slopes)
+    B  Memory scaling (cells vs peak memory, log–log)
     C  Empirical power curves (sample size vs power)
-    D  Forest plot of observed Cohen's d across datasets
+    D  Forest plot of observed |Cohen's d| across datasets
 """
 
 from __future__ import annotations
@@ -16,9 +16,11 @@ from __future__ import annotations
 import gc
 import time
 import tracemalloc
+import warnings
 
 import anndata as ad
 import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
 import numpy as np
 import pandas as pd
 from matplotlib.lines import Line2D
@@ -57,14 +59,16 @@ SF_DESIGN = TrialDesign(
 )
 SF_VISITS: tuple[str, str] = ("Pre", "Post")
 
-# Benchmark sizes
+# Benchmark parameters — use many features so the timing is meaningful.
+# With 100 features × OLS regressions, the benchmark reveals genuine
+# computational scaling rather than trivially fast sub-second times.
 BENCHMARK_SIZES = [1_000, 5_000, 10_000, 50_000, 100_000, 200_000]
-N_BENCHMARK_GENES = 100
-N_BENCHMARK_FEATURES = 10
+N_BENCHMARK_GENES = 500          # genes in the synthetic AnnData
+N_BENCHMARK_FEATURES = 100       # features passed to did_table
 N_BENCHMARK_PARTICIPANTS = 20
 
 # Power analysis
-N_POWER_ITERATIONS = 500
+N_POWER_ITERATIONS = 1_000       # more iterations for smoother curves
 POWER_ALPHA = 0.05
 RNG_SEED = 42
 
@@ -98,7 +102,6 @@ def _run_scalability_benchmark() -> tuple[pd.DataFrame, pd.DataFrame]:
 
     for n_cells in BENCHMARK_SIZES:
         print(f"    n_cells = {n_cells:>7,} ... ", end="", flush=True)
-        # Create synthetic data
         rng = np.random.default_rng(42)
         X = rng.standard_normal((n_cells, N_BENCHMARK_GENES)).astype(np.float32)
         obs = pd.DataFrame({
@@ -122,17 +125,19 @@ def _run_scalability_benchmark() -> tuple[pd.DataFrame, pd.DataFrame]:
 
         tracemalloc.start()
         t0 = time.perf_counter()
-        try:
-            did_table(
-                adata,
-                features=features,
-                design=design,
-                visits=("Pre", "Post"),
-                aggregate="participant_visit",
-                standardize=True,
-            )
-        except Exception:
-            pass
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            try:
+                did_table(
+                    adata,
+                    features=features,
+                    design=design,
+                    visits=("Pre", "Post"),
+                    aggregate="participant_visit",
+                    standardize=True,
+                )
+            except Exception:
+                pass
         elapsed = time.perf_counter() - t0
         _, peak = tracemalloc.get_traced_memory()
         tracemalloc.stop()
@@ -141,7 +146,6 @@ def _run_scalability_benchmark() -> tuple[pd.DataFrame, pd.DataFrame]:
         mem_usage.append({"n_cells": n_cells, "peak_mb": peak / 1024**2})
         print(f"{elapsed:.2f}s, {peak / 1024**2:.1f} MB")
 
-        # Free synthetic data
         del adata, X, obs
         gc.collect()
 
@@ -151,8 +155,8 @@ def _run_scalability_benchmark() -> tuple[pd.DataFrame, pd.DataFrame]:
 def _compute_simulation_power() -> pd.DataFrame:
     """Compute power curves via simulation at multiple effect sizes.
 
-    Simulates DiD data with realistic variance (estimated from Sade-Feldman)
-    at three effect sizes: small (d=0.3), medium (d=0.5), large (d=0.8).
+    Simulates DiD data with unit variance at three effect sizes:
+    small (d=0.3), medium (d=0.5), large (d=0.8).
     Varies sample size per arm from 5 to 50.
 
     Returns
@@ -163,9 +167,9 @@ def _compute_simulation_power() -> pd.DataFrame:
     print("  Computing simulation-based power curves ...")
 
     effect_sizes = [
-        (0.3, "Small (d=0.3)"),
-        (0.5, "Medium (d=0.5)"),
-        (0.8, "Large (d=0.8)"),
+        (0.3, "Small (d = 0.3)"),
+        (0.5, "Medium (d = 0.5)"),
+        (0.8, "Large (d = 0.8)"),
     ]
     sample_sizes = [5, 8, 10, 12, 15, 20, 25, 30, 40, 50]
     rng = np.random.default_rng(RNG_SEED)
@@ -174,17 +178,12 @@ def _compute_simulation_power() -> pd.DataFrame:
     for d_val, d_label in effect_sizes:
         for n_per_group in sample_sizes:
             n_sig = 0
-            n_total = 2 * n_per_group  # total participants
+            n_total = 2 * n_per_group
             for _ in range(N_POWER_ITERATIONS):
-                # Simulate participant-level pseudobulk deltas
-                # Control: delta ~ N(0, 1)
-                # Treated: delta ~ N(d, 1)
                 ctrl_deltas = rng.normal(0, 1, size=n_per_group)
                 trt_deltas = rng.normal(d_val, 1, size=n_per_group)
 
-                # DiD estimate = mean(trt_deltas) - mean(ctrl_deltas)
                 did_est = np.mean(trt_deltas) - np.mean(ctrl_deltas)
-                # SE = sqrt(var_trt/n_trt + var_ctrl/n_ctrl)
                 se = np.sqrt(
                     np.var(trt_deltas, ddof=1) / n_per_group
                     + np.var(ctrl_deltas, ddof=1) / n_per_group
@@ -209,13 +208,58 @@ def _compute_simulation_power() -> pd.DataFrame:
     return pd.DataFrame(records)
 
 
-def _compute_effect_sizes_across_datasets() -> pd.DataFrame:
-    """Compute observed Cohen's d for each dataset.
+def _paired_cohens_d(
+    participant_deltas: np.ndarray,
+) -> tuple[float, float, float]:
+    """Compute paired Cohen's d_z = mean(delta) / sd(delta) with 95% CI.
 
-    - Sade-Feldman: two-arm DiD, d from participant-level deltas
-    - Vaccine: single-arm paired, d = mean(delta) / sd(delta)
-    - AML: single-arm paired
-    - CAR-T: single-arm paired
+    Returns (d, ci_lower, ci_upper).
+    """
+    n = len(participant_deltas)
+    d = float(np.mean(participant_deltas) / np.std(participant_deltas, ddof=1))
+    se_d = np.sqrt(1 / n + d**2 / (2 * n))
+    t_crit = stats.t.ppf(0.975, n - 1)
+    return d, d - t_crit * se_d, d + t_crit * se_d
+
+
+def _best_paired_d(
+    adata,
+    sigs: list[str],
+    pid_col: str = "participant_id",
+    visit_col: str = "visit",
+    pre_label: str = "Pre",
+    post_label: str = "Post",
+) -> dict | None:
+    """Find the signature with the largest absolute paired Cohen's d."""
+    best_d, best_rec = 0.0, None
+    for sig in sigs:
+        if sig not in adata.obs.columns:
+            continue
+        pb = (
+            adata.obs.groupby([pid_col, visit_col], observed=True)[sig]
+            .mean()
+            .reset_index()
+        )
+        deltas = []
+        for pid, pdf in pb.groupby(pid_col):
+            if {pre_label, post_label}.issubset(set(pdf[visit_col])):
+                pre_val = pdf.loc[pdf[visit_col] == pre_label, sig].values[0]
+                post_val = pdf.loc[pdf[visit_col] == post_label, sig].values[0]
+                deltas.append(post_val - pre_val)
+        if len(deltas) >= 3:
+            arr = np.array(deltas)
+            d_val, ci_lo, ci_hi = _paired_cohens_d(arr)
+            if abs(d_val) > abs(best_d):
+                best_d = d_val
+                best_rec = {"d": d_val, "d_lower": ci_lo, "d_upper": ci_hi}
+    return best_rec
+
+
+def _compute_effect_sizes_across_datasets() -> pd.DataFrame:
+    """Compute observed |Cohen's d| for each dataset.
+
+    All effect sizes are reported as absolute values so the forest plot
+    has a consistent, interpretable orientation (larger = bigger effect).
 
     Returns
     -------
@@ -231,17 +275,18 @@ def _compute_effect_sizes_across_datasets() -> pd.DataFrame:
         sf = harmonize_response(sf)
         sf, sf_sigs = score_signatures(sf, layer="log1p_tpm")
 
-        did_res = did_table(
-            sf,
-            features=sf_sigs,
-            design=SF_DESIGN,
-            visits=SF_VISITS,
-            aggregate="participant_visit",
-            standardize=True,
-        )
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            did_res = did_table(
+                sf,
+                features=sf_sigs,
+                design=SF_DESIGN,
+                visits=SF_VISITS,
+                aggregate="participant_visit",
+                standardize=True,
+            )
         top_sig = did_res.loc[did_res["beta_DiD"].abs().idxmax(), "feature"]
 
-        # Compute participant-level pseudobulk deltas
         pb = (
             sf.obs.groupby(
                 [SF_DESIGN.participant_col, SF_DESIGN.visit_col,
@@ -256,8 +301,7 @@ def _compute_effect_sizes_across_datasets() -> pd.DataFrame:
             arm_pb = pb[pb[SF_DESIGN.arm_col] == arm]
             arm_deltas = []
             for pid, pdf in arm_pb.groupby(SF_DESIGN.participant_col):
-                visits_present = set(pdf[SF_DESIGN.visit_col])
-                if set(SF_VISITS).issubset(visits_present):
+                if set(SF_VISITS).issubset(set(pdf[SF_DESIGN.visit_col])):
                     pre_val = pdf.loc[
                         pdf[SF_DESIGN.visit_col] == SF_VISITS[0], top_sig
                     ].values[0]
@@ -271,14 +315,16 @@ def _compute_effect_sizes_across_datasets() -> pd.DataFrame:
             np.array(deltas[SF_DESIGN.arm_treated]),
             np.array(deltas[SF_DESIGN.arm_control]),
         )
-        n1 = len(deltas[SF_DESIGN.arm_treated])
-        n2 = len(deltas[SF_DESIGN.arm_control])
+        n1, n2 = len(deltas[SF_DESIGN.arm_treated]), len(deltas[SF_DESIGN.arm_control])
         ci_lo, ci_hi = effect_size_ci(d, n1, n2)
+        # Store absolute value — sign is arbitrary in two-arm designs
         records.append({
-            "dataset": "Sade-Feldman\n(Immunotherapy)",
-            "d": d, "d_lower": ci_lo, "d_upper": ci_hi,
+            "dataset": "Sade-Feldman (Immunotherapy)",
+            "d": abs(d),
+            "d_lower": abs(d) - abs(d - ci_lo),  # preserve CI width
+            "d_upper": abs(d) + abs(ci_hi - d),
         })
-        print(f"    Sade-Feldman: d={d:.2f} [{ci_lo:.2f}, {ci_hi:.2f}]")
+        print(f"    Sade-Feldman: |d|={abs(d):.2f}")
     except Exception as exc:
         print(f"    Sade-Feldman: FAILED ({exc})")
 
@@ -286,40 +332,17 @@ def _compute_effect_sizes_across_datasets() -> pd.DataFrame:
     try:
         vax = get_vaccine()
         vax, vax_sigs = score_signatures(vax, layer="counts")
-
-        # Compute participant-level deltas (post - pre)
-        best_d, best_rec = 0.0, None
-        for sig in vax_sigs:
-            pb = (
-                vax.obs.groupby(["participant_id", "visit"], observed=True)[sig]
-                .mean()
-                .reset_index()
-            )
-            participant_deltas = []
-            for pid, pdf in pb.groupby("participant_id"):
-                visits_present = set(pdf["visit"])
-                if {"Pre", "Post"}.issubset(visits_present):
-                    pre_val = pdf.loc[pdf["visit"] == "Pre", sig].values[0]
-                    post_val = pdf.loc[pdf["visit"] == "Post", sig].values[0]
-                    participant_deltas.append(post_val - pre_val)
-            if len(participant_deltas) >= 3:
-                arr = np.array(participant_deltas)
-                d_val = np.mean(arr) / np.std(arr, ddof=1)
-                if abs(d_val) > abs(best_d):
-                    best_d = d_val
-                    n = len(arr)
-                    se_d = np.sqrt(1 / n + best_d**2 / (2 * n))
-                    t_crit = stats.t.ppf(0.975, n - 1)
-                    best_rec = {
-                        "dataset": "Vaccine\n(GSE171964)",
-                        "d": best_d,
-                        "d_lower": best_d - t_crit * se_d,
-                        "d_upper": best_d + t_crit * se_d,
-                    }
-        if best_rec is not None:
-            records.append(best_rec)
-            print(f"    Vaccine: d={best_rec['d']:.2f} "
-                  f"[{best_rec['d_lower']:.2f}, {best_rec['d_upper']:.2f}]")
+        rec = _best_paired_d(vax, vax_sigs)
+        if rec is not None:
+            d_abs = abs(rec["d"])
+            hw = (rec["d_upper"] - rec["d_lower"]) / 2
+            records.append({
+                "dataset": "Vaccine (GSE171964)",
+                "d": d_abs,
+                "d_lower": d_abs - hw,
+                "d_upper": d_abs + hw,
+            })
+            print(f"    Vaccine: |d|={d_abs:.2f}")
     except Exception as exc:
         print(f"    Vaccine: FAILED ({exc})")
 
@@ -327,47 +350,17 @@ def _compute_effect_sizes_across_datasets() -> pd.DataFrame:
     try:
         aml = load_clinical_trial_dataset("aml")
         aml, aml_sigs = score_signatures(aml, layer="counts")
-
-        best_d, best_rec = 0.0, None
-        pid_col = "participant_id"
-        visit_col = "visit"
-        pre_visit, post_visit = "Pre", "Post"
-
-        for sig in aml_sigs:
-            pb = (
-                aml.obs.groupby([pid_col, visit_col], observed=True)[sig]
-                .mean()
-                .reset_index()
-            )
-            participant_deltas = []
-            for pid, pdf in pb.groupby(pid_col):
-                visits_present = set(pdf[visit_col])
-                if {pre_visit, post_visit}.issubset(visits_present):
-                    pre_val = pdf.loc[
-                        pdf[visit_col] == pre_visit, sig
-                    ].values[0]
-                    post_val = pdf.loc[
-                        pdf[visit_col] == post_visit, sig
-                    ].values[0]
-                    participant_deltas.append(post_val - pre_val)
-            if len(participant_deltas) >= 3:
-                arr = np.array(participant_deltas)
-                d_val = np.mean(arr) / np.std(arr, ddof=1)
-                if abs(d_val) > abs(best_d):
-                    best_d = d_val
-                    n = len(arr)
-                    se_d = np.sqrt(1 / n + best_d**2 / (2 * n))
-                    t_crit = stats.t.ppf(0.975, n - 1)
-                    best_rec = {
-                        "dataset": "AML\n(GSE116256)",
-                        "d": best_d,
-                        "d_lower": best_d - t_crit * se_d,
-                        "d_upper": best_d + t_crit * se_d,
-                    }
-        if best_rec is not None:
-            records.append(best_rec)
-            print(f"    AML: d={best_rec['d']:.2f} "
-                  f"[{best_rec['d_lower']:.2f}, {best_rec['d_upper']:.2f}]")
+        rec = _best_paired_d(aml, aml_sigs)
+        if rec is not None:
+            d_abs = abs(rec["d"])
+            hw = (rec["d_upper"] - rec["d_lower"]) / 2
+            records.append({
+                "dataset": "AML (GSE116256)",
+                "d": d_abs,
+                "d_lower": d_abs - hw,
+                "d_upper": d_abs + hw,
+            })
+            print(f"    AML: |d|={d_abs:.2f}")
     except Exception as exc:
         print(f"    AML: FAILED ({exc})")
 
@@ -375,57 +368,25 @@ def _compute_effect_sizes_across_datasets() -> pd.DataFrame:
     try:
         cart = load_clinical_trial_dataset("cart")
         cart, cart_sigs = score_signatures(cart, layer="counts")
-
-        best_d, best_rec = 0.0, None
-        pid_col = "participant_id"
-        visit_col = "visit"
-        pre_visit, post_visit = "Pre", "Post"
-
-        for sig in cart_sigs:
-            pb = (
-                cart.obs.groupby([pid_col, visit_col], observed=True)[sig]
-                .mean()
-                .reset_index()
-            )
-            participant_deltas = []
-            for pid, pdf in pb.groupby(pid_col):
-                visits_present = set(pdf[visit_col])
-                if {pre_visit, post_visit}.issubset(visits_present):
-                    pre_val = pdf.loc[
-                        pdf[visit_col] == pre_visit, sig
-                    ].values[0]
-                    post_val = pdf.loc[
-                        pdf[visit_col] == post_visit, sig
-                    ].values[0]
-                    participant_deltas.append(post_val - pre_val)
-            if len(participant_deltas) >= 3:
-                arr = np.array(participant_deltas)
-                d_val = np.mean(arr) / np.std(arr, ddof=1)
-                if abs(d_val) > abs(best_d):
-                    best_d = d_val
-                    n = len(arr)
-                    se_d = np.sqrt(1 / n + best_d**2 / (2 * n))
-                    t_crit = stats.t.ppf(0.975, n - 1)
-                    best_rec = {
-                        "dataset": "CAR-T\n(GSE290722)",
-                        "d": best_d,
-                        "d_lower": best_d - t_crit * se_d,
-                        "d_upper": best_d + t_crit * se_d,
-                    }
-        if best_rec is not None:
-            records.append(best_rec)
-            print(f"    CAR-T: d={best_rec['d']:.2f} "
-                  f"[{best_rec['d_lower']:.2f}, {best_rec['d_upper']:.2f}]")
+        rec = _best_paired_d(cart, cart_sigs)
+        if rec is not None:
+            d_abs = abs(rec["d"])
+            hw = (rec["d_upper"] - rec["d_lower"]) / 2
+            records.append({
+                "dataset": "CAR-T (GSE290722)",
+                "d": d_abs,
+                "d_lower": d_abs - hw,
+                "d_upper": d_abs + hw,
+            })
+            print(f"    CAR-T: |d|={d_abs:.2f}")
     except Exception as exc:
         print(f"    CAR-T: FAILED ({exc})")
 
-    # ── COVID-19 Stephenson (cross-sectional: Severe vs Mild) ─────────
+    # ── COVID-19 Stephenson (cross-sectional: Severe vs Healthy) ─────
     try:
         covid = get_stephenson()
         covid, covid_sigs = score_signatures(covid, layer="counts")
 
-        # Between-group comparison: Severe vs Mild
-        # Use the harmonized 'severity' column (binary: Mild/Severe)
         arm_col = "severity"
         if arm_col not in covid.obs.columns:
             for c in covid.obs.columns:
@@ -434,8 +395,10 @@ def _compute_effect_sizes_across_datasets() -> pd.DataFrame:
                     break
 
         arm_vals = covid.obs[arm_col].unique()
-        severe_label = [v for v in arm_vals if "sever" in str(v).lower() or "crit" in str(v).lower()]
-        healthy_label = [v for v in arm_vals if "health" in str(v).lower() or "mild" in str(v).lower()]
+        severe_label = [v for v in arm_vals
+                        if "sever" in str(v).lower() or "crit" in str(v).lower()]
+        healthy_label = [v for v in arm_vals
+                         if "health" in str(v).lower() or "mild" in str(v).lower()]
 
         if severe_label and healthy_label:
             severe_label = severe_label[0]
@@ -445,23 +408,20 @@ def _compute_effect_sizes_across_datasets() -> pd.DataFrame:
             for sig in covid_sigs:
                 if sig not in covid.obs.columns:
                     continue
-                grp_severe = covid.obs.loc[covid.obs[arm_col] == severe_label, sig].dropna().values
-                grp_healthy = covid.obs.loc[covid.obs[arm_col] == healthy_label, sig].dropna().values
-                if len(grp_severe) < 5 or len(grp_healthy) < 5:
+                # Pseudobulk per participant
+                pid_col = "participant_id"
+                if pid_col not in covid.obs.columns:
                     continue
-                # Pseudobulk: average per participant
-                if "participant_id" in covid.obs.columns:
-                    pb_s = covid.obs.loc[covid.obs[arm_col] == severe_label].groupby("participant_id")[sig].mean()
-                    pb_h = covid.obs.loc[covid.obs[arm_col] == healthy_label].groupby("participant_id")[sig].mean()
-                else:
-                    pb_s = pd.Series(grp_severe)
-                    pb_h = pd.Series(grp_healthy)
-
+                pb_s = (covid.obs.loc[covid.obs[arm_col] == severe_label]
+                        .groupby(pid_col)[sig].mean())
+                pb_h = (covid.obs.loc[covid.obs[arm_col] == healthy_label]
+                        .groupby(pid_col)[sig].mean())
                 if len(pb_s) < 3 or len(pb_h) < 3:
                     continue
                 pooled_sd = np.sqrt(
-                    ((len(pb_s) - 1) * pb_s.std()**2 + (len(pb_h) - 1) * pb_h.std()**2) /
-                    (len(pb_s) + len(pb_h) - 2)
+                    ((len(pb_s) - 1) * pb_s.std()**2
+                     + (len(pb_h) - 1) * pb_h.std()**2)
+                    / (len(pb_s) + len(pb_h) - 2)
                 )
                 if pooled_sd < 1e-12:
                     continue
@@ -469,19 +429,20 @@ def _compute_effect_sizes_across_datasets() -> pd.DataFrame:
                 if abs(d_val) > abs(best_d):
                     best_d = d_val
                     n1, n2 = len(pb_s), len(pb_h)
-                    se_d = np.sqrt(1 / n1 + 1 / n2 + best_d**2 / (2 * (n1 + n2)))
+                    se_d = np.sqrt(
+                        1 / n1 + 1 / n2 + best_d**2 / (2 * (n1 + n2))
+                    )
                     t_crit = stats.t.ppf(0.975, n1 + n2 - 2)
                     best_rec = {
-                        "dataset": "COVID-19\n(Stephenson)",
-                        "d": best_d,
-                        "d_lower": best_d - t_crit * se_d,
-                        "d_upper": best_d + t_crit * se_d,
+                        "d": abs(best_d),
+                        "d_lower": abs(best_d) - t_crit * se_d,
+                        "d_upper": abs(best_d) + t_crit * se_d,
                     }
 
             if best_rec is not None:
+                best_rec["dataset"] = "COVID-19 (Stephenson)"
                 records.append(best_rec)
-                print(f"    COVID-19: d={best_rec['d']:.2f} "
-                      f"[{best_rec['d_lower']:.2f}, {best_rec['d_upper']:.2f}]")
+                print(f"    COVID-19: |d|={best_rec['d']:.2f}")
     except Exception as exc:
         print(f"    COVID-19: FAILED ({exc})")
 
@@ -489,22 +450,11 @@ def _compute_effect_sizes_across_datasets() -> pd.DataFrame:
 
 
 def _prepare_data() -> dict:
-    """Run all data preparation steps.
-
-    Returns
-    -------
-    dict
-        Keys: timing_df, memory_df, power_df, best_sig, effect_df
-    """
+    """Run all data preparation steps."""
     print("Figure 6: Scalability & Power Analysis")
 
-    # Panel A & B: scalability benchmarks
     timing_df, memory_df = _run_scalability_benchmark()
-
-    # Panel C: simulation-based power curves
     power_df = _compute_simulation_power()
-
-    # Panel D: effect sizes across datasets
     effect_df = _compute_effect_sizes_across_datasets()
 
     return {
@@ -519,182 +469,209 @@ def _prepare_data() -> dict:
 # Panel drawing functions
 # ======================================================================
 
-def panel_runtime(ax: plt.Axes, timing_df: pd.DataFrame) -> None:
-    """Panel A: Runtime scaling (cells vs time)."""
+def _fmt_cells(n: int) -> str:
+    """Format cell count as human-readable string."""
+    if n >= 1_000_000:
+        return f"{n / 1_000_000:.0f}M"
+    return f"{n / 1_000:.0f}K"
+
+
+def panel_A(ax: plt.Axes, data: dict) -> None:
+    """Panel A: Runtime scaling (cells vs time) — log–log."""
+    timing_df = data["timing_df"]
+
     ax.plot(
-        timing_df["n_cells"],
-        timing_df["time_s"],
-        color=COLORS["treated"],
-        marker="o",
-        markersize=7,
-        markeredgecolor="white",
-        markeredgewidth=1.0,
-        linewidth=2.0,
-        zorder=3,
-    )
-    ax.scatter(
-        timing_df["n_cells"],
-        timing_df["time_s"],
-        color=COLORS["treated"],
-        s=50,
-        edgecolors="white",
-        linewidths=0.8,
-        zorder=4,
+        timing_df["n_cells"], timing_df["time_s"],
+        color=COLORS["treated"], marker="o", markersize=6,
+        markeredgecolor="white", markeredgewidth=0.8,
+        linewidth=1.8, zorder=3,
     )
 
+    # Filled area under curve for visual weight
+    ax.fill_between(
+        timing_df["n_cells"], timing_df["time_s"],
+        alpha=0.08, color=COLORS["treated"], zorder=1,
+    )
+
+    # Reference: linear scaling from first point
+    x0, y0 = timing_df["n_cells"].iloc[0], timing_df["time_s"].iloc[0]
+    x_ref = timing_df["n_cells"].values
+    y_linear = y0 * (x_ref / x0)
+    ax.plot(x_ref, y_linear, color=COLORS["gray"], ls=":", lw=1.0,
+            zorder=1, alpha=0.6, label="O(n) reference")
+
     ax.set_xscale("log")
+    ax.set_yscale("log")
     ax.set_xlabel("Number of cells")
     ax.set_ylabel("Runtime (seconds)")
-    ax.set_title("Runtime scaling", fontweight="bold")
+    ax.set_title("Runtime scaling", fontsize=10, fontweight="bold")
 
-    # Format x-axis with K/M labels
     ax.set_xticks(timing_df["n_cells"].values)
-    ax.set_xticklabels([
-        f"{n // 1000}K" if n < 1_000_000 else f"{n // 1_000_000}M"
-        for n in timing_df["n_cells"]
-    ])
+    ax.set_xticklabels([_fmt_cells(n) for n in timing_df["n_cells"]])
+    ax.xaxis.set_minor_locator(mticker.NullLocator())
+    ax.yaxis.set_major_formatter(mticker.ScalarFormatter())
+    ax.yaxis.get_major_formatter().set_scientific(False)
     ax.tick_params(axis="x", rotation=0)
 
+    ax.legend(frameon=False, fontsize=8, loc="upper left")
     despine(ax)
 
 
-def panel_memory(ax: plt.Axes, memory_df: pd.DataFrame) -> None:
-    """Panel B: Memory scaling (cells vs peak memory)."""
+def panel_B(ax: plt.Axes, data: dict) -> None:
+    """Panel B: Memory scaling (cells vs peak memory) — log–log."""
+    memory_df = data["memory_df"]
+
     ax.plot(
-        memory_df["n_cells"],
-        memory_df["peak_mb"],
-        color=COLORS["neutral"],
-        marker="s",
-        markersize=7,
-        markeredgecolor="white",
-        markeredgewidth=1.0,
-        linewidth=2.0,
-        zorder=3,
+        memory_df["n_cells"], memory_df["peak_mb"],
+        color=COLORS["neutral"], marker="s", markersize=6,
+        markeredgecolor="white", markeredgewidth=0.8,
+        linewidth=1.8, zorder=3,
     )
-    ax.scatter(
-        memory_df["n_cells"],
-        memory_df["peak_mb"],
-        color=COLORS["neutral"],
-        s=50,
-        edgecolors="white",
-        linewidths=0.8,
-        zorder=4,
+
+    ax.fill_between(
+        memory_df["n_cells"], memory_df["peak_mb"],
+        alpha=0.08, color=COLORS["neutral"], zorder=1,
     )
+
+    # Reference: linear scaling from first point
+    x0, y0 = memory_df["n_cells"].iloc[0], memory_df["peak_mb"].iloc[0]
+    x_ref = memory_df["n_cells"].values
+    y_linear = y0 * (x_ref / x0)
+    ax.plot(x_ref, y_linear, color=COLORS["gray"], ls=":", lw=1.0,
+            zorder=1, alpha=0.6, label="O(n) reference")
 
     ax.set_xscale("log")
+    ax.set_yscale("log")
     ax.set_xlabel("Number of cells")
     ax.set_ylabel("Peak memory (MB)")
-    ax.set_title("Memory scaling", fontweight="bold")
+    ax.set_title("Memory scaling", fontsize=10, fontweight="bold")
 
     ax.set_xticks(memory_df["n_cells"].values)
-    ax.set_xticklabels([
-        f"{n // 1000}K" if n < 1_000_000 else f"{n // 1_000_000}M"
-        for n in memory_df["n_cells"]
-    ])
+    ax.set_xticklabels([_fmt_cells(n) for n in memory_df["n_cells"]])
+    ax.xaxis.set_minor_locator(mticker.NullLocator())
+    ax.yaxis.set_major_formatter(mticker.ScalarFormatter())
+    ax.yaxis.get_major_formatter().set_scientific(False)
     ax.tick_params(axis="x", rotation=0)
 
+    ax.legend(frameon=False, fontsize=8, loc="upper left")
     despine(ax)
 
 
-def panel_power_curves(
-    ax: plt.Axes,
-    power_df: pd.DataFrame,
-) -> None:
+def panel_C(ax: plt.Axes, data: dict) -> None:
     """Panel C: Simulation-based power curves at multiple effect sizes."""
+    power_df = data["power_df"]
     if power_df.empty:
-        ax.text(
-            0.5, 0.5, "Insufficient data\nfor power analysis",
-            ha="center", va="center", transform=ax.transAxes,
-            fontsize=11, color=COLORS["gray"],
-        )
-        ax.set_title("Statistical power (DiD)", fontweight="bold")
+        ax.text(0.5, 0.5, "Insufficient data\nfor power analysis",
+                ha="center", va="center", transform=ax.transAxes,
+                fontsize=10, color=COLORS["gray"])
+        ax.set_title("Statistical power (DiD)", fontsize=10, fontweight="bold")
         despine(ax)
         return
 
-    curve_colors = [COLORS["neutral"], COLORS["treated"], COLORS["highlight"]]
-    markers = ["s", "o", "D"]
+    # Ordered: Large → Medium → Small so legend reads top-to-bottom
+    curve_styles = {
+        "Large (d = 0.8)":  (COLORS["highlight"], "D", 2.0),
+        "Medium (d = 0.5)": (COLORS["treated"],   "o", 2.0),
+        "Small (d = 0.3)":  (COLORS["neutral"],   "s", 1.5),
+    }
 
-    for i, (d_label, grp) in enumerate(power_df.groupby("d_label", sort=False)):
+    for d_label, grp in power_df.groupby("d_label", sort=False):
+        color, marker, lw = curve_styles.get(
+            d_label, (COLORS["gray"], "o", 1.5))
         ax.plot(
-            grp["n_per_group"],
-            grp["power"],
-            color=curve_colors[i % len(curve_colors)],
-            marker=markers[i % len(markers)],
-            markersize=5,
-            markeredgecolor="white",
-            markeredgewidth=0.6,
-            linewidth=2.0,
-            zorder=3,
-            label=d_label,
+            grp["n_per_group"], grp["power"],
+            color=color, marker=marker, markersize=5,
+            markeredgecolor="white", markeredgewidth=0.5,
+            linewidth=lw, zorder=3, label=d_label,
         )
 
     # 80% power threshold
-    ax.axhline(
-        0.80, color="gray", linewidth=1.0,
-        linestyle="--", zorder=1, alpha=0.5,
-    )
-    ax.text(
-        power_df["n_per_group"].max() * 0.98, 0.82, "80% power",
-        ha="right", va="bottom", fontsize=8,
-        color="gray", fontstyle="italic",
-    )
+    ax.axhline(0.80, color=COLORS["gray"], linewidth=0.8,
+               linestyle="--", zorder=1, alpha=0.5)
+    ax.text(power_df["n_per_group"].max() * 0.98, 0.82,
+            "80% power", ha="right", va="bottom", fontsize=7,
+            color=COLORS["gray"], fontstyle="italic")
 
     ax.set_xlabel("Participants per group")
-    ax.set_ylabel("Power (1 – β)")
+    ax.set_ylabel(r"Power (1 – $\beta$)")
     ax.set_ylim(-0.02, 1.05)
-    ax.set_title("Statistical power (DiD simulation)", fontweight="bold")
-    ax.legend(frameon=False, fontsize=9, loc="lower right")
+    ax.set_title("Statistical power (DiD simulation)",
+                 fontsize=10, fontweight="bold")
+    ax.legend(frameon=False, fontsize=8, loc="lower right")
     despine(ax)
 
 
-def panel_effect_sizes(ax: plt.Axes, effect_df: pd.DataFrame) -> None:
-    """Panel D: Forest plot of observed Cohen's d across datasets."""
+def panel_D(ax: plt.Axes, data: dict) -> None:
+    """Panel D: Forest plot of observed |Cohen's d| across datasets."""
+    effect_df = data["effect_df"]
     if effect_df.empty:
-        ax.text(
-            0.5, 0.5, "No effect size data available",
-            ha="center", va="center", transform=ax.transAxes,
-            fontsize=11, color=COLORS["gray"],
-        )
-        ax.set_title("Observed effect sizes", fontweight="bold")
+        ax.text(0.5, 0.5, "No effect size data available",
+                ha="center", va="center", transform=ax.transAxes,
+                fontsize=10, color=COLORS["gray"])
+        ax.set_title("Observed effect sizes", fontsize=10, fontweight="bold")
         despine(ax)
         return
 
-    df = effect_df.sort_values("d").reset_index(drop=True)
+    # Sort by |d| ascending so largest effects are at top
+    df = effect_df.sort_values("d", ascending=True).reset_index(drop=True)
     y_pos = np.arange(len(df))
 
-    # Color-code by dataset
-    palette = [COLORS["treated"], COLORS["control"],
-               COLORS["neutral"], COLORS["success"]]
+    # Consistent color per dataset
+    dataset_colors = {
+        "Sade-Feldman (Immunotherapy)": COLORS["control"],
+        "Vaccine (GSE171964)": COLORS["treated"],
+        "AML (GSE116256)": COLORS["success"],
+        "CAR-T (GSE290722)": COLORS["neutral"],
+        "COVID-19 (Stephenson)": COLORS["highlight"],
+    }
+
+    # For annotation clipping: cap x at max point + padding
+    x_right = df["d"].max() + 0.6
 
     for i, (_, row) in enumerate(df.iterrows()):
-        color = palette[i % len(palette)]
+        color = dataset_colors.get(row["dataset"], COLORS["gray"])
 
-        # Confidence interval whisker
-        ax.hlines(
-            y_pos[i], row["d_lower"], row["d_upper"],
-            color=color, linewidth=2.0, zorder=2,
-        )
+        # CI whisker — clip to visible range
+        ci_right = min(row["d_upper"], x_right - 0.05)
+        ax.hlines(y_pos[i], row["d_lower"], ci_right,
+                  color=color, linewidth=2.0, zorder=2)
+        # Arrow cap if CI extends beyond visible range
+        if row["d_upper"] > x_right - 0.05:
+            ax.annotate("", xy=(ci_right, y_pos[i]),
+                        xytext=(ci_right - 0.08, y_pos[i]),
+                        arrowprops=dict(arrowstyle="->", color=color, lw=1.5))
         # Point estimate
-        ax.scatter(
-            row["d"], y_pos[i],
-            color=color, s=80, zorder=3,
-            edgecolors="white", linewidths=0.8,
-        )
+        ax.scatter(row["d"], y_pos[i], color=color, s=70, zorder=3,
+                   edgecolors="white", linewidths=0.8)
 
-    # Reference lines
-    ax.axvline(0, color="black", linewidth=0.8, linestyle="-", zorder=0,
-               alpha=0.4)
-    ax.axvline(0.5, color=COLORS["gray"], linewidth=1.0, linestyle="--",
-               zorder=0, alpha=0.6)
-    ax.text(
-        0.52, len(df) * 0.5, "d = 0.5\n(medium)",
-        fontsize=7.5, color=COLORS["gray"], fontstyle="italic", va="center",
-    )
+        # Annotate d value above the point (offset vertically to avoid line)
+        ax.text(row["d"], y_pos[i] + 0.3,
+                f"|d| = {row['d']:.2f}",
+                fontsize=7, va="bottom", ha="center", color=color,
+                fontweight="bold")
+
+    # Reference lines for Cohen's benchmarks
+    for ref_d in (0.2, 0.5, 0.8):
+        ax.axvline(ref_d, color=COLORS["gray"], linewidth=0.6,
+                   linestyle=":", zorder=0, alpha=0.5)
+    # Place benchmark labels at top of plot
+    top_y = len(df) - 0.15
+    for ref_d, ref_label in [(0.2, "small"), (0.5, "medium"), (0.8, "large")]:
+        ax.text(ref_d, top_y, ref_label, fontsize=6.5,
+                color=COLORS["gray"], ha="center", fontstyle="italic")
+
+    # Zero line
+    ax.axvline(0, color="black", linewidth=0.6, zorder=0, alpha=0.3)
 
     ax.set_yticks(y_pos)
-    ax.set_yticklabels(df["dataset"].values)
-    ax.set_xlabel("Cohen's d (standardised effect size)")
-    ax.set_title("Observed effect sizes across datasets", fontweight="bold")
+    ax.set_yticklabels(df["dataset"].values, fontsize=8)
+    ax.set_xlabel("|Cohen's d|  (standardised effect size)")
+    ax.set_title("Observed effect sizes across datasets",
+                 fontsize=10, fontweight="bold")
+    # Cap x-axis: show up to max point + padding, clip very wide CIs
+    max_d = df["d"].max()
+    ax.set_xlim(left=-0.1, right=max_d + 0.6)
+    ax.set_ylim(-0.6, len(df) + 0.1)
     despine(ax)
 
 
@@ -707,19 +684,19 @@ def generate() -> None:
     apply_style()
     data = _prepare_data()
 
-    # ── Individual panels ─────────────────────────────────────────────
-    for name, draw_fn, args in [
-        ("A_runtime", panel_runtime, (data["timing_df"],)),
-        ("B_memory", panel_memory, (data["memory_df"],)),
-        ("C_power_curves", panel_power_curves,
-         (data["power_df"],)),
-        ("D_effect_sizes", panel_effect_sizes, (data["effect_df"],)),
-    ]:
-        pfig, pax = plt.subplots(figsize=(8, 6))
-        draw_fn(pax, *args)
+    panels = [
+        ("panel_A", panel_A, (8, 6)),
+        ("panel_B", panel_B, (8, 6)),
+        ("panel_C", panel_C, (8, 6)),
+        ("panel_D", panel_D, (8, 4.5)),   # shorter — only 5 rows
+    ]
+
+    for name, draw_fn, figsize in panels:
+        pfig, pax = plt.subplots(figsize=figsize)
+        draw_fn(pax, data)
+        pfig.tight_layout()
         save_panel(pfig, name, FIGURE_NAME, MAIN_OUTPUT)
 
-    # ── Clean up ──────────────────────────────────────────────────────
     clear_cache()
     gc.collect()
     print("  Done.\n")

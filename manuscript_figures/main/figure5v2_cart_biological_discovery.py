@@ -553,33 +553,11 @@ def panel_B(ax, data: dict):
     ax.barh(y_pos, df_selected[nes_col].values, color=colors, alpha=0.9,
             edgecolor="white", linewidth=0.5, height=0.7)
 
-    # Significance stars
-    if fdr_col is not None:
-        for i, (_, row) in enumerate(df_selected.iterrows()):
-            fdr_val = row[fdr_col]
-            if pd.notna(fdr_val) and fdr_val < 0.25:
-                if fdr_val < 0.001:
-                    star = "***"
-                elif fdr_val < 0.01:
-                    star = "**"
-                elif fdr_val < 0.05:
-                    star = "*"
-                else:
-                    star = "†"
-                x_pos = row[nes_col]
-                if x_pos > 0:
-                    ax.text(x_pos + 0.08, i, star, ha="left", va="center",
-                            fontsize=8, fontweight="bold", color="#333333")
-                else:
-                    ax.text(x_pos - 0.08, i, star, ha="right", va="center",
-                            fontsize=8, fontweight="bold", color="#333333")
-
     ax.axvline(0, color="black", lw=0.8)
     ax.set_yticks(y_pos)
     ax.set_yticklabels(df_selected["pathway"].values, fontsize=8)
     ax.set_xlabel("Normalized Enrichment Score (NES)")
-    ax.set_title("GSEA Pathway Enrichment — CAR-T Pre→Post "
-                 "(Immune + Metabolic)", fontsize=11)
+    ax.set_title("Pathway Enrichment", fontsize=11)
 
     # Legend
     legend_handles = [
@@ -672,7 +650,7 @@ def panel_C(ax, data: dict):
     all_genes: set[str] = set()
     _seen_names: set[str] = set()
     for _, row in selected.iterrows():
-        pname = _clean_pathway_name(str(row[term_col]), max_len=40)
+        pname = _clean_pathway_name(str(row[term_col]), max_len=30)
         if pname in _seen_names:
             lib = str(row.get("library", ""))
             pname = f"{pname} [{lib[:8]}]" if lib else f"{pname} (2)"
@@ -836,28 +814,23 @@ def panel_C(ax, data: dict):
                        style="italic")
 
     # Y-axis: pathway labels with FDR annotation
-    pw_labels = []
-    for pw in pathways:
-        fdr_val = pathway_fdr.get(pw)
-        if fdr_val is not None and fdr_val < 0.25:
-            fdr_str = f" (FDR={fdr_val:.2f})" if fdr_val >= 0.01 else " (FDR<0.01)"
-        else:
-            fdr_str = ""
-        pw_labels.append(f"{pw}{fdr_str}")
-
+    # Y-axis: pathway labels (no FDR annotation), coloured by NES direction
     ax.set_yticks(range(n_pw))
-    ax.set_yticklabels(pw_labels, fontsize=6)
+    ax.set_yticklabels(pathways, fontsize=6.5)
     for i, (pw, label) in enumerate(zip(pathways, ax.get_yticklabels())):
         label.set_color(BLUE if pathway_nes.get(pw, 0) > 0 else ORANGE)
         label.set_fontweight("bold")
     ax.tick_params(axis="both", length=0)
 
     # ── Top marginal bar ──
+    # Run tight_layout FIRST so ax position accounts for tick labels,
+    # then position the marginal bar relative to the adjusted axes.
     fig = ax.get_figure()
+    fig.tight_layout(rect=[0, 0, 1, 0.90])
     ax_pos = ax.get_position()
     bar_height = 0.04
     bar_ax = fig.add_axes([
-        ax_pos.x0, ax_pos.y1 + 0.005,
+        ax_pos.x0, ax_pos.y1 + 0.02,
         ax_pos.width, bar_height,
     ])
     bar_ax.bar(range(n_genes), col_counts, width=0.7, color="#555555",
@@ -873,24 +846,21 @@ def panel_C(ax, data: dict):
         bar_ax.spines[spine].set_visible(False)
     bar_ax.spines["left"].set_linewidth(0.5)
 
-    ax.set_title("Leading-Edge Gene Overlap (CAR-T)", fontsize=11, pad=28)
     ax.set_xlabel("")
     ax.set_ylabel("")
 
-    # Legend — positioned above the top marginal bar
+    # Title on the bar axes — sits above bars, won't overlap heatmap
+    bar_ax.set_title("Leading-Edge Gene Overlap (CAR-T)", fontsize=11, pad=12)
+
+    # Legend — inside the heatmap lower-right (gray empty region)
     legend_handles = [
-        mpatches.Patch(facecolor=BLUE, label="In leading edge (Post ↑)"),
-        mpatches.Patch(facecolor=ORANGE, label="In leading edge (Pre ↑)"),
+        mpatches.Patch(facecolor=BLUE, label="Post ↑"),
+        mpatches.Patch(facecolor=ORANGE, label="Pre ↑"),
         mpatches.Patch(facecolor=EMPTY_COLOR, edgecolor="#CCCCCC",
                        label="Not in leading edge"),
     ]
-    bar_ax_pos = bar_ax.get_position()
     ax.legend(
         handles=legend_handles, fontsize=5.5, loc="lower right",
-        bbox_to_anchor=(
-            (bar_ax_pos.x1 - ax_pos.x0) / ax_pos.width,
-            (bar_ax_pos.y1 + 0.005 - ax_pos.y0) / ax_pos.height,
-        ),
         frameon=True, framealpha=0.9, edgecolor="#CCCCCC",
         handlelength=1.0, handleheight=0.7,
     )
@@ -1016,8 +986,7 @@ def panel_E(ax, data: dict):
     # both statistical significance and effect size.  This ensures genes
     # at the "tips" of the volcano (high |β| AND high -log10(p)) are
     # always labelled — the exact genes a reader's eye is drawn to.
-    N_LABELS = 10  # per direction
-    texts = []
+    N_LABELS = 5  # per direction — keep sparse for readability
     labelled_genes: list[str] = []
 
     for sign in ("pos", "neg"):
@@ -1061,37 +1030,37 @@ def panel_E(ax, data: dict):
 
     labelled_set = set(labelled_genes)
 
-    for _, row in df[df["feature"].isin(labelled_set)].iterrows():
+    # --- Render labels using adjustText for professional placement ---
+    from adjustText import adjust_text as _adjust_text
+
+    labelled_rows = df[df["feature"].isin(labelled_set)].copy()
+
+    texts = []
+    for _, row in labelled_rows.iterrows():
         dir_clr = (COLORS["treated"] if row[beta_col] > 0
                    else COLORS["control"])
         t = ax.text(
             row[beta_col], row["nlog10"], row["feature"],
-            fontsize=7, fontweight="bold", color=dir_clr,
+            fontsize=6.5, fontweight="bold", color=dir_clr,
+            ha="center", va="center", zorder=5,
         )
         texts.append(t)
 
-    # Suppress adjustText FancyArrowPatch transform warning
-    try:
-        from adjustText import adjust_text
-        with warnings.catch_warnings():
-            warnings.filterwarnings(
-                "ignore",
-                message=".*transform.*",
-                category=UserWarning,
-            )
-            adjust_text(
-                texts, ax=ax,
-                arrowprops=dict(
-                    arrowstyle="-|>", color="#444444",
-                    lw=0.7, mutation_scale=7,
-                ),
-                force_text=(2.5, 3.0),
-                force_points=(1.0, 1.0),
-                expand_text=(2.0, 2.5),
-                min_arrow_len=8,
-            )
-    except ImportError:
-        pass
+    # Constrain label movement so arrows stay short and professional.
+    # max_move limits how far any label can drift from its data point.
+    x_span = df[beta_col].max() - df[beta_col].min()
+    y_span = df["nlog10"].max() - df["nlog10"].min()
+    _adjust_text(
+        texts, ax=ax,
+        arrowprops=dict(arrowstyle="-", color="#888888", lw=0.4,
+                        shrinkA=5, shrinkB=3),
+        force_text=(1.5, 1.5),
+        force_points=(3.0, 3.0),
+        expand=(1.5, 1.8),
+        ensure_inside_axes=True,
+        max_move=(x_span * 0.15, y_span * 0.15),
+        only_move="xy",
+    )
 
     thresh_y = -np.log10(p_thresh)
     ax.axhline(thresh_y, color=COLORS["gray"], ls="--", lw=0.8, zorder=0)
@@ -1123,6 +1092,9 @@ def generate():
     print("Figure 5 v2: Biological Discovery (CAR-T)")
     data = _prepare_data()
 
+    panel_sizes = {
+        "C": (10, 7),
+    }
     for panel_label, panel_func in [
         ("A", panel_A),
         ("B", panel_B),
@@ -1130,9 +1102,12 @@ def generate():
         ("D", panel_D),
         ("E", panel_E),
     ]:
-        fig_p, ax_p = plt.subplots(figsize=(8, 6))
+        fsize = panel_sizes.get(panel_label, (8, 6))
+        fig_p, ax_p = plt.subplots(figsize=fsize)
         panel_func(ax_p, data)
-        fig_p.tight_layout()
+        # Panel C handles its own tight_layout (before marginal bar)
+        if panel_label != "C":
+            fig_p.tight_layout()
         save_panel(fig_p, f"panel_{panel_label}", FIGURE_NAME, MAIN_OUTPUT)
 
     del data["adata"]

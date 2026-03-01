@@ -718,34 +718,11 @@ def panel_B(ax, data: dict):
     ax.barh(y_pos, df_selected[nes_col].values, color=colors, alpha=0.9,
             edgecolor="white", linewidth=0.5, height=0.7)
 
-    # Significance stars — position outside bar end
-    if fdr_col is not None:
-        for i, (_, row) in enumerate(df_selected.iterrows()):
-            fdr_val = row[fdr_col]
-            if pd.notna(fdr_val) and fdr_val < 0.25:
-                if fdr_val < 0.001:
-                    star = "***"
-                elif fdr_val < 0.01:
-                    star = "**"
-                elif fdr_val < 0.05:
-                    star = "*"
-                else:
-                    star = "†"
-                x_pos = row[nes_col]
-                # Place star on the side away from zero (outside the bar)
-                if x_pos > 0:
-                    ax.text(x_pos + 0.08, i, star, ha="left", va="center",
-                            fontsize=8, fontweight="bold", color="#333333")
-                else:
-                    ax.text(x_pos - 0.08, i, star, ha="right", va="center",
-                            fontsize=8, fontweight="bold", color="#333333")
-
     ax.axvline(0, color="black", lw=0.8)
     ax.set_yticks(y_pos)
     ax.set_yticklabels(df_selected["pathway"].values, fontsize=8)
     ax.set_xlabel("Normalized Enrichment Score (NES)")
-    ax.set_title("GSEA Pathway Enrichment (Immune + Metabolic, Pooled FDR)",
-                 fontsize=11)
+    ax.set_title("Pathway Enrichment", fontsize=11)
 
     # Build legend only for categories present
     def _is_sig(row):
@@ -888,7 +865,7 @@ def panel_C(ax, data: dict):
     all_genes: set[str] = set()
     _seen_names: set[str] = set()
     for _, row in selected.iterrows():
-        pname = _clean_pathway_name(str(row[term_col]), max_len=40)
+        pname = _clean_pathway_name(str(row[term_col]), max_len=32)
         if pname in _seen_names:
             lib = str(row.get("library", ""))
             pname = f"{pname} [{lib[:8]}]" if lib else f"{pname} (2)"
@@ -1050,29 +1027,23 @@ def panel_C(ax, data: dict):
     ax.set_xticklabels(shared_genes, rotation=55, ha="right", fontsize=6,
                        style="italic")
 
-    # Y-axis: pathway labels with FDR annotation, coloured by NES direction
-    pw_labels = []
-    for pw in pathways:
-        fdr_val = pathway_fdr.get(pw)
-        if fdr_val is not None and fdr_val < 0.25:
-            fdr_str = f" (FDR={fdr_val:.2f})" if fdr_val >= 0.01 else " (FDR<0.01)"
-        else:
-            fdr_str = ""
-        pw_labels.append(f"{pw}{fdr_str}")
-
+    # Y-axis: pathway labels (no FDR annotation), coloured by NES direction
     ax.set_yticks(range(n_pw))
-    ax.set_yticklabels(pw_labels, fontsize=6)
+    ax.set_yticklabels(pathways, fontsize=6.5)
     for i, (pw, label) in enumerate(zip(pathways, ax.get_yticklabels())):
         label.set_color(BLUE if pathway_nes.get(pw, 0) > 0 else ORANGE)
         label.set_fontweight("bold")
     ax.tick_params(axis="both", length=0)
 
     # ── Top marginal bar: gene recurrence count ──
+    # Run tight_layout FIRST so ax position accounts for tick labels,
+    # then position the marginal bar relative to the adjusted axes.
     fig = ax.get_figure()
+    fig.tight_layout(rect=[0, 0, 1, 0.90])  # leave top 10% for bar+title
     ax_pos = ax.get_position()
     bar_height = 0.04  # fraction of figure height
     bar_ax = fig.add_axes([
-        ax_pos.x0, ax_pos.y1 + 0.005,
+        ax_pos.x0, ax_pos.y1 + 0.02,
         ax_pos.width, bar_height,
     ])
     bar_colors = ["#555555"] * n_genes
@@ -1089,24 +1060,21 @@ def panel_C(ax, data: dict):
         bar_ax.spines[spine].set_visible(False)
     bar_ax.spines["left"].set_linewidth(0.5)
 
-    ax.set_title("Leading-Edge Gene Overlap", fontsize=11, pad=28)
     ax.set_xlabel("")
     ax.set_ylabel("")
 
-    # Legend — positioned above the top marginal bar
+    # Title on the bar axes — sits above bars, won't overlap heatmap
+    bar_ax.set_title("Leading-Edge Gene Overlap", fontsize=11, pad=8)
+
+    # Legend — inside the heatmap lower-right (gray empty region)
     legend_handles = [
-        mpatches.Patch(facecolor=BLUE, label="In leading edge (Resp. ↑)"),
-        mpatches.Patch(facecolor=ORANGE, label="In leading edge (Non-resp. ↑)"),
+        mpatches.Patch(facecolor=BLUE, label="Resp. ↑"),
+        mpatches.Patch(facecolor=ORANGE, label="Non-resp. ↑"),
         mpatches.Patch(facecolor=EMPTY_COLOR, edgecolor="#CCCCCC",
                        label="Not in leading edge"),
     ]
-    bar_ax_pos = bar_ax.get_position()
     ax.legend(
         handles=legend_handles, fontsize=5.5, loc="lower right",
-        bbox_to_anchor=(
-            (bar_ax_pos.x1 - ax_pos.x0) / ax_pos.width,
-            (bar_ax_pos.y1 + 0.005 - ax_pos.y0) / ax_pos.height,
-        ),
         frameon=True, framealpha=0.9, edgecolor="#CCCCCC",
         handlelength=1.0, handleheight=0.7,
     )
@@ -1266,8 +1234,7 @@ def panel_E(ax, data: dict):
     # both statistical significance and effect size.  This ensures genes
     # at the "tips" of the volcano (high |β| AND high -log10(p)) are
     # always labelled — the exact genes a reader's eye is drawn to.
-    N_LABELS = 10  # per direction
-    texts = []
+    N_LABELS = 6  # per direction — keep sparse for readability
     labelled_genes: list[str] = []  # ordered by score (highest first)
 
     for sign in ("pos", "neg"):
@@ -1313,38 +1280,36 @@ def panel_E(ax, data: dict):
 
     labelled_set = set(labelled_genes)
 
-    # --- Render labels (all protein-coding, bold) ---
-    for _, row in df[df["feature"].isin(labelled_set)].iterrows():
+    # --- Render labels using adjustText for professional placement ---
+    from adjustText import adjust_text as _adjust_text
+
+    labelled_rows = df[df["feature"].isin(labelled_set)].copy()
+
+    texts = []
+    for _, row in labelled_rows.iterrows():
         dir_clr = (COLORS["treated"] if row[beta_col] > 0
                    else COLORS["control"])
         t = ax.text(
             row[beta_col], row["nlog10"], row["feature"],
-            fontsize=7, fontweight="bold", color=dir_clr,
+            fontsize=6.5, fontweight="bold", color=dir_clr,
+            ha="center", va="center", zorder=5,
         )
         texts.append(t)
 
-    # Suppress adjustText FancyArrowPatch transform warning
-    try:
-        from adjustText import adjust_text
-        with warnings.catch_warnings():
-            warnings.filterwarnings(
-                "ignore",
-                message=".*transform.*",
-                category=UserWarning,
-            )
-            adjust_text(
-                texts, ax=ax,
-                arrowprops=dict(
-                    arrowstyle="-|>", color="#444444",
-                    lw=0.7, mutation_scale=7,
-                ),
-                force_text=(2.5, 3.0),
-                force_points=(1.0, 1.0),
-                expand_text=(2.0, 2.5),
-                min_arrow_len=8,
-            )
-    except ImportError:
-        pass
+    # Constrain label movement so arrows stay short and professional.
+    x_span = df[beta_col].max() - df[beta_col].min()
+    y_span = df["nlog10"].max() - df["nlog10"].min()
+    _adjust_text(
+        texts, ax=ax,
+        arrowprops=dict(arrowstyle="-", color="#888888", lw=0.4,
+                        shrinkA=5, shrinkB=3),
+        force_text=(1.5, 1.5),
+        force_points=(3.0, 3.0),
+        expand=(1.5, 1.8),
+        ensure_inside_axes=True,
+        max_move=(x_span * 0.15, y_span * 0.15),
+        only_move="xy",
+    )
 
     # Threshold line
     thresh_y = -np.log10(p_thresh)
@@ -1379,6 +1344,10 @@ def generate():
     data = _prepare_data()
 
     # ── Save individual panels ────────────────────────────────────────
+    # Panel C (heatmap + marginal bar) needs more space for pathway labels
+    panel_sizes = {
+        "C": (10, 7),
+    }
     for panel_label, panel_func in [
         ("A", panel_A),
         ("B", panel_B),
@@ -1386,9 +1355,13 @@ def generate():
         ("D", panel_D),
         ("E", panel_E),
     ]:
-        fig_p, ax_p = plt.subplots(figsize=(8, 6))
+        fsize = panel_sizes.get(panel_label, (8, 6))
+        fig_p, ax_p = plt.subplots(figsize=fsize)
         panel_func(ax_p, data)
-        fig_p.tight_layout()
+        # For Panel C, tight_layout must run BEFORE the marginal bar is
+        # positioned (the panel function handles this internally).
+        if panel_label != "C":
+            fig_p.tight_layout()
         save_panel(fig_p, f"panel_{panel_label}", FIGURE_NAME, MAIN_OUTPUT)
 
     # ── Cleanup ───────────────────────────────────────────────────────
