@@ -10,10 +10,11 @@ model, equivalent to a paired t-test) via ``sctrial.within_arm_comparison()``.
 
 Panels
 ------
-A  GSEA enrichment bar chart (Hallmark + KEGG + Reactome + GO).
-B  Leading-edge gene overlap heatmap across top enriched pathways.
-C  Signature within-arm effects with CIs (forest plot).
-D  Gene-level volcano plot (paired Pre→Post, protein-coding labels).
+A  Top genes ranked by effect size (waterfall plot, protein-coding only).
+B  GSEA enrichment bar chart (immune + metabolic pathways, 5 libraries).
+C  Leading-edge gene overlap heatmap across top enriched pathways.
+D  Signature within-arm effects with CIs (forest plot).
+E  Gene-level volcano plot (paired Pre→Post, protein-coding labels).
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ from __future__ import annotations
 import gc
 import re
 import traceback
+import warnings
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
@@ -34,37 +36,13 @@ from .._shared import *  # noqa: F401,F403
 FIGURE_NAME = "Figure5v2_cart_biological_discovery"
 FIGSIZE = (18, 14)
 
-# Reuse the protein-coding filter from Figure 5
+# Reuse helpers from Figure 5
 from .figure5_biological_discovery import (
     _is_likely_protein_coding,
     _detect_gsea_columns,
     _clean_pathway_name,
-    _is_relevant_pathway,
+    _is_immune_or_metabolic,
 )
-
-# CAR-T specific: these pathway terms are irrelevant for a PBMC/CAR-T
-# context but might surface from broad GO libraries
-_CART_IRRELEVANT_TERMS = [
-    "sperm", "spermat", "flagell", "cilium assembly",
-    "odontogenesis", "amelogenesis", "enamel",
-    "cardiac chamber", "heart jogging",
-    "embryonic digit", "limb morphogenesis",
-    "sensory perception of smell", "olfactory",
-    "lens fiber", "lens development",
-    "photoreceptor", "retinal",
-    "skeletal muscle contraction",
-    "flight", "insemination",
-    "melanocyte",  # not relevant for CAR-T (no melanoma context)
-]
-_CART_IRRELEVANT_RE = re.compile(
-    "|".join(re.escape(t) for t in _CART_IRRELEVANT_TERMS),
-    re.IGNORECASE,
-)
-
-
-def _is_relevant_pathway_cart(term: str) -> bool:
-    """Return False for pathways implausible in CAR-T PBMC context."""
-    return _CART_IRRELEVANT_RE.search(str(term)) is None
 
 
 # ======================================================================
@@ -145,11 +123,13 @@ def _prepare_data() -> dict:
     ranking = ranking.replace([np.inf, -np.inf], np.nan).dropna()
     print(f"  Gene ranking: {len(ranking)} genes (for GSEA)")
 
+    # 5 libraries including WikiPathways
     gsea_libraries = [
         "MSigDB_Hallmark_2020",
         "KEGG_2021_Human",
         "Reactome_2022",
         "GO_Biological_Process_2023",
+        "WikiPathways_2024_Human",
     ]
     gsea_all = {}
     for lib in gsea_libraries:
@@ -175,6 +155,120 @@ def _prepare_data() -> dict:
     gsea_results = None
     if gsea_all:
         gsea_results = pd.concat(gsea_all.values(), ignore_index=True)
+
+        # Detect term column for immune/metabolic filtering
+        term_col = None
+        for c in gsea_results.columns:
+            cl = c.lower().strip()
+            if cl == "term":
+                term_col = c
+                break
+        if term_col is None:
+            for c in gsea_results.columns:
+                if c.lower() in ("name", "pathway"):
+                    term_col = c
+                    break
+            if term_col is None:
+                term_col = gsea_results.columns[0]
+
+        # Filter to immune + metabolic pathways only
+        n_before = len(gsea_results)
+        gsea_results = gsea_results[
+            gsea_results[term_col].apply(_is_immune_or_metabolic)
+        ].reset_index(drop=True)
+        n_after = len(gsea_results)
+        print(
+            f"  Immune/metabolic filter: {n_after}/{n_before} pathways retained"
+        )
+
+        # Handle duplicate pathways across libraries: average NES
+        nes_col_name = None
+        for c in gsea_results.columns:
+            if c.lower().strip() == "nes":
+                nes_col_name = c
+                break
+        if nes_col_name is None:
+            for c in gsea_results.columns:
+                if "nes" in c.lower():
+                    nes_col_name = c
+                    break
+
+        if nes_col_name is not None:
+            gsea_results["_clean_term"] = gsea_results[term_col].apply(
+                lambda s: _clean_pathway_name(s, max_len=200)
+            )
+            gsea_results[nes_col_name] = pd.to_numeric(
+                gsea_results[nes_col_name], errors="coerce"
+            )
+
+            nom_col = None
+            for c in gsea_results.columns:
+                cl = c.lower().strip()
+                if cl in ("nom p-val", "pval", "p-value", "nom_pval"):
+                    nom_col = c
+                    break
+
+            fdr_col_detect = None
+            for c in gsea_results.columns:
+                if c.lower().strip() in ("fdr q-val", "fdr"):
+                    fdr_col_detect = c
+                    break
+            if fdr_col_detect is None:
+                for c in gsea_results.columns:
+                    if "fdr" in c.lower():
+                        fdr_col_detect = c
+                        break
+
+            lead_col_detect = None
+            for c in gsea_results.columns:
+                cl = c.lower().strip()
+                if cl in ("lead_genes", "leading_edge"):
+                    lead_col_detect = c
+                    break
+            if lead_col_detect is None:
+                for c in gsea_results.columns:
+                    if "lead" in c.lower() and "gene" in c.lower():
+                        lead_col_detect = c
+                        break
+
+            dup_mask = gsea_results.duplicated(subset=["_clean_term"], keep=False)
+            n_dup_pathways = gsea_results.loc[dup_mask, "_clean_term"].nunique()
+            if n_dup_pathways > 0:
+                print(f"  Averaging {n_dup_pathways} duplicate pathways "
+                      f"across libraries")
+
+                deduped_rows = []
+                for clean_name, group in gsea_results.groupby("_clean_term"):
+                    if len(group) == 1:
+                        deduped_rows.append(group.iloc[0].to_dict())
+                        continue
+                    row = group.iloc[0].to_dict()
+                    row[nes_col_name] = group[nes_col_name].mean()
+                    if nom_col is not None and nom_col in group.columns:
+                        row[nom_col] = pd.to_numeric(
+                            group[nom_col], errors="coerce"
+                        ).mean()
+                    if fdr_col_detect is not None and fdr_col_detect in group.columns:
+                        row[fdr_col_detect] = pd.to_numeric(
+                            group[fdr_col_detect], errors="coerce"
+                        ).mean()
+                    if lead_col_detect is not None and lead_col_detect in group.columns:
+                        all_genes = set()
+                        for _, r in group.iterrows():
+                            gs = str(r[lead_col_detect])
+                            all_genes.update(
+                                g.strip()
+                                for g in gs.replace(";", ",").split(",")
+                                if g.strip()
+                            )
+                        row[lead_col_detect] = ";".join(sorted(all_genes))
+                    row["library"] = "averaged"
+                    deduped_rows.append(row)
+
+                gsea_results = pd.DataFrame(deduped_rows)
+
+            gsea_results = gsea_results.drop(columns=["_clean_term"], errors="ignore")
+
         # Pool FDR across libraries
         fdr_col_name = None
         for c in gsea_results.columns:
@@ -203,7 +297,7 @@ def _prepare_data() -> dict:
             _, fdr_pooled, _, _ = multipletests(pvals, method="fdr_bh")
             gsea_results[fdr_col_name] = fdr_pooled
             n_sig = (fdr_pooled < 0.25).sum()
-            print(f"  GSEA total: {len(gsea_results)} pathways, "
+            print(f"  GSEA total: {len(gsea_results)} immune/metabolic pathways, "
                   f"{n_sig} FDR<0.25 after pooled correction")
 
     # ------------------------------------------------------------------
@@ -233,6 +327,18 @@ def _prepare_data() -> dict:
             aggregate="participant_visit",
         )
 
+        # Handle degenerate fits (NaN SE/p-value)
+        n_total = len(gene_results)
+        n_degenerate = gene_results["p_time"].isna().sum()
+        if n_degenerate > 0:
+            gene_results = gene_results.dropna(
+                subset=["beta_time", "se_time", "p_time"]
+            ).reset_index(drop=True)
+            print(
+                f"  Gene-level: dropped {n_degenerate}/{n_total} genes "
+                f"with degenerate fits (NaN SE/p-value)"
+            )
+
         n_sig = (gene_results["p_time"] < 0.05).sum()
         n_fdr = (gene_results["FDR_time"] < 0.1).sum()
         print(f"  Gene-level results: {len(gene_results)} genes, "
@@ -257,11 +363,80 @@ def _prepare_data() -> dict:
 
 
 # ======================================================================
-# Panel A -- GSEA Enrichment Bar Chart
+# Panel A -- Gene waterfall plot (top genes by effect size)
 # ======================================================================
 
 def panel_A(ax, data: dict):
-    """GSEA pathway enrichment bar chart (CAR-T Pre→Post)."""
+    """Top 30 protein-coding genes ranked by effect size (CAR-T)."""
+    gene_results = data.get("gene_results")
+
+    if gene_results is None or len(gene_results) == 0:
+        ax.text(0.5, 0.5, "Gene-level results unavailable",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=12, color=COLORS["gray"])
+        ax.axis("off")
+        return
+
+    df = gene_results.copy()
+    beta_col = "beta_time"
+    p_col = "p_time"
+
+    df = df.dropna(subset=[beta_col, p_col])
+    df = df[df["feature"].apply(_is_likely_protein_coding)]
+
+    p_thresh = 0.05
+    n_per_side = 15
+
+    top_pos = df.nlargest(n_per_side, beta_col)
+    top_neg = df.nsmallest(n_per_side, beta_col)
+    selected = pd.concat([top_pos, top_neg]).drop_duplicates()
+    selected = selected.sort_values(beta_col, ascending=True).reset_index(
+        drop=True
+    )
+
+    y_pos = np.arange(len(selected))
+    colors = []
+    for _, row in selected.iterrows():
+        sig = row[p_col] < p_thresh
+        if row[beta_col] > 0:
+            colors.append(
+                COLORS["treated"] if sig else COLORS["treated"] + "55"
+            )
+        else:
+            colors.append(
+                COLORS["control"] if sig else COLORS["control"] + "55"
+            )
+
+    ax.barh(y_pos, selected[beta_col].values, color=colors, alpha=0.9,
+            edgecolor="white", linewidth=0.3, height=0.7)
+    ax.axvline(0, color="black", lw=0.8)
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(selected["feature"].values, fontsize=7)
+
+    ax.set_xlabel(r"Effect size ($\beta_{\mathrm{time}}$)")
+    ax.set_title("Top Genes by Effect Size — CAR-T Pre→Post", fontsize=11)
+
+    legend_handles = [
+        mpatches.Patch(color=COLORS["treated"], alpha=0.9,
+                       label="Post ↑ (p < 0.05)"),
+        mpatches.Patch(color=COLORS["treated"], alpha=0.35,
+                       label="Post ↑ (n.s.)"),
+        mpatches.Patch(color=COLORS["control"], alpha=0.9,
+                       label="Pre ↑ (p < 0.05)"),
+        mpatches.Patch(color=COLORS["control"], alpha=0.35,
+                       label="Pre ↑ (n.s.)"),
+    ]
+    ax.legend(handles=legend_handles, fontsize=7, loc="lower right",
+              frameon=True, framealpha=0.9)
+    despine(ax)
+
+
+# ======================================================================
+# Panel B -- GSEA Enrichment Bar Chart
+# ======================================================================
+
+def panel_B(ax, data: dict):
+    """GSEA immune + metabolic pathway enrichment bar chart (CAR-T Pre→Post)."""
     gsea_results = data["gsea_results"]
 
     if gsea_results is None or len(gsea_results) == 0:
@@ -287,13 +462,7 @@ def panel_A(ax, data: dict):
         df[fdr_col] = pd.to_numeric(df[fdr_col], errors="coerce")
     df = df.dropna(subset=[nes_col])
 
-    # Filter irrelevant pathways
-    if term_col is not None:
-        n_before = len(df)
-        df = df[df[term_col].apply(_is_relevant_pathway_cart)]
-        n_dropped = n_before - len(df)
-        if n_dropped > 0:
-            print(f"  Panel A: dropped {n_dropped} irrelevant pathways")
+    # Immune/metabolic filtering already done in _prepare_data.
 
     # Balanced selection: top N up + top N down
     n_show = 15
@@ -312,7 +481,23 @@ def panel_A(ax, data: dict):
         df_selected = pd.concat([df_pos, df_neg])
     df_selected = df_selected.drop_duplicates().sort_values(nes_col, ascending=True)
 
+    # Clean and disambiguate pathway names
     df_selected["pathway"] = df_selected[term_col].apply(_clean_pathway_name)
+    _seen = {}
+    new_labels = []
+    for idx, row in df_selected.iterrows():
+        label = row["pathway"]
+        if label in _seen:
+            _seen[label] += 1
+            lib = str(row.get("library", ""))
+            if lib and lib != "averaged":
+                label = f"{label} [{lib[:8]}]"
+            else:
+                label = f"{label} ({_seen[label]})"
+        else:
+            _seen[label] = 1
+        new_labels.append(label)
+    df_selected["pathway"] = new_labels
 
     # Color: blue = Post ↑ (NES > 0), orange = Pre ↑ (NES < 0)
     clr_up_sig = COLORS["treated"]
@@ -357,7 +542,8 @@ def panel_A(ax, data: dict):
     ax.set_yticks(y_pos)
     ax.set_yticklabels(df_selected["pathway"].values, fontsize=8)
     ax.set_xlabel("Normalized Enrichment Score (NES)")
-    ax.set_title("GSEA Pathway Enrichment — CAR-T Pre→Post", fontsize=11)
+    ax.set_title("GSEA Pathway Enrichment — CAR-T Pre→Post "
+                 "(Immune + Metabolic)", fontsize=11)
 
     # Legend
     legend_handles = [
@@ -376,11 +562,22 @@ def panel_A(ax, data: dict):
 
 
 # ======================================================================
-# Panel B -- Leading-edge gene overlap heatmap
+# Panel C -- Leading-edge gene overlap heatmap
 # ======================================================================
 
-def panel_B(ax, data: dict):
-    """Leading-edge gene overlap heatmap (CAR-T)."""
+def panel_C(ax, data: dict):
+    """Leading-edge gene overlap heatmap (CAR-T).
+
+    Information-dense design:
+    - Tight imshow grid coloured by NES direction
+    - Pathway labels coloured by NES (blue=Post↑, orange=Pre↑)
+    - Top marginal bar showing gene recurrence count
+    - Hierarchical column clustering for gene co-occurrence
+    - Capped to 8 pathways × 20 genes for readability
+    """
+    from scipy.cluster.hierarchy import linkage, leaves_list
+    from scipy.spatial.distance import pdist
+
     gsea_results = data["gsea_results"]
 
     if gsea_results is None or len(gsea_results) == 0:
@@ -408,10 +605,7 @@ def panel_B(ax, data: dict):
         df[fdr_col] = pd.to_numeric(df[fdr_col], errors="coerce")
     df = df.dropna(subset=[nes_col])
 
-    if term_col is not None:
-        df = df[df[term_col].apply(_is_relevant_pathway_cart)]
-
-    # Select top 8 pathways by |NES| (agnostic, no hand-picking)
+    # Select top 8 pathways by |NES|
     if fdr_col is not None:
         sig_df = df[df[fdr_col] < 0.25]
     else:
@@ -422,13 +616,14 @@ def panel_B(ax, data: dict):
     selected = sig_df.assign(
         _abs=sig_df[nes_col].abs(),
     ).nlargest(8, "_abs").drop(columns="_abs")
-    selected = selected.sort_values(nes_col, ascending=False)
+    selected = selected.sort_values(nes_col, ascending=True)
 
     pathway_genes: dict[str, set[str]] = {}
+    pathway_nes: dict[str, float] = {}
     all_genes: set[str] = set()
     _seen_names: set[str] = set()
     for _, row in selected.iterrows():
-        pname = _clean_pathway_name(str(row[term_col]), max_len=30)
+        pname = _clean_pathway_name(str(row[term_col]), max_len=40)
         if pname in _seen_names:
             lib = str(row.get("library", ""))
             pname = f"{pname} [{lib[:8]}]" if lib else f"{pname} (2)"
@@ -438,6 +633,7 @@ def panel_B(ax, data: dict):
                  if g.strip()]
         genes = [g for g in genes if _is_likely_protein_coding(g)]
         pathway_genes[pname] = set(genes)
+        pathway_nes[pname] = float(row[nes_col])
         all_genes.update(genes)
 
     if not all_genes or not pathway_genes:
@@ -447,23 +643,18 @@ def panel_B(ax, data: dict):
         ax.axis("off")
         return
 
-    gene_counts = {}
+    gene_counts: dict[str, int] = {}
     for genes in pathway_genes.values():
         for g in genes:
             gene_counts[g] = gene_counts.get(g, 0) + 1
 
-    n_pw = len(pathway_genes)
+    n_pw_total = len(pathway_genes)
 
-    # Prefer genes that DISCRIMINATE between pathways (present in some,
-    # absent in others) over genes shared by all.  Score each gene by
-    # how close its count is to n_pw/2 (maximum discrimination).
     def _discrim_score(gene: str) -> float:
         c = gene_counts[gene]
-        # Must appear in ≥2 pathways to be "shared"
         if c < 2:
             return -999
-        # Maximise discrimination: distance from n/2 is BAD
-        return -abs(c - n_pw / 2)
+        return -abs(c - n_pw_total / 2)
 
     shared_genes = sorted(
         [g for g, c in gene_counts.items() if c >= 2],
@@ -471,10 +662,9 @@ def panel_B(ax, data: dict):
         reverse=True,
     )
     if len(shared_genes) < 5:
-        # Fallback: just take the most frequent genes
         shared_genes = sorted(gene_counts.keys(),
-                              key=lambda g: -gene_counts[g])[:25]
-    shared_genes = shared_genes[:25]
+                              key=lambda g: -gene_counts[g])[:20]
+    shared_genes = shared_genes[:20]  # cap at 20
 
     if not shared_genes:
         ax.text(0.5, 0.5, "No shared leading-edge genes",
@@ -490,36 +680,122 @@ def panel_B(ax, data: dict):
             if gene in pathway_genes[pw]:
                 matrix[i, j] = 1
 
-    from matplotlib.colors import ListedColormap
-    binary_cmap = ListedColormap(["#FFF8DC", "#8B0000"])
-    sns.heatmap(
-        matrix, ax=ax,
-        xticklabels=shared_genes, yticklabels=pathways,
-        cmap=binary_cmap, vmin=0, vmax=1,
-        cbar=False, linewidths=0.5, linecolor="white", square=False,
-    )
-    ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right",
-                       fontsize=7)
-    ax.set_yticklabels(ax.get_yticklabels(), fontsize=8)
-    ax.set_title("Leading-Edge Gene Overlap (CAR-T)", fontsize=11)
+    # Prune zero-information rows and columns
+    row_sums = matrix.sum(axis=1)
+    keep_rows = row_sums > 0
+    if keep_rows.sum() < len(pathways):
+        n_pruned = len(pathways) - keep_rows.sum()
+        print(f"  Panel C: pruned {n_pruned} pathways with no shared genes")
+        mask_list = keep_rows.tolist()
+        matrix = matrix[keep_rows]
+        pathways = [p for p, k in zip(pathways, mask_list) if k]
+
+    col_sums = matrix.sum(axis=0)
+    keep_cols = col_sums > 0
+    if keep_cols.sum() < len(shared_genes):
+        mask_list = keep_cols.tolist()
+        matrix = matrix[:, keep_cols]
+        shared_genes = [g for g, k in zip(shared_genes, mask_list) if k]
+
+    if matrix.size == 0:
+        ax.text(0.5, 0.5, "No shared leading-edge genes",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=12, color=COLORS["gray"])
+        ax.axis("off")
+        return
+
+    n_pw, n_genes = matrix.shape
+
+    # ── Hierarchical clustering of gene columns ──
+    if n_genes >= 3:
+        try:
+            dist = pdist(matrix.T, metric="jaccard")
+            dist = np.nan_to_num(dist, nan=1.0)
+            Z = linkage(dist, method="average")
+            gene_order = leaves_list(Z)
+        except Exception:
+            gene_order = np.arange(n_genes)
+    else:
+        gene_order = np.arange(n_genes)
+
+    matrix = matrix[:, gene_order]
+    shared_genes = [shared_genes[i] for i in gene_order]
+
+    col_counts = matrix.sum(axis=0)
+
+    # ── Colour constants ──
+    BLUE = (0.122, 0.471, 0.706)
+    ORANGE = (0.878, 0.478, 0.184)
+
+    # ── Colour matrix ──
+    rgb = np.full((n_pw, n_genes, 3), 0.94)
+    for i, pw in enumerate(pathways):
+        nes_val = pathway_nes.get(pw, 0)
+        fill = np.array(BLUE if nes_val > 0 else ORANGE)
+        for j in range(n_genes):
+            if matrix[i, j] == 1:
+                rgb[i, j] = fill
+
+    # ── Plot ──
+    ax.imshow(rgb, aspect="auto", interpolation="nearest", origin="lower")
+
+    for i in range(n_pw + 1):
+        ax.axhline(i - 0.5, color="white", linewidth=0.8, zorder=2)
+    for j in range(n_genes + 1):
+        ax.axvline(j - 0.5, color="white", linewidth=0.8, zorder=2)
+
+    ax.set_xticks(range(n_genes))
+    ax.set_xticklabels(shared_genes, rotation=55, ha="right", fontsize=6,
+                       style="italic")
+
+    ax.set_yticks(range(n_pw))
+    ax.set_yticklabels(pathways, fontsize=6.5)
+    for i, (pw, label) in enumerate(zip(pathways, ax.get_yticklabels())):
+        label.set_color(BLUE if pathway_nes.get(pw, 0) > 0 else ORANGE)
+        label.set_fontweight("bold")
+    ax.tick_params(axis="both", length=0)
+
+    # ── Top marginal bar ──
+    fig = ax.get_figure()
+    ax_pos = ax.get_position()
+    bar_height = 0.04
+    bar_ax = fig.add_axes([
+        ax_pos.x0, ax_pos.y1 + 0.005,
+        ax_pos.width, bar_height,
+    ])
+    bar_ax.bar(range(n_genes), col_counts, width=0.7, color="#555555",
+               edgecolor="none")
+    bar_ax.set_xlim(-0.5, n_genes - 0.5)
+    bar_ax.set_ylim(0, max(col_counts) + 0.5)
+    bar_ax.set_xticks([])
+    bar_ax.set_ylabel("# paths", fontsize=5.5, rotation=0, labelpad=25,
+                      va="center")
+    bar_ax.tick_params(axis="y", labelsize=5.5, length=2)
+    bar_ax.yaxis.set_major_locator(plt.MaxNLocator(integer=True, nbins=3))
+    for spine in ["top", "right", "bottom"]:
+        bar_ax.spines[spine].set_visible(False)
+    bar_ax.spines["left"].set_linewidth(0.5)
+
+    ax.set_title("Leading-Edge Gene Overlap (CAR-T)", fontsize=11, pad=28)
     ax.set_xlabel("")
     ax.set_ylabel("")
 
     legend_handles = [
-        mpatches.Patch(facecolor="#8B0000", edgecolor="grey",
-                       label="In leading edge"),
-        mpatches.Patch(facecolor="#FFF8DC", edgecolor="grey",
-                       label="Absent"),
+        mpatches.Patch(facecolor=BLUE, label="Post ↑"),
+        mpatches.Patch(facecolor=ORANGE, label="Pre ↑"),
     ]
-    ax.legend(handles=legend_handles, fontsize=7, loc="lower right",
-              frameon=True, framealpha=0.9)
+    ax.legend(handles=legend_handles, fontsize=6, loc="upper right",
+              frameon=True, framealpha=0.9, edgecolor="#CCCCCC",
+              handlelength=1.0, handleheight=0.7)
+    for spine in ax.spines.values():
+        spine.set_visible(False)
 
 
 # ======================================================================
-# Panel C -- Signature within-arm forest plot
+# Panel D -- Signature within-arm forest plot
 # ======================================================================
 
-def panel_C(ax, data: dict):
+def panel_D(ax, data: dict):
     """Within-arm Pre→Post effect size forest plot (CAR-T).
 
     Blue = Post ↑ (β_time > 0), orange = Pre ↑ (β_time < 0).
@@ -577,10 +853,10 @@ def panel_C(ax, data: dict):
 
 
 # ======================================================================
-# Panel D -- Gene-level volcano plot
+# Panel E -- Gene-level volcano plot
 # ======================================================================
 
-def panel_D(ax, data: dict):
+def panel_E(ax, data: dict):
     """Volcano plot of gene-level within-arm effects (CAR-T Pre→Post).
 
     Labels prioritize protein-coding genes.
@@ -670,19 +946,26 @@ def panel_D(ax, data: dict):
         )
         texts.append(t)
 
+    # Suppress adjustText FancyArrowPatch transform warning
     try:
         from adjustText import adjust_text
-        adjust_text(
-            texts, ax=ax,
-            arrowprops=dict(
-                arrowstyle="-|>", color="#444444",
-                lw=0.7, mutation_scale=7,
-            ),
-            force_text=(2.0, 2.5),
-            force_points=(0.8, 0.8),
-            expand_text=(1.8, 2.0),
-            min_arrow_len=5,
-        )
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message=".*transform.*",
+                category=UserWarning,
+            )
+            adjust_text(
+                texts, ax=ax,
+                arrowprops=dict(
+                    arrowstyle="-|>", color="#444444",
+                    lw=0.7, mutation_scale=7,
+                ),
+                force_text=(2.0, 2.5),
+                force_points=(0.8, 0.8),
+                expand_text=(1.8, 2.0),
+                min_arrow_len=5,
+            )
     except ImportError:
         pass
 
@@ -721,6 +1004,7 @@ def generate():
         ("B", panel_B),
         ("C", panel_C),
         ("D", panel_D),
+        ("E", panel_E),
     ]:
         fig_p, ax_p = plt.subplots(figsize=(8, 6))
         panel_func(ax_p, data)
