@@ -53,3 +53,4 @@ run_nb*.sh
 # Claude Code
 CLAUDE.md
 .claude/
+.mcp.json

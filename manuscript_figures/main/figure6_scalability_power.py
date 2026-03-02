@@ -5,10 +5,10 @@ Figure 6 -- Scalability & Power Analysis
 Four-panel (2×2) figure combining computational scalability benchmarks
 with empirical power analysis and observed effect sizes:
 
-    A  Runtime scaling (n_participants × n_features vs wall time, log–log)
-    B  Memory scaling (n_participants × n_features vs tracemalloc peak, log–log)
-    C  Empirical power curves (sample size vs power, with Wilson CI bands)
-    D  Forest plot of signed Cohen's d for all signatures across datasets
+    A  Runtime scaling (n_cells vs wall time, log–log)
+    B  Memory scaling (n_cells vs RSS memory delta, log–log)
+    C  Empirical power curves (n_participants vs power, Wilson CI bands)
+    D  Forest plot of signed Cohen's d for pre-specified signatures
 """
 
 from __future__ import annotations
@@ -16,7 +16,6 @@ from __future__ import annotations
 import gc
 import hashlib
 import time
-import tracemalloc
 import warnings
 from pathlib import Path
 
@@ -65,7 +64,7 @@ POWER_ALPHA = 0.05
 RNG_SEED = 42
 
 # Code version tag — bump when analysis logic changes to invalidate caches
-_CODE_VERSION = "v9"
+_CODE_VERSION = "v10"
 
 # Dataset info tuple fields:
 #   (name, adata, design, visits, sig_cols, design_type)
@@ -248,7 +247,8 @@ def _run_scalability_benchmark(
     longitudinal datasets and ``between_arm_comparison`` for
     cross-sectional ones.
 
-    Memory is measured via ``tracemalloc`` (Python heap allocations).
+    Memory is measured via ``psutil`` RSS (resident set size), which
+    captures both Python-managed and C-level allocations (numpy, scipy).
 
     Returns
     -------
@@ -286,8 +286,9 @@ def _run_scalability_benchmark(
         run_peaks = []
         for rep in range(N_BENCHMARK_REPLICATES):
             gc.collect()
-            tracemalloc.start()
-            tracemalloc.reset_peak()
+            import psutil
+            proc = psutil.Process()
+            rss_before = proc.memory_info().rss
             t0 = time.perf_counter()
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
@@ -310,10 +311,10 @@ def _run_scalability_benchmark(
                         standardize=True,
                     )
             elapsed = time.perf_counter() - t0
-            _, peak = tracemalloc.get_traced_memory()
-            tracemalloc.stop()
+            rss_after = proc.memory_info().rss
+            rss_delta_mb = max(rss_after - rss_before, 0) / 1024**2
             run_times.append(elapsed)
-            run_peaks.append(peak / 1024**2)
+            run_peaks.append(rss_delta_mb)
 
             shared = {
                 "n_cells": n_cells,
@@ -325,7 +326,7 @@ def _run_scalability_benchmark(
                 "replicate": rep,
             }
             timings.append({**shared, "time_s": elapsed})
-            mem_usage.append({**shared, "peak_mb": peak / 1024**2})
+            mem_usage.append({**shared, "peak_mb": rss_delta_mb})
 
             gc.collect()
 
@@ -351,6 +352,7 @@ _PRESPECIFIED_ENDPOINTS = [
     "sig_Interferon Response",
     "sig_Immune Exhaustion",
     "sig_T Cell Activation",
+    "sig_Inflammatory Response",
 ]
 
 # Per-dataset biologically motivated primary endpoint.
@@ -595,7 +597,10 @@ def _paired_cohens_d(
     Returns (d, ci_lower, ci_upper).
     """
     n = len(participant_deltas)
-    d = float(np.mean(participant_deltas) / np.std(participant_deltas, ddof=1))
+    sd = float(np.std(participant_deltas, ddof=1))
+    if sd < 1e-12:
+        return 0.0, 0.0, 0.0
+    d = float(np.mean(participant_deltas) / sd)
     se_d = np.sqrt(1 / n + d**2 / (2 * n))
     t_crit = stats.t.ppf(0.975, n - 1)
     return d, d - t_crit * se_d, d + t_crit * se_d
@@ -768,22 +773,6 @@ def _prepare_data() -> dict:
 # ======================================================================
 
 
-def _get_benchmark_metadata() -> str:
-    """Return a compact metadata string for benchmark reproducibility."""
-    import platform
-    import sys
-
-    cpu = platform.processor() or platform.machine()
-    try:
-        import os
-        ram_gb = os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES") / (1024**3)
-        ram_str = f"{ram_gb:.0f} GB RAM"
-    except (AttributeError, ValueError):
-        ram_str = ""
-    py_ver = f"Python {sys.version_info.major}.{sys.version_info.minor}"
-    parts = [cpu, ram_str, py_ver]
-    return "  ·  ".join(p for p in parts if p)
-
 
 def _scaling_scatter(
     ax: plt.Axes,
@@ -814,11 +803,6 @@ def _scaling_scatter(
         "did_table": "o",
         "between_arm": "D",
     }
-    method_labels = {
-        "did_table": "did_table",
-        "between_arm": "between_arm",
-    }
-
     ax.set_xscale("log")
     ax.set_yscale("log")
 
@@ -851,8 +835,6 @@ def _scaling_scatter(
 
     # ── Plot points and IQR error bars ──
     plotted_dtypes: set = set()
-    plotted_methods: set = set()
-
     for _, row in agg.iterrows():
         x = float(row["n_cells"])
         y = float(row["y_med"])
@@ -939,11 +921,11 @@ def panel_A(ax: plt.Axes, data: dict) -> None:
 
 
 def panel_B(ax: plt.Axes, data: dict) -> None:
-    """Panel B: Memory scaling — log-log scatter (tracemalloc) with IQR."""
+    """Panel B: Memory scaling — log-log scatter (RSS delta) with IQR."""
     _scaling_scatter(
         ax, data["memory_df"],
         y_col="peak_mb",
-        y_label="Python allocation peak (MB)",
+        y_label="RSS memory delta (MB)",
         title="Memory scaling",
         shared_xlim=data.get("_shared_xlim"),
     )
