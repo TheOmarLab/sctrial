@@ -5,10 +5,10 @@ Figure 6 -- Scalability & Power Analysis
 Four-panel (2×2) figure combining computational scalability benchmarks
 with empirical power analysis and observed effect sizes:
 
-    A  Runtime scaling (cells vs time, log–log with reference slopes)
-    B  Memory scaling (cells vs peak memory, log–log)
-    C  Empirical power curves (sample size vs power)
-    D  Forest plot of observed |Cohen's d| across datasets
+    A  Runtime scaling (n_participants × n_features vs wall time, log–log)
+    B  Memory scaling (n_participants × n_features vs tracemalloc peak, log–log)
+    C  Empirical power curves (sample size vs power, with Wilson CI bands)
+    D  Forest plot of signed Cohen's d for all signatures across datasets
 """
 
 from __future__ import annotations
@@ -60,9 +60,12 @@ SF_DESIGN = TrialDesign(
 SF_VISITS: tuple[str, str] = ("Pre", "Post")
 
 # Power analysis (subsampling)
-N_POWER_ITERATIONS = 50          # resamples per sample size (cached after first run)
+N_POWER_ITERATIONS = 200         # resamples per sample size (cached after first run)
 POWER_ALPHA = 0.05
 RNG_SEED = 42
+
+# Code version tag — bump when analysis logic changes to invalidate caches
+_CODE_VERSION = "v6"
 
 # Dataset info tuple fields:
 #   (name, adata, design, visits, sig_cols, design_type)
@@ -78,8 +81,13 @@ _CACHE_DIR = MAIN_OUTPUT / FIGURE_NAME.replace("Figure", "Figure") / ".cache"
 
 
 def _cache_key(*args: str) -> str:
-    """Deterministic cache key from string components."""
-    return hashlib.md5("|".join(args).encode()).hexdigest()[:12]
+    """Deterministic cache key from string components.
+
+    Includes ``_CODE_VERSION`` so that logic changes automatically
+    invalidate stale caches.
+    """
+    payload = "|".join([_CODE_VERSION] + list(args))
+    return hashlib.md5(payload.encode()).hexdigest()[:12]
 
 
 def _load_cache(tag: str) -> pd.DataFrame | None:
@@ -219,12 +227,19 @@ def _run_scalability_benchmark(
     Uses ``did_table`` for longitudinal datasets and
     ``between_arm_comparison`` for cross-sectional ones.
 
+    The x-axis metric is ``n_participants × n_features`` — the actual
+    computational input to the statistical model — rather than full
+    matrix size (n_cells × n_genes), which is not what the analysis
+    operates on.
+
+    Memory is measured via ``tracemalloc`` (Python heap allocations),
+    not OS-level RSS.
+
     Returns
     -------
-    timing_df : pd.DataFrame
-        Columns: n_cells, time_s, dataset
-    memory_df : pd.DataFrame
-        Columns: n_cells, peak_mb, dataset
+    timing_df, memory_df : pd.DataFrame
+        Columns: n_participants, n_features, n_cells, time_s/peak_mb,
+                 dataset, design_type
     """
     # Check cache
     cache_tag = "benchmark_" + _cache_key(
@@ -242,18 +257,20 @@ def _run_scalability_benchmark(
 
     for name, adata, design, visits, sigs, dtype in datasets:
         n_cells = adata.n_obs
-        print(f"    {name} ({n_cells:,} cells, {dtype}) ... ",
-              end="", flush=True)
+        n_features = len(sigs)
+        pid_col = design.participant_col
+        n_pids = adata.obs[pid_col].nunique()
+        print(f"    {name} ({n_pids} ppts × {n_features} features, "
+              f"{n_cells:,} cells, {dtype}) ... ", end="", flush=True)
 
         # Force GC before measurement to reduce noise
         gc.collect()
         tracemalloc.start()
-        tracemalloc.reset_peak()          # reset peak so we only measure did_table
+        tracemalloc.reset_peak()
         t0 = time.perf_counter()
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             if dtype == "cross_sectional":
-                # Cross-sectional: use between_arm_comparison at one visit
                 between_arm_comparison(
                     adata,
                     visit=visits[0],
@@ -263,7 +280,6 @@ def _run_scalability_benchmark(
                     standardize=True,
                 )
             else:
-                # Longitudinal (two_arm_did or paired): use did_table
                 did_table(
                     adata,
                     features=sigs,
@@ -276,14 +292,15 @@ def _run_scalability_benchmark(
         _, peak = tracemalloc.get_traced_memory()
         tracemalloc.stop()
 
-        timings.append({
-            "n_cells": n_cells, "time_s": elapsed, "dataset": name,
-            "n_genes": adata.n_vars, "design_type": dtype,
-        })
-        mem_usage.append({
-            "n_cells": n_cells, "peak_mb": peak / 1024**2, "dataset": name,
-            "n_genes": adata.n_vars, "design_type": dtype,
-        })
+        shared = {
+            "n_cells": n_cells,
+            "n_participants": n_pids,
+            "n_features": n_features,
+            "dataset": name,
+            "design_type": dtype,
+        }
+        timings.append({**shared, "time_s": elapsed})
+        mem_usage.append({**shared, "peak_mb": peak / 1024**2})
         print(f"{elapsed:.2f}s, {peak / 1024**2:.1f} MB")
 
         gc.collect()
@@ -295,41 +312,73 @@ def _run_scalability_benchmark(
     return timing_df, memory_df
 
 
-def _identify_best_feature(
-    adata, sigs: list[str], design, visits: tuple, dtype: str,
-) -> tuple[str, float] | None:
-    """Run a full analysis on all data and return the most significant feature.
+# Pre-specified endpoints for power analysis.
+# These are biologically motivated signatures chosen a priori (not data-driven),
+# avoiding double-dipping / winner's-curse bias.  We test each pre-specified
+# signature and report power for whichever exists in the dataset.
+# Column names follow the ``sig_<name_with_underscores>`` convention from
+# ``score_signatures()``.
+_PRESPECIFIED_ENDPOINTS = [
+    "sig_Cytotoxic T Cell Activity",
+    "sig_Interferon Response",
+    "sig_Immune Exhaustion",
+    "sig_T Cell Activation",
+]
 
-    This identifies the "oracle" feature for power analysis — simulating a
-    scenario where a researcher pre-registers the best signature.
-    Always uses the raw (unadjusted) p-value to pick the best feature.
 
-    Returns (feature_name, p_value) or None if no feature found.
+def _select_prespecified_feature(
+    sigs: list[str],
+) -> str | None:
+    """Return the first pre-specified endpoint present in *sigs*.
+
+    This is independent of the data — no p-values are computed — so there
+    is no selection bias or double-dipping.
     """
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        if dtype == "cross_sectional":
-            res = between_arm_comparison(
-                adata, visit=visits[0], features=sigs,
-                design=design, aggregate="participant_visit",
-                standardize=True,
-            )
-        else:
-            res = did_table(
-                adata, features=sigs, design=design,
-                visits=visits, aggregate="participant_visit",
-                standardize=True,
-            )
-    if res.empty:
-        return None
-    # Use raw p-value column (p_DiD for did_table, p_arm for between_arm)
-    p_col = next(
-        (c for c in ("p_DiD", "p_arm", "p_value") if c in res.columns), None
-    )
-    if p_col is None:
-        return None
-    best_idx = res[p_col].idxmin()
-    return res.loc[best_idx, "feature"], float(res.loc[best_idx, p_col])
+    for ep in _PRESPECIFIED_ENDPOINTS:
+        if ep in sigs:
+            return ep
+    return None
+
+
+def _stratified_subsample_pids(
+    adata,
+    design: TrialDesign,
+    dtype: str,
+    n_sub: int,
+    rng: np.random.Generator,
+) -> np.ndarray:
+    """Subsample participants preserving arm/visit balance where possible.
+
+    For two-arm designs, draws proportionally from each arm.
+    For single-arm designs, draws uniformly.
+    """
+    pid_col = design.participant_col
+    all_pids = adata.obs[pid_col].unique()
+
+    if dtype == "two_arm_did" and n_sub >= 4:
+        # Stratify by arm
+        arm_pids: dict[str, np.ndarray] = {}
+        for arm in [design.arm_treated, design.arm_control]:
+            arm_pids[arm] = adata.obs.loc[
+                adata.obs[design.arm_col] == arm, pid_col
+            ].unique()
+        n_t = len(arm_pids[design.arm_treated])
+        n_c = len(arm_pids[design.arm_control])
+        frac_t = n_t / (n_t + n_c)
+        n_sub_t = max(2, round(n_sub * frac_t))
+        n_sub_c = n_sub - n_sub_t
+        if n_sub_c < 2:
+            n_sub_c = 2
+            n_sub_t = n_sub - n_sub_c
+        n_sub_t = min(n_sub_t, n_t)
+        n_sub_c = min(n_sub_c, n_c)
+        sampled = np.concatenate([
+            rng.choice(arm_pids[design.arm_treated], n_sub_t, replace=False),
+            rng.choice(arm_pids[design.arm_control], n_sub_c, replace=False),
+        ])
+        return sampled
+
+    return rng.choice(all_pids, size=min(n_sub, len(all_pids)), replace=False)
 
 
 def _compute_subsampling_power(
@@ -337,17 +386,23 @@ def _compute_subsampling_power(
 ) -> pd.DataFrame:
     """Compute empirical power via participant subsampling on real datasets.
 
-    Strategy: First identify the best feature from the full sample, then
-    test only that single feature at each subsample size (unadjusted
-    p-value).  This simulates pre-registered power for a single endpoint.
+    Strategy: Use a **pre-specified endpoint** (chosen a priori, not
+    data-driven) to avoid double-dipping / winner's-curse bias.
+    All datasets are included regardless of full-sample significance.
+
+    Subsampling is stratified by arm for two-arm designs.
+
+    Failures are tracked: power = n_significant / n_valid_fits, and
+    ``n_failures`` is recorded per point.
 
     Returns
     -------
     pd.DataFrame
-        Columns: n_participants, dataset, power
+        Columns: n_participants, dataset, power, n_valid, n_failures,
+                 feature, design_type
     """
     # Check cache
-    cache_tag = "power_v2_" + _cache_key(
+    cache_tag = "power_" + _cache_key(
         *[f"{n}:{a.n_obs}" for n, a, *_ in datasets],
         str(N_POWER_ITERATIONS),
     )
@@ -360,9 +415,6 @@ def _compute_subsampling_power(
     rng = np.random.default_rng(RNG_SEED)
     records: list[dict] = []
 
-    # Cap: skip datasets with >100K cells (memory-intensive to subsample)
-    MAX_CELLS_FOR_POWER = 100_000
-
     for name, adata, design, visits, sigs, dtype in datasets:
         pid_col = design.participant_col
         all_pids = adata.obs[pid_col].unique()
@@ -370,22 +422,11 @@ def _compute_subsampling_power(
         if n_total < 6:
             print(f"    {name}: too few participants ({n_total}), skipping")
             continue
-        if adata.n_obs > MAX_CELLS_FOR_POWER:
-            print(f"    {name}: too many cells ({adata.n_obs:,}) for "
-                  "subsampling, skipping")
-            continue
 
-        # Identify best feature from full sample
-        result = _identify_best_feature(adata, sigs, design, visits, dtype)
-        if result is None:
-            print(f"    {name}: no feature found, skipping")
-            continue
-        best_feat, best_p = result
-
-        # Skip if even the full sample doesn't reach significance
-        if best_p >= 0.05:
-            print(f"    {name}: best feature not significant at full sample "
-                  f"(p={best_p:.3f}), skipping power analysis")
+        # Pre-specified endpoint (no data peeking)
+        feat = _select_prespecified_feature(sigs)
+        if feat is None:
+            print(f"    {name}: no pre-specified endpoint available, skipping")
             continue
 
         # Choose subsample sizes: from 4 up to n_total
@@ -396,15 +437,28 @@ def _compute_subsampling_power(
         ))
         sub_sizes = [s for s in sub_sizes if s <= n_total]
 
-        print(f"    {name} ({n_total} ppts, {dtype}, feat={best_feat}): ",
-              end="", flush=True)
+        # Use fewer iterations for large datasets to avoid OOM
+        if adata.n_obs > 100_000:
+            n_iter = 30  # ~205K cells: expensive to copy per subsample
+        elif adata.n_obs > 50_000:
+            n_iter = N_POWER_ITERATIONS // 2
+        else:
+            n_iter = N_POWER_ITERATIONS
+
+        print(f"    {name} ({n_total} ppts, {dtype}, feat={feat}, "
+              f"n_iter={n_iter}): ", end="", flush=True)
 
         for n_sub in sub_sizes:
             n_sig = 0
-            for _ in range(N_POWER_ITERATIONS):
-                sampled_pids = rng.choice(all_pids, size=n_sub, replace=False)
+            n_valid = 0
+            n_fail = 0
+            for _ in range(n_iter):
+                sampled_pids = _stratified_subsample_pids(
+                    adata, design, dtype, n_sub, rng,
+                )
                 mask = adata.obs[pid_col].isin(sampled_pids)
-                sub_adata = adata[mask].copy()
+                # Use view (not copy) to avoid OOM on large datasets
+                sub_adata = adata[mask]
 
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
@@ -413,7 +467,7 @@ def _compute_subsampling_power(
                             res = between_arm_comparison(
                                 sub_adata,
                                 visit=visits[0],
-                                features=[best_feat],
+                                features=[feat],
                                 design=design,
                                 aggregate="participant_visit",
                                 standardize=True,
@@ -421,34 +475,49 @@ def _compute_subsampling_power(
                         else:
                             res = did_table(
                                 sub_adata,
-                                features=[best_feat],
+                                features=[feat],
                                 design=design,
                                 visits=visits,
                                 aggregate="participant_visit",
                                 standardize=True,
                             )
-                        # Use raw p-value for single pre-specified test
                         p_col = next(
                             (c for c in ("p_DiD", "p_arm", "p_value")
                              if c in res.columns),
                             None,
                         )
-                        if p_col is None:
+                        if p_col is None or res.empty:
+                            n_fail += 1
                             continue
+                        n_valid += 1
                         if res[p_col].iloc[0] < POWER_ALPHA:
                             n_sig += 1
                     except Exception:
-                        pass  # subsample may be too small for model
+                        n_fail += 1
 
-            power = n_sig / N_POWER_ITERATIONS
+            # Free memory between subsample sizes
+            gc.collect()
+
+            # Power = significant / valid (not total iterations)
+            power = n_sig / n_valid if n_valid > 0 else np.nan
             records.append({
                 "n_participants": n_sub,
                 "dataset": name,
                 "power": power,
+                "n_valid": n_valid,
+                "n_failures": n_fail,
+                "feature": feat,
+                "design_type": dtype,
             })
 
-        powers = [r["power"] for r in records if r["dataset"] == name]
-        print(f"power range [{min(powers):.2f}, {max(powers):.2f}]")
+        ds_records = [r for r in records if r["dataset"] == name]
+        powers = [r["power"] for r in ds_records if not np.isnan(r["power"])]
+        total_fail = sum(r["n_failures"] for r in ds_records)
+        if powers:
+            print(f"range [{min(powers):.2f}, {max(powers):.2f}], "
+                  f"{total_fail} fit failures")
+        else:
+            print("no valid results")
 
     power_df = pd.DataFrame(records)
     _save_cache(cache_tag, power_df)
@@ -469,63 +538,16 @@ def _paired_cohens_d(
     return d, d - t_crit * se_d, d + t_crit * se_d
 
 
-def _best_paired_d(
-    adata,
-    sigs: list[str],
-    pid_col: str = "participant_id",
-    visit_col: str = "visit",
-    pre_label: str = "Pre",
-    post_label: str = "Post",
-) -> dict | None:
-    """Find the signature with the largest absolute paired Cohen's d."""
-    best_d, best_rec = 0.0, None
-    for sig in sigs:
-        if sig not in adata.obs.columns:
-            continue
-        pb = (
-            adata.obs.groupby([pid_col, visit_col], observed=True)[sig]
-            .mean()
-            .reset_index()
-        )
-        deltas = []
-        for pid, pdf in pb.groupby(pid_col):
-            if {pre_label, post_label}.issubset(set(pdf[visit_col])):
-                pre_val = pdf.loc[pdf[visit_col] == pre_label, sig].values[0]
-                post_val = pdf.loc[pdf[visit_col] == post_label, sig].values[0]
-                deltas.append(post_val - pre_val)
-        if len(deltas) >= 3:
-            arr = np.array(deltas)
-            d_val, ci_lo, ci_hi = _paired_cohens_d(arr)
-            if abs(d_val) > abs(best_d):
-                best_d = d_val
-                best_rec = {"d": d_val, "d_lower": ci_lo, "d_upper": ci_hi}
-    return best_rec
-
-
-def _abs_d_with_ci(d: float, ci_lo: float, ci_hi: float) -> dict:
-    """Convert a signed Cohen's d with CI to absolute |d| with valid CI.
-
-    Properly handles the folding so lower bound is clamped to ≥ 0.
-    """
-    d_abs = abs(d)
-    # Preserve CI half-width, clamp lower to 0
-    hw = (ci_hi - ci_lo) / 2.0
-    return {
-        "d": d_abs,
-        "d_lower": max(0.0, d_abs - hw),
-        "d_upper": d_abs + hw,
-    }
 
 
 def _compute_effect_sizes_across_datasets(
     datasets: list[DatasetInfo],
 ) -> pd.DataFrame:
-    """Compute signed Cohen's d for the best signature in each dataset.
+    """Compute signed Cohen's d for **pre-specified** signatures across datasets.
 
-    For each dataset, the signature with the largest absolute effect is
-    selected.  Effect sizes are **signed** so the forest plot shows
-    direction of change.  Each row records the signature name, design
-    type, and participant count for annotation.
+    Uses ``_PRESPECIFIED_ENDPOINTS`` to avoid winner's-curse / post-selection
+    bias.  Reports the effect size for each pre-specified signature that
+    exists in each dataset — not just the "best" one.
 
     Returns
     -------
@@ -534,7 +556,7 @@ def _compute_effect_sizes_across_datasets(
                  design_type, n_participants
     """
     # Check cache
-    cache_tag = "effects_v3_" + _cache_key(
+    cache_tag = "effects_" + _cache_key(
         *[f"{n}:{a.n_obs}" for n, a, *_ in datasets],
     )
     cached = _load_cache(cache_tag)
@@ -542,19 +564,17 @@ def _compute_effect_sizes_across_datasets(
         print("  Effect sizes (cached)")
         return cached
 
-    print("  Computing signed effect sizes (best signature per dataset) ...")
+    print("  Computing signed effect sizes (pre-specified endpoints) ...")
     records: list[dict] = []
 
     for name, adata, design, visits, sigs, dtype in datasets:
         pid_col = design.participant_col
+        # Only compute for pre-specified endpoints
+        target_sigs = [s for s in _PRESPECIFIED_ENDPOINTS if s in sigs
+                       and s in adata.obs.columns]
 
-        try:
-            best_d, best_rec = 0.0, None
-
-            for sig in sigs:
-                if sig not in adata.obs.columns:
-                    continue
-
+        for sig in target_sigs:
+            try:
                 if dtype == "two_arm_did":
                     pb = (
                         adata.obs.groupby(
@@ -636,29 +656,21 @@ def _compute_effect_sizes_across_datasets(
                 else:
                     continue
 
-                if abs(d_val) > abs(best_d):
-                    best_d = d_val
-                    best_rec = {
-                        "dataset": name,
-                        "signature": sig.replace("sig_", ""),
-                        "d": d_val,
-                        "d_lower": ci_lo,
-                        "d_upper": ci_hi,
-                        "design_type": dtype,
-                        "n_participants": n_ppt,
-                    }
+                records.append({
+                    "dataset": name,
+                    "signature": sig.replace("sig_", ""),
+                    "d": d_val,
+                    "d_lower": ci_lo,
+                    "d_upper": ci_hi,
+                    "design_type": dtype,
+                    "n_participants": n_ppt,
+                })
+                print(f"    {name}/{sig.replace('sig_', '')}: "
+                      f"d={d_val:+.2f} [{ci_lo:+.2f}, {ci_hi:+.2f}] "
+                      f"(n={n_ppt})")
 
-            if best_rec is not None:
-                records.append(best_rec)
-                print(f"    {name}: d={best_rec['d']:+.2f} "
-                      f"[{best_rec['d_lower']:+.2f}, "
-                      f"{best_rec['d_upper']:+.2f}] "
-                      f"({best_rec['signature']}, n={best_rec['n_participants']})")
-            else:
-                print(f"    {name}: no valid signatures")
-
-        except Exception as exc:
-            print(f"    {name}: FAILED ({exc})")
+            except Exception as exc:
+                print(f"    {name}/{sig}: FAILED ({exc})")
 
     effect_df = pd.DataFrame(records)
     _save_cache(cache_tag, effect_df)
@@ -688,12 +700,6 @@ def _prepare_data() -> dict:
 # Panel drawing functions
 # ======================================================================
 
-def _fmt_cells(n: int) -> str:
-    """Format cell count as human-readable string."""
-    if n >= 1_000_000:
-        return f"{n / 1_000_000:.0f}M"
-    return f"{n / 1_000:.0f}K"
-
 
 def _scaling_scatter(
     ax: plt.Axes,
@@ -701,11 +707,18 @@ def _scaling_scatter(
     y_col: str,
     y_label: str,
     title: str,
-    y_ticks: list[float] | None = None,
-    y_tick_labels: list[str] | None = None,
 ) -> None:
-    """Shared helper: log-log scatter of (n_cells × n_genes) vs metric."""
-    from matplotlib.ticker import FixedLocator, NullLocator
+    """Shared helper: log-log scatter of n_cells vs metric.
+
+    X-axis is ``n_cells`` — the dominant cost driver — since
+    pseudobulk aggregation over all cells dominates both runtime and
+    memory, while the downstream OLS/Wilcoxon on the pseudobulked
+    (n_participants × n_features) table is trivially fast.
+
+    No pooled trend line is fitted across heterogeneous methods;
+    observed points are shown directly with dataset labels.
+    """
+    from matplotlib.ticker import LogLocator, NullLocator
 
     dtype_colors = {
         "two_arm_did": COLORS["control"],
@@ -718,8 +731,7 @@ def _scaling_scatter(
         "cross_sectional": "Cross-sectional",
     }
 
-    # x-axis = n_cells × n_genes (proportional to matrix size)
-    matrix_size = (df["n_cells"] * df["n_genes"]).values.astype(float)
+    x_vals = df["n_cells"].values.astype(float)
     y_vals = df[y_col].values.astype(float)
 
     ax.set_xscale("log")
@@ -730,21 +742,6 @@ def _scaling_scatter(
             linewidth=0.5, zorder=0)
     ax.set_axisbelow(True)
 
-    # ── Fit power-law trend:  y = a * (cells×genes)^b ──
-    log_x = np.log10(matrix_size)
-    log_y = np.log10(np.clip(y_vals, 1e-6, None))
-    b, log_a = np.polyfit(log_x, log_y, 1)
-
-    x_trend = np.logspace(
-        np.log10(matrix_size.min() * 0.5),
-        np.log10(matrix_size.max() * 2.0),
-        100,
-    )
-    y_trend = 10 ** (log_a + b * np.log10(x_trend))
-    ax.plot(x_trend, y_trend, "--", color="#999", alpha=0.6,
-            linewidth=1.2, zorder=1,
-            label=f"$\\propto n^{{{b:.2f}}}$")
-
     # ── Scatter points: color = design type ──
     plotted_dtypes: set = set()
     for i, (_, row) in enumerate(df.iterrows()):
@@ -753,51 +750,53 @@ def _scaling_scatter(
         lbl = dtype_labels.get(dt) if dt not in plotted_dtypes else None
         plotted_dtypes.add(dt)
         ax.scatter(
-            matrix_size[i], y_vals[i],
-            s=80, color=c, edgecolors="white", linewidths=0.8,
+            x_vals[i], y_vals[i],
+            s=90, color=c, edgecolors="white", linewidths=0.8,
             zorder=4, label=lbl, alpha=0.92,
         )
 
     # ── Dataset labels with adjustText ──
-    from adjustText import adjust_text  # noqa: E402
+    try:
+        from adjustText import adjust_text
+    except ImportError:
+        adjust_text = None
+
+    def _fmt_cells(n: float) -> str:
+        if n >= 1_000_000:
+            return f"{n / 1_000_000:.0f}M"
+        return f"{n / 1_000:.0f}K"
+
     texts = []
     for i, (_, row) in enumerate(df.iterrows()):
-        n_c = row["n_cells"]
-        n_g = row["n_genes"]
-        cell_str = (f"{n_c / 1_000_000:.0f}M" if n_c >= 1_000_000
-                    else f"{n_c / 1_000:.0f}K")
-        gene_str = f"{n_g // 1000}K"
-        lbl = f"{row['dataset']}  ({cell_str} × {gene_str})"
+        n_c = int(row["n_cells"])
+        n_p = int(row["n_participants"])
+        lbl = f"{row['dataset']}  ({_fmt_cells(n_c)} cells, {n_p} ppts)"
         texts.append(
             ax.text(
-                matrix_size[i], y_vals[i], lbl,
-                fontsize=7, color="#444", fontstyle="italic",
+                x_vals[i], y_vals[i], lbl,
+                fontsize=7.5, color="#333",
             )
         )
-    adjust_text(
-        texts, ax=ax,
-        arrowprops=dict(arrowstyle="-", color="#bbb", lw=0.6),
-        ensure_inside_axes=True,
-        min_arrow_len=5,
-    )
+    if adjust_text is not None and texts:
+        adjust_text(
+            texts, ax=ax,
+            arrowprops=dict(arrowstyle="-", color="#bbb", lw=0.6),
+            ensure_inside_axes=True,
+            min_arrow_len=5,
+            max_move=80,
+        )
 
-    # ── Explicit x-axis ticks (scientific notation via LaTeX) ──
-    x_ticks = [3e8, 5e8, 1e9, 2e9, 5e9]
-    x_labels = [
-        r"$3{\times}10^8$", r"$5{\times}10^8$", r"$10^9$",
-        r"$2{\times}10^9$", r"$5{\times}10^9$",
-    ]
-    ax.xaxis.set_major_locator(FixedLocator(x_ticks))
-    ax.set_xticklabels(x_labels)
+    # ── Let matplotlib choose uniform log ticks ──
+    ax.xaxis.set_major_locator(LogLocator(base=10, numticks=8))
     ax.xaxis.set_minor_locator(NullLocator())
+    ax.yaxis.set_major_locator(LogLocator(base=10, numticks=8))
+    ax.yaxis.set_minor_locator(NullLocator())
 
-    # ── Explicit y-axis ticks ──
-    if y_ticks is not None and y_tick_labels is not None:
-        ax.yaxis.set_major_locator(FixedLocator(y_ticks))
-        ax.set_yticklabels(y_tick_labels)
-        ax.yaxis.set_minor_locator(NullLocator())
+    # ── Add right-side padding so labels near max-x don't clip ──
+    x_lo, x_hi = ax.get_xlim()
+    ax.set_xlim(x_lo, x_hi * 1.6)
 
-    ax.set_xlabel("Matrix size  (cells × genes)")
+    ax.set_xlabel("Number of cells")
     ax.set_ylabel(y_label)
     ax.set_title(title, fontsize=11, fontweight="bold", pad=10)
     ax.legend(fontsize=8, frameon=True, fancybox=True,
@@ -806,29 +805,36 @@ def _scaling_scatter(
 
 
 def panel_A(ax: plt.Axes, data: dict) -> None:
-    """Panel A: Runtime scaling — log-log scatter with trend line."""
+    """Panel A: Runtime scaling — log-log scatter."""
     _scaling_scatter(
         ax, data["timing_df"],
-        y_col="time_s", y_label="Runtime (seconds)",
-        title="Computational scaling",
-        y_ticks=[0.1, 0.2, 0.5, 1.0, 2.0],
-        y_tick_labels=["0.1", "0.2", "0.5", "1.0", "2.0"],
+        y_col="time_s", y_label="Wall time (seconds)",
+        title="Runtime scaling",
     )
 
 
 def panel_B(ax: plt.Axes, data: dict) -> None:
-    """Panel B: Memory scaling — log-log scatter with trend line."""
+    """Panel B: Memory scaling — log-log scatter (tracemalloc)."""
     _scaling_scatter(
         ax, data["memory_df"],
-        y_col="peak_mb", y_label="Peak memory",
+        y_col="peak_mb", y_label="Python allocation peak (MB)",
         title="Memory scaling",
-        y_ticks=[512, 1024, 2048, 4096, 8192, 12288],
-        y_tick_labels=["0.5 GB", "1 GB", "2 GB", "4 GB", "8 GB", "12 GB"],
     )
 
 
+def _wilson_ci(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
+    """Wilson score interval for binomial proportion."""
+    if n == 0:
+        return (0.0, 1.0)
+    p_hat = k / n
+    denom = 1 + z**2 / n
+    centre = (p_hat + z**2 / (2 * n)) / denom
+    half_width = z * np.sqrt(p_hat * (1 - p_hat) / n + z**2 / (4 * n**2)) / denom
+    return (max(0.0, centre - half_width), min(1.0, centre + half_width))
+
+
 def panel_C(ax: plt.Axes, data: dict) -> None:
-    """Panel C: Empirical power via participant subsampling."""
+    """Panel C: Empirical power via participant subsampling with Wilson CIs."""
     power_df = data["power_df"]
     if power_df.empty:
         ax.text(0.5, 0.5, "Insufficient data\nfor power analysis",
@@ -838,7 +844,6 @@ def panel_C(ax: plt.Axes, data: dict) -> None:
         despine(ax)
         return
 
-    # Color palette consistent with Panel D
     dataset_colors = {
         "Sade-Feldman": COLORS["control"],
         "Vaccine":      COLORS["treated"],
@@ -862,8 +867,26 @@ def panel_C(ax: plt.Axes, data: dict) -> None:
     for ds_name, grp in power_df.groupby("dataset", sort=False):
         color = dataset_colors.get(ds_name, COLORS["gray"])
         marker = markers.get(ds_name, "o")
+        grp = grp.sort_values("n_participants")
+
+        # Compute Wilson CIs from n_valid and power
+        ci_lo_vals, ci_hi_vals = [], []
+        for _, row in grp.iterrows():
+            n_v = int(row.get("n_valid", N_POWER_ITERATIONS))
+            k = round(row["power"] * n_v) if not np.isnan(row["power"]) else 0
+            lo, hi = _wilson_ci(k, n_v)
+            ci_lo_vals.append(lo)
+            ci_hi_vals.append(hi)
+
+        x = grp["n_participants"].values
+        y = grp["power"].values
+
+        # CI band
+        ax.fill_between(x, ci_lo_vals, ci_hi_vals,
+                        color=color, alpha=0.12, zorder=1)
+        # Line
         ax.plot(
-            grp["n_participants"], grp["power"],
+            x, y,
             color=color, marker=marker, markersize=6,
             markeredgecolor="white", markeredgewidth=0.6,
             linewidth=2.0, zorder=3, label=ds_name,
@@ -877,33 +900,37 @@ def panel_C(ax: plt.Axes, data: dict) -> None:
             "80% power", ha="right", va="bottom", fontsize=7.5,
             color=COLORS["gray"], fontstyle="italic")
 
+    # Note pre-specified endpoint
+    feat_name = power_df["feature"].iloc[0] if "feature" in power_df.columns else ""
+    feat_short = feat_name.replace("sig_", "").replace("_", " ")
+
     ax.set_xlabel("Number of participants")
     ax.set_ylabel(r"Power (1 − $\beta$)")
     ax.set_ylim(-0.02, 1.05)
-    ax.set_title("Empirical power", fontsize=11, fontweight="bold", pad=10)
+    ax.set_title(f"Empirical power — {feat_short}",
+                 fontsize=11, fontweight="bold", pad=10)
     ax.legend(frameon=True, fancybox=True, framealpha=0.85,
               edgecolor="#ddd", fontsize=8, loc="lower right")
     despine(ax)
 
 
 def panel_D(ax: plt.Axes, data: dict) -> None:
-    """Panel D: Forest plot of signed Cohen's d, grouped by design type."""
+    """Panel D: Forest plot of signed Cohen's d for pre-specified endpoints.
+
+    Shows all pre-specified signatures across all datasets (no post-selection),
+    grouped by dataset.  Y-axis labels show dataset name only; signature and
+    sample size are annotated to the right of each point.
+    """
     effect_df = data["effect_df"]
     if effect_df.empty:
         ax.text(0.5, 0.5, "No effect size data available",
                 ha="center", va="center", transform=ax.transAxes,
                 fontsize=10, color=COLORS["gray"])
-        ax.set_title("Observed effect sizes", fontsize=10, fontweight="bold")
+        ax.set_title("Effect sizes (pre-specified endpoints)",
+                     fontsize=10, fontweight="bold")
         despine(ax)
         return
 
-    # Group by design type and sort within group by |d|
-    type_order = ["two_arm_did", "paired", "cross_sectional"]
-    type_labels = {
-        "two_arm_did": "Two-arm DiD",
-        "paired": "Paired pre/post",
-        "cross_sectional": "Cross-sectional",
-    }
     dataset_colors = {
         "Sade-Feldman": COLORS["control"],
         "Vaccine":      COLORS["treated"],
@@ -912,40 +939,39 @@ def panel_D(ax: plt.Axes, data: dict) -> None:
         "COVID-19":     COLORS["highlight"],
     }
 
-    # Build ordered row list with group separators
+    # Group by dataset (preserve order from data loading)
+    ds_order = list(dict.fromkeys(effect_df["dataset"]))
+
+    # Build ordered row list with dataset separators
     rows: list[dict] = []
-    for dtype in type_order:
-        grp = effect_df[effect_df["design_type"] == dtype].sort_values(
+    for ds in ds_order:
+        grp = effect_df[effect_df["dataset"] == ds].sort_values(
             "d", key=abs, ascending=True,
         )
         if grp.empty:
             continue
-        # Add a group label row (rendered as text, no data point)
-        rows.append({"_group_label": type_labels[dtype]})
+        rows.append({"_group_label": ds})
         for _, row in grp.iterrows():
             rows.append(row.to_dict())
 
     if not rows:
         return
 
-    # Assign y-positions (group labels get a position but no point)
+    # Assign y-positions
     y = 0
     y_positions: list[float] = []
     y_labels: list[str] = []
     data_rows: list[tuple[int, dict]] = []
 
-    for r in reversed(rows):  # top-to-bottom
+    for r in reversed(rows):
         if "_group_label" in r:
             y_positions.append(y)
             y_labels.append(r["_group_label"])
             y += 1
         else:
             y_positions.append(y)
-            n = r["n_participants"]
-            sig_short = r.get("signature", "")
-            y_labels.append(
-                f"{r['dataset']}  (n={n}, {sig_short})"
-            )
+            sig_short = r.get("signature", "").replace("_", " ")
+            y_labels.append(f"  {sig_short}")
             data_rows.append((len(y_positions) - 1, r))
             y += 1
 
@@ -963,40 +989,34 @@ def panel_D(ax: plt.Axes, data: dict) -> None:
         yp = y_positions[idx]
         color = dataset_colors.get(row["dataset"], COLORS["gray"])
 
-        # CI whisker
         ax.hlines(yp, row["d_lower"], row["d_upper"],
                   color=color, linewidth=2.0, zorder=2, alpha=0.7)
-        # Point estimate
         ax.scatter(row["d"], yp, color=color, s=70, zorder=3,
                    edgecolors="white", linewidths=0.8)
 
-        # Annotate signed d value to the right
-        x_annot = row["d_upper"] + 0.08
+        # Right-side annotation: d value and n
+        x_annot = row["d_upper"] + 0.06
         ax.text(x_annot, yp,
-                f"d = {row['d']:+.2f}",
-                fontsize=7, va="center", ha="left", color=color,
-                fontweight="bold")
+                f"{row['d']:+.2f}  (n={row['n_participants']})",
+                fontsize=6.5, va="center", ha="left", color="#555")
 
-    # Style group labels (bold, slightly different color)
+    # Style dataset group labels
     for i, lbl in enumerate(y_labels):
-        is_group = any(
-            r.get("_group_label") == lbl for r in rows if "_group_label" in r
-        )
+        is_group = lbl in ds_order
         if is_group:
-            # Draw subtle horizontal separator
             yp = y_positions[i]
             ax.axhline(yp - 0.5, color=COLORS["gray"], linewidth=0.4,
                        linestyle="-", alpha=0.3, xmin=0.0, xmax=1.0)
 
     ax.set_yticks(y_positions)
     ax.set_yticklabels(y_labels, fontsize=7.5)
-    # Bold the group labels
     for tick_label in ax.get_yticklabels():
         text = tick_label.get_text()
-        if text in type_labels.values():
+        if text in ds_order:
             tick_label.set_fontweight("bold")
             tick_label.set_fontsize(8)
-            tick_label.set_color(COLORS["gray"])
+            color = dataset_colors.get(text, COLORS["gray"])
+            tick_label.set_color(color)
 
     # Cohen's d reference lines
     for ref_d in (-0.8, -0.5, -0.2, 0.2, 0.5, 0.8):
@@ -1004,10 +1024,9 @@ def panel_D(ax: plt.Axes, data: dict) -> None:
                    linestyle=":", zorder=0, alpha=0.3)
 
     ax.set_xlabel("Cohen's d  (signed effect size)")
-    ax.set_title("Observed effect sizes",
+    ax.set_title("Effect sizes (pre-specified endpoints)",
                  fontsize=11, fontweight="bold", pad=10)
 
-    # Symmetric x-limits around data range
     all_vals = effect_df[["d_lower", "d_upper", "d"]].values.flatten()
     x_margin = max(abs(all_vals.min()), abs(all_vals.max())) + 0.5
     ax.set_xlim(-x_margin, x_margin)

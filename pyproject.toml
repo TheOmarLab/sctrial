@@ -41,7 +41,7 @@ Repository = "https://github.com/TheOmarLab/sctrial"
 Issues = "https://github.com/TheOmarLab/sctrial/issues"
 
 [project.optional-dependencies]
-plots = ["matplotlib>=3.6", "seaborn>=0.12", "scanpy>=1.9", "plotly>=5.0"]
+plots = ["matplotlib>=3.6", "seaborn>=0.12", "scanpy>=1.9", "plotly>=5.0", "adjustText>=1.0"]
 gsea = ["gseapy>=1.0"]
 aucell = ["pyscenic>=0.12"]
 survival = ["lifelines>=0.27"]
