@@ -48,7 +48,6 @@ from .._shared import (
 # ── Figure-level constants ────────────────────────────────────────────
 
 FIGURE_NAME = "Figure6_scalability_power"
-FIGSIZE = (18, 12)
 
 # Sade-Feldman design (two-arm DiD)
 SF_DESIGN = TrialDesign(
@@ -66,7 +65,7 @@ POWER_ALPHA = 0.05
 RNG_SEED = 42
 
 # Code version tag — bump when analysis logic changes to invalidate caches
-_CODE_VERSION = "v7"
+_CODE_VERSION = "v8"
 
 # Dataset info tuple fields:
 #   (name, adata, design, visits, sig_cols, design_type)
@@ -356,8 +355,9 @@ def _stratified_subsample_pids(
     pid_col = design.participant_col
     all_pids = adata.obs[pid_col].unique()
 
-    if dtype == "two_arm_did" and n_sub >= 4:
-        # Stratify by arm
+    if dtype in ("two_arm_did", "cross_sectional") and n_sub >= 4:
+        # Stratify by arm to preserve balance in both two-arm DiD
+        # and cross-sectional (Severe vs Mild, etc.) designs.
         arm_pids: dict[str, np.ndarray] = {}
         for arm in [design.arm_treated, design.arm_control]:
             arm_pids[arm] = adata.obs.loc[
@@ -637,11 +637,15 @@ def _compute_effect_sizes_across_datasets(
                     n_ppt = len(ds)
 
                 elif dtype == "cross_sectional":
-                    pb_t = (adata.obs.loc[
-                        adata.obs[design.arm_col] == design.arm_treated
+                    # Filter to the same visit used in Panel C / benchmark
+                    # so the estimand is consistent across panels.
+                    visit_mask = adata.obs[design.visit_col] == visits[0]
+                    obs_visit = adata.obs.loc[visit_mask]
+                    pb_t = (obs_visit.loc[
+                        obs_visit[design.arm_col] == design.arm_treated
                     ].groupby(pid_col)[sig].mean())
-                    pb_c = (adata.obs.loc[
-                        adata.obs[design.arm_col] == design.arm_control
+                    pb_c = (obs_visit.loc[
+                        obs_visit[design.arm_col] == design.arm_control
                     ].groupby(pid_col)[sig].mean())
                     n1, n2 = len(pb_t), len(pb_c)
                     if n1 < 3 or n2 < 3:
@@ -903,9 +907,15 @@ def panel_C(ax: plt.Axes, data: dict) -> None:
             "80% power", ha="right", va="bottom", fontsize=7.5,
             color=COLORS["gray"], fontstyle="italic")
 
-    # Note pre-specified endpoint
-    feat_name = power_df["feature"].iloc[0] if "feature" in power_df.columns else ""
-    feat_short = feat_name.replace("sig_", "").replace("_", " ")
+    # Note pre-specified endpoint — verify all datasets used the same one.
+    if "feature" in power_df.columns:
+        unique_feats = power_df["feature"].unique()
+        if len(unique_feats) == 1:
+            feat_short = unique_feats[0].replace("sig_", "").replace("_", " ")
+        else:
+            feat_short = "pre-specified endpoints"
+    else:
+        feat_short = ""
 
     ax.set_xlabel("Number of participants")
     ax.set_ylabel(r"Power (1 − $\beta$)")
