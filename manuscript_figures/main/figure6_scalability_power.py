@@ -791,7 +791,6 @@ def _scaling_scatter(
     y_col: str,
     y_label: str,
     title: str,
-    subtitle: str = "",
     shared_xlim: tuple[float, float] | None = None,
 ) -> tuple[float, float]:
     """Shared helper: log-log scatter with replicate median + IQR.
@@ -878,41 +877,25 @@ def _scaling_scatter(
             zorder=4, label=dt_lbl, alpha=0.95, marker=marker,
         )
 
-    # ── Short dataset tags with adjustText ──
-    try:
-        from adjustText import adjust_text
-    except ImportError:
-        adjust_text = None
-
+    # ── Short dataset tags via ax.annotate (log-safe) ──
     def _fmt_cells(n: float) -> str:
         if n >= 1_000_000:
             return f"{n / 1_000_000:.1f}M"
         return f"{n / 1_000:.0f}K"
 
-    texts = []
-    x_pts, y_pts = [], []  # For adjustText point avoidance
     for _, row in agg.iterrows():
         x = float(row["n_cells"])
         y = float(row["y_med"])
-        x_pts.append(x)
-        y_pts.append(y)
         tag = _DATASET_TAGS.get(row["dataset"], row["dataset"][:5])
         n_c = int(row["n_cells"])
         lbl = f"{tag}  ({_fmt_cells(n_c)}, {int(row['n_participants'])}p)"
-        # Offset text slightly right+up from point (in data coords, ~15% on log scale)
-        texts.append(
-            ax.text(x * 1.15, y * 1.08, lbl, fontsize=7.5, color="#444",
-                    fontweight="medium")
-        )
-    if adjust_text is not None and texts:
-        adjust_text(
-            texts, x=x_pts, y=y_pts, ax=ax,
-            arrowprops=dict(arrowstyle="-", color="#bbb", lw=0.5),
-            ensure_inside_axes=True,
-            min_arrow_len=8,
-            max_move=150,
-            force_text=(2.0, 2.0),
-            force_points=(3.0, 3.0),
+        # Use offset in *points* (display coords) so arrows always connect
+        ax.annotate(
+            lbl, xy=(x, y), xycoords="data",
+            xytext=(12, 8), textcoords="offset points",
+            fontsize=7.5, color="#444", fontweight="medium",
+            arrowprops=dict(arrowstyle="-", color="#bbb", lw=0.5,
+                            shrinkA=0, shrinkB=4),
         )
 
     # ── Tick formatting ──
@@ -929,27 +912,15 @@ def _scaling_scatter(
         ax.set_xlim(x_lo * 0.6, x_hi * 3.0)
     xlim_out = ax.get_xlim()
 
-    # ── Labels, title, subtitle ──
+    # ── Labels, title ──
     ax.set_xlabel("Number of cells", fontsize=10)
     ax.set_ylabel(y_label, fontsize=10)
-    ax.set_title(title, fontsize=12, fontweight="bold", pad=12)
-    if subtitle:
-        ax.text(0.5, 1.01, subtitle, transform=ax.transAxes,
-                fontsize=8, color="#888", ha="center", va="bottom",
-                fontstyle="italic")
+    ax.set_title(title, fontsize=12, fontweight="bold", pad=8)
 
     # ── Legend: compact, lower-right to avoid label collisions ──
     ax.legend(fontsize=8, frameon=True, fancybox=True,
               framealpha=0.92, edgecolor="#ddd", loc="lower right",
               borderaxespad=0.8)
-
-    # ── Benchmark metadata ──
-    meta = _get_benchmark_metadata()
-    if has_replicates:
-        meta = f"median of {N_BENCHMARK_REPLICATES} runs  ·  " + meta
-    ax.text(0.98, 0.02, meta, transform=ax.transAxes,
-            fontsize=6, color="#aaa", ha="right", va="bottom",
-            fontstyle="italic")
 
     despine(ax)
     return xlim_out
@@ -962,7 +933,6 @@ def panel_A(ax: plt.Axes, data: dict) -> None:
         y_col="time_s",
         y_label="Wall time (s, median)",
         title="Runtime scaling",
-        subtitle="Real clinical datasets, log–log axes",
     )
     # Store xlim for panel B alignment
     data["_shared_xlim"] = xlim
@@ -975,7 +945,6 @@ def panel_B(ax: plt.Axes, data: dict) -> None:
         y_col="peak_mb",
         y_label="Python allocation peak (MB)",
         title="Memory scaling",
-        subtitle="Real clinical datasets, log–log axes",
         shared_xlim=data.get("_shared_xlim"),
     )
 
@@ -1058,19 +1027,11 @@ def panel_C(ax: plt.Axes, data: dict) -> None:
     ax.axhline(0.80, color="#999", linewidth=0.7,
                linestyle="--", zorder=1, alpha=0.6)
     x_max = power_df["n_participants"].max()
-    ax.text(x_max * 0.98, 0.82,
-            "80% power", ha="right", va="bottom", fontsize=7.5,
-            color="#999", fontstyle="italic")
-
     ax.set_xlabel("Number of participants", fontsize=10)
     ax.set_ylabel(r"Power (1 − $\beta$)", fontsize=10)
     ax.set_ylim(-0.02, 1.05)
     ax.set_title("Empirical power — pre-specified endpoints",
-                 fontsize=12, fontweight="bold", pad=12)
-    ax.text(0.5, 1.01,
-            f"{N_POWER_ITERATIONS} MC iterations per point, Wilson CI bands",
-            transform=ax.transAxes, fontsize=8, color="#888",
-            ha="center", va="bottom", fontstyle="italic")
+                 fontsize=12, fontweight="bold", pad=8)
 
     # Build legend with per-dataset endpoint annotation
     if "feature" in power_df.columns:
@@ -1084,11 +1045,11 @@ def panel_C(ax: plt.Axes, data: dict) -> None:
             new_labels.append(f"{lbl}  ({short})")
         ax.legend(handles, new_labels, frameon=True, fancybox=True,
                   framealpha=0.92, edgecolor="#ddd", fontsize=7.5,
-                  loc="upper left", borderaxespad=0.8,
+                  loc="lower right", borderaxespad=0.8,
                   handlelength=2.0, labelspacing=0.5)
     else:
         ax.legend(frameon=True, fancybox=True, framealpha=0.92,
-                  edgecolor="#ddd", fontsize=8, loc="upper left")
+                  edgecolor="#ddd", fontsize=8, loc="lower right")
     despine(ax)
 
 
