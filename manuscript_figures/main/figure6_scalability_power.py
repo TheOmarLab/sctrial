@@ -18,6 +18,7 @@ import hashlib
 import time
 import tracemalloc
 import warnings
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -65,7 +66,7 @@ POWER_ALPHA = 0.05
 RNG_SEED = 42
 
 # Code version tag — bump when analysis logic changes to invalidate caches
-_CODE_VERSION = "v6"
+_CODE_VERSION = "v7"
 
 # Dataset info tuple fields:
 #   (name, adata, design, visits, sig_cols, design_type)
@@ -77,7 +78,7 @@ DatasetInfo = tuple[str, object, object, tuple, list[str], str]
 # Disk cache for expensive computations
 # ======================================================================
 
-_CACHE_DIR = MAIN_OUTPUT / FIGURE_NAME.replace("Figure", "Figure") / ".cache"
+_CACHE_DIR = Path(__file__).resolve().parent.parent / "_cache"
 
 
 def _cache_key(*args: str) -> str:
@@ -437,9 +438,11 @@ def _compute_subsampling_power(
         ))
         sub_sizes = [s for s in sub_sizes if s <= n_total]
 
-        # Use fewer iterations for large datasets to avoid OOM
+        # Use fewer iterations for large datasets to manage runtime.
+        # Views (not copies) are used, so OOM is not a concern; the
+        # bottleneck is wall-clock time for pseudobulk on 200K+ cells.
         if adata.n_obs > 100_000:
-            n_iter = 30  # ~205K cells: expensive to copy per subsample
+            n_iter = 100
         elif adata.n_obs > 50_000:
             n_iter = N_POWER_ITERATIONS // 2
         else:
