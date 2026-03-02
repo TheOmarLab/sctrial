@@ -65,7 +65,7 @@ POWER_ALPHA = 0.05
 RNG_SEED = 42
 
 # Code version tag — bump when analysis logic changes to invalidate caches
-_CODE_VERSION = "v8"
+_CODE_VERSION = "v9"
 
 # Dataset info tuple fields:
 #   (name, adata, design, visits, sig_cols, design_type)
@@ -219,31 +219,48 @@ def _load_all_datasets() -> list[DatasetInfo]:
     return datasets
 
 
+N_BENCHMARK_REPLICATES = 5  # replicate runs per dataset for median + IQR
+
+# Short tags for publication-quality labels
+_DATASET_TAGS: dict[str, str] = {
+    "Sade-Feldman": "SF",
+    "AML": "AML",
+    "CAR-T": "CAR-T",
+    "Vaccine": "VAX",
+    "COVID-19": "COVID",
+}
+
+# Method family mapping for marker shape encoding
+_METHOD_FAMILY: dict[str, str] = {
+    "two_arm_did": "did_table",
+    "paired": "did_table",
+    "cross_sectional": "between_arm",
+}
+
+
 def _run_scalability_benchmark(
     datasets: list[DatasetInfo],
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Benchmark sctrial runtime and memory on each real dataset.
 
-    Uses ``did_table`` for longitudinal datasets and
-    ``between_arm_comparison`` for cross-sectional ones.
+    Runs ``N_BENCHMARK_REPLICATES`` replicate measurements per dataset
+    so that Panels A/B can show median ± IQR.  Uses ``did_table`` for
+    longitudinal datasets and ``between_arm_comparison`` for
+    cross-sectional ones.
 
-    The x-axis metric is ``n_participants × n_features`` — the actual
-    computational input to the statistical model — rather than full
-    matrix size (n_cells × n_genes), which is not what the analysis
-    operates on.
-
-    Memory is measured via ``tracemalloc`` (Python heap allocations),
-    not OS-level RSS.
+    Memory is measured via ``tracemalloc`` (Python heap allocations).
 
     Returns
     -------
     timing_df, memory_df : pd.DataFrame
+        Each has one row per replicate.
         Columns: n_participants, n_features, n_cells, time_s/peak_mb,
-                 dataset, design_type
+                 dataset, design_type, method, replicate
     """
     # Check cache
     cache_tag = "benchmark_" + _cache_key(
-        *[f"{n}:{a.n_obs}" for n, a, *_ in datasets]
+        *[f"{n}:{a.n_obs}" for n, a, *_ in datasets],
+        str(N_BENCHMARK_REPLICATES),
     )
     cached_t = _load_cache(cache_tag + "_time")
     cached_m = _load_cache(cache_tag + "_mem")
@@ -251,7 +268,8 @@ def _run_scalability_benchmark(
         print("  Scalability benchmarks (cached)")
         return cached_t, cached_m
 
-    print("  Running scalability benchmarks on real datasets ...")
+    print(f"  Running scalability benchmarks ({N_BENCHMARK_REPLICATES} "
+          f"replicates per dataset) ...")
     timings: list[dict] = []
     mem_usage: list[dict] = []
 
@@ -260,50 +278,60 @@ def _run_scalability_benchmark(
         n_features = len(sigs)
         pid_col = design.participant_col
         n_pids = adata.obs[pid_col].nunique()
+        method = _METHOD_FAMILY.get(dtype, "did_table")
         print(f"    {name} ({n_pids} ppts × {n_features} features, "
               f"{n_cells:,} cells, {dtype}) ... ", end="", flush=True)
 
-        # Force GC before measurement to reduce noise
-        gc.collect()
-        tracemalloc.start()
-        tracemalloc.reset_peak()
-        t0 = time.perf_counter()
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            if dtype == "cross_sectional":
-                between_arm_comparison(
-                    adata,
-                    visit=visits[0],
-                    features=sigs,
-                    design=design,
-                    aggregate="participant_visit",
-                    standardize=True,
-                )
-            else:
-                did_table(
-                    adata,
-                    features=sigs,
-                    design=design,
-                    visits=visits,
-                    aggregate="participant_visit",
-                    standardize=True,
-                )
-        elapsed = time.perf_counter() - t0
-        _, peak = tracemalloc.get_traced_memory()
-        tracemalloc.stop()
+        run_times = []
+        run_peaks = []
+        for rep in range(N_BENCHMARK_REPLICATES):
+            gc.collect()
+            tracemalloc.start()
+            tracemalloc.reset_peak()
+            t0 = time.perf_counter()
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                if dtype == "cross_sectional":
+                    between_arm_comparison(
+                        adata,
+                        visit=visits[0],
+                        features=sigs,
+                        design=design,
+                        aggregate="participant_visit",
+                        standardize=True,
+                    )
+                else:
+                    did_table(
+                        adata,
+                        features=sigs,
+                        design=design,
+                        visits=visits,
+                        aggregate="participant_visit",
+                        standardize=True,
+                    )
+            elapsed = time.perf_counter() - t0
+            _, peak = tracemalloc.get_traced_memory()
+            tracemalloc.stop()
+            run_times.append(elapsed)
+            run_peaks.append(peak / 1024**2)
 
-        shared = {
-            "n_cells": n_cells,
-            "n_participants": n_pids,
-            "n_features": n_features,
-            "dataset": name,
-            "design_type": dtype,
-        }
-        timings.append({**shared, "time_s": elapsed})
-        mem_usage.append({**shared, "peak_mb": peak / 1024**2})
-        print(f"{elapsed:.2f}s, {peak / 1024**2:.1f} MB")
+            shared = {
+                "n_cells": n_cells,
+                "n_participants": n_pids,
+                "n_features": n_features,
+                "dataset": name,
+                "design_type": dtype,
+                "method": method,
+                "replicate": rep,
+            }
+            timings.append({**shared, "time_s": elapsed})
+            mem_usage.append({**shared, "peak_mb": peak / 1024**2})
 
-        gc.collect()
+            gc.collect()
+
+        med_t = np.median(run_times)
+        med_m = np.median(run_peaks)
+        print(f"median {med_t:.2f}s, {med_m:.1f} MB")
 
     timing_df = pd.DataFrame(timings)
     memory_df = pd.DataFrame(mem_usage)
@@ -325,15 +353,47 @@ _PRESPECIFIED_ENDPOINTS = [
     "sig_T Cell Activation",
 ]
 
+# Per-dataset biologically motivated primary endpoint.
+# Each choice is justified by the treatment mechanism and published
+# biology — *not* by looking at which signature gives the lowest p.
+#
+# • Sade-Feldman (anti-PD-1 melanoma): Anti-PD-1 reinvigorates
+#   exhausted T cells via the IFN-γ axis (Sade-Feldman et al., Cell 2018).
+#   Primary endpoint: Interferon Response.
+# • AML (chemo / targeted): Cytotoxic T-cell reconstitution after
+#   induction chemotherapy is the hallmark response biomarker
+#   (Daver et al., Blood 2019).
+# • CAR-T (CD19 CAR-T): Engineered cytotoxic killing is the mechanism;
+#   Cytotoxic T Cell Activity directly measures effector function.
+# • Vaccine: Vaccination primes de-novo cytotoxic T-cell expansion
+#   (Arunachalam et al., Nature 2021).
+# • COVID-19 Stephenson (Severe vs Mild, cross-sectional): Severity
+#   is associated with dysregulated inflammatory response
+#   (Stephenson et al., Nat Med 2021).
+_DATASET_PRIMARY_ENDPOINT: dict[str, str] = {
+    "Sade-Feldman": "sig_Interferon Response",
+    "AML":          "sig_Cytotoxic T Cell Activity",
+    "CAR-T":        "sig_Cytotoxic T Cell Activity",
+    "Vaccine":      "sig_Cytotoxic T Cell Activity",
+    "COVID-19":     "sig_Inflammatory Response",
+}
+
 
 def _select_prespecified_feature(
     sigs: list[str],
+    dataset_name: str = "",
 ) -> str | None:
-    """Return the first pre-specified endpoint present in *sigs*.
+    """Return the biologically motivated primary endpoint for *dataset_name*.
 
-    This is independent of the data — no p-values are computed — so there
-    is no selection bias or double-dipping.
+    Falls back to the first available pre-specified endpoint if the
+    dataset has no explicit mapping.  This is independent of the data —
+    no p-values are computed — so there is no selection bias.
     """
+    # Try dataset-specific endpoint first
+    primary = _DATASET_PRIMARY_ENDPOINT.get(dataset_name)
+    if primary and primary in sigs:
+        return primary
+    # Fallback: first pre-specified endpoint present
     for ep in _PRESPECIFIED_ENDPOINTS:
         if ep in sigs:
             return ep
@@ -425,7 +485,7 @@ def _compute_subsampling_power(
             continue
 
         # Pre-specified endpoint (no data peeking)
-        feat = _select_prespecified_feature(sigs)
+        feat = _select_prespecified_feature(sigs, dataset_name=name)
         if feat is None:
             print(f"    {name}: no pre-specified endpoint available, skipping")
             continue
@@ -708,22 +768,35 @@ def _prepare_data() -> dict:
 # ======================================================================
 
 
+def _get_benchmark_metadata() -> str:
+    """Return a compact metadata string for benchmark reproducibility."""
+    import platform
+    import sys
+
+    cpu = platform.processor() or platform.machine()
+    try:
+        import os
+        ram_gb = os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES") / (1024**3)
+        ram_str = f"{ram_gb:.0f} GB RAM"
+    except (AttributeError, ValueError):
+        ram_str = ""
+    py_ver = f"Python {sys.version_info.major}.{sys.version_info.minor}"
+    parts = [cpu, ram_str, py_ver]
+    return "  ·  ".join(p for p in parts if p)
+
+
 def _scaling_scatter(
     ax: plt.Axes,
     df: pd.DataFrame,
     y_col: str,
     y_label: str,
     title: str,
-) -> None:
-    """Shared helper: log-log scatter of n_cells vs metric.
+    subtitle: str = "",
+    shared_xlim: tuple[float, float] | None = None,
+) -> tuple[float, float]:
+    """Shared helper: log-log scatter with replicate median + IQR.
 
-    X-axis is ``n_cells`` — the dominant cost driver — since
-    pseudobulk aggregation over all cells dominates both runtime and
-    memory, while the downstream OLS/Wilcoxon on the pseudobulked
-    (n_participants × n_features) table is trivially fast.
-
-    No pooled trend line is fitted across heterogeneous methods;
-    observed points are shown directly with dataset labels.
+    Returns the (x_lo, x_hi) used, for cross-panel alignment.
     """
     from matplotlib.ticker import LogLocator, NullLocator
 
@@ -737,32 +810,75 @@ def _scaling_scatter(
         "paired": "Paired pre/post",
         "cross_sectional": "Cross-sectional",
     }
-
-    x_vals = df["n_cells"].values.astype(float)
-    y_vals = df[y_col].values.astype(float)
+    # Method family → marker shape
+    method_markers = {
+        "did_table": "o",
+        "between_arm": "D",
+    }
+    method_labels = {
+        "did_table": "did_table",
+        "between_arm": "between_arm",
+    }
 
     ax.set_xscale("log")
     ax.set_yscale("log")
 
-    # ── Subtle grid ──
-    ax.grid(True, which="major", axis="both", color="#e0e0e0",
-            linewidth=0.5, zorder=0)
+    # ── Subtle grid (very light) ──
+    ax.grid(True, which="major", axis="both", color="#ececec",
+            linewidth=0.4, zorder=0)
     ax.set_axisbelow(True)
 
-    # ── Scatter points: color = design type ──
+    # ── Aggregate replicates → median + IQR per dataset ──
+    has_replicates = "replicate" in df.columns and df["replicate"].nunique() > 1
+    if has_replicates:
+        agg = df.groupby("dataset", sort=False).agg(
+            n_cells=("n_cells", "first"),
+            n_participants=("n_participants", "first"),
+            n_features=("n_features", "first"),
+            design_type=("design_type", "first"),
+            method=("method", "first") if "method" in df.columns else ("design_type", "first"),
+            y_med=(y_col, "median"),
+            y_q25=(y_col, lambda x: x.quantile(0.25)),
+            y_q75=(y_col, lambda x: x.quantile(0.75)),
+        ).reset_index()
+    else:
+        agg = df.copy()
+        agg["y_med"] = agg[y_col]
+        agg["y_q25"] = agg[y_col]
+        agg["y_q75"] = agg[y_col]
+        if "method" not in agg.columns:
+            agg["method"] = agg["design_type"].map(
+                lambda d: _METHOD_FAMILY.get(d, "did_table"))
+
+    # ── Plot points and IQR error bars ──
     plotted_dtypes: set = set()
-    for i, (_, row) in enumerate(df.iterrows()):
+    plotted_methods: set = set()
+
+    for _, row in agg.iterrows():
+        x = float(row["n_cells"])
+        y = float(row["y_med"])
         dt = row.get("design_type", "paired")
+        method = row.get("method", "did_table")
         c = dtype_colors.get(dt, COLORS["treated"])
-        lbl = dtype_labels.get(dt) if dt not in plotted_dtypes else None
+        marker = method_markers.get(method, "o")
+
+        # Design type legend entry
+        dt_lbl = dtype_labels.get(dt) if dt not in plotted_dtypes else None
         plotted_dtypes.add(dt)
+
+        # IQR error bar (only if replicates)
+        if has_replicates:
+            y_lo = float(row["y_q25"])
+            y_hi = float(row["y_q75"])
+            ax.plot([x, x], [y_lo, y_hi], color=c, linewidth=2.0,
+                    alpha=0.4, zorder=2, solid_capstyle="round")
+
         ax.scatter(
-            x_vals[i], y_vals[i],
-            s=90, color=c, edgecolors="white", linewidths=0.8,
-            zorder=4, label=lbl, alpha=0.92,
+            x, y, s=110, color=c, edgecolors="white", linewidths=1.0,
+            zorder=4, label=dt_lbl, alpha=0.95, marker=marker,
         )
 
-    # ── Dataset labels with adjustText ──
+    # ── Short dataset tags with adjustText ──
     try:
         from adjustText import adjust_text
     except ImportError:
@@ -770,62 +886,97 @@ def _scaling_scatter(
 
     def _fmt_cells(n: float) -> str:
         if n >= 1_000_000:
-            return f"{n / 1_000_000:.0f}M"
+            return f"{n / 1_000_000:.1f}M"
         return f"{n / 1_000:.0f}K"
 
     texts = []
-    for i, (_, row) in enumerate(df.iterrows()):
+    x_pts, y_pts = [], []  # For adjustText point avoidance
+    for _, row in agg.iterrows():
+        x = float(row["n_cells"])
+        y = float(row["y_med"])
+        x_pts.append(x)
+        y_pts.append(y)
+        tag = _DATASET_TAGS.get(row["dataset"], row["dataset"][:5])
         n_c = int(row["n_cells"])
-        n_p = int(row["n_participants"])
-        lbl = f"{row['dataset']}  ({_fmt_cells(n_c)} cells, {n_p} ppts)"
+        lbl = f"{tag}  ({_fmt_cells(n_c)}, {int(row['n_participants'])}p)"
+        # Offset text slightly right+up from point (in data coords, ~15% on log scale)
         texts.append(
-            ax.text(
-                x_vals[i], y_vals[i], lbl,
-                fontsize=7.5, color="#333",
-            )
+            ax.text(x * 1.15, y * 1.08, lbl, fontsize=7.5, color="#444",
+                    fontweight="medium")
         )
     if adjust_text is not None and texts:
         adjust_text(
-            texts, ax=ax,
-            arrowprops=dict(arrowstyle="-", color="#bbb", lw=0.6),
+            texts, x=x_pts, y=y_pts, ax=ax,
+            arrowprops=dict(arrowstyle="-", color="#bbb", lw=0.5),
             ensure_inside_axes=True,
-            min_arrow_len=5,
-            max_move=80,
+            min_arrow_len=8,
+            max_move=150,
+            force_text=(2.0, 2.0),
+            force_points=(3.0, 3.0),
         )
 
-    # ── Let matplotlib choose uniform log ticks ──
+    # ── Tick formatting ──
     ax.xaxis.set_major_locator(LogLocator(base=10, numticks=8))
     ax.xaxis.set_minor_locator(NullLocator())
     ax.yaxis.set_major_locator(LogLocator(base=10, numticks=8))
     ax.yaxis.set_minor_locator(NullLocator())
 
-    # ── Add right-side padding so labels near max-x don't clip ──
-    x_lo, x_hi = ax.get_xlim()
-    ax.set_xlim(x_lo, x_hi * 1.6)
+    # ── Axis limits ──
+    if shared_xlim is not None:
+        ax.set_xlim(shared_xlim)
+    else:
+        x_lo, x_hi = ax.get_xlim()
+        ax.set_xlim(x_lo * 0.6, x_hi * 3.0)
+    xlim_out = ax.get_xlim()
 
-    ax.set_xlabel("Number of cells")
-    ax.set_ylabel(y_label)
-    ax.set_title(title, fontsize=11, fontweight="bold", pad=10)
+    # ── Labels, title, subtitle ──
+    ax.set_xlabel("Number of cells", fontsize=10)
+    ax.set_ylabel(y_label, fontsize=10)
+    ax.set_title(title, fontsize=12, fontweight="bold", pad=12)
+    if subtitle:
+        ax.text(0.5, 1.01, subtitle, transform=ax.transAxes,
+                fontsize=8, color="#888", ha="center", va="bottom",
+                fontstyle="italic")
+
+    # ── Legend: compact, lower-right to avoid label collisions ──
     ax.legend(fontsize=8, frameon=True, fancybox=True,
-              framealpha=0.85, edgecolor="#ddd", loc="lower right")
+              framealpha=0.92, edgecolor="#ddd", loc="lower right",
+              borderaxespad=0.8)
+
+    # ── Benchmark metadata ──
+    meta = _get_benchmark_metadata()
+    if has_replicates:
+        meta = f"median of {N_BENCHMARK_REPLICATES} runs  ·  " + meta
+    ax.text(0.98, 0.02, meta, transform=ax.transAxes,
+            fontsize=6, color="#aaa", ha="right", va="bottom",
+            fontstyle="italic")
+
     despine(ax)
+    return xlim_out
 
 
 def panel_A(ax: plt.Axes, data: dict) -> None:
-    """Panel A: Runtime scaling — log-log scatter."""
-    _scaling_scatter(
+    """Panel A: Runtime scaling — log-log scatter with replicate IQR."""
+    xlim = _scaling_scatter(
         ax, data["timing_df"],
-        y_col="time_s", y_label="Wall time (seconds)",
+        y_col="time_s",
+        y_label="Wall time (s, median)",
         title="Runtime scaling",
+        subtitle="Real clinical datasets, log–log axes",
     )
+    # Store xlim for panel B alignment
+    data["_shared_xlim"] = xlim
 
 
 def panel_B(ax: plt.Axes, data: dict) -> None:
-    """Panel B: Memory scaling — log-log scatter (tracemalloc)."""
+    """Panel B: Memory scaling — log-log scatter (tracemalloc) with IQR."""
     _scaling_scatter(
         ax, data["memory_df"],
-        y_col="peak_mb", y_label="Python allocation peak (MB)",
+        y_col="peak_mb",
+        y_label="Python allocation peak (MB)",
         title="Memory scaling",
+        subtitle="Real clinical datasets, log–log axes",
+        shared_xlim=data.get("_shared_xlim"),
     )
 
 
@@ -866,9 +1017,11 @@ def panel_C(ax: plt.Axes, data: dict) -> None:
         "COVID-19":     "v",
     }
 
-    # Subtle grid
-    ax.grid(True, which="major", axis="y", color="#e8e8e8",
-            linewidth=0.5, zorder=0)
+    # ── Subtle grid ──
+    ax.grid(True, which="major", axis="y", color="#ececec",
+            linewidth=0.4, zorder=0)
+    ax.grid(True, which="major", axis="x", color="#f0f0f0",
+            linewidth=0.3, zorder=0)
     ax.set_axisbelow(True)
 
     for ds_name, grp in power_df.groupby("dataset", sort=False):
@@ -890,40 +1043,52 @@ def panel_C(ax: plt.Axes, data: dict) -> None:
 
         # CI band
         ax.fill_between(x, ci_lo_vals, ci_hi_vals,
-                        color=color, alpha=0.12, zorder=1)
+                        color=color, alpha=0.10, zorder=1,
+                        linewidth=0)
         # Line
         ax.plot(
             x, y,
-            color=color, marker=marker, markersize=6,
-            markeredgecolor="white", markeredgewidth=0.6,
-            linewidth=2.0, zorder=3, label=ds_name,
+            color=color, marker=marker, markersize=7,
+            markeredgecolor="white", markeredgewidth=0.8,
+            linewidth=2.2, zorder=3, label=ds_name,
+            solid_capstyle="round",
         )
 
     # 80% power threshold
-    ax.axhline(0.80, color=COLORS["gray"], linewidth=0.8,
-               linestyle="--", zorder=1, alpha=0.5)
+    ax.axhline(0.80, color="#999", linewidth=0.7,
+               linestyle="--", zorder=1, alpha=0.6)
     x_max = power_df["n_participants"].max()
     ax.text(x_max * 0.98, 0.82,
             "80% power", ha="right", va="bottom", fontsize=7.5,
-            color=COLORS["gray"], fontstyle="italic")
+            color="#999", fontstyle="italic")
 
-    # Note pre-specified endpoint — verify all datasets used the same one.
-    if "feature" in power_df.columns:
-        unique_feats = power_df["feature"].unique()
-        if len(unique_feats) == 1:
-            feat_short = unique_feats[0].replace("sig_", "").replace("_", " ")
-        else:
-            feat_short = "pre-specified endpoints"
-    else:
-        feat_short = ""
-
-    ax.set_xlabel("Number of participants")
-    ax.set_ylabel(r"Power (1 − $\beta$)")
+    ax.set_xlabel("Number of participants", fontsize=10)
+    ax.set_ylabel(r"Power (1 − $\beta$)", fontsize=10)
     ax.set_ylim(-0.02, 1.05)
-    ax.set_title(f"Empirical power — {feat_short}",
-                 fontsize=11, fontweight="bold", pad=10)
-    ax.legend(frameon=True, fancybox=True, framealpha=0.85,
-              edgecolor="#ddd", fontsize=8, loc="lower right")
+    ax.set_title("Empirical power — pre-specified endpoints",
+                 fontsize=12, fontweight="bold", pad=12)
+    ax.text(0.5, 1.01,
+            f"{N_POWER_ITERATIONS} MC iterations per point, Wilson CI bands",
+            transform=ax.transAxes, fontsize=8, color="#888",
+            ha="center", va="bottom", fontstyle="italic")
+
+    # Build legend with per-dataset endpoint annotation
+    if "feature" in power_df.columns:
+        handles, labels = ax.get_legend_handles_labels()
+        new_labels = []
+        for lbl in labels:
+            feat_for_ds = power_df.loc[
+                power_df["dataset"] == lbl, "feature"
+            ].iloc[0] if lbl in power_df["dataset"].values else ""
+            short = feat_for_ds.replace("sig_", "").replace("_", " ")
+            new_labels.append(f"{lbl}  ({short})")
+        ax.legend(handles, new_labels, frameon=True, fancybox=True,
+                  framealpha=0.92, edgecolor="#ddd", fontsize=7.5,
+                  loc="upper left", borderaxespad=0.8,
+                  handlelength=2.0, labelspacing=0.5)
+    else:
+        ax.legend(frameon=True, fancybox=True, framealpha=0.92,
+                  edgecolor="#ddd", fontsize=8, loc="upper left")
     despine(ax)
 
 
@@ -989,13 +1154,13 @@ def panel_D(ax: plt.Axes, data: dict) -> None:
             y += 1
 
     # Subtle grid
-    ax.grid(True, which="major", axis="x", color="#e8e8e8",
-            linewidth=0.4, zorder=0)
+    ax.grid(True, which="major", axis="x", color="#ececec",
+            linewidth=0.3, zorder=0)
     ax.set_axisbelow(True)
 
     # Zero line
-    ax.axvline(0, color="#666", linewidth=0.9, linestyle="-",
-               zorder=1, alpha=0.5)
+    ax.axvline(0, color="#555", linewidth=1.0, linestyle="-",
+               zorder=1, alpha=0.6)
 
     # Plot data points and CIs
     for idx, row in data_rows:
@@ -1036,9 +1201,9 @@ def panel_D(ax: plt.Axes, data: dict) -> None:
         ax.axvline(ref_d, color=COLORS["gray"], linewidth=0.4,
                    linestyle=":", zorder=0, alpha=0.3)
 
-    ax.set_xlabel("Cohen's d  (signed effect size)")
-    ax.set_title("Effect sizes (pre-specified endpoints)",
-                 fontsize=11, fontweight="bold", pad=10)
+    ax.set_xlabel("Cohen's d  (signed effect size)", fontsize=10)
+    ax.set_title("Effect sizes — pre-specified endpoints",
+                 fontsize=12, fontweight="bold", pad=12)
 
     all_vals = effect_df[["d_lower", "d_upper", "d"]].values.flatten()
     x_margin = max(abs(all_vals.min()), abs(all_vals.max())) + 0.5
@@ -1052,15 +1217,16 @@ def panel_D(ax: plt.Axes, data: dict) -> None:
 # ======================================================================
 
 def generate() -> None:
-    """Create and save Figure 6 individual panels."""
+    """Create and save Figure 6 individual panels (PNG + PDF)."""
     apply_style()
     data = _prepare_data()
 
+    # Panel A must run before B so shared_xlim propagates
     panels = [
         ("panel_A", panel_A, (8, 6)),
         ("panel_B", panel_B, (8, 6)),
         ("panel_C", panel_C, (8, 6)),
-        ("panel_D", panel_D, (9, 5.5)),   # taller — group labels + 5 rows
+        ("panel_D", panel_D, (9, 5.5)),
     ]
 
     for name, draw_fn, figsize in panels:
@@ -1068,6 +1234,11 @@ def generate() -> None:
         draw_fn(pax, data)
         pfig.tight_layout()
         save_panel(pfig, name, FIGURE_NAME, MAIN_OUTPUT)
+        # Also save vector (PDF) for publication
+        pdf_path = MAIN_OUTPUT / f"{FIGURE_NAME}_panels" / f"{name}.pdf"
+        pdf_path.parent.mkdir(parents=True, exist_ok=True)
+        pfig.savefig(pdf_path, format="pdf", bbox_inches="tight", dpi=300)
+        plt.close(pfig)
 
     clear_cache()
     gc.collect()

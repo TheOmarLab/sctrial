@@ -49,3 +49,7 @@ run_nb*.sh
 # Jupyter notebook artifacts
 *.nbconvert.ipynb
 .ipynb_checkpoints/
+
+# Claude Code
+CLAUDE.md
+.claude/
