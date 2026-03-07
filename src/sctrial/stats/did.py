@@ -352,21 +352,10 @@ def did_fit(
     Returns
     -------
     DidFitResult
-        Keys:
-        - beta_DiD: DiD coefficient (β₂)
-        - se_DiD: Analytical standard error of β₂
-        - p_DiD: P-value for H₀: β₂ = 0 (bootstrap if ``use_bootstrap=True``)
-        - beta_time: Main time effect (β₁)
-        - p_time: P-value for time effect
-        - n_units: Number of participants used
-        - cov_type_used: Covariance type used (``"cluster"`` or ``"nonrobust"``)
-        - p_DiD_boot: Bootstrap p-value (only if ``use_bootstrap=True``)
-        - se_DiD_boot: Bootstrap SE from coefficient distribution
-          (only if ``use_bootstrap=True``)
-        - ci_lo_boot: Lower 95% bootstrap-t CI
-          (only if ``use_bootstrap=True``)
-        - ci_hi_boot: Upper 95% bootstrap-t CI
-          (only if ``use_bootstrap=True``)
+        Dictionary with keys ``beta_DiD``, ``se_DiD``, ``p_DiD``,
+        ``beta_time``, ``p_time``, ``n_units``, ``cov_type_used``.
+        When ``use_bootstrap=True``, also includes ``p_DiD_boot``,
+        ``se_DiD_boot``, ``ci_lo_boot``, ``ci_hi_boot``.
     """
     if df is None or df.empty:
         raise ValueError("df must be a non-empty DataFrame.")
