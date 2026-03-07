@@ -1,12 +1,12 @@
 """
-Supplementary Figure 1 — QC Metrics Across Datasets.
-=====================================================
+Supplementary Figure 1: QC Metrics Across Datasets
+===================================================
 
 Per-dataset QC visualisations for all five datasets
 (Sade-Feldman, Stephenson, Vaccine, AML, CAR-T).
 
 Row 1 (panels A-E):  UMAP coloured by genes detected.
-Row 2 (panels F-J):  UMAP coloured by total UMI counts.
+Row 2 (panels F-J):  UMAP coloured by total expression (UMI counts or TPM).
 Panel K:             Cells per participant across datasets.
 """
 
@@ -39,16 +39,19 @@ FIGURE_NAME = "SuppFig1_qc_metrics"
 # ── helpers ───────────────────────────────────────────────────────────
 
 def _get_expression_matrix(adata):
-    """Return the best available expression matrix for QC.
+    """Return the best available non-negative expression matrix for QC.
 
-    Priority: layers['counts'] > layers['tpm'] > layers['cpm'] > X.
-    Raw integer counts are preferred; TPM/CPM are acceptable for QC
-    (gene detection counts are valid, total expression is a useful proxy).
+    Priority: layers['counts'] > layers['tpm'] > layers['cpm'].
+    Raises if no recognised layer exists, since falling back to adata.X
+    risks using scaled/batch-corrected values that invalidate QC metrics.
     """
     for layer in ("counts", "tpm", "cpm"):
         if layer in adata.layers:
             return adata.layers[layer]
-    return adata.X
+    raise ValueError(
+        "No suitable expression layer for QC: need 'counts', 'tpm', or 'cpm' "
+        f"in adata.layers. Available layers: {list(adata.layers.keys())}"
+    )
 
 
 def _get_ngenes(adata) -> np.ndarray:
