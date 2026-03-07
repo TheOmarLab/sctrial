@@ -190,8 +190,12 @@ def _scatter_comparison(ax, df_x, df_y, *, col: str, xlabel: str, ylabel: str,
                 vx = -np.log10(max(row[f"{col}_x"], 1e-300)) if log_scale else row[f"{col}_x"]
                 vy = -np.log10(max(row[f"{col}_y"], 1e-300)) if log_scale else row[f"{col}_y"]
                 texts.append(ax.text(vx, vy, row["label"], fontsize=6, alpha=0.7))
-            adjust_text(texts, ax=ax, arrowprops=dict(arrowstyle="-", color="gray",
-                        alpha=0.4, lw=0.5))
+            adjust_text(texts, ax=ax,
+                        force_points=(0.5, 0.5),
+                        force_text=(0.3, 0.3),
+                        expand_points=(1.5, 1.5),
+                        arrowprops=dict(arrowstyle="->", color="gray",
+                                        alpha=0.5, lw=0.6))
         except ImportError:
             for _, row in labels.iterrows():
                 vx = -np.log10(max(row[f"{col}_x"], 1e-300)) if log_scale else row[f"{col}_x"]
