@@ -210,15 +210,7 @@ Out of Memory Errors
 
 **Solutions**:
 
-1. **Subsample cells** (stratified):
-
-.. code-block:: python
-
-   # Downsample while maintaining structure
-   import scanpy as sc
-   sc.pp.subsample(adata, n_obs=50000, random_state=42)
-
-2. **Use sparse layers**:
+1. **Use sparse layers** (often the biggest win):
 
 .. code-block:: python
 
@@ -228,7 +220,7 @@ Out of Memory Errors
    if not sp.issparse(adata.layers["counts"]):
        adata.layers["counts"] = sp.csr_matrix(adata.layers["counts"])
 
-3. **Analyze fewer features at once**:
+2. **Analyze fewer features at once** (batch processing):
 
 .. code-block:: python
 
@@ -243,6 +235,19 @@ Out of Memory Errors
        results.append(res)
 
    full_results = pd.concat(results, ignore_index=True)
+
+3. **Load in backed mode**, then subset to genes of interest:
+
+.. code-block:: python
+
+   import scanpy as sc
+
+   adata = sc.read_h5ad("large_dataset.h5ad", backed='r')
+   adata = adata[:, genes_of_interest].to_memory()
+
+4. **Use hardware with sufficient memory.** Do not subsample or downsample cells —
+   this distorts pseudobulk means, alters cell-type composition, and changes WLS
+   weights. See the :doc:`performance` guide for recommended hardware by dataset size.
 
 Performance Issues
 ------------------

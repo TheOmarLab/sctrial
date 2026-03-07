@@ -103,50 +103,31 @@ Ensure counts are stored as sparse matrices:
 
 **Memory savings**: 10-50x reduction for typical scRNA-seq data
 
-4. Subsample Strategically
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+4. Use Built-in Parallelization
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-For very large datasets, subsample cells *within* each participant-visit-celltype
-group to reduce memory. Because ``sctrial`` pseudobulks to the participant level
-before fitting, subsampling cells changes the mean estimates slightly but does not
-alter the unit of analysis. Use stratified subsampling (not random) to preserve
-trial structure:
+For many features, use ``did_table_parallel()`` to distribute work across CPU cores:
 
 .. code-block:: python
 
-   import numpy as np
+   res = st.did_table_parallel(
+       adata,
+       features=features,
+       design=design,
+       visits=("V1", "V2"),
+       n_jobs=4  # Number of CPU cores
+   )
 
-   # Stratified sampling: max cells per participant-visit-celltype
-   def stratified_subsample(adata, design, max_per_group=500, seed=42):
-       """Subsample while preserving trial structure."""
-       np.random.seed(seed)
-       keep_idx = []
+**Performance impact**: Near-linear speedup with core count
 
-       groupby_cols = [design.participant_col, design.visit_col]
-       if design.celltype_col:
-           groupby_cols.append(design.celltype_col)
+.. note::
 
-       for group_vals, group_df in adata.obs.groupby(groupby_cols, observed=True):
-           n_cells = len(group_df)
-           if n_cells > max_per_group:
-               # Subsample this group
-               sample_idx = np.random.choice(
-                   group_df.index,
-                   size=max_per_group,
-                   replace=False
-               )
-           else:
-               sample_idx = group_df.index
-
-           keep_idx.extend(sample_idx)
-
-       return adata[keep_idx].copy()
-
-   # Downsample to 500 cells per group
-   adata_sub = stratified_subsample(adata, design, max_per_group=500)
-   print(f"Subsampled from {adata.n_obs:,} to {adata_sub.n_obs:,} cells")
-
-**Performance impact**: Proportional to reduction in cell count
+   **Do not subsample or downsample cells** to work around memory limits.
+   Subsampling distorts pseudobulk means, alters cell-type composition within
+   participant groups, and changes WLS weights — especially for rare cell types
+   and low-abundance signals. Instead, use sparse storage (strategy 3), feature
+   batching (see below), per-cell-type decomposition, or run on hardware with
+   sufficient memory.
 
 For Large-Scale Analysis
 -------------------------
@@ -158,40 +139,39 @@ Workflow for 1M+ Cells
 
    import sctrial as st
    import scanpy as sc
-   import numpy as np
+   import scipy.sparse as sp
 
-   # Step 1: Load data
-   adata = sc.read_h5ad("large_dataset.h5ad")
+   # Step 1: Load data (backed mode to avoid loading X into memory)
+   adata = sc.read_h5ad("large_dataset.h5ad", backed='r')
    print(f"Starting with {adata.n_obs:,} cells")
 
-   # Step 2: Filter low-expression genes
+   # Step 2: Bring into memory with sparse storage
+   adata = adata.to_memory()
+   if not sp.issparse(adata.X):
+       adata.X = sp.csr_matrix(adata.X)
+
+   # Step 3: Filter low-expression genes to reduce feature space
    sc.pp.filter_genes(adata, min_counts=10)
    print(f"After gene filtering: {adata.n_vars:,} genes")
 
-   # Step 3: Stratified subsampling
-   adata_sub = stratified_subsample(adata, design, max_per_group=500)
-   print(f"After subsampling: {adata_sub.n_obs:,} cells")
+   # Step 4: Normalize
+   adata = st.add_log1p_cpm_layer(adata, counts_layer="counts")
 
-   # Step 4: Normalize (on subsampled data)
-   adata_sub = st.add_log1p_cpm_layer(adata_sub, counts_layer="counts")
-
-   # Step 5: Score gene sets
+   # Step 5: Score gene sets (reduces thousands of genes → tens of features)
    gene_sets = {...}  # Your gene sets
-   adata_sub = st.score_gene_sets(adata_sub, gene_sets, layer="log1p_cpm", prefix="ms_")
+   adata = st.score_gene_sets(adata, gene_sets, layer="log1p_cpm", prefix="ms_")
 
-   # Step 6: DiD analysis (FAST on subsampled data)
+   # Step 6: DiD analysis with parallelization
    features = [f"ms_{k}" for k in gene_sets.keys()]
-   res = st.did_table(
-       adata_sub,
+   res = st.did_table_parallel(
+       adata,
        features=features,
        design=design,
        visits=("baseline", "followup"),
-       aggregate="participant_visit"  # Pseudobulk
+       n_jobs=4
    )
 
    print(f"Analysis complete! Tested {len(features)} features.")
-
-**Expected time**: 1-2 minutes for 1M cells → 50K subsampled cells
 
 Batch Processing
 ~~~~~~~~~~~~~~~~
@@ -345,8 +325,8 @@ Optimize GSEA Analysis
 Parallel Processing (Advanced)
 -------------------------------
 
-``sctrial`` provides ``did_table_parallel()`` for built-in multiprocessing across
-features. For additional manual parallelization strategies:
+In addition to ``did_table_parallel()`` (see strategy 4 above), you can manually
+parallelize across cell types:
 
 Parallelize Across Cell Types
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -457,9 +437,9 @@ For Different Dataset Sizes
 
 **Very large datasets (> 2M cells)**:
 
-- Consider cluster/cloud computing
-- Use subsampling strategies
-- Process in batches
+- Use cluster/cloud computing with sufficient RAM
+- Process features in batches
+- Use backed mode + sparse storage
 
 Quick Performance Checklist
 ----------------------------
@@ -479,9 +459,8 @@ Before running large-scale analysis:
    n_features = len(features)
    assert n_features < 1000, f"Too many features ({n_features}), use gene sets!"
 
-   # ✓ 4. Consider subsampling if > 500K cells
-   if adata.n_obs > 500000:
-       print("⚠️  Consider subsampling for better performance")
+   # ✓ 4. Use parallelization for many features
+   # res = st.did_table_parallel(adata, features, design, visits, n_jobs=4)
 
    # ✓ 5. Monitor memory
    print_memory_usage()
