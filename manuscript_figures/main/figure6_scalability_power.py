@@ -6,7 +6,7 @@ Four-panel (2×2) figure combining computational scalability benchmarks
 with empirical power analysis and observed effect sizes:
 
     A  Runtime scaling (n_cells vs wall time, log–log)
-    B  Memory scaling (n_cells vs RSS memory delta, log–log)
+    B  Memory scaling (n_cells vs peak memory allocation, log–log)
     C  Empirical power curves (n_participants vs power, Wilson CI bands)
     D  Forest plot of signed Cohen's d for pre-specified signatures
 """
@@ -64,7 +64,7 @@ POWER_ALPHA = 0.05
 RNG_SEED = 42
 
 # Code version tag — bump when analysis logic changes to invalidate caches
-_CODE_VERSION = "v10"
+_CODE_VERSION = "v12"
 
 # Dataset info tuple fields:
 #   (name, adata, design, visits, sig_cols, design_type)
@@ -286,9 +286,8 @@ def _run_scalability_benchmark(
         run_peaks = []
         for rep in range(N_BENCHMARK_REPLICATES):
             gc.collect()
-            import psutil
-            proc = psutil.Process()
-            rss_before = proc.memory_info().rss
+            import tracemalloc
+            tracemalloc.start()
             t0 = time.perf_counter()
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
@@ -311,10 +310,10 @@ def _run_scalability_benchmark(
                         standardize=True,
                     )
             elapsed = time.perf_counter() - t0
-            rss_after = proc.memory_info().rss
-            rss_delta_mb = max(rss_after - rss_before, 0) / 1024**2
+            _, peak = tracemalloc.get_traced_memory()
+            tracemalloc.stop()
             run_times.append(elapsed)
-            run_peaks.append(rss_delta_mb)
+            run_peaks.append(peak / 1024**2)
 
             shared = {
                 "n_cells": n_cells,
@@ -326,7 +325,7 @@ def _run_scalability_benchmark(
                 "replicate": rep,
             }
             timings.append({**shared, "time_s": elapsed})
-            mem_usage.append({**shared, "peak_mb": rss_delta_mb})
+            mem_usage.append({**shared, "peak_mb": peak / 1024**2})
 
             gc.collect()
 
@@ -786,7 +785,7 @@ def _scaling_scatter(
 
     Returns the (x_lo, x_hi) used, for cross-panel alignment.
     """
-    from matplotlib.ticker import LogLocator, NullLocator
+    from matplotlib.ticker import LogLocator, LogFormatterSciNotation, NullLocator
 
     dtype_colors = {
         "two_arm_did": COLORS["control"],
@@ -806,9 +805,9 @@ def _scaling_scatter(
     ax.set_xscale("log")
     ax.set_yscale("log")
 
-    # ── Subtle grid (very light) ──
-    ax.grid(True, which="major", axis="both", color="#ececec",
-            linewidth=0.4, zorder=0)
+    # ── Subtle grid ──
+    ax.grid(True, which="major", axis="both", color="#f0f0f0",
+            linewidth=0.3, zorder=0)
     ax.set_axisbelow(True)
 
     # ── Aggregate replicates → median + IQR per dataset ──
@@ -851,11 +850,11 @@ def _scaling_scatter(
         if has_replicates:
             y_lo = float(row["y_q25"])
             y_hi = float(row["y_q75"])
-            ax.plot([x, x], [y_lo, y_hi], color=c, linewidth=2.0,
-                    alpha=0.4, zorder=2, solid_capstyle="round")
+            ax.plot([x, x], [y_lo, y_hi], color=c, linewidth=2.5,
+                    alpha=0.35, zorder=2, solid_capstyle="round")
 
         ax.scatter(
-            x, y, s=110, color=c, edgecolors="white", linewidths=1.0,
+            x, y, s=140, color=c, edgecolors="white", linewidths=1.2,
             zorder=4, label=dt_lbl, alpha=0.95, marker=marker,
         )
 
@@ -874,17 +873,37 @@ def _scaling_scatter(
         # Use offset in *points* (display coords) so arrows always connect
         ax.annotate(
             lbl, xy=(x, y), xycoords="data",
-            xytext=(12, 8), textcoords="offset points",
-            fontsize=7.5, color="#444", fontweight="medium",
-            arrowprops=dict(arrowstyle="-", color="#bbb", lw=0.5,
+            xytext=(14, 10), textcoords="offset points",
+            fontsize=8.5, color="#333", fontweight="medium",
+            arrowprops=dict(arrowstyle="-", color="#bbb", lw=0.6,
                             shrinkA=0, shrinkB=4),
         )
 
     # ── Tick formatting ──
-    ax.xaxis.set_major_locator(LogLocator(base=10, numticks=8))
-    ax.xaxis.set_minor_locator(NullLocator())
-    ax.yaxis.set_major_locator(LogLocator(base=10, numticks=8))
-    ax.yaxis.set_minor_locator(NullLocator())
+    from matplotlib.ticker import FixedLocator, FixedFormatter
+    ax.xaxis.set_major_locator(LogLocator(base=10))
+    ax.xaxis.set_minor_locator(LogLocator(base=10, subs=(2, 3, 5), numticks=12))
+    ax.xaxis.set_minor_formatter(plt.NullFormatter())
+
+    # For y-axis: use explicit ticks at 1-2-5 sub-decades for uniform visual spacing
+    y_lo, y_hi = ax.get_ylim()
+    import math
+    decade_lo = math.floor(math.log10(max(y_lo, 1e-10)))
+    decade_hi = math.ceil(math.log10(max(y_hi, 1e-10)))
+    y_ticks = []
+    for exp in range(decade_lo - 1, decade_hi + 2):
+        for sub in (1, 2, 5):
+            val = sub * 10**exp
+            if y_lo * 0.8 <= val <= y_hi * 1.2:
+                y_ticks.append(val)
+    if y_ticks:
+        ax.yaxis.set_major_locator(FixedLocator(y_ticks))
+        ax.yaxis.set_major_formatter(plt.FuncFormatter(
+            lambda v, _: f"{v:g}"
+        ))
+    ax.yaxis.set_minor_locator(plt.NullLocator())
+    ax.tick_params(which="minor", length=3, width=0.6)
+    ax.tick_params(which="major", length=5, width=1.0)
 
     # ── Axis limits ──
     if shared_xlim is not None:
@@ -895,16 +914,19 @@ def _scaling_scatter(
     xlim_out = ax.get_xlim()
 
     # ── Labels, title ──
-    ax.set_xlabel("Number of cells", fontsize=10)
-    ax.set_ylabel(y_label, fontsize=10)
-    ax.set_title(title, fontsize=12, fontweight="bold", pad=8)
+    ax.set_xlabel("Number of cells", fontsize=11)
+    ax.set_ylabel(y_label, fontsize=11)
+    ax.set_title(title, fontsize=13, fontweight="bold", pad=10)
+    ax.tick_params(axis="both", which="major", labelsize=9.5)
 
     # ── Legend: compact, lower-right to avoid label collisions ──
-    ax.legend(fontsize=8, frameon=True, fancybox=True,
-              framealpha=0.92, edgecolor="#ddd", loc="lower right",
-              borderaxespad=0.8)
+    ax.legend(fontsize=9, frameon=True, fancybox=False,
+              framealpha=0.95, edgecolor="#ccc", loc="lower right",
+              borderaxespad=0.8, handletextpad=0.6)
 
     despine(ax)
+    ax.spines["bottom"].set_linewidth(1.2)
+    ax.spines["left"].set_linewidth(1.2)
     return xlim_out
 
 
@@ -925,7 +947,7 @@ def panel_B(ax: plt.Axes, data: dict) -> None:
     _scaling_scatter(
         ax, data["memory_df"],
         y_col="peak_mb",
-        y_label="RSS memory delta (MB)",
+        y_label="Peak memory allocation (MB)",
         title="Memory scaling",
         shared_xlim=data.get("_shared_xlim"),
     )
@@ -942,16 +964,16 @@ def _wilson_ci(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
     return (max(0.0, centre - half_width), min(1.0, centre + half_width))
 
 
-def panel_C(ax: plt.Axes, data: dict) -> None:
-    """Panel C: Empirical power via participant subsampling with Wilson CIs."""
+def panel_C(fig_or_ax, data: dict) -> plt.Figure | None:
+    """Panel C: Small-multiple power panels — one subplot per dataset.
+
+    Each subplot shows the empirical power curve (line + Wilson CI band)
+    for that dataset's primary endpoint, sharing the same y-scale [0, 1].
+    Returns a new Figure when called from generate(); ignores fig_or_ax.
+    """
     power_df = data["power_df"]
     if power_df.empty:
-        ax.text(0.5, 0.5, "Insufficient data\nfor power analysis",
-                ha="center", va="center", transform=ax.transAxes,
-                fontsize=10, color=COLORS["gray"])
-        ax.set_title("Empirical power", fontsize=11, fontweight="bold")
-        despine(ax)
-        return
+        return None
 
     dataset_colors = {
         "Sade-Feldman": COLORS["control"],
@@ -960,79 +982,81 @@ def panel_C(ax: plt.Axes, data: dict) -> None:
         "CAR-T":        COLORS["neutral"],
         "COVID-19":     COLORS["highlight"],
     }
-    markers = {
-        "Sade-Feldman": "o",
-        "Vaccine":      "s",
-        "AML":          "D",
-        "CAR-T":        "^",
-        "COVID-19":     "v",
-    }
 
-    # ── Subtle grid ──
-    ax.grid(True, which="major", axis="y", color="#ececec",
-            linewidth=0.4, zorder=0)
-    ax.grid(True, which="major", axis="x", color="#f0f0f0",
-            linewidth=0.3, zorder=0)
-    ax.set_axisbelow(True)
+    # Ordered list of datasets (as they appear in data)
+    ds_names = list(dict.fromkeys(power_df["dataset"]))
+    n_ds = len(ds_names)
 
-    for ds_name, grp in power_df.groupby("dataset", sort=False):
+    fig, axes = plt.subplots(1, n_ds, figsize=(3.2 * n_ds, 4.0),
+                             sharey=True, squeeze=False)
+    axes = axes.ravel()
+
+    for i, ds_name in enumerate(ds_names):
+        ax = axes[i]
+        grp = power_df[power_df["dataset"] == ds_name].sort_values(
+            "n_participants"
+        )
         color = dataset_colors.get(ds_name, COLORS["gray"])
-        marker = markers.get(ds_name, "o")
-        grp = grp.sort_values("n_participants")
 
-        # Compute Wilson CIs from n_valid and power
-        ci_lo_vals, ci_hi_vals = [], []
+        # Wilson CIs
+        ci_lo, ci_hi = [], []
         for _, row in grp.iterrows():
             n_v = int(row.get("n_valid", N_POWER_ITERATIONS))
             k = round(row["power"] * n_v) if not np.isnan(row["power"]) else 0
             lo, hi = _wilson_ci(k, n_v)
-            ci_lo_vals.append(lo)
-            ci_hi_vals.append(hi)
+            ci_lo.append(lo)
+            ci_hi.append(hi)
 
         x = grp["n_participants"].values
         y = grp["power"].values
 
+        # Subtle grid
+        ax.grid(True, which="major", axis="y", color="#f0f0f0",
+                linewidth=0.3, zorder=0)
+        ax.set_axisbelow(True)
+
         # CI band
-        ax.fill_between(x, ci_lo_vals, ci_hi_vals,
-                        color=color, alpha=0.10, zorder=1,
-                        linewidth=0)
-        # Line
-        ax.plot(
-            x, y,
-            color=color, marker=marker, markersize=7,
-            markeredgecolor="white", markeredgewidth=0.8,
-            linewidth=2.2, zorder=3, label=ds_name,
-            solid_capstyle="round",
-        )
+        ax.fill_between(x, ci_lo, ci_hi,
+                        color=color, alpha=0.15, zorder=1, linewidth=0)
+        # Line + markers
+        ax.plot(x, y, color=color, marker="o", markersize=5.5,
+                markeredgecolor="white", markeredgewidth=0.8,
+                linewidth=2.2, zorder=3, solid_capstyle="round")
 
-    # 80% power threshold
-    ax.axhline(0.80, color="#999", linewidth=0.7,
-               linestyle="--", zorder=1, alpha=0.6)
-    x_max = power_df["n_participants"].max()
-    ax.set_xlabel("Number of participants", fontsize=10)
-    ax.set_ylabel(r"Power (1 − $\beta$)", fontsize=10)
-    ax.set_ylim(-0.02, 1.05)
-    ax.set_title("Empirical power — pre-specified endpoints",
-                 fontsize=12, fontweight="bold", pad=8)
+        # 80% power threshold
+        ax.axhline(0.80, color="#bbb", linewidth=0.7,
+                   linestyle="--", zorder=1, alpha=0.5)
 
-    # Build legend with per-dataset endpoint annotation
-    if "feature" in power_df.columns:
-        handles, labels = ax.get_legend_handles_labels()
-        new_labels = []
-        for lbl in labels:
-            feat_for_ds = power_df.loc[
-                power_df["dataset"] == lbl, "feature"
-            ].iloc[0] if lbl in power_df["dataset"].values else ""
-            short = feat_for_ds.replace("sig_", "").replace("_", " ")
-            new_labels.append(f"{lbl}  ({short})")
-        ax.legend(handles, new_labels, frameon=True, fancybox=True,
-                  framealpha=0.92, edgecolor="#ddd", fontsize=7.5,
-                  loc="lower right", borderaxespad=0.8,
-                  handlelength=2.0, labelspacing=0.5)
-    else:
-        ax.legend(frameon=True, fancybox=True, framealpha=0.92,
-                  edgecolor="#ddd", fontsize=8, loc="lower right")
-    despine(ax)
+        # Dataset-specific x-range
+        ax.set_xlim(x.min() - 0.5, x.max() + 0.5)
+        ax.set_ylim(-0.02, 1.05)
+
+        # Title = dataset name + endpoint
+        if "feature" in grp.columns and not grp.empty:
+            feat = grp["feature"].iloc[0].replace("sig_", "").replace("_", " ")
+        else:
+            feat = ""
+        ax.set_title(ds_name, fontsize=10.5, fontweight="bold",
+                     color=color, pad=6)
+        # Endpoint subtitle
+        if feat:
+            ax.text(0.5, 0.96, feat, transform=ax.transAxes,
+                    ha="center", va="top", fontsize=7.5, color="#666",
+                    fontstyle="italic")
+
+        ax.set_xlabel("Participants", fontsize=9.5)
+        if i == 0:
+            ax.set_ylabel(r"Power (1 − $\beta$)", fontsize=10)
+        ax.tick_params(axis="both", which="major", labelsize=8.5)
+
+        despine(ax)
+        ax.spines["bottom"].set_linewidth(1.0)
+        ax.spines["left"].set_linewidth(1.0)
+
+    fig.suptitle("Empirical power — pre-specified endpoints",
+                 fontsize=13, fontweight="bold", y=1.02)
+    fig.tight_layout()
+    return fig
 
 
 def panel_D(ax: plt.Axes, data: dict) -> None:
@@ -1063,14 +1087,28 @@ def panel_D(ax: plt.Axes, data: dict) -> None:
     # Group by dataset (preserve order from data loading)
     ds_order = list(dict.fromkeys(effect_df["dataset"]))
 
+    # Fixed biologically meaningful signature order (consistent across datasets)
+    _SIG_ORDER = [
+        "Cytotoxic T Cell Activity",
+        "Immune Exhaustion",
+        "Inflammatory Response",
+        "Interferon Response",
+        "T Cell Activation",
+    ]
+
     # Build ordered row list with dataset separators
     rows: list[dict] = []
     for ds in ds_order:
-        grp = effect_df[effect_df["dataset"] == ds].sort_values(
-            "d", key=abs, ascending=True,
-        )
+        grp = effect_df[effect_df["dataset"] == ds]
         if grp.empty:
             continue
+        # Sort by fixed biological order
+        sig_order_map = {s: i for i, s in enumerate(_SIG_ORDER)}
+        grp = grp.copy()
+        grp["_sort_key"] = grp["signature"].map(
+            lambda s: sig_order_map.get(s, len(_SIG_ORDER))
+        )
+        grp = grp.sort_values("_sort_key")
         rows.append({"_group_label": ds})
         for _, row in grp.iterrows():
             rows.append(row.to_dict())
@@ -1097,13 +1135,13 @@ def panel_D(ax: plt.Axes, data: dict) -> None:
             y += 1
 
     # Subtle grid
-    ax.grid(True, which="major", axis="x", color="#ececec",
+    ax.grid(True, which="major", axis="x", color="#f0f0f0",
             linewidth=0.3, zorder=0)
     ax.set_axisbelow(True)
 
     # Zero line
-    ax.axvline(0, color="#555", linewidth=1.0, linestyle="-",
-               zorder=1, alpha=0.6)
+    ax.axvline(0, color="#444", linewidth=1.0, linestyle="-",
+               zorder=1, alpha=0.5)
 
     # Plot data points and CIs
     for idx, row in data_rows:
@@ -1111,15 +1149,15 @@ def panel_D(ax: plt.Axes, data: dict) -> None:
         color = dataset_colors.get(row["dataset"], COLORS["gray"])
 
         ax.hlines(yp, row["d_lower"], row["d_upper"],
-                  color=color, linewidth=2.0, zorder=2, alpha=0.7)
-        ax.scatter(row["d"], yp, color=color, s=70, zorder=3,
-                   edgecolors="white", linewidths=0.8)
+                  color=color, linewidth=2.2, zorder=2, alpha=0.7)
+        ax.scatter(row["d"], yp, color=color, s=80, zorder=3,
+                   edgecolors="white", linewidths=1.0)
 
         # Right-side annotation: d value and n
-        x_annot = row["d_upper"] + 0.06
+        x_annot = row["d_upper"] + 0.08
         ax.text(x_annot, yp,
                 f"{row['d']:+.2f}  (n={row['n_participants']})",
-                fontsize=6.5, va="center", ha="left", color="#555")
+                fontsize=7, va="center", ha="left", color="#444")
 
     # Style dataset group labels
     for i, lbl in enumerate(y_labels):
@@ -1130,29 +1168,32 @@ def panel_D(ax: plt.Axes, data: dict) -> None:
                        linestyle="-", alpha=0.3, xmin=0.0, xmax=1.0)
 
     ax.set_yticks(y_positions)
-    ax.set_yticklabels(y_labels, fontsize=7.5)
+    ax.set_yticklabels(y_labels, fontsize=8.5)
     for tick_label in ax.get_yticklabels():
         text = tick_label.get_text()
         if text in ds_order:
             tick_label.set_fontweight("bold")
-            tick_label.set_fontsize(8)
+            tick_label.set_fontsize(9.5)
             color = dataset_colors.get(text, COLORS["gray"])
             tick_label.set_color(color)
 
     # Cohen's d reference lines
     for ref_d in (-0.8, -0.5, -0.2, 0.2, 0.5, 0.8):
         ax.axvline(ref_d, color=COLORS["gray"], linewidth=0.4,
-                   linestyle=":", zorder=0, alpha=0.3)
+                   linestyle=":", zorder=0, alpha=0.25)
 
-    ax.set_xlabel("Cohen's d  (signed effect size)", fontsize=10)
+    ax.set_xlabel("Cohen's d  (signed effect size)", fontsize=11)
     ax.set_title("Effect sizes — pre-specified endpoints",
-                 fontsize=12, fontweight="bold", pad=12)
+                 fontsize=13, fontweight="bold", pad=12)
+    ax.tick_params(axis="x", which="major", labelsize=9.5)
 
     all_vals = effect_df[["d_lower", "d_upper", "d"]].values.flatten()
     x_margin = max(abs(all_vals.min()), abs(all_vals.max())) + 0.5
     ax.set_xlim(-x_margin, x_margin)
     ax.set_ylim(-0.6, max(y_positions) + 0.6)
     despine(ax)
+    ax.spines["bottom"].set_linewidth(1.2)
+    ax.spines["left"].set_linewidth(1.2)
 
 
 # ======================================================================
@@ -1165,23 +1206,30 @@ def generate() -> None:
     data = _prepare_data()
 
     # Panel A must run before B so shared_xlim propagates
-    panels = [
-        ("panel_A", panel_A, (8, 6)),
-        ("panel_B", panel_B, (8, 6)),
-        ("panel_C", panel_C, (8, 6)),
-        ("panel_D", panel_D, (9, 5.5)),
+    single_panels = [
+        ("panel_A", panel_A, (8, 5.5)),
+        ("panel_B", panel_B, (8, 5.5)),
+        ("panel_D", panel_D, (10, 7)),
     ]
 
-    for name, draw_fn, figsize in panels:
+    for name, draw_fn, figsize in single_panels:
         pfig, pax = plt.subplots(figsize=figsize)
         draw_fn(pax, data)
         pfig.tight_layout()
         save_panel(pfig, name, FIGURE_NAME, MAIN_OUTPUT)
-        # Also save vector (PDF) for publication
         pdf_path = MAIN_OUTPUT / f"{FIGURE_NAME}_panels" / f"{name}.pdf"
         pdf_path.parent.mkdir(parents=True, exist_ok=True)
         pfig.savefig(pdf_path, format="pdf", bbox_inches="tight", dpi=300)
         plt.close(pfig)
+
+    # Panel C: small-multiple figure (creates its own subplots)
+    cfig = panel_C(None, data)
+    if cfig is not None:
+        save_panel(cfig, "panel_C", FIGURE_NAME, MAIN_OUTPUT, close=False)
+        pdf_path = MAIN_OUTPUT / f"{FIGURE_NAME}_panels" / "panel_C.pdf"
+        pdf_path.parent.mkdir(parents=True, exist_ok=True)
+        cfig.savefig(pdf_path, format="pdf", bbox_inches="tight", dpi=300)
+        plt.close(cfig)
 
     clear_cache()
     gc.collect()
