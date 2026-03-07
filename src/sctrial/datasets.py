@@ -19,6 +19,220 @@ from .utils import get_counts_matrix
 
 logger = logging.getLogger(__name__)
 
+
+# ---------------------------------------------------------------------------
+# Marker-based cell-type annotation for immune cells
+# Approach adapted from Diab_duod project: Leiden clustering -> Wilcoxon
+# marker finding -> weighted scoring against canonical marker gene sets
+# ---------------------------------------------------------------------------
+
+# Immune cell markers from Sade-Feldman et al. (Cell 2018, Fig 1, Table S1).
+# The paper identifies 11 clusters (G1-G11) among CD45+ sorted cells:
+#   G1: B cells, G2: Plasma cells, G3: Monocytes/Macrophages,
+#   G4: Dendritic cells, G5-G11: T/NK/NKT subtypes.
+# CD8 T cells are further split into memory-like (CD8_G) and
+# exhausted (CD8_B) states.
+_IMMUNE_MARKERS: dict[str, set[str]] = {
+    "CD8 T cell": {
+        "CD8A", "CD8B", "GZMK", "GZMB", "GZMA", "PRF1", "NKG7",
+        "CD3D", "CD3E", "IFNG", "EOMES", "TBX21",
+    },
+    "CD4 T cell": {
+        "CD4", "IL7R", "CCR7", "LEF1", "TCF7", "ICOS",
+        "CD3D", "CD3E", "CD40LG",
+    },
+    "Treg": {
+        "FOXP3", "IL2RA", "CTLA4", "IKZF2", "TNFRSF18",
+        "CD4", "CD3D", "CD3E",
+    },
+    "B cell": {
+        # G1 markers from publication: IGKC, LTB, LY9, SELL, TCF7, CCR7
+        "MS4A1", "CD79A", "CD79B", "BANK1", "CD74", "CD19",
+        "PAX5", "BLK", "IGKC", "LTB", "LY9",
+    },
+    "Plasma cell": {
+        # G2 cluster
+        "MZB1", "SDC1", "XBP1", "JCHAIN", "PRDM1",
+        "IGKC", "IGHG1",
+    },
+    "NK cell": {
+        "KLRD1", "KLRF1", "KLRB1", "GNLY", "PRF1",
+        "NKG7", "GZMB", "NCAM1", "FCGR3A",
+    },
+    "Monocyte/Macrophage": {
+        # G3 cluster
+        "CD14", "CD68", "LYZ", "CST3", "S100A8", "S100A9",
+        "C1QA", "C1QB", "C1QC", "MRC1", "CSF1R", "FCGR3A",
+    },
+    "Dendritic cell": {
+        # G4 cluster
+        "FCER1A", "CLEC10A", "CD1C", "ITGAX",
+        "HLA-DRA", "HLA-DQA1",
+    },
+}
+
+# Annotation parameters (following Diab_duod conventions)
+_ANNOT_TOP_N = 50          # top markers per cluster from Wilcoxon
+_ANNOT_MIN_LFC = 0.25      # minimum log fold-change
+_ANNOT_MAX_FDR = 0.1       # maximum adjusted p-value
+_ANNOT_SECOND_DELTA = 0.25 # delta to flag ambiguous clusters
+_ANNOT_MIN_ACCEPT = 0.3    # minimum weighted score to accept a label
+
+
+def _weighted_marker_score(
+    marker_df: pd.DataFrame,
+    gene_set: set[str],
+) -> tuple[float, list[str]]:
+    """Compute weighted score of a gene set against ranked cluster markers.
+
+    Weight per gene = (1 / rank) * log1p(exp(clipped_logFC)).
+    Mirrors the ``weighted_score`` function from the Diab_duod project.
+    """
+    hits = marker_df[marker_df["names"].isin(gene_set)]
+    if hits.empty:
+        return 0.0, []
+    lfc = hits["logfoldchanges"].clip(lower=0).values.astype(float)
+    ranks = hits["rank"].values.astype(float)
+    weights = (1.0 / ranks) * np.log1p(np.exp(lfc))
+    top_genes = hits["names"].values[np.argsort(-weights)].tolist()
+    return float(weights.sum()), top_genes
+
+
+def _annotate_immune_celltypes(adata: ad.AnnData) -> pd.Series:
+    """Assign cell types to immune cells via cluster-level marker scoring.
+
+    Pipeline (adapted from Diab_duod project):
+    1. Compute Leiden clusters on log1p-normalised expression.
+    2. Find differentially expressed markers per cluster (Wilcoxon).
+    3. Score each cluster against canonical immune marker sets using
+       a rank-weighted scoring function.
+    4. Assign the best-scoring cell type to each cluster.
+
+    Parameters
+    ----------
+    adata : AnnData
+        Must contain expression values (TPM) in ``adata.X`` and gene names
+        in ``adata.var_names``.
+
+    Returns
+    -------
+    pd.Series
+        Cell-type labels indexed like ``adata.obs``.
+    """
+    import scanpy as sc  # local import to avoid top-level dependency
+
+    # Work on a copy so we don't modify the caller's object
+    aw = adata.copy()
+
+    # Normalise for clustering if raw TPM
+    if aw.X.max() > 50:
+        aw.X = np.log1p(aw.X)
+
+    # PCA -> neighbors -> Leiden
+    logger.info("    Computing PCA for cell-type annotation...")
+    sc.pp.highly_variable_genes(aw, n_top_genes=2000, flavor="seurat")
+    sc.tl.pca(aw, n_comps=30)
+    sc.pp.neighbors(aw, n_neighbors=15, n_pcs=20)
+    sc.tl.leiden(aw, resolution=1.0)
+
+    # Wilcoxon marker finding per cluster
+    logger.info("    Finding cluster markers (Wilcoxon)...")
+    sc.tl.rank_genes_groups(aw, groupby="leiden", method="wilcoxon",
+                            n_genes=_ANNOT_TOP_N)
+
+    clusters = sorted(aw.obs["leiden"].unique(), key=int)
+    cluster_labels: dict[str, str] = {}
+
+    for cl in clusters:
+        # Extract marker table for this cluster
+        result = aw.uns["rank_genes_groups"]
+        idx = list(result["names"].dtype.names).index(cl)
+        names = [result["names"][i][idx] for i in range(len(result["names"]))]
+        lfcs = [result["logfoldchanges"][i][idx]
+                for i in range(len(result["logfoldchanges"]))]
+        padjs = [result["pvals_adj"][i][idx]
+                 for i in range(len(result["pvals_adj"]))]
+
+        df_markers = pd.DataFrame({
+            "names": names,
+            "logfoldchanges": lfcs,
+            "pvals_adj": padjs,
+            "rank": np.arange(1, len(names) + 1),
+        })
+
+        # Filter by LFC and FDR
+        df_markers = df_markers[
+            (df_markers["logfoldchanges"] >= _ANNOT_MIN_LFC)
+            & (df_markers["pvals_adj"] <= _ANNOT_MAX_FDR)
+        ]
+
+        # If strict filtering yields no markers, use unfiltered markers
+        if df_markers.empty:
+            df_markers = pd.DataFrame({
+                "names": names,
+                "logfoldchanges": lfcs,
+                "pvals_adj": padjs,
+                "rank": np.arange(1, len(names) + 1),
+            })
+
+        # Score against each cell type
+        label_scores: dict[str, float] = {}
+        for ct, gene_set in _IMMUNE_MARKERS.items():
+            score, _ = _weighted_marker_score(df_markers, gene_set)
+            if score > 0:
+                label_scores[ct] = score
+
+        if not label_scores:
+            # Fallback: score with unfiltered markers (no LFC/FDR filter)
+            df_unfiltered = pd.DataFrame({
+                "names": names,
+                "logfoldchanges": [max(0, v) for v in lfcs],
+                "pvals_adj": padjs,
+                "rank": np.arange(1, len(names) + 1),
+            })
+            for ct, gene_set in _IMMUNE_MARKERS.items():
+                score, _ = _weighted_marker_score(df_unfiltered, gene_set)
+                if score > 0:
+                    label_scores[ct] = score
+
+        if not label_scores:
+            # Last resort: assign "CD4 T cell" (most common T cell in
+            # CD45+ sorted melanoma samples per Sade-Feldman et al.)
+            cluster_labels[cl] = "CD4 T cell"
+            logger.warning(f"    Cluster {cl}: no marker overlap, defaulting")
+            continue
+
+        sorted_labels = sorted(label_scores.items(), key=lambda x: -x[1])
+        best_label, best_score = sorted_labels[0]
+
+        # Always assign the best-scoring type (no "Unknown immune")
+        cluster_labels[cl] = best_label
+
+        # Log ambiguous clusters
+        if len(sorted_labels) > 1:
+            second_label, second_score = sorted_labels[1]
+            if best_score - second_score < _ANNOT_SECOND_DELTA:
+                logger.debug(
+                    f"    Cluster {cl}: {best_label} ({best_score:.2f}) "
+                    f"vs {second_label} ({second_score:.2f}) [ambiguous]"
+                )
+
+    # Map cluster -> cell type onto every cell
+    labels = aw.obs["leiden"].map(cluster_labels)
+    labels.index = adata.obs.index
+    labels.name = "cell_type"
+
+    # Log summary
+    vc = labels.value_counts()
+    for ct, n in vc.items():
+        logger.info(f"    {ct}: {n:,} cells")
+
+    del aw
+    import gc
+    gc.collect()
+
+    return labels
+
 __all__ = [
     "load_sade_feldman",
     "load_stephenson_data",
@@ -31,6 +245,7 @@ __all__ = [
 
 
 def _resolve_dir_with_files(p: str, required_files: Sequence[str]) -> Path:
+    """Resolve a directory path with required files."""
     path = Path(p)
     if path.is_absolute():
         if all((path / f).exists() for f in required_files):
@@ -84,6 +299,7 @@ def _params_match(prev: dict, current: dict) -> bool:
 
 
 def _looks_log1p(X, sample: int = 10000, seed: int = 0) -> bool:
+    """Check if a matrix looks like log-transformed counts."""
     if X is None:
         return False
     if sp.issparse(X):
@@ -127,13 +343,14 @@ def _download_file(url: str, dest: Path, label: str = "file") -> None:
 
 
 def _get_counts_matrix(adata: ad.AnnData) -> tuple[np.ndarray | None, str | None]:
+    """Get the counts matrix from the AnnData object."""
     return get_counts_matrix(adata)
 
 
 
 def load_sade_feldman(
     data_dir: str = "data/sade_feldman",
-    processed_name: str = "sade_feldman_processed_v5.h5ad",
+    processed_name: str = "sade_feldman_processed_v6.h5ad",
     max_cells_per_participant_visit: int | None = None,
     seed: int = 42,
     allow_download: bool = False,
@@ -171,7 +388,7 @@ def load_sade_feldman(
     processed_path = data_dir_path.parent / "processed" / processed_name
 
     processing_params = {
-        "version": "v5",
+        "version": "v6",
         "max_cells_per_participant_visit": max_cells_per_participant_visit,
         "seed": seed,
         "assay": "TPM",
@@ -252,8 +469,6 @@ def load_sade_feldman(
     adata.obs = meta.copy()
     adata.var_names = genes
 
-    adata.obs["cell_type"] = "Immune"
-
     if max_cells_per_participant_visit is not None:
         rng = np.random.default_rng(seed)
         keep_indices: list = []
@@ -271,6 +486,11 @@ def load_sade_feldman(
 
     adata.layers["tpm"] = adata.X.copy()
     adata.layers["log1p_tpm"] = adata.X.copy() if _looks_log1p(adata.X) else np.log1p(adata.X)
+
+    # Annotate cell types using cluster-level weighted marker scoring
+    # (adapted from Diab_duod project methodology)
+    logger.info("Annotating cell types from marker genes...")
+    adata.obs["cell_type"] = _annotate_immune_celltypes(adata)
 
     adata.uns["processing_params"] = processing_params
     adata.uns["data_source"] = "GSE120575"
@@ -532,7 +752,29 @@ def count_paired(
     visits: Sequence[str],
     participant_col: str = "participant_id"
 ) -> int:
-    """Count participants with data at both visits."""
+    """Count participants with data at both visits.
+
+    Parameters
+    ----------
+    obs
+        DataFrame containing the participant-visit data.
+    visit_col
+        Column name in `obs` to use for visit labels.
+    visits
+        Sequence of visit labels to check (e.g. ["baseline", "followup"]).
+    participant_col
+        Column name in `obs` to use for participant IDs.
+
+    Returns
+    -------
+    int
+        Number of participants with data at both visits.
+
+    Raises
+    ------
+    ValueError
+        If visits does not contain at least 2 labels (baseline and followup).
+    """
     if len(visits) < 2:
         raise ValueError(
             f"visits must contain at least 2 labels, got {len(visits)}: {list(visits)}"
@@ -557,11 +799,27 @@ def verify_paired_participants(
 ) -> dict:
     """Validate paired participants by visit presence and optional feature completeness.
 
-    Returns:
-      - paired_ids: set of participant IDs with both visits (and non-NaN features if provided)
-      - dropped_ids: list of participant IDs dropped by validation
-      - n_paired: count of paired_ids
-      - n_total: total unique participants
+    Parameters
+    ----------
+    obs
+        DataFrame containing the participant-visit data.
+    visit_col
+        Column name in `obs` to use for visit labels.
+    visits
+        Sequence of visit labels to check (e.g. ["baseline", "followup"]).
+    features
+        Sequence of feature names to check.
+    participant_col
+        Column name in `obs` to use for participant IDs.
+
+    Returns
+    -------
+    dict
+        A dictionary containing the following keys:
+        - paired_ids: set of participant IDs with both visits (and non-NaN features if provided)
+        - dropped_ids: list of participant IDs dropped by validation
+        - n_paired: count of paired_ids
+        - n_total: total unique participants
     """
     if len(visits) < 2:
         raise ValueError(
@@ -605,7 +863,18 @@ def verify_paired_participants(
 
 
 def categorize_celltype(ct: str) -> str:
-    """Map fine-grained cell types to coarse lineages (COVID-19 example)."""
+    """Map fine-grained cell types to coarse lineages (COVID-19 example).
+
+    Parameters
+    ----------
+    ct
+        Cell type string.
+
+    Returns
+    -------
+    str
+        Coarse lineage string.
+    """
     ct_lower = str(ct).lower()
     if "cd4" in ct_lower or "th1" in ct_lower or "th2" in ct_lower or "treg" in ct_lower:
         return "CD4_T"
@@ -625,7 +894,22 @@ def categorize_celltype(ct: str) -> str:
 
 
 def ensure_fdr(df: pd.DataFrame, p_col: str = "p_time", fdr_col: str = "FDR_time") -> pd.DataFrame:
-    """Add Benjamini-Hochberg FDR column for a p-value column."""
+    """Add Benjamini-Hochberg FDR column for a p-value column.
+
+    Parameters
+    ----------
+    df
+        DataFrame containing the p-value column.
+    p_col
+        Column name in `df` to use for p-value column.
+    fdr_col
+        Column name in `df` to use for FDR-corrected p-value column.
+
+    Returns
+    -------
+    pd.DataFrame
+        A copy of the DataFrame with the FDR-corrected p-value column added.
+    """
     if df.empty:
         return df
     if fdr_col in df.columns:
