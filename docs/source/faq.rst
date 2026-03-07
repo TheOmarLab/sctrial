@@ -682,7 +682,7 @@ You can also process in batches manually:
 
 .. code-block:: python
 
-   import numpy as np
+   import pandas as pd
 
    features = list(adata.var_names)
    batch_size = 1000

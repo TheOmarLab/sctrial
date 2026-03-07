@@ -106,7 +106,11 @@ Ensure counts are stored as sparse matrices:
 4. Subsample Strategically
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-For very large datasets, subsample while maintaining trial structure:
+For very large datasets, subsample cells *within* each participant-visit-celltype
+group to reduce memory. Because ``sctrial`` pseudobulks to the participant level
+before fitting, subsampling cells changes the mean estimates slightly but does not
+alter the unit of analysis. Use stratified subsampling (not random) to preserve
+trial structure:
 
 .. code-block:: python
 
@@ -341,7 +345,8 @@ Optimize GSEA Analysis
 Parallel Processing (Advanced)
 -------------------------------
 
-Currently, ``sctrial`` doesn't have built-in parallelization. For advanced users:
+``sctrial`` provides ``did_table_parallel()`` for built-in multiprocessing across
+features. For additional manual parallelization strategies:
 
 Parallelize Across Cell Types
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

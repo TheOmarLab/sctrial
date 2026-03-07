@@ -288,11 +288,9 @@ def run_gsea_pseudobulk(
     celltype_col
         If provided and results contain per-celltype rows, run GSEA separately for each cell type and concatenate results.
     rank_by
-        Metric for ranking genes:
-        - 'signed_confidence': sign(beta_DiD) * -log10(p_DiD). Highlights
-          genes with high effect and high significance.
-        - 'beta': ranks genes solely by the DiD effect size.
-        - 'tstat': ranks genes by the t-statistic (beta_DiD / se_DiD).
+        Metric for ranking genes. One of ``'signed_confidence'``
+        (sign(beta_DiD) * -log10(p_DiD), default), ``'beta'`` (DiD effect
+        size), or ``'tstat'`` (t-statistic beta_DiD / se_DiD).
     min_units
         Minimum number of paired participants required for a gene to be included in the ranking.
     return_obj

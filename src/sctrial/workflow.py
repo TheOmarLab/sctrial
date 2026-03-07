@@ -72,8 +72,8 @@ class TrialWorkflow:
             Minimum number of genes from the set that must be present in the data.
             Default is 5.
         overwrite
-            If False, skip gene sets that already have a column in `adata.obs`.
-            Default is True.
+            If False (default), skip gene sets that already have a column in
+            ``adata.obs``.
 
         Returns
         -------

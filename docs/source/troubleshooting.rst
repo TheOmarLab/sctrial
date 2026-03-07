@@ -186,7 +186,7 @@ Non-Significant Results
        adata, features=features, design=design,
        visits=("V1", "V2"),
        use_bootstrap=True,  # More robust for small N
-       n_boot=9999  # More iterations for accuracy
+       n_boot=999  # 999 is usually sufficient; use 9999 for final results
    )
 
 3. **High variability** - Check effect sizes (beta_DiD) even if p-values are high
@@ -215,7 +215,7 @@ Out of Memory Errors
 .. code-block:: python
 
    # Downsample while maintaining structure
-   from scanpy.pp import subsample
+   import scanpy as sc
    sc.pp.subsample(adata, n_obs=50000, random_state=42)
 
 2. **Use sparse layers**:

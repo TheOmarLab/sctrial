@@ -198,7 +198,7 @@ For **n < 15 paired participants**, use Wild Cluster Bootstrap:
        design=design,
        visits=("V1", "V2"),
        use_bootstrap=True,  # More robust for small N
-       n_boot=9999,  # Higher for more accuracy
+       n_boot=999,  # 999 is usually sufficient; use 9999 for final results
        seed=42  # For reproducibility
    )
 
@@ -487,7 +487,7 @@ Always report:
 .. code-block:: python
 
    # Generate summary report
-   summary = st.summarize_did_results(res, threshold=0.05)
+   summary = st.summarize_did_results(res, alpha=0.05)
    print(summary)
 
 Visualization
