@@ -1059,8 +1059,8 @@ def panel_C(fig_or_ax, data: dict) -> plt.Figure | None:
 def panel_C2(fig_or_ax, data: dict) -> plt.Figure | None:
     """Panel C2: Power heatmap — datasets × participant-count bins.
 
-    Rows = datasets, columns = participant count, fill = power.
-    A contour line marks the 0.80 threshold.
+    Rows = datasets, columns = participant count (uniform width), fill = power.
+    Cells ≥ 0.80 get a bold border.  N/A cells are light gray with "—".
     Returns a new Figure; ignores *fig_or_ax*.
     """
     power_df = data["power_df"]
@@ -1076,10 +1076,12 @@ def panel_C2(fig_or_ax, data: dict) -> plt.Figure | None:
     }
 
     ds_names = list(dict.fromkeys(power_df["dataset"]))
+    all_n = sorted(power_df["n_participants"].unique())
+    n_cols = len(all_n)
+    n_rows = len(ds_names)
 
     # Build the power matrix: rows = datasets, columns = n_participants
-    all_n = sorted(power_df["n_participants"].unique())
-    power_matrix = np.full((len(ds_names), len(all_n)), np.nan)
+    power_matrix = np.full((n_rows, n_cols), np.nan)
     for i, ds in enumerate(ds_names):
         grp = power_df[power_df["dataset"] == ds]
         for _, row in grp.iterrows():
@@ -1096,62 +1098,53 @@ def panel_C2(fig_or_ax, data: dict) -> plt.Figure | None:
         else:
             y_labels.append(ds)
 
-    fig, ax = plt.subplots(figsize=(10, 3.5))
+    # ── Figure with uniform-width columns via imshow ──
+    fig, ax = plt.subplots(figsize=(max(8, 0.7 * n_cols + 3), max(3.5, 0.7 * n_rows + 1)))
 
-    # Use pcolormesh for the heatmap (handles NaN gracefully)
-    import matplotlib.colors as mcolors
     cmap = plt.cm.YlOrRd.copy()
-    cmap.set_bad(color="#f7f7f7")
+    cmap.set_bad(color="#EDEDED")  # clear gray for N/A
 
-    # Create coordinate arrays for pcolormesh
-    # x-edges: midpoints between n values, extended at boundaries
-    x_edges = []
-    for j in range(len(all_n)):
-        if j == 0:
-            left = all_n[0] - 0.5
-        else:
-            left = (all_n[j - 1] + all_n[j]) / 2
-        x_edges.append(left)
-    x_edges.append(all_n[-1] + 0.5)
-    x_edges = np.array(x_edges)
-    y_edges = np.arange(-0.5, len(ds_names))
-
-    im = ax.pcolormesh(
-        x_edges, y_edges, power_matrix,
-        cmap=cmap, vmin=0, vmax=1,
-        edgecolors="white", linewidth=0.5,
+    im = ax.imshow(
+        np.ma.masked_invalid(power_matrix),
+        cmap=cmap, vmin=0, vmax=1, aspect="auto",
+        interpolation="nearest",
     )
 
-    # Add text annotations inside cells
-    for i in range(len(ds_names)):
-        for j in range(len(all_n)):
+    # Grid lines between cells
+    for x in np.arange(-0.5, n_cols, 1):
+        ax.axvline(x, color="white", linewidth=1.2, zorder=2)
+    for y in np.arange(-0.5, n_rows, 1):
+        ax.axhline(y, color="white", linewidth=1.2, zorder=2)
+
+    # Text annotations inside cells
+    for i in range(n_rows):
+        for j in range(n_cols):
             val = power_matrix[i, j]
             if np.isnan(val):
-                continue
-            text_color = "white" if val > 0.65 else "#333"
-            ax.text(all_n[j], i, f"{val:.2f}",
-                    ha="center", va="center", fontsize=7,
-                    color=text_color, fontweight="medium")
+                ax.text(j, i, "—", ha="center", va="center",
+                        fontsize=7, color="#AAA")
+            else:
+                text_color = "white" if val > 0.65 else "#333"
+                ax.text(j, i, f"{val:.2f}",
+                        ha="center", va="center", fontsize=8,
+                        color=text_color, fontweight="bold" if val >= 0.80 else "medium")
 
-    # 0.80 contour — draw per-row horizontal markers where power ≥ 0.80
-    for i in range(len(ds_names)):
-        for j in range(len(all_n)):
+    # Bold border on cells ≥ 0.80
+    for i in range(n_rows):
+        for j in range(n_cols):
             val = power_matrix[i, j]
             if not np.isnan(val) and val >= 0.80:
-                # Mark with a subtle border
-                rect_w = x_edges[j + 1] - x_edges[j]
                 rect = plt.Rectangle(
-                    (x_edges[j], y_edges[i]), rect_w, 1.0,
-                    linewidth=1.8, edgecolor="#222", facecolor="none",
+                    (j - 0.5, i - 0.5), 1, 1,
+                    linewidth=2.0, edgecolor="#222", facecolor="none",
                     zorder=5,
                 )
                 ax.add_patch(rect)
 
-    # Axes
-    ax.set_xticks(all_n)
-    ax.set_xticklabels([str(int(n)) for n in all_n], fontsize=8, rotation=45,
-                       ha="right")
-    ax.set_yticks(range(len(ds_names)))
+    # Axes — uniform ticks at integer positions
+    ax.set_xticks(range(n_cols))
+    ax.set_xticklabels([str(int(n)) for n in all_n], fontsize=9)
+    ax.set_yticks(range(n_rows))
     ax.set_yticklabels(y_labels, fontsize=9)
     for i, lbl_text in enumerate(ds_names):
         ax.get_yticklabels()[i].set_color(
@@ -1159,19 +1152,18 @@ def panel_C2(fig_or_ax, data: dict) -> plt.Figure | None:
         )
         ax.get_yticklabels()[i].set_fontweight("bold")
 
-    ax.set_xlabel("Number of participants", fontsize=11)
+    ax.set_xlabel("Number of participants", fontsize=11, labelpad=6)
     ax.set_title("Power heatmap — pre-specified endpoints",
                  fontsize=13, fontweight="bold", pad=10)
+    ax.tick_params(axis="both", which="both", length=0)  # hide tick marks
 
     # Colorbar
-    cbar = fig.colorbar(im, ax=ax, pad=0.02, shrink=0.9, aspect=25)
+    cbar = fig.colorbar(im, ax=ax, pad=0.02, shrink=0.85, aspect=25)
     cbar.set_label(r"Power (1 − $\beta$)", fontsize=10)
     cbar.ax.axhline(0.80, color="#222", linewidth=1.5, linestyle="-")
-    cbar.ax.text(1.5, 0.80, "0.80", transform=cbar.ax.get_yaxis_transform(),
-                 fontsize=8, va="center", ha="left", fontweight="bold")
-
-    ax.set_xlim(x_edges[0], x_edges[-1])
-    ax.set_ylim(-0.5, len(ds_names) - 0.5)
+    cbar.ax.text(2.5, 0.80, "0.80", transform=cbar.ax.get_yaxis_transform(),
+                 fontsize=8, va="center", ha="left", fontweight="bold",
+                 color="#222")
 
     fig.tight_layout()
     return fig
