@@ -20,7 +20,24 @@ def standardize_series(
     *,
     min_std: float = 1e-12,
 ) -> tuple[pd.Series, bool]:
-    """Z-score a column and report if standardization is valid."""
+    """Z-score a column and report if standardization is valid.
+
+    Parameters
+    ----------
+    df
+        DataFrame containing the column to standardize.
+    col
+        Name of the column to standardize.
+    min_std
+        Minimum standard deviation to consider the column for standardization.
+    Returns
+    -------
+    tuple[pd.Series, bool]
+        A tuple containing the standardized column and a boolean indicating if standardization is valid.
+        - The standardized column is a Series with the same index as df.
+        - The boolean indicates if standardization is valid.
+        - If standardization is not valid, the standardized column is a Series with NaN values.
+    """
     y = df[col].astype(float)
     y_std = y.std(ddof=1)
     if not np.isfinite(y_std) or y_std < min_std:
@@ -33,7 +50,22 @@ def encode_visit(
     visit_col: str,
     visits: tuple[str, str],
 ) -> pd.DataFrame:
-    """Encode visit as ordered categorical and numeric 0/1."""
+    """Encode visit as ordered categorical and numeric 0/1.
+
+    Parameters
+    ----------
+    df
+        DataFrame containing the visit column.
+    visit_col
+        Name of the column containing visit labels.
+    visits
+        Tuple of (baseline, followup) visit labels.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with encoded visit column.
+    """
     out = df.copy()
     out[visit_col] = pd.Categorical(out[visit_col], categories=list(visits), ordered=True)
     out["visit_num"] = out[visit_col].map({visits[0]: 0, visits[1]: 1}).astype(float)

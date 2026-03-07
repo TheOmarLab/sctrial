@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 def _require_cols(obs: pd.DataFrame, cols: list[str]) -> None:
+    """Require specific columns in the DataFrame."""
     missing = [c for c in cols if c not in obs.columns]
     if missing:
         raise KeyError(f"Missing required obs columns: {missing}. Available: {list(obs.columns)}")
@@ -67,6 +68,11 @@ def subset_primary(
         Tuple of (baseline_visit, followup_visit), e.g. ("3/T0", "6/T12w").
     exclude_crossovers:
         If True and design.crossover_col is provided, drop rows where crossover_col is truthy.
+
+    Returns
+    -------
+    AnnData
+        Subsetted AnnData object.
     """
     obs = adata.obs
     _require_cols(obs, [design.visit_col])
@@ -89,7 +95,29 @@ def subset_cells(
         celltype: str | None = None,
         exclude_crossovers: bool = False,
 ) -> AnnData:
-    """General-purpose subsetting helper by arm/visit/celltype (+ optional crossover exclusion)."""
+    """General-purpose subsetting helper by arm/visit/celltype (+ optional crossover exclusion).
+
+    Parameters
+    ----------
+    adata
+        AnnData object.
+    design
+        TrialDesign object.
+    arm
+        Arm to subset by.
+    visit
+        Visit to subset by.
+    celltype
+        Celltype to subset by.
+    exclude_crossovers
+        If True, exclude crossovers.
+
+    Returns
+    -------
+    AnnData
+        Subsetted AnnData object.
+
+    """
     obs = adata.obs
 
     required = []

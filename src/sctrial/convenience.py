@@ -199,6 +199,7 @@ def _auto_detect_arm_labels(
     arm_treated: str | None,
     arm_control: str | None,
 ) -> tuple[str | None, str | None]:
+    """Auto-detect arm labels based on common keywords."""
     treated_keywords = ["treat", "drug", "active", "intervention"]
     control_keywords = ["control", "placebo", "sham", "vehicle"]
 
@@ -219,6 +220,7 @@ def _print_design_summary(
     arm_control: str,
     celltype_col: str | None,
 ) -> None:
+    """Print a summary of the detected trial design."""
     logger.info("\n" + "=" * 60)
     logger.info("AUTO-DETECTED TRIAL DESIGN")
     logger.info("=" * 60)

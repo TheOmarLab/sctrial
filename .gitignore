@@ -39,9 +39,18 @@ tutorials/data/
 **/.doctrees/
 docs/build/
 
+# Manuscript figure computation cache
+_cache/
+manuscript_figures/_cache/
+
 # Run scripts (local convenience only)
 run_nb*.sh
 
 # Jupyter notebook artifacts
 *.nbconvert.ipynb
 .ipynb_checkpoints/
+
+# Claude Code
+CLAUDE.md
+.claude/
+.mcp.json

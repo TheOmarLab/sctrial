@@ -24,6 +24,7 @@ from ._utils import apply_fdr, encode_visit, standardize_series
 
 # Minimum number of clusters for reliable cluster-robust standard errors
 # Cameron & Miller (2015) recommend 42+, with 10 as absolute minimum
+# Ref: Cameron, A. Colin, and Douglas L. Miller. "A practitioner’s guide to cluster-robust inference." Journal of human resources 50.2 (2015): 317-372.
 MIN_CLUSTERS_FOR_ROBUST_SE = 10
 
 
@@ -55,6 +56,7 @@ class DiDConfig:
 
 
 def _validate_did_fit_inputs(df: pd.DataFrame, cols: list[str]) -> None:
+    """Validate the input columns for did_fit."""
     missing = [c for c in cols if c not in df.columns]
     if missing:
         raise KeyError(f"Missing required columns for did_fit: {missing}")
@@ -66,6 +68,7 @@ def _standardize_outcome(
     standardize: bool,
     outcome_col: str = "outcome_std",
 ) -> pd.DataFrame | None:
+    """Standardize the outcome variable."""
     if not standardize:
         tmp[outcome_col] = tmp[y].astype(float)
         return tmp
@@ -83,6 +86,7 @@ def _build_did_formula(
     covariates: list[str] | None,
     outcome_col: str = "outcome_std",
 ) -> str:
+    """Build the formula for DiD."""
     formula = f"{outcome_col} ~ {time} + {time}:{arm_bin} + C({unit})"
     if covariates:
         formula += " + " + " + ".join(covariates)
@@ -96,6 +100,7 @@ def _prepare_did_obs(
     celltype: str | None,
     exclude_crossovers: bool,
 ) -> tuple[AnnData, pd.DataFrame]:
+    """Prepare the data for DiD analysis."""
     ad = subset_primary(adata, design, visits=visits, exclude_crossovers=exclude_crossovers)
     if celltype is not None and design.celltype_col:
         ad = ad[ad.obs[design.celltype_col] == celltype].copy()
@@ -110,6 +115,7 @@ def _add_feature_columns(
     features: Sequence[str],
     layer: str | None,
 ) -> tuple[pd.DataFrame, list[str]]:
+    """Add feature columns to the DataFrame."""
     # features can be genes (in var_names) or obs columns
     # Optimization: Extract all genes from X/layer at once if they are in var_names
     genes_to_extract = [f for f in features if f in ad.var_names and f not in ad.obs.columns]
@@ -159,6 +165,7 @@ def _aggregate_for_did(
     agg: AggregateFunc,
     covariates: list[str] | None,
 ) -> tuple[pd.DataFrame, str, str, str]:
+    """Aggregate the data for DiD analysis."""
     if aggregate == "participant_visit":
         grp_cols = [design.participant_col, design.visit_col, design.arm_col]
         df["n_cells"] = 1
@@ -248,8 +255,13 @@ class DidFitResult(TypedDict):
     n_units: int
     resid_sd: NotRequired[float]
     p_DiD_boot: NotRequired[float]
+    se_DiD_boot: NotRequired[float]
+    ci_lo_boot: NotRequired[float]
+    ci_hi_boot: NotRequired[float]
+    cov_type_used: NotRequired[str]
 
 def _ensure_paired(df: pd.DataFrame, unit: str, time: str, visits: tuple[str,str]) -> pd.DataFrame:
+    """Ensure that the data is paired."""
     wide = df.groupby([unit, time], observed=True).size().unstack(fill_value=0)
     keep = wide[(wide.get(visits[0], 0) > 0) & (wide.get(visits[1], 0) > 0)].index
     return df[df[unit].isin(keep)].copy()
@@ -269,35 +281,35 @@ def did_fit(
 ) -> DidFitResult:
     """Fit fixed-effects Difference-in-Differences (DiD) model.
 
-    Mathematical Model
-    ------------------
+    **Mathematical Model**
+
     The DiD model with participant fixed effects:
 
     .. math::
 
-        Y_{it} = \\alpha_i + \\beta_1 \\cdot \\text{Post}_t + \\beta_2 \\cdot (\\text{Treat}_i \\times \\text{Post}_t) + \\epsilon_{it}
+        Y_{it} = \\alpha_i + \\beta_1 \\cdot \\text{Post}_t
+                 + \\beta_2 \\cdot (\\text{Treat}_i \\times \\text{Post}_t)
+                 + \\epsilon_{it}
 
-    where:
-        - :math:`Y_{it}`: outcome for participant i at time t
-        - :math:`\\alpha_i`: participant-specific intercept (fixed effect)
-        - :math:`\\text{Post}_t`: indicator for follow-up visit (0=baseline, 1=followup)
-        - :math:`\\text{Treat}_i`: treatment arm indicator (0=control, 1=treated)
-        - :math:`\\beta_2`: **DiD coefficient** (the causal estimand of interest)
-        - :math:`\\epsilon_{it}`: residual error
+    where :math:`Y_{it}` is the outcome for participant *i* at time *t*,
+    :math:`\\alpha_i` is a participant-specific intercept (fixed effect),
+    :math:`\\text{Post}_t` is an indicator for follow-up visit,
+    :math:`\\text{Treat}_i` is the treatment arm indicator, and
+    :math:`\\beta_2` is the **DiD coefficient** (causal estimand of interest).
 
-    Null Hypothesis
-    ---------------
-    H₀: β₂ = 0 (no differential treatment effect over time)
-    H₁: β₂ ≠ 0 (treatment causes different change than control)
+    **Null Hypothesis**
+
+    H₀: β₂ = 0 (no differential treatment effect over time).
 
     The DiD estimator:
 
     .. math::
 
-        \\hat{\\beta}_2 = (\\bar{Y}_{T,post} - \\bar{Y}_{T,pre}) - (\\bar{Y}_{C,post} - \\bar{Y}_{C,pre})
+        \\hat{\\beta}_2 = (\\bar{Y}_{T,post} - \\bar{Y}_{T,pre})
+                         - (\\bar{Y}_{C,post} - \\bar{Y}_{C,pre})
 
-    Statistical Assumptions
-    -----------------------
+    **Statistical Assumptions**
+
     - **Parallel trends**: In absence of treatment, both groups would follow
       same trajectory. Cannot be tested directly but can check pre-trends.
     - **No anticipation**: Treatment effect only after treatment starts.
@@ -306,7 +318,7 @@ def did_fit(
       Returns NaN for all estimates if n_units < 4.
     - Features with near-zero variance (std < 1e-8) return NaN.
     - Cluster-robust standard errors account for within-participant correlation.
-    - If `n_cells` column is present, Weighted Least Squares (WLS) is used.
+    - If ``n_cells`` column is present, Weighted Least Squares (WLS) is used.
       Weights are proportional to n_cells (inverse-variance weighting for
       participant-level means, since Var(mean) = σ²/n).
 
@@ -340,13 +352,10 @@ def did_fit(
     Returns
     -------
     DidFitResult
-        Keys:
-        - beta_DiD: DiD coefficient (β₂)
-        - se_DiD: Standard error of β₂
-        - p_DiD: P-value for H₀: β₂ = 0
-        - beta_time: Main time effect (β₁)
-        - p_time: P-value for time effect
-        - n_units: Number of participants used
+        Dictionary with keys ``beta_DiD``, ``se_DiD``, ``p_DiD``,
+        ``beta_time``, ``p_time``, ``n_units``, ``cov_type_used``.
+        When ``use_bootstrap=True``, also includes ``p_DiD_boot``,
+        ``se_DiD_boot``, ``ci_lo_boot``, ``ci_hi_boot``.
     """
     if df is None or df.empty:
         raise ValueError("df must be a non-empty DataFrame.")
@@ -361,7 +370,7 @@ def did_fit(
 
     _validate_did_fit_inputs(df, cols)
 
-    tmp = df[cols].dropna().copy()
+    tmp = df[cols].dropna().copy().reset_index(drop=True)
     n_units = tmp[unit].nunique()
     if n_units < 4:
         return {
@@ -416,28 +425,73 @@ def did_fit(
     fit = model.fit(cov_type=cov_type, cov_kwds={"groups": tmp[unit]} if cov_type == "cluster" else None)
     term = f"{time}:{arm_bin}"
 
+    se_did = float(fit.bse.get(term, np.nan))
+    p_did = float(fit.pvalues.get(term, np.nan))
+
+    # Fallback: if cluster-robust SE is NaN (degenerate, e.g. only 2 obs per
+    # cluster after participant_visit aggregation), re-fit with nonrobust SE.
+    # The participant FE already absorbs within-participant correlation, so
+    # homoskedastic SE is a valid (though conservative) alternative.
+    #
+    # Justification for nonrobust bootstrap in fallback mode:
+    # When cluster-robust SE is degenerate (typically because each cluster has
+    # only 2 observations after participant_visit aggregation), the wild cluster
+    # bootstrap with nonrobust covariance is methodologically valid because:
+    # (a) participant fixed effects already absorb within-cluster correlation,
+    # (b) with only 2 obs per cluster, heteroskedasticity cannot be estimated
+    #     within clusters anyway, and
+    # (c) the Rademacher sign-flip at the cluster level still provides valid
+    #     finite-sample inference (Webb 2023, J. Econometrics).
+    effective_cov_type = cov_type
+    if cov_type == "cluster" and (not np.isfinite(se_did) or not np.isfinite(p_did)):
+        warnings.warn(
+            f"Cluster-robust SE is degenerate (NaN) for feature '{y}' with "
+            f"{int(tmp[unit].nunique())} clusters. Falling back to nonrobust "
+            f"(homoskedastic) SE. This typically occurs when each cluster has "
+            f"very few observations (e.g. participant_visit aggregation with "
+            f"2 visits). Participant fixed effects still absorb within-cluster "
+            f"correlation. Set use_bootstrap=True for more reliable p-values.",
+            UserWarning,
+            stacklevel=2,
+        )
+        fit = model.fit()  # nonrobust
+        se_did = float(fit.bse.get(term, np.nan))
+        p_did = float(fit.pvalues.get(term, np.nan))
+        effective_cov_type = "nonrobust"
+
+    # Report the effective participant count after any model row drops
+    # (statsmodels may drop rows during formula parsing, e.g. singular FE levels)
+    model_row_idx = fit.model.data.row_labels
+    n_units_eff = int(tmp[unit].loc[model_row_idx].nunique())
+
     res = {
         "beta_DiD": float(fit.params.get(term, np.nan)),
-        "se_DiD": float(fit.bse.get(term, np.nan)),
-        "p_DiD": float(fit.pvalues.get(term, np.nan)),
+        "se_DiD": se_did,
+        "p_DiD": p_did,
         "beta_time": float(fit.params.get(time, np.nan)),
         "p_time": float(fit.pvalues.get(time, np.nan)),
-        "n_units": int(tmp[unit].nunique()),
+        "n_units": n_units_eff,
         "resid_sd": float(np.sqrt(fit.scale)),
+        "cov_type_used": effective_cov_type,
     }
 
     if use_bootstrap and term in fit.params:
-        p_boot = wild_cluster_bootstrap_t(
+        # Use model_row_idx to align clusters with the actual rows used in the fit
+        boot_res = wild_cluster_bootstrap_t(
             fit,
             X=fit.model.exog,
-            clusters=np.asarray(tmp[unit].to_numpy()),
+            clusters=np.asarray(tmp[unit].loc[model_row_idx].to_numpy()),
             term_name=term,
             B=n_boot,
-            seed=seed
+            seed=seed,
+            cov_type=effective_cov_type,
         )
-        res["p_DiD_boot"] = p_boot
+        res["p_DiD_boot"] = boot_res.p_boot
+        res["se_DiD_boot"] = boot_res.se_boot
+        res["ci_lo_boot"] = boot_res.ci_lo
+        res["ci_hi_boot"] = boot_res.ci_hi
         # Use bootstrap p-value as primary if requested
-        res["p_DiD"] = p_boot
+        res["p_DiD"] = boot_res.p_boot
 
     return cast(DidFitResult, res)
 
@@ -687,6 +741,7 @@ def did_table_parallel(
     feature_seeds = [int(s.generate_state(1)[0]) for s in ss.spawn(len(final_features))]
 
     def _fit_feature(idx: int, feat: str) -> dict:
+        """Fit a feature using did_fit."""
         out = did_fit(
             df_use,
             y=feat,

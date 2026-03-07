@@ -21,6 +21,7 @@ __all__ = ["pseudobulk_expression", "pseudobulk_within_arm", "pseudobulk_did", "
 
 
 def _get_layer(adata: AnnData, layer: str | None) -> np.ndarray | sp.csr_matrix:
+    """Get the layer from the AnnData object."""
     X = adata.layers[layer] if layer is not None else adata.X
     if sp.issparse(X):
         X = X.tocsr()
@@ -53,6 +54,16 @@ def pseudobulk_expression(
         CPM scale factor (default 1e6).
     log1p
         If True, apply log1p to CPM.
+    min_cells_per_group
+        Minimum cells per group to include.
+    include_n_cells
+        If True, include the number of cells per group.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with pseudobulk expression.
+
     """
     genes = [g for g in genes if g in adata.var_names]
     if not genes:
@@ -219,6 +230,43 @@ def pseudobulk_did(
 
     This mirrors subject-level pseudobulk DiD workflows where each participant×visit
     (optionally per cell type) is one observation.
+
+    Parameters
+    ----------
+    adata
+        AnnData object.
+    genes
+        List of genes to analyze.
+    design
+        TrialDesign object.
+    visits
+        Tuple of (baseline, followup) visit labels.
+    celltype_col
+        Column name in adata.obs to use for cell types.
+    counts_layer
+        Layer name in adata.layers to use for expression data.
+    log1p
+        Whether to log1p the expression data.
+    min_cells_per_group
+        Minimum number of cells per group to include in the analysis.
+    min_paired
+        Minimum number of paired participants to include in the analysis.
+    use_bootstrap
+        Whether to use bootstrap to calculate p-values. Recommended for small sample sizes.
+    n_boot
+        Number of bootstrap permutations.
+    seed
+        Random seed for reproducibility.
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame with the results of the DiD analysis.
+        - feature: Name of the feature.
+        - beta_DiD: Effect size (difference in means between arms).
+        - p_DiD: P-value for the DiD analysis.
+        - FDR_DiD: False Discovery Rate corrected p-value.
+        - n_units: Number of unique units (participants) included in the analysis.
     """
     genes = [g for g in genes if g in adata.var_names]
     if not genes:
@@ -286,7 +334,7 @@ def pseudobulk_did(
             )
             row = dict(out)
             row["feature"] = g
-            row["n_units"] = int(df_pool[design.participant_col].nunique())
+            # n_units is already set by did_fit (post-row-drop count)
             if pool is not None:
                 row["celltype"] = pool
             rows.append(row)
@@ -322,7 +370,36 @@ def pseudobulk_within_arm(
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Compute within-arm pseudobulk deltas and Wilcoxon tests.
 
-    Returns (summary_df, delta_long_df).
+    Parameters
+    ----------
+    adata
+        AnnData object.
+    genes
+        List of genes to analyze.
+    participant_col
+        Column name in adata.obs to use for participant IDs.
+    visit_col
+        Column name in adata.obs to use for visit labels.
+    visits
+        Tuple of (baseline, followup) visit labels.
+    celltype_col
+        Column name in adata.obs to use for cell types.
+    counts_layer
+        Layer name in adata.layers to use for expression data.
+    min_paired
+        Minimum number of paired participants to include in the analysis.
+
+    Returns
+    -------
+    tuple[pd.DataFrame, pd.DataFrame]
+        A tuple of ``(summary_df, delta_long_df)``.
+
+        ``summary_df`` columns: celltype, feature, n_units, mean_delta,
+        median_delta, p_time, FDR_time.
+
+        ``delta_long_df`` columns: celltype, feature, participant_id, delta.
+
+        If there are no valid pairs, both DataFrames are empty.
     """
     pb = pseudobulk_expression(
         adata,

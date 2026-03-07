@@ -27,6 +27,7 @@ __all__ = [
 
 
 def _ensure_gseapy() -> None:
+    """Ensure gseapy is installed."""
     if gp is None:
         raise ImportError("gseapy is required for GSEA functions. Install with 'pip install gseapy'.")
 
@@ -36,6 +37,7 @@ def _rank_did_results(
     rank_by: str,
     min_units: int,
 ) -> pd.DataFrame:
+    """Rank the DiD results."""
     valid = res[res["n_units"] >= min_units].copy()
     if len(valid) == 0:
         raise ValueError(
@@ -176,7 +178,27 @@ def run_gsea_did_multi(
     visits: tuple[str, str],
     **kwargs,
 ) -> dict[str, pd.DataFrame | gp.Prerank]:
-    """Run GSEA across multiple gene-set collections."""
+    """Run GSEA across multiple gene-set collections.
+
+    Parameters
+    ----------
+    adata
+        AnnData object.
+    gene_sets
+        Dictionary of gene-set collections.
+    design
+        TrialDesign object.
+    visits
+        Tuple of (baseline, followup) visit labels.
+    **kwargs
+        Additional parameters passed to `gseapy.prerank` (e.g., `permutation_num`,
+        `outdir`, `min_size`, `max_size`).
+
+    Returns
+    -------
+    dict[str, pd.DataFrame | gp.Prerank]
+        Dictionary of GSEA results.
+    """
     _ensure_gseapy()
     results: dict[str, pd.DataFrame | gp.Prerank] = {}
     for label, gs in gene_sets.items():
@@ -198,7 +220,28 @@ def run_gsea_did_by_celltype(
     celltypes: list[str] | None = None,
     **kwargs,
 ) -> dict[str, pd.DataFrame | gp.Prerank]:
-    """Run GSEA on DiD rankings separately for each cell type."""
+    """Run GSEA on DiD rankings separately for each cell type.
+
+    Parameters
+    ----------
+    adata
+        AnnData object.
+    gene_sets
+        Dictionary of gene-set collections.
+    design
+        TrialDesign object.
+    visits
+        Tuple of (baseline, followup) visit labels.
+    celltypes
+        List of cell types to analyze. If None, uses all unique cell types in `design.celltype_col`.
+    **kwargs
+        Additional parameters passed to `gseapy.prerank`
+
+    Returns
+    -------
+    dict[str, pd.DataFrame | gp.Prerank]
+        Dictionary of GSEA results.
+    """
     _ensure_gseapy()
     if design.celltype_col is None:
         raise ValueError("design.celltype_col must be set for celltype GSEA.")
@@ -230,7 +273,39 @@ def run_gsea_pseudobulk(
     return_obj: bool = False,
     **kwargs,
 ) -> pd.DataFrame | gp.Prerank | dict[str, gp.Prerank]:
-    """Run GSEA using pseudobulk DiD results."""
+    """Run GSEA using pseudobulk DiD results.
+
+    Parameters
+    ----------
+    adata
+        AnnData object.
+    gene_sets
+        Dictionary of gene-set collections.
+    design
+        TrialDesign object.
+    visits
+        Tuple of (baseline, followup) visit labels.
+    celltype_col
+        If provided and results contain per-celltype rows, run GSEA separately for each cell type and concatenate results.
+    rank_by
+        Metric for ranking genes. One of ``'signed_confidence'``
+        (sign(beta_DiD) * -log10(p_DiD), default), ``'beta'`` (DiD effect
+        size), or ``'tstat'`` (t-statistic beta_DiD / se_DiD).
+    min_units
+        Minimum number of paired participants required for a gene to be included in the ranking.
+    return_obj
+        Whether to return the full gseapy object. If False (default),
+        returns the results DataFrame (`res2d`).
+    **kwargs
+        Additional parameters passed to `gseapy.prerank` (e.g., `permutation_num`,
+        `outdir`, `min_size`, `max_size`).
+
+    Returns
+    -------
+    pd.DataFrame | gp.Prerank | dict[str, gp.Prerank]
+        A DataFrame of enrichment results (if return_obj=False) or the
+        gseapy result object.
+    """
     _ensure_gseapy()
 
     res = pseudobulk_did(

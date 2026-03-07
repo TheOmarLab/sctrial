@@ -131,7 +131,7 @@ When should I use bootstrap vs. standard errors?
 - Few clusters (< 15 participants per arm)
 - Unbalanced sample sizes
 - Concerned about finite-sample bias
-- Need more accurate p-values for publication
+- Need more accurate p-values and confidence intervals for publication
 
 .. code-block:: python
 
@@ -287,9 +287,19 @@ This gives more weight to participant-visit groups with more cells (lower varian
 What are Wild Cluster Bootstrap p-values?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-A resampling method that provides more accurate p-values when you have few participants (< 15). Enable with ``use_bootstrap=True``.
+A resampling method that provides more accurate p-values **and confidence
+intervals** when you have few participants (< 15). Enable with
+``use_bootstrap=True``.
 
 It resamples at the participant level (not cell level) to respect clustering.
+When enabled, the output DataFrame includes additional columns:
+
+- ``p_DiD_boot``: bootstrap p-value
+- ``se_DiD_boot``: bootstrap standard error
+- ``ci_lo_boot`` / ``ci_hi_boot``: bootstrap-t confidence interval
+
+The CI uses the bootstrap-t method (Hall, 1992), which applies quantiles of the
+bootstrap *t*-distribution to the observed point estimate and standard error.
 
 How do I interpret beta_DiD?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -564,7 +574,7 @@ Both work:
 .. code-block:: python
 
    gene_sets = {"OXPHOS": ["COX7A1", "ATP5F1A", ...]}
-   adata = st.score_gene_sets(adata, gene_sets)
+   adata = st.score_gene_sets(adata, gene_sets, prefix="ms_")
    features = ["ms_OXPHOS"]
 
 **Individual genes**:
@@ -672,7 +682,7 @@ You can also process in batches manually:
 
 .. code-block:: python
 
-   import numpy as np
+   import pandas as pd
 
    features = list(adata.var_names)
    batch_size = 1000

@@ -9,9 +9,11 @@ import pandas as pd
 import statsmodels.formula.api as smf
 from anndata import AnnData
 from scipy.stats import mannwhitneyu
+from scipy.stats import t as t_dist
 
 from ..adata_tools import subset_cells
 from ..design import TrialDesign
+from ..utils import wild_cluster_bootstrap_t
 from ._utils import apply_fdr, encode_visit, standardize_series
 from .did import MIN_CLUSTERS_FOR_ROBUST_SE, AggregateFunc, AggregateMode, _ensure_paired
 
@@ -22,6 +24,7 @@ def _add_feature_columns(
     features: Sequence[str],
     layer: str | None,
 ) -> pd.DataFrame:
+    """Add feature columns to the DataFrame."""
     from .did import _add_feature_columns as _add_feature_columns_did
 
     df, _ = _add_feature_columns_did(df, ad, features, layer)
@@ -29,7 +32,24 @@ def _add_feature_columns(
 
 
 def resolve_gene_name(adata: AnnData, gene_query: str) -> str:
-    """Resolve a gene name in var_names, case-insensitive if needed."""
+    """Resolve a gene name in var_names, case-insensitive if needed.
+
+    Parameters
+    ----------
+    adata
+        AnnData object.
+    gene_query
+        Gene name to resolve (case-insensitive).
+    Returns
+    -------
+    str
+        The resolved gene name (exact match or case-insensitive match).
+
+    Raises
+    ------
+    ValueError
+        If gene_query is not found in adata.var_names or if there are multiple case-insensitive matches.
+    """
     if gene_query in adata.var_names:
         return gene_query
     candidates = [g for g in adata.var_names if g.upper() == gene_query.upper()]
@@ -50,6 +70,7 @@ def _prepare_between_arm_df(
     agg: AggregateFunc,
     covariates: list[str] | None,
 ) -> pd.DataFrame:
+    """Prepare the data for between-arm comparison."""
     ad = subset_cells(adata, design, visit=visit, exclude_crossovers=False)
     obs = ad.obs.copy()
     obs["arm_bin"] = (obs[design.arm_col] == design.arm_treated).astype(int)
@@ -110,15 +131,19 @@ def _ols_between_arm(
     Returns
     -------
     dict
-        Dictionary with keys: feature, beta_arm, p_arm, n_units.
+        Dictionary with keys: feature, beta_arm, se_arm, ci_lo_arm,
+        ci_hi_arm, p_arm, n_units.
     """
-    df_feat = df_use.copy()
+    df_feat = df_use.copy().reset_index(drop=True)  # unique int index for .loc
     if standardize:
         y_std, ok = standardize_series(df_feat, feat, min_std=1e-12)
         if not ok:
             return {
                 "feature": feat,
                 "beta_arm": np.nan,
+                "se_arm": np.nan,
+                "ci_lo_arm": np.nan,
+                "ci_hi_arm": np.nan,
                 "p_arm": np.nan,
                 "n_units": int(df_feat[design.participant_col].nunique()),
             }
@@ -131,11 +156,21 @@ def _ols_between_arm(
         formula += " + " + " + ".join(covariates)
     model = smf.ols(formula, data=df_feat)
     fit = model.fit()
+
+    beta = float(fit.params.get("arm_bin", np.nan))
+    se = float(fit.bse.get("arm_bin", np.nan))
+    t_crit = float(t_dist.ppf(0.975, fit.df_resid))
+    # Report effective participant count after model row drops
+    model_row_idx = fit.model.data.row_labels
+    n_units_eff = int(df_feat[design.participant_col].loc[model_row_idx].nunique())
     return {
         "feature": feat,
-        "beta_arm": float(fit.params.get("arm_bin", np.nan)),
+        "beta_arm": beta,
+        "se_arm": se,
+        "ci_lo_arm": beta - t_crit * se,
+        "ci_hi_arm": beta + t_crit * se,
         "p_arm": float(fit.pvalues.get("arm_bin", np.nan)),
-        "n_units": int(df_feat[design.participant_col].nunique()),
+        "n_units": n_units_eff,
     }
 
 
@@ -150,6 +185,9 @@ def within_arm_comparison(
     agg: AggregateFunc = "mean",
     standardize: bool = True,
     covariates: list[str] | None = None,
+    use_bootstrap: bool = False,
+    n_boot: int = 999,
+    seed: int = 42,
 ) -> pd.DataFrame:
     """Paired within-arm pre->post contrast.
 
@@ -180,11 +218,36 @@ def within_arm_comparison(
     covariates
         Optional covariate columns to include as fixed effects. Non-numeric
         covariates must be constant within participant-visit.
+    use_bootstrap
+        Whether to use wild cluster bootstrap for p-values and CIs.
+        Recommended when the number of participants (clusters) is small
+        (< 10).  When enabled, bootstrap p-values replace the analytical
+        p-values as the primary ``p_time`` column.
+    n_boot
+        Number of bootstrap iterations (999 or 1999 for publication).
+    seed
+        Random seed for bootstrap reproducibility.
 
     Returns
     -------
     pd.DataFrame
-        Table with beta_time and p_time.
+        Table with columns:
+
+        - **feature** : Name of the feature.
+        - **beta_time** : Estimated pre→post change (visit coefficient).
+        - **se_time** : Cluster-robust standard error of the time coefficient.
+        - **ci_lo_time** / **ci_hi_time** : 95 % confidence interval bounds
+          (``beta ± t_crit × se`` with residual df from the OLS fit).
+        - **p_time** : P-value for the time coefficient
+          (cluster-robust Wald test; bootstrap if ``use_bootstrap=True``).
+        - **n_units** : Number of unique participants.
+        - **FDR_time** : Benjamini–Hochberg corrected p-value.
+
+        When ``use_bootstrap=True``, additional columns are included:
+
+        - **p_time_boot** : Bootstrap p-value.
+        - **se_time_boot** : Bootstrap SE from coefficient distribution.
+        - **ci_lo_boot** / **ci_hi_boot** : Bootstrap-t 95 % CI.
     """
     # Subset to arm and visits
     ad = subset_cells(adata, design, arm=arm, exclude_crossovers=False)
@@ -230,6 +293,7 @@ def within_arm_comparison(
 
     df_use = _ensure_paired(df_use, unit=unit, time=design.visit_col, visits=visits)
     df_use = encode_visit(df_use, design.visit_col, visits)
+    df_use = df_use.reset_index(drop=True)  # ensure unique integer index for .loc
 
     rows = []
     for feat in features:
@@ -243,6 +307,9 @@ def within_arm_comparison(
                 rows.append({
                     "feature": feat,
                     "beta_time": np.nan,
+                    "se_time": np.nan,
+                    "ci_lo_time": np.nan,
+                    "ci_hi_time": np.nan,
                     "p_time": np.nan,
                     "n_units": int(df_feat[unit].nunique()),
                 })
@@ -255,23 +322,91 @@ def within_arm_comparison(
         if covariates:
             formula += " + " + " + ".join(covariates)
         model = smf.ols(formula, data=df_feat)
-        n_units_feat = df_feat[unit].nunique()
+
+        # Align cluster vector with fitted model rows: statsmodels may
+        # drop rows with missing values during formula parsing, so
+        # df_feat can be longer than model.exog.
+        model_row_idx = model.data.row_labels
+        clusters_aligned = np.asarray(
+            df_feat[unit].loc[model_row_idx].to_numpy()
+        )
+
+        n_units_feat = len(np.unique(clusters_aligned))
         if n_units_feat < MIN_CLUSTERS_FOR_ROBUST_SE:
             warnings.warn(
                 f"Only {n_units_feat} clusters (participants) available. Cluster-robust "
                 f"standard errors are unreliable with fewer than {MIN_CLUSTERS_FOR_ROBUST_SE} "
-                f"clusters.",
+                f"clusters."
+                + (" Consider using use_bootstrap=True for more reliable p-values."
+                   if not use_bootstrap else ""),
                 UserWarning,
                 stacklevel=2,
             )
-        fit = model.fit(cov_type="cluster", cov_kwds={"groups": df_feat[unit]})
+        fit = model.fit(cov_type="cluster", cov_kwds={"groups": clusters_aligned})
 
-        rows.append({
+        beta = float(fit.params.get("visit_num", np.nan))
+        se = float(fit.bse.get("visit_num", np.nan))
+        p_val = float(fit.pvalues.get("visit_num", np.nan))
+
+        # Fallback: if cluster-robust SE is degenerate (NaN), re-fit
+        # with nonrobust SE.  Participant FE already absorbs within-
+        # cluster correlation so homoskedastic SE is valid.
+        effective_cov_type = "cluster"
+        if not np.isfinite(se) or not np.isfinite(p_val):
+            warnings.warn(
+                f"Cluster-robust SE is degenerate (NaN) for feature '{feat}' "
+                f"with {n_units_feat} clusters. Falling back to nonrobust "
+                f"(homoskedastic) SE.",
+                UserWarning,
+                stacklevel=2,
+            )
+            fit = model.fit()  # nonrobust
+            se = float(fit.bse.get("visit_num", np.nan))
+            p_val = float(fit.pvalues.get("visit_num", np.nan))
+            effective_cov_type = "nonrobust"
+
+        # Use robust conf_int() to ensure CI is consistent with the
+        # cluster-robust SE / p-value (avoids df_resid mismatch).
+        ci_bounds = fit.conf_int(alpha=0.05)
+        if "visit_num" in ci_bounds.index:
+            ci_lo = float(ci_bounds.loc["visit_num", 0])
+            ci_hi = float(ci_bounds.loc["visit_num", 1])
+        else:
+            ci_lo = np.nan
+            ci_hi = np.nan
+
+        row_dict: dict[str, object] = {
             "feature": feat,
-            "beta_time": float(fit.params.get("visit_num", np.nan)),
-            "p_time": float(fit.pvalues.get("visit_num", np.nan)),
-            "n_units": int(df_use[unit].nunique()),
-        })
+            "beta_time": beta,
+            "se_time": se,
+            "ci_lo_time": ci_lo,
+            "ci_hi_time": ci_hi,
+            "p_time": p_val,
+            "n_units": n_units_feat,  # post-row-drop cluster count
+            "cov_type_used": effective_cov_type,
+        }
+
+        # Wild cluster bootstrap
+        if use_bootstrap and "visit_num" in fit.params:
+            boot_res = wild_cluster_bootstrap_t(
+                fit,
+                X=fit.model.exog,
+                clusters=clusters_aligned,  # already aligned above
+                term_name="visit_num",
+                B=n_boot,
+                seed=seed,
+                cov_type=effective_cov_type,
+            )
+            row_dict["p_time_boot"] = boot_res.p_boot
+            row_dict["se_time_boot"] = boot_res.se_boot
+            row_dict["ci_lo_boot"] = boot_res.ci_lo
+            row_dict["ci_hi_boot"] = boot_res.ci_hi
+            # Use bootstrap p-value as primary when available;
+            # preserve analytical p_time if bootstrap returned NaN
+            if np.isfinite(boot_res.p_boot):
+                row_dict["p_time"] = boot_res.p_boot
+
+        rows.append(row_dict)
 
     res = pd.DataFrame(rows)
     res = apply_fdr(res, p_col="p_time", fdr_col="FDR_time")
@@ -318,6 +453,23 @@ def between_arm_comparison(
         - 'wilcoxon': Wilcoxon rank-sum test (Mann-Whitney U).
     covariates
         Optional covariate columns to include as fixed effects for OLS.
+
+    Returns
+    -------
+    pd.DataFrame
+        Table with columns:
+
+        - **feature** : Name of the feature.
+        - **beta_arm** : Effect size (treated − control difference in means).
+        - **se_arm** : Standard error of the arm coefficient. For OLS this is
+          the analytical SE from the model fit; for Wilcoxon it is the pooled
+          SE of the difference in means (√(s₁²/n₁ + s₂²/n₂)).
+        - **ci_lo_arm** / **ci_hi_arm** : 95 % confidence interval bounds.
+          For OLS: ``beta ± t_crit × se`` with residual df. For Wilcoxon:
+          ``beta ± t_crit × se`` with Welch–Satterthwaite df.
+        - **p_arm** : P-value for the between-arm comparison.
+        - **FDR_arm** : Benjamini–Hochberg corrected p-value.
+        - **n_units** : Number of unique participants.
     """
     df_use = _prepare_between_arm_df(
         adata=adata,
@@ -340,9 +492,32 @@ def between_arm_comparison(
 
             if len(g1) > 0 and len(g2) > 0:
                 stat, p_val = mannwhitneyu(g1, g2, alternative="two-sided")
+                beta = float(np.mean(g1) - np.mean(g2))
+                n1, n2 = len(g1), len(g2)
+
+                if n1 >= 2 and n2 >= 2:
+                    # Pooled SE for the difference in means
+                    v1 = np.var(g1, ddof=1) / n1
+                    v2 = np.var(g2, ddof=1) / n2
+                    se = float(np.sqrt(v1 + v2))
+                    # Welch-Satterthwaite df for CI
+                    denom = v1**2 / (n1 - 1) + v2**2 / (n2 - 1)
+                    df_ws = float((v1 + v2) ** 2 / denom) if denom > 0 else max(n1 + n2 - 2, 1)
+                    t_crit = float(t_dist.ppf(0.975, df_ws))
+                    ci_lo = beta - t_crit * se
+                    ci_hi = beta + t_crit * se
+                else:
+                    # Singleton arm: variance undefined with ddof=1
+                    se = np.nan
+                    ci_lo = np.nan
+                    ci_hi = np.nan
+
                 rows.append({
                     "feature": feat,
-                    "beta_arm": float(np.mean(g1) - np.mean(g2)),
+                    "beta_arm": beta,
+                    "se_arm": se,
+                    "ci_lo_arm": ci_lo,
+                    "ci_hi_arm": ci_hi,
                     "p_arm": float(p_val),
                     "n_units": int(df_use[design.participant_col].nunique()),
                 })
@@ -356,6 +531,9 @@ def between_arm_comparison(
                 rows.append({
                     "feature": feat,
                     "beta_arm": np.nan,
+                    "se_arm": np.nan,
+                    "ci_lo_arm": np.nan,
+                    "ci_hi_arm": np.nan,
                     "p_arm": np.nan,
                     "n_units": int(df_use[design.participant_col].nunique()),
                 })
@@ -386,12 +564,41 @@ def compare_gene_in_celltype(
     This aggregates expression per participant (avoids pseudoreplication) and
     tests group differences using Mann-Whitney U on participant-level means.
 
+    Parameters
+    ----------
+    adata
+        AnnData object.
+    gene
+        Gene name.
+    celltypes
+        Cell types to analyze.
+    group_col
+        Column name in adata.obs to use for grouping.
+    group1
+        First group to compare.
+    group2
+        Second group to compare.
+    participant_col
+        Column name in adata.obs to use for participant IDs.
+    celltype_col
+        Column name in adata.obs to use for cell types.
+    layer
+        Layer name in adata.layers to use for expression data.
+    log1p
+        Whether to log1p the expression data.
+    expr_threshold
+        Expression threshold to use for calculating the percentage of expressing cells. This is the minimum expression level to be considered expressing.
+    min_cells_per_patient
+        Minimum number of cells per participant to include in the analysis.
+    min_patients_per_group
+        Minimum number of participants per group to include in the analysis.
+
     Returns
     -------
-    result : dict
-        Summary stats including p-value and group means.
-    df_patient : pd.DataFrame
-        Participant-level summaries (mean, median, % expressing, n_cells).
+    tuple[dict, pd.DataFrame]
+        A tuple containing a dictionary with the results and a DataFrame with the participant-level summaries
+        - The dictionary contains the results of the comparison.
+        - The DataFrame contains the participant-level summaries.
     """
     if isinstance(celltypes, str):
         celltypes = [celltypes]

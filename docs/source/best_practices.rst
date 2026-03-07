@@ -10,6 +10,20 @@ This guide provides recommendations for robust and reproducible trial analysis w
 Study Design
 ------------
 
+Data Format Requirements
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+An ``AnnData`` object with:
+
+- Raw counts in ``adata.layers["counts"]`` (recommended)
+- Trial metadata in ``adata.obs``:
+
+  - Participant identifiers (e.g., "participant_id")
+  - Visit labels (e.g., "visit")
+  - Treatment arm (e.g., "arm")
+  - Cell-type annotations (optional, e.g., "celltype")
+
+
 Sample Size Recommendations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -184,9 +198,15 @@ For **n < 15 paired participants**, use Wild Cluster Bootstrap:
        design=design,
        visits=("V1", "V2"),
        use_bootstrap=True,  # More robust for small N
-       n_boot=9999,  # Higher for more accuracy
+       n_boot=999,  # 999 is usually sufficient; use 9999 for final results
        seed=42  # For reproducibility
    )
+
+   # Bootstrap adds extra columns to the result DataFrame:
+   #   p_DiD_boot   — bootstrap p-value
+   #   se_DiD_boot  — bootstrap standard error
+   #   ci_lo_boot   — lower bound of bootstrap-t 95% CI
+   #   ci_hi_boot   — upper bound of bootstrap-t 95% CI
 
 Multiple Testing Correction
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -307,7 +327,7 @@ Gene Sets vs. Individual Genes
        "IFN_Response": ["ISG15", "MX1", "OAS1", ...],
    }
 
-   adata = st.score_gene_sets(adata, gene_sets, layer="log1p_cpm", method="zmean")
+   adata = st.score_gene_sets(adata, gene_sets, layer="log1p_cpm", method="zmean", prefix="ms_")
    features = [f"ms_{k}" for k in gene_sets.keys()]
 
    res = st.did_table(adata, features=features, design=design, visits=("V1", "V2"))
@@ -467,7 +487,7 @@ Always report:
 .. code-block:: python
 
    # Generate summary report
-   summary = st.summarize_did_results(res, threshold=0.05)
+   summary = st.summarize_did_results(res, alpha=0.05)
    print(summary)
 
 Visualization

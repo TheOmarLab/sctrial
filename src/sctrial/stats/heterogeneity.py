@@ -160,7 +160,7 @@ def test_treatment_heterogeneity(
         else:
             tmp["outcome_std"] = tmp[feat].astype(float)
 
-        df = tmp.dropna(subset=["outcome_std"])
+        df = tmp.dropna(subset=["outcome_std"]).reset_index(drop=True)
 
         if df["biomarker_high"].nunique() < 2:
             continue
@@ -178,12 +178,15 @@ def test_treatment_heterogeneity(
             cov_kwds={"groups": df[unit]},
         )
         term = "visit_num:arm_bin:biomarker_high"
+        # Report effective participant count after model row drops
+        model_row_idx = fit.model.data.row_labels
+        n_units_eff = int(df[unit].loc[model_row_idx].nunique())
         rows.append(
             {
                 "feature": feat,
                 "beta_heterogeneity": float(fit.params.get(term, np.nan)),
                 "p_heterogeneity": float(fit.pvalues.get(term, np.nan)),
-                "n_units": int(df[unit].nunique()),
+                "n_units": n_units_eff,
                 "threshold": threshold,
             }
         )
