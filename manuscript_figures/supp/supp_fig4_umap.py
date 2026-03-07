@@ -1,16 +1,11 @@
 """
-Supplementary Figure 4 -- Sade-Feldman UMAP (Hierarchical Data Structure)
-=========================================================================
+Supplementary Figure 4 — Sade-Feldman UMAP with Cell Types & Response.
+======================================================================
 
-Single panel illustrating the hierarchical structure of single-cell
-trial data: cells cluster by participant, with participants grouped by
-treatment response.  This was previously Figure 1B in the 12-panel
-manuscript.
+Two panels using real Sade-Feldman immunotherapy data:
 
-Panel
------
-UMAP-like scatter showing simulated participant clusters colored by
-response status (Responder vs Non-responder).
+A  UMAP coloured by cell type.
+B  UMAP coloured by treatment response (Responder vs Non-responder).
 """
 
 from __future__ import annotations
@@ -20,6 +15,7 @@ import gc
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
+import scanpy as sc
 
 from .._shared import (
     COLORS,
@@ -27,172 +23,163 @@ from .._shared import (
     apply_style,
     clear_cache,
     despine,
+    get_sade_feldman,
+    harmonize_response,
     save_panel,
 )
 
-# ── Figure-level constants ────────────────────────────────────────────
 FIGURE_NAME = "SuppFig4_umap"
-FIGSIZE = (8, 7)
-
-N_PARTICIPANTS = 6      # 3 R + 3 NR
-CELLS_PER_PARTICIPANT = 40
-CLUSTER_SPREAD = 0.8     # within-participant spread
-RNG_SEED = 42
 
 
-# ======================================================================
-# Data simulation
-# ======================================================================
+# ── helpers ───────────────────────────────────────────────────────────
 
-def _simulate_hierarchical_data() -> dict:
-    """Create simulated UMAP-like coordinates with participant clusters.
+def _ensure_umap_and_clusters(adata):
+    """Ensure UMAP coordinates and Leiden clusters exist."""
+    # PCA
+    if "X_pca" not in adata.obsm:
+        print("    Computing PCA...")
+        adata_work = adata.copy()
+        if "log1p_tpm" in adata.layers:
+            adata_work.X = adata_work.layers["log1p_tpm"]
+        sc.pp.highly_variable_genes(adata_work, n_top_genes=2000, flavor="seurat")
+        sc.tl.pca(adata_work, n_comps=50)
+        adata.obsm["X_pca"] = adata_work.obsm["X_pca"]
+        del adata_work
+        gc.collect()
 
-    Returns dict with arrays: x, y, response, participant_label.
-    """
-    rng = np.random.default_rng(RNG_SEED)
+    # Neighbors (needed for both UMAP and Leiden)
+    if "neighbors" not in adata.uns:
+        print("    Computing neighbors...")
+        sc.pp.neighbors(adata, use_rep="X_pca", n_neighbors=15)
 
-    labels = ["R1", "R2", "R3", "NR1", "NR2", "NR3"]
-    responses = ["Responder"] * 3 + ["Non-responder"] * 3
+    # UMAP
+    if "X_umap" not in adata.obsm:
+        print("    Computing UMAP...")
+        sc.tl.umap(adata)
 
-    # Place cluster centres on a rough 2D layout
-    # Responders upper-left, Non-responders lower-right
-    centres = np.array([
-        [-3.0,  2.5],   # R1
-        [-1.0,  3.5],   # R2
-        [-2.5,  4.5],   # R3
-        [ 2.0, -1.5],   # NR1
-        [ 3.5, -0.5],   # NR2
-        [ 1.5, -3.0],   # NR3
-    ])
+    # Leiden clusters as proxy for cell types
+    if "leiden" not in adata.obs.columns:
+        print("    Computing Leiden clusters...")
+        sc.tl.leiden(adata, resolution=0.8)
 
-    xs, ys, resp_arr, pid_arr = [], [], [], []
-    for i, (lbl, resp) in enumerate(zip(labels, responses)):
-        cx, cy = centres[i]
-        x = rng.normal(cx, CLUSTER_SPREAD, CELLS_PER_PARTICIPANT)
-        y = rng.normal(cy, CLUSTER_SPREAD, CELLS_PER_PARTICIPANT)
-        xs.append(x)
-        ys.append(y)
-        resp_arr.extend([resp] * CELLS_PER_PARTICIPANT)
-        pid_arr.extend([lbl] * CELLS_PER_PARTICIPANT)
+    return adata
 
-    return dict(
-        x=np.concatenate(xs),
-        y=np.concatenate(ys),
-        response=np.array(resp_arr),
-        participant=np.array(pid_arr),
-        centres=centres,
-        labels=labels,
-        responses=responses,
+
+# ── panels ────────────────────────────────────────────────────────────
+
+def _panel_clusters(ax, adata):
+    """UMAP coloured by Leiden cluster."""
+    umap = adata.obsm["X_umap"]
+    clusters = adata.obs["leiden"].values
+
+    # Shuffle for overplotting fairness
+    rng = np.random.default_rng(42)
+    order = rng.permutation(len(clusters))
+
+    unique_clusters = sorted(adata.obs["leiden"].unique(), key=int)
+    n_clusters = len(unique_clusters)
+    cmap = plt.get_cmap("tab20", max(n_clusters, 20))
+    palette = {c: cmap(i) for i, c in enumerate(unique_clusters)}
+
+    colors = np.array([palette[clusters[i]] for i in order])
+
+    ax.scatter(
+        umap[order, 0], umap[order, 1],
+        c=colors, s=3.0, alpha=0.7, edgecolors="none", rasterized=True,
     )
 
+    ax.set_xlabel("UMAP 1")
+    ax.set_ylabel("UMAP 2")
+    ax.set_title("Leiden Clusters", fontweight="bold")
+    ax.set_xticks([])
+    ax.set_yticks([])
 
-# ======================================================================
-# Panel -- UMAP scatter
-# ======================================================================
+    # Legend
+    handles = [mpatches.Patch(facecolor=palette[c], label=f"Cluster {c}",
+                              edgecolor="none")
+               for c in unique_clusters]
+    ncol = 2 if n_clusters > 10 else 1
+    ax.legend(handles=handles, fontsize=5, loc="lower right", frameon=True,
+              framealpha=0.9, ncol=ncol, markerscale=0.8,
+              handlelength=1.0, handletextpad=0.4)
+    despine(ax)
 
-def _panel_umap(ax, sim: dict):
-    """Scatter plot of simulated UMAP with participant clusters."""
-    x, y = sim["x"], sim["y"]
-    response = sim["response"]
-    centres = sim["centres"]
-    labels = sim["labels"]
-    responses = sim["responses"]
 
-    # Map response to colour
+def _panel_response(ax, adata):
+    """UMAP coloured by treatment response."""
+    umap = adata.obsm["X_umap"]
+    response = adata.obs["response_harmonized"].values
+
+    rng = np.random.default_rng(42)
+    order = rng.permutation(len(response))
+
     color_map = {
         "Responder": COLORS["treated"],
         "Non-responder": COLORS["control"],
     }
-    colors = np.array([color_map[r] for r in response])
+    colors = np.array([color_map.get(response[i], "#cccccc") for i in order])
 
-    # Plot cells
-    ax.scatter(x, y, c=colors, s=12, alpha=0.55, edgecolors="none",
-               rasterized=True, zorder=2)
+    ax.scatter(
+        umap[order, 0], umap[order, 1],
+        c=colors, s=3.0, alpha=0.7, edgecolors="none", rasterized=True,
+    )
 
-    # Annotate participant labels with coloured background
-    for i, (lbl, resp) in enumerate(zip(labels, responses)):
-        cx, cy = centres[i]
-        bg_color = color_map[resp]
-        ax.annotate(
-            lbl,
-            xy=(cx, cy),
-            fontsize=10,
-            fontweight="bold",
-            ha="center",
-            va="center",
-            color="white",
-            zorder=4,
-            bbox=dict(
-                boxstyle="round,pad=0.3",
-                facecolor=bg_color,
-                edgecolor="white",
-                linewidth=1.2,
-                alpha=0.9,
-            ),
-        )
+    ax.set_xlabel("UMAP 1")
+    ax.set_ylabel("UMAP 2")
+    ax.set_title("Treatment Response", fontweight="bold")
+    ax.set_xticks([])
+    ax.set_yticks([])
 
-    # Axes
-    ax.set_xlabel("UMAP 1", fontsize=11)
-    ax.set_ylabel("UMAP 2", fontsize=11)
-    ax.set_title("Hierarchical Data Structure: Cells Clustered by Participant",
-                 fontsize=12, pad=12)
-
-    # Annotation
+    # Summary text
+    n_r = (response == "Responder").sum()
+    n_nr = (response == "Non-responder").sum()
     ax.text(
-        0.5, 0.02,
-        "Each cluster = cells from one participant",
-        transform=ax.transAxes,
-        ha="center", va="bottom",
-        fontsize=10, fontstyle="italic",
-        color=COLORS["gray"],
-        bbox=dict(boxstyle="round,pad=0.4", facecolor="white",
-                  edgecolor=COLORS["gray"], alpha=0.8),
+        0.97, 0.03,
+        f"R: {n_r:,}  NR: {n_nr:,}",
+        transform=ax.transAxes, ha="right", va="bottom", fontsize=7,
+        bbox=dict(boxstyle="round,pad=0.3", fc="white", ec=COLORS["gray"],
+                  alpha=0.8),
     )
 
     # Legend
-    legend_handles = [
-        mpatches.Patch(facecolor=COLORS["treated"], label="Responder",
-                       edgecolor="white"),
-        mpatches.Patch(facecolor=COLORS["control"], label="Non-responder",
-                       edgecolor="white"),
+    handles = [
+        mpatches.Patch(facecolor=COLORS["treated"], label="Responder", edgecolor="none"),
+        mpatches.Patch(facecolor=COLORS["control"], label="Non-responder", edgecolor="none"),
     ]
-    ax.legend(
-        handles=legend_handles, fontsize=9, loc="upper right",
-        frameon=True, framealpha=0.9,
-        title="Response", title_fontsize=10,
-    )
-
-    # Clean up axis ticks (UMAP axes are unitless)
-    ax.set_xticks([])
-    ax.set_yticks([])
+    ax.legend(handles=handles, fontsize=8, loc="upper right", frameon=True,
+              framealpha=0.9, title="Response", title_fontsize=9)
     despine(ax)
 
 
 # ======================================================================
-# Composite figure
+# Generate
 # ======================================================================
 
 def generate():
-    """Create and save Supplementary Figure 4 individual panels."""
-    print("Supplementary Figure 4: UMAP Hierarchical Data Structure")
+    """Create and save Supplementary Figure 4 panels."""
+    print("Supplementary Figure 4: Sade-Feldman UMAP")
 
-    sim = _simulate_hierarchical_data()
+    adata = get_sade_feldman()
+    adata = _ensure_umap_and_clusters(adata)
+    adata = harmonize_response(adata)
 
-    # ── Individual panel ──────────────────────────────────────────────
-    fig_p, ax_p = plt.subplots(figsize=FIGSIZE)
-    _panel_umap(ax_p, sim)
-    fig_p.tight_layout()
-    save_panel(fig_p, "panel_umap", FIGURE_NAME, SUPP_OUTPUT)
+    # Panel A: Leiden clusters
+    fig_a, ax_a = plt.subplots(figsize=(7, 6))
+    _panel_clusters(ax_a, adata)
+    fig_a.tight_layout()
+    save_panel(fig_a, "panel_A", FIGURE_NAME, SUPP_OUTPUT)
 
-    # ── Cleanup ───────────────────────────────────────────────────────
+    # Panel B: Response
+    fig_b, ax_b = plt.subplots(figsize=(7, 6))
+    _panel_response(ax_b, adata)
+    fig_b.tight_layout()
+    save_panel(fig_b, "panel_B", FIGURE_NAME, SUPP_OUTPUT)
+
+    # Cleanup
     clear_cache()
     gc.collect()
     print("  Done.\n")
 
-
-# ======================================================================
-# CLI entry point
-# ======================================================================
 
 if __name__ == "__main__":
     apply_style()

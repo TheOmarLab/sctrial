@@ -54,7 +54,7 @@ def _find_pid_col(obs: pd.DataFrame) -> str:
     for col in ("participant_id", "patient_id", "donor_id", "sample_id"):
         if col in obs.columns:
             return col
-    return obs.columns[0]
+    raise KeyError("No participant ID column found in obs")
 
 
 def _find_visit_col(obs: pd.DataFrame) -> str | None:

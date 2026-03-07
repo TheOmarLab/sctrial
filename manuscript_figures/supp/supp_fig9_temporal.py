@@ -24,7 +24,19 @@ import pandas as pd
 from matplotlib.colors import TwoSlopeNorm
 from matplotlib.lines import Line2D
 
-from .._shared import *  # noqa: F401,F403
+from .._shared import (
+    COLORS,
+    SUPP_OUTPUT,
+    add_log1p_cpm_layer,
+    apply_style,
+    clear_cache,
+    despine,
+    dfo_sort_key,
+    get_stephenson,
+    save_panel,
+    score_signatures,
+    sig_display,
+)
 
 # ── Figure-level constants ────────────────────────────────────────────
 FIGURE_NAME = "SuppFig9_temporal_dynamics"
@@ -85,7 +97,8 @@ def _prepare_data() -> dict:
     if "severity" not in obs.columns or "dfo_bin" not in obs.columns:
         raise RuntimeError("Cannot find severity/dfo_bin columns in Stephenson data")
 
-    # Filter to Mild and Severe
+    # Normalize severity capitalization and filter to Mild and Severe
+    obs["severity"] = obs["severity"].str.strip().str.capitalize()
     obs = obs[obs["severity"].isin(["Mild", "Severe"])].copy()
     valid_bins = ["DFO_0-7", "DFO_8-14", "DFO_15+"]
     obs = obs[obs["dfo_bin"].isin(valid_bins)].copy()
@@ -97,7 +110,7 @@ def _prepare_data() -> dict:
             pid_col = candidate
             break
     if pid_col is None:
-        pid_col = obs.columns[0]  # fallback
+        raise KeyError("No participant ID column found in Stephenson data")
 
     # Compute participant-level mean scores per time bin x severity
     available_sig_cols = [c for c in sig_cols if c in obs.columns]

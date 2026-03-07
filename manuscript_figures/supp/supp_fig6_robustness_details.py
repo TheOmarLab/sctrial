@@ -53,8 +53,8 @@ N_BOOT = 200
 def _prepare_did_data() -> dict:
     """Run DiD at both cell and participant_visit levels on Sade-Feldman.
 
-    Also runs pairs-cluster-bootstrap at participant level to compute
-    bootstrap SEs.
+    Uses sctrial's built-in wild-cluster bootstrap for participant-level
+    SE estimation (``use_bootstrap=True``).
     """
     adata = get_sade_feldman()
     adata = harmonize_response(adata)
@@ -85,52 +85,20 @@ def _prepare_did_data() -> dict:
     print("  Running cell-level DiD ...")
     df_cell = did_table(adata, aggregate="cell", **common_kw)
 
-    # Participant-level DiD (analytical)
+    # Participant-level DiD (analytical SE)
     print("  Running participant-level DiD ...")
     df_part = did_table(adata, aggregate="participant_visit", **common_kw)
 
-    # Pairs-cluster bootstrap for participant-level SE
-    print(f"  Running bootstrap (n={N_BOOT}) for participant-level SE ...")
-    boot_betas = {feat: [] for feat in sig_cols}
-    np.random.seed(42)
-    participants = adata.obs["participant_id"].unique()
+    # Participant-level DiD with bootstrap SE via sctrial API
+    print(f"  Running bootstrap DiD (n={N_BOOT}) via sctrial ...")
+    df_boot = did_table(
+        adata, aggregate="participant_visit",
+        use_bootstrap=True, n_boot=N_BOOT, seed=42,
+        **common_kw,
+    )
 
-    for b in range(N_BOOT):
-        boot_pids = np.random.choice(
-            participants, size=len(participants), replace=True
-        )
-        # Build resampled index
-        idx_parts = []
-        for pid in boot_pids:
-            mask = adata.obs["participant_id"] == pid
-            idx_parts.append(adata.obs.index[mask])
-        idx = np.concatenate(idx_parts)
-        adata_boot = adata[idx].copy()
-
-        # Deduplicate participant IDs for resampled copies
-        pid_counts: dict[str, int] = {}
-        new_pids = []
-        for pid in adata_boot.obs["participant_id"]:
-            pid_counts[pid] = pid_counts.get(pid, 0) + 1
-            new_pids.append(f"{pid}__{pid_counts[pid]}")
-        adata_boot.obs["participant_id"] = new_pids
-        adata_boot.obs_names_make_unique()
-
-        try:
-            df_b = did_table(adata_boot, aggregate="participant_visit",
-                             **common_kw)
-            for _, row in df_b.iterrows():
-                feat = row["feature"]
-                if feat in boot_betas:
-                    boot_betas[feat].append(row["beta_DiD"])
-        except Exception:
-            pass
-        del adata_boot
-
-    boot_se = {
-        feat: np.nanstd(vals) if len(vals) > 10 else np.nan
-        for feat, vals in boot_betas.items()
-    }
+    # Extract bootstrap SE from the bootstrap results
+    boot_se = dict(zip(df_boot["feature"], df_boot["se_DiD"]))
 
     return dict(
         df_cell=df_cell,

@@ -23,7 +23,18 @@ import numpy as np
 import pandas as pd
 from matplotlib.lines import Line2D
 
-from .._shared import *  # noqa: F401,F403
+from .._shared import (
+    COLORS,
+    SUPP_OUTPUT,
+    apply_style,
+    clear_cache,
+    despine,
+    get_sade_feldman,
+    harmonize_response,
+    save_panel,
+    score_signatures,
+    sig_display,
+)
 
 # ── Figure-level constants ────────────────────────────────────────────
 FIGURE_NAME = "SuppFig8_individual_heterogeneity"
@@ -224,6 +235,17 @@ def panel_B(ax, data: dict):
 
     ax.axhline(0, color="black", linewidth=0.8, linestyle="--", zorder=0,
                alpha=0.5)
+
+    # Per-group n annotations
+    y_lo = ax.get_ylim()[0]
+    for sig in display_order:
+        x = x_positions[sig]
+        for resp_idx, (resp, color) in enumerate(resp_colors.items()):
+            offset = -0.2 if resp_idx == 0 else 0.2
+            sub = df_long[(df_long["display"] == sig) & (df_long["response"] == resp)]
+            n = len(sub["effect"].dropna())
+            ax.text(x + offset, y_lo, f"n={n}", ha="center", va="top",
+                    fontsize=6, color=color, fontweight="bold")
 
     ax.set_xticks(range(len(display_order)))
     ax.set_xticklabels(display_order, rotation=35, ha="right", fontsize=8)
