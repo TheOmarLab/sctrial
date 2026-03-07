@@ -1080,13 +1080,19 @@ def panel_C2(fig_or_ax, data: dict) -> plt.Figure | None:
     n_cols = len(all_n)
     n_rows = len(ds_names)
 
-    # Build the power matrix: rows = datasets, columns = n_participants
+    # Build the power + reliability matrices
     power_matrix = np.full((n_rows, n_cols), np.nan)
+    nvalid_matrix = np.full((n_rows, n_cols), np.nan)
+    niter_matrix = np.full((n_rows, n_cols), np.nan)
     for i, ds in enumerate(ds_names):
         grp = power_df[power_df["dataset"] == ds]
         for _, row in grp.iterrows():
             j = all_n.index(int(row["n_participants"]))
             power_matrix[i, j] = row["power"]
+            n_v = int(row.get("n_valid", 0))
+            n_f = int(row.get("n_failures", 0))
+            nvalid_matrix[i, j] = n_v
+            niter_matrix[i, j] = n_v + n_f
 
     # Build feature labels for y-axis
     y_labels = []
@@ -1116,18 +1122,47 @@ def panel_C2(fig_or_ax, data: dict) -> plt.Figure | None:
     for y in np.arange(-0.5, n_rows, 1):
         ax.axhline(y, color="white", linewidth=1.2, zorder=2)
 
-    # Text annotations inside cells
+    # Text annotations inside cells: power value + n_valid/n_iter subscript
     for i in range(n_rows):
         for j in range(n_cols):
             val = power_matrix[i, j]
             if np.isnan(val):
                 ax.text(j, i, "—", ha="center", va="center",
                         fontsize=7, color="#AAA")
+                continue
+            text_color = "white" if val > 0.65 else "#333"
+            # Format: <.01 for tiny values, else 2 decimals
+            if 0 < val < 0.01:
+                pwr_str = "<.01"
             else:
-                text_color = "white" if val > 0.65 else "#333"
-                ax.text(j, i, f"{val:.2f}",
-                        ha="center", va="center", fontsize=8,
-                        color=text_color, fontweight="bold" if val >= 0.80 else "medium")
+                pwr_str = f"{val:.2f}"
+            ax.text(j, i - 0.12, pwr_str,
+                    ha="center", va="center", fontsize=8,
+                    color=text_color,
+                    fontweight="bold" if val >= 0.80 else "medium")
+            # Reliability subscript: n_valid / n_iter
+            n_v = int(nvalid_matrix[i, j])
+            n_i = int(niter_matrix[i, j])
+            reliability_color = text_color if n_v / n_i > 0.85 else "#CC4444"
+            ax.text(j, i + 0.22, f"{n_v}/{n_i}",
+                    ha="center", va="center", fontsize=5.5,
+                    color=reliability_color, style="italic")
+
+    # Hatch tiles where < 85% of iterations produced valid fits
+    for i in range(n_rows):
+        for j in range(n_cols):
+            n_v = nvalid_matrix[i, j]
+            n_i = niter_matrix[i, j]
+            if np.isnan(n_v) or np.isnan(n_i):
+                continue
+            if n_v / n_i < 0.85:
+                rect = plt.Rectangle(
+                    (j - 0.5, i - 0.5), 1, 1,
+                    linewidth=0, edgecolor="none",
+                    facecolor="none", hatch="//", zorder=3,
+                    alpha=0.3,
+                )
+                ax.add_patch(rect)
 
     # Bold border on cells ≥ 0.80
     for i in range(n_rows):
@@ -1157,13 +1192,19 @@ def panel_C2(fig_or_ax, data: dict) -> plt.Figure | None:
                  fontsize=13, fontweight="bold", pad=10)
     ax.tick_params(axis="both", which="both", length=0)  # hide tick marks
 
-    # Colorbar
+    # Colorbar with clean 0.80 threshold indicator
     cbar = fig.colorbar(im, ax=ax, pad=0.02, shrink=0.85, aspect=25)
     cbar.set_label(r"Power (1 − $\beta$)", fontsize=10)
-    cbar.ax.axhline(0.80, color="#222", linewidth=1.5, linestyle="-")
-    cbar.ax.text(2.5, 0.80, "0.80", transform=cbar.ax.get_yaxis_transform(),
-                 fontsize=8, va="center", ha="left", fontweight="bold",
-                 color="#222")
+    cbar.set_ticks([0, 0.2, 0.4, 0.6, 1.0])
+    cbar.set_ticklabels(["0", ".2", ".4", ".6", "1"])
+    cbar.ax.axhline(0.80, color="#222", linewidth=2, linestyle="-")
+    # Place "0.80" label outside the colorbar via annotation
+    cbar.ax.annotate(
+        "0.80", xy=(1, 0.80), xycoords=("axes fraction", "data"),
+        xytext=(6, 0), textcoords="offset points",
+        fontsize=7.5, fontweight="bold", color="#222",
+        va="center", ha="left",
+    )
 
     fig.tight_layout()
     return fig
