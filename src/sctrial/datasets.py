@@ -491,14 +491,14 @@ def load_sade_feldman(
     # (adapted from Diab_duod project methodology).
     # Requires scanpy (optional dependency in [plots] extra).
     try:
-        logger.info("Annotating cell types from marker genes...")
-        adata.obs["cell_type"] = _annotate_immune_celltypes(adata)
+        import scanpy as sc  # noqa: F401 — check availability before heavy work
     except ImportError:
-        logger.warning(
-            "scanpy not installed — falling back to generic 'Immune' label. "
+        raise ImportError(
+            "scanpy is required for Sade-Feldman cell type annotation. "
             "Install with: pip install sctrial[plots]"
-        )
-        adata.obs["cell_type"] = "Immune"
+        ) from None
+    logger.info("Annotating cell types from marker genes...")
+    adata.obs["cell_type"] = _annotate_immune_celltypes(adata)
 
     adata.uns["processing_params"] = processing_params
     adata.uns["data_source"] = "GSE120575"
