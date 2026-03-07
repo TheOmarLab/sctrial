@@ -947,12 +947,15 @@ def _wilson_ci(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
 
 
 def panel_C(fig_or_ax, data: dict) -> plt.Figure | None:
-    """Panel C: Small-multiple power panels — one subplot per dataset.
+    """Panel C: Isotonic power curves with Wilson CI ribbon per dataset.
 
-    Each subplot shows the empirical power curve (line + Wilson CI band)
-    for that dataset's primary endpoint, sharing the same y-scale [0, 1].
-    Returns a new Figure when called from generate(); ignores fig_or_ax.
+    Each subplot shows a monotone-increasing isotonic regression fit
+    through the raw MC power estimates, with a Wilson-score CI ribbon
+    behind it.  No markers — smooth isotonic line + shaded band only.
+    Returns a new Figure; ignores *fig_or_ax*.
     """
+    from sklearn.isotonic import IsotonicRegression
+
     power_df = data["power_df"]
     if power_df.empty:
         return None
@@ -965,7 +968,6 @@ def panel_C(fig_or_ax, data: dict) -> plt.Figure | None:
         "COVID-19":     COLORS["highlight"],
     }
 
-    # Ordered list of datasets (as they appear in data)
     ds_names = list(dict.fromkeys(power_df["dataset"]))
     n_ds = len(ds_names)
 
@@ -980,7 +982,10 @@ def panel_C(fig_or_ax, data: dict) -> plt.Figure | None:
         )
         color = dataset_colors.get(ds_name, COLORS["gray"])
 
-        # Wilson CIs
+        x = grp["n_participants"].values.astype(float)
+        y = grp["power"].values.astype(float)
+
+        # Wilson CIs per point
         ci_lo, ci_hi = [], []
         for _, row in grp.iterrows():
             n_v = int(row.get("n_valid", N_POWER_ITERATIONS))
@@ -988,43 +993,49 @@ def panel_C(fig_or_ax, data: dict) -> plt.Figure | None:
             lo, hi = _wilson_ci(k, n_v)
             ci_lo.append(lo)
             ci_hi.append(hi)
+        ci_lo = np.asarray(ci_lo)
+        ci_hi = np.asarray(ci_hi)
 
-        x = grp["n_participants"].values
-        y = grp["power"].values
+        # Isotonic regression (monotone non-decreasing)
+        iso = IsotonicRegression(increasing=True, y_min=0.0, y_max=1.0,
+                                 out_of_bounds="clip")
+        y_iso = iso.fit_transform(x, y)
+
+        # Also fit isotonic to CI bounds for a monotone ribbon
+        ci_lo_iso = IsotonicRegression(
+            increasing=True, y_min=0.0, y_max=1.0, out_of_bounds="clip"
+        ).fit_transform(x, ci_lo)
+        ci_hi_iso = IsotonicRegression(
+            increasing=True, y_min=0.0, y_max=1.0, out_of_bounds="clip"
+        ).fit_transform(x, ci_hi)
 
         # Subtle grid
         ax.grid(True, which="major", axis="y", color="#f0f0f0",
                 linewidth=0.3, zorder=0)
         ax.set_axisbelow(True)
 
-        # Points + Wilson CI error bars (no connecting line —
-        # avoids implying MC-noise dips are real trends)
-        ci_lo_arr = np.asarray(ci_lo)
-        ci_hi_arr = np.asarray(ci_hi)
-        yerr_lo = np.maximum(y - ci_lo_arr, 0)
-        yerr_hi = np.maximum(ci_hi_arr - y, 0)
-        ax.errorbar(x, y, yerr=[yerr_lo, yerr_hi],
-                    fmt="o", color=color, markersize=6,
-                    markeredgecolor="white", markeredgewidth=0.8,
-                    ecolor=color, elinewidth=1.5, capsize=3,
-                    capthick=1.0, zorder=3, alpha=0.9)
+        # Wilson CI ribbon (isotonic-smoothed)
+        ax.fill_between(x, ci_lo_iso, ci_hi_iso,
+                        color=color, alpha=0.15, zorder=1, linewidth=0)
+
+        # Isotonic fit line (no markers)
+        ax.plot(x, y_iso, color=color, linewidth=2.5, zorder=3,
+                solid_capstyle="round")
 
         # 80% power threshold
         ax.axhline(0.80, color="#bbb", linewidth=0.7,
                    linestyle="--", zorder=1, alpha=0.5)
 
-        # Dataset-specific x-range
         ax.set_xlim(x.min() - 0.5, x.max() + 0.5)
         ax.set_ylim(-0.02, 1.05)
 
-        # Title = dataset name + endpoint
+        # Title = dataset name; subtitle = endpoint
         if "feature" in grp.columns and not grp.empty:
             feat = grp["feature"].iloc[0].replace("sig_", "").replace("_", " ")
         else:
             feat = ""
         ax.set_title(ds_name, fontsize=10.5, fontweight="bold",
                      color=color, pad=6)
-        # Endpoint subtitle
         if feat:
             ax.text(0.5, 0.96, feat, transform=ax.transAxes,
                     ha="center", va="top", fontsize=7.5, color="#666",
@@ -1041,6 +1052,127 @@ def panel_C(fig_or_ax, data: dict) -> plt.Figure | None:
 
     fig.suptitle("Empirical power — pre-specified endpoints",
                  fontsize=13, fontweight="bold", y=1.02)
+    fig.tight_layout()
+    return fig
+
+
+def panel_C2(fig_or_ax, data: dict) -> plt.Figure | None:
+    """Panel C2: Power heatmap — datasets × participant-count bins.
+
+    Rows = datasets, columns = participant count, fill = power.
+    A contour line marks the 0.80 threshold.
+    Returns a new Figure; ignores *fig_or_ax*.
+    """
+    power_df = data["power_df"]
+    if power_df.empty:
+        return None
+
+    dataset_colors = {
+        "Sade-Feldman": COLORS["control"],
+        "Vaccine":      COLORS["treated"],
+        "AML":          COLORS["success"],
+        "CAR-T":        COLORS["neutral"],
+        "COVID-19":     COLORS["highlight"],
+    }
+
+    ds_names = list(dict.fromkeys(power_df["dataset"]))
+
+    # Build the power matrix: rows = datasets, columns = n_participants
+    all_n = sorted(power_df["n_participants"].unique())
+    power_matrix = np.full((len(ds_names), len(all_n)), np.nan)
+    for i, ds in enumerate(ds_names):
+        grp = power_df[power_df["dataset"] == ds]
+        for _, row in grp.iterrows():
+            j = all_n.index(int(row["n_participants"]))
+            power_matrix[i, j] = row["power"]
+
+    # Build feature labels for y-axis
+    y_labels = []
+    for ds in ds_names:
+        grp = power_df[power_df["dataset"] == ds]
+        if "feature" in grp.columns and not grp.empty:
+            feat = grp["feature"].iloc[0].replace("sig_", "").replace("_", " ")
+            y_labels.append(f"{ds}\n({feat})")
+        else:
+            y_labels.append(ds)
+
+    fig, ax = plt.subplots(figsize=(10, 3.5))
+
+    # Use pcolormesh for the heatmap (handles NaN gracefully)
+    import matplotlib.colors as mcolors
+    cmap = plt.cm.YlOrRd.copy()
+    cmap.set_bad(color="#f7f7f7")
+
+    # Create coordinate arrays for pcolormesh
+    # x-edges: midpoints between n values, extended at boundaries
+    x_edges = []
+    for j in range(len(all_n)):
+        if j == 0:
+            left = all_n[0] - 0.5
+        else:
+            left = (all_n[j - 1] + all_n[j]) / 2
+        x_edges.append(left)
+    x_edges.append(all_n[-1] + 0.5)
+    x_edges = np.array(x_edges)
+    y_edges = np.arange(-0.5, len(ds_names))
+
+    im = ax.pcolormesh(
+        x_edges, y_edges, power_matrix,
+        cmap=cmap, vmin=0, vmax=1,
+        edgecolors="white", linewidth=0.5,
+    )
+
+    # Add text annotations inside cells
+    for i in range(len(ds_names)):
+        for j in range(len(all_n)):
+            val = power_matrix[i, j]
+            if np.isnan(val):
+                continue
+            text_color = "white" if val > 0.65 else "#333"
+            ax.text(all_n[j], i, f"{val:.2f}",
+                    ha="center", va="center", fontsize=7,
+                    color=text_color, fontweight="medium")
+
+    # 0.80 contour — draw per-row horizontal markers where power ≥ 0.80
+    for i in range(len(ds_names)):
+        for j in range(len(all_n)):
+            val = power_matrix[i, j]
+            if not np.isnan(val) and val >= 0.80:
+                # Mark with a subtle border
+                rect_w = x_edges[j + 1] - x_edges[j]
+                rect = plt.Rectangle(
+                    (x_edges[j], y_edges[i]), rect_w, 1.0,
+                    linewidth=1.8, edgecolor="#222", facecolor="none",
+                    zorder=5,
+                )
+                ax.add_patch(rect)
+
+    # Axes
+    ax.set_xticks(all_n)
+    ax.set_xticklabels([str(int(n)) for n in all_n], fontsize=8, rotation=45,
+                       ha="right")
+    ax.set_yticks(range(len(ds_names)))
+    ax.set_yticklabels(y_labels, fontsize=9)
+    for i, lbl_text in enumerate(ds_names):
+        ax.get_yticklabels()[i].set_color(
+            dataset_colors.get(lbl_text, COLORS["gray"])
+        )
+        ax.get_yticklabels()[i].set_fontweight("bold")
+
+    ax.set_xlabel("Number of participants", fontsize=11)
+    ax.set_title("Power heatmap — pre-specified endpoints",
+                 fontsize=13, fontweight="bold", pad=10)
+
+    # Colorbar
+    cbar = fig.colorbar(im, ax=ax, pad=0.02, shrink=0.9, aspect=25)
+    cbar.set_label(r"Power (1 − $\beta$)", fontsize=10)
+    cbar.ax.axhline(0.80, color="#222", linewidth=1.5, linestyle="-")
+    cbar.ax.text(1.5, 0.80, "0.80", transform=cbar.ax.get_yaxis_transform(),
+                 fontsize=8, va="center", ha="left", fontweight="bold")
+
+    ax.set_xlim(x_edges[0], x_edges[-1])
+    ax.set_ylim(-0.5, len(ds_names) - 0.5)
+
     fig.tight_layout()
     return fig
 
@@ -1216,6 +1348,15 @@ def generate() -> None:
         pdf_path.parent.mkdir(parents=True, exist_ok=True)
         cfig.savefig(pdf_path, format="pdf", bbox_inches="tight", dpi=300)
         plt.close(cfig)
+
+    # Panel C2: power heatmap (creates its own figure)
+    c2fig = panel_C2(None, data)
+    if c2fig is not None:
+        save_panel(c2fig, "panel_C2", FIGURE_NAME, MAIN_OUTPUT, close=False)
+        pdf_path = MAIN_OUTPUT / f"{FIGURE_NAME}_panels" / "panel_C2.pdf"
+        pdf_path.parent.mkdir(parents=True, exist_ok=True)
+        c2fig.savefig(pdf_path, format="pdf", bbox_inches="tight", dpi=300)
+        plt.close(c2fig)
 
     clear_cache()
     gc.collect()
