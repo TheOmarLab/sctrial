@@ -37,6 +37,7 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/TheOmarLab/sctrial"
+Documentation = "https://sctrial.readthedocs.io"
 Repository = "https://github.com/TheOmarLab/sctrial"
 Issues = "https://github.com/TheOmarLab/sctrial/issues"
 
