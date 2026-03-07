@@ -1122,7 +1122,7 @@ def panel_C2(fig_or_ax, data: dict) -> plt.Figure | None:
     for y in np.arange(-0.5, n_rows, 1):
         ax.axhline(y, color="white", linewidth=1.2, zorder=2)
 
-    # Text annotations inside cells: power value + n_valid/n_iter subscript
+    # Text annotations inside cells
     for i in range(n_rows):
         for j in range(n_cols):
             val = power_matrix[i, j]
@@ -1136,17 +1136,24 @@ def panel_C2(fig_or_ax, data: dict) -> plt.Figure | None:
                 pwr_str = "<.01"
             else:
                 pwr_str = f"{val:.2f}"
-            ax.text(j, i - 0.12, pwr_str,
-                    ha="center", va="center", fontsize=8,
-                    color=text_color,
-                    fontweight="bold" if val >= 0.80 else "medium")
-            # Reliability subscript: n_valid / n_iter
+            # Show n_valid/n_iter only when fits were lost (n_valid < n_iter)
             n_v = int(nvalid_matrix[i, j])
             n_i = int(niter_matrix[i, j])
-            reliability_color = text_color if n_v / n_i > 0.85 else "#CC4444"
-            ax.text(j, i + 0.22, f"{n_v}/{n_i}",
-                    ha="center", va="center", fontsize=5.5,
-                    color=reliability_color, style="italic")
+            has_failures = n_v < n_i
+            if has_failures:
+                ax.text(j, i - 0.12, pwr_str,
+                        ha="center", va="center", fontsize=8,
+                        color=text_color,
+                        fontweight="bold" if val >= 0.80 else "medium")
+                ax.text(j, i + 0.24, f"{n_v}/{n_i}",
+                        ha="center", va="center", fontsize=5,
+                        color="#CC4444" if n_v / n_i < 0.85 else text_color,
+                        alpha=0.7)
+            else:
+                ax.text(j, i, pwr_str,
+                        ha="center", va="center", fontsize=8,
+                        color=text_color,
+                        fontweight="bold" if val >= 0.80 else "medium")
 
     # Hatch tiles where < 85% of iterations produced valid fits
     for i in range(n_rows):
@@ -1304,10 +1311,10 @@ def panel_D(ax: plt.Axes, data: dict) -> None:
         ax.scatter(row["d"], yp, color=color, s=80, zorder=3,
                    edgecolors="white", linewidths=1.0)
 
-        # Right-side annotation: d value and n
+        # Right-side annotation: d value and analyzable n
         x_annot = row["d_upper"] + 0.08
         ax.text(x_annot, yp,
-                f"{row['d']:+.2f}  (n={row['n_participants']})",
+                f"{row['d']:+.2f}  (n\u2090={row['n_participants']})",
                 fontsize=7, va="center", ha="left", color="#444")
 
     # Style dataset group labels
