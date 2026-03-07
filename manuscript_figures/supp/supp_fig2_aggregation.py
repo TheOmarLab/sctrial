@@ -179,17 +179,27 @@ def _scatter_comparison(ax, df_x, df_y, *, col: str, xlabel: str, ylabel: str,
                 bbox=dict(boxstyle="round,pad=0.3", fc="white",
                           ec=COLORS["gray"], alpha=0.8))
 
-    # Labels per point
+    # Labels per point (with adjustText to avoid overlaps)
     labels = merged.merge(df_x[["feature", "label"]], on="feature",
                           how="left")
     if "label" in labels.columns:
-        for _, row in labels.iterrows():
-            vx = -np.log10(max(row[f"{col}_x"], 1e-300)) if log_scale else row[f"{col}_x"]
-            vy = -np.log10(max(row[f"{col}_y"], 1e-300)) if log_scale else row[f"{col}_y"]
-            ax.annotate(
-                row["label"], (vx, vy), fontsize=6, alpha=0.7,
-                xytext=(3, 3), textcoords="offset points",
-            )
+        try:
+            from adjustText import adjust_text
+            texts = []
+            for _, row in labels.iterrows():
+                vx = -np.log10(max(row[f"{col}_x"], 1e-300)) if log_scale else row[f"{col}_x"]
+                vy = -np.log10(max(row[f"{col}_y"], 1e-300)) if log_scale else row[f"{col}_y"]
+                texts.append(ax.text(vx, vy, row["label"], fontsize=6, alpha=0.7))
+            adjust_text(texts, ax=ax, arrowprops=dict(arrowstyle="-", color="gray",
+                        alpha=0.4, lw=0.5))
+        except ImportError:
+            for _, row in labels.iterrows():
+                vx = -np.log10(max(row[f"{col}_x"], 1e-300)) if log_scale else row[f"{col}_x"]
+                vy = -np.log10(max(row[f"{col}_y"], 1e-300)) if log_scale else row[f"{col}_y"]
+                ax.annotate(
+                    row["label"], (vx, vy), fontsize=6, alpha=0.7,
+                    xytext=(3, 3), textcoords="offset points",
+                )
 
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
