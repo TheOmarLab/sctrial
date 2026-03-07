@@ -113,11 +113,7 @@ def _prepare_data() -> dict | None:
         results["trimmed_mean"] = res_tm
         print(f"    trimmed_mean: {len(res_tm)} features")
     except Exception as exc:
-        print(f"    trimmed_mean failed: {exc}")
-        # Fallback: just use mean as a placeholder
-        if "mean" in results:
-            results["trimmed_mean"] = results["mean"].copy()
-            print("    trimmed_mean: using mean as fallback")
+        print(f"    trimmed_mean failed: {exc} — skipping trimmed-mean panels")
 
     return results
 
@@ -211,7 +207,7 @@ def _panel_forest(ax, results: dict):
 
     # Use mean results as baseline ordering
     if "mean" not in results:
-        ax.set_title("E  Effect Sizes by Method")
+        ax.set_title("Effect Sizes by Method")
         return
 
     base = results["mean"].copy()
@@ -239,7 +235,7 @@ def _panel_forest(ax, results: dict):
     ax.set_yticks(y_positions)
     ax.set_yticklabels(labels, fontsize=8)
     ax.set_xlabel("DiD Effect Size")
-    ax.set_title("E  Ranked Effect Sizes by Method", fontweight="bold")
+    ax.set_title("Ranked Effect Sizes by Method", fontweight="bold")
 
     # Legend
     from matplotlib.lines import Line2D
@@ -257,7 +253,7 @@ def _panel_correlation_bar(ax, results: dict):
     """Bar chart of pairwise Pearson r between aggregation methods."""
     ecol = _effect_col(results.get("mean", pd.DataFrame()))
     if not ecol:
-        ax.set_title("F  Correlation Summary")
+        ax.set_title("Correlation Summary")
         return
 
     pairs = [
@@ -284,7 +280,7 @@ def _panel_correlation_bar(ax, results: dict):
             names.append(label)
 
     if not correlations:
-        ax.set_title("F  Correlation Summary")
+        ax.set_title("Correlation Summary")
         return
 
     bars = ax.bar(names, correlations, color=[COLORS["treated"], COLORS["control"],
@@ -298,7 +294,7 @@ def _panel_correlation_bar(ax, results: dict):
 
     ax.set_ylim(0, 1.08)
     ax.set_ylabel("Pearson r (effect sizes)")
-    ax.set_title("F  Correlation Summary", fontweight="bold")
+    ax.set_title("Correlation Summary", fontweight="bold")
     ax.axhline(1.0, color=COLORS["gray"], linestyle="--", linewidth=0.5,
                alpha=0.4)
     despine(ax)
@@ -325,22 +321,25 @@ def generate():
             ax, results["mean"], results["median"], col=ecol,
             xlabel="Effect size (mean)", ylabel="Effect size (median)",
             title="Mean vs Median")),
-        ("B", lambda ax: _scatter_comparison(
-            ax, results["mean"], results["trimmed_mean"], col=ecol,
-            xlabel="Effect size (mean)", ylabel="Effect size (trimmed mean)",
-            title="Mean vs Trimmed Mean")),
         ("C", lambda ax: _scatter_comparison(
             ax, results["mean"], results["median"], col=pcol,
             xlabel=r"$-\log_{10}(p)$ (mean)", ylabel=r"$-\log_{10}(p)$ (median)",
             title="P-values: Mean vs Median", log_scale=True)),
-        ("D", lambda ax: _scatter_comparison(
-            ax, results["mean"], results["trimmed_mean"], col=pcol,
-            xlabel=r"$-\log_{10}(p)$ (mean)",
-            ylabel=r"$-\log_{10}(p)$ (trimmed mean)",
-            title="P-values: Mean vs Trimmed Mean", log_scale=True)),
         ("E", lambda ax: _panel_forest(ax, results)),
         ("F", lambda ax: _panel_correlation_bar(ax, results)),
     ]
+
+    # Trimmed-mean panels only if trimmed_mean succeeded
+    if "trimmed_mean" in results:
+        panel_specs.insert(1, ("B", lambda ax: _scatter_comparison(
+            ax, results["mean"], results["trimmed_mean"], col=ecol,
+            xlabel="Effect size (mean)", ylabel="Effect size (trimmed mean)",
+            title="Mean vs Trimmed Mean")))
+        panel_specs.insert(3, ("D", lambda ax: _scatter_comparison(
+            ax, results["mean"], results["trimmed_mean"], col=pcol,
+            xlabel=r"$-\log_{10}(p)$ (mean)",
+            ylabel=r"$-\log_{10}(p)$ (trimmed mean)",
+            title="P-values: Mean vs Trimmed Mean", log_scale=True)))
     for label, func in panel_specs:
         try:
             fig_p, ax_p = plt.subplots(figsize=(6, 5))

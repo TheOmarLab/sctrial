@@ -329,7 +329,7 @@ def panel_C(ax, data: dict):
     ax.set_yticklabels(df["display"], fontsize=9)
     ax.set_xlabel("Area Under the Curve (AUC)", fontsize=10)
     ax.set_xlim(0, 1.0)
-    ax.set_title("Signature Predictive Power (AUC)", fontsize=11)
+    ax.set_title("Response Discrimination (AUC)", fontsize=11)
 
     # Legend
     legend_handles = [

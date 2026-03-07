@@ -263,8 +263,8 @@ def score_clinical_signatures(adata, *, layer=None, min_genes=3):
                 sc.tl.score_genes(adata, available, score_name=col,
                                   use_raw=False, layer=layer)
                 sig_cols.append(col)
-            except Exception:
-                pass
+            except Exception as exc:
+                print(f"    Warning: could not score {name}: {exc}")
     return adata, sig_cols
 
 

@@ -23,7 +23,20 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-from .._shared import *  # noqa: F401,F403
+from .._shared import (
+    COLORS,
+    SUPP_OUTPUT,
+    TrialDesign,
+    add_log1p_cpm_layer,
+    apply_style,
+    clear_cache,
+    despine,
+    load_clinical_trial_dataset,
+    save_panel,
+    score_clinical_signatures,
+    sig_display,
+    within_arm_comparison,
+)
 
 # ── Figure-level constants ────────────────────────────────────────────
 FIGURE_NAME = "SuppFig7_biological_details"
@@ -56,7 +69,7 @@ def _prepare_data() -> dict:
         layer = "log1p"
 
     # ── Score signatures ──────────────────────────────────────────────
-    adata, sig_cols = score_clinical_signatures(adata)
+    adata, sig_cols = score_clinical_signatures(adata, layer=layer)
     print(f"  Scored {len(sig_cols)} clinical signatures")
 
     # ── Detect columns ────────────────────────────────────────────────
@@ -89,7 +102,12 @@ def _prepare_data() -> dict:
         arm_control="Control",
     )
 
-    visit_vals = sorted(adata.obs[visit_col].unique())
+    visit_vals = list(adata.obs[visit_col].unique())
+    # Sort numerically if labels contain digits, otherwise keep original order
+    import re as _re
+    has_digits = all(_re.search(r"\d", str(v)) for v in visit_vals)
+    if has_digits:
+        visit_vals.sort(key=lambda v: int(_re.findall(r"\d+", str(v))[0]))
     visits = (visit_vals[0], visit_vals[-1]) if len(visit_vals) >= 2 else ("Pre", "Post")
 
     # ------------------------------------------------------------------
