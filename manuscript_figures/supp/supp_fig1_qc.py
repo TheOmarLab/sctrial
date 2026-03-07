@@ -38,29 +38,47 @@ FIGURE_NAME = "SuppFig1_qc_metrics"
 
 # ── helpers ───────────────────────────────────────────────────────────
 
+def _get_expression_matrix(adata):
+    """Return the best available expression matrix for QC.
+
+    Priority: layers['counts'] > layers['tpm'] > layers['cpm'] > X.
+    Raw integer counts are preferred; TPM/CPM are acceptable for QC
+    (gene detection counts are valid, total expression is a useful proxy).
+    """
+    for layer in ("counts", "tpm", "cpm"):
+        if layer in adata.layers:
+            return adata.layers[layer]
+    return adata.X
+
+
 def _get_ngenes(adata) -> np.ndarray:
-    """Return gene-count array (whichever name exists), compute if needed."""
+    """Return genes-detected per cell.
+
+    Counting nonzero entries is valid from any expression matrix
+    (counts, TPM, CPM) since a gene is detected iff expression > 0.
+    """
     obs = adata.obs
     for col in ("n_genes_by_counts", "n_genes", "n_genes_detected", "NumberOfGenes"):
         if col in obs.columns:
             return np.asarray(obs[col], dtype=float)
-    # Compute from X (sparse-safe)
     import scipy.sparse as sp
-    X = adata.X
+    X = _get_expression_matrix(adata)
     if sp.issparse(X):
         return np.asarray((X > 0).sum(axis=1), dtype=float).ravel()
     return np.asarray((X > 0).sum(axis=1), dtype=float).ravel()
 
 
 def _get_counts(adata) -> np.ndarray:
-    """Return total counts array (sparse-safe)."""
+    """Return total expression per cell.
+
+    Prefers raw UMI counts; falls back to TPM/CPM sums as a QC proxy.
+    """
     obs = adata.obs
     for col in ("total_counts", "n_counts", "total_UMI", "TranscriptomeUMIs"):
         if col in obs.columns:
             return np.asarray(obs[col], dtype=float)
-    # Compute from X (sparse-safe)
     import scipy.sparse as sp
-    X = adata.X
+    X = _get_expression_matrix(adata)
     if sp.issparse(X):
         return np.asarray(X.sum(axis=1), dtype=float).ravel()
     return np.asarray(X.sum(axis=1), dtype=float).ravel()
@@ -84,26 +102,30 @@ def _ensure_umap(adata):
     # Need PCA first
     if "X_pca" not in adata.obsm:
         print("    Computing PCA...")
-        # Use log1p layer if available, else X
+        # Use log1p layer if available, else normalize from raw counts
         if "log1p_tpm" in adata.layers:
             adata_work = adata.copy()
             adata_work.X = adata_work.layers["log1p_tpm"]
+            sc.pp.highly_variable_genes(adata_work, n_top_genes=2000, flavor="seurat")
         elif "log1p_cpm" in adata.layers:
             adata_work = adata.copy()
             adata_work.X = adata_work.layers["log1p_cpm"]
+            sc.pp.highly_variable_genes(adata_work, n_top_genes=2000, flavor="seurat")
+        elif "counts" in adata.layers:
+            # seurat_v3 requires raw counts in X
+            adata_work = adata.copy()
+            adata_work.X = adata_work.layers["counts"]
+            sc.pp.highly_variable_genes(adata_work, n_top_genes=2000, flavor="seurat_v3")
+            # Now normalize for PCA
+            sc.pp.normalize_total(adata_work, target_sum=1e4)
+            sc.pp.log1p(adata_work)
         else:
             adata_work = adata.copy()
             import scipy.sparse as sp
             if sp.issparse(adata_work.X):
                 sc.pp.normalize_total(adata_work, target_sum=1e4)
                 sc.pp.log1p(adata_work)
-            else:
-                # Already normalized (e.g. TPM)
-                pass
-
-        # Use seurat_v3 only when raw counts are available
-        hvg_flavor = "seurat_v3" if "counts" in adata.layers else "seurat"
-        sc.pp.highly_variable_genes(adata_work, n_top_genes=2000, flavor=hvg_flavor)
+            sc.pp.highly_variable_genes(adata_work, n_top_genes=2000, flavor="seurat")
         sc.tl.pca(adata_work, n_comps=50)
         adata.obsm["X_pca"] = adata_work.obsm["X_pca"]
         del adata_work
@@ -133,6 +155,10 @@ def _load_all_datasets() -> dict:
             pid_col = _get_pid_col(adata.obs)
             cells_per_pid = adata.obs.groupby(pid_col).size()
 
+            has_raw = "counts" in adata.layers or any(
+                c in adata.obs.columns
+                for c in ("total_counts", "n_counts", "total_UMI")
+            )
             datasets[name] = {
                 "umap": adata.obsm["X_umap"],
                 "n_genes": _get_ngenes(adata),
@@ -140,6 +166,7 @@ def _load_all_datasets() -> dict:
                 "cells_per_participant": cells_per_pid,
                 "n_cells": adata.n_obs,
                 "n_participants": cells_per_pid.shape[0],
+                "has_raw_counts": has_raw,
             }
             print(f"  {name}: {adata.n_obs:,} cells, "
                   f"{cells_per_pid.shape[0]} participants")
@@ -162,10 +189,13 @@ def _panel_umap_qc(ax, data: dict, title: str, metric: str, cbar_label: str):
     umap = umap[order]
     values = values[order]
 
-    # Use log scale for UMI counts
+    # Use log scale for expression totals
     if metric == "total_counts":
         values = np.log10(values + 1)
-        cbar_label = r"$\log_{10}$" + f"({cbar_label})"
+        if data.get("has_raw_counts", True):
+            cbar_label = r"$\log_{10}$(UMI counts)"
+        else:
+            cbar_label = r"$\log_{10}$(TPM)"
 
     sc = ax.scatter(
         umap[:, 0], umap[:, 1],
@@ -178,9 +208,15 @@ def _panel_umap_qc(ax, data: dict, title: str, metric: str, cbar_label: str):
     cbar.set_label(cbar_label, fontsize=7)
     cbar.ax.tick_params(labelsize=6)
 
+    if metric == "n_genes":
+        metric_label = "Genes Detected"
+    elif data.get("has_raw_counts", True):
+        metric_label = "Total UMI Counts"
+    else:
+        metric_label = "Total TPM"
+    ax.set_title(f"{title}: {metric_label}", fontweight="bold", fontsize=10)
     ax.set_xlabel("UMAP 1")
     ax.set_ylabel("UMAP 2")
-    ax.set_title(title, fontweight="bold")
     ax.set_xticks([])
     ax.set_yticks([])
 
@@ -198,7 +234,7 @@ def _panel_umap_qc(ax, data: dict, title: str, metric: str, cbar_label: str):
 # ── Cells per participant panel ──────────────────────────────────────
 
 def _panel_cells_per_participant(ax, datasets: dict):
-    """Violin + strip plot of cells per participant across all datasets."""
+    """Box plot + jittered points of cells per participant across all datasets."""
     rows = []
     for ds_name, data in datasets.items():
         cpp = data["cells_per_participant"]
@@ -213,20 +249,26 @@ def _panel_cells_per_participant(ax, datasets: dict):
     order = list(datasets.keys())
     palette = sns.color_palette("Set2", n_colors=len(order))
 
-    sns.violinplot(
+    # x-axis labels with participant counts
+    x_labels = [
+        f"{name}\n(n={datasets[name]['n_participants']})" for name in order
+    ]
+
+    sns.boxplot(
         data=df, x="Dataset", y="Cells", order=order,
-        palette=palette, inner=None, linewidth=0.8,
-        cut=0, ax=ax, alpha=0.6,
+        palette=palette, linewidth=0.8, fliersize=0,
+        ax=ax, boxprops=dict(alpha=0.6),
     )
     sns.stripplot(
         data=df, x="Dataset", y="Cells", order=order,
-        color="black", size=3, alpha=0.6, jitter=0.15, ax=ax,
+        color="black", size=4, alpha=0.6, jitter=0.2, ax=ax,
     )
 
+    ax.set_xticks(range(len(order)))
+    ax.set_xticklabels(x_labels, fontsize=9)
     ax.set_xlabel("")
     ax.set_ylabel("Cells per participant")
     ax.set_title("Cells per Participant", fontweight="bold")
-    ax.tick_params(axis="x", rotation=25)
     despine(ax)
 
 
