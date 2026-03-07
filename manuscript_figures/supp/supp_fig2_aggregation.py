@@ -194,8 +194,8 @@ def _scatter_comparison(ax, df_x, df_y, *, col: str, xlabel: str, ylabel: str,
                         force_points=(0.5, 0.5),
                         force_text=(0.3, 0.3),
                         expand_points=(1.5, 1.5),
-                        arrowprops=dict(arrowstyle="->", color="gray",
-                                        alpha=0.5, lw=0.6))
+                        arrowprops=dict(arrowstyle="-", color="#bbb",
+                                        lw=0.6, shrinkA=0, shrinkB=4))
         except ImportError:
             for _, row in labels.iterrows():
                 vx = -np.log10(max(row[f"{col}_x"], 1e-300)) if log_scale else row[f"{col}_x"]

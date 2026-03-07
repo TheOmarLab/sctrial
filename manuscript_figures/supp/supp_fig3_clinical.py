@@ -190,9 +190,14 @@ def _panel_structure(ax, adata, title: str):
             .size()
             .reset_index(name="n_cells")
         )
-        visits = sorted(grouped[visit_col].unique(),
-                        key=lambda v: (int(_re.findall(r"\d+", str(v))[0])
-                                       if _re.findall(r"\d+", str(v)) else 0))
+        _VISIT_ORDER = {"pre": 0, "baseline": 0, "post": 1, "follow-up": 2}
+        def _visit_sort_key(v):
+            s = str(v).lower()
+            if s in _VISIT_ORDER:
+                return _VISIT_ORDER[s]
+            digits = _re.findall(r"\d+", s)
+            return int(digits[0]) if digits else 0
+        visits = sorted(grouped[visit_col].unique(), key=_visit_sort_key)
 
         palette = [COLORS["treated"], COLORS["control"], COLORS["neutral"],
                    COLORS["highlight"]]
