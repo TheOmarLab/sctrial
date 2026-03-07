@@ -785,7 +785,7 @@ def _scaling_scatter(
 
     Returns the (x_lo, x_hi) used, for cross-panel alignment.
     """
-    from matplotlib.ticker import LogLocator, LogFormatterSciNotation, NullLocator
+    from matplotlib.ticker import LogLocator, NullLocator
 
     dtype_colors = {
         "two_arm_did": COLORS["control"],
@@ -880,29 +880,11 @@ def _scaling_scatter(
         )
 
     # ── Tick formatting ──
-    from matplotlib.ticker import FixedLocator, FixedFormatter
-    ax.xaxis.set_major_locator(LogLocator(base=10))
-    ax.xaxis.set_minor_locator(LogLocator(base=10, subs=(2, 3, 5), numticks=12))
-    ax.xaxis.set_minor_formatter(plt.NullFormatter())
-
-    # For y-axis: use explicit ticks at 1-2-5 sub-decades for uniform visual spacing
-    y_lo, y_hi = ax.get_ylim()
-    import math
-    decade_lo = math.floor(math.log10(max(y_lo, 1e-10)))
-    decade_hi = math.ceil(math.log10(max(y_hi, 1e-10)))
-    y_ticks = []
-    for exp in range(decade_lo - 1, decade_hi + 2):
-        for sub in (1, 2, 5):
-            val = sub * 10**exp
-            if y_lo * 0.8 <= val <= y_hi * 1.2:
-                y_ticks.append(val)
-    if y_ticks:
-        ax.yaxis.set_major_locator(FixedLocator(y_ticks))
-        ax.yaxis.set_major_formatter(plt.FuncFormatter(
-            lambda v, _: f"{v:g}"
-        ))
-    ax.yaxis.set_minor_locator(plt.NullLocator())
-    ax.tick_params(which="minor", length=3, width=0.6)
+    # ── Tick formatting: powers-of-10 only (uniform spacing on log scale) ──
+    ax.xaxis.set_major_locator(LogLocator(base=10, numticks=10))
+    ax.xaxis.set_minor_locator(NullLocator())
+    ax.yaxis.set_major_locator(LogLocator(base=10, numticks=10))
+    ax.yaxis.set_minor_locator(NullLocator())
     ax.tick_params(which="major", length=5, width=1.0)
 
     # ── Axis limits ──
