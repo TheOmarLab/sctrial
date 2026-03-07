@@ -83,7 +83,7 @@ design = st.TrialDesign(
 # Preprocess and score gene sets
 adata = st.add_log1p_cpm_layer(adata, counts_layer="counts")
 gene_sets = {"Cytotoxicity": ["GZMA", "GZMB", "PRF1", "GNLY", "NKG7"]}
-adata = st.score_gene_sets(adata, gene_sets, layer="log1p_cpm", method="zmean")
+adata = st.score_gene_sets(adata, gene_sets, layer="log1p_cpm", method="zmean", prefix="ms_")
 
 # Run Difference-in-Differences analysis
 features = [c for c in adata.obs.columns if c.startswith("ms_")]
