@@ -69,7 +69,7 @@ Optimization Strategies
        "Glycolysis": ["PKM", "LDHA", ...],
        # ... 50 total sets
    }
-   adata = st.score_gene_sets(adata, gene_sets)
+   adata = st.score_gene_sets(adata, gene_sets, prefix="ms_")
    features = [f"ms_{k}" for k in gene_sets.keys()]
 
    # Fast analysis
@@ -177,7 +177,7 @@ Workflow for 1M+ Cells
 
    # Step 5: Score gene sets
    gene_sets = {...}  # Your gene sets
-   adata_sub = st.score_gene_sets(adata_sub, gene_sets, layer="log1p_cpm")
+   adata_sub = st.score_gene_sets(adata_sub, gene_sets, layer="log1p_cpm", prefix="ms_")
 
    # Step 6: DiD analysis (FAST on subsampled data)
    features = [f"ms_{k}" for k in gene_sets.keys()]

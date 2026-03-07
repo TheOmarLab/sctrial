@@ -271,7 +271,7 @@ Very Slow Analysis
 
    # Analyze only module scores, not all genes
    gene_sets = {...}
-   adata = st.score_gene_sets(adata, gene_sets)
+   adata = st.score_gene_sets(adata, gene_sets, prefix="ms_")
    features = [f"ms_{k}" for k in gene_sets.keys()]
 
 3. **For GSEA, reduce gene universe**:

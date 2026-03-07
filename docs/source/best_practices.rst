@@ -327,7 +327,7 @@ Gene Sets vs. Individual Genes
        "IFN_Response": ["ISG15", "MX1", "OAS1", ...],
    }
 
-   adata = st.score_gene_sets(adata, gene_sets, layer="log1p_cpm", method="zmean")
+   adata = st.score_gene_sets(adata, gene_sets, layer="log1p_cpm", method="zmean", prefix="ms_")
    features = [f"ms_{k}" for k in gene_sets.keys()]
 
    res = st.did_table(adata, features=features, design=design, visits=("V1", "V2"))
