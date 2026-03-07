@@ -488,9 +488,17 @@ def load_sade_feldman(
     adata.layers["log1p_tpm"] = adata.X.copy() if _looks_log1p(adata.X) else np.log1p(adata.X)
 
     # Annotate cell types using cluster-level weighted marker scoring
-    # (adapted from Diab_duod project methodology)
-    logger.info("Annotating cell types from marker genes...")
-    adata.obs["cell_type"] = _annotate_immune_celltypes(adata)
+    # (adapted from Diab_duod project methodology).
+    # Requires scanpy (optional dependency in [plots] extra).
+    try:
+        logger.info("Annotating cell types from marker genes...")
+        adata.obs["cell_type"] = _annotate_immune_celltypes(adata)
+    except ImportError:
+        logger.warning(
+            "scanpy not installed — falling back to generic 'Immune' label. "
+            "Install with: pip install sctrial[plots]"
+        )
+        adata.obs["cell_type"] = "Immune"
 
     adata.uns["processing_params"] = processing_params
     adata.uns["data_source"] = "GSE120575"
