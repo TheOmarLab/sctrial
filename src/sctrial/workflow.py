@@ -61,19 +61,16 @@ class TrialWorkflow:
             If None, uses `adata.X`.
             For log1p-CPM workflows, use layer="log1p_cpm".
         method
-            Scoring method:
-            - "zmean": Z-score each gene across cells (within the current AnnData),
-              then average z-scores across genes. This is the recommended method
-              as it accounts for different expression scales across genes.
-            - "mean": Mean expression across genes.
+            Scoring method. ``"zmean"`` (default) z-scores each gene across
+            cells then averages; ``"mean"`` uses raw mean expression.
         prefix
             Prefix to add to column names (e.g., ``ms_`` for module scores).
         min_genes
             Minimum number of genes from the set that must be present in the data.
             Default is 5.
         overwrite
-            If False, skip gene sets that already have a column in `adata.obs`.
-            Default is True.
+            If False (default), skip gene sets that already have a column in
+            ``adata.obs``.
 
         Returns
         -------

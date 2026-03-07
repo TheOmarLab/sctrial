@@ -64,7 +64,11 @@ pip install -e ".[dev]"
 ## Quick Start
 
 ```python
+import scanpy as sc
 import sctrial as st
+
+# Load your AnnData (must have counts layer + obs columns for design)
+adata = sc.read_h5ad("my_trial.h5ad")
 
 # Define trial design
 design = st.TrialDesign(
@@ -76,11 +80,13 @@ design = st.TrialDesign(
     celltype_col="celltype",
 )
 
-# Preprocess and score
+# Preprocess and score gene sets
 adata = st.add_log1p_cpm_layer(adata, counts_layer="counts")
-adata = st.score_gene_sets(adata, gene_sets, layer="log1p_cpm", method="zmean")
+gene_sets = {"Cytotoxicity": ["GZMA", "GZMB", "PRF1", "GNLY", "NKG7"]}
+adata = st.score_gene_sets(adata, gene_sets, layer="log1p_cpm", method="zmean", prefix="ms_")
 
 # Run Difference-in-Differences analysis
+features = [c for c in adata.obs.columns if c.startswith("ms_")]
 results = st.did_table(adata, features, design, visits=("Baseline", "Week12"))
 ```
 

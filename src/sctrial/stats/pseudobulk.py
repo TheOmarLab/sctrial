@@ -392,21 +392,14 @@ def pseudobulk_within_arm(
     Returns
     -------
     tuple[pd.DataFrame, pd.DataFrame]
-        A tuple containing the summary DataFrame and the delta long DataFrame.
-        - The summary DataFrame contains the summary statistics for each gene:
-            - celltype: Cell type.
-            - feature: Gene name.
-            - n_units: Number of unique units (participants) included in the analysis.
-            - mean_delta: Mean delta value.
-            - median_delta: Median delta value.
-            - p_time: P-value for the Wilcoxon signed-rank test.
-            - FDR_time: False Discovery Rate corrected p-value.
-        - The delta long DataFrame contains the delta values for each gene:
-            - celltype: Cell type.
-            - feature: Gene name.
-            - participant_id: Participant ID.
-            - delta: Delta value.
-        - If there are no valid pairs, returns empty DataFrames.
+        A tuple of ``(summary_df, delta_long_df)``.
+
+        ``summary_df`` columns: celltype, feature, n_units, mean_delta,
+        median_delta, p_time, FDR_time.
+
+        ``delta_long_df`` columns: celltype, feature, participant_id, delta.
+
+        If there are no valid pairs, both DataFrames are empty.
     """
     pb = pseudobulk_expression(
         adata,
