@@ -997,13 +997,17 @@ def panel_C(fig_or_ax, data: dict) -> plt.Figure | None:
                 linewidth=0.3, zorder=0)
         ax.set_axisbelow(True)
 
-        # CI band
-        ax.fill_between(x, ci_lo, ci_hi,
-                        color=color, alpha=0.15, zorder=1, linewidth=0)
-        # Line + markers
-        ax.plot(x, y, color=color, marker="o", markersize=5.5,
-                markeredgecolor="white", markeredgewidth=0.8,
-                linewidth=2.2, zorder=3, solid_capstyle="round")
+        # Points + Wilson CI error bars (no connecting line —
+        # avoids implying MC-noise dips are real trends)
+        ci_lo_arr = np.asarray(ci_lo)
+        ci_hi_arr = np.asarray(ci_hi)
+        yerr_lo = np.maximum(y - ci_lo_arr, 0)
+        yerr_hi = np.maximum(ci_hi_arr - y, 0)
+        ax.errorbar(x, y, yerr=[yerr_lo, yerr_hi],
+                    fmt="o", color=color, markersize=6,
+                    markeredgecolor="white", markeredgewidth=0.8,
+                    ecolor=color, elinewidth=1.5, capsize=3,
+                    capthick=1.0, zorder=3, alpha=0.9)
 
         # 80% power threshold
         ax.axhline(0.80, color="#bbb", linewidth=0.7,
