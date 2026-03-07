@@ -409,19 +409,16 @@
 <span class="sd">            If None, uses `adata.X`.</span>
 <span class="sd">            For log1p-CPM workflows, use layer=&quot;log1p_cpm&quot;.</span>
 <span class="sd">        method</span>
-<span class="sd">            Scoring method:</span>
-<span class="sd">            - &quot;zmean&quot;: Z-score each gene across cells (within the current AnnData),</span>
-<span class="sd">              then average z-scores across genes. This is the recommended method</span>
-<span class="sd">              as it accounts for different expression scales across genes.</span>
-<span class="sd">            - &quot;mean&quot;: Mean expression across genes.</span>
+<span class="sd">            Scoring method. ``&quot;zmean&quot;`` (default) z-scores each gene across</span>
+<span class="sd">            cells then averages; ``&quot;mean&quot;`` uses raw mean expression.</span>
 <span class="sd">        prefix</span>
 <span class="sd">            Prefix to add to column names (e.g., ``ms_`` for module scores).</span>
 <span class="sd">        min_genes</span>
 <span class="sd">            Minimum number of genes from the set that must be present in the data.</span>
 <span class="sd">            Default is 5.</span>
 <span class="sd">        overwrite</span>
-<span class="sd">            If False, skip gene sets that already have a column in `adata.obs`.</span>
-<span class="sd">            Default is True.</span>
+<span class="sd">            If False (default), skip gene sets that already have a column in</span>
+<span class="sd">            ``adata.obs``.</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>

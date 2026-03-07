@@ -573,7 +573,7 @@
     <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
     <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">),</span>
     <span class="n">use_bootstrap</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>  <span class="c1"># More robust for small N</span>
-    <span class="n">n_boot</span><span class="o">=</span><span class="mi">9999</span><span class="p">,</span>  <span class="c1"># Higher for more accuracy</span>
+    <span class="n">n_boot</span><span class="o">=</span><span class="mi">999</span><span class="p">,</span>  <span class="c1"># 999 is usually sufficient; use 9999 for final results</span>
     <span class="n">seed</span><span class="o">=</span><span class="mi">42</span>  <span class="c1"># For reproducibility</span>
 <span class="p">)</span>
 
@@ -691,7 +691,7 @@ overwhelm the prior. Report results from multiple prior specifications.</p>
     <span class="s2">&quot;IFN_Response&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;ISG15&quot;</span><span class="p">,</span> <span class="s2">&quot;MX1&quot;</span><span class="p">,</span> <span class="s2">&quot;OAS1&quot;</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
 <span class="p">}</span>
 
-<span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">score_gene_sets</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">gene_sets</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;log1p_cpm&quot;</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;zmean&quot;</span><span class="p">)</span>
+<span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">score_gene_sets</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">gene_sets</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;log1p_cpm&quot;</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;zmean&quot;</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;ms_&quot;</span><span class="p">)</span>
 <span class="n">features</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;ms_</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">gene_sets</span><span class="o">.</span><span class="n">keys</span><span class="p">()]</span>
 
 <span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">))</span>
@@ -840,7 +840,7 @@ overwhelm the prior. Report results from multiple prior specifications.</p>
 <li><p><strong>Statistical method</strong>: “Difference-in-differences with participant fixed effects”</p></li>
 </ol>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Generate summary report</span>
-<span class="n">summary</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">summarize_did_results</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mf">0.05</span><span class="p">)</span>
+<span class="n">summary</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">summarize_did_results</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.05</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">summary</span><span class="p">)</span>
 </pre></div>
 </div>

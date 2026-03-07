@@ -556,7 +556,7 @@ pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;
     <span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
     <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">),</span>
     <span class="n">use_bootstrap</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>  <span class="c1"># More robust for small N</span>
-    <span class="n">n_boot</span><span class="o">=</span><span class="mi">9999</span>  <span class="c1"># More iterations for accuracy</span>
+    <span class="n">n_boot</span><span class="o">=</span><span class="mi">999</span>  <span class="c1"># 999 is usually sufficient; use 9999 for final results</span>
 <span class="p">)</span>
 </pre></div>
 </div>
@@ -580,15 +580,7 @@ pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;
 <p><strong>Error</strong>: <code class="docutils literal notranslate"><span class="pre">MemoryError</span></code> or kernel crashes</p>
 <p><strong>Solutions</strong>:</p>
 <ol class="arabic simple">
-<li><p><strong>Subsample cells</strong> (stratified):</p></li>
-</ol>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Downsample while maintaining structure</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">scanpy.pp</span><span class="w"> </span><span class="kn">import</span> <span class="n">subsample</span>
-<span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">subsample</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">n_obs</span><span class="o">=</span><span class="mi">50000</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
-</pre></div>
-</div>
-<ol class="arabic simple" start="2">
-<li><p><strong>Use sparse layers</strong>:</p></li>
+<li><p><strong>Use sparse layers</strong> (often the biggest win):</p></li>
 </ol>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">scipy.sparse</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sp</span>
 
@@ -597,8 +589,8 @@ pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;
     <span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">&quot;counts&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">&quot;counts&quot;</span><span class="p">])</span>
 </pre></div>
 </div>
-<ol class="arabic simple" start="3">
-<li><p><strong>Analyze fewer features at once</strong>:</p></li>
+<ol class="arabic simple" start="2">
+<li><p><strong>Analyze fewer features at once</strong> (batch processing):</p></li>
 </ol>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Process in batches</span>
 <span class="n">features</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="p">)</span>
@@ -613,6 +605,20 @@ pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;
 <span class="n">full_results</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">results</span><span class="p">,</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
+<ol class="arabic simple" start="3">
+<li><p><strong>Load in backed mode</strong>, then subset to genes of interest:</p></li>
+</ol>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">scanpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sc</span>
+
+<span class="n">adata</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="s2">&quot;large_dataset.h5ad&quot;</span><span class="p">,</span> <span class="n">backed</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">)</span>
+<span class="n">adata</span> <span class="o">=</span> <span class="n">adata</span><span class="p">[:,</span> <span class="n">genes_of_interest</span><span class="p">]</span><span class="o">.</span><span class="n">to_memory</span><span class="p">()</span>
+</pre></div>
+</div>
+<ol class="arabic simple" start="4">
+<li><p><strong>Use hardware with sufficient memory.</strong> Do not subsample or downsample cells —
+this distorts pseudobulk means, alters cell-type composition, and changes WLS
+weights. See the <a class="reference internal" href="performance.html"><span class="doc">Performance Guide</span></a> guide for recommended hardware by dataset size.</p></li>
+</ol>
 </section>
 </section>
 <section id="performance-issues">
@@ -637,7 +643,7 @@ pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;
 </ol>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Analyze only module scores, not all genes</span>
 <span class="n">gene_sets</span> <span class="o">=</span> <span class="p">{</span><span class="o">...</span><span class="p">}</span>
-<span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">score_gene_sets</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">gene_sets</span><span class="p">)</span>
+<span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">score_gene_sets</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">gene_sets</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;ms_&quot;</span><span class="p">)</span>
 <span class="n">features</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;ms_</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">gene_sets</span><span class="o">.</span><span class="n">keys</span><span class="p">()]</span>
 </pre></div>
 </div>

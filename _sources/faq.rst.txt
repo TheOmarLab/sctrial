@@ -574,7 +574,7 @@ Both work:
 .. code-block:: python
 
    gene_sets = {"OXPHOS": ["COX7A1", "ATP5F1A", ...]}
-   adata = st.score_gene_sets(adata, gene_sets)
+   adata = st.score_gene_sets(adata, gene_sets, prefix="ms_")
    features = ["ms_OXPHOS"]
 
 **Individual genes**:
@@ -682,7 +682,7 @@ You can also process in batches manually:
 
 .. code-block:: python
 
-   import numpy as np
+   import pandas as pd
 
    features = list(adata.var_names)
    batch_size = 1000

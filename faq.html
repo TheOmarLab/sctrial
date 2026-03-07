@@ -873,7 +873,7 @@ in linear models (Gelman &amp; Hill, 2006).</p>
 <p>Both work:</p>
 <p><strong>Gene sets</strong> (recommended for robustness):</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">gene_sets</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;OXPHOS&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;COX7A1&quot;</span><span class="p">,</span> <span class="s2">&quot;ATP5F1A&quot;</span><span class="p">,</span> <span class="o">...</span><span class="p">]}</span>
-<span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">score_gene_sets</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">gene_sets</span><span class="p">)</span>
+<span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">score_gene_sets</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">gene_sets</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;ms_&quot;</span><span class="p">)</span>
 <span class="n">features</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;ms_OXPHOS&quot;</span><span class="p">]</span>
 </pre></div>
 </div>
@@ -968,7 +968,7 @@ score.  If fewer are found, the score is set to <code class="docutils literal no
 </div>
 <p>For smaller gene sets, the standard <code class="docutils literal notranslate"><span class="pre">did_table</span></code> is often fast enough.
 You can also process in batches manually:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 
 <span class="n">features</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="p">)</span>
 <span class="n">batch_size</span> <span class="o">=</span> <span class="mi">1000</span>

@@ -186,7 +186,7 @@ Non-Significant Results
        adata, features=features, design=design,
        visits=("V1", "V2"),
        use_bootstrap=True,  # More robust for small N
-       n_boot=9999  # More iterations for accuracy
+       n_boot=999  # 999 is usually sufficient; use 9999 for final results
    )
 
 3. **High variability** - Check effect sizes (beta_DiD) even if p-values are high
@@ -210,15 +210,7 @@ Out of Memory Errors
 
 **Solutions**:
 
-1. **Subsample cells** (stratified):
-
-.. code-block:: python
-
-   # Downsample while maintaining structure
-   from scanpy.pp import subsample
-   sc.pp.subsample(adata, n_obs=50000, random_state=42)
-
-2. **Use sparse layers**:
+1. **Use sparse layers** (often the biggest win):
 
 .. code-block:: python
 
@@ -228,7 +220,7 @@ Out of Memory Errors
    if not sp.issparse(adata.layers["counts"]):
        adata.layers["counts"] = sp.csr_matrix(adata.layers["counts"])
 
-3. **Analyze fewer features at once**:
+2. **Analyze fewer features at once** (batch processing):
 
 .. code-block:: python
 
@@ -243,6 +235,19 @@ Out of Memory Errors
        results.append(res)
 
    full_results = pd.concat(results, ignore_index=True)
+
+3. **Load in backed mode**, then subset to genes of interest:
+
+.. code-block:: python
+
+   import scanpy as sc
+
+   adata = sc.read_h5ad("large_dataset.h5ad", backed='r')
+   adata = adata[:, genes_of_interest].to_memory()
+
+4. **Use hardware with sufficient memory.** Do not subsample or downsample cells —
+   this distorts pseudobulk means, alters cell-type composition, and changes WLS
+   weights. See the :doc:`performance` guide for recommended hardware by dataset size.
 
 Performance Issues
 ------------------
@@ -271,7 +276,7 @@ Very Slow Analysis
 
    # Analyze only module scores, not all genes
    gene_sets = {...}
-   adata = st.score_gene_sets(adata, gene_sets)
+   adata = st.score_gene_sets(adata, gene_sets, prefix="ms_")
    features = [f"ms_{k}" for k in gene_sets.keys()]
 
 3. **For GSEA, reduce gene universe**:

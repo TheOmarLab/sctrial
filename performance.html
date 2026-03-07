@@ -357,7 +357,7 @@
 <li><p><a class="reference internal" href="#use-pseudobulk-aggregation-most-important" id="id4">1. Use Pseudobulk Aggregation (Most Important!)</a></p></li>
 <li><p><a class="reference internal" href="#analyze-gene-sets-not-all-genes" id="id5">2. Analyze Gene Sets, Not All Genes</a></p></li>
 <li><p><a class="reference internal" href="#use-sparse-matrices" id="id6">3. Use Sparse Matrices</a></p></li>
-<li><p><a class="reference internal" href="#subsample-strategically" id="id7">4. Subsample Strategically</a></p></li>
+<li><p><a class="reference internal" href="#use-built-in-parallelization" id="id7">4. Use Built-in Parallelization</a></p></li>
 </ul>
 </li>
 <li><p><a class="reference internal" href="#for-large-scale-analysis" id="id8">For Large-Scale Analysis</a></p>
@@ -450,7 +450,7 @@
     <span class="s2">&quot;Glycolysis&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;PKM&quot;</span><span class="p">,</span> <span class="s2">&quot;LDHA&quot;</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
     <span class="c1"># ... 50 total sets</span>
 <span class="p">}</span>
-<span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">score_gene_sets</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">gene_sets</span><span class="p">)</span>
+<span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">score_gene_sets</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">gene_sets</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;ms_&quot;</span><span class="p">)</span>
 <span class="n">features</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;ms_</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">gene_sets</span><span class="o">.</span><span class="n">keys</span><span class="p">()]</span>
 
 <span class="c1"># Fast analysis</span>
@@ -480,43 +480,28 @@
 </div>
 <p><strong>Memory savings</strong>: 10-50x reduction for typical scRNA-seq data</p>
 </section>
-<section id="subsample-strategically">
-<h3><a class="toc-backref" href="#id7" role="doc-backlink">4. Subsample Strategically</a><a class="headerlink" href="#subsample-strategically" title="Link to this heading">#</a></h3>
-<p>For very large datasets, subsample while maintaining trial structure:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-
-<span class="c1"># Stratified sampling: max cells per participant-visit-celltype</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">stratified_subsample</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">max_per_group</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Subsample while preserving trial structure.&quot;&quot;&quot;</span>
-    <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
-    <span class="n">keep_idx</span> <span class="o">=</span> <span class="p">[]</span>
-
-    <span class="n">groupby_cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span>
-    <span class="k">if</span> <span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">:</span>
-        <span class="n">groupby_cols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">)</span>
-
-    <span class="k">for</span> <span class="n">group_vals</span><span class="p">,</span> <span class="n">group_df</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">groupby_cols</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-        <span class="n">n_cells</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">group_df</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">n_cells</span> <span class="o">&gt;</span> <span class="n">max_per_group</span><span class="p">:</span>
-            <span class="c1"># Subsample this group</span>
-            <span class="n">sample_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span>
-                <span class="n">group_df</span><span class="o">.</span><span class="n">index</span><span class="p">,</span>
-                <span class="n">size</span><span class="o">=</span><span class="n">max_per_group</span><span class="p">,</span>
-                <span class="n">replace</span><span class="o">=</span><span class="kc">False</span>
-            <span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">sample_idx</span> <span class="o">=</span> <span class="n">group_df</span><span class="o">.</span><span class="n">index</span>
-
-        <span class="n">keep_idx</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">sample_idx</span><span class="p">)</span>
-
-    <span class="k">return</span> <span class="n">adata</span><span class="p">[</span><span class="n">keep_idx</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-
-<span class="c1"># Downsample to 500 cells per group</span>
-<span class="n">adata_sub</span> <span class="o">=</span> <span class="n">stratified_subsample</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">max_per_group</span><span class="o">=</span><span class="mi">500</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Subsampled from </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> to </span><span class="si">{</span><span class="n">adata_sub</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> cells&quot;</span><span class="p">)</span>
+<section id="use-built-in-parallelization">
+<h3><a class="toc-backref" href="#id7" role="doc-backlink">4. Use Built-in Parallelization</a><a class="headerlink" href="#use-built-in-parallelization" title="Link to this heading">#</a></h3>
+<p>For many features, use <code class="docutils literal notranslate"><span class="pre">did_table_parallel()</span></code> to distribute work across CPU cores:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table_parallel</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">,</span>
+    <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span>
+    <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">),</span>
+    <span class="n">n_jobs</span><span class="o">=</span><span class="mi">4</span>  <span class="c1"># Number of CPU cores</span>
+<span class="p">)</span>
 </pre></div>
 </div>
-<p><strong>Performance impact</strong>: Proportional to reduction in cell count</p>
+<p><strong>Performance impact</strong>: Near-linear speedup with core count</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><strong>Do not subsample or downsample cells</strong> to work around memory limits.
+Subsampling distorts pseudobulk means, alters cell-type composition within
+participant groups, and changes WLS weights — especially for rare cell types
+and low-abundance signals. Instead, use sparse storage (strategy 3), feature
+batching (see below), per-cell-type decomposition, or run on hardware with
+sufficient memory.</p>
+</div>
 </section>
 </section>
 <section id="for-large-scale-analysis">
@@ -525,41 +510,41 @@
 <h3><a class="toc-backref" href="#id9" role="doc-backlink">Workflow for 1M+ Cells</a><a class="headerlink" href="#workflow-for-1m-cells" title="Link to this heading">#</a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">sctrial</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">scanpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sc</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">scipy.sparse</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sp</span>
 
-<span class="c1"># Step 1: Load data</span>
-<span class="n">adata</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="s2">&quot;large_dataset.h5ad&quot;</span><span class="p">)</span>
+<span class="c1"># Step 1: Load data (backed mode to avoid loading X into memory)</span>
+<span class="n">adata</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="s2">&quot;large_dataset.h5ad&quot;</span><span class="p">,</span> <span class="n">backed</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Starting with </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> cells&quot;</span><span class="p">)</span>
 
-<span class="c1"># Step 2: Filter low-expression genes</span>
+<span class="c1"># Step 2: Bring into memory with sparse storage</span>
+<span class="n">adata</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">to_memory</span><span class="p">()</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">sp</span><span class="o">.</span><span class="n">issparse</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">X</span><span class="p">):</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">X</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">X</span><span class="p">)</span>
+
+<span class="c1"># Step 3: Filter low-expression genes to reduce feature space</span>
 <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">filter_genes</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">min_counts</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;After gene filtering: </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> genes&quot;</span><span class="p">)</span>
 
-<span class="c1"># Step 3: Stratified subsampling</span>
-<span class="n">adata_sub</span> <span class="o">=</span> <span class="n">stratified_subsample</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">max_per_group</span><span class="o">=</span><span class="mi">500</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;After subsampling: </span><span class="si">{</span><span class="n">adata_sub</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> cells&quot;</span><span class="p">)</span>
+<span class="c1"># Step 4: Normalize</span>
+<span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">add_log1p_cpm_layer</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">counts_layer</span><span class="o">=</span><span class="s2">&quot;counts&quot;</span><span class="p">)</span>
 
-<span class="c1"># Step 4: Normalize (on subsampled data)</span>
-<span class="n">adata_sub</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">add_log1p_cpm_layer</span><span class="p">(</span><span class="n">adata_sub</span><span class="p">,</span> <span class="n">counts_layer</span><span class="o">=</span><span class="s2">&quot;counts&quot;</span><span class="p">)</span>
-
-<span class="c1"># Step 5: Score gene sets</span>
+<span class="c1"># Step 5: Score gene sets (reduces thousands of genes → tens of features)</span>
 <span class="n">gene_sets</span> <span class="o">=</span> <span class="p">{</span><span class="o">...</span><span class="p">}</span>  <span class="c1"># Your gene sets</span>
-<span class="n">adata_sub</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">score_gene_sets</span><span class="p">(</span><span class="n">adata_sub</span><span class="p">,</span> <span class="n">gene_sets</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;log1p_cpm&quot;</span><span class="p">)</span>
+<span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">score_gene_sets</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">gene_sets</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;log1p_cpm&quot;</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;ms_&quot;</span><span class="p">)</span>
 
-<span class="c1"># Step 6: DiD analysis (FAST on subsampled data)</span>
+<span class="c1"># Step 6: DiD analysis with parallelization</span>
 <span class="n">features</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;ms_</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">gene_sets</span><span class="o">.</span><span class="n">keys</span><span class="p">()]</span>
-<span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span>
-    <span class="n">adata_sub</span><span class="p">,</span>
+<span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table_parallel</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">,</span>
     <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span>
     <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
     <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;baseline&quot;</span><span class="p">,</span> <span class="s2">&quot;followup&quot;</span><span class="p">),</span>
-    <span class="n">aggregate</span><span class="o">=</span><span class="s2">&quot;participant_visit&quot;</span>  <span class="c1"># Pseudobulk</span>
+    <span class="n">n_jobs</span><span class="o">=</span><span class="mi">4</span>
 <span class="p">)</span>
 
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Analysis complete! Tested </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">features</span><span class="p">)</span><span class="si">}</span><span class="s2"> features.&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p><strong>Expected time</strong>: 1-2 minutes for 1M cells → 50K subsampled cells</p>
 </section>
 <section id="batch-processing">
 <h3><a class="toc-backref" href="#id10" role="doc-backlink">Batch Processing</a><a class="headerlink" href="#batch-processing" title="Link to this heading">#</a></h3>
@@ -706,7 +691,8 @@
 </section>
 <section id="parallel-processing-advanced">
 <h2><a class="toc-backref" href="#id17" role="doc-backlink">Parallel Processing (Advanced)</a><a class="headerlink" href="#parallel-processing-advanced" title="Link to this heading">#</a></h2>
-<p>Currently, <code class="docutils literal notranslate"><span class="pre">sctrial</span></code> doesn’t have built-in parallelization. For advanced users:</p>
+<p>In addition to <code class="docutils literal notranslate"><span class="pre">did_table_parallel()</span></code> (see strategy 4 above), you can manually
+parallelize across cell types:</p>
 <section id="parallelize-across-cell-types">
 <h3><a class="toc-backref" href="#id18" role="doc-backlink">Parallelize Across Cell Types</a><a class="headerlink" href="#parallelize-across-cell-types" title="Link to this heading">#</a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">joblib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Parallel</span><span class="p">,</span> <span class="n">delayed</span>
@@ -810,9 +796,9 @@
 </ul>
 <p><strong>Very large datasets (&gt; 2M cells)</strong>:</p>
 <ul class="simple">
-<li><p>Consider cluster/cloud computing</p></li>
-<li><p>Use subsampling strategies</p></li>
-<li><p>Process in batches</p></li>
+<li><p>Use cluster/cloud computing with sufficient RAM</p></li>
+<li><p>Process features in batches</p></li>
+<li><p>Use backed mode + sparse storage</p></li>
 </ul>
 </section>
 </section>
@@ -830,9 +816,8 @@
 <span class="n">n_features</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">features</span><span class="p">)</span>
 <span class="k">assert</span> <span class="n">n_features</span> <span class="o">&lt;</span> <span class="mi">1000</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Too many features (</span><span class="si">{</span><span class="n">n_features</span><span class="si">}</span><span class="s2">), use gene sets!&quot;</span>
 
-<span class="c1"># ✓ 4. Consider subsampling if &gt; 500K cells</span>
-<span class="k">if</span> <span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span> <span class="o">&gt;</span> <span class="mi">500000</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;⚠️  Consider subsampling for better performance&quot;</span><span class="p">)</span>
+<span class="c1"># ✓ 4. Use parallelization for many features</span>
+<span class="c1"># res = st.did_table_parallel(adata, features, design, visits, n_jobs=4)</span>
 
 <span class="c1"># ✓ 5. Monitor memory</span>
 <span class="n">print_memory_usage</span><span class="p">()</span>
@@ -893,7 +878,7 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#use-pseudobulk-aggregation-most-important">1. Use Pseudobulk Aggregation (Most Important!)</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#analyze-gene-sets-not-all-genes">2. Analyze Gene Sets, Not All Genes</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#use-sparse-matrices">3. Use Sparse Matrices</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#subsample-strategically">4. Subsample Strategically</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#use-built-in-parallelization">4. Use Built-in Parallelization</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#for-large-scale-analysis">For Large-Scale Analysis</a><ul class="visible nav section-nav flex-column">

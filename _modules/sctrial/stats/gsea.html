@@ -640,11 +640,9 @@
 <span class="sd">    celltype_col</span>
 <span class="sd">        If provided and results contain per-celltype rows, run GSEA separately for each cell type and concatenate results.</span>
 <span class="sd">    rank_by</span>
-<span class="sd">        Metric for ranking genes:</span>
-<span class="sd">        - &#39;signed_confidence&#39;: sign(beta_DiD) * -log10(p_DiD). Highlights</span>
-<span class="sd">          genes with high effect and high significance.</span>
-<span class="sd">        - &#39;beta&#39;: ranks genes solely by the DiD effect size.</span>
-<span class="sd">        - &#39;tstat&#39;: ranks genes by the t-statistic (beta_DiD / se_DiD).</span>
+<span class="sd">        Metric for ranking genes. One of ``&#39;signed_confidence&#39;``</span>
+<span class="sd">        (sign(beta_DiD) * -log10(p_DiD), default), ``&#39;beta&#39;`` (DiD effect</span>
+<span class="sd">        size), or ``&#39;tstat&#39;`` (t-statistic beta_DiD / se_DiD).</span>
 <span class="sd">    min_units</span>
 <span class="sd">        Minimum number of paired participants required for a gene to be included in the ranking.</span>
 <span class="sd">    return_obj</span>

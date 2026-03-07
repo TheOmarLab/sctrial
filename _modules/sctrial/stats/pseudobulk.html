@@ -744,21 +744,14 @@
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    tuple[pd.DataFrame, pd.DataFrame]</span>
-<span class="sd">        A tuple containing the summary DataFrame and the delta long DataFrame.</span>
-<span class="sd">        - The summary DataFrame contains the summary statistics for each gene:</span>
-<span class="sd">            - celltype: Cell type.</span>
-<span class="sd">            - feature: Gene name.</span>
-<span class="sd">            - n_units: Number of unique units (participants) included in the analysis.</span>
-<span class="sd">            - mean_delta: Mean delta value.</span>
-<span class="sd">            - median_delta: Median delta value.</span>
-<span class="sd">            - p_time: P-value for the Wilcoxon signed-rank test.</span>
-<span class="sd">            - FDR_time: False Discovery Rate corrected p-value.</span>
-<span class="sd">        - The delta long DataFrame contains the delta values for each gene:</span>
-<span class="sd">            - celltype: Cell type.</span>
-<span class="sd">            - feature: Gene name.</span>
-<span class="sd">            - participant_id: Participant ID.</span>
-<span class="sd">            - delta: Delta value.</span>
-<span class="sd">        - If there are no valid pairs, returns empty DataFrames.</span>
+<span class="sd">        A tuple of ``(summary_df, delta_long_df)``.</span>
+
+<span class="sd">        ``summary_df`` columns: celltype, feature, n_units, mean_delta,</span>
+<span class="sd">        median_delta, p_time, FDR_time.</span>
+
+<span class="sd">        ``delta_long_df`` columns: celltype, feature, participant_id, delta.</span>
+
+<span class="sd">        If there are no valid pairs, both DataFrames are empty.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">pb</span> <span class="o">=</span> <span class="n">pseudobulk_expression</span><span class="p">(</span>
         <span class="n">adata</span><span class="p">,</span>

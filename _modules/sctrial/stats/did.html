@@ -630,35 +630,35 @@
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DidFitResult</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Fit fixed-effects Difference-in-Differences (DiD) model.</span>
 
-<span class="sd">    Mathematical Model</span>
-<span class="sd">    ------------------</span>
+<span class="sd">    **Mathematical Model**</span>
+
 <span class="sd">    The DiD model with participant fixed effects:</span>
 
 <span class="sd">    .. math::</span>
 
-<span class="sd">        Y_{it} = \\alpha_i + \\beta_1 \\cdot \\text{Post}_t + \\beta_2 \\cdot (\\text{Treat}_i \\times \\text{Post}_t) + \\epsilon_{it}</span>
+<span class="sd">        Y_{it} = \\alpha_i + \\beta_1 \\cdot \\text{Post}_t</span>
+<span class="sd">                 + \\beta_2 \\cdot (\\text{Treat}_i \\times \\text{Post}_t)</span>
+<span class="sd">                 + \\epsilon_{it}</span>
 
-<span class="sd">    where:</span>
-<span class="sd">        - :math:`Y_{it}`: outcome for participant i at time t</span>
-<span class="sd">        - :math:`\\alpha_i`: participant-specific intercept (fixed effect)</span>
-<span class="sd">        - :math:`\\text{Post}_t`: indicator for follow-up visit (0=baseline, 1=followup)</span>
-<span class="sd">        - :math:`\\text{Treat}_i`: treatment arm indicator (0=control, 1=treated)</span>
-<span class="sd">        - :math:`\\beta_2`: **DiD coefficient** (the causal estimand of interest)</span>
-<span class="sd">        - :math:`\\epsilon_{it}`: residual error</span>
+<span class="sd">    where :math:`Y_{it}` is the outcome for participant *i* at time *t*,</span>
+<span class="sd">    :math:`\\alpha_i` is a participant-specific intercept (fixed effect),</span>
+<span class="sd">    :math:`\\text{Post}_t` is an indicator for follow-up visit,</span>
+<span class="sd">    :math:`\\text{Treat}_i` is the treatment arm indicator, and</span>
+<span class="sd">    :math:`\\beta_2` is the **DiD coefficient** (causal estimand of interest).</span>
 
-<span class="sd">    Null Hypothesis</span>
-<span class="sd">    ---------------</span>
-<span class="sd">    H₀: β₂ = 0 (no differential treatment effect over time)</span>
-<span class="sd">    H₁: β₂ ≠ 0 (treatment causes different change than control)</span>
+<span class="sd">    **Null Hypothesis**</span>
+
+<span class="sd">    H₀: β₂ = 0 (no differential treatment effect over time).</span>
 
 <span class="sd">    The DiD estimator:</span>
 
 <span class="sd">    .. math::</span>
 
-<span class="sd">        \\hat{\\beta}_2 = (\\bar{Y}_{T,post} - \\bar{Y}_{T,pre}) - (\\bar{Y}_{C,post} - \\bar{Y}_{C,pre})</span>
+<span class="sd">        \\hat{\\beta}_2 = (\\bar{Y}_{T,post} - \\bar{Y}_{T,pre})</span>
+<span class="sd">                         - (\\bar{Y}_{C,post} - \\bar{Y}_{C,pre})</span>
 
-<span class="sd">    Statistical Assumptions</span>
-<span class="sd">    -----------------------</span>
+<span class="sd">    **Statistical Assumptions**</span>
+
 <span class="sd">    - **Parallel trends**: In absence of treatment, both groups would follow</span>
 <span class="sd">      same trajectory. Cannot be tested directly but can check pre-trends.</span>
 <span class="sd">    - **No anticipation**: Treatment effect only after treatment starts.</span>
@@ -667,7 +667,7 @@
 <span class="sd">      Returns NaN for all estimates if n_units &lt; 4.</span>
 <span class="sd">    - Features with near-zero variance (std &lt; 1e-8) return NaN.</span>
 <span class="sd">    - Cluster-robust standard errors account for within-participant correlation.</span>
-<span class="sd">    - If `n_cells` column is present, Weighted Least Squares (WLS) is used.</span>
+<span class="sd">    - If ``n_cells`` column is present, Weighted Least Squares (WLS) is used.</span>
 <span class="sd">      Weights are proportional to n_cells (inverse-variance weighting for</span>
 <span class="sd">      participant-level means, since Var(mean) = σ²/n).</span>
 
@@ -701,21 +701,10 @@
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    DidFitResult</span>
-<span class="sd">        Keys:</span>
-<span class="sd">        - beta_DiD: DiD coefficient (β₂)</span>
-<span class="sd">        - se_DiD: Analytical standard error of β₂</span>
-<span class="sd">        - p_DiD: P-value for H₀: β₂ = 0 (bootstrap if ``use_bootstrap=True``)</span>
-<span class="sd">        - beta_time: Main time effect (β₁)</span>
-<span class="sd">        - p_time: P-value for time effect</span>
-<span class="sd">        - n_units: Number of participants used</span>
-<span class="sd">        - cov_type_used: Covariance type used (``&quot;cluster&quot;`` or ``&quot;nonrobust&quot;``)</span>
-<span class="sd">        - p_DiD_boot: Bootstrap p-value (only if ``use_bootstrap=True``)</span>
-<span class="sd">        - se_DiD_boot: Bootstrap SE from coefficient distribution</span>
-<span class="sd">          (only if ``use_bootstrap=True``)</span>
-<span class="sd">        - ci_lo_boot: Lower 95% bootstrap-t CI</span>
-<span class="sd">          (only if ``use_bootstrap=True``)</span>
-<span class="sd">        - ci_hi_boot: Upper 95% bootstrap-t CI</span>
-<span class="sd">          (only if ``use_bootstrap=True``)</span>
+<span class="sd">        Dictionary with keys ``beta_DiD``, ``se_DiD``, ``p_DiD``,</span>
+<span class="sd">        ``beta_time``, ``p_time``, ``n_units``, ``cov_type_used``.</span>
+<span class="sd">        When ``use_bootstrap=True``, also includes ``p_DiD_boot``,</span>
+<span class="sd">        ``se_DiD_boot``, ``ci_lo_boot``, ``ci_hi_boot``.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">df</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;df must be a non-empty DataFrame.&quot;</span><span class="p">)</span>
