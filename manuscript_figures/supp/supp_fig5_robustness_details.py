@@ -1,0 +1,511 @@
+"""
+Supplementary Figure 5 — Sensitivity to Preprocessing & Modeling Choices.
+=========================================================================
+
+Show how DiD results change under different analytical decisions.
+
+Panels:
+  A  Cell-level vs participant-level aggregation (beta comparison).
+  B  Analytical vs bootstrap SE (forest-style CI comparison).
+  C  Standardised vs unstandardised effect sizes.
+  D  Volcano plot: effect size vs −log₁₀(p) with FDR threshold.
+  E  Mean vs median aggregation comparison.
+  F  Log-transform sensitivity (raw vs log1p betas).
+  G  Cell-type-stratified DiD heatmap.
+  H  Rank-order concordance across preprocessing choices.
+
+Non-overlap guardrail: methodological sensitivity only, not biological claims.
+"""
+
+from __future__ import annotations
+
+import gc
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+from scipy import stats as sp_stats
+
+from .._shared import (
+    COLORS,
+    SUPP_OUTPUT,
+    apply_style,
+    despine,
+    save_panel,
+    get_sade_feldman,
+    harmonize_response,
+    load_clinical_trial_dataset,
+    clear_cache,
+)
+
+FIGURE_NAME = "SuppFig5_robustness_details"
+
+# Features for sensitivity tests
+_FEATURES = [
+    "CD8A", "CD4", "PDCD1", "HAVCR2", "LAG3", "CTLA4",
+    "GZMB", "PRF1", "IFNG", "TNF", "IL2", "CD19",
+    "CD14", "LYZ", "NKG7",
+]
+
+_PAL = {"cell": COLORS.get("highlight", "#5B9BD5"),
+        "participant": COLORS.get("treated", "#E07B54")}
+
+
+# ======================================================================
+# Data loading
+# ======================================================================
+
+def _run_sensitivity():
+    """Run DiD under several preprocessing choices."""
+    import sctrial
+
+    adata = get_sade_feldman()
+    adata = harmonize_response(adata)
+
+    if "log1p_tpm" not in adata.layers and "tpm" in adata.layers:
+        adata.layers["log1p_tpm"] = np.log1p(adata.layers["tpm"])
+
+    design = sctrial.TrialDesign(
+        participant_col="participant_id",
+        visit_col="visit",
+        arm_col="response",
+        arm_treated="Responder",
+        arm_control="Non-responder",
+    )
+    visits = ("Pre", "Post")
+    feats = [f for f in _FEATURES if f in adata.var_names]
+
+    out = {"adata": adata, "design": design, "visits": visits, "features": feats}
+
+    # 1. Cell-level
+    print("  cell-level DiD ...")
+    out["cell"] = sctrial.did_table(
+        adata, feats, design, visits,
+        layer="log1p_tpm", aggregate="cell", standardize=True,
+    )
+
+    # 2. Participant-level (analytical SE)
+    print("  participant-level DiD ...")
+    out["part"] = sctrial.did_table(
+        adata, feats, design, visits,
+        layer="log1p_tpm", aggregate="participant_visit", standardize=True,
+    )
+
+    # 3. Participant-level bootstrap
+    print("  participant bootstrap DiD ...")
+    out["boot"] = sctrial.did_table(
+        adata, feats, design, visits,
+        layer="log1p_tpm", aggregate="participant_visit", standardize=True,
+        use_bootstrap=True, n_boot=200, seed=42,
+    )
+
+    # 4. Unstandardised
+    print("  unstandardised DiD ...")
+    out["unstd"] = sctrial.did_table(
+        adata, feats, design, visits,
+        layer="log1p_tpm", aggregate="participant_visit", standardize=False,
+    )
+
+    # 5. Median aggregation
+    print("  median aggregation DiD ...")
+    out["median"] = sctrial.did_table(
+        adata, feats, design, visits,
+        layer="log1p_tpm", aggregate="participant_visit", standardize=True,
+        agg="median",
+    )
+
+    # 6. Raw TPM (no log) — only if tpm layer exists
+    if "tpm" in adata.layers:
+        print("  raw TPM DiD ...")
+        out["raw"] = sctrial.did_table(
+            adata, feats, design, visits,
+            layer="tpm", aggregate="participant_visit", standardize=True,
+        )
+    else:
+        out["raw"] = None
+
+    # 7. Cell-type stratified
+    ct_col = next((c for c in ["cell_type", "celltype"]
+                   if c in adata.obs.columns), None)
+    ct_results = {}
+    if ct_col:
+        top_cts = adata.obs[ct_col].value_counts().head(5).index.tolist()
+        short_feats = feats[:8]
+        for ct in top_cts:
+            try:
+                sub = adata[adata.obs[ct_col] == ct].copy()
+                # Need enough cells in both arms and visits
+                if sub.n_obs < 50:
+                    continue
+                ct_df = sctrial.did_table(
+                    sub, short_feats, design, visits,
+                    layer="log1p_tpm", aggregate="participant_visit",
+                    standardize=True,
+                )
+                ct_results[ct] = ct_df
+            except Exception:
+                pass
+    out["ct_results"] = ct_results
+    out["ct_col"] = ct_col
+
+    return out
+
+
+# ── Panel A: Cell vs Participant betas ────────────────────────────
+
+def _panel_cell_vs_part(ax, data: dict):
+    """Scatter comparing cell-level vs participant-level beta_DiD."""
+    cell = data["cell"].set_index("feature")["beta_DiD"]
+    part = data["part"].set_index("feature")["beta_DiD"]
+    common = cell.index.intersection(part.index)
+    if len(common) < 2:
+        ax.text(0.5, 0.5, "Insufficient data", ha="center", va="center",
+                transform=ax.transAxes, fontsize=9, color="#888")
+        return
+
+    x, y = cell[common].values, part[common].values
+    ax.scatter(x, y, s=30, alpha=0.7, color=COLORS.get("highlight", "#5B9BD5"),
+               edgecolors="grey", linewidth=0.3)
+
+    # Labels
+    for feat in common:
+        ax.annotate(feat, (cell[feat], part[feat]),
+                    fontsize=5.5, alpha=0.7, ha="left",
+                    xytext=(3, 2), textcoords="offset points")
+
+    # Identity + correlation
+    lims = [min(min(x), min(y)) - 0.1, max(max(x), max(y)) + 0.1]
+    ax.plot(lims, lims, "k--", linewidth=0.5, alpha=0.3)
+    r, p = sp_stats.pearsonr(x, y)
+    ax.text(0.05, 0.95, f"r = {r:.2f}\np = {p:.3f}",
+            transform=ax.transAxes, fontsize=7, va="top",
+            bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
+                      edgecolor="#ccc", alpha=0.8))
+    ax.set_xlabel("β (cell-level)")
+    ax.set_ylabel("β (participant-level)")
+    ax.set_title("Cell vs Participant Aggregation", fontweight="bold")
+    despine(ax)
+
+
+# ── Panel B: Analytical vs Bootstrap SE ───────────────────────────
+
+def _panel_bootstrap_ci(ax, data: dict):
+    """Forest plot: analytical SE vs bootstrap SE."""
+    part = data["part"]
+    boot = data["boot"]
+    if part is None or boot is None:
+        ax.text(0.5, 0.5, "No data", ha="center", va="center",
+                transform=ax.transAxes)
+        return
+
+    df_a = part.set_index("feature")[["beta_DiD", "se_DiD"]].rename(
+        columns={"beta_DiD": "beta", "se_DiD": "se_analytical"})
+    df_b = boot.set_index("feature")[["se_DiD"]].rename(
+        columns={"se_DiD": "se_boot"})
+    df = df_a.join(df_b, how="inner").reset_index()
+    df = df.sort_values("beta", ascending=True).reset_index(drop=True)
+
+    y = np.arange(len(df))
+    off = 0.15
+
+    ax.errorbar(df["beta"], y - off, xerr=1.96 * df["se_analytical"],
+                fmt="s", markersize=4, color=_PAL["cell"], elinewidth=1,
+                capsize=2, label="Analytical SE")
+    ax.errorbar(df["beta"], y + off, xerr=1.96 * df["se_boot"],
+                fmt="o", markersize=4, color=_PAL["participant"], elinewidth=1,
+                capsize=2, label="Bootstrap SE")
+    ax.axvline(0, color="black", linewidth=0.8)
+    ax.set_yticks(y)
+    ax.set_yticklabels(df["feature"], fontsize=7)
+    ax.set_xlabel("β with 95% CI")
+    ax.set_title("Analytical vs Bootstrap SE", fontweight="bold")
+    ax.legend(fontsize=7, loc="lower right", frameon=True)
+    despine(ax)
+
+
+# ── Panel C: Standardised vs Unstandardised ───────────────────────
+
+def _panel_std_vs_unstd(ax, data: dict):
+    """Scatter: standardised vs unstandardised effect sizes."""
+    std = data["part"].set_index("feature")["beta_DiD"]
+    unstd = data["unstd"].set_index("feature")["beta_DiD"]
+    common = std.index.intersection(unstd.index)
+    if len(common) < 2:
+        ax.text(0.5, 0.5, "Insufficient data", ha="center", va="center",
+                transform=ax.transAxes)
+        return
+
+    x, y = std[common].values, unstd[common].values
+    ax.scatter(x, y, s=30, alpha=0.7, color=COLORS.get("treated", "#E07B54"),
+               edgecolors="grey", linewidth=0.3)
+    for feat in common:
+        ax.annotate(feat, (std[feat], unstd[feat]),
+                    fontsize=5.5, alpha=0.7, ha="left",
+                    xytext=(3, 2), textcoords="offset points")
+    r, _ = sp_stats.pearsonr(x, y)
+    ax.text(0.05, 0.95, f"r = {r:.2f}", transform=ax.transAxes, fontsize=7,
+            va="top", bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
+                                edgecolor="#ccc", alpha=0.8))
+    ax.set_xlabel("β (standardised)")
+    ax.set_ylabel("β (unstandardised)")
+    ax.set_title("Standardised vs Unstandardised", fontweight="bold")
+    despine(ax)
+
+
+# ── Panel D: Volcano plot ─────────────────────────────────────────
+
+def _panel_volcano(ax, data: dict):
+    """Volcano plot: beta_DiD vs −log₁₀(p_DiD) with FDR line."""
+    df = data["part"].copy()
+    if "beta_DiD" not in df.columns or "p_DiD" not in df.columns:
+        ax.text(0.5, 0.5, "No p-value data", ha="center", va="center",
+                transform=ax.transAxes)
+        return
+
+    df["neglog10p"] = -np.log10(df["p_DiD"].clip(lower=1e-10))
+    fdr_col = "FDR_DiD" if "FDR_DiD" in df.columns else None
+
+    # Color by significance
+    if fdr_col:
+        sig = df[fdr_col] < 0.1
+    else:
+        sig = df["p_DiD"] < 0.05
+
+    ax.scatter(df.loc[~sig, "beta_DiD"], df.loc[~sig, "neglog10p"],
+               s=20, alpha=0.5, color="grey", edgecolors="white", linewidth=0.3,
+               label="NS")
+    ax.scatter(df.loc[sig, "beta_DiD"], df.loc[sig, "neglog10p"],
+               s=30, alpha=0.8, color=COLORS.get("highlight", "#5B9BD5"),
+               edgecolors="grey", linewidth=0.3, label="FDR < 0.1")
+
+    # Labels for significant
+    for _, row in df[sig].iterrows():
+        ax.annotate(row["feature"], (row["beta_DiD"], row["neglog10p"]),
+                    fontsize=6, ha="center", va="bottom",
+                    xytext=(0, 4), textcoords="offset points")
+
+    ax.axhline(-np.log10(0.05), color="red", linestyle="--", linewidth=0.5,
+               alpha=0.5, label="p = 0.05")
+    ax.axvline(0, color="black", linewidth=0.5, alpha=0.3)
+    ax.set_xlabel("β (DiD)")
+    ax.set_ylabel("−log₁₀(p)")
+    ax.set_title("Volcano Plot", fontweight="bold")
+    ax.legend(fontsize=6, loc="upper right", frameon=True)
+    despine(ax)
+
+
+# ── Panel E: Mean vs Median aggregation ───────────────────────────
+
+def _panel_mean_vs_median(ax, data: dict):
+    """Scatter: mean-aggregation vs median-aggregation betas."""
+    mean_df = data["part"].set_index("feature")["beta_DiD"]
+    med_df = data["median"].set_index("feature")["beta_DiD"]
+    common = mean_df.index.intersection(med_df.index)
+    # Drop NaN/Inf
+    mask = np.isfinite(mean_df[common]) & np.isfinite(med_df[common])
+    common = common[mask]
+    if len(common) < 2:
+        ax.text(0.5, 0.5, "Insufficient data", ha="center", va="center",
+                transform=ax.transAxes)
+        ax.set_title("Mean vs Median Aggregation", fontweight="bold")
+        despine(ax)
+        return
+
+    x, y = mean_df[common].values, med_df[common].values
+    ax.scatter(x, y, s=30, alpha=0.7, color="#7B68EE",
+               edgecolors="grey", linewidth=0.3)
+    for feat in common:
+        ax.annotate(feat, (mean_df[feat], med_df[feat]),
+                    fontsize=5.5, alpha=0.7, ha="left",
+                    xytext=(3, 2), textcoords="offset points")
+    lims = [min(min(x), min(y)) - 0.1, max(max(x), max(y)) + 0.1]
+    ax.plot(lims, lims, "k--", linewidth=0.5, alpha=0.3)
+    r, _ = sp_stats.pearsonr(x, y)
+    ax.text(0.05, 0.95, f"r = {r:.2f}", transform=ax.transAxes, fontsize=7,
+            va="top", bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
+                                edgecolor="#ccc", alpha=0.8))
+    ax.set_xlabel("β (mean aggregation)")
+    ax.set_ylabel("β (median aggregation)")
+    ax.set_title("Mean vs Median Aggregation", fontweight="bold")
+    despine(ax)
+
+
+# ── Panel F: Log-transform sensitivity ────────────────────────────
+
+def _panel_log_sensitivity(ax, data: dict):
+    """Scatter: log1p_tpm betas vs raw TPM betas."""
+    log_df = data["part"].set_index("feature")["beta_DiD"]
+    raw_res = data.get("raw")
+    if raw_res is None or raw_res.empty:
+        ax.text(0.5, 0.5, "No raw-TPM results", ha="center", va="center",
+                transform=ax.transAxes, fontsize=9, color="#888")
+        ax.set_title("Log-Transform Sensitivity", fontweight="bold")
+        despine(ax)
+        return
+
+    raw_df = raw_res.set_index("feature")["beta_DiD"]
+    common = log_df.index.intersection(raw_df.index)
+    if len(common) < 2:
+        ax.text(0.5, 0.5, "Insufficient data", ha="center", va="center",
+                transform=ax.transAxes)
+        return
+
+    x, y = log_df[common].values, raw_df[common].values
+    ax.scatter(x, y, s=30, alpha=0.7, color="#2ECC71",
+               edgecolors="grey", linewidth=0.3)
+    for feat in common:
+        ax.annotate(feat, (log_df[feat], raw_df[feat]),
+                    fontsize=5.5, alpha=0.7, ha="left",
+                    xytext=(3, 2), textcoords="offset points")
+    r, _ = sp_stats.pearsonr(x, y)
+    ax.text(0.05, 0.95, f"r = {r:.2f}", transform=ax.transAxes, fontsize=7,
+            va="top", bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
+                                edgecolor="#ccc", alpha=0.8))
+    ax.set_xlabel("β (log1p TPM)")
+    ax.set_ylabel("β (raw TPM)")
+    ax.set_title("Log-Transform Sensitivity", fontweight="bold")
+    despine(ax)
+
+
+# ── Panel G: Cell-type stratified heatmap ─────────────────────────
+
+def _panel_ct_heatmap(ax, data: dict):
+    """Heatmap: DiD effect sizes stratified by top cell types."""
+    ct_results = data.get("ct_results", {})
+    if not ct_results:
+        ax.text(0.5, 0.5, "No cell-type-stratified results", ha="center",
+                va="center", transform=ax.transAxes, fontsize=9, color="#888")
+        ax.set_title("Cell-Type Stratified DiD", fontweight="bold")
+        despine(ax)
+        return
+
+    # Build matrix
+    rows = {}
+    for ct, df in ct_results.items():
+        if "beta_DiD" in df.columns and "feature" in df.columns:
+            rows[ct] = df.set_index("feature")["beta_DiD"]
+    if not rows:
+        ax.text(0.5, 0.5, "No data", ha="center", va="center",
+                transform=ax.transAxes)
+        return
+
+    mat = pd.DataFrame(rows)
+    # Limit display
+    mat = mat.iloc[:8]
+
+    sns.heatmap(mat, ax=ax, cmap="RdBu_r", center=0, linewidths=0.5,
+                linecolor="white", cbar_kws={"shrink": 0.6, "label": "β"},
+                annot=True, fmt=".2f", annot_kws={"fontsize": 6})
+    ax.set_xlabel("Cell type")
+    ax.set_ylabel("Feature")
+    ax.set_title("Cell-Type Stratified DiD", fontweight="bold")
+    ax.tick_params(axis="x", labelsize=7, rotation=45)
+    ax.tick_params(axis="y", labelsize=7)
+
+
+# ── Panel H: Rank concordance ────────────────────────────────────
+
+def _panel_rank_concordance(ax, data: dict):
+    """Bar chart: Spearman rank correlation of feature rankings
+    across preprocessing choices."""
+    # Get rankings from different configs
+    configs = {}
+    for key, label in [("cell", "Cell-level"),
+                       ("part", "Participant"),
+                       ("boot", "Bootstrap"),
+                       ("unstd", "Unstandardised"),
+                       ("median", "Median agg")]:
+        df = data.get(key)
+        if df is not None and "beta_DiD" in df.columns:
+            configs[label] = df.set_index("feature")["beta_DiD"].rank()
+
+    if "raw" in data and data["raw"] is not None and "beta_DiD" in data["raw"].columns:
+        configs["Raw TPM"] = data["raw"].set_index("feature")["beta_DiD"].rank()
+
+    if len(configs) < 2:
+        ax.text(0.5, 0.5, "Insufficient configs", ha="center", va="center",
+                transform=ax.transAxes)
+        return
+
+    # Use "Participant" as reference
+    ref_key = "Participant"
+    if ref_key not in configs:
+        ref_key = list(configs.keys())[0]
+
+    ref = configs[ref_key]
+    labels, rhos = [], []
+    for label, ranks in configs.items():
+        if label == ref_key:
+            continue
+        common = ref.index.intersection(ranks.index)
+        if len(common) < 3:
+            continue
+        rho, _ = sp_stats.spearmanr(ref[common], ranks[common])
+        labels.append(label)
+        rhos.append(rho)
+
+    if not labels:
+        ax.text(0.5, 0.5, "No comparisons", ha="center", va="center",
+                transform=ax.transAxes)
+        return
+
+    colors = [COLORS.get("highlight", "#5B9BD5") if r > 0.8
+              else COLORS.get("treated", "#E07B54") if r > 0.5
+              else "#E74C3C" for r in rhos]
+
+    y = np.arange(len(labels))
+    ax.barh(y, rhos, color=colors, edgecolor="white", alpha=0.85, height=0.6)
+    ax.axvline(1.0, color="grey", linewidth=0.5, alpha=0.3)
+    ax.set_yticks(y)
+    ax.set_yticklabels(labels, fontsize=8)
+    ax.set_xlabel(f"Spearman ρ (vs {ref_key})")
+    ax.set_xlim(0, 1.05)
+    ax.set_title("Rank Concordance Across Choices", fontweight="bold")
+
+    for i, rho in enumerate(rhos):
+        ax.text(rho + 0.02, i, f"{rho:.2f}", va="center", fontsize=7)
+
+    despine(ax)
+
+
+# ======================================================================
+# Generate
+# ======================================================================
+
+def generate():
+    """Create and save Supplementary Figure 5 panels."""
+    print("Supplementary Figure 5: Sensitivity to Preprocessing & Modeling Choices")
+    data = _run_sensitivity()
+    feats = data["features"]
+    print(f"  {len(feats)} features tested")
+
+    panels = [
+        ("panel_A", _panel_cell_vs_part, (6.5, 6)),
+        ("panel_B", _panel_bootstrap_ci, (7, 6)),
+        ("panel_C", _panel_std_vs_unstd, (6.5, 6)),
+        ("panel_D", _panel_volcano, (7, 5.5)),
+        ("panel_E", _panel_mean_vs_median, (6.5, 6)),
+        ("panel_F", _panel_log_sensitivity, (6.5, 6)),
+        ("panel_G", _panel_ct_heatmap, (8, 5.5)),
+        ("panel_H", _panel_rank_concordance, (7, 5)),
+    ]
+
+    for name, func, figsize in panels:
+        fig, ax = plt.subplots(figsize=figsize)
+        func(ax, data)
+        fig.tight_layout()
+        save_panel(fig, name, FIGURE_NAME, SUPP_OUTPUT)
+
+    # Cleanup
+    if "adata" in data:
+        del data["adata"]
+    data.clear()
+    clear_cache()
+    gc.collect()
+    print("  Done.\n")
+
+
+if __name__ == "__main__":
+    apply_style()
+    generate()

@@ -1,26 +1,30 @@
 """
-Supplementary Figure 3 — Study Cohort Overview.
-================================================
+Supplementary Figure 3 — Trial Design and Baseline Comparability.
+=================================================================
 
-Multi-dataset summary characterising the five clinical trial cohorts
-used throughout the manuscript.
+Demonstrate that pre-treatment groups are comparable and trial designs
+are well-characterised before DiD analysis.
 
 Panels:
-  A  Dataset summary table (design type, cells, participants, timepoints).
-  B  Participant pairing completeness (pre-only / post-only / paired).
-  C  Treatment arm or severity distribution per dataset.
-  D  Cells per participant stratified by timepoint (all datasets).
-  E  Gene detection breadth across datasets (violin).
-  F  Cell-type proportions (stacked horizontal bar, all datasets).
+  A  Study design summary table (design, pairing, arms, N).
+  B  Participant pairing structure per dataset (paired / unpaired / single).
+  C  Cells per participant per arm (box + strip, showing balance).
+  D  Baseline gene-expression PCA overlap between arms per dataset.
+  E  Genes detected at baseline: arm comparison (violins).
+  F  Cell-type composition at baseline: arm comparison (stacked bars).
+  G  Dropout / attrition rates per arm per dataset.
+  H  Participant × visit completeness (bar chart).
+
+Non-overlap guardrail: no treatment-effect claims, no DiD estimates.
 """
 
 from __future__ import annotations
 
 import gc
 
-import matplotlib.patheffects as pe
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import matplotlib.patheffects as pe
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -31,62 +35,34 @@ from .._shared import (
     apply_style,
     despine,
     save_panel,
+    load_clinical_trial_dataset,
     get_sade_feldman,
     get_stephenson,
     get_vaccine,
-    load_clinical_trial_dataset,
     harmonize_response,
     clear_cache,
 )
 
 FIGURE_NAME = "SuppFig3_cohort_overview"
 
-# ── dataset registry ──────────────────────────────────────────────────
-# Each entry: (loader, design_type, arm_col, arm_labels)
+_DS_PALETTE = dict(zip(
+    ["Sade-Feldman", "Stephenson", "Vaccine", "AML", "CAR-T"],
+    sns.color_palette("Set2", 5),
+))
 
-_REGISTRY: dict[str, dict] = {
-    "Sade-Feldman": dict(
-        loader=get_sade_feldman,
-        design="Two-arm DiD",
-        disease="Melanoma",
-        arm_col="response",
-        arm_labels=["Responder", "Non-responder"],
-    ),
-    "Stephenson": dict(
-        loader=get_stephenson,
-        design="Cross-sectional",
-        disease="COVID-19",
-        arm_col="severity",
-        arm_labels=["Severe", "Mild"],
-    ),
-    "Vaccine": dict(
-        loader=get_vaccine,
-        design="Single-arm paired",
-        disease="COVID-19 vaccine",
-        arm_col=None,
-        arm_labels=[],
-    ),
-    "AML": dict(
-        loader=lambda: load_clinical_trial_dataset("aml"),
-        design="Two-arm paired",
-        disease="AML",
-        arm_col="response",
-        arm_labels=["Treatment", "Control"],
-    ),
-    "CAR-T": dict(
-        loader=lambda: load_clinical_trial_dataset("cart"),
-        design="Single-arm paired",
-        disease="DLBCL",
-        arm_col=None,
-        arm_labels=[],
-    ),
-}
+DATASETS = [
+    ("Sade-Feldman", get_sade_feldman),
+    ("Stephenson", get_stephenson),
+    ("Vaccine", get_vaccine),
+    ("AML", lambda: load_clinical_trial_dataset("aml")),
+    ("CAR-T", lambda: load_clinical_trial_dataset("cart")),
+]
 
 
-# ── helpers ───────────────────────────────────────────────────────────
+# ── helpers ──────────────────────────────────────────────────────────
 
 def _pid_col(obs):
-    for c in ("participant_id", "patient_id", "donor_id"):
+    for c in ("participant_id", "patient_id", "donor_id", "pt_id"):
         if c in obs.columns:
             return c
     return None
@@ -94,374 +70,625 @@ def _pid_col(obs):
 
 def _visit_col(obs):
     for c in ("visit",):
-        if c in obs.columns:
+        if c in obs.columns and obs[c].nunique() > 1:
             return c
     return None
 
 
-def _timepoint_col(obs):
-    """Most granular timepoint column."""
-    for c in ("timepoint", "timepoint_category", "dfo_bin"):
+def _arm_col(obs):
+    for c in ("response", "severity", "therapy"):
         if c in obs.columns and obs[c].nunique() > 1:
             return c
-    return _visit_col(obs)
+    return None
 
 
 def _ct_col(obs):
-    for c in ("cell_type", "celltype", "CellType"):
-        if c in obs.columns:
+    for c in ("cell_type", "celltype", "CellType", "cell_type_fine",
+              "cell_type_coarse", "celltype_major", "clustnm"):
+        if c in obs.columns and obs[c].nunique() > 1:
             return c
     return None
 
 
-def _ngenes(obs, adata):
-    for c in ("n_genes_by_counts", "n_genes", "n_genes_detected"):
-        if c in obs.columns:
-            return np.asarray(obs[c], dtype=float)
+def _get_ngenes(adata) -> np.ndarray:
+    obs = adata.obs
+    for col in ("n_genes_by_counts", "n_genes", "n_genes_detected"):
+        if col in obs.columns:
+            return np.asarray(obs[col], dtype=float)
     import scipy.sparse as sp
-    X = adata.layers.get("counts", adata.X)
-    if sp.issparse(X):
-        return np.asarray((X > 0).sum(axis=1), dtype=float).ravel()
-    return np.asarray((X > 0).sum(axis=1), dtype=float).ravel()
+    for layer in ("counts", "tpm", "cpm"):
+        if layer in adata.layers:
+            X = adata.layers[layer]
+            if sp.issparse(X):
+                return np.asarray((X > 0).sum(axis=1), dtype=float).ravel()
+            return np.asarray((X > 0).sum(axis=1), dtype=float).ravel()
+    return np.full(adata.n_obs, np.nan)
 
 
-# ── Panel A: summary table ───────────────────────────────────────────
+def _load_all():
+    loaded = {}
+    for name, loader in DATASETS:
+        try:
+            adata = loader()
+            if name == "Sade-Feldman":
+                adata = harmonize_response(adata)
+            obs = adata.obs
+            pid = _pid_col(obs)
+            vis = _visit_col(obs)
+            arm = _arm_col(obs)
+            ct = _ct_col(obs)
+            loaded[name] = {
+                "adata": adata,
+                "pid_col": pid,
+                "visit_col": vis,
+                "arm_col": arm,
+                "ct_col": ct,
+            }
+            print(f"  {name}: {adata.n_obs:,} cells, pid={pid}, vis={vis}, arm={arm}")
+        except Exception as exc:
+            print(f"  {name}: failed ({exc})")
+    return loaded
 
-def _panel_table(ax, loaded: dict, meta: dict):
-    """Formatted table summarising all datasets."""
-    ax.axis("off")
+
+# ── dataset metadata ──────────────────────────────────────────────
+
+_DESIGN_META = {
+    "Sade-Feldman": {
+        "design": "Pre/post anti-PD-1",
+        "pairing": "Paired",
+        "arms": "Responder vs Non-responder",
+        "indication": "Melanoma",
+    },
+    "Stephenson": {
+        "design": "Cross-sectional COVID-19",
+        "pairing": "Single observation",
+        "arms": "Severity groups",
+        "indication": "COVID-19",
+    },
+    "Vaccine": {
+        "design": "Pre/post vaccination",
+        "pairing": "Paired",
+        "arms": "Single arm",
+        "indication": "Influenza",
+    },
+    "AML": {
+        "design": "Pre/post treatment",
+        "pairing": "Paired (partial)",
+        "arms": "Treatment vs Control",
+        "indication": "AML",
+    },
+    "CAR-T": {
+        "design": "Pre/post CAR-T infusion",
+        "pairing": "Paired",
+        "arms": "Responder vs Non-responder",
+        "indication": "B-ALL / DLBCL",
+    },
+}
+
+
+# ── Panel A: Design summary table ─────────────────────────────────
+
+def _panel_design_table(ax, loaded: dict):
+    """Study design summary table."""
     rows = []
-    for name in loaded:
-        a = loaded[name]
-        m = meta[name]
-        pid = _pid_col(a.obs)
-        n_pid = a.obs[pid].nunique() if pid else "?"
-        tp = _timepoint_col(a.obs)
-        n_tp = a.obs[tp].nunique() if tp else 1
+    for name, data in loaded.items():
+        obs = data["adata"].obs
+        pid = data["pid_col"]
+        vis = data["visit_col"]
+
+        n_cells = data["adata"].n_obs
+        n_participants = obs[pid].nunique() if pid else 0
+        n_visits = obs[vis].nunique() if vis else 1
+
+        meta = _DESIGN_META.get(name, {})
         rows.append([
             name,
-            m["disease"],
-            m["design"],
-            f"{a.n_obs:,}",
-            str(n_pid),
-            str(n_tp),
-            f"{a.n_vars:,}",
+            meta.get("indication", ""),
+            meta.get("design", ""),
+            meta.get("pairing", ""),
+            f"{n_participants}",
+            f"{n_visits}",
+            f"{n_cells:,}",
         ])
 
-    col_labels = ["Dataset", "Disease", "Study Design",
-                   "Cells", "Participants", "Timepoints", "Genes"]
-    table = ax.table(
-        cellText=rows, colLabels=col_labels,
-        cellLoc="center", loc="center",
-    )
+    col_labels = ["Dataset", "Indication", "Design", "Pairing",
+                   "Participants", "Visits", "Cells"]
+
+    ax.axis("off")
+    table = ax.table(cellText=rows, colLabels=col_labels,
+                      loc="center", cellLoc="center")
     table.auto_set_font_size(False)
-    table.set_fontsize(9)
+    table.set_fontsize(8)
     table.scale(1.0, 1.8)
 
     # Style header
     for j in range(len(col_labels)):
         cell = table[0, j]
-        cell.set_text_props(fontweight="bold", color="white")
-        cell.set_facecolor("#4C72B0")
-        cell.set_edgecolor("white")
+        cell.set_facecolor("#2c3e50")
+        cell.set_text_props(color="white", fontweight="bold")
 
-    # Style body rows with alternating shading
-    for i in range(len(rows)):
+    # Alternate row colours
+    for i in range(1, len(rows) + 1):
         for j in range(len(col_labels)):
-            cell = table[i + 1, j]
-            cell.set_edgecolor("white")
+            cell = table[i, j]
             if i % 2 == 0:
-                cell.set_facecolor("#f0f0f0")
+                cell.set_facecolor("#ecf0f1")
             else:
                 cell.set_facecolor("white")
 
-    ax.set_title("Dataset Summary", fontweight="bold", fontsize=12, pad=10)
+    ax.set_title("Study Design Summary", fontweight="bold", pad=20)
 
 
-# ── Panel B: pairing completeness ────────────────────────────────────
+# ── Panel B: Pairing structure ────────────────────────────────────
 
 def _panel_pairing(ax, loaded: dict):
-    """Stacked bar: pre-only / post-only / paired participants per dataset."""
-    ds_names = list(loaded.keys())
-    pre_only, post_only, paired, single_obs = [], [], [], []
+    """Participant pairing structure per dataset."""
+    paired_ds = []
+    single_ds = []
+    partial_ds = []
+    cross_sectional = []
 
-    for name in ds_names:
-        obs = loaded[name].obs
-        pid = _pid_col(obs)
-        vis = _visit_col(obs)
-        if pid is None or vis is None or obs[vis].nunique() < 2:
-            # Cross-sectional — single observation per participant
-            n = obs[pid].nunique() if pid else 0
-            pre_only.append(0)
-            post_only.append(0)
-            paired.append(0)
-            single_obs.append(n)
+    for name, data in loaded.items():
+        obs = data["adata"].obs
+        pid = data["pid_col"]
+        vis = data["visit_col"]
+
+        if vis is None or pid is None:
+            cross_sectional.append(name)
             continue
 
-        per_pid = obs.groupby(pid, observed=True)[vis].apply(
-            lambda x: set(x.dropna().unique())
-        )
-        n_pre = sum(1 for s in per_pid if {"Pre"} == s)
-        n_post = sum(1 for s in per_pid if {"Post"} == s)
-        n_both = sum(1 for s in per_pid if "Pre" in s and "Post" in s)
-        pre_only.append(n_pre)
-        post_only.append(n_post)
-        paired.append(n_both)
-        single_obs.append(0)
+        visits = sorted(obs[vis].dropna().unique())
+        if len(visits) < 2:
+            cross_sectional.append(name)
+            continue
 
-    y = np.arange(len(ds_names))
-    h = 0.55
+        participants = sorted(obs[pid].dropna().unique())
+        paired_count = 0
+        for p in participants:
+            p_visits = set(obs.loc[obs[pid] == p, vis].dropna().unique())
+            if len(p_visits) >= 2:
+                paired_count += 1
 
-    ax.barh(y, paired, height=h, label="Paired (Pre + Post)",
-            color=COLORS["treated"], edgecolor="white")
-    left1 = paired
-    ax.barh(y, pre_only, height=h, left=left1, label="Pre only",
-            color=COLORS["control"], edgecolor="white")
-    left2 = [p + pr for p, pr in zip(paired, pre_only)]
-    ax.barh(y, post_only, height=h, left=left2,
-            label="Post only", color=COLORS["neutral"], edgecolor="white")
-    left3 = [a + b for a, b in zip(left2, post_only)]
-    ax.barh(y, single_obs, height=h, left=left3,
-            label="Single observation", color="#999999", edgecolor="white")
+        frac_paired = paired_count / len(participants) if participants else 0
+        if frac_paired > 0.9:
+            paired_ds.append(name)
+        elif frac_paired > 0.3:
+            partial_ds.append(name)
+        else:
+            single_ds.append(name)
 
-    ax.set_yticks(y)
-    ax.set_yticklabels(ds_names)
-    ax.set_xlabel("Number of participants")
-    ax.set_title("Sample Pairing Completeness", fontweight="bold")
-    ax.legend(fontsize=7, loc="lower right", frameon=True, framealpha=0.9)
+    categories = {
+        "Fully paired": paired_ds,
+        "Partially paired": partial_ds,
+        "Pre only": single_ds,
+        "Single observation": cross_sectional,
+    }
+    cat_colors = {
+        "Fully paired": COLORS.get("treated", "#2ecc71"),
+        "Partially paired": "#f39c12",
+        "Pre only": COLORS.get("control", "#e74c3c"),
+        "Single observation": "#95a5a6",
+    }
 
-    # Annotate totals
-    for i, name in enumerate(ds_names):
-        total = paired[i] + pre_only[i] + post_only[i] + single_obs[i]
-        ax.text(total + 0.3, i, f"n={total}", va="center", fontsize=8)
+    ds_names = list(loaded.keys())
+    y_pos = np.arange(len(ds_names))
+    bar_colors = []
+    bar_labels = []
+    for name in ds_names:
+        for cat, members in categories.items():
+            if name in members:
+                bar_colors.append(cat_colors[cat])
+                bar_labels.append(cat)
+                break
+        else:
+            bar_colors.append("#bdc3c7")
+            bar_labels.append("Unknown")
 
+    ax.barh(y_pos, [1] * len(ds_names), color=bar_colors, height=0.6,
+            edgecolor="white")
+    for i, (name, label) in enumerate(zip(ds_names, bar_labels)):
+        ax.text(0.5, i, label, ha="center", va="center", fontsize=8,
+                fontweight="bold", color="white",
+                path_effects=[pe.withStroke(linewidth=2, foreground="black")])
+
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(ds_names, fontsize=9)
+    ax.set_xlim(0, 1)
+    ax.set_xticks([])
+    ax.set_title("Participant Pairing Structure", fontweight="bold")
+
+    # Legend
+    handles = [mpatches.Patch(facecolor=c, label=k)
+               for k, c in cat_colors.items() if any(n in categories[k]
+                                                       for n in ds_names)]
+    ax.legend(handles=handles, fontsize=7, loc="lower right", frameon=True)
     despine(ax)
 
 
-# ── Panel C: arm / response / severity distribution ──────────────────
+# ── Panel C: Cells per participant per arm ────────────────────────
 
-def _panel_arm_distribution(ax, loaded: dict, meta: dict):
-    """Grouped bar: participants per arm/condition per dataset."""
+def _panel_cells_per_pid_arm(ax, loaded: dict):
+    """Box + strip: cells per participant, split by arm."""
     rows = []
-    for name in loaded:
-        obs = loaded[name].obs
-        m = meta[name]
-        pid = _pid_col(obs)
-        arm_col = m["arm_col"]
+    for name, data in loaded.items():
+        obs = data["adata"].obs
+        pid = data["pid_col"]
+        arm = data["arm_col"]
+        if pid is None:
+            continue
 
-        if arm_col and arm_col in obs.columns and pid:
-            per_pid = obs.drop_duplicates(subset=pid)
-            counts = per_pid[arm_col].value_counts()
-            for label, cnt in counts.items():
-                rows.append({"Dataset": name, "Group": str(label), "Count": cnt})
-        elif pid:
-            n = obs[pid].nunique()
-            rows.append({"Dataset": name, "Group": "All", "Count": n})
+        if arm and arm in obs.columns:
+            per_pid = obs.groupby([pid, arm]).size().reset_index(name="Cells")
+            per_pid.rename(columns={arm: "Arm"}, inplace=True)
+        else:
+            per_pid = obs.groupby(pid).size().reset_index(name="Cells")
+            per_pid["Arm"] = "All"
 
-    df = pd.DataFrame(rows)
-    if df.empty:
-        ax.text(0.5, 0.5, "No arm data", ha="center", va="center",
+        per_pid["Dataset"] = name
+        rows.append(per_pid)
+
+    if not rows:
+        ax.text(0.5, 0.5, "No data", ha="center", va="center",
                 transform=ax.transAxes)
         return
 
-    # Fixed colour mapping for known groups
-    group_colors = {
-        "Responder": COLORS["treated"],
-        "Non-responder": COLORS["control"],
-        "Severe": "#d62728",
-        "Mild": "#2ca02c",
-        "Treatment": COLORS["treated"],
-        "Control": COLORS["control"],
-        "All": COLORS["neutral"],
-    }
-    fallback = sns.color_palette("Set2", 8)
-
-    ds_names = list(loaded.keys())
-    groups = df["Group"].unique()
-    n_groups = len(groups)
-    x = np.arange(len(ds_names))
-    width = 0.7 / max(n_groups, 1)
-
-    for gi, grp in enumerate(groups):
-        vals = []
-        for ds in ds_names:
-            sub = df[(df["Dataset"] == ds) & (df["Group"] == grp)]
-            vals.append(sub["Count"].sum() if len(sub) else 0)
-        offset = (gi - (n_groups - 1) / 2) * width
-        color = group_colors.get(grp, fallback[gi % len(fallback)])
-        bars = ax.bar(x + offset, vals, width * 0.9, label=grp, color=color,
-                      edgecolor="white")
-        for bar, v in zip(bars, vals):
-            if v > 0:
-                ax.text(bar.get_x() + bar.get_width() / 2, v + 0.3,
-                        str(v), ha="center", va="bottom", fontsize=7)
-
-    ax.set_xticks(x)
-    ax.set_xticklabels(ds_names, fontsize=9)
-    ax.set_ylabel("Number of participants")
-    ax.set_title("Treatment Arm / Condition Distribution", fontweight="bold")
-    ax.legend(fontsize=7, loc="upper right", frameon=True, ncol=2)
-    despine(ax)
-
-
-# ── Panel D: cells per participant by timepoint ──────────────────────
-
-def _panel_cells_per_pid(ax, loaded: dict):
-    """Box + strip: cells per participant × timepoint, faceted by dataset."""
-    rows = []
-    for name, adata in loaded.items():
-        obs = adata.obs
-        pid = _pid_col(obs)
-        tp = _timepoint_col(obs)
-        if pid is None:
-            continue
-        if tp and obs[tp].nunique() > 1:
-            grouped = obs.groupby([pid, tp], observed=True).size().reset_index(name="n")
-            grouped["Dataset"] = name
-            grouped.rename(columns={tp: "Timepoint"}, inplace=True)
-            rows.append(grouped[["Dataset", "Timepoint", "n"]])
-        else:
-            grouped = obs.groupby(pid, observed=True).size().reset_index(name="n")
-            grouped["Dataset"] = name
-            grouped["Timepoint"] = "All"
-            rows.append(grouped[["Dataset", "Timepoint", "n"]])
-
     df = pd.concat(rows, ignore_index=True)
+    df["Cells_log"] = np.log10(df["Cells"] + 1)
 
-    # Cells per (participant × timepoint) across datasets
-    order = list(loaded.keys())
-    palette = sns.color_palette("Set2", len(order))
-
-    sns.boxplot(data=df, x="Dataset", y="n", order=order,
-                palette=palette, width=0.5, showfliers=False,
-                boxprops=dict(alpha=0.5), ax=ax)
-    sns.stripplot(data=df, x="Dataset", y="n", order=order,
-                  color="black", size=3, alpha=0.5, jitter=0.2, ax=ax)
+    sns.boxplot(data=df, x="Dataset", y="Cells_log", hue="Arm",
+                order=list(loaded.keys()), fliersize=0, linewidth=0.5,
+                palette="Set2", ax=ax)
+    sns.stripplot(data=df, x="Dataset", y="Cells_log", hue="Arm",
+                  order=list(loaded.keys()), dodge=True, size=2, alpha=0.5,
+                  palette="Set2", ax=ax, legend=False)
 
     ax.set_xlabel("")
-    ax.set_ylabel("Cells per participant × timepoint")
-    ax.set_title("Cells per Sample", fontweight="bold")
+    ax.set_ylabel(r"$\log_{10}$(cells per participant + 1)")
+    ax.set_title("Cells per Participant by Arm", fontweight="bold")
+    ax.legend(fontsize=6, title="Arm", title_fontsize=7, loc="upper right",
+              frameon=True, ncol=2)
     ax.tick_params(axis="x", rotation=15)
     despine(ax)
 
 
-# ── Panel E: gene detection breadth ──────────────────────────────────
+# ── Panel D: Baseline PCA overlap between arms ───────────────────
 
-def _panel_gene_coverage(ax, loaded: dict):
-    """Violin: genes detected per cell across datasets."""
+def _panel_baseline_pca(fig_parent, axes, loaded: dict):
+    """PCA of baseline (pre-treatment) cells coloured by arm."""
+    import scipy.sparse as sp
+
+    ds_with_baseline = []
+    for name, data in loaded.items():
+        vis = data["visit_col"]
+        arm = data["arm_col"]
+        if vis and arm:
+            obs = data["adata"].obs
+            pre_mask = obs[vis].astype(str).str.lower().isin(
+                ["pre", "baseline", "d0", "day0", "0"])
+            if pre_mask.sum() > 50:
+                ds_with_baseline.append(name)
+
+    for ax_i, ax in enumerate(axes):
+        if ax_i >= len(ds_with_baseline):
+            ax.axis("off")
+            continue
+
+        name = ds_with_baseline[ax_i]
+        data = loaded[name]
+        adata = data["adata"]
+        obs = adata.obs
+        vis = data["visit_col"]
+        arm = data["arm_col"]
+
+        pre_mask = obs[vis].astype(str).str.lower().isin(
+            ["pre", "baseline", "d0", "day0", "0"])
+        adata_pre = adata[pre_mask]
+
+        if "X_pca" in adata_pre.obsm:
+            pca = adata_pre.obsm["X_pca"][:, :2]
+        else:
+            # Quick PCA
+            for layer in ("log1p_tpm", "log1p_cpm", "log1p_norm"):
+                if layer in adata_pre.layers:
+                    X = adata_pre.layers[layer]
+                    break
+            else:
+                if "counts" in adata_pre.layers:
+                    X = adata_pre.layers["counts"]
+                else:
+                    ax.text(0.5, 0.5, "No data", ha="center", va="center",
+                            transform=ax.transAxes)
+                    continue
+
+            if sp.issparse(X):
+                X = X.toarray()
+            # Subsample genes
+            var_genes = np.var(X, axis=0)
+            top_genes = np.argsort(var_genes)[-500:]
+            X_sub = X[:, top_genes]
+            from sklearn.decomposition import PCA
+            pca = PCA(n_components=2, random_state=42).fit_transform(X_sub)
+
+        arms = adata_pre.obs[arm].astype(str).values
+        unique_arms = sorted(set(arms))
+        arm_palette = dict(zip(unique_arms,
+                                sns.color_palette("Set1", len(unique_arms))))
+
+        rng = np.random.default_rng(42)
+        order = rng.permutation(len(arms))
+
+        for a in unique_arms:
+            mask = arms[order] == a
+            ax.scatter(pca[order[mask], 0], pca[order[mask], 1],
+                       c=[arm_palette[a]], s=3, alpha=0.5, label=a,
+                       edgecolors="none", rasterized=True)
+
+        ax.set_title(f"{name} (baseline)", fontweight="bold", fontsize=9)
+        ax.set_xlabel("PC1", fontsize=7)
+        ax.set_ylabel("PC2", fontsize=7)
+        ax.legend(fontsize=5, loc="best", frameon=True)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        despine(ax)
+
+
+# ── Panel E: Genes detected at baseline by arm ───────────────────
+
+def _panel_baseline_ngenes(ax, loaded: dict):
+    """Violins: genes detected per cell at baseline, split by arm."""
     rows = []
-    for name, adata in loaded.items():
-        vals = _ngenes(adata.obs, adata)
-        # Subsample for speed
-        if len(vals) > 10_000:
-            idx = np.random.default_rng(42).choice(len(vals), 10_000,
-                                                    replace=False)
-            vals = vals[idx]
-        rows.append(pd.DataFrame({"Dataset": name, "Genes": vals}))
+    for name, data in loaded.items():
+        obs = data["adata"].obs
+        vis = data["visit_col"]
+        arm = data["arm_col"]
+        ngenes = _get_ngenes(data["adata"])
+
+        if vis and arm:
+            pre_mask = obs[vis].astype(str).str.lower().isin(
+                ["pre", "baseline", "d0", "day0", "0"])
+            if pre_mask.sum() < 50:
+                continue
+            arms = obs.loc[pre_mask, arm].astype(str).values
+            ng = ngenes[pre_mask.values]
+        elif arm:
+            arms = obs[arm].astype(str).values
+            ng = ngenes
+        else:
+            continue
+
+        # Subsample
+        n = len(ng)
+        if n > 10000:
+            idx = np.random.default_rng(42).choice(n, 10000, replace=False)
+            arms = arms[idx]
+            ng = ng[idx]
+
+        for a in sorted(set(arms)):
+            mask = arms == a
+            rows.append(pd.DataFrame({
+                "Dataset": name, "Arm": a, "Genes": ng[mask],
+            }))
+
+    if not rows:
+        ax.text(0.5, 0.5, "No baseline data", ha="center", va="center",
+                transform=ax.transAxes, fontsize=10, fontstyle="italic")
+        ax.set_title("Baseline Gene Detection by Arm", fontweight="bold")
+        return
 
     df = pd.concat(rows, ignore_index=True)
-    order = list(loaded.keys())
-    palette = sns.color_palette("Set2", len(order))
+    ds_order = [n for n in loaded.keys()
+                if n in df["Dataset"].unique()]
 
-    parts = ax.violinplot(
-        [df.loc[df["Dataset"] == ds, "Genes"].values for ds in order],
-        positions=range(len(order)), showmedians=True, showextrema=False,
-    )
-    for i, pc in enumerate(parts["bodies"]):
-        pc.set_facecolor(palette[i])
-        pc.set_alpha(0.6)
-    parts["cmedians"].set_color("black")
-
-    # Annotate medians
-    for i, ds in enumerate(order):
-        med = df.loc[df["Dataset"] == ds, "Genes"].median()
-        ax.text(i, med, f"  {med:,.0f}", ha="left", va="bottom",
-                fontsize=7, fontweight="bold")
-
-    ax.set_xticks(range(len(order)))
-    ax.set_xticklabels(order, fontsize=9)
+    sns.violinplot(data=df, x="Dataset", y="Genes", hue="Arm",
+                   order=ds_order, cut=0, inner="quartile", linewidth=0.5,
+                   palette="Set1", density_norm="width", ax=ax)
+    ax.set_xlabel("")
     ax.set_ylabel("Genes detected per cell")
-    ax.set_title("Gene Detection Breadth", fontweight="bold")
+    ax.set_title("Baseline Gene Detection by Arm", fontweight="bold")
+    ax.legend(fontsize=6, title="Arm", title_fontsize=7, loc="upper right",
+              frameon=True, ncol=2)
     ax.tick_params(axis="x", rotation=15)
     despine(ax)
 
 
-# ── Panel F: cell-type proportions ───────────────────────────────────
+# ── Panel F: Cell-type composition at baseline by arm ─────────────
 
-def _panel_celltype_proportions(ax, loaded: dict):
-    """Stacked horizontal bar: cell-type proportions per dataset."""
-    ds_names = list(loaded.keys())
-
-    # Collect proportions
-    all_cts = set()
-    props = {}
-    for name in ds_names:
-        col = _ct_col(loaded[name].obs)
-        if col is None:
+def _panel_baseline_ct_by_arm(ax, loaded: dict):
+    """Stacked bars: baseline cell-type composition per arm per dataset."""
+    rows = []
+    for name, data in loaded.items():
+        obs = data["adata"].obs
+        vis = data["visit_col"]
+        arm = data["arm_col"]
+        ct = data["ct_col"]
+        if arm is None or ct is None:
             continue
-        cts = loaded[name].obs[col].astype(str)
-        cts = cts[cts != "nan"]
-        counts = cts.value_counts(normalize=True)
-        # Group rare types
-        if len(counts) > 12:
-            keep = counts.head(11)
-            other = counts.iloc[11:].sum()
-            counts = pd.concat([keep, pd.Series({"Other": other})])
-        props[name] = counts
-        all_cts.update(counts.index)
 
-    # Build consistent palette — grey for unknown/unassigned/other
-    _GREY_TYPES = {"Unknown", "Unassigned", "Other", "nan"}
-    real_cts = sorted(c for c in all_cts if c not in _GREY_TYPES)
-    n = len(real_cts)
-    if n <= 10:
-        pal = sns.color_palette("tab10", n)
-    elif n <= 20:
-        pal = sns.color_palette("tab20", n)
+        if vis:
+            pre_mask = obs[vis].astype(str).str.lower().isin(
+                ["pre", "baseline", "d0", "day0", "0"])
+            if pre_mask.sum() < 50:
+                continue
+            sub = obs.loc[pre_mask]
+        else:
+            sub = obs
+
+        for a in sorted(sub[arm].dropna().unique()):
+            a_sub = sub[sub[arm] == a]
+            ct_frac = a_sub[ct].astype(str).value_counts(normalize=True)
+            for c, f in ct_frac.items():
+                rows.append({"Dataset": name, "Arm": str(a),
+                             "Cell type": str(c), "Fraction": f})
+
+    if not rows:
+        ax.text(0.5, 0.5, "No baseline cell-type data", ha="center",
+                va="center", transform=ax.transAxes, fontsize=10,
+                fontstyle="italic")
+        ax.set_title("Baseline Cell-Type Composition", fontweight="bold")
+        return
+
+    df = pd.DataFrame(rows)
+
+    # Create combined label
+    df["Group"] = df["Dataset"] + "\n" + df["Arm"]
+    groups = sorted(df["Group"].unique())
+
+    # Get all cell types and build palette
+    all_cts = sorted(df["Cell type"].unique())
+    n_ct = len(all_cts)
+    if n_ct <= 10:
+        pal = sns.color_palette("tab10", n_ct)
+    elif n_ct <= 20:
+        pal = sns.color_palette("tab20", n_ct)
     else:
-        pal = sns.color_palette("husl", n)
-    ct_palette = dict(zip(real_cts, pal))
-    for gt in _GREY_TYPES:
-        if gt in all_cts:
-            ct_palette[gt] = "#bbbbbb"
+        pal = sns.color_palette("husl", n_ct)
+    ct_palette = dict(zip(all_cts, pal))
 
-    y = np.arange(len(ds_names))
-    h = 0.6
-    for name_idx, name in enumerate(ds_names):
-        if name not in props:
-            ax.text(0.5, name_idx, "No cell-type annotation",
-                    ha="center", va="center", fontsize=7, fontstyle="italic",
-                    color="#888888")
-            continue
+    y_pos = np.arange(len(groups))
+    for gi, group in enumerate(groups):
+        gsub = df[df["Group"] == group]
         left = 0.0
-        for ct, frac in props[name].items():
-            ax.barh(name_idx, frac, height=h, left=left,
-                    color=ct_palette[ct], edgecolor="white", linewidth=0.3)
-            # Label cell types with > 10% proportion
-            if frac > 0.10:
-                ax.text(left + frac / 2, name_idx, ct,
-                        ha="center", va="center", fontsize=5.5,
-                        color="white", fontweight="bold",
-                        path_effects=[pe.withStroke(linewidth=2, foreground="black")])
-            left += frac
+        for ct in all_cts:
+            frac = gsub.loc[gsub["Cell type"] == ct, "Fraction"].sum()
+            if frac > 0:
+                ax.barh(gi, frac, left=left, height=0.6,
+                        color=ct_palette[ct], edgecolor="white",
+                        linewidth=0.2)
+                if frac > 0.08:
+                    ax.text(left + frac / 2, gi, ct, ha="center",
+                            va="center", fontsize=4, color="white",
+                            fontweight="bold",
+                            path_effects=[pe.withStroke(linewidth=1,
+                                                         foreground="black")])
+                left += frac
 
-    ax.set_yticks(y)
-    ax.set_yticklabels(ds_names)
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(groups, fontsize=6)
     ax.set_xlim(0, 1)
-    ax.set_xlabel("Proportion")
-    ax.set_title("Cell-Type Composition", fontweight="bold")
+    ax.set_xlabel("Fraction of cells")
+    ax.set_title("Baseline Cell-Type Composition by Arm", fontweight="bold")
+    despine(ax)
 
-    # Legend for cell types that appear in multiple datasets
-    # Show top cell types only to avoid clutter
-    all_cts_sorted = sorted(all_cts)
-    top_cts = sorted(all_cts_sorted, key=lambda ct: sum(
-        props.get(ds, pd.Series()).get(ct, 0) for ds in ds_names
-    ), reverse=True)[:15]
-    handles = [mpatches.Patch(facecolor=ct_palette[ct], label=ct, edgecolor="none")
-               for ct in top_cts]
-    ax.legend(handles=handles, fontsize=5, loc="center left",
-              bbox_to_anchor=(1.02, 0.5), frameon=False, ncol=1,
-              handlelength=1.0, handleheight=0.8, labelspacing=0.2)
+
+# ── Panel G: Dropout / attrition ──────────────────────────────────
+
+def _panel_dropout(ax, loaded: dict):
+    """Dropout rates: fraction of participants missing post-treatment."""
+    rows = []
+    for name, data in loaded.items():
+        obs = data["adata"].obs
+        pid = data["pid_col"]
+        vis = data["visit_col"]
+
+        if pid is None or vis is None:
+            continue
+
+        visits = sorted(obs[vis].dropna().unique())
+        if len(visits) < 2:
+            continue
+
+        # Identify pre and post
+        pre_visits = [v for v in visits
+                      if str(v).lower() in ("pre", "baseline", "d0", "day0", "0")]
+        post_visits = [v for v in visits if v not in pre_visits]
+
+        if not pre_visits or not post_visits:
+            pre_visits = [visits[0]]
+            post_visits = visits[1:]
+
+        pre_pids = set(obs.loc[obs[vis].isin(pre_visits), pid].dropna().unique())
+        post_pids = set(obs.loc[obs[vis].isin(post_visits), pid].dropna().unique())
+
+        n_pre = len(pre_pids)
+        n_post = len(pre_pids & post_pids)
+        dropout_rate = 1 - (n_post / n_pre) if n_pre > 0 else 0
+
+        rows.append({
+            "Dataset": name,
+            "N pre": n_pre,
+            "N retained": n_post,
+            "Dropout rate": dropout_rate,
+        })
+
+    if not rows:
+        ax.text(0.5, 0.5, "No longitudinal data", ha="center", va="center",
+                transform=ax.transAxes, fontsize=10, fontstyle="italic")
+        ax.set_title("Attrition Rates", fontweight="bold")
+        return
+
+    df = pd.DataFrame(rows)
+    colors = [_DS_PALETTE.get(n, "grey") for n in df["Dataset"]]
+
+    bars = ax.bar(df["Dataset"], df["Dropout rate"], color=colors,
+                  edgecolor="white", width=0.6)
+    for bar, (_, row) in zip(bars, df.iterrows()):
+        ax.text(bar.get_x() + bar.get_width() / 2,
+                row["Dropout rate"] + 0.02,
+                f"{row['Dropout rate']:.0%}\n({row['N retained']}/{row['N pre']})",
+                ha="center", va="bottom", fontsize=6)
+
+    ax.set_ylabel("Dropout rate")
+    ax.set_title("Participant Attrition (Pre → Post)", fontweight="bold")
+    ax.set_ylim(0, min(1.0, df["Dropout rate"].max() * 1.5 + 0.1))
+    ax.tick_params(axis="x", rotation=15)
+    despine(ax)
+
+
+# ── Panel H: Detailed completeness ────────────────────────────────
+
+def _panel_completeness_detailed(ax, loaded: dict):
+    """Bar chart: fraction of participants with cells at each visit."""
+    rows = []
+    for name, data in loaded.items():
+        obs = data["adata"].obs
+        pid = data["pid_col"]
+        vis = data["visit_col"]
+        if pid is None:
+            continue
+
+        if vis and vis in obs.columns and obs[vis].nunique() > 1:
+            visits = sorted(obs[vis].dropna().unique())
+            participants = sorted(obs[pid].dropna().unique())
+            for v in visits:
+                n_total = len(participants)
+                n_with = len(set(obs.loc[(obs[vis] == v) &
+                                         obs[pid].notna(), pid].unique()))
+                label = f"{name}\n{v}"
+                rows.append({
+                    "Label": label,
+                    "Fraction": n_with / n_total if n_total > 0 else 0,
+                    "Count": f"{n_with}/{n_total}",
+                })
+        else:
+            participants = sorted(obs[pid].dropna().unique())
+            rows.append({
+                "Label": f"{name}\nAll",
+                "Fraction": 1.0,
+                "Count": f"{len(participants)}/{len(participants)}",
+            })
+
+    if not rows:
+        ax.text(0.5, 0.5, "No data", ha="center", va="center",
+                transform=ax.transAxes)
+        return
+
+    df = pd.DataFrame(rows)
+
+    y_pos = np.arange(len(df))
+    colors = ["#27ae60" if f >= 0.9 else "#f39c12" if f >= 0.5 else "#e74c3c"
+              for f in df["Fraction"]]
+
+    ax.barh(y_pos, df["Fraction"], color=colors, height=0.6,
+            edgecolor="white")
+    for i, row in df.iterrows():
+        ax.text(row["Fraction"] + 0.02, i, row["Count"],
+                va="center", ha="left", fontsize=6)
+
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(df["Label"], fontsize=6)
+    ax.set_xlim(0, 1.15)
+    ax.set_xlabel("Fraction of participants with cells")
+    ax.set_title("Visit Completeness", fontweight="bold")
     despine(ax)
 
 
@@ -471,66 +698,74 @@ def _panel_celltype_proportions(ax, loaded: dict):
 
 def generate():
     """Create and save Supplementary Figure 3 panels."""
-    print("Supplementary Figure 3: Study Cohort Overview")
-
-    # Load all datasets
-    loaded = {}
-    for name, info in _REGISTRY.items():
-        try:
-            adata = info["loader"]()
-            # Harmonize response for Sade-Feldman
-            if name == "Sade-Feldman":
-                adata = harmonize_response(adata)
-            loaded[name] = adata
-            print(f"  {name}: {adata.n_obs:,} cells, "
-                  f"{adata.n_vars:,} genes")
-        except Exception as exc:
-            print(f"  {name}: failed ({exc})")
+    print("Supplementary Figure 3: Trial Design and Baseline Comparability")
+    loaded = _load_all()
 
     if not loaded:
-        print("  No datasets; skipping.")
+        print("  No datasets loaded; skipping.")
         return
 
-    meta = {n: _REGISTRY[n] for n in loaded}
-
-    # Panel A: Summary table
-    fig, ax = plt.subplots(figsize=(10, 3.5))
-    _panel_table(ax, loaded, meta)
+    # Panel A: Design table
+    fig, ax = plt.subplots(figsize=(10, 4))
+    _panel_design_table(ax, loaded)
     fig.tight_layout()
     save_panel(fig, "panel_A", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel B: Pairing completeness
-    fig, ax = plt.subplots(figsize=(7, 4))
+    # Panel B: Pairing structure
+    fig, ax = plt.subplots(figsize=(8, 4))
     _panel_pairing(ax, loaded)
     fig.tight_layout()
     save_panel(fig, "panel_B", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel C: Arm / condition distribution
-    fig, ax = plt.subplots(figsize=(7, 4))
-    _panel_arm_distribution(ax, loaded, meta)
+    # Panel C: Cells per participant per arm
+    fig, ax = plt.subplots(figsize=(9, 5))
+    _panel_cells_per_pid_arm(ax, loaded)
     fig.tight_layout()
     save_panel(fig, "panel_C", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel D: Cells per participant × timepoint
-    fig, ax = plt.subplots(figsize=(7, 4.5))
-    _panel_cells_per_pid(ax, loaded)
+    # Panel D: Baseline PCA overlap
+    n_baseline = sum(1 for data in loaded.values()
+                     if data["visit_col"] and data["arm_col"])
+    ncols = min(n_baseline, 3) if n_baseline > 0 else 1
+    nrows = max(1, (n_baseline + ncols - 1) // ncols)
+    fig, axes = plt.subplots(nrows, ncols, figsize=(5 * ncols, 4.5 * nrows))
+    if not hasattr(axes, "__iter__"):
+        axes = [axes]
+    else:
+        axes = axes.ravel()
+    _panel_baseline_pca(fig, axes, loaded)
+    fig.suptitle("Baseline PCA by Arm", fontweight="bold", y=1.02)
     fig.tight_layout()
     save_panel(fig, "panel_D", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel E: Gene detection breadth
-    fig, ax = plt.subplots(figsize=(7, 4.5))
-    _panel_gene_coverage(ax, loaded)
+    # Panel E: Baseline gene detection by arm
+    fig, ax = plt.subplots(figsize=(9, 5))
+    _panel_baseline_ngenes(ax, loaded)
     fig.tight_layout()
     save_panel(fig, "panel_E", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel F: Cell-type proportions
-    fig, ax = plt.subplots(figsize=(9, 4.5))
-    _panel_celltype_proportions(ax, loaded)
-    fig.tight_layout(rect=[0, 0, 0.82, 1])
+    # Panel F: Baseline cell-type composition by arm
+    fig, ax = plt.subplots(figsize=(10, 6))
+    _panel_baseline_ct_by_arm(ax, loaded)
+    fig.tight_layout()
     save_panel(fig, "panel_F", FIGURE_NAME, SUPP_OUTPUT)
 
+    # Panel G: Dropout rates
+    fig, ax = plt.subplots(figsize=(7, 5))
+    _panel_dropout(ax, loaded)
+    fig.tight_layout()
+    save_panel(fig, "panel_G", FIGURE_NAME, SUPP_OUTPUT)
+
+    # Panel H: Completeness
+    fig, ax = plt.subplots(figsize=(8, 6))
+    _panel_completeness_detailed(ax, loaded)
+    fig.tight_layout()
+    save_panel(fig, "panel_H", FIGURE_NAME, SUPP_OUTPUT)
+
     # Cleanup
-    del loaded
+    for data in loaded.values():
+        del data["adata"]
+    loaded.clear()
     clear_cache()
     gc.collect()
     print("  Done.\n")

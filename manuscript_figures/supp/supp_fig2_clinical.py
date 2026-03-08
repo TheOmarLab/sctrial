@@ -1,13 +1,20 @@
 """
-Supplementary Figure 2: Dataset UMAP Embeddings.
-=================================================
+Supplementary Figure 2 — Cellular Atlas and Annotation Confidence.
+==================================================================
 
-Grid layout (5 datasets × 2 columns):
+Establish cell-type annotation quality and embedding reliability.
 
-Column 1: UMAP coloured by cell type.
-Column 2: Parallel categories (cell type × response/visit/timepoint).
+Panels:
+  A  UMAP per dataset coloured by cell type (5 mini-UMAPs).
+  B  Cell-type proportions per dataset (stacked horizontal bars).
+  C  Marker gene dot plot (top 3 markers per cell type, pooled).
+  D  Annotation confidence: per-cell max marker score distribution.
+  E  Silhouette scores per dataset (embedding quality per cell type).
+  F  Cell-type × dataset cross-tabulation heatmap (normalised).
+  G  Cells per cell type per dataset (grouped bars, log-scale).
+  H  Embedding neighbourhood purity per dataset.
 
-Datasets: Sade-Feldman, Stephenson, Vaccine, AML, CAR-T.
+Non-overlap guardrail: no treatment-effect claims, no DiD estimates.
 """
 
 from __future__ import annotations
@@ -37,9 +44,13 @@ from .._shared import (
 
 FIGURE_NAME = "SuppFig2_dataset_umaps"
 
-DOT_SIZE = 4.0
+DOT_SIZE = 1.8
 CELLTYPE_LABEL_SIZE = 9
-LEGEND_FONTSIZE = 8
+
+_DS_PALETTE = dict(zip(
+    ["Sade-Feldman", "Stephenson", "Vaccine", "AML", "CAR-T"],
+    sns.color_palette("Set2", 5),
+))
 
 DATASETS = [
     ("Sade-Feldman", get_sade_feldman),
@@ -49,35 +60,16 @@ DATASETS = [
     ("CAR-T", lambda: load_clinical_trial_dataset("cart")),
 ]
 
-# Per-dataset: which column to use for the response/condition panel
-LABEL_COL2 = {
-    "Sade-Feldman": ("response_harmonized", "Response"),
-    "Stephenson": ("Status_on_day_collection_summary", "Severity"),
-    "Vaccine": ("visit", "Visit"),
-    "AML": ("response", "Treatment Arm"),
-    "CAR-T": ("timepoint", "Timepoint"),
-}
 
-
-# ── helpers ───────────────────────────────────────────────────────────
+# ── helpers ──────────────────────────────────────────────────────────
 
 def _find_celltype_col(obs):
     for col in ("cell_type", "celltype", "CellType", "cell_type_fine",
                 "cell_type_coarse", "celltype_major", "clustnm"):
-        if col in obs.columns:
-            # Skip if only 1 unique value (e.g. "Immune")
-            if obs[col].nunique() > 1:
-                return col
-    # Fall back to leiden if available
+        if col in obs.columns and obs[col].nunique() > 1:
+            return col
     if "leiden" in obs.columns:
         return "leiden"
-    return None
-
-
-def _find_visit_col(obs):
-    for col in ("visit", "timepoint", "time_point", "condition"):
-        if col in obs.columns:
-            return col
     return None
 
 
@@ -108,7 +100,6 @@ def _ensure_umap_and_clusters(adata):
     has_conn = ("connectivities" in adata.obsp) if adata.obsp else False
     if "neighbors" not in adata.uns or not has_conn:
         print("    Computing neighbors...")
-        # Prefer harmony-corrected PCA if available
         use_rep = "X_pca_harmony" if "X_pca_harmony" in adata.obsm else "X_pca"
         sc.pp.neighbors(adata, use_rep=use_rep, n_neighbors=15)
 
@@ -123,8 +114,6 @@ def _ensure_umap_and_clusters(adata):
     return adata
 
 
-# ── panel functions ───────────────────────────────────────────────────
-
 def _build_ct_palette(unique_cts):
     """Build a colour palette for cell types (tab10/tab20/husl)."""
     n = len(unique_cts)
@@ -137,272 +126,554 @@ def _build_ct_palette(unique_cts):
     return dict(zip(unique_cts, colors))
 
 
-def _panel_umap_celltype(ax, adata, title: str):
-    """UMAP coloured by cell type with a separate legend.
+def _get_log_expr(adata):
+    """Return log-normalised expression matrix (cells × genes)."""
+    import scipy.sparse as sp
+    for layer in ("log1p_tpm", "log1p_cpm", "log1p_norm"):
+        if layer in adata.layers:
+            X = adata.layers[layer]
+            if sp.issparse(X):
+                return X
+            return X
+    # Fallback: normalise counts
+    if "counts" in adata.layers:
+        X = adata.layers["counts"].copy()
+        if sp.issparse(X):
+            X = X.toarray()
+        row_sums = X.sum(axis=1, keepdims=True)
+        row_sums[row_sums == 0] = 1
+        X = np.log1p(X / row_sums * 1e4)
+        return X
+    return None
 
-    Returns ``(ct_col, palette)`` so the parallel-categories panel can
-    reuse exactly the same colour mapping.
-    """
-    ct_col = _find_celltype_col(adata.obs)
-    if ct_col is None:
-        ax.text(0.5, 0.5, "No cell-type\nannotation", ha="center",
-                va="center", transform=ax.transAxes, fontsize=11,
-                color=COLORS["gray"])
-        ax.set_title(title, fontweight="bold")
-        ax.axis("off")
-        return ct_col, {}
 
-    mask = adata.obs[ct_col].notna()
-    adata_sub = adata[mask] if not mask.all() else adata
-    labels = adata_sub.obs[ct_col].astype(str).values
-    emb = adata_sub.obsm["X_umap"]
+# ── Panel A: UMAP per dataset (5 mini-UMAPs) ─────────────────────
 
-    rng = np.random.default_rng(42)
-    order = rng.permutation(len(labels))
+def _panel_umap_grid(fig, axes, loaded: dict):
+    """5 mini-UMAPs coloured by cell type."""
+    ds_names = list(loaded.keys())
+    for i, name in enumerate(ds_names):
+        ax = axes[i]
+        adata = loaded[name]["adata"]
+        ct_col = loaded[name]["ct_col"]
 
-    unique_cts = sorted(set(labels))
-    palette = _build_ct_palette(unique_cts)
-    colors = np.array([palette[labels[i]] for i in order])
+        if ct_col is None:
+            ax.text(0.5, 0.5, "No annotation", ha="center", va="center",
+                    transform=ax.transAxes, fontsize=9, fontstyle="italic",
+                    color="#888888")
+            ax.set_title(name, fontweight="bold", fontsize=9)
+            ax.axis("off")
+            continue
 
-    ax.scatter(emb[order, 0], emb[order, 1],
-               c=colors, s=DOT_SIZE, alpha=0.7, edgecolors="none",
-               rasterized=True)
+        emb = adata.obsm["X_umap"]
+        labels = adata.obs[ct_col].astype(str).values
+        unique_cts = sorted(set(labels))
+        palette = _build_ct_palette(unique_cts)
 
-    # Separate legend
-    n_ct = len(unique_cts)
+        rng = np.random.default_rng(42)
+        order = rng.permutation(len(labels))
+
+        colors = np.array([palette[labels[j]] for j in order])
+        ax.scatter(emb[order, 0], emb[order, 1],
+                   c=colors, s=DOT_SIZE, alpha=0.7, edgecolors="none",
+                   rasterized=True)
+
+        # Compact legend
+        handles = [mpatches.Patch(facecolor=palette[ct], edgecolor="none",
+                                  label=ct) for ct in unique_cts[:12]]
+        if len(unique_cts) > 12:
+            handles.append(mpatches.Patch(facecolor="grey", edgecolor="none",
+                                          label=f"+ {len(unique_cts)-12} more"))
+        ax.legend(handles=handles, fontsize=4.5, loc="best", frameon=True,
+                  framealpha=0.8, ncol=1, handlelength=0.7, handleheight=0.6,
+                  borderpad=0.3, labelspacing=0.15, markerscale=0.4)
+
+        ax.set_title(name, fontweight="bold", fontsize=9)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        despine(ax)
+
+    # Hide unused axes
+    for i in range(len(ds_names), len(axes)):
+        axes[i].axis("off")
+
+
+# ── Panel B: cell-type proportions (stacked horizontal bars) ──────
+
+def _panel_ct_proportions(ax, loaded: dict):
+    """Stacked horizontal bars: cell-type proportion per dataset."""
+    ds_names = list(loaded.keys())
+    all_cts = set()
+    ct_fracs = {}
+
+    for name in ds_names:
+        ct_col = loaded[name]["ct_col"]
+        if ct_col is None:
+            ct_fracs[name] = {}
+            continue
+        cts = loaded[name]["adata"].obs[ct_col].astype(str).value_counts(normalize=True)
+        ct_fracs[name] = cts.to_dict()
+        all_cts.update(cts.index)
+
+    all_cts_sorted = sorted(all_cts)
+    palette = _build_ct_palette(all_cts_sorted)
+
+    y_pos = np.arange(len(ds_names))
+    for name_i, name in enumerate(ds_names):
+        left = 0.0
+        for ct in all_cts_sorted:
+            frac = ct_fracs.get(name, {}).get(ct, 0)
+            if frac > 0:
+                ax.barh(name_i, frac, left=left, height=0.6,
+                        color=palette[ct], edgecolor="white", linewidth=0.3)
+                if frac > 0.06:
+                    ax.text(left + frac / 2, name_i, ct, ha="center",
+                            va="center", fontsize=4.5, color="white",
+                            fontweight="bold")
+                left += frac
+
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(ds_names, fontsize=8)
+    ax.set_xlim(0, 1)
+    ax.set_xlabel("Fraction of cells")
+    ax.set_title("Cell-Type Proportions", fontweight="bold")
+
+    # Legend for top cell types
+    top_cts = sorted(all_cts, key=lambda ct: sum(
+        ct_fracs.get(n, {}).get(ct, 0) for n in ds_names), reverse=True)[:15]
     handles = [mpatches.Patch(facecolor=palette[ct], edgecolor="none",
-                              label=(f"Cluster {ct}" if ct_col == "leiden"
-                                     else ct))
-               for ct in unique_cts]
-    ncol = 2 if n_ct > 10 else 1
-    leg_fs = max(5, CELLTYPE_LABEL_SIZE - max(0, n_ct - 10))
-    ax.legend(handles=handles, fontsize=leg_fs, loc="best",
-              frameon=True, framealpha=0.9, ncol=ncol,
-              handlelength=1.0, handleheight=0.8,
-              borderpad=0.4, labelspacing=0.25)
-
-    ax.set_xlabel("UMAP 1")
-    ax.set_ylabel("UMAP 2")
-    ax.set_title(title, fontweight="bold")
-    ax.set_xticks([])
-    ax.set_yticks([])
+                              label=ct) for ct in top_cts]
+    ax.legend(handles=handles, fontsize=5, loc="lower right", frameon=True,
+              ncol=2, handlelength=0.8, handleheight=0.6,
+              borderpad=0.3, labelspacing=0.15)
     despine(ax)
-    return ct_col, palette
 
 
-def _panel_parallel_categories(ax, adata, ct_col: str, label_col: str,
-                                label_title: str, title: str,
-                                ct_palette_in: dict | None = None,
-                                max_types: int = 15):
-    """Parallel categories (alluvial) plot: cell type → label.
+# ── Panel C: Marker gene dot plot ─────────────────────────────────
 
-    Left axis  = cell type (coloured to match the UMAP panel).
-    Right axis = response / visit / timepoint label.
-    Ribbons coloured by cell-type palette.
+def _panel_marker_dotplot(fig, ax, loaded: dict):
+    """Top 3 marker genes per major cell type, shown as dot plot."""
+    # Canonical markers for major cell types
+    canonical_markers = {
+        "T cells": ["CD3D", "CD3E", "TRAC"],
+        "CD8 T": ["CD8A", "CD8B", "GZMB"],
+        "CD4 T": ["CD4", "IL7R", "CCR7"],
+        "B cells": ["CD19", "MS4A1", "CD79A"],
+        "NK cells": ["NKG7", "GNLY", "KLRD1"],
+        "Monocytes": ["CD14", "LYZ", "S100A9"],
+        "DC": ["FCER1A", "CLEC10A", "CD1C"],
+        "Plasma": ["MZB1", "JCHAIN", "SDC1"],
+    }
 
-    Parameters
-    ----------
-    ct_palette_in : dict, optional
-        Colour mapping ``{cell_type: colour}`` from the UMAP panel so
-        colours stay consistent across both panels.
+    # Pool all datasets and compute fraction expressing + mean expression
+    rows = []
+    for name, data in loaded.items():
+        adata = data["adata"]
+        X = _get_log_expr(adata)
+        if X is None:
+            continue
+        import scipy.sparse as sp
+        gene_names = list(adata.var_names)
+        gene_idx_map = {g: i for i, g in enumerate(gene_names)}
 
-    Groups rare cell types (beyond *max_types*) into 'Other'.
-    """
-    from matplotlib.path import Path
-    import matplotlib.patches as mpatches_path
+        ct_col = data["ct_col"]
+        if ct_col is None:
+            continue
 
-    if ct_col is None or label_col not in adata.obs.columns:
-        ax.text(0.5, 0.5, "Insufficient\nannotation", ha="center",
-                va="center", transform=ax.transAxes, fontsize=11,
-                color=COLORS["gray"])
-        ax.set_title(title, fontweight="bold")
-        ax.axis("off")
+        labels = adata.obs[ct_col].astype(str).values
+
+        for ct_name, markers in canonical_markers.items():
+            for marker in markers:
+                # Case-insensitive lookup
+                idx = gene_idx_map.get(marker)
+                if idx is None:
+                    # Try uppercase
+                    marker_up = marker.upper()
+                    for g, gi in gene_idx_map.items():
+                        if g.upper() == marker_up:
+                            idx = gi
+                            break
+                if idx is None:
+                    continue
+
+                if sp.issparse(X):
+                    col = np.asarray(X[:, idx].todense()).ravel()
+                else:
+                    col = X[:, idx].ravel()
+
+                for ct_label in sorted(set(labels)):
+                    mask = labels == ct_label
+                    if mask.sum() < 10:
+                        continue
+                    vals = col[mask]
+                    frac_expr = (vals > 0).mean()
+                    mean_expr = vals[vals > 0].mean() if (vals > 0).any() else 0
+                    rows.append({
+                        "Cell type": ct_label, "Marker": marker,
+                        "Marker group": ct_name,
+                        "Fraction expressing": frac_expr,
+                        "Mean expression": mean_expr,
+                        "Dataset": name,
+                    })
+
+    if not rows:
+        ax.text(0.5, 0.5, "No marker data", ha="center", va="center",
+                transform=ax.transAxes, fontsize=10, fontstyle="italic")
+        ax.set_title("Marker Gene Expression", fontweight="bold")
         return
 
-    obs = adata.obs.copy()
-    ct_vals = obs[ct_col].astype(str)
-    label_vals = obs[label_col].astype(str)
+    df = pd.DataFrame(rows)
+    # Average across datasets
+    agg = df.groupby(["Cell type", "Marker", "Marker group"]).agg({
+        "Fraction expressing": "mean",
+        "Mean expression": "mean",
+    }).reset_index()
 
-    valid = (ct_vals != "nan") & (label_vals != "nan")
-    ct_vals = ct_vals[valid].copy()
-    label_vals = label_vals[valid]
+    # Select top cell types by frequency across datasets
+    all_ct_counts = {}
+    for data in loaded.values():
+        if data["ct_col"]:
+            for ct, cnt in data["adata"].obs[data["ct_col"]].value_counts().items():
+                all_ct_counts[str(ct)] = all_ct_counts.get(str(ct), 0) + cnt
+    top_cts = sorted(all_ct_counts, key=all_ct_counts.get, reverse=True)[:10]
 
-    # Group rare cell types
-    ct_counts = ct_vals.value_counts()
-    if len(ct_counts) > max_types:
-        keep = set(ct_counts.head(max_types).index)
-        ct_vals = ct_vals.apply(lambda x: x if x in keep else "Other")
+    agg_filt = agg[agg["Cell type"].isin(top_cts)]
+    if agg_filt.empty:
+        ax.text(0.5, 0.5, "No overlap", ha="center", va="center",
+                transform=ax.transAxes, fontsize=10, fontstyle="italic")
+        return
 
-    # Category ordering — sort by descending count
-    ct_order = ct_vals.value_counts().index.tolist()      # LEFT axis
-    label_order = label_vals.value_counts().index.tolist() # RIGHT axis
+    # Pivot for dot plot
+    markers_used = sorted(agg_filt["Marker"].unique())
+    ct_used = sorted(agg_filt["Cell type"].unique())
 
-    n_ct = len(ct_order)
-    n_lab = len(label_order)
+    pivot_frac = agg_filt.pivot_table(
+        index="Cell type", columns="Marker",
+        values="Fraction expressing", fill_value=0)
+    pivot_expr = agg_filt.pivot_table(
+        index="Cell type", columns="Marker",
+        values="Mean expression", fill_value=0)
 
-    # Cell-type palette — reuse UMAP colours when available
-    if ct_palette_in:
-        ct_palette = {}
-        for ct in ct_order:
-            if ct in ct_palette_in:
-                ct_palette[ct] = ct_palette_in[ct]
-            else:
-                # "Other" or new categories get a grey
-                ct_palette[ct] = (0.6, 0.6, 0.6)
-    else:
-        ct_palette = _build_ct_palette(ct_order)
+    # Reindex
+    markers_used = [m for m in markers_used if m in pivot_frac.columns]
+    ct_used = [c for c in ct_used if c in pivot_frac.index]
+    pivot_frac = pivot_frac.reindex(index=ct_used, columns=markers_used, fill_value=0)
+    pivot_expr = pivot_expr.reindex(index=ct_used, columns=markers_used, fill_value=0)
 
-    # Label palette (fixed colours for known labels)
-    fixed = {
-        "Responder": COLORS["treated"],
-        "Non-responder": COLORS["control"],
-        "Treatment": COLORS["treated"],
-        "Control": COLORS["control"],
-        "Pre": COLORS["control"],
-        "Post": COLORS["treated"],
-        "Severe": "#d62728",
-        "Mild": "#2ca02c",
-        "Critical": "#8c0000",
-        "Critical ": "#8c0000",
-        "Moderate": "#ff7f0e",
-        "Death": "#1f1f1f",
+    # Draw dot plot
+    for yi, ct in enumerate(ct_used):
+        for xi, marker in enumerate(markers_used):
+            frac = pivot_frac.loc[ct, marker]
+            expr = pivot_expr.loc[ct, marker]
+            if frac > 0.01:
+                size = frac * 200  # scale dot size
+                ax.scatter(xi, yi, s=size, c=expr, cmap="Reds",
+                           vmin=0, vmax=pivot_expr.values.max(),
+                           edgecolors="grey", linewidth=0.3, zorder=3)
+
+    ax.set_xticks(range(len(markers_used)))
+    ax.set_xticklabels(markers_used, rotation=90, fontsize=6)
+    ax.set_yticks(range(len(ct_used)))
+    ax.set_yticklabels(ct_used, fontsize=7)
+    ax.set_xlim(-0.5, len(markers_used) - 0.5)
+    ax.set_ylim(-0.5, len(ct_used) - 0.5)
+    ax.set_title("Canonical Marker Expression", fontweight="bold")
+
+    # Size legend
+    for frac_val in [0.25, 0.5, 0.75]:
+        ax.scatter([], [], s=frac_val * 200, c="grey", alpha=0.5,
+                   edgecolors="grey", label=f"{frac_val:.0%}")
+    ax.legend(title="Frac. expr.", fontsize=5, title_fontsize=6,
+              loc="upper right", frameon=True, handletextpad=0.1)
+
+    despine(ax)
+
+
+# ── Panel D: Annotation confidence ────────────────────────────────
+
+def _panel_annotation_confidence(ax, loaded: dict):
+    """Per-cell max marker score distribution per dataset.
+
+    Uses a simple approach: for each cell, compute the max z-score
+    of canonical marker expression across cell types as a confidence proxy.
+    """
+    canonical_markers = {
+        "T cells": ["CD3D", "CD3E", "TRAC"],
+        "B cells": ["CD19", "MS4A1", "CD79A"],
+        "NK cells": ["NKG7", "GNLY", "KLRD1"],
+        "Monocytes": ["CD14", "LYZ", "S100A9"],
     }
-    fallback_colors = sns.color_palette("Set2", n_colors=max(n_lab, 8))
-    label_palette = {}
-    fi = 0
-    for v in label_order:
-        if v in fixed:
-            label_palette[v] = fixed[v]
-        else:
-            label_palette[v] = fallback_colors[fi % len(fallback_colors)]
-            fi += 1
+    all_markers = []
+    for markers in canonical_markers.values():
+        all_markers.extend(markers)
 
-    # Contingency table: rows = cell type (left), cols = label (right)
-    cross = pd.crosstab(ct_vals, label_vals)
-    cross = cross.reindex(index=ct_order, columns=label_order, fill_value=0)
+    import scipy.sparse as sp
 
-    total = cross.values.sum()
-    gap = 0.02          # gap fraction between blocks
-    bar_w = 0.12        # half-width of category bars
-    x_left = 0.0        # left axis  (cell type)
-    x_right = 1.0       # right axis (label)
+    rows = []
+    for name, data in loaded.items():
+        adata = data["adata"]
+        X = _get_log_expr(adata)
+        if X is None:
+            continue
 
-    # ── compute block positions (normalised to [0, 1]) ──────────────
-    def _block_positions(counts, n):
-        total_gap = gap * (n - 1) if n > 1 else 0
-        usable = 1.0 - total_gap
-        heights = [(c / total) * usable for c in counts]
-        positions = []
-        y = 0.0
-        for i, h in enumerate(heights):
-            positions.append((y, h))
-            y += h + (gap if i < n - 1 else 0)
-        return positions
+        gene_names = list(adata.var_names)
+        gene_idx_map = {g.upper(): i for i, g in enumerate(gene_names)}
 
-    left_counts = [cross.loc[ct].sum() for ct in ct_order]
-    right_counts = [cross[lab].sum() for lab in label_order]
-
-    left_pos = _block_positions(left_counts, n_ct)
-    right_pos = _block_positions(right_counts, n_lab)
-
-    # ── draw ribbons ────────────────────────────────────────────────
-    left_offsets = [0.0] * n_ct
-    right_offsets = [0.0] * n_lab
-
-    for ci, ct in enumerate(ct_order):
-        for li, lab in enumerate(label_order):
-            count = cross.loc[ct, lab]
-            if count == 0:
+        marker_scores = []
+        for marker in all_markers:
+            idx = gene_idx_map.get(marker.upper())
+            if idx is None:
                 continue
+            if sp.issparse(X):
+                col = np.asarray(X[:, idx].todense()).ravel()
+            else:
+                col = X[:, idx].ravel()
+            marker_scores.append(col)
 
-            usable_left = 1.0 - gap * (n_ct - 1) if n_ct > 1 else 1.0
-            usable_right = 1.0 - gap * (n_lab - 1) if n_lab > 1 else 1.0
+        if not marker_scores:
+            continue
 
-            ribbon_h_left = (count / total) * usable_left
-            ribbon_h_right = (count / total) * usable_right
+        # Max marker expression per cell (proxy for annotation confidence)
+        max_scores = np.max(np.column_stack(marker_scores), axis=1)
 
-            y0_left = left_pos[ci][0] + left_offsets[ci]
-            y0_right = right_pos[li][0] + right_offsets[li]
+        # Subsample for violin
+        n = len(max_scores)
+        if n > 10000:
+            idx = np.random.default_rng(42).choice(n, 10000, replace=False)
+            max_scores = max_scores[idx]
 
-            left_offsets[ci] += ribbon_h_left
-            right_offsets[li] += ribbon_h_right
+        rows.append(pd.DataFrame({
+            "Dataset": name,
+            "Max marker score": max_scores,
+        }))
 
-            x0 = x_left + bar_w
-            x1 = x_right - bar_w
-            xm = (x0 + x1) / 2
+    if not rows:
+        ax.text(0.5, 0.5, "No marker data", ha="center", va="center",
+                transform=ax.transAxes, fontsize=10, fontstyle="italic")
+        ax.set_title("Annotation Confidence", fontweight="bold")
+        return
 
-            verts = [
-                (x0, y0_left),
-                (xm, y0_left),
-                (xm, y0_right),
-                (x1, y0_right),
-                (x1, y0_right + ribbon_h_right),
-                (xm, y0_right + ribbon_h_right),
-                (xm, y0_left + ribbon_h_left),
-                (x0, y0_left + ribbon_h_left),
-                (x0, y0_left),
-            ]
-            codes = [
-                Path.MOVETO,
-                Path.CURVE4, Path.CURVE4, Path.CURVE4,
-                Path.LINETO,
-                Path.CURVE4, Path.CURVE4, Path.CURVE4,
-                Path.CLOSEPOLY,
-            ]
-            path = Path(verts, codes)
-            color = ct_palette[ct]
-            patch = mpatches_path.PathPatch(
-                path, facecolor=(*color[:3], 0.45),
-                edgecolor=(*color[:3], 0.15), linewidth=0.3)
-            ax.add_patch(patch)
+    df = pd.concat(rows, ignore_index=True)
+    sns.violinplot(data=df, x="Dataset", y="Max marker score",
+                   order=list(loaded.keys()), cut=0, inner="quartile",
+                   linewidth=0.5, palette="Set2", density_norm="width", ax=ax)
+    ax.set_xlabel("")
+    ax.set_ylabel("Max canonical marker expression")
+    ax.set_title("Annotation Confidence (Marker Proxy)", fontweight="bold")
+    ax.tick_params(axis="x", rotation=15)
+    despine(ax)
 
-    # ── draw category bars ──────────────────────────────────────────
-    ct_fsize = max(5, min(8, 90 // max(n_ct, 1)))
-    label_fsize = max(6, min(9, 90 // max(n_lab, 1)))
 
-    # Left axis — cell type
-    for i, ct in enumerate(ct_order):
-        y_bot, h = left_pos[i]
-        color = ct_palette[ct]
-        rect = plt.Rectangle((x_left - bar_w, y_bot), bar_w * 2, h,
-                              facecolor=color, edgecolor="white",
-                              linewidth=0.5, zorder=3)
-        ax.add_patch(rect)
-        display_label = f"Cl. {ct}" if ct_col == "leiden" else ct
-        ax.text(x_left - bar_w - 0.02, y_bot + h / 2, display_label,
-                ha="right", va="center", fontsize=ct_fsize)
+# ── Panel E: Silhouette scores ────────────────────────────────────
 
-    # Right axis — label (response / visit / timepoint)
-    for i, lab in enumerate(label_order):
-        y_bot, h = right_pos[i]
-        color = label_palette[lab]
-        rect = plt.Rectangle((x_right - bar_w, y_bot), bar_w * 2, h,
-                              facecolor=color, edgecolor="white",
-                              linewidth=0.5, zorder=3)
-        ax.add_patch(rect)
-        ax.text(x_right + bar_w + 0.02, y_bot + h / 2, lab,
-                ha="left", va="center", fontsize=label_fsize,
-                fontweight="bold")
+def _panel_silhouette(ax, loaded: dict):
+    """Silhouette score per dataset (embedding quality per cell type)."""
+    from sklearn.metrics import silhouette_score
 
-    # ── axis labels ─────────────────────────────────────────────────
-    ax.text(x_left, -0.06, "Cell Type", ha="center", va="top",
-            fontsize=8, fontweight="bold", transform=ax.transData)
-    ax.text(x_right, -0.06, label_title, ha="center", va="top",
-            fontsize=8, fontweight="bold", transform=ax.transData)
+    ds_names = []
+    scores = []
 
-    ax.set_xlim(-0.35, 1.35)
-    ax.set_ylim(-0.08, 1.02)
-    ax.set_title(title, fontweight="bold")
-    ax.axis("off")
+    for name, data in loaded.items():
+        adata = data["adata"]
+        ct_col = data["ct_col"]
+        if ct_col is None or "X_umap" not in adata.obsm:
+            continue
+
+        labels = adata.obs[ct_col].astype(str).values
+        if len(set(labels)) < 2:
+            continue
+
+        # Subsample for speed
+        n = adata.n_obs
+        if n > 10000:
+            idx = np.random.default_rng(42).choice(n, 10000, replace=False)
+        else:
+            idx = np.arange(n)
+
+        emb = adata.obsm["X_umap"][idx]
+        labs = labels[idx]
+
+        try:
+            s = silhouette_score(emb, labs, sample_size=min(5000, len(idx)),
+                                 random_state=42)
+            ds_names.append(name)
+            scores.append(s)
+        except Exception:
+            pass
+
+    if not ds_names:
+        ax.text(0.5, 0.5, "No silhouette data", ha="center", va="center",
+                transform=ax.transAxes, fontsize=10, fontstyle="italic")
+        ax.set_title("Silhouette Scores", fontweight="bold")
+        return
+
+    colors = [_DS_PALETTE.get(n, "grey") for n in ds_names]
+    bars = ax.bar(ds_names, scores, color=colors, edgecolor="white", width=0.6)
+    for bar, s in zip(bars, scores):
+        ax.text(bar.get_x() + bar.get_width() / 2, s + 0.01, f"{s:.3f}",
+                ha="center", va="bottom", fontsize=7, fontweight="bold")
+
+    ax.set_ylabel("Silhouette score")
+    ax.set_title("Embedding Quality (Silhouette)", fontweight="bold")
+    ax.set_ylim(0, max(scores) * 1.2 if scores else 1)
+    ax.axhline(0, color="grey", linewidth=0.5, linestyle="--")
+    ax.tick_params(axis="x", rotation=15)
+    despine(ax)
+
+
+# ── Panel F: Cell type × dataset cross-tabulation ─────────────────
+
+def _panel_ct_crosstab(ax, loaded: dict):
+    """Heatmap: cell type × dataset (normalised within dataset)."""
+    rows = []
+    for name, data in loaded.items():
+        ct_col = data["ct_col"]
+        if ct_col is None:
+            continue
+        cts = data["adata"].obs[ct_col].astype(str).value_counts(normalize=True)
+        for ct, frac in cts.items():
+            rows.append({"Dataset": name, "Cell type": str(ct),
+                         "Fraction": frac})
+
+    if not rows:
+        ax.text(0.5, 0.5, "No cell-type data", ha="center", va="center",
+                transform=ax.transAxes)
+        return
+
+    df = pd.DataFrame(rows)
+    pivot = df.pivot_table(index="Cell type", columns="Dataset",
+                           values="Fraction", fill_value=0)
+
+    # Sort by total frequency
+    pivot = pivot.loc[pivot.sum(axis=1).sort_values(ascending=False).index]
+
+    # Limit to top 15
+    if len(pivot) > 15:
+        pivot = pivot.iloc[:15]
+
+    sns.heatmap(pivot, cmap="YlOrBr", annot=True, fmt=".2f",
+                linewidths=0.5, ax=ax, vmin=0, vmax=pivot.values.max(),
+                cbar_kws={"label": "Fraction", "shrink": 0.7})
+    ax.set_title("Cell-Type × Dataset", fontweight="bold")
+    ax.set_ylabel("")
+    ax.set_xlabel("")
+    despine(ax)
+
+
+# ── Panel G: Cells per cell type per dataset ──────────────────────
+
+def _panel_cells_per_ct(ax, loaded: dict):
+    """Grouped bars: cell count per cell type per dataset (log-scale)."""
+    rows = []
+    for name, data in loaded.items():
+        ct_col = data["ct_col"]
+        if ct_col is None:
+            continue
+        cts = data["adata"].obs[ct_col].astype(str).value_counts()
+        for ct, cnt in cts.items():
+            rows.append({"Dataset": name, "Cell type": str(ct), "Count": cnt})
+
+    if not rows:
+        ax.text(0.5, 0.5, "No data", ha="center", va="center",
+                transform=ax.transAxes)
+        return
+
+    df = pd.DataFrame(rows)
+
+    # Top 10 cell types by total count
+    top_cts = df.groupby("Cell type")["Count"].sum().nlargest(10).index.tolist()
+    df_filt = df[df["Cell type"].isin(top_cts)]
+
+    ds_names = [n for n in loaded.keys() if loaded[n]["ct_col"] is not None]
+
+    x = np.arange(len(top_cts))
+    width = 0.15
+    for di, ds in enumerate(ds_names):
+        sub = df_filt[df_filt["Dataset"] == ds].set_index("Cell type")
+        vals = [sub.loc[ct, "Count"] if ct in sub.index else 0 for ct in top_cts]
+        offset = (di - (len(ds_names) - 1) / 2) * width
+        ax.bar(x + offset, vals, width * 0.9, label=ds,
+               color=_DS_PALETTE.get(ds, "grey"), edgecolor="white")
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(top_cts, rotation=45, ha="right", fontsize=6)
+    ax.set_ylabel("Cell count")
+    ax.set_yscale("log")
+    ax.set_title("Cells per Cell Type", fontweight="bold")
+    ax.legend(fontsize=6, loc="upper right", frameon=True)
+    despine(ax)
+
+
+# ── Panel H: Embedding neighbourhood purity ──────────────────────
+
+def _panel_knn_purity(ax, loaded: dict):
+    """kNN label purity per dataset: fraction of k nearest neighbours
+    with the same cell type label."""
+    from sklearn.neighbors import NearestNeighbors
+
+    ds_names = []
+    purities = []
+
+    for name, data in loaded.items():
+        adata = data["adata"]
+        ct_col = data["ct_col"]
+        if ct_col is None or "X_umap" not in adata.obsm:
+            continue
+
+        labels = adata.obs[ct_col].astype(str).values
+        emb = adata.obsm["X_umap"]
+
+        # Subsample for speed
+        n = adata.n_obs
+        if n > 10000:
+            idx = np.random.default_rng(42).choice(n, 10000, replace=False)
+        else:
+            idx = np.arange(n)
+
+        emb_sub = emb[idx]
+        labs_sub = labels[idx]
+
+        try:
+            nn = NearestNeighbors(n_neighbors=16, algorithm="ball_tree")
+            nn.fit(emb_sub)
+            _, indices = nn.kneighbors(emb_sub)
+            # Exclude self (first column)
+            neighbour_labels = labs_sub[indices[:, 1:]]
+            self_labels = labs_sub[:, None]
+            purity = (neighbour_labels == self_labels).mean()
+
+            ds_names.append(name)
+            purities.append(purity)
+        except Exception:
+            pass
+
+    if not ds_names:
+        ax.text(0.5, 0.5, "No embedding data", ha="center", va="center",
+                transform=ax.transAxes, fontsize=10, fontstyle="italic")
+        ax.set_title("Neighbourhood Purity", fontweight="bold")
+        return
+
+    colors = [_DS_PALETTE.get(n, "grey") for n in ds_names]
+    bars = ax.bar(ds_names, purities, color=colors, edgecolor="white", width=0.6)
+    for bar, p in zip(bars, purities):
+        ax.text(bar.get_x() + bar.get_width() / 2, p + 0.01, f"{p:.3f}",
+                ha="center", va="bottom", fontsize=7, fontweight="bold")
+
+    ax.set_ylabel("kNN label purity (k=15)")
+    ax.set_title("Embedding Neighbourhood Purity", fontweight="bold")
+    ax.set_ylim(0, 1.05)
+    ax.axhline(1.0, color="grey", linewidth=0.5, linestyle="--", alpha=0.3)
+    ax.tick_params(axis="x", rotation=15)
+    despine(ax)
 
 
 # ======================================================================
-# Composite figure
+# Generate
 # ======================================================================
 
 def generate():
-    """Create and save Supplementary Figure 2 individual panels."""
-    print("Supplementary Figure 2: Dataset UMAP Embeddings")
+    """Create and save Supplementary Figure 2 panels."""
+    print("Supplementary Figure 2: Cellular Atlas and Annotation Confidence")
 
     loaded = {}
     for name, loader in DATASETS:
@@ -411,44 +682,73 @@ def generate():
             if name == "Sade-Feldman":
                 adata = harmonize_response(adata)
             adata = _ensure_umap_and_clusters(adata)
-            loaded[name] = adata
-            print(f"  {name}: {adata.n_obs:,} cells")
+            ct_col = _find_celltype_col(adata.obs)
+            loaded[name] = {"adata": adata, "ct_col": ct_col}
+            ct_info = f", ct_col={ct_col}" if ct_col else ", no cell types"
+            print(f"  {name}: {adata.n_obs:,} cells{ct_info}")
         except Exception as exc:
-            print(f"  {name}: failed to load ({exc})")
+            print(f"  {name}: failed ({exc})")
 
     if not loaded:
-        print("  No datasets available; skipping figure.")
+        print("  No datasets available; skipping.")
         return
 
-    label_idx = 0
-    label_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    # Panel A: UMAP grid (5 mini-UMAPs)
+    n_ds = len(loaded)
+    ncols = min(n_ds, 3)
+    nrows = (n_ds + ncols - 1) // ncols
+    fig, axes = plt.subplots(nrows, ncols, figsize=(5 * ncols, 4.5 * nrows))
+    axes_flat = axes.ravel() if hasattr(axes, "ravel") else [axes]
+    _panel_umap_grid(fig, axes_flat, loaded)
+    fig.suptitle("Cell-Type UMAPs", fontweight="bold", fontsize=12, y=1.02)
+    fig.tight_layout()
+    save_panel(fig, "panel_A", FIGURE_NAME, SUPP_OUTPUT)
 
-    for ds_name, adata in loaded.items():
-        col2, col2_title = LABEL_COL2[ds_name]
+    # Panel B: Cell-type proportions
+    fig, ax = plt.subplots(figsize=(9, 5))
+    _panel_ct_proportions(ax, loaded)
+    fig.tight_layout()
+    save_panel(fig, "panel_B", FIGURE_NAME, SUPP_OUTPUT)
 
-        # Panel 1: Cell types UMAP
-        fig, ax = plt.subplots(figsize=(7, 6))
-        ct_col, ct_palette = _panel_umap_celltype(ax, adata,
-                                                    f"{ds_name}, Cell Types")
-        fig.tight_layout()
-        save_panel(fig, f"panel_{label_chars[label_idx]}",
-                   FIGURE_NAME, SUPP_OUTPUT)
-        label_idx += 1
+    # Panel C: Marker dot plot
+    fig, ax = plt.subplots(figsize=(10, 7))
+    _panel_marker_dotplot(fig, ax, loaded)
+    fig.tight_layout()
+    save_panel(fig, "panel_C", FIGURE_NAME, SUPP_OUTPUT)
 
-        # Panel 2: Parallel categories (cell type × label)
-        fig, ax = plt.subplots(figsize=(7, 6))
-        _panel_parallel_categories(ax, adata, ct_col, col2,
-                                    col2_title,
-                                    f"{ds_name}, Composition",
-                                    ct_palette_in=ct_palette)
-        fig.tight_layout()
-        save_panel(fig, f"panel_{label_chars[label_idx]}",
-                   FIGURE_NAME, SUPP_OUTPUT)
-        label_idx += 1
+    # Panel D: Annotation confidence
+    fig, ax = plt.subplots(figsize=(8, 5))
+    _panel_annotation_confidence(ax, loaded)
+    fig.tight_layout()
+    save_panel(fig, "panel_D", FIGURE_NAME, SUPP_OUTPUT)
+
+    # Panel E: Silhouette scores
+    fig, ax = plt.subplots(figsize=(7, 5))
+    _panel_silhouette(ax, loaded)
+    fig.tight_layout()
+    save_panel(fig, "panel_E", FIGURE_NAME, SUPP_OUTPUT)
+
+    # Panel F: Cell type × dataset crosstab
+    fig, ax = plt.subplots(figsize=(8, 7))
+    _panel_ct_crosstab(ax, loaded)
+    fig.tight_layout()
+    save_panel(fig, "panel_F", FIGURE_NAME, SUPP_OUTPUT)
+
+    # Panel G: Cells per cell type
+    fig, ax = plt.subplots(figsize=(9, 5))
+    _panel_cells_per_ct(ax, loaded)
+    fig.tight_layout()
+    save_panel(fig, "panel_G", FIGURE_NAME, SUPP_OUTPUT)
+
+    # Panel H: kNN purity
+    fig, ax = plt.subplots(figsize=(7, 5))
+    _panel_knn_purity(ax, loaded)
+    fig.tight_layout()
+    save_panel(fig, "panel_H", FIGURE_NAME, SUPP_OUTPUT)
 
     # Cleanup
-    for adata in loaded.values():
-        del adata
+    for data in loaded.values():
+        del data["adata"]
     loaded.clear()
     clear_cache()
     gc.collect()
