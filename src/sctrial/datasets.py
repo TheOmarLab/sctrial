@@ -196,10 +196,11 @@ def _annotate_immune_celltypes(adata: ad.AnnData) -> pd.Series:
                     label_scores[ct] = score
 
         if not label_scores:
-            # Last resort: assign "CD4 T cell" (most common T cell in
-            # CD45+ sorted melanoma samples per Sade-Feldman et al.)
-            cluster_labels[cl] = "CD4 T cell"
-            logger.warning(f"    Cluster {cl}: no marker overlap, defaulting")
+            cluster_labels[cl] = "Unassigned"
+            logger.warning(
+                f"    Cluster {cl}: no marker overlap with any canonical "
+                f"gene set — labelled 'Unassigned'"
+            )
             continue
 
         sorted_labels = sorted(label_scores.items(), key=lambda x: -x[1])
