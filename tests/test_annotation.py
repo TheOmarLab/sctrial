@@ -1,6 +1,8 @@
 """Regression tests for Sade-Feldman cell-type annotation pipeline."""
 from __future__ import annotations
 
+import importlib
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -9,10 +11,14 @@ from anndata import AnnData
 from sctrial.datasets import _weighted_marker_score
 
 # ---------------------------------------------------------------------------
-# Attempt to import scanpy; skip annotation-level tests if unavailable
+# Conditionally import _annotate_immune_celltypes (needs scanpy + igraph)
 # ---------------------------------------------------------------------------
-sc = pytest.importorskip("scanpy", reason="scanpy required for annotation tests")
-from sctrial.datasets import _annotate_immune_celltypes  # noqa: E402
+_has_scanpy = importlib.util.find_spec("scanpy") is not None
+_has_igraph = importlib.util.find_spec("igraph") is not None
+_can_annotate = _has_scanpy and _has_igraph
+
+if _can_annotate:
+    from sctrial.datasets import _annotate_immune_celltypes
 
 
 # ── helpers ────────────────────────────────────────────────────────────────
@@ -120,6 +126,10 @@ class TestWeightedMarkerScore:
 
 
 # ── _annotate_immune_celltypes ─────────────────────────────────────────────
+_skip_reason = "scanpy + igraph required for annotation integration tests"
+
+
+@pytest.mark.skipif(not _can_annotate, reason=_skip_reason)
 class TestAnnotateImmuneCelltypes:
     """Integration tests for the full annotation pipeline."""
 
