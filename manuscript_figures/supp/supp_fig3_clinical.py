@@ -2,14 +2,12 @@
 Supplementary Figure 3 — Clinical Trial Dataset Details.
 ========================================================
 
-Grid layout (n_datasets x 3) showing AML and CAR-T dataset
-characteristics.
+Per-dataset panels for AML (GSE116256) and CAR-T (GSE290722):
 
-Columns per dataset row:
-
-1  Cell-type composition (stacked bar or horizontal bar).
-2  QC distributions (genes detected, UMI counts).
-3  Participant structure (cells per participant, visits).
+Per dataset (3 panels each, 6 total):
+  Cell-type composition (horizontal bar).
+  QC distributions (side-by-side violins: genes detected + total UMI).
+  Participant structure (box + strip by timepoint).
 """
 
 from __future__ import annotations
@@ -58,8 +56,10 @@ def _find_pid_col(obs: pd.DataFrame) -> str:
 
 
 def _find_visit_col(obs: pd.DataFrame) -> str | None:
-    """Locate visit/timepoint column."""
-    for col in ("visit", "timepoint", "time_point", "condition"):
+    """Locate the most granular visit/timepoint column."""
+    # Prefer the more detailed column (timepoint > timepoint_category > visit)
+    for col in ("timepoint", "timepoint_category", "time_point",
+                 "visit", "condition"):
         if col in obs.columns:
             return col
     return None
@@ -112,7 +112,13 @@ def _panel_celltype(ax, adata, title: str):
         counts["Other"] = other
         counts = counts.sort_values(ascending=True)
 
-    colors = sns.color_palette("husl", n_colors=len(counts))
+    n_ct = len(counts)
+    if n_ct <= 10:
+        colors = sns.color_palette("tab10", n_colors=n_ct)
+    elif n_ct <= 20:
+        colors = sns.color_palette("tab20", n_colors=n_ct)
+    else:
+        colors = sns.color_palette("husl", n_colors=n_ct)
     ax.barh(range(len(counts)), counts.values, color=colors,
             edgecolor="white", linewidth=0.5)
     ax.set_yticks(range(len(counts)))
@@ -128,53 +134,61 @@ def _panel_celltype(ax, adata, title: str):
     despine(ax)
 
 
-def _panel_qc(ax, adata, title: str):
-    """Violin plots of genes detected and total UMI."""
+def _panel_qc(axes, adata, title: str):
+    """Violin plots of genes detected and total UMI on separate subplots.
+
+    Parameters
+    ----------
+    axes : sequence of two Axes
+        Left axis for genes detected, right for total UMI.
+    """
     obs = adata.obs
     n_genes = _get_ngenes(obs, adata)
     total_counts = _get_counts(obs, adata)
 
-    metrics = {}
+    metrics = []
     if n_genes is not None:
-        metrics["Genes\ndetected"] = n_genes
+        metrics.append(("Genes detected", n_genes, COLORS["treated"]))
     if total_counts is not None:
-        metrics["Total\nUMI"] = total_counts
+        metrics.append(("Total UMI", total_counts, COLORS["control"]))
 
     if not metrics:
-        ax.text(0.5, 0.5, "No QC metrics\navailable", ha="center",
-                va="center", transform=ax.transAxes, fontsize=11,
-                color=COLORS["gray"])
-        ax.set_title(title, fontweight="bold")
+        for ax in axes:
+            ax.text(0.5, 0.5, "No QC metrics\navailable", ha="center",
+                    va="center", transform=ax.transAxes, fontsize=11,
+                    color=COLORS["gray"])
+            ax.set_title(title, fontweight="bold")
         return
 
-    positions = list(range(len(metrics)))
-    labels = list(metrics.keys())
-
-    for i, (lab, vals) in enumerate(metrics.items()):
+    for ax, (label, vals, color) in zip(axes, metrics):
         # Subsample large arrays for plotting speed
         if len(vals) > 20_000:
             idx = np.random.default_rng(42).choice(len(vals), 20_000,
                                                     replace=False)
             vals = vals[idx]
 
-        parts = ax.violinplot([vals], positions=[i], showmedians=True,
+        # Use log-scale for UMI counts (values span orders of magnitude)
+        use_log = label == "Total UMI" and vals.max() / (np.median(vals) + 1) > 10
+        plot_vals = np.log10(vals + 1) if use_log else vals
+
+        parts = ax.violinplot([plot_vals], positions=[0], showmedians=True,
                               showextrema=False)
-        color = COLORS["treated"] if i == 0 else COLORS["control"]
         for pc in parts["bodies"]:
             pc.set_facecolor(color)
             pc.set_alpha(0.6)
         parts["cmedians"].set_color("black")
 
-        # Median annotation
         med = np.median(vals)
-        ax.text(i, med, f"{med:,.0f}", ha="center", va="bottom",
-                fontsize=7, fontweight="bold")
-
-    ax.set_xticks(positions)
-    ax.set_xticklabels(labels, fontsize=9)
-    ax.set_title(title, fontweight="bold")
-    ax.set_ylabel("Value")
-    despine(ax)
+        med_plot = np.log10(med + 1) if use_log else med
+        ax.text(0, med_plot, f"  {med:,.0f}", ha="left", va="bottom",
+                fontsize=8, fontweight="bold")
+        ax.set_xticks([0])
+        ax.set_xticklabels([label], fontsize=9)
+        y_label = rf"$\log_{{10}}$({label})" if use_log else label
+        ax.set_ylabel(y_label)
+        ax.set_title(f"{title}: {label}" if len(metrics) > 1 else title,
+                     fontweight="bold")
+        despine(ax)
 
 
 def _panel_structure(ax, adata, title: str):
@@ -190,7 +204,14 @@ def _panel_structure(ax, adata, title: str):
             .size()
             .reset_index(name="n_cells")
         )
-        _VISIT_ORDER = {"pre": 0, "baseline": 0, "post": 1, "follow-up": 2}
+        _VISIT_ORDER = {
+            "leukapheresis": 0, "pre": 0, "baseline": 0,
+            "diagnosis": 0,
+            "early_post": 1, "post": 1,
+            "mid_post": 2,
+            "late_post": 3,
+            "follow-up": 4,
+        }
         def _visit_sort_key(v):
             s = str(v).lower()
             if s in _VISIT_ORDER:
@@ -205,9 +226,13 @@ def _panel_structure(ax, adata, title: str):
         sns.boxplot(
             data=grouped, x=visit_col, y="n_cells", order=visits,
             palette=palette[:len(visits)], width=0.5,
-            showcaps=True, showfliers=True,
-            flierprops=dict(marker=".", markersize=3, alpha=0.4),
+            showcaps=True, showfliers=False,
+            boxprops=dict(alpha=0.5),
             ax=ax,
+        )
+        sns.stripplot(
+            data=grouped, x=visit_col, y="n_cells", order=visits,
+            color="black", size=4, alpha=0.6, jitter=0.15, ax=ax,
         )
         ax.set_xlabel("Visit / Timepoint")
         ax.set_ylabel("Cells per participant")
@@ -257,29 +282,36 @@ def generate():
         print("  No clinical datasets available; skipping figure.")
         return
 
-    label_chars = "ABCDEFGHIJKL"
+    label_idx = 0
+    label_chars = "ABCDEFGHIJKLMNOP"
 
     # ── Save individual panels ────────────────────────────────────────
-    for row, (name, adata) in enumerate(loaded.items()):
+    for name, adata in loaded.items():
         ds_label = DATASET_LABELS.get(name, name.upper())
 
+        # Panel: Cell types
         fig_ct, ax_ct = plt.subplots(figsize=(6, 5))
         _panel_celltype(ax_ct, adata, f"{ds_label} — Cell Types")
         fig_ct.tight_layout()
-        save_panel(fig_ct, f"panel_{label_chars[row * 3]}", FIGURE_NAME,
-                   SUPP_OUTPUT)
+        save_panel(fig_ct, f"panel_{label_chars[label_idx]}",
+                   FIGURE_NAME, SUPP_OUTPUT)
+        label_idx += 1
 
-        fig_qc, ax_qc = plt.subplots(figsize=(6, 5))
-        _panel_qc(ax_qc, adata, f"{ds_label} — QC Metrics")
+        # Panels: QC (genes detected + total UMI as separate panels)
+        fig_qc, axes_qc = plt.subplots(1, 2, figsize=(8, 4))
+        _panel_qc(axes_qc, adata, ds_label)
         fig_qc.tight_layout()
-        save_panel(fig_qc, f"panel_{label_chars[row * 3 + 1]}", FIGURE_NAME,
-                   SUPP_OUTPUT)
+        save_panel(fig_qc, f"panel_{label_chars[label_idx]}",
+                   FIGURE_NAME, SUPP_OUTPUT)
+        label_idx += 1
 
+        # Panel: Sample structure
         fig_st, ax_st = plt.subplots(figsize=(6, 5))
         _panel_structure(ax_st, adata, f"{ds_label} — Sample Structure")
         fig_st.tight_layout()
-        save_panel(fig_st, f"panel_{label_chars[row * 3 + 2]}", FIGURE_NAME,
-                   SUPP_OUTPUT)
+        save_panel(fig_st, f"panel_{label_chars[label_idx]}",
+                   FIGURE_NAME, SUPP_OUTPUT)
+        label_idx += 1
 
     # ── Cleanup ───────────────────────────────────────────────────────
     for adata in loaded.values():
