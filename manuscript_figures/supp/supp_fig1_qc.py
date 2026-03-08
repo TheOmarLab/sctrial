@@ -96,7 +96,11 @@ def _get_pid_col(obs: pd.DataFrame) -> str:
 
 
 def _ensure_umap(adata):
-    """Ensure UMAP coordinates exist in adata.obsm['X_umap']."""
+    """Ensure UMAP coordinates exist in adata.obsm['X_umap'].
+
+    Uses the same HVG / PCA / neighbors parameters as supp_fig2 so that
+    UMAP embeddings are consistent across supplementary figures.
+    """
     if "X_umap" in adata.obsm:
         return adata
 
@@ -105,37 +109,33 @@ def _ensure_umap(adata):
     # Need PCA first
     if "X_pca" not in adata.obsm:
         print("    Computing PCA...")
-        # Use log1p layer if available, else normalize from raw counts
-        if "log1p_tpm" in adata.layers:
-            adata_work = adata.copy()
+        adata_work = adata.copy()
+        if "log1p_tpm" in adata_work.layers:
             adata_work.X = adata_work.layers["log1p_tpm"]
-            sc.pp.highly_variable_genes(adata_work, n_top_genes=2000, flavor="seurat")
-        elif "log1p_cpm" in adata.layers:
-            adata_work = adata.copy()
+        elif "log1p_cpm" in adata_work.layers:
             adata_work.X = adata_work.layers["log1p_cpm"]
-            sc.pp.highly_variable_genes(adata_work, n_top_genes=2000, flavor="seurat")
-        elif "counts" in adata.layers:
-            # seurat_v3 requires raw counts in X
-            adata_work = adata.copy()
+        elif "log1p_norm" in adata_work.layers:
+            adata_work.X = adata_work.layers["log1p_norm"]
+        elif "counts" in adata_work.layers:
             adata_work.X = adata_work.layers["counts"]
-            sc.pp.highly_variable_genes(adata_work, n_top_genes=2000, flavor="seurat_v3")
-            # Now normalize for PCA
             sc.pp.normalize_total(adata_work, target_sum=1e4)
             sc.pp.log1p(adata_work)
-        else:
-            adata_work = adata.copy()
-            import scipy.sparse as sp
-            if sp.issparse(adata_work.X):
-                sc.pp.normalize_total(adata_work, target_sum=1e4)
-                sc.pp.log1p(adata_work)
-            sc.pp.highly_variable_genes(adata_work, n_top_genes=2000, flavor="seurat")
+        sc.pp.highly_variable_genes(adata_work, n_top_genes=3000,
+                                     flavor="seurat")
+        adata_work = adata_work[:, adata_work.var["highly_variable"]].copy()
+        sc.pp.scale(adata_work, max_value=10)
         sc.tl.pca(adata_work, n_comps=50)
         adata.obsm["X_pca"] = adata_work.obsm["X_pca"]
         del adata_work
         gc.collect()
 
+    has_conn = ("connectivities" in adata.obsp) if adata.obsp else False
+    if "neighbors" not in adata.uns or not has_conn:
+        print("    Computing neighbors...")
+        use_rep = "X_pca_harmony" if "X_pca_harmony" in adata.obsm else "X_pca"
+        sc.pp.neighbors(adata, use_rep=use_rep, n_neighbors=15)
+
     print("    Computing UMAP...")
-    sc.pp.neighbors(adata, use_rep="X_pca", n_neighbors=15)
     sc.tl.umap(adata)
     return adata
 

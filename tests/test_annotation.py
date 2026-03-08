@@ -192,3 +192,33 @@ class TestAnnotateImmuneCelltypes:
         _annotate_immune_celltypes(adata)
         assert set(adata.obs.columns) == obs_cols_before
         assert float(adata.X.sum()) == pytest.approx(x_sum_before)
+
+    def test_precomputed_leiden_reused(self):
+        """When adata.obs['leiden'] exists, annotation reuses those clusters."""
+        import scanpy as sc
+
+        adata = _make_immune_adata()
+        # Log-normalise and run PCA/neighbors/Leiden externally
+        aw = adata.copy()
+        aw.X = np.log1p(aw.X)
+        sc.pp.highly_variable_genes(aw, n_top_genes=100, flavor="seurat")
+        sc.tl.pca(aw, n_comps=20)
+        sc.pp.neighbors(aw, n_neighbors=10, n_pcs=15)
+        sc.tl.leiden(aw, resolution=1.0)
+
+        # Inject pre-computed Leiden into original adata
+        adata.obs["leiden"] = aw.obs["leiden"].values
+
+        labels = _annotate_immune_celltypes(adata)
+
+        # Must still produce valid labels for every cell
+        assert len(labels) == adata.n_obs
+        assert labels.notna().all()
+        # Labels come from canonical set or Unassigned
+        valid = {
+            "CD8 T cell", "CD4 T cell", "Treg", "B cell",
+            "Plasma cell", "NK cell", "Monocyte/Macrophage",
+            "Dendritic cell", "Unassigned",
+        }
+        unexpected = set(labels.unique()) - valid
+        assert not unexpected, f"Unexpected labels: {unexpected}"

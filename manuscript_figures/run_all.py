@@ -40,7 +40,7 @@ SUPP_TABLES = {
 
 SUPP_FIGURES = {
     1: ("Supp Fig 1: QC Metrics",              "supp.supp_fig1_qc"),
-    2: ("Supp Fig 2: Aggregation Sensitivity",  "supp.supp_fig2_aggregation"),
+    2: ("Supp Fig 2: Dataset UMAPs",             "supp.supp_fig2_clinical"),
     3: ("Supp Fig 3: Clinical Trial Details",    "supp.supp_fig3_clinical"),
     4: ("Supp Fig 4: UMAP",                     "supp.supp_fig4_umap"),
     5: ("Supp Fig 5: Outcome Correlation",       "supp.supp_fig5_outcome"),

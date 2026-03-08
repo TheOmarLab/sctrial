@@ -102,7 +102,7 @@ def _annotate_immune_celltypes(adata: ad.AnnData) -> pd.Series:
     """Assign cell types to immune cells via cluster-level marker scoring.
 
     Pipeline (adapted from Diab_duod project):
-    1. Compute Leiden clusters on log1p-normalised expression.
+    1. Use pre-computed Leiden clusters (from caller), or compute them here.
     2. Find differentially expressed markers per cluster (Wilcoxon).
     3. Score each cluster against canonical immune marker sets using
        a rank-weighted scoring function.
@@ -112,7 +112,9 @@ def _annotate_immune_celltypes(adata: ad.AnnData) -> pd.Series:
     ----------
     adata : AnnData
         Must contain expression values (TPM) in ``adata.X`` and gene names
-        in ``adata.var_names``.
+        in ``adata.var_names``.  If ``adata.obs["leiden"]`` already exists
+        (with PCA/neighbors pre-computed), those clusters are reused so that
+        annotation and UMAP share the same embedding.
 
     Returns
     -------
@@ -128,12 +130,17 @@ def _annotate_immune_celltypes(adata: ad.AnnData) -> pd.Series:
     if aw.X.max() > 50:
         aw.X = np.log1p(aw.X)
 
-    # PCA -> neighbors -> Leiden
-    logger.info("    Computing PCA for cell-type annotation...")
-    sc.pp.highly_variable_genes(aw, n_top_genes=2000, flavor="seurat")
-    sc.tl.pca(aw, n_comps=30)
-    sc.pp.neighbors(aw, n_neighbors=15, n_pcs=20)
-    sc.tl.leiden(aw, resolution=1.0)
+    if "leiden" in adata.obs.columns:
+        # Reuse pre-computed Leiden clusters (same embedding used for UMAP)
+        aw.obs["leiden"] = adata.obs["leiden"].values
+        logger.info("    Using pre-computed Leiden clusters for annotation...")
+    else:
+        # Fallback: compute PCA -> neighbors -> Leiden internally
+        logger.info("    Computing PCA for cell-type annotation...")
+        sc.pp.highly_variable_genes(aw, n_top_genes=2000, flavor="seurat")
+        sc.tl.pca(aw, n_comps=30)
+        sc.pp.neighbors(aw, n_neighbors=15, n_pcs=20)
+        sc.tl.leiden(aw, resolution=1.0)
 
     # Wilcoxon marker finding per cluster
     logger.info("    Finding cluster markers (Wilcoxon)...")
@@ -488,8 +495,6 @@ def load_sade_feldman(
     adata.layers["tpm"] = adata.X.copy()
     adata.layers["log1p_tpm"] = adata.X.copy() if _looks_log1p(adata.X) else np.log1p(adata.X)
 
-    # Annotate cell types using cluster-level weighted marker scoring
-    # (adapted from Diab_duod project methodology).
     # Requires scanpy (optional dependency in [plots] extra).
     try:
         import scanpy as sc  # noqa: F401 — check availability before heavy work
@@ -498,6 +503,26 @@ def load_sade_feldman(
             "scanpy is required for Sade-Feldman cell type annotation. "
             "Install with: pip install sctrial[plots]"
         ) from None
+
+    # ── PCA → neighbors → UMAP → Leiden ────────────────────────────────
+    # Compute BEFORE annotation so that cell-type labels are assigned to
+    # the SAME Leiden clusters that the UMAP is built from.
+    logger.info("Computing PCA / neighbors / UMAP / Leiden...")
+    adata_work = adata.copy()
+    adata_work.X = adata_work.layers["log1p_tpm"]
+    sc.pp.highly_variable_genes(adata_work, n_top_genes=3000, flavor="seurat")
+    adata_hvg = adata_work[:, adata_work.var["highly_variable"]].copy()
+    sc.pp.scale(adata_hvg, max_value=10)
+    sc.tl.pca(adata_hvg, n_comps=50)
+    adata.obsm["X_pca"] = adata_hvg.obsm["X_pca"]
+    del adata_work, adata_hvg
+
+    sc.pp.neighbors(adata, use_rep="X_pca", n_neighbors=15)
+    sc.tl.umap(adata)
+    sc.tl.leiden(adata, resolution=1.0)
+
+    # ── Cell type annotation ────────────────────────────────────────────
+    # Uses the Leiden clusters computed above (same embedding as UMAP).
     logger.info("Annotating cell types from marker genes...")
     adata.obs["cell_type"] = _annotate_immune_celltypes(adata)
 
