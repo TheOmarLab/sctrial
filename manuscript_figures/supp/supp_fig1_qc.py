@@ -22,32 +22,32 @@ from __future__ import annotations
 import gc
 
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
 import numpy as np
 import pandas as pd
 import seaborn as sns
 
 from .._shared import (
-    COLORS,
     SUPP_OUTPUT,
     apply_style,
+    clear_cache,
     despine,
-    save_panel,
     get_sade_feldman,
     get_stephenson,
     get_vaccine,
     load_clinical_trial_dataset,
-    clear_cache,
+    save_panel,
 )
 
-FIGURE_NAME = "SuppFig1_qc_metrics"
+FIGURE_NAME = "SuppFig1_data_quality"
 
 # ── dataset registry ─────────────────────────────────────────────────
 
-_DS_PALETTE = dict(zip(
-    ["Sade-Feldman", "Stephenson", "Vaccine", "AML", "CAR-T"],
-    sns.color_palette("Set2", 5),
-))
+_DS_PALETTE = dict(
+    zip(
+        ["Sade-Feldman", "Stephenson", "Vaccine", "AML", "CAR-T"],
+        sns.color_palette("Set2", 5),
+    )
+)
 
 
 def _loaders():
@@ -61,6 +61,7 @@ def _loaders():
 
 
 # ── helpers ──────────────────────────────────────────────────────────
+
 
 def _pid_col(obs):
     for c in ("participant_id", "patient_id", "donor_id", "pt_id"):
@@ -89,6 +90,7 @@ def _get_ngenes(adata) -> np.ndarray:
         if col in obs.columns:
             return np.asarray(obs[col], dtype=float)
     import scipy.sparse as sp
+
     for layer in ("counts", "tpm", "cpm"):
         if layer in adata.layers:
             X = adata.layers[layer]
@@ -104,6 +106,7 @@ def _get_counts(adata) -> np.ndarray:
         if col in obs.columns:
             return np.asarray(obs[col], dtype=float)
     import scipy.sparse as sp
+
     for layer in ("counts", "tpm", "cpm"):
         if layer in adata.layers:
             X = adata.layers[layer]
@@ -120,6 +123,7 @@ def _get_pct_mito(adata) -> np.ndarray:
             return np.asarray(obs[col], dtype=float)
     # Compute from counts if possible
     import scipy.sparse as sp
+
     for layer in ("counts", "tpm"):
         if layer in adata.layers:
             mt_mask = adata.var_names.str.upper().str.startswith("MT-")
@@ -143,10 +147,12 @@ def _get_pct_ribo(adata) -> np.ndarray:
             return np.asarray(obs[col], dtype=float)
     # Compute from counts if possible
     import scipy.sparse as sp
+
     for layer in ("counts", "tpm"):
         if layer in adata.layers:
-            ribo_mask = (adata.var_names.str.upper().str.startswith("RPS") |
-                         adata.var_names.str.upper().str.startswith("RPL"))
+            ribo_mask = adata.var_names.str.upper().str.startswith(
+                "RPS"
+            ) | adata.var_names.str.upper().str.startswith("RPL")
             if ribo_mask.sum() == 0:
                 return np.full(adata.n_obs, np.nan)
             X = adata.layers[layer]
@@ -177,8 +183,8 @@ def _load_all(compute_umap: bool = False) -> dict:
                 "n_genes_total": adata.n_vars,
                 "n_participants": pid_counts.shape[0] if pid else 0,
                 "n_samples": adata.obs.groupby([pid, vis]).ngroups
-                    if pid and vis and vis in adata.obs.columns
-                    else (pid_counts.shape[0] if pid else 0),
+                if pid and vis and vis in adata.obs.columns
+                else (pid_counts.shape[0] if pid else 0),
                 "pid_col": pid,
                 "visit_col": vis,
                 "arm_col": arm,
@@ -195,6 +201,7 @@ def _load_all(compute_umap: bool = False) -> dict:
 
 
 # ── Panel A: dataset summary bars ────────────────────────────────────
+
 
 def _panel_summary_bars(ax, loaded: dict):
     """Faceted bars: cells, genes, participants, samples per dataset."""
@@ -213,12 +220,24 @@ def _panel_summary_bars(ax, loaded: dict):
 
     for mi, (metric_name, vals) in enumerate(metrics.items()):
         offset = (mi - (n_metrics - 1) / 2) * width
-        bars = ax.bar(x + offset, vals, width * 0.9, label=metric_name,
-                      color=metric_colors[mi], edgecolor="white")
+        bars = ax.bar(
+            x + offset,
+            vals,
+            width * 0.9,
+            label=metric_name,
+            color=metric_colors[mi],
+            edgecolor="white",
+        )
         for bar, v in zip(bars, vals):
-            ax.text(bar.get_x() + bar.get_width() / 2, v,
-                    f"{v:,}" if v < 10000 else f"{v / 1000:.0f}k",
-                    ha="center", va="bottom", fontsize=5.5, rotation=45)
+            ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                v,
+                f"{v:,}" if v < 10000 else f"{v / 1000:.0f}k",
+                ha="center",
+                va="bottom",
+                fontsize=5.5,
+                rotation=45,
+            )
 
     ax.set_xticks(x)
     ax.set_xticklabels(ds_names, fontsize=9)
@@ -230,6 +249,7 @@ def _panel_summary_bars(ax, loaded: dict):
 
 
 # ── Panel B: QC retention waterfall ──────────────────────────────────
+
 
 def _panel_retention_waterfall(ax, loaded: dict):
     """Show retention after QC filtering steps per dataset.
@@ -266,13 +286,15 @@ def _panel_retention_waterfall(ax, loaded: dict):
         else:
             cells_low_mito = n_cells
 
-        rows.append({
-            "Dataset": name,
-            "Total genes": n_genes_total,
-            "Expressed genes": genes_expressed,
-            "Total cells": n_cells,
-            "Cells (mito < 20%)": cells_low_mito,
-        })
+        rows.append(
+            {
+                "Dataset": name,
+                "Total genes": n_genes_total,
+                "Expressed genes": genes_expressed,
+                "Total cells": n_cells,
+                "Cells (mito < 20%)": cells_low_mito,
+            }
+        )
 
     df = pd.DataFrame(rows).set_index("Dataset")
 
@@ -285,27 +307,27 @@ def _panel_retention_waterfall(ax, loaded: dict):
     expr_g = df["Expressed genes"].values.astype(float)
     pct_expr = expr_g / total_g * 100
 
-    ax.barh(y + h / 2, total_g, height=h, label="Total genes",
-            color="#aec7e8", edgecolor="white")
-    ax.barh(y + h / 2, expr_g, height=h, label="Expressed genes",
-            color="#1f77b4", edgecolor="white")
+    ax.barh(y + h / 2, total_g, height=h, label="Total genes", color="#aec7e8", edgecolor="white")
+    ax.barh(
+        y + h / 2, expr_g, height=h, label="Expressed genes", color="#1f77b4", edgecolor="white"
+    )
 
     # Cell retention
     total_c = df["Total cells"].values.astype(float)
     mito_c = df["Cells (mito < 20%)"].values.astype(float)
 
-    ax.barh(y - h / 2, total_c, height=h, label="Total cells",
-            color="#ffbb78", edgecolor="white")
-    ax.barh(y - h / 2, mito_c, height=h, label="Cells (mito < 20%)",
-            color="#ff7f0e", edgecolor="white")
+    ax.barh(y - h / 2, total_c, height=h, label="Total cells", color="#ffbb78", edgecolor="white")
+    ax.barh(
+        y - h / 2, mito_c, height=h, label="Cells (mito < 20%)", color="#ff7f0e", edgecolor="white"
+    )
 
     # Annotate percentages
     for i in range(len(ds_names)):
-        ax.text(total_g[i], y[i] + h / 2, f" {pct_expr[i]:.0f}%",
-                va="center", ha="left", fontsize=6)
+        ax.text(
+            total_g[i], y[i] + h / 2, f" {pct_expr[i]:.0f}%", va="center", ha="left", fontsize=6
+        )
         pct_cell = mito_c[i] / total_c[i] * 100 if total_c[i] > 0 else 100
-        ax.text(total_c[i], y[i] - h / 2, f" {pct_cell:.0f}%",
-                va="center", ha="left", fontsize=6)
+        ax.text(total_c[i], y[i] - h / 2, f" {pct_cell:.0f}%", va="center", ha="left", fontsize=6)
 
     ax.set_yticks(y)
     ax.set_yticklabels(ds_names)
@@ -318,6 +340,7 @@ def _panel_retention_waterfall(ax, loaded: dict):
 
 # ── Panel C: n_genes distributions by dataset + visit/arm ────────────
 
+
 def _panel_ngenes_dist(ax, loaded: dict):
     """Violin: genes detected per cell, split by visit or arm."""
     rows = []
@@ -327,12 +350,8 @@ def _panel_ngenes_dist(ax, loaded: dict):
         vis = data["visit_col"]
         arm = data["arm_col"]
 
-        # Subsample large datasets for violin performance
         n = len(ngenes)
-        if n > 15000:
-            idx = np.random.default_rng(42).choice(n, 15000, replace=False)
-        else:
-            idx = np.arange(n)
+        idx = np.arange(n)
 
         split_col = vis if vis and vis in obs.columns and obs[vis].nunique() > 1 else arm
         if split_col and split_col in obs.columns:
@@ -340,32 +359,52 @@ def _panel_ngenes_dist(ax, loaded: dict):
                 mask = obs[split_col].values == val
                 sub_idx = idx[mask[idx]]
                 if len(sub_idx) > 0:
-                    rows.append(pd.DataFrame({
-                        "Dataset": name, "Group": str(val),
-                        "Genes": ngenes[sub_idx],
-                    }))
+                    rows.append(
+                        pd.DataFrame(
+                            {
+                                "Dataset": name,
+                                "Group": str(val),
+                                "Genes": ngenes[sub_idx],
+                            }
+                        )
+                    )
         else:
-            rows.append(pd.DataFrame({
-                "Dataset": name, "Group": "All",
-                "Genes": ngenes[idx],
-            }))
+            rows.append(
+                pd.DataFrame(
+                    {
+                        "Dataset": name,
+                        "Group": "All",
+                        "Genes": ngenes[idx],
+                    }
+                )
+            )
 
     df = pd.concat(rows, ignore_index=True)
     order = list(loaded.keys())
 
-    sns.violinplot(data=df, x="Dataset", y="Genes", hue="Group",
-                   order=order, cut=0, inner="quartile", linewidth=0.5,
-                   palette="pastel", density_norm="width", ax=ax)
+    sns.violinplot(
+        data=df,
+        x="Dataset",
+        y="Genes",
+        hue="Group",
+        order=order,
+        cut=0,
+        inner="quartile",
+        linewidth=0.5,
+        palette="pastel",
+        density_norm="width",
+        ax=ax,
+    )
     ax.set_xlabel("")
     ax.set_ylabel("Genes detected per cell")
     ax.set_title("Gene Detection by Dataset & Group", fontweight="bold")
-    ax.legend(fontsize=6, loc="upper right", title="Group", title_fontsize=7,
-              frameon=True, ncol=2)
+    ax.legend(fontsize=6, loc="upper right", title="Group", title_fontsize=7, frameon=True, ncol=2)
     ax.tick_params(axis="x", rotation=15)
     despine(ax)
 
 
 # ── Panel D: total_counts distributions by dataset + visit/arm ───────
+
 
 def _panel_counts_dist(ax, loaded: dict):
     """Violin: total counts per cell, split by visit or arm."""
@@ -388,32 +427,52 @@ def _panel_counts_dist(ax, loaded: dict):
                 mask = obs[split_col].values == val
                 sub_idx = idx[mask[idx]]
                 if len(sub_idx) > 0:
-                    rows.append(pd.DataFrame({
-                        "Dataset": name, "Group": str(val),
-                        "Counts": np.log10(counts[sub_idx] + 1),
-                    }))
+                    rows.append(
+                        pd.DataFrame(
+                            {
+                                "Dataset": name,
+                                "Group": str(val),
+                                "Counts": np.log10(counts[sub_idx] + 1),
+                            }
+                        )
+                    )
         else:
-            rows.append(pd.DataFrame({
-                "Dataset": name, "Group": "All",
-                "Counts": np.log10(counts[idx] + 1),
-            }))
+            rows.append(
+                pd.DataFrame(
+                    {
+                        "Dataset": name,
+                        "Group": "All",
+                        "Counts": np.log10(counts[idx] + 1),
+                    }
+                )
+            )
 
     df = pd.concat(rows, ignore_index=True)
     order = list(loaded.keys())
 
-    sns.violinplot(data=df, x="Dataset", y="Counts", hue="Group",
-                   order=order, cut=0, inner="quartile", linewidth=0.5,
-                   palette="pastel", density_norm="width", ax=ax)
+    sns.violinplot(
+        data=df,
+        x="Dataset",
+        y="Counts",
+        hue="Group",
+        order=order,
+        cut=0,
+        inner="quartile",
+        linewidth=0.5,
+        palette="pastel",
+        density_norm="width",
+        ax=ax,
+    )
     ax.set_xlabel("")
     ax.set_ylabel(r"$\log_{10}$(total counts + 1)")
     ax.set_title("Sequencing Depth by Dataset & Group", fontweight="bold")
-    ax.legend(fontsize=6, loc="upper right", title="Group", title_fontsize=7,
-              frameon=True, ncol=2)
+    ax.legend(fontsize=6, loc="upper right", title="Group", title_fontsize=7, frameon=True, ncol=2)
     ax.tick_params(axis="x", rotation=15)
     despine(ax)
 
 
 # ── Panel E: % mito and % ribosomal distributions ───────────────────
+
 
 def _panel_mito_ribo(ax, loaded: dict):
     """Side-by-side violins for % mito and % ribo with threshold overlays."""
@@ -421,38 +480,51 @@ def _panel_mito_ribo(ax, loaded: dict):
     for name, data in loaded.items():
         pct_mt = data["pct_mito"]
         pct_rb = data["pct_ribo"]
-        n = len(pct_mt)
-        if n > 10000:
-            idx = np.random.default_rng(42).choice(n, 10000, replace=False)
-        else:
-            idx = np.arange(n)
         if not np.all(np.isnan(pct_mt)):
-            rows.append(pd.DataFrame({
-                "Dataset": name, "Metric": "% Mito", "Value": pct_mt[idx]}))
+            rows.append(pd.DataFrame({"Dataset": name, "Metric": "% Mito", "Value": pct_mt}))
         if not np.all(np.isnan(pct_rb)):
-            rows.append(pd.DataFrame({
-                "Dataset": name, "Metric": "% Ribo", "Value": pct_rb[idx]}))
+            rows.append(pd.DataFrame({"Dataset": name, "Metric": "% Ribo", "Value": pct_rb}))
 
     if not rows:
-        ax.text(0.5, 0.5, "No mito/ribo data available",
-                ha="center", va="center", transform=ax.transAxes,
-                fontsize=10, fontstyle="italic", color="#888888")
+        ax.text(
+            0.5,
+            0.5,
+            "No mito/ribo data available",
+            ha="center",
+            va="center",
+            transform=ax.transAxes,
+            fontsize=10,
+            fontstyle="italic",
+            color="#888888",
+        )
         ax.set_title("Mitochondrial & Ribosomal Content", fontweight="bold")
         return
 
     df = pd.concat(rows, ignore_index=True)
     order = list(loaded.keys())
 
-    sns.violinplot(data=df, x="Dataset", y="Value", hue="Metric",
-                   order=order, cut=0, inner="quartile", linewidth=0.5,
-                   palette={"% Mito": "#e74c3c", "% Ribo": "#3498db"},
-                   density_norm="width", split=False, ax=ax)
+    sns.violinplot(
+        data=df,
+        x="Dataset",
+        y="Value",
+        hue="Metric",
+        order=order,
+        cut=0,
+        inner="quartile",
+        linewidth=0.5,
+        palette={"% Mito": "#e74c3c", "% Ribo": "#3498db"},
+        density_norm="width",
+        split=False,
+        ax=ax,
+    )
 
     # Threshold overlays
-    ax.axhline(20, color="#e74c3c", linestyle="--", linewidth=0.8, alpha=0.5,
-               label="Mito threshold (20%)")
-    ax.axhline(50, color="#3498db", linestyle="--", linewidth=0.8, alpha=0.5,
-               label="Ribo threshold (50%)")
+    ax.axhline(
+        20, color="#e74c3c", linestyle="--", linewidth=0.8, alpha=0.5, label="Mito threshold (20%)"
+    )
+    ax.axhline(
+        50, color="#3498db", linestyle="--", linewidth=0.8, alpha=0.5, label="Ribo threshold (50%)"
+    )
 
     ax.set_xlabel("")
     ax.set_ylabel("Percentage")
@@ -463,6 +535,7 @@ def _panel_mito_ribo(ax, loaded: dict):
 
 
 # ── Panel F: Lorenz curve + Gini per dataset ────────────────────────
+
 
 def _panel_lorenz_gini(ax, loaded: dict):
     """Lorenz curve of cells-per-participant inequality per dataset."""
@@ -478,9 +551,13 @@ def _panel_lorenz_gini(ax, loaded: dict):
         # Gini coefficient
         gini = 1 - 2 * np.trapz(y_lorenz, x_lorenz)
 
-        ax.plot(x_lorenz, y_lorenz, linewidth=1.5,
-                color=_DS_PALETTE.get(name, "black"),
-                label=f"{name} (Gini={gini:.2f})")
+        ax.plot(
+            x_lorenz,
+            y_lorenz,
+            linewidth=1.5,
+            color=_DS_PALETTE.get(name, "black"),
+            label=f"{name} (Gini={gini:.2f})",
+        )
 
     # Equality line
     ax.plot([0, 1], [0, 1], "k--", linewidth=0.8, alpha=0.4, label="Perfect equality")
@@ -495,6 +572,7 @@ def _panel_lorenz_gini(ax, loaded: dict):
 
 
 # ── Panel G: participant-by-visit completeness heatmaps ──────────────
+
 
 def _panel_completeness(ax, loaded: dict):
     """Heatmap of participant × visit completeness across datasets."""
@@ -514,18 +592,19 @@ def _panel_completeness(ax, loaded: dict):
             for p in participants:
                 for v in visits:
                     n_cells = ((obs[pid] == p) & (obs[vis] == v)).sum()
-                    rows.append({"Dataset": name, "Participant": p,
-                                 "Visit": v, "Cells": int(n_cells)})
+                    rows.append(
+                        {"Dataset": name, "Participant": p, "Visit": v, "Cells": int(n_cells)}
+                    )
         else:
             participants = sorted(obs[pid].dropna().unique())
             for p in participants:
                 n_cells = (obs[pid] == p).sum()
-                rows.append({"Dataset": name, "Participant": p,
-                             "Visit": "All", "Cells": int(n_cells)})
+                rows.append(
+                    {"Dataset": name, "Participant": p, "Visit": "All", "Cells": int(n_cells)}
+                )
 
     if not rows:
-        ax.text(0.5, 0.5, "No visit data", ha="center", va="center",
-                transform=ax.transAxes)
+        ax.text(0.5, 0.5, "No visit data", ha="center", va="center", transform=ax.transAxes)
         return
 
     df = pd.DataFrame(rows)
@@ -540,11 +619,14 @@ def _panel_completeness(ax, loaded: dict):
             vs = sub[sub["Visit"] == visit]
             n_with = (vs["Cells"] > 0).sum()
             n_total = vs.shape[0]
-            summary_rows.append({
-                "Dataset": name, "Visit": visit,
-                "Fraction": n_with / n_total if n_total > 0 else 0,
-                "Count": f"{n_with}/{n_total}",
-            })
+            summary_rows.append(
+                {
+                    "Dataset": name,
+                    "Visit": visit,
+                    "Fraction": n_with / n_total if n_total > 0 else 0,
+                    "Count": f"{n_with}/{n_total}",
+                }
+            )
 
     sdf = pd.DataFrame(summary_rows)
     if sdf.empty:
@@ -554,9 +636,17 @@ def _panel_completeness(ax, loaded: dict):
     pivot = sdf.pivot(index="Dataset", columns="Visit", values="Fraction")
     annot = sdf.pivot(index="Dataset", columns="Visit", values="Count")
 
-    sns.heatmap(pivot, annot=annot, fmt="", cmap="YlGn", vmin=0, vmax=1,
-                linewidths=0.5, ax=ax, cbar_kws={"label": "Fraction with cells",
-                                                    "shrink": 0.7})
+    sns.heatmap(
+        pivot,
+        annot=annot,
+        fmt="",
+        cmap="YlGn",
+        vmin=0,
+        vmax=1,
+        linewidths=0.5,
+        ax=ax,
+        cbar_kws={"label": "Fraction with cells", "shrink": 0.7},
+    )
     ax.set_title("Participant × Visit Completeness", fontweight="bold")
     ax.set_ylabel("")
     ax.set_xlabel("")
@@ -564,6 +654,7 @@ def _panel_completeness(ax, loaded: dict):
 
 
 # ── Panel H: QC metric correlation matrix ────────────────────────────
+
 
 def _panel_qc_correlation(ax, loaded: dict):
     """Correlation heatmap of QC metrics (pooled across datasets)."""
@@ -596,9 +687,20 @@ def _panel_qc_correlation(ax, loaded: dict):
     corr = df[numeric_cols].corr()
 
     mask = np.triu(np.ones_like(corr, dtype=bool), k=1)
-    sns.heatmap(corr, mask=mask, annot=True, fmt=".2f", cmap="coolwarm",
-                center=0, vmin=-1, vmax=1, linewidths=0.5, ax=ax,
-                square=True, cbar_kws={"shrink": 0.7})
+    sns.heatmap(
+        corr,
+        mask=mask,
+        annot=True,
+        fmt=".2f",
+        cmap="coolwarm",
+        center=0,
+        vmin=-1,
+        vmax=1,
+        linewidths=0.5,
+        ax=ax,
+        square=True,
+        cbar_kws={"shrink": 0.7},
+    )
     ax.set_title("QC Metric Correlations (Pooled)", fontweight="bold")
     despine(ax)
 
@@ -607,9 +709,19 @@ def _panel_qc_correlation(ax, loaded: dict):
 # Generate
 # ======================================================================
 
+
 def generate():
-    """Create and save Supplementary Figure 1 panels."""
-    print("Supplementary Figure 1: Data Quality and Cohort Integrity")
+    """Create and save Supplementary Figure 1 panels.
+
+    Reorganised layout (6 panels):
+      A  Dataset summary bars          (was SF1-A)
+      B  n_genes distributions          (was SF1-C)
+      C  % mito / % ribosomal           (was SF1-E)
+      D  Lorenz + Gini                   (was SF1-F)
+      E  Completeness heatmap            (was SF1-G)
+      F  Dropout rates                   (was SF3-G, imported)
+    """
+    print("Supplementary Figure 1: Data Quality & Cohort Integrity")
     loaded = _load_all()
 
     if not loaded:
@@ -622,47 +734,43 @@ def generate():
     fig.tight_layout()
     save_panel(fig, "panel_A", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel B: QC retention waterfall
-    fig, ax = plt.subplots(figsize=(8, 4.5))
-    _panel_retention_waterfall(ax, loaded)
-    fig.tight_layout()
-    save_panel(fig, "panel_B", FIGURE_NAME, SUPP_OUTPUT)
-
-    # Panel C: n_genes distributions
+    # Panel B: n_genes distributions (was SF1-C)
     fig, ax = plt.subplots(figsize=(9, 5))
     _panel_ngenes_dist(ax, loaded)
     fig.tight_layout()
-    save_panel(fig, "panel_C", FIGURE_NAME, SUPP_OUTPUT)
+    save_panel(fig, "panel_B", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel D: total_counts distributions
-    fig, ax = plt.subplots(figsize=(9, 5))
-    _panel_counts_dist(ax, loaded)
-    fig.tight_layout()
-    save_panel(fig, "panel_D", FIGURE_NAME, SUPP_OUTPUT)
-
-    # Panel E: % mito and % ribosomal
+    # Panel C: % mito and % ribosomal (was SF1-E)
     fig, ax = plt.subplots(figsize=(9, 5))
     _panel_mito_ribo(ax, loaded)
     fig.tight_layout()
-    save_panel(fig, "panel_E", FIGURE_NAME, SUPP_OUTPUT)
+    save_panel(fig, "panel_C", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel F: Lorenz + Gini
+    # Panel D: Lorenz + Gini (was SF1-F)
     fig, ax = plt.subplots(figsize=(6, 6))
     _panel_lorenz_gini(ax, loaded)
     fig.tight_layout()
-    save_panel(fig, "panel_F", FIGURE_NAME, SUPP_OUTPUT)
+    save_panel(fig, "panel_D", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel G: Completeness heatmap
+    # Panel E: Completeness heatmap (was SF1-G)
     fig, ax = plt.subplots(figsize=(7, 5))
     _panel_completeness(ax, loaded)
     fig.tight_layout()
-    save_panel(fig, "panel_G", FIGURE_NAME, SUPP_OUTPUT)
+    save_panel(fig, "panel_E", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel H: QC correlation matrix
-    fig, ax = plt.subplots(figsize=(5.5, 5))
-    _panel_qc_correlation(ax, loaded)
-    fig.tight_layout()
-    save_panel(fig, "panel_H", FIGURE_NAME, SUPP_OUTPUT)
+    # Panel F: Dropout rates (was SF3-G, imported here)
+    from .supp_fig3_clinical import _load_all as _load_all_sf3
+    from .supp_fig3_clinical import _panel_dropout
+
+    loaded_sf3 = _load_all_sf3()
+    if loaded_sf3:
+        fig, ax = plt.subplots(figsize=(7, 5))
+        _panel_dropout(ax, loaded_sf3)
+        fig.tight_layout()
+        save_panel(fig, "panel_F", FIGURE_NAME, SUPP_OUTPUT)
+        for data in loaded_sf3.values():
+            del data["adata"]
+        loaded_sf3.clear()
 
     # Cleanup
     del loaded

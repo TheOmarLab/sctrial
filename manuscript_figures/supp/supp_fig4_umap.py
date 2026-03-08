@@ -6,7 +6,7 @@ Verify that DiD model assumptions hold across datasets, plus
 outcome-correlation panels from Sade-Feldman.
 
 Panels:
-  A  Residual Q-Q plots per dataset (normality check).
+  A  Coefficient Q-Q plots per dataset (normality check).
   B  Effect size vs standard error scatter per dataset (funnel plot).
   C  P-value distribution (uniformity under null expectation).
   D  Sensitivity analysis: minimum detectable effect by sample size.
@@ -25,8 +25,8 @@ from __future__ import annotations
 
 import gc
 
-import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -34,21 +34,19 @@ from scipy import stats
 
 from .._shared import (
     COLORS,
-    GENE_SIGNATURES,
     SUPP_OUTPUT,
     apply_style,
+    clear_cache,
     despine,
-    save_panel,
-    load_clinical_trial_dataset,
     get_sade_feldman,
     harmonize_response,
-    clear_cache,
+    load_clinical_trial_dataset,
+    save_panel,
     score_signatures,
     sig_display,
-    TrialDesign,
 )
 
-FIGURE_NAME = "SuppFig4_model_diagnostics"
+FIGURE_NAME = "SuppFig4_diagnostics_robustness"
 
 # Datasets with proper pre/post + arm structure for DiD
 _DID_DATASETS = {
@@ -78,33 +76,41 @@ _DID_DATASETS = {
         "visits": ("Pre", "Post"),
         "layer": "log1p_norm",
     },
-    "CAR-T": {
-        "loader": lambda: load_clinical_trial_dataset("cart"),
-        "harmonize": False,
-        "design_kw": {
-            "participant_col": "participant_id",
-            "visit_col": "visit",
-            "arm_col": "response",
-            "arm_treated": "CAR-T",
-            "arm_control": "CAR-T",  # single arm
-        },
-        "visits": ("Pre", "Post"),
-        "layer": "log1p_norm",
-    },
+    # CAR-T excluded: single-arm study (arm_treated == arm_control)
+    # is not a valid two-arm DiD design. Within-arm CAR-T comparisons
+    # are shown in the temporal dynamics panels (SF6).
 }
 
 # Top features to test (immune markers)
 _TEST_FEATURES = [
-    "CD8A", "CD4", "PDCD1", "HAVCR2", "LAG3", "CTLA4",
-    "GZMB", "PRF1", "IFNG", "TNF", "IL2", "CD19",
-    "CD14", "LYZ", "NKG7", "CD3D", "FOXP3", "IL7R",
-    "TCF7", "TOX",
+    "CD8A",
+    "CD4",
+    "PDCD1",
+    "HAVCR2",
+    "LAG3",
+    "CTLA4",
+    "GZMB",
+    "PRF1",
+    "IFNG",
+    "TNF",
+    "IL2",
+    "CD19",
+    "CD14",
+    "LYZ",
+    "NKG7",
+    "CD3D",
+    "FOXP3",
+    "IL7R",
+    "TCF7",
+    "TOX",
 ]
 
-_DS_PALETTE = dict(zip(
-    ["Sade-Feldman", "AML", "CAR-T", "Melanoma"],
-    sns.color_palette("Set2", 4),
-))
+_DS_PALETTE = dict(
+    zip(
+        ["Sade-Feldman", "AML", "CAR-T", "Melanoma"],
+        sns.color_palette("Set2", 4),
+    )
+)
 
 
 def _load_did_datasets():
@@ -123,8 +129,7 @@ def _load_did_datasets():
             visits = cfg["visits"]
 
             # Filter features to those present in data
-            features = [f for f in _TEST_FEATURES
-                        if f in adata.var_names][:15]
+            features = [f for f in _TEST_FEATURES if f in adata.var_names][:15]
 
             if not features:
                 print(f"  {name}: no test features found, skipping")
@@ -132,22 +137,29 @@ def _load_did_datasets():
 
             # Run DiD
             did_df = sctrial.did_table(
-                adata, features, design, visits,
-                layer=layer, aggregate="participant_visit",
+                adata,
+                features,
+                design,
+                visits,
+                layer=layer,
+                aggregate="participant_visit",
             )
 
             # Run LOO
             try:
                 loo_df = sctrial.loo_cv_did(
-                    adata, features[:5], design, visits, layer=layer,
+                    adata,
+                    features[:5],
+                    design,
+                    visits,
+                    layer=layer,
                 )
             except Exception:
                 loo_df = None
 
             # Compute n per group (minimum of the two arms)
             arm_col = cfg["design_kw"]["arm_col"]
-            arm_sizes = adata.obs.groupby(arm_col)[
-                cfg["design_kw"]["participant_col"]].nunique()
+            arm_sizes = adata.obs.groupby(arm_col)[cfg["design_kw"]["participant_col"]].nunique()
             n_per = int(arm_sizes.min()) if len(arm_sizes) else 0
 
             results[name] = {
@@ -157,8 +169,7 @@ def _load_did_datasets():
                 "features": features,
                 "n_per_group": n_per,
             }
-            print(f"  {name}: DiD on {len(features)} features, "
-                  f"n_per_group={n_per}")
+            print(f"  {name}: DiD on {len(features)} features, n_per_group={n_per}")
 
         except Exception as exc:
             print(f"  {name}: failed ({exc})")
@@ -166,7 +177,8 @@ def _load_did_datasets():
     return results
 
 
-# ── Panel A: Residual Q-Q plots ───────────────────────────────────
+# ── Panel A: Coefficient Q-Q plots ────────────────────────────────
+
 
 def _panel_qq(fig, axes, results: dict):
     """Q-Q plots of DiD residuals per dataset."""
@@ -185,8 +197,7 @@ def _panel_qq(fig, axes, results: dict):
         elif "coef" in did_df.columns:
             residuals = did_df["coef"].dropna().values
         else:
-            ax.text(0.5, 0.5, "No residuals", ha="center", va="center",
-                    transform=ax.transAxes)
+            ax.text(0.5, 0.5, "No residuals", ha="center", va="center", transform=ax.transAxes)
             continue
 
         stats.probplot(residuals, dist="norm", plot=ax)
@@ -207,6 +218,7 @@ def _panel_qq(fig, axes, results: dict):
 
 # ── Panel B: Effect size vs SE (funnel) ──────────────────────────
 
+
 def _panel_funnel(fig, axes, results: dict):
     """Scatter: DiD effect size vs standard error (funnel plot)."""
     ds_names = list(results.keys())
@@ -225,13 +237,19 @@ def _panel_funnel(fig, axes, results: dict):
             x = did_df["coef"].values
             y = did_df["se"].values
         else:
-            ax.text(0.5, 0.5, "No data", ha="center", va="center",
-                    transform=ax.transAxes)
+            ax.text(0.5, 0.5, "No data", ha="center", va="center", transform=ax.transAxes)
             continue
 
-        ax.scatter(x, y, s=50, alpha=0.85,
-                   color=_DS_PALETTE.get(name, "grey"),
-                   edgecolors="black", linewidth=0.5, zorder=3)
+        ax.scatter(
+            x,
+            y,
+            s=50,
+            alpha=0.85,
+            color=_DS_PALETTE.get(name, "grey"),
+            edgecolors="black",
+            linewidth=0.5,
+            zorder=3,
+        )
         ax.axhline(np.median(y), color="grey", linestyle="--", linewidth=0.8)
         ax.set_xlabel("DiD coefficient")
         ax.set_ylabel("Standard error")
@@ -241,26 +259,31 @@ def _panel_funnel(fig, axes, results: dict):
 
 # ── Panel C: P-value distribution ─────────────────────────────────
 
+
 def _panel_pvalue_distribution(ax, results: dict):
     """Histogram of DiD p-values; uniform under the null."""
     for name, res in results.items():
         did_df = res["did_df"]
-        pcol = next((c for c in ["p_DiD", "pvalue_DiD", "pvalue", "p"]
-                     if c in did_df.columns), None)
+        pcol = next(
+            (c for c in ["p_DiD", "pvalue_DiD", "pvalue", "p"] if c in did_df.columns), None
+        )
         if pcol is None:
             continue
         pvals = did_df[pcol].dropna().values
         if len(pvals) < 2:
             continue
-        ax.hist(pvals, bins=np.linspace(0, 1, 11), alpha=0.6,
-                label=f"{name} (n={len(pvals)})",
-                color=_DS_PALETTE.get(name, "grey"), edgecolor="white",
-                linewidth=0.8)
+        ax.hist(
+            pvals,
+            bins=np.linspace(0, 1, 11),
+            alpha=0.6,
+            label=f"{name} (n={len(pvals)})",
+            color=_DS_PALETTE.get(name, "grey"),
+            edgecolor="white",
+            linewidth=0.8,
+        )
 
-    ax.axhline(ax.get_ylim()[1] * 0.1, color="grey", linestyle="--",
-               linewidth=0.5, alpha=0.5)
-    ax.axvline(0.05, color="red", linestyle="--", linewidth=1.0,
-               label="\u03b1 = 0.05")
+    ax.axhline(ax.get_ylim()[1] * 0.1, color="grey", linestyle="--", linewidth=0.5, alpha=0.5)
+    ax.axvline(0.05, color="red", linestyle="--", linewidth=1.0, label="\u03b1 = 0.05")
     ax.set_xlabel("p-value")
     ax.set_ylabel("Count")
     ax.set_title("DiD P-value Distribution", fontweight="bold")
@@ -269,6 +292,7 @@ def _panel_pvalue_distribution(ax, results: dict):
 
 
 # ── Panel D: Sensitivity analysis (MDE vs N) ─────────────────────
+
 
 def _panel_sensitivity(ax, results: dict):
     """Minimum detectable effect vs sample size per group."""
@@ -293,21 +317,37 @@ def _panel_sensitivity(ax, results: dict):
             except Exception:
                 mde_vals.append(np.nan)
 
-        ax.plot(n_range, mde_vals, "o-", label=f"{name} (\u03c3={sigma:.2f})",
-                markersize=8, linewidth=2.5,
-                color=_DS_PALETTE.get(name, "grey"))
+        ax.plot(
+            n_range,
+            mde_vals,
+            "o-",
+            label=f"{name} (\u03c3={sigma:.2f})",
+            markersize=8,
+            linewidth=2.5,
+            color=_DS_PALETTE.get(name, "grey"),
+        )
 
         # Mark actual sample size
         n_actual = res["n_per_group"]
         if 0 < n_actual <= n_range.max():
             try:
-                mde_actual = sctrial.sensitivity_analysis(
-                    int(n_actual), sigma=sigma)
-                ax.axvline(n_actual, color=_DS_PALETTE.get(name, "grey"),
-                           linestyle=":", linewidth=1.2, alpha=0.6)
-                ax.scatter([n_actual], [mde_actual], s=80, zorder=5,
-                           color=_DS_PALETTE.get(name, "grey"),
-                           edgecolors="black", linewidth=1.2)
+                mde_actual = sctrial.sensitivity_analysis(int(n_actual), sigma=sigma)
+                ax.axvline(
+                    n_actual,
+                    color=_DS_PALETTE.get(name, "grey"),
+                    linestyle=":",
+                    linewidth=1.2,
+                    alpha=0.6,
+                )
+                ax.scatter(
+                    [n_actual],
+                    [mde_actual],
+                    s=80,
+                    zorder=5,
+                    color=_DS_PALETTE.get(name, "grey"),
+                    edgecolors="black",
+                    linewidth=1.2,
+                )
             except Exception:
                 pass
 
@@ -319,6 +359,7 @@ def _panel_sensitivity(ax, results: dict):
 
 
 # ── Panel E: LOO influence distribution (strip plot) ──────────────
+
 
 def _panel_loo_influence(ax, results: dict):
     """Strip/swarm plot of LOO influence scores per dataset."""
@@ -332,38 +373,63 @@ def _panel_loo_influence(ax, results: dict):
                 infl = sctrial.influence_diagnostics(loo_df)
                 if "influence" in infl.columns:
                     for _, row in infl.iterrows():
-                        rows.append({
-                            "Dataset": name,
-                            "Influence": row["influence"],
-                            "Influential": row.get("is_influential", False),
-                        })
+                        rows.append(
+                            {
+                                "Dataset": name,
+                                "Influence": row["influence"],
+                                "Influential": row.get("is_influential", False),
+                            }
+                        )
             except Exception:
                 pass
 
     if not rows:
-        ax.text(0.5, 0.5, "No LOO data available",
-                ha="center", va="center", transform=ax.transAxes,
-                fontsize=9, fontstyle="italic", color="#888888")
+        ax.text(
+            0.5,
+            0.5,
+            "No LOO data available",
+            ha="center",
+            va="center",
+            transform=ax.transAxes,
+            fontsize=9,
+            fontstyle="italic",
+            color="#888888",
+        )
         ax.set_title("LOO Influence Scores", fontweight="bold")
         despine(ax)
         return
 
     df = pd.DataFrame(rows)
     # Use strip plot for better visibility
-    sns.stripplot(data=df, x="Dataset", y="Influence",
-                  palette=_DS_PALETTE, size=7, alpha=0.8,
-                  jitter=0.25, edgecolor="black", linewidth=0.4,
-                  ax=ax, zorder=3)
+    sns.stripplot(
+        data=df,
+        x="Dataset",
+        y="Influence",
+        palette=_DS_PALETTE,
+        size=7,
+        alpha=0.8,
+        jitter=0.25,
+        edgecolor="black",
+        linewidth=0.4,
+        ax=ax,
+        zorder=3,
+    )
     # Overlay a boxplot outline for context
-    sns.boxplot(data=df, x="Dataset", y="Influence",
-                color="white", linewidth=1.2,
-                fliersize=0, ax=ax, zorder=2,
-                boxprops=dict(facecolor="none", edgecolor="#555555"),
-                whiskerprops=dict(color="#555555"),
-                capprops=dict(color="#555555"),
-                medianprops=dict(color="red", linewidth=1.5))
-    ax.axhline(1.0, color="red", linestyle="--", linewidth=1.0,
-               label="Influence threshold")
+    sns.boxplot(
+        data=df,
+        x="Dataset",
+        y="Influence",
+        color="white",
+        linewidth=1.2,
+        fliersize=0,
+        ax=ax,
+        zorder=2,
+        boxprops=dict(facecolor="none", edgecolor="#555555"),
+        whiskerprops=dict(color="#555555"),
+        capprops=dict(color="#555555"),
+        medianprops=dict(color="red", linewidth=1.5),
+    )
+    ax.axhline(1.0, color="red", linestyle="--", linewidth=1.0, label="Influence threshold")
     ax.set_ylabel("Influence score")
     ax.set_title("LOO Influence Scores", fontweight="bold")
     ax.legend(fontsize=7, loc="upper right", frameon=True)
@@ -372,6 +438,7 @@ def _panel_loo_influence(ax, results: dict):
 
 # ── Panel F: Residual summary statistics ──────────────────────────
 
+
 def _panel_residual_summary(ax, results: dict):
     """Table: coefficient summary statistics per dataset."""
     rows = []
@@ -379,8 +446,9 @@ def _panel_residual_summary(ax, results: dict):
         did_df = res["did_df"]
         bcol = next((c for c in ["beta_DiD", "coef"] if c in did_df.columns), None)
         se_col = next((c for c in ["se_DiD", "se"] if c in did_df.columns), None)
-        pcol = next((c for c in ["p_DiD", "pvalue_DiD", "pvalue", "p"]
-                     if c in did_df.columns), None)
+        pcol = next(
+            (c for c in ["p_DiD", "pvalue_DiD", "pvalue", "p"] if c in did_df.columns), None
+        )
         if bcol is None:
             continue
         vals = did_df[bcol].dropna().values
@@ -391,27 +459,47 @@ def _panel_residual_summary(ax, results: dict):
         kurt = float(stats.kurtosis(vals)) if n_feat > 2 else np.nan
         med_se = float(did_df[se_col].median()) if se_col else np.nan
         n_sig = int((did_df[pcol] < 0.05).sum()) if pcol else 0
-        rows.append([
-            name, str(n_feat),
-            f"{mean_b:.3f}", f"{std_b:.3f}",
-            f"{skew:.2f}", f"{kurt:.2f}",
-            f"{med_se:.3f}",
-            f"{n_sig}/{n_feat}",
-        ])
+        rows.append(
+            [
+                name,
+                str(n_feat),
+                f"{mean_b:.3f}",
+                f"{std_b:.3f}",
+                f"{skew:.2f}",
+                f"{kurt:.2f}",
+                f"{med_se:.3f}",
+                f"{n_sig}/{n_feat}",
+            ]
+        )
 
     if not rows:
-        ax.text(0.5, 0.5, "No data", ha="center", va="center",
-                transform=ax.transAxes, fontsize=9, color="#888888")
+        ax.text(
+            0.5,
+            0.5,
+            "No data",
+            ha="center",
+            va="center",
+            transform=ax.transAxes,
+            fontsize=9,
+            color="#888888",
+        )
         ax.set_title("Coefficient Summary", fontweight="bold")
         ax.axis("off")
         return
 
-    col_labels = ["Dataset", "N feat", "Mean \u03b2", "Std \u03b2",
-                   "Skew", "Kurtosis", "Med. SE", "Sig. (p<0.05)"]
+    col_labels = [
+        "Dataset",
+        "N feat",
+        "Mean \u03b2",
+        "Std \u03b2",
+        "Skew",
+        "Kurtosis",
+        "Med. SE",
+        "Sig. (p<0.05)",
+    ]
 
     ax.axis("off")
-    table = ax.table(cellText=rows, colLabels=col_labels,
-                      loc="center", cellLoc="center")
+    table = ax.table(cellText=rows, colLabels=col_labels, loc="center", cellLoc="center")
     table.auto_set_font_size(False)
     table.set_fontsize(8)
     table.scale(1.0, 2.0)
@@ -427,11 +515,11 @@ def _panel_residual_summary(ax, results: dict):
         for j in range(len(col_labels)):
             table[i + 1, j].set_facecolor(bg)
 
-    ax.set_title("DiD Coefficient Summary Statistics",
-                 fontweight="bold", pad=20)
+    ax.set_title("DiD Coefficient Summary Statistics", fontweight="bold", pad=20)
 
 
 # ── Panel G: Residual lag plot ────────────────────────────────────
+
 
 def _panel_residual_lag(ax, results: dict):
     """Lag-1 scatter of DiD coefficients (autocorrelation check)."""
@@ -447,9 +535,17 @@ def _panel_residual_lag(ax, results: dict):
         if len(vals) < 3:
             continue
 
-        ax.scatter(vals[:-1], vals[1:], s=40, alpha=0.8,
-                   color=_DS_PALETTE.get(name, "grey"), label=name,
-                   edgecolors="black", linewidth=0.4, zorder=3)
+        ax.scatter(
+            vals[:-1],
+            vals[1:],
+            s=40,
+            alpha=0.8,
+            color=_DS_PALETTE.get(name, "grey"),
+            label=name,
+            edgecolors="black",
+            linewidth=0.4,
+            zorder=3,
+        )
 
     # Reference line
     lims = ax.get_xlim()
@@ -463,6 +559,7 @@ def _panel_residual_lag(ax, results: dict):
 
 # ── Panel H: Effect size distribution ─────────────────────────────
 
+
 def _panel_effect_distribution(ax, results: dict):
     """Histogram: DiD effect size distribution per dataset."""
     for name, res in results.items():
@@ -474,9 +571,15 @@ def _panel_effect_distribution(ax, results: dict):
         else:
             continue
 
-        ax.hist(vals, bins=20, alpha=0.6, label=name,
-                color=_DS_PALETTE.get(name, "grey"), edgecolor="white",
-                linewidth=0.8)
+        ax.hist(
+            vals,
+            bins=20,
+            alpha=0.6,
+            label=name,
+            color=_DS_PALETTE.get(name, "grey"),
+            edgecolor="white",
+            linewidth=0.8,
+        )
 
     ax.axvline(0, color="black", linewidth=1.0, linestyle="--")
     ax.set_xlabel("DiD coefficient")
@@ -489,6 +592,7 @@ def _panel_effect_distribution(ax, results: dict):
 # ======================================================================
 # Outcome correlation panels (I, J, K) — from Sade-Feldman
 # ======================================================================
+
 
 def _prepare_outcome_data() -> dict:
     """Load Sade-Feldman, score signatures, compute participant-level
@@ -545,8 +649,7 @@ def _prepare_outcome_data() -> dict:
         # Cohen's d (pooled)
         n_r, n_nr = len(vals_r), len(vals_nr)
         pooled_std = np.sqrt(
-            ((n_r - 1) * vals_r.std(ddof=1) ** 2 +
-             (n_nr - 1) * vals_nr.std(ddof=1) ** 2)
+            ((n_r - 1) * vals_r.std(ddof=1) ** 2 + (n_nr - 1) * vals_nr.std(ddof=1) ** 2)
             / (n_r + n_nr - 2)
         )
         d = (mean_r - mean_nr) / pooled_std if pooled_std > 0 else 0.0
@@ -561,24 +664,27 @@ def _prepare_outcome_data() -> dict:
         if mean_r < mean_nr:
             auc = 1.0 - auc
 
-        records.append(dict(
-            signature=col,
-            display=sig_display(col),
-            mean_R=mean_r,
-            mean_NR=mean_nr,
-            sem_R=sem_r,
-            sem_NR=sem_nr,
-            cohens_d=d,
-            abs_d=abs(d),
-            p_value=p_val,
-            auc=auc,
-        ))
+        records.append(
+            dict(
+                signature=col,
+                display=sig_display(col),
+                mean_R=mean_r,
+                mean_NR=mean_nr,
+                sem_R=sem_r,
+                sem_NR=sem_nr,
+                cohens_d=d,
+                abs_d=abs(d),
+                p_value=p_val,
+                auc=auc,
+            )
+        )
 
     stats_df = pd.DataFrame(records)
 
     # FDR correction (Benjamini-Hochberg)
     if len(stats_df) > 0:
         from statsmodels.stats.multitest import multipletests
+
         _, fdr, _, _ = multipletests(stats_df["p_value"], method="fdr_bh")
         stats_df["fdr"] = fdr
     else:
@@ -594,15 +700,23 @@ def _prepare_outcome_data() -> dict:
 
 # ── Panel I: Signature changes comparison (grouped bars) ──────────
 
+
 def _panel_signature_changes(ax, data: dict):
     """Grouped bar chart: mean change (Post-Pre) for Responders vs
     Non-responders, top 10 signatures sorted by |Cohen's d|."""
     stats_df = data["stats_df"]
 
     if stats_df is None or len(stats_df) == 0:
-        ax.text(0.5, 0.5, "No data available",
-                transform=ax.transAxes, ha="center", va="center",
-                fontsize=12, color=COLORS["gray"])
+        ax.text(
+            0.5,
+            0.5,
+            "No data available",
+            transform=ax.transAxes,
+            ha="center",
+            va="center",
+            fontsize=12,
+            color=COLORS["gray"],
+        )
         ax.axis("off")
         return
 
@@ -613,18 +727,34 @@ def _panel_signature_changes(ax, data: dict):
     bar_h = 0.35
 
     # Responder bars
-    ax.barh(y - bar_h / 2, df["mean_R"], height=bar_h,
-            xerr=df["sem_R"], capsize=2,
-            color=COLORS["treated"], alpha=0.85, edgecolor="white",
-            linewidth=0.5, label="Responder",
-            error_kw=dict(lw=0.8, capthick=0.8))
+    ax.barh(
+        y - bar_h / 2,
+        df["mean_R"],
+        height=bar_h,
+        xerr=df["sem_R"],
+        capsize=2,
+        color=COLORS["treated"],
+        alpha=0.85,
+        edgecolor="white",
+        linewidth=0.5,
+        label="Responder",
+        error_kw=dict(lw=0.8, capthick=0.8),
+    )
 
     # Non-responder bars
-    ax.barh(y + bar_h / 2, df["mean_NR"], height=bar_h,
-            xerr=df["sem_NR"], capsize=2,
-            color=COLORS["control"], alpha=0.85, edgecolor="white",
-            linewidth=0.5, label="Non-responder",
-            error_kw=dict(lw=0.8, capthick=0.8))
+    ax.barh(
+        y + bar_h / 2,
+        df["mean_NR"],
+        height=bar_h,
+        xerr=df["sem_NR"],
+        capsize=2,
+        color=COLORS["control"],
+        alpha=0.85,
+        edgecolor="white",
+        linewidth=0.5,
+        label="Non-responder",
+        error_kw=dict(lw=0.8, capthick=0.8),
+    )
 
     # FDR markers
     for i, (_, row) in enumerate(df.iterrows()):
@@ -632,33 +762,56 @@ def _panel_signature_changes(ax, data: dict):
         if pd.notna(fdr_val) and fdr_val < 0.25:
             star = "***" if fdr_val < 0.001 else "**" if fdr_val < 0.01 else "*"
             x_max = max(abs(row["mean_R"]), abs(row["mean_NR"]))
-            ax.text(x_max + 0.02, i, star, ha="left", va="center",
-                    fontsize=10, fontweight="bold", color="black")
+            ax.text(
+                x_max + 0.02,
+                i,
+                star,
+                ha="left",
+                va="center",
+                fontsize=10,
+                fontweight="bold",
+                color="black",
+            )
 
     ax.set_yticks(y)
     ax.set_yticklabels(df["display"], fontsize=9)
     ax.axvline(0, color="black", lw=0.8)
     ax.set_xlabel("Mean Change (Post \u2212 Pre)", fontsize=10)
-    ax.set_title("Signature Changes by Response\n(sorted by |Cohen's d|)",
-                 fontsize=11)
+    ax.set_title("Signature Changes by Response\n(sorted by |Cohen's d|)", fontsize=11)
 
     ax.legend(fontsize=9, loc="lower right", frameon=True, framealpha=0.9)
-    ax.text(0.97, 0.12, "* FDR < 0.25  ** < 0.01  *** < 0.001",
-            transform=ax.transAxes, ha="right", va="bottom",
-            fontsize=7, fontstyle="italic", color=COLORS["gray"])
+    ax.text(
+        0.97,
+        0.12,
+        "* FDR < 0.25  ** < 0.01  *** < 0.001",
+        transform=ax.transAxes,
+        ha="right",
+        va="bottom",
+        fontsize=7,
+        fontstyle="italic",
+        color=COLORS["gray"],
+    )
     despine(ax)
 
 
 # ── Panel J: Cohen's d forest plot ────────────────────────────────
+
 
 def _panel_cohens_d_forest(ax, data: dict):
     """Horizontal forest plot of Cohen's d for each signature."""
     stats_df = data["stats_df"]
 
     if stats_df is None or len(stats_df) == 0:
-        ax.text(0.5, 0.5, "No data available",
-                transform=ax.transAxes, ha="center", va="center",
-                fontsize=12, color=COLORS["gray"])
+        ax.text(
+            0.5,
+            0.5,
+            "No data available",
+            transform=ax.transAxes,
+            ha="center",
+            va="center",
+            fontsize=12,
+            color=COLORS["gray"],
+        )
         ax.axis("off")
         return
 
@@ -666,10 +819,7 @@ def _panel_cohens_d_forest(ax, data: dict):
     y = np.arange(len(df))
 
     # Colours by direction
-    colors = [
-        COLORS["treated"] if d > 0 else COLORS["control"]
-        for d in df["cohens_d"]
-    ]
+    colors = [COLORS["treated"] if d > 0 else COLORS["control"] for d in df["cohens_d"]]
 
     # Marker size by FDR significance
     sizes = []
@@ -679,8 +829,7 @@ def _panel_cohens_d_forest(ax, data: dict):
         else:
             sizes.append(40)
 
-    ax.scatter(df["cohens_d"], y, c=colors, s=sizes, edgecolors="white",
-               linewidths=0.8, zorder=3)
+    ax.scatter(df["cohens_d"], y, c=colors, s=sizes, edgecolors="white", linewidths=0.8, zorder=3)
 
     # Connect dots to zero with lines
     for i, d in enumerate(df["cohens_d"]):
@@ -689,12 +838,19 @@ def _panel_cohens_d_forest(ax, data: dict):
     # Reference lines
     ax.axvline(0, color="black", lw=0.8, zorder=2)
     for ref in [-0.5, 0.5]:
-        ax.axvline(ref, color=COLORS["gray"], ls="--", lw=0.7, alpha=0.6,
-                   zorder=1)
-    ax.text(0.5, len(df) + 0.3, "d = 0.5", ha="center", va="bottom",
-            fontsize=7, color=COLORS["gray"])
-    ax.text(-0.5, len(df) + 0.3, "d = \u22120.5", ha="center", va="bottom",
-            fontsize=7, color=COLORS["gray"])
+        ax.axvline(ref, color=COLORS["gray"], ls="--", lw=0.7, alpha=0.6, zorder=1)
+    ax.text(
+        0.5, len(df) + 0.3, "d = 0.5", ha="center", va="bottom", fontsize=7, color=COLORS["gray"]
+    )
+    ax.text(
+        -0.5,
+        len(df) + 0.3,
+        "d = \u22120.5",
+        ha="center",
+        va="bottom",
+        fontsize=7,
+        color=COLORS["gray"],
+    )
 
     ax.set_yticks(y)
     ax.set_yticklabels(df["display"], fontsize=9)
@@ -705,28 +861,47 @@ def _panel_cohens_d_forest(ax, data: dict):
     legend_handles = [
         mpatches.Patch(facecolor=COLORS["treated"], label="Favours Responder"),
         mpatches.Patch(facecolor=COLORS["control"], label="Favours Non-resp"),
-        plt.Line2D([0], [0], marker="o", color="w",
-                   markerfacecolor=COLORS["gray"], markersize=10,
-                   label="FDR < 0.25 (large)"),
-        plt.Line2D([0], [0], marker="o", color="w",
-                   markerfacecolor=COLORS["gray"], markersize=6,
-                   label="FDR >= 0.25 (small)"),
+        plt.Line2D(
+            [0],
+            [0],
+            marker="o",
+            color="w",
+            markerfacecolor=COLORS["gray"],
+            markersize=10,
+            label="FDR < 0.25 (large)",
+        ),
+        plt.Line2D(
+            [0],
+            [0],
+            marker="o",
+            color="w",
+            markerfacecolor=COLORS["gray"],
+            markersize=6,
+            label="FDR >= 0.25 (small)",
+        ),
     ]
-    ax.legend(handles=legend_handles, fontsize=7, loc="lower right",
-              frameon=True, framealpha=0.9)
+    ax.legend(handles=legend_handles, fontsize=7, loc="lower right", frameon=True, framealpha=0.9)
     despine(ax)
 
 
 # ── Panel K: AUC horizontal bar chart ─────────────────────────────
+
 
 def _panel_auc_bars(ax, data: dict):
     """Horizontal bar chart of AUC for each signature."""
     stats_df = data["stats_df"]
 
     if stats_df is None or len(stats_df) == 0:
-        ax.text(0.5, 0.5, "No data available",
-                transform=ax.transAxes, ha="center", va="center",
-                fontsize=12, color=COLORS["gray"])
+        ax.text(
+            0.5,
+            0.5,
+            "No data available",
+            transform=ax.transAxes,
+            ha="center",
+            va="center",
+            fontsize=12,
+            color=COLORS["gray"],
+        )
         ax.axis("off")
         return
 
@@ -735,29 +910,37 @@ def _panel_auc_bars(ax, data: dict):
 
     # Colour by threshold
     auc_threshold = 0.6
-    colors = [
-        COLORS["treated"] if a >= auc_threshold else COLORS["gray"]
-        for a in df["auc"]
-    ]
+    colors = [COLORS["treated"] if a >= auc_threshold else COLORS["gray"] for a in df["auc"]]
 
-    ax.barh(y, df["auc"], color=colors, alpha=0.85, edgecolor="white",
-            linewidth=0.5, height=0.7)
+    ax.barh(y, df["auc"], color=colors, alpha=0.85, edgecolor="white", linewidth=0.5, height=0.7)
 
     # Reference line at 0.5 (random)
     ax.axvline(0.5, color=COLORS["highlight"], ls="--", lw=1.0, zorder=1)
-    ax.text(0.5, len(df) + 0.3, "Random (0.5)", ha="center", va="bottom",
-            fontsize=8, color=COLORS["highlight"])
+    ax.text(
+        0.5,
+        len(df) + 0.3,
+        "Random (0.5)",
+        ha="center",
+        va="bottom",
+        fontsize=8,
+        color=COLORS["highlight"],
+    )
 
     # Reference line at threshold
-    ax.axvline(auc_threshold, color=COLORS["gray"], ls=":", lw=0.8,
-               alpha=0.6, zorder=1)
-    ax.text(auc_threshold, -0.8, f"AUC = {auc_threshold}",
-            ha="center", va="top", fontsize=7, color=COLORS["gray"])
+    ax.axvline(auc_threshold, color=COLORS["gray"], ls=":", lw=0.8, alpha=0.6, zorder=1)
+    ax.text(
+        auc_threshold,
+        -0.8,
+        f"AUC = {auc_threshold}",
+        ha="center",
+        va="top",
+        fontsize=7,
+        color=COLORS["gray"],
+    )
 
     # Annotate AUC values on bars
     for i, (_, row) in enumerate(df.iterrows()):
-        ax.text(row["auc"] + 0.01, i, f"{row['auc']:.2f}",
-                ha="left", va="center", fontsize=7)
+        ax.text(row["auc"] + 0.01, i, f"{row['auc']:.2f}", ha="left", va="center", fontsize=7)
 
     ax.set_yticks(y)
     ax.set_yticklabels(df["display"], fontsize=9)
@@ -767,13 +950,10 @@ def _panel_auc_bars(ax, data: dict):
 
     # Legend
     legend_handles = [
-        mpatches.Patch(facecolor=COLORS["treated"], alpha=0.85,
-                       label=f"AUC >= {auc_threshold}"),
-        mpatches.Patch(facecolor=COLORS["gray"], alpha=0.85,
-                       label=f"AUC < {auc_threshold}"),
+        mpatches.Patch(facecolor=COLORS["treated"], alpha=0.85, label=f"AUC >= {auc_threshold}"),
+        mpatches.Patch(facecolor=COLORS["gray"], alpha=0.85, label=f"AUC < {auc_threshold}"),
     ]
-    ax.legend(handles=legend_handles, fontsize=8, loc="lower right",
-              frameon=True, framealpha=0.9)
+    ax.legend(handles=legend_handles, fontsize=8, loc="lower right", frameon=True, framealpha=0.9)
     despine(ax)
 
 
@@ -781,9 +961,19 @@ def _panel_auc_bars(ax, data: dict):
 # Generate
 # ======================================================================
 
+
 def generate():
-    """Create and save Supplementary Figure 4 panels."""
-    print("Supplementary Figure 4: Model Diagnostics and Assumption Checks")
+    """Create and save Supplementary Figure 4 panels.
+
+    Reorganised layout (6 panels):
+      A  Coefficient Q-Q plots           (was SF4-A)
+      B  LOO influence                   (was SF4-E)
+      C  Cell vs participant betas       (was SF5-A, imported)
+      D  Mean vs median                  (was SF5-E, imported)
+      E  Cell-type heatmap               (was SF5-G, imported)
+      F  Rank concordance                (was SF5-H, imported)
+    """
+    print("Supplementary Figure 4: Model Diagnostics & Robustness")
     results = _load_did_datasets()
 
     if not results:
@@ -797,93 +987,48 @@ def generate():
     if not hasattr(axes, "__iter__"):
         axes = [axes]
     _panel_qq(fig, axes, results)
-    fig.suptitle("Residual Q-Q Plots", fontweight="bold", y=1.02)
+    fig.suptitle("Coefficient Q-Q Plots", fontweight="bold", y=1.02)
     fig.tight_layout()
     save_panel(fig, "panel_A", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel B: Funnel plots (one per dataset)
-    fig, axes = plt.subplots(1, n_ds, figsize=(5 * n_ds, 4.5))
-    if not hasattr(axes, "__iter__"):
-        axes = [axes]
-    _panel_funnel(fig, axes, results)
-    fig.suptitle("Effect Size vs Standard Error", fontweight="bold", y=1.02)
-    fig.tight_layout()
-    save_panel(fig, "panel_B", FIGURE_NAME, SUPP_OUTPUT)
-
-    # Panel C: P-value distribution
-    fig, ax = plt.subplots(figsize=(8, 5))
-    _panel_pvalue_distribution(ax, results)
-    fig.tight_layout()
-    save_panel(fig, "panel_C", FIGURE_NAME, SUPP_OUTPUT)
-
-    # Panel D: Sensitivity
-    fig, ax = plt.subplots(figsize=(7, 5))
-    _panel_sensitivity(ax, results)
-    fig.tight_layout()
-    save_panel(fig, "panel_D", FIGURE_NAME, SUPP_OUTPUT)
-
-    # Panel E: LOO influence (strip plot)
+    # Panel B: LOO influence (was SF4-E)
     fig, ax = plt.subplots(figsize=(7, 5))
     _panel_loo_influence(ax, results)
     fig.tight_layout()
-    save_panel(fig, "panel_E", FIGURE_NAME, SUPP_OUTPUT)
+    save_panel(fig, "panel_B", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel F: Residual summary table
-    fig, ax = plt.subplots(figsize=(12, 4))
-    _panel_residual_summary(ax, results)
-    fig.tight_layout()
-    save_panel(fig, "panel_F", FIGURE_NAME, SUPP_OUTPUT)
-
-    # Panel G: Lag plot
-    fig, ax = plt.subplots(figsize=(6, 6))
-    _panel_residual_lag(ax, results)
-    fig.tight_layout()
-    save_panel(fig, "panel_G", FIGURE_NAME, SUPP_OUTPUT)
-
-    # Panel H: Effect size distribution
-    fig, ax = plt.subplots(figsize=(8, 5))
-    _panel_effect_distribution(ax, results)
-    fig.tight_layout()
-    save_panel(fig, "panel_H", FIGURE_NAME, SUPP_OUTPUT)
-
-    # Free DiD data before loading outcome data
+    # Free DiD data
     for res in results.values():
         if "adata" in res:
             del res["adata"]
     results.clear()
     gc.collect()
 
-    # ── Outcome correlation panels (I, J, K) ─────────────────────────
-    print("  Preparing outcome correlation data (Sade-Feldman)...")
-    try:
-        outcome_data = _prepare_outcome_data()
-    except Exception as exc:
-        print(f"  ERROR preparing outcome data: {exc}")
-        outcome_data = None
+    # Panels C-F: from SF5 robustness
+    from .supp_fig5_robustness_details import (
+        _panel_cell_vs_part,
+        _panel_ct_heatmap,
+        _panel_mean_vs_median,
+        _panel_rank_concordance,
+        _run_sensitivity,
+    )
 
-    if outcome_data is not None:
-        # Panel I: Signature changes grouped bars
-        fig, ax = plt.subplots(figsize=(7, 6))
-        _panel_signature_changes(ax, outcome_data)
+    data = _run_sensitivity()
+    panel_map = [
+        ("panel_C", _panel_cell_vs_part, (6.5, 6)),
+        ("panel_D", _panel_mean_vs_median, (6.5, 6)),
+        ("panel_E", _panel_ct_heatmap, (8, 5.5)),
+        ("panel_F", _panel_rank_concordance, (7, 5)),
+    ]
+    for name, func, figsize in panel_map:
+        fig, ax = plt.subplots(figsize=figsize)
+        func(ax, data)
         fig.tight_layout()
-        save_panel(fig, "panel_I", FIGURE_NAME, SUPP_OUTPUT)
+        save_panel(fig, name, FIGURE_NAME, SUPP_OUTPUT)
 
-        # Panel J: Cohen's d forest plot
-        fig, ax = plt.subplots(figsize=(7, 6))
-        _panel_cohens_d_forest(ax, outcome_data)
-        fig.tight_layout()
-        save_panel(fig, "panel_J", FIGURE_NAME, SUPP_OUTPUT)
-
-        # Panel K: AUC horizontal bar chart
-        fig, ax = plt.subplots(figsize=(7, 6))
-        _panel_auc_bars(ax, outcome_data)
-        fig.tight_layout()
-        save_panel(fig, "panel_K", FIGURE_NAME, SUPP_OUTPUT)
-
-        # Cleanup outcome data
-        if "adata" in outcome_data:
-            del outcome_data["adata"]
-        del outcome_data
+    if "adata" in data:
+        del data["adata"]
+    data.clear()
 
     # Final cleanup
     clear_cache()
