@@ -45,12 +45,10 @@ from .._shared import (
 
 FIGURE_NAME = "SuppFig3_baseline_design"
 
-_DS_PALETTE = dict(
-    zip(
-        ["Sade-Feldman", "Stephenson", "Vaccine", "AML", "CAR-T"],
-        sns.color_palette("Set2", 5),
-    )
-)
+_DS_PALETTE = dict(zip(
+    ["Sade-Feldman", "Stephenson", "Vaccine", "AML", "CAR-T"],
+    sns.color_palette("Set2", 5),
+))
 
 DATASETS = [
     ("Sade-Feldman", get_sade_feldman),
@@ -62,7 +60,6 @@ DATASETS = [
 
 
 # ── helpers ──────────────────────────────────────────────────────────
-
 
 def _pid_col(obs):
     for c in ("participant_id", "patient_id", "donor_id", "pt_id"):
@@ -86,15 +83,8 @@ def _arm_col(obs):
 
 
 def _ct_col(obs):
-    for c in (
-        "cell_type",
-        "celltype",
-        "CellType",
-        "cell_type_fine",
-        "cell_type_coarse",
-        "celltype_major",
-        "clustnm",
-    ):
+    for c in ("cell_type", "celltype", "CellType", "cell_type_fine",
+              "cell_type_coarse", "celltype_major", "clustnm"):
         if c in obs.columns and obs[c].nunique() > 1:
             return c
     return None
@@ -106,7 +96,6 @@ def _get_ngenes(adata) -> np.ndarray:
         if col in obs.columns:
             return np.asarray(obs[col], dtype=float)
     import scipy.sparse as sp
-
     for layer in ("counts", "tpm", "cpm"):
         if layer in adata.layers:
             X = adata.layers[layer]
@@ -179,7 +168,6 @@ _DESIGN_META = {
 
 # ── Panel A: Design summary table ─────────────────────────────────
 
-
 def _panel_design_table(ax, loaded: dict):
     """Study design summary table."""
     rows = []
@@ -193,22 +181,22 @@ def _panel_design_table(ax, loaded: dict):
         n_visits = obs[vis].nunique() if vis else 1
 
         meta = _DESIGN_META.get(name, {})
-        rows.append(
-            [
-                name,
-                meta.get("indication", ""),
-                meta.get("design", ""),
-                meta.get("pairing", ""),
-                f"{n_participants}",
-                f"{n_visits}",
-                f"{n_cells:,}",
-            ]
-        )
+        rows.append([
+            name,
+            meta.get("indication", ""),
+            meta.get("design", ""),
+            meta.get("pairing", ""),
+            f"{n_participants}",
+            f"{n_visits}",
+            f"{n_cells:,}",
+        ])
 
-    col_labels = ["Dataset", "Indication", "Design", "Pairing", "Participants", "Visits", "Cells"]
+    col_labels = ["Dataset", "Indication", "Design", "Pairing",
+                   "Participants", "Visits", "Cells"]
 
     ax.axis("off")
-    table = ax.table(cellText=rows, colLabels=col_labels, loc="center", cellLoc="center")
+    table = ax.table(cellText=rows, colLabels=col_labels,
+                      loc="center", cellLoc="center")
     table.auto_set_font_size(False)
     table.set_fontsize(8)
     table.scale(1.0, 1.8)
@@ -232,7 +220,6 @@ def _panel_design_table(ax, loaded: dict):
 
 
 # ── Panel B: Pairing structure ────────────────────────────────────
-
 
 def _panel_pairing(ax, loaded: dict):
     """Participant pairing structure per dataset."""
@@ -297,19 +284,12 @@ def _panel_pairing(ax, loaded: dict):
             bar_colors.append("#bdc3c7")
             bar_labels.append("Unknown")
 
-    ax.barh(y_pos, [1] * len(ds_names), color=bar_colors, height=0.6, edgecolor="white")
+    ax.barh(y_pos, [1] * len(ds_names), color=bar_colors, height=0.6,
+            edgecolor="white")
     for i, (name, label) in enumerate(zip(ds_names, bar_labels)):
-        ax.text(
-            0.5,
-            i,
-            label,
-            ha="center",
-            va="center",
-            fontsize=8,
-            fontweight="bold",
-            color="white",
-            path_effects=[pe.withStroke(linewidth=2, foreground="black")],
-        )
+        ax.text(0.5, i, label, ha="center", va="center", fontsize=8,
+                fontweight="bold", color="white",
+                path_effects=[pe.withStroke(linewidth=2, foreground="black")])
 
     ax.set_yticks(y_pos)
     ax.set_yticklabels(ds_names, fontsize=9)
@@ -318,17 +298,14 @@ def _panel_pairing(ax, loaded: dict):
     ax.set_title("Participant Pairing Structure", fontweight="bold")
 
     # Legend
-    handles = [
-        mpatches.Patch(facecolor=c, label=k)
-        for k, c in cat_colors.items()
-        if any(n in categories[k] for n in ds_names)
-    ]
+    handles = [mpatches.Patch(facecolor=c, label=k)
+               for k, c in cat_colors.items() if any(n in categories[k]
+                                                       for n in ds_names)]
     ax.legend(handles=handles, fontsize=7, loc="lower right", frameon=True)
     despine(ax)
 
 
 # ── Panel C: Cells per participant per arm ────────────────────────
-
 
 def _panel_cells_per_pid_arm(ax, loaded: dict):
     """Box + strip: cells per participant, split by arm."""
@@ -351,47 +328,30 @@ def _panel_cells_per_pid_arm(ax, loaded: dict):
         rows.append(per_pid)
 
     if not rows:
-        ax.text(0.5, 0.5, "No data", ha="center", va="center", transform=ax.transAxes)
+        ax.text(0.5, 0.5, "No data", ha="center", va="center",
+                transform=ax.transAxes)
         return
 
     df = pd.concat(rows, ignore_index=True)
     df["Cells_log"] = np.log10(df["Cells"] + 1)
 
-    sns.boxplot(
-        data=df,
-        x="Dataset",
-        y="Cells_log",
-        hue="Arm",
-        order=list(loaded.keys()),
-        fliersize=0,
-        linewidth=0.5,
-        palette="Set2",
-        ax=ax,
-    )
-    sns.stripplot(
-        data=df,
-        x="Dataset",
-        y="Cells_log",
-        hue="Arm",
-        order=list(loaded.keys()),
-        dodge=True,
-        size=2,
-        alpha=0.5,
-        palette="Set2",
-        ax=ax,
-        legend=False,
-    )
+    sns.boxplot(data=df, x="Dataset", y="Cells_log", hue="Arm",
+                order=list(loaded.keys()), fliersize=0, linewidth=0.5,
+                palette="Set2", ax=ax)
+    sns.stripplot(data=df, x="Dataset", y="Cells_log", hue="Arm",
+                  order=list(loaded.keys()), dodge=True, size=2, alpha=0.5,
+                  palette="Set2", ax=ax, legend=False)
 
     ax.set_xlabel("")
     ax.set_ylabel(r"$\log_{10}$(cells per participant + 1)")
     ax.set_title("Cells per Participant by Arm", fontweight="bold")
-    ax.legend(fontsize=6, title="Arm", title_fontsize=7, loc="upper right", frameon=True, ncol=2)
+    ax.legend(fontsize=6, title="Arm", title_fontsize=7, loc="upper right",
+              frameon=True, ncol=2)
     ax.tick_params(axis="x", rotation=15)
     despine(ax)
 
 
 # ── Panel D: Baseline PCA overlap between arms ───────────────────
-
 
 def _panel_baseline_pca(fig_parent, axes, loaded: dict):
     """PCA of baseline (pre-treatment) cells coloured by arm."""
@@ -403,7 +363,8 @@ def _panel_baseline_pca(fig_parent, axes, loaded: dict):
         arm = data["arm_col"]
         if vis and arm:
             obs = data["adata"].obs
-            pre_mask = obs[vis].astype(str).str.lower().isin(["pre", "baseline", "d0", "day0", "0"])
+            pre_mask = obs[vis].astype(str).str.lower().isin(
+                ["pre", "baseline", "d0", "day0", "0"])
             if pre_mask.sum() > 50:
                 ds_with_baseline.append(name)
 
@@ -419,7 +380,8 @@ def _panel_baseline_pca(fig_parent, axes, loaded: dict):
         vis = data["visit_col"]
         arm = data["arm_col"]
 
-        pre_mask = obs[vis].astype(str).str.lower().isin(["pre", "baseline", "d0", "day0", "0"])
+        pre_mask = obs[vis].astype(str).str.lower().isin(
+            ["pre", "baseline", "d0", "day0", "0"])
         adata_pre = adata[pre_mask]
 
         if "X_pca" in adata_pre.obsm:
@@ -434,7 +396,8 @@ def _panel_baseline_pca(fig_parent, axes, loaded: dict):
                 if "counts" in adata_pre.layers:
                     X = adata_pre.layers["counts"]
                 else:
-                    ax.text(0.5, 0.5, "No data", ha="center", va="center", transform=ax.transAxes)
+                    ax.text(0.5, 0.5, "No data", ha="center", va="center",
+                            transform=ax.transAxes)
                     continue
 
             if sp.issparse(X):
@@ -444,28 +407,21 @@ def _panel_baseline_pca(fig_parent, axes, loaded: dict):
             top_genes = np.argsort(var_genes)[-500:]
             X_sub = X[:, top_genes]
             from sklearn.decomposition import PCA
-
             pca = PCA(n_components=2, random_state=42).fit_transform(X_sub)
 
         arms = adata_pre.obs[arm].astype(str).values
         unique_arms = sorted(set(arms))
-        arm_palette = dict(zip(unique_arms, sns.color_palette("Set1", len(unique_arms))))
+        arm_palette = dict(zip(unique_arms,
+                                sns.color_palette("Set1", len(unique_arms))))
 
         rng = np.random.default_rng(42)
         order = rng.permutation(len(arms))
 
         for a in unique_arms:
             mask = arms[order] == a
-            ax.scatter(
-                pca[order[mask], 0],
-                pca[order[mask], 1],
-                c=[arm_palette[a]],
-                s=3,
-                alpha=0.5,
-                label=a,
-                edgecolors="none",
-                rasterized=True,
-            )
+            ax.scatter(pca[order[mask], 0], pca[order[mask], 1],
+                       c=[arm_palette[a]], s=3, alpha=0.5, label=a,
+                       edgecolors="none", rasterized=True)
 
         ax.set_title(f"{name} (baseline)", fontweight="bold", fontsize=9)
         ax.set_xlabel("PC1", fontsize=7)
@@ -478,7 +434,6 @@ def _panel_baseline_pca(fig_parent, axes, loaded: dict):
 
 # ── Panel E: Genes detected at baseline by arm ───────────────────
 
-
 def _panel_baseline_ngenes(ax, loaded: dict):
     """Violins: genes detected per cell at baseline, split by arm."""
     rows = []
@@ -489,7 +444,8 @@ def _panel_baseline_ngenes(ax, loaded: dict):
         ngenes = _get_ngenes(data["adata"])
 
         if vis and arm:
-            pre_mask = obs[vis].astype(str).str.lower().isin(["pre", "baseline", "d0", "day0", "0"])
+            pre_mask = obs[vis].astype(str).str.lower().isin(
+                ["pre", "baseline", "d0", "day0", "0"])
             if pre_mask.sum() < 50:
                 continue
             arms = obs.loc[pre_mask, arm].astype(str).values
@@ -502,56 +458,33 @@ def _panel_baseline_ngenes(ax, loaded: dict):
 
         for a in sorted(set(arms)):
             mask = arms == a
-            rows.append(
-                pd.DataFrame(
-                    {
-                        "Dataset": name,
-                        "Arm": a,
-                        "Genes": ng[mask],
-                    }
-                )
-            )
+            rows.append(pd.DataFrame({
+                "Dataset": name, "Arm": a, "Genes": ng[mask],
+            }))
 
     if not rows:
-        ax.text(
-            0.5,
-            0.5,
-            "No baseline data",
-            ha="center",
-            va="center",
-            transform=ax.transAxes,
-            fontsize=10,
-            fontstyle="italic",
-        )
+        ax.text(0.5, 0.5, "No baseline data", ha="center", va="center",
+                transform=ax.transAxes, fontsize=10, fontstyle="italic")
         ax.set_title("Baseline Gene Detection by Arm", fontweight="bold")
         return
 
     df = pd.concat(rows, ignore_index=True)
-    ds_order = [n for n in loaded.keys() if n in df["Dataset"].unique()]
+    ds_order = [n for n in loaded.keys()
+                if n in df["Dataset"].unique()]
 
-    sns.violinplot(
-        data=df,
-        x="Dataset",
-        y="Genes",
-        hue="Arm",
-        order=ds_order,
-        cut=0,
-        inner="quartile",
-        linewidth=0.5,
-        palette="Set1",
-        density_norm="width",
-        ax=ax,
-    )
+    sns.violinplot(data=df, x="Dataset", y="Genes", hue="Arm",
+                   order=ds_order, cut=0, inner="quartile", linewidth=0.5,
+                   palette="Set1", density_norm="width", ax=ax)
     ax.set_xlabel("")
     ax.set_ylabel("Genes detected per cell")
     ax.set_title("Baseline Gene Detection by Arm", fontweight="bold")
-    ax.legend(fontsize=6, title="Arm", title_fontsize=7, loc="upper right", frameon=True, ncol=2)
+    ax.legend(fontsize=6, title="Arm", title_fontsize=7, loc="upper right",
+              frameon=True, ncol=2)
     ax.tick_params(axis="x", rotation=15)
     despine(ax)
 
 
 # ── Panel F: Cell-type composition at baseline by arm ─────────────
-
 
 def _panel_baseline_ct_by_arm(ax, loaded: dict):
     """Stacked bars: baseline cell-type composition per arm per dataset."""
@@ -565,7 +498,8 @@ def _panel_baseline_ct_by_arm(ax, loaded: dict):
             continue
 
         if vis:
-            pre_mask = obs[vis].astype(str).str.lower().isin(["pre", "baseline", "d0", "day0", "0"])
+            pre_mask = obs[vis].astype(str).str.lower().isin(
+                ["pre", "baseline", "d0", "day0", "0"])
             if pre_mask.sum() < 50:
                 continue
             sub = obs.loc[pre_mask]
@@ -576,19 +510,13 @@ def _panel_baseline_ct_by_arm(ax, loaded: dict):
             a_sub = sub[sub[arm] == a]
             ct_frac = a_sub[ct].astype(str).value_counts(normalize=True)
             for c, f in ct_frac.items():
-                rows.append({"Dataset": name, "Arm": str(a), "Cell type": str(c), "Fraction": f})
+                rows.append({"Dataset": name, "Arm": str(a),
+                             "Cell type": str(c), "Fraction": f})
 
     if not rows:
-        ax.text(
-            0.5,
-            0.5,
-            "No baseline cell-type data",
-            ha="center",
-            va="center",
-            transform=ax.transAxes,
-            fontsize=10,
-            fontstyle="italic",
-        )
+        ax.text(0.5, 0.5, "No baseline cell-type data", ha="center",
+                va="center", transform=ax.transAxes, fontsize=10,
+                fontstyle="italic")
         ax.set_title("Baseline Cell-Type Composition", fontweight="bold")
         return
 
@@ -616,27 +544,15 @@ def _panel_baseline_ct_by_arm(ax, loaded: dict):
         for ct in all_cts:
             frac = gsub.loc[gsub["Cell type"] == ct, "Fraction"].sum()
             if frac > 0:
-                ax.barh(
-                    gi,
-                    frac,
-                    left=left,
-                    height=0.6,
-                    color=ct_palette[ct],
-                    edgecolor="white",
-                    linewidth=0.2,
-                )
+                ax.barh(gi, frac, left=left, height=0.6,
+                        color=ct_palette[ct], edgecolor="white",
+                        linewidth=0.2)
                 if frac > 0.08:
-                    ax.text(
-                        left + frac / 2,
-                        gi,
-                        ct,
-                        ha="center",
-                        va="center",
-                        fontsize=4,
-                        color="white",
-                        fontweight="bold",
-                        path_effects=[pe.withStroke(linewidth=1, foreground="black")],
-                    )
+                    ax.text(left + frac / 2, gi, ct, ha="center",
+                            va="center", fontsize=4, color="white",
+                            fontweight="bold",
+                            path_effects=[pe.withStroke(linewidth=1,
+                                                         foreground="black")])
                 left += frac
 
     ax.set_yticks(y_pos)
@@ -648,7 +564,6 @@ def _panel_baseline_ct_by_arm(ax, loaded: dict):
 
 
 # ── Panel G: Dropout / attrition ──────────────────────────────────
-
 
 def _panel_dropout(ax, loaded: dict):
     """Dropout rates: fraction of participants missing post-treatment."""
@@ -666,7 +581,8 @@ def _panel_dropout(ax, loaded: dict):
             continue
 
         # Identify pre and post
-        pre_visits = [v for v in visits if str(v).lower() in ("pre", "baseline", "d0", "day0", "0")]
+        pre_visits = [v for v in visits
+                      if str(v).lower() in ("pre", "baseline", "d0", "day0", "0")]
         post_visits = [v for v in visits if v not in pre_visits]
 
         if not pre_visits or not post_visits:
@@ -680,42 +596,29 @@ def _panel_dropout(ax, loaded: dict):
         n_post = len(pre_pids & post_pids)
         dropout_rate = 1 - (n_post / n_pre) if n_pre > 0 else 0
 
-        rows.append(
-            {
-                "Dataset": name,
-                "N pre": n_pre,
-                "N retained": n_post,
-                "Dropout rate": dropout_rate,
-            }
-        )
+        rows.append({
+            "Dataset": name,
+            "N pre": n_pre,
+            "N retained": n_post,
+            "Dropout rate": dropout_rate,
+        })
 
     if not rows:
-        ax.text(
-            0.5,
-            0.5,
-            "No longitudinal data",
-            ha="center",
-            va="center",
-            transform=ax.transAxes,
-            fontsize=10,
-            fontstyle="italic",
-        )
+        ax.text(0.5, 0.5, "No longitudinal data", ha="center", va="center",
+                transform=ax.transAxes, fontsize=10, fontstyle="italic")
         ax.set_title("Attrition Rates", fontweight="bold")
         return
 
     df = pd.DataFrame(rows)
     colors = [_DS_PALETTE.get(n, "grey") for n in df["Dataset"]]
 
-    bars = ax.bar(df["Dataset"], df["Dropout rate"], color=colors, edgecolor="white", width=0.6)
+    bars = ax.bar(df["Dataset"], df["Dropout rate"], color=colors,
+                  edgecolor="white", width=0.6)
     for bar, (_, row) in zip(bars, df.iterrows()):
-        ax.text(
-            bar.get_x() + bar.get_width() / 2,
-            row["Dropout rate"] + 0.02,
-            f"{row['Dropout rate']:.0%}\n({row['N retained']}/{row['N pre']})",
-            ha="center",
-            va="bottom",
-            fontsize=6,
-        )
+        ax.text(bar.get_x() + bar.get_width() / 2,
+                row["Dropout rate"] + 0.02,
+                f"{row['Dropout rate']:.0%}\n({row['N retained']}/{row['N pre']})",
+                ha="center", va="bottom", fontsize=6)
 
     ax.set_ylabel("Dropout rate")
     ax.set_title("Participant Attrition (Pre → Post)", fontweight="bold")
@@ -725,7 +628,6 @@ def _panel_dropout(ax, loaded: dict):
 
 
 # ── Panel H: Detailed completeness ────────────────────────────────
-
 
 def _panel_completeness_detailed(ax, loaded: dict):
     """Bar chart: fraction of participants with cells at each visit."""
@@ -742,39 +644,38 @@ def _panel_completeness_detailed(ax, loaded: dict):
             participants = sorted(obs[pid].dropna().unique())
             for v in visits:
                 n_total = len(participants)
-                n_with = len(set(obs.loc[(obs[vis] == v) & obs[pid].notna(), pid].unique()))
+                n_with = len(set(obs.loc[(obs[vis] == v) &
+                                         obs[pid].notna(), pid].unique()))
                 label = f"{name}\n{v}"
-                rows.append(
-                    {
-                        "Label": label,
-                        "Fraction": n_with / n_total if n_total > 0 else 0,
-                        "Count": f"{n_with}/{n_total}",
-                    }
-                )
+                rows.append({
+                    "Label": label,
+                    "Fraction": n_with / n_total if n_total > 0 else 0,
+                    "Count": f"{n_with}/{n_total}",
+                })
         else:
             participants = sorted(obs[pid].dropna().unique())
-            rows.append(
-                {
-                    "Label": f"{name}\nAll",
-                    "Fraction": 1.0,
-                    "Count": f"{len(participants)}/{len(participants)}",
-                }
-            )
+            rows.append({
+                "Label": f"{name}\nAll",
+                "Fraction": 1.0,
+                "Count": f"{len(participants)}/{len(participants)}",
+            })
 
     if not rows:
-        ax.text(0.5, 0.5, "No data", ha="center", va="center", transform=ax.transAxes)
+        ax.text(0.5, 0.5, "No data", ha="center", va="center",
+                transform=ax.transAxes)
         return
 
     df = pd.DataFrame(rows)
 
     y_pos = np.arange(len(df))
-    colors = [
-        "#27ae60" if f >= 0.9 else "#f39c12" if f >= 0.5 else "#e74c3c" for f in df["Fraction"]
-    ]
+    colors = ["#27ae60" if f >= 0.9 else "#f39c12" if f >= 0.5 else "#e74c3c"
+              for f in df["Fraction"]]
 
-    ax.barh(y_pos, df["Fraction"], color=colors, height=0.6, edgecolor="white")
+    ax.barh(y_pos, df["Fraction"], color=colors, height=0.6,
+            edgecolor="white")
     for i, row in df.iterrows():
-        ax.text(row["Fraction"] + 0.02, i, row["Count"], va="center", ha="left", fontsize=6)
+        ax.text(row["Fraction"] + 0.02, i, row["Count"],
+                va="center", ha="left", fontsize=6)
 
     ax.set_yticks(y_pos)
     ax.set_yticklabels(df["Label"], fontsize=6)
@@ -787,7 +688,6 @@ def _panel_completeness_detailed(ax, loaded: dict):
 # ======================================================================
 # Generate
 # ======================================================================
-
 
 def generate():
     """Create and save Supplementary Figure 3 panels.
@@ -820,7 +720,8 @@ def generate():
     save_panel(fig, "panel_B", FIGURE_NAME, SUPP_OUTPUT)
 
     # Panel C: Baseline PCA overlap (was SF3-D)
-    n_baseline = sum(1 for data in loaded.values() if data["visit_col"] and data["arm_col"])
+    n_baseline = sum(1 for data in loaded.values()
+                     if data["visit_col"] and data["arm_col"])
     ncols = min(n_baseline, 3) if n_baseline > 0 else 1
     nrows = max(1, (n_baseline + ncols - 1) // ncols)
     fig, axes = plt.subplots(nrows, ncols, figsize=(5 * ncols, 4.5 * nrows))
@@ -847,7 +748,6 @@ def generate():
 
     # Panel F: Sensitivity / MDE (was SF4-D, imported)
     from .supp_fig4_umap import _load_did_datasets, _panel_sensitivity
-
     did_results = _load_did_datasets()
     if did_results:
         fig, ax = plt.subplots(figsize=(7, 5))
