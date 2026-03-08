@@ -288,7 +288,7 @@ def get_sade_feldman():
     from sctrial.datasets import load_sade_feldman
     adata = load_sade_feldman(
         max_cells_per_participant_visit=None,
-        processed_name="sade_feldman_tpm_v5_full.h5ad",
+        processed_name="sade_feldman_processed_v6.h5ad",
         force_reprocess=False,
     )
     print(f"  Sade-Feldman: {adata.n_obs:,} cells, {adata.n_vars:,} genes")
