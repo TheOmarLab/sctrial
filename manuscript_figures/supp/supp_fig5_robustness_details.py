@@ -51,6 +51,40 @@ _FEATURES = [
 _PAL = {"cell": COLORS.get("highlight", "#5B9BD5"),
         "participant": COLORS.get("treated", "#E07B54")}
 
+# Try to import adjustText; fall back to manual offsets if unavailable
+try:
+    from adjustText import adjust_text as _adjust_text
+    _HAS_ADJUSTTEXT = True
+except ImportError:
+    _HAS_ADJUSTTEXT = False
+
+
+def _add_gene_labels(ax, features, x_series, y_series):
+    """Add non-overlapping gene labels to a scatter plot.
+
+    Uses adjustText when available; otherwise falls back to manual offsets.
+    """
+    if _HAS_ADJUSTTEXT:
+        texts = []
+        for feat in features:
+            texts.append(
+                ax.text(x_series[feat], y_series[feat], feat,
+                        fontsize=7, ha="left")
+            )
+        _adjust_text(
+            texts, ax=ax,
+            force_text=(2.0, 2.0), force_points=(2.0, 2.0),
+            expand=(1.5, 1.5),
+            arrowprops=dict(arrowstyle="-", color="gray", lw=0.5),
+        )
+    else:
+        for feat in features:
+            ax.annotate(
+                feat, (x_series[feat], y_series[feat]),
+                fontsize=7, alpha=0.85, ha="left",
+                xytext=(5, 3), textcoords="offset points",
+            )
+
 
 # ======================================================================
 # Data loading
@@ -165,14 +199,11 @@ def _panel_cell_vs_part(ax, data: dict):
         return
 
     x, y = cell[common].values, part[common].values
-    ax.scatter(x, y, s=30, alpha=0.7, color=COLORS.get("highlight", "#5B9BD5"),
+    ax.scatter(x, y, s=50, alpha=0.85, color=COLORS.get("highlight", "#5B9BD5"),
                edgecolors="grey", linewidth=0.3)
 
-    # Labels
-    for feat in common:
-        ax.annotate(feat, (cell[feat], part[feat]),
-                    fontsize=5.5, alpha=0.7, ha="left",
-                    xytext=(3, 2), textcoords="offset points")
+    # Labels — non-overlapping
+    _add_gene_labels(ax, common, cell, part)
 
     # Identity + correlation
     lims = [min(min(x), min(y)) - 0.1, max(max(x), max(y)) + 0.1]
@@ -237,12 +268,11 @@ def _panel_std_vs_unstd(ax, data: dict):
         return
 
     x, y = std[common].values, unstd[common].values
-    ax.scatter(x, y, s=30, alpha=0.7, color=COLORS.get("treated", "#E07B54"),
+    ax.scatter(x, y, s=50, alpha=0.85, color=COLORS.get("treated", "#E07B54"),
                edgecolors="grey", linewidth=0.3)
-    for feat in common:
-        ax.annotate(feat, (std[feat], unstd[feat]),
-                    fontsize=5.5, alpha=0.7, ha="left",
-                    xytext=(3, 2), textcoords="offset points")
+
+    _add_gene_labels(ax, common, std, unstd)
+
     r, _ = sp_stats.pearsonr(x, y)
     ax.text(0.05, 0.95, f"r = {r:.2f}", transform=ax.transAxes, fontsize=7,
             va="top", bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
@@ -256,7 +286,11 @@ def _panel_std_vs_unstd(ax, data: dict):
 # ── Panel D: Volcano plot ─────────────────────────────────────────
 
 def _panel_volcano(ax, data: dict):
-    """Volcano plot: beta_DiD vs −log₁₀(p_DiD) with FDR line."""
+    """Volcano plot: beta_DiD vs −log₁₀(p_DiD).
+
+    Points coloured by absolute beta magnitude (continuous colormap).
+    Labels the top 5 genes by absolute beta.
+    """
     df = data["part"].copy()
     if "beta_DiD" not in df.columns or "p_DiD" not in df.columns:
         ax.text(0.5, 0.5, "No p-value data", ha="center", va="center",
@@ -264,32 +298,49 @@ def _panel_volcano(ax, data: dict):
         return
 
     df["neglog10p"] = -np.log10(df["p_DiD"].clip(lower=1e-10))
-    fdr_col = "FDR_DiD" if "FDR_DiD" in df.columns else None
+    df["abs_beta"] = df["beta_DiD"].abs()
 
-    # Color by significance
-    if fdr_col:
-        sig = df[fdr_col] < 0.1
+    # Continuous colouring by absolute beta magnitude
+    sc = ax.scatter(
+        df["beta_DiD"], df["neglog10p"],
+        c=df["abs_beta"], cmap="YlOrRd", s=50, alpha=0.85,
+        edgecolors="grey", linewidth=0.3, zorder=2,
+    )
+    cbar = plt.colorbar(sc, ax=ax, shrink=0.7, pad=0.02)
+    cbar.set_label(r"$|\beta|$", fontsize=8)
+
+    # Label top 5 genes by absolute beta
+    top5 = df.reindex(
+        df["abs_beta"].sort_values(ascending=False).index
+    ).head(5)
+
+    if _HAS_ADJUSTTEXT:
+        texts = []
+        for _, row in top5.iterrows():
+            texts.append(
+                ax.text(row["beta_DiD"], row["neglog10p"],
+                        row["feature"], fontsize=7, ha="center")
+            )
+        _adjust_text(
+            texts, ax=ax,
+            force_text=(2.0, 2.0), force_points=(2.0, 2.0),
+            expand=(1.5, 1.5),
+            arrowprops=dict(arrowstyle="-", color="gray", lw=0.5),
+        )
     else:
-        sig = df["p_DiD"] < 0.05
-
-    ax.scatter(df.loc[~sig, "beta_DiD"], df.loc[~sig, "neglog10p"],
-               s=20, alpha=0.5, color="grey", edgecolors="white", linewidth=0.3,
-               label="NS")
-    ax.scatter(df.loc[sig, "beta_DiD"], df.loc[sig, "neglog10p"],
-               s=30, alpha=0.8, color=COLORS.get("highlight", "#5B9BD5"),
-               edgecolors="grey", linewidth=0.3, label="FDR < 0.1")
-
-    # Labels for significant
-    for _, row in df[sig].iterrows():
-        ax.annotate(row["feature"], (row["beta_DiD"], row["neglog10p"]),
-                    fontsize=6, ha="center", va="bottom",
-                    xytext=(0, 4), textcoords="offset points")
+        for _, row in top5.iterrows():
+            ax.annotate(
+                row["feature"],
+                (row["beta_DiD"], row["neglog10p"]),
+                fontsize=7, ha="center", va="bottom",
+                xytext=(0, 5), textcoords="offset points",
+            )
 
     ax.axhline(-np.log10(0.05), color="red", linestyle="--", linewidth=0.5,
                alpha=0.5, label="p = 0.05")
     ax.axvline(0, color="black", linewidth=0.5, alpha=0.3)
-    ax.set_xlabel("β (DiD)")
-    ax.set_ylabel("−log₁₀(p)")
+    ax.set_xlabel(r"$\beta$ (DiD)")
+    ax.set_ylabel(r"$-\log_{10}(p)$")
     ax.set_title("Volcano Plot", fontweight="bold")
     ax.legend(fontsize=6, loc="upper right", frameon=True)
     despine(ax)
@@ -300,7 +351,17 @@ def _panel_volcano(ax, data: dict):
 def _panel_mean_vs_median(ax, data: dict):
     """Scatter: mean-aggregation vs median-aggregation betas."""
     mean_df = data["part"].set_index("feature")["beta_DiD"]
-    med_df = data["median"].set_index("feature")["beta_DiD"]
+    med_res = data.get("median")
+
+    # Guard: median agg may produce NaN betas
+    if med_res is None or med_res.empty:
+        ax.text(0.5, 0.5, "No median-aggregation results", ha="center",
+                va="center", transform=ax.transAxes, fontsize=9, color="#888")
+        ax.set_title("Mean vs Median Aggregation", fontweight="bold")
+        despine(ax)
+        return
+
+    med_df = med_res.set_index("feature")["beta_DiD"]
     common = mean_df.index.intersection(med_df.index)
     # Drop NaN/Inf
     mask = np.isfinite(mean_df[common]) & np.isfinite(med_df[common])
@@ -313,12 +374,11 @@ def _panel_mean_vs_median(ax, data: dict):
         return
 
     x, y = mean_df[common].values, med_df[common].values
-    ax.scatter(x, y, s=30, alpha=0.7, color="#7B68EE",
+    ax.scatter(x, y, s=50, alpha=0.85, color="#7B68EE",
                edgecolors="grey", linewidth=0.3)
-    for feat in common:
-        ax.annotate(feat, (mean_df[feat], med_df[feat]),
-                    fontsize=5.5, alpha=0.7, ha="left",
-                    xytext=(3, 2), textcoords="offset points")
+
+    _add_gene_labels(ax, common, mean_df, med_df)
+
     lims = [min(min(x), min(y)) - 0.1, max(max(x), max(y)) + 0.1]
     ax.plot(lims, lims, "k--", linewidth=0.5, alpha=0.3)
     r, _ = sp_stats.pearsonr(x, y)
@@ -352,12 +412,11 @@ def _panel_log_sensitivity(ax, data: dict):
         return
 
     x, y = log_df[common].values, raw_df[common].values
-    ax.scatter(x, y, s=30, alpha=0.7, color="#2ECC71",
+    ax.scatter(x, y, s=50, alpha=0.85, color="#2ECC71",
                edgecolors="grey", linewidth=0.3)
-    for feat in common:
-        ax.annotate(feat, (log_df[feat], raw_df[feat]),
-                    fontsize=5.5, alpha=0.7, ha="left",
-                    xytext=(3, 2), textcoords="offset points")
+
+    _add_gene_labels(ax, common, log_df, raw_df)
+
     r, _ = sp_stats.pearsonr(x, y)
     ax.text(0.05, 0.95, f"r = {r:.2f}", transform=ax.transAxes, fontsize=7,
             va="top", bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
@@ -417,10 +476,18 @@ def _panel_rank_concordance(ax, data: dict):
                        ("unstd", "Unstandardised"),
                        ("median", "Median agg")]:
         df = data.get(key)
-        if df is not None and "beta_DiD" in df.columns:
+        # Guard: skip if df is None, empty, or has too few valid betas
+        if (df is not None
+                and not df.empty
+                and "beta_DiD" in df.columns
+                and df["beta_DiD"].notna().sum() >= 2):
             configs[label] = df.set_index("feature")["beta_DiD"].rank()
 
-    if "raw" in data and data["raw"] is not None and "beta_DiD" in data["raw"].columns:
+    if ("raw" in data
+            and data["raw"] is not None
+            and not data["raw"].empty
+            and "beta_DiD" in data["raw"].columns
+            and data["raw"]["beta_DiD"].notna().sum() >= 2):
         configs["Raw TPM"] = data["raw"].set_index("feature")["beta_DiD"].rank()
 
     if len(configs) < 2:
@@ -439,9 +506,14 @@ def _panel_rank_concordance(ax, data: dict):
         if label == ref_key:
             continue
         common = ref.index.intersection(ranks.index)
+        # Drop NaN ranks before correlation
+        valid = ref[common].notna() & ranks[common].notna()
+        common = common[valid]
         if len(common) < 3:
             continue
         rho, _ = sp_stats.spearmanr(ref[common], ranks[common])
+        if np.isnan(rho):
+            continue
         labels.append(label)
         rhos.append(rho)
 

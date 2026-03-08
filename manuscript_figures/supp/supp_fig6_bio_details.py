@@ -7,8 +7,8 @@ cross-dataset effect correlations, and pathway-level analyses.
 
 Panels:
   A  Gene-set score distributions per dataset (violin per signature).
-  B  Cross-dataset effect correlation (SF vs AML DiD betas).
-  C  Top differentially affected genes (horizontal bar, ranked by |β|).
+  B  Cross-dataset effect correlation (pairwise DiD betas).
+  C  Top differentially affected genes (horizontal bar, ranked by |beta|).
   D  Gene-level effect distribution histogram per dataset.
   E  Exhaustion signature forest plot (across cell types, SF only).
   F  Effect heterogeneity (SD) per cell type per signature.
@@ -27,6 +27,7 @@ import matplotlib.patches as mpatches
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from adjustText import adjust_text
 from scipy import stats as sp_stats
 
 from .._shared import (
@@ -59,63 +60,107 @@ _GENE_SETS = {
 }
 
 _DS_PALETTE = dict(zip(
-    ["Sade-Feldman", "AML"],
-    sns.color_palette("Set2", 2),
+    ["Sade-Feldman", "AML", "CAR-T", "Melanoma"],
+    sns.color_palette("Set2", 4),
 ))
+
+# Dataset configurations: loader, layer, and TrialDesign kwargs
+_DATASET_CONFIGS = {
+    "Sade-Feldman": {
+        "loader": "sade_feldman",
+        "layer": "log1p_tpm",
+        "design_kw": {
+            "participant_col": "participant_id",
+            "visit_col": "visit",
+            "arm_col": "response",
+            "arm_treated": "Responder",
+            "arm_control": "Non-responder",
+        },
+    },
+    "AML": {
+        "loader": "aml",
+        "layer": "log1p_norm",
+        "design_kw": {
+            "participant_col": "participant_id",
+            "visit_col": "visit",
+            "arm_col": "response",
+            "arm_treated": "Treatment",
+            "arm_control": "Control",
+        },
+    },
+    "CAR-T": {
+        "loader": "cart",
+        "layer": "log1p_norm",
+        "design_kw": {
+            "participant_col": "participant_id",
+            "visit_col": "visit",
+            "arm_col": "response",
+            "arm_treated": "CAR-T",
+            "arm_control": "CAR-T",
+        },
+    },
+    "Melanoma": {
+        "loader": "melanoma",
+        "layer": "log1p_tpm",
+        "design_kw": {
+            "participant_col": "participant_id",
+            "visit_col": "visit",
+            "arm_col": "Cohort",
+            "arm_treated": "New",
+            "arm_control": "Tirosh",
+        },
+    },
+}
 
 
 def _load_data():
-    """Load SF and AML datasets, run DiD, compute gene set scores."""
+    """Load all datasets, attempt DiD, compute gene set scores."""
     import sctrial
 
     datasets = {}
 
-    # Sade-Feldman
-    adata_sf = get_sade_feldman()
-    adata_sf = harmonize_response(adata_sf)
-    if "log1p_tpm" not in adata_sf.layers and "tpm" in adata_sf.layers:
-        adata_sf.layers["log1p_tpm"] = np.log1p(adata_sf.layers["tpm"])
+    for ds_name, cfg in _DATASET_CONFIGS.items():
+        print(f"  Loading {ds_name}...")
+        try:
+            # Load adata
+            if cfg["loader"] == "sade_feldman":
+                adata = get_sade_feldman()
+                adata = harmonize_response(adata)
+                if "log1p_tpm" not in adata.layers and "tpm" in adata.layers:
+                    adata.layers["log1p_tpm"] = np.log1p(adata.layers["tpm"])
+            else:
+                adata = load_clinical_trial_dataset(cfg["loader"])
 
-    design_sf = sctrial.TrialDesign(
-        participant_col="participant_id", visit_col="visit",
-        arm_col="response", arm_treated="Responder",
-        arm_control="Non-responder",
-    )
-    feats_sf = [f for f in _FEATURES if f in adata_sf.var_names]
+            layer = cfg["layer"]
+            design = sctrial.TrialDesign(**cfg["design_kw"])
+            feats = [f for f in _FEATURES if f in adata.var_names]
 
-    did_sf = sctrial.did_table(
-        adata_sf, feats_sf, design_sf, ("Pre", "Post"),
-        layer="log1p_tpm", aggregate="participant_visit", standardize=True,
-    )
+            # Gene set scores (always possible)
+            gs_scores = _score_gene_sets(adata, layer)
 
-    # Gene set scores
-    gs_scores_sf = _score_gene_sets(adata_sf, "log1p_tpm")
+            entry = {
+                "adata": adata,
+                "design": design,
+                "features": feats,
+                "gs_scores": gs_scores,
+                "did": None,  # may be filled below
+            }
 
-    datasets["Sade-Feldman"] = {
-        "adata": adata_sf, "did": did_sf, "design": design_sf,
-        "features": feats_sf, "gs_scores": gs_scores_sf,
-    }
+            # Attempt DiD — may fail for single-arm datasets
+            try:
+                did_df = sctrial.did_table(
+                    adata, feats, design, ("Pre", "Post"),
+                    layer=layer, aggregate="participant_visit",
+                    standardize=True,
+                )
+                if did_df is not None and len(did_df) > 0:
+                    entry["did"] = did_df
+            except Exception as exc:
+                print(f"    DiD skipped for {ds_name}: {exc}")
 
-    # AML
-    adata_aml = load_clinical_trial_dataset("aml")
-    design_aml = sctrial.TrialDesign(
-        participant_col="participant_id", visit_col="visit",
-        arm_col="response", arm_treated="Treatment",
-        arm_control="Control",
-    )
-    feats_aml = [f for f in _FEATURES if f in adata_aml.var_names]
-
-    did_aml = sctrial.did_table(
-        adata_aml, feats_aml, design_aml, ("Pre", "Post"),
-        layer="log1p_norm", aggregate="participant_visit", standardize=True,
-    )
-
-    gs_scores_aml = _score_gene_sets(adata_aml, "log1p_norm")
-
-    datasets["AML"] = {
-        "adata": adata_aml, "did": did_aml, "design": design_aml,
-        "features": feats_aml, "gs_scores": gs_scores_aml,
-    }
+            datasets[ds_name] = entry
+        except Exception as exc:
+            print(f"    Could not load {ds_name}: {exc}")
 
     return datasets
 
@@ -143,6 +188,11 @@ def _score_gene_sets(adata, layer):
     return scores
 
 
+def _datasets_with_did(datasets: dict) -> dict:
+    """Return subset of datasets that have valid DiD results."""
+    return {k: v for k, v in datasets.items() if v.get("did") is not None}
+
+
 # ── Panel A: Gene-set score violins ──────────────────────────────
 
 def _panel_gs_violins(ax, datasets: dict):
@@ -150,7 +200,6 @@ def _panel_gs_violins(ax, datasets: dict):
     rows = []
     for ds_name, ds in datasets.items():
         for gs_name, vals in ds["gs_scores"].items():
-            # Subsample for speed
             n = min(len(vals), 2000)
             idx = np.random.RandomState(42).choice(len(vals), n, replace=False)
             for v in vals[idx]:
@@ -162,9 +211,10 @@ def _panel_gs_violins(ax, datasets: dict):
         return
 
     df = pd.DataFrame(rows)
+    n_ds = df["Dataset"].nunique()
     sns.violinplot(data=df, x="Gene set", y="Score", hue="Dataset",
-                   palette="Set2", split=True, inner="quartile",
-                   linewidth=0.5, ax=ax, cut=0)
+                   palette=_DS_PALETTE, split=(n_ds == 2),
+                   inner="quartile", linewidth=0.5, ax=ax, cut=0)
     ax.set_xlabel("")
     ax.set_ylabel("Z-mean score")
     ax.set_title("Gene-Set Score Distributions", fontweight="bold")
@@ -176,16 +226,18 @@ def _panel_gs_violins(ax, datasets: dict):
 # ── Panel B: Cross-dataset DiD correlation ───────────────────────
 
 def _panel_cross_ds_corr(ax, datasets: dict):
-    """Scatter: SF β vs AML β for shared features."""
-    ds_names = list(datasets.keys())
+    """Scatter: pairwise DiD beta correlation for datasets with valid DiD."""
+    did_ds = _datasets_with_did(datasets)
+    ds_names = list(did_ds.keys())
     if len(ds_names) < 2:
-        ax.text(0.5, 0.5, "Need ≥2 datasets", ha="center", va="center",
-                transform=ax.transAxes)
+        ax.text(0.5, 0.5, "Need >= 2 datasets with DiD",
+                ha="center", va="center", transform=ax.transAxes)
         return
 
+    # Use first two datasets with DiD
     d1, d2 = ds_names[0], ds_names[1]
-    b1 = datasets[d1]["did"].set_index("feature")["beta_DiD"]
-    b2 = datasets[d2]["did"].set_index("feature")["beta_DiD"]
+    b1 = did_ds[d1]["did"].set_index("feature")["beta_DiD"]
+    b2 = did_ds[d2]["did"].set_index("feature")["beta_DiD"]
     common = b1.index.intersection(b2.index)
     mask = np.isfinite(b1[common]) & np.isfinite(b2[common])
     common = common[mask]
@@ -196,12 +248,17 @@ def _panel_cross_ds_corr(ax, datasets: dict):
         return
 
     x, y = b1[common].values, b2[common].values
-    ax.scatter(x, y, s=30, alpha=0.7, color="#8E44AD",
+    ax.scatter(x, y, s=50, alpha=0.7, color="#8E44AD",
                edgecolors="grey", linewidth=0.3)
+
+    # Annotate with adjustText to avoid overlap
+    texts = []
     for feat in common:
-        ax.annotate(feat, (b1[feat], b2[feat]),
-                    fontsize=5.5, alpha=0.7, xytext=(3, 2),
-                    textcoords="offset points")
+        texts.append(ax.text(b1[feat], b2[feat], feat, fontsize=7, alpha=0.8))
+    adjust_text(texts, ax=ax,
+                arrowprops=dict(arrowstyle='-', color='gray', lw=0.5),
+                force_text=(2.0, 2.0), force_points=(2.0, 2.0),
+                expand=(1.5, 1.5))
 
     r, p = sp_stats.pearsonr(x, y)
     ax.text(0.05, 0.95, f"r = {r:.2f}\np = {p:.3f}",
@@ -210,49 +267,53 @@ def _panel_cross_ds_corr(ax, datasets: dict):
                       edgecolor="#ccc", alpha=0.8))
     lims = [min(min(x), min(y)) - 0.2, max(max(x), max(y)) + 0.2]
     ax.plot(lims, lims, "k--", linewidth=0.5, alpha=0.3)
-    ax.set_xlabel(f"β ({d1})")
-    ax.set_ylabel(f"β ({d2})")
+    ax.set_xlabel(f"\u03b2 ({d1})")
+    ax.set_ylabel(f"\u03b2 ({d2})")
     ax.set_title("Cross-Dataset Effect Correlation", fontweight="bold")
     despine(ax)
 
 
-# ── Panel C: Top genes by |β| ────────────────────────────────────
+# ── Panel C: Top genes by |beta| ────────────────────────────────
 
 def _panel_top_genes(ax, datasets: dict):
-    """Horizontal bar: top genes ranked by |β| across datasets."""
+    """Horizontal bar: top genes ranked by |beta| across all DiD datasets."""
+    did_ds = _datasets_with_did(datasets)
     rows = []
-    for ds_name, ds in datasets.items():
+    for ds_name, ds in did_ds.items():
         did_df = ds["did"]
         for _, row in did_df.iterrows():
             rows.append({"Dataset": ds_name, "Feature": row["feature"],
                          "beta": row["beta_DiD"]})
 
     if not rows:
-        ax.text(0.5, 0.5, "No data", ha="center", va="center",
+        ax.text(0.5, 0.5, "No DiD data", ha="center", va="center",
                 transform=ax.transAxes)
         return
 
     df = pd.DataFrame(rows)
     df["abs_beta"] = df["beta"].abs()
-    # Top 10 by max |β| across datasets
+    # Top 12 by max |beta| across datasets
     top = df.groupby("Feature")["abs_beta"].max().nlargest(12).index
     df = df[df["Feature"].isin(top)]
 
     # Pivot for grouped bar
     piv = df.pivot(index="Feature", columns="Dataset", values="beta").reindex(top)
-    piv = piv.sort_values(piv.columns[0], ascending=True)
+    # Sort by first column
+    first_col = piv.columns[0]
+    piv = piv.sort_values(first_col, ascending=True)
 
+    n_ds = len(piv.columns)
     y = np.arange(len(piv))
-    h = 0.35
+    h = 0.8 / max(n_ds, 1)
     for i, col in enumerate(piv.columns):
-        ax.barh(y + i * h, piv[col].values, height=h,
+        ax.barh(y + i * h - (n_ds - 1) * h / 2, piv[col].values, height=h,
                 color=_DS_PALETTE.get(col, "grey"), alpha=0.8,
                 edgecolor="white", linewidth=0.5, label=col)
 
     ax.axvline(0, color="black", linewidth=0.8)
-    ax.set_yticks(y + h / 2)
+    ax.set_yticks(y)
     ax.set_yticklabels(piv.index, fontsize=7)
-    ax.set_xlabel("β (DiD)")
+    ax.set_xlabel("\u03b2 (DiD)")
     ax.set_title("Top Differentially Affected Genes", fontweight="bold")
     ax.legend(fontsize=7, loc="best", frameon=True)
     despine(ax)
@@ -261,14 +322,15 @@ def _panel_top_genes(ax, datasets: dict):
 # ── Panel D: Effect distribution histogram ────────────────────────
 
 def _panel_effect_hist(ax, datasets: dict):
-    """Histogram of DiD betas across features per dataset."""
-    for ds_name, ds in datasets.items():
+    """Histogram of DiD betas across features per dataset (all with DiD)."""
+    did_ds = _datasets_with_did(datasets)
+    for ds_name, ds in did_ds.items():
         did_df = ds["did"]
         vals = did_df["beta_DiD"].dropna().values
-        ax.hist(vals, bins=15, alpha=0.5, label=ds_name,
+        ax.hist(vals, bins=15, alpha=0.45, label=ds_name,
                 color=_DS_PALETTE.get(ds_name, "grey"), edgecolor="white")
     ax.axvline(0, color="black", linewidth=0.8, linestyle="--")
-    ax.set_xlabel("β (DiD)")
+    ax.set_xlabel("\u03b2 (DiD)")
     ax.set_ylabel("Count")
     ax.set_title("Effect Size Distribution", fontweight="bold")
     ax.legend(fontsize=7, frameon=True)
@@ -338,9 +400,9 @@ def _panel_exhaustion_forest(ax, datasets: dict):
 
     ax.axvline(0, color="black", linewidth=0.8)
     ax.set_yticks(y)
-    ax.set_yticklabels([f"{r['Gene']} ({r['Cell type'][:8]})"
-                        for _, r in df.iterrows()], fontsize=6)
-    ax.set_xlabel("β (DiD)")
+    ax.set_yticklabels([f"{r['Gene']} ({r['Cell type']})"
+                        for _, r in df.iterrows()], fontsize=5.5)
+    ax.set_xlabel("\u03b2 (DiD)")
     ax.set_title("Exhaustion Genes by Cell Type (SF)", fontweight="bold")
     despine(ax)
 
@@ -348,9 +410,10 @@ def _panel_exhaustion_forest(ax, datasets: dict):
 # ── Panel F: Effect heterogeneity SD heatmap ─────────────────────
 
 def _panel_heterogeneity_sd(ax, datasets: dict):
-    """Heatmap: std dev of DiD betas across datasets per feature."""
+    """Heatmap: DiD betas across all datasets with valid DiD per feature."""
+    did_ds = _datasets_with_did(datasets)
     all_betas = {}
-    for ds_name, ds in datasets.items():
+    for ds_name, ds in did_ds.items():
         did_df = ds["did"]
         all_betas[ds_name] = did_df.set_index("feature")["beta_DiD"]
 
@@ -360,7 +423,7 @@ def _panel_heterogeneity_sd(ax, datasets: dict):
                 transform=ax.transAxes)
         return
 
-    # Sort by mean |β|
+    # Sort by mean |beta|
     df["mean_abs"] = df.abs().mean(axis=1)
     df = df.sort_values("mean_abs", ascending=False).drop(columns="mean_abs")
     df = df.head(12)
@@ -368,7 +431,7 @@ def _panel_heterogeneity_sd(ax, datasets: dict):
     sns.heatmap(df, ax=ax, cmap="RdBu_r", center=0, linewidths=0.5,
                 linecolor="white", annot=True, fmt=".2f",
                 annot_kws={"fontsize": 7},
-                cbar_kws={"shrink": 0.6, "label": "β"})
+                cbar_kws={"shrink": 0.6, "label": "\u03b2"})
     ax.set_title("Effect Sizes Across Datasets", fontweight="bold")
     ax.tick_params(axis="x", labelsize=8, rotation=0)
     ax.tick_params(axis="y", labelsize=7)
@@ -377,7 +440,7 @@ def _panel_heterogeneity_sd(ax, datasets: dict):
 # ── Panel G: Pre vs Post trajectories ────────────────────────────
 
 def _panel_pre_post_trajectories(ax, datasets: dict):
-    """Paired trajectories: mean gene-set score Pre→Post by arm."""
+    """Paired trajectories: mean gene-set score Pre vs Post by arm."""
     rows = []
     for ds_name, ds in datasets.items():
         adata = ds["adata"]
@@ -443,14 +506,34 @@ def _panel_pre_post_trajectories(ax, datasets: dict):
 # ── Panel H: Gene-set enrichment summary ─────────────────────────
 
 def _panel_gs_enrichment_summary(ax, datasets: dict):
-    """Heatmap: mean gene-set z-score by dataset × arm × visit."""
+    """Heatmap: mean gene-set z-score by dataset x arm x visit."""
     rows = []
     for ds_name, ds in datasets.items():
         adata = ds["adata"]
         arm_col = ds["design"].arm_col
+        # Use actual arm values from the data (not just design config)
+        # to ensure single-arm datasets are included
+        design_arms = list(dict.fromkeys(
+            [ds["design"].arm_treated, ds["design"].arm_control]
+        ))
+        # Also include any arm values that actually appear in the data
+        if arm_col in adata.obs.columns:
+            data_arms = adata.obs[arm_col].unique().tolist()
+            all_arms = list(dict.fromkeys(design_arms + data_arms))
+        else:
+            all_arms = design_arms
+        # Determine available visit values
+        if "visit" in adata.obs.columns:
+            available_visits = [v for v in ["Pre", "Post"]
+                                if v in adata.obs["visit"].values]
+            if not available_visits:
+                # Fall back to all unique visit values
+                available_visits = adata.obs["visit"].unique().tolist()
+        else:
+            continue
         for gs_name, vals in ds["gs_scores"].items():
-            for visit in ["Pre", "Post"]:
-                for arm in [ds["design"].arm_treated, ds["design"].arm_control]:
+            for visit in available_visits:
+                for arm in all_arms:
                     mask = (adata.obs["visit"] == visit) & (adata.obs[arm_col] == arm)
                     if mask.sum() > 0:
                         rows.append({
@@ -465,14 +548,15 @@ def _panel_gs_enrichment_summary(ax, datasets: dict):
         return
 
     df = pd.DataFrame(rows)
-    piv = df.pivot(index="Gene set", columns="label", values="Score")
+    piv = df.pivot_table(index="Gene set", columns="label", values="Score",
+                         aggfunc="mean")
 
     sns.heatmap(piv, ax=ax, cmap="RdBu_r", center=0, linewidths=0.5,
                 linecolor="white", annot=True, fmt=".2f",
-                annot_kws={"fontsize": 6},
+                annot_kws={"fontsize": 5},
                 cbar_kws={"shrink": 0.6, "label": "Z-score"})
-    ax.set_title("Gene-Set Scores: Dataset × Arm × Visit", fontweight="bold")
-    ax.tick_params(axis="x", labelsize=6, rotation=45)
+    ax.set_title("Gene-Set Scores: Dataset \u00d7 Arm \u00d7 Visit", fontweight="bold")
+    ax.tick_params(axis="x", labelsize=5, rotation=45)
     ax.tick_params(axis="y", labelsize=7)
 
 
@@ -487,14 +571,14 @@ def generate():
     print(f"  Loaded {len(datasets)} datasets")
 
     panels = [
-        ("panel_A", _panel_gs_violins, (9, 5)),
-        ("panel_B", _panel_cross_ds_corr, (6.5, 6)),
-        ("panel_C", _panel_top_genes, (8, 6)),
-        ("panel_D", _panel_effect_hist, (7, 5)),
-        ("panel_E", _panel_exhaustion_forest, (7, 7)),
-        ("panel_F", _panel_heterogeneity_sd, (8, 5.5)),
+        ("panel_A", _panel_gs_violins, (11, 5)),
+        ("panel_B", _panel_cross_ds_corr, (7, 6.5)),
+        ("panel_C", _panel_top_genes, (10, 6)),
+        ("panel_D", _panel_effect_hist, (8, 5)),
+        ("panel_E", _panel_exhaustion_forest, (9, 7)),
+        ("panel_F", _panel_heterogeneity_sd, (10, 5.5)),
         ("panel_G", _panel_pre_post_trajectories, (7, 5.5)),
-        ("panel_H", _panel_gs_enrichment_summary, (10, 5)),
+        ("panel_H", _panel_gs_enrichment_summary, (14, 5.5)),
     ]
 
     for name, func, figsize in panels:
