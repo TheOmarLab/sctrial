@@ -24,11 +24,11 @@ from ._shared import MAIN_OUTPUT, SUPP_OUTPUT, apply_style
 
 MAIN_FIGURES = {
     1: ("Figure 1: Problem & Framework", "main.figure1_problem_framework"),
-    2: ("Figure 2: Immunotherapy DiD", "main.figure2_immunotherapy_did"),
+    2: ("Figure 2: Melanoma Analysis", "main.figure2_melanoma_analysis"),
     3: ("Figure 3: Multi-Dataset Generalization", "main.figure3_multi_dataset"),
-    4: ("Figure 4: Statistical Robustness", "main.figure4_statistical_robustness"),
+    4: ("Figure 4: Robustness & Benchmarking", "main.figure4_robustness_benchmarking"),
     5: ("Figure 5: Biological Discovery", "main.figure5_biological_discovery"),
-    6: ("Figure 6: Scalability & Power", "main.figure6_scalability_power"),
+    6: ("Figure 6: Validation & Dynamics", "main.figure6_validation_dynamics"),
 }
 
 SUPP_TABLES = {

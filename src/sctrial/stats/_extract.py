@@ -49,6 +49,7 @@ def extract_gene_matrix(
         return np.asarray(X[:, idx].toarray())
     return np.asarray(X[:, idx])
 
+
 def extract_gene_vector(adata: AnnData, gene: str, layer: str | None = None) -> np.ndarray:
     """Return a 1D numpy array of gene expression (length = n_obs).
 

@@ -49,9 +49,9 @@ class TrialDesign:
     """Optional default follow-up visit label (e.g., 'Follow-up', 'V2')."""
 
     def primary_visits(
-            self,
-            baseline: str | None = None,
-            followup: str | None = None,
+        self,
+        baseline: str | None = None,
+        followup: str | None = None,
     ) -> tuple[str, str]:
         """Return (baseline, followup) visit labels.
 
@@ -79,10 +79,10 @@ class TrialDesign:
         return (b, f)
 
     def required_cols(
-            self,
-            *,
-            include_celltype: bool = False,
-            include_crossover: bool = False,
+        self,
+        *,
+        include_celltype: bool = False,
+        include_crossover: bool = False,
     ) -> Sequence[str]:
         """Return required obs columns for this design.
 
@@ -106,12 +106,12 @@ class TrialDesign:
         return cols
 
     def validate(
-            self,
-            adata: AnnData,
-            *,
-            include_celltype: bool = False,
-            include_crossover: bool = False,
-            check_arm_labels: bool = True,
+        self,
+        adata: AnnData,
+        *,
+        include_celltype: bool = False,
+        include_crossover: bool = False,
+        check_arm_labels: bool = True,
     ) -> None:
         """Validate that `adata.obs` contains required columns and labels.
 
@@ -147,8 +147,7 @@ class TrialDesign:
         ]
         if missing:
             raise KeyError(
-                f"Missing required obs columns: {missing}. "
-                f"Available: {list(obs.columns)}"
+                f"Missing required obs columns: {missing}. Available: {list(obs.columns)}"
             )
 
         if check_arm_labels:

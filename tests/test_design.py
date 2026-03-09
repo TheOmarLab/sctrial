@@ -3,6 +3,7 @@
 Covers: construction validation, primary_visits, required_cols,
 validate (column checks, arm label checks, extra-arm warning), arm_bin.
 """
+
 from __future__ import annotations
 
 import warnings
@@ -17,6 +18,7 @@ from sctrial.design import TrialDesign
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_adata(
     arms: list[str] | None = None,
@@ -49,6 +51,7 @@ def _make_adata(
 # Construction Validation (__post_init__)
 # ===================================================================
 
+
 class TestConstruction:
     """TrialDesign is a frozen dataclass; identical arm labels are allowed at
     construction (needed for single-arm studies) but rejected by validate() and arm_bin()."""
@@ -77,6 +80,7 @@ class TestConstruction:
 # ===================================================================
 # primary_visits
 # ===================================================================
+
 
 class TestPrimaryVisits:
     """P3 #3: Uses 'is not None' fallback, not truthy 'or'."""
@@ -111,8 +115,8 @@ class TestPrimaryVisits:
 # required_cols
 # ===================================================================
 
-class TestRequiredCols:
 
+class TestRequiredCols:
     def test_base_cols(self):
         d = TrialDesign()
         cols = d.required_cols()
@@ -150,8 +154,8 @@ class TestRequiredCols:
 # validate — column checks
 # ===================================================================
 
-class TestValidateColumns:
 
+class TestValidateColumns:
     def test_valid_data_passes(self):
         adata = _make_adata()
         TrialDesign().validate(adata)
@@ -179,8 +183,8 @@ class TestValidateColumns:
 # validate — arm label checks
 # ===================================================================
 
-class TestValidateArmLabels:
 
+class TestValidateArmLabels:
     def test_correct_labels_pass(self):
         adata = _make_adata(arms=["Treated", "Control"])
         TrialDesign().validate(adata)
@@ -213,6 +217,7 @@ class TestValidateArmLabels:
 # ===================================================================
 # validate — extra-arm warning (P1 #1)
 # ===================================================================
+
 
 class TestValidateExtraArms:
     """P1 #1: warn when data has arms beyond treated/control."""
@@ -250,8 +255,8 @@ class TestValidateExtraArms:
 # arm_bin
 # ===================================================================
 
-class TestArmBin:
 
+class TestArmBin:
     def test_binary_encoding(self):
         adata = _make_adata(arms=["Treated", "Control"])
         d = TrialDesign()

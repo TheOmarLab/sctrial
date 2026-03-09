@@ -12,14 +12,14 @@ logger = logging.getLogger(__name__)
 
 
 def add_log1p_cpm_layer(
-        adata: AnnData,
-        *,
-        counts_layer: str | None = "counts",
-        out_layer: str = "log1p_cpm",
-        layer_out: str | None = None,  # alias for out_layer
-        scale: float = 1e6,
-        overwrite: bool = False,
-        inplace: bool = True,
+    adata: AnnData,
+    *,
+    counts_layer: str | None = "counts",
+    out_layer: str = "log1p_cpm",
+    layer_out: str | None = None,  # alias for out_layer
+    scale: float = 1e6,
+    overwrite: bool = False,
+    inplace: bool = True,
 ) -> AnnData:
     """Add log1p(CPM) normalization as a layer.
 
@@ -58,16 +58,13 @@ def add_log1p_cpm_layer(
 
     # --- Validate scale ---
     if not np.isfinite(scale) or scale <= 0:
-        raise ValueError(
-            f"scale must be a finite positive number, got {scale!r}."
-        )
+        raise ValueError(f"scale must be a finite positive number, got {scale!r}.")
 
     ad = adata if inplace else adata.copy()
 
     if (out_layer in ad.layers) and (not overwrite):
         logger.info(
-            "Layer '%s' already exists; returning unchanged "
-            "(pass overwrite=True to recompute).",
+            "Layer '%s' already exists; returning unchanged (pass overwrite=True to recompute).",
             out_layer,
         )
         return ad

@@ -34,49 +34,107 @@ logger = logging.getLogger(__name__)
 # exhausted (CD8_B) states.
 _IMMUNE_MARKERS: dict[str, set[str]] = {
     "CD8 T cell": {
-        "CD8A", "CD8B", "GZMK", "GZMB", "GZMA", "PRF1", "NKG7",
-        "CD3D", "CD3E", "IFNG", "EOMES", "TBX21",
+        "CD8A",
+        "CD8B",
+        "GZMK",
+        "GZMB",
+        "GZMA",
+        "PRF1",
+        "NKG7",
+        "CD3D",
+        "CD3E",
+        "IFNG",
+        "EOMES",
+        "TBX21",
     },
     "CD4 T cell": {
-        "CD4", "IL7R", "CCR7", "LEF1", "TCF7", "ICOS",
-        "CD3D", "CD3E", "CD40LG",
+        "CD4",
+        "IL7R",
+        "CCR7",
+        "LEF1",
+        "TCF7",
+        "ICOS",
+        "CD3D",
+        "CD3E",
+        "CD40LG",
     },
     "Treg": {
-        "FOXP3", "IL2RA", "CTLA4", "IKZF2", "TNFRSF18",
-        "CD4", "CD3D", "CD3E",
+        "FOXP3",
+        "IL2RA",
+        "CTLA4",
+        "IKZF2",
+        "TNFRSF18",
+        "CD4",
+        "CD3D",
+        "CD3E",
     },
     "B cell": {
         # G1 markers from publication: IGKC, LTB, LY9, SELL, TCF7, CCR7
-        "MS4A1", "CD79A", "CD79B", "BANK1", "CD74", "CD19",
-        "PAX5", "BLK", "IGKC", "LTB", "LY9",
+        "MS4A1",
+        "CD79A",
+        "CD79B",
+        "BANK1",
+        "CD74",
+        "CD19",
+        "PAX5",
+        "BLK",
+        "IGKC",
+        "LTB",
+        "LY9",
     },
     "Plasma cell": {
         # G2 cluster
-        "MZB1", "SDC1", "XBP1", "JCHAIN", "PRDM1",
-        "IGKC", "IGHG1",
+        "MZB1",
+        "SDC1",
+        "XBP1",
+        "JCHAIN",
+        "PRDM1",
+        "IGKC",
+        "IGHG1",
     },
     "NK cell": {
-        "KLRD1", "KLRF1", "KLRB1", "GNLY", "PRF1",
-        "NKG7", "GZMB", "NCAM1", "FCGR3A",
+        "KLRD1",
+        "KLRF1",
+        "KLRB1",
+        "GNLY",
+        "PRF1",
+        "NKG7",
+        "GZMB",
+        "NCAM1",
+        "FCGR3A",
     },
     "Monocyte/Macrophage": {
         # G3 cluster
-        "CD14", "CD68", "LYZ", "CST3", "S100A8", "S100A9",
-        "C1QA", "C1QB", "C1QC", "MRC1", "CSF1R", "FCGR3A",
+        "CD14",
+        "CD68",
+        "LYZ",
+        "CST3",
+        "S100A8",
+        "S100A9",
+        "C1QA",
+        "C1QB",
+        "C1QC",
+        "MRC1",
+        "CSF1R",
+        "FCGR3A",
     },
     "Dendritic cell": {
         # G4 cluster
-        "FCER1A", "CLEC10A", "CD1C", "ITGAX",
-        "HLA-DRA", "HLA-DQA1",
+        "FCER1A",
+        "CLEC10A",
+        "CD1C",
+        "ITGAX",
+        "HLA-DRA",
+        "HLA-DQA1",
     },
 }
 
 # Annotation parameters (following Diab_duod conventions)
-_ANNOT_TOP_N = 50          # top markers per cluster from Wilcoxon
-_ANNOT_MIN_LFC = 0.25      # minimum log fold-change
-_ANNOT_MAX_FDR = 0.1       # maximum adjusted p-value
-_ANNOT_SECOND_DELTA = 0.25 # delta to flag ambiguous clusters
-_ANNOT_MIN_ACCEPT = 0.3    # minimum weighted score to accept a label
+_ANNOT_TOP_N = 50  # top markers per cluster from Wilcoxon
+_ANNOT_MIN_LFC = 0.25  # minimum log fold-change
+_ANNOT_MAX_FDR = 0.1  # maximum adjusted p-value
+_ANNOT_SECOND_DELTA = 0.25  # delta to flag ambiguous clusters
+_ANNOT_MIN_ACCEPT = 0.3  # minimum weighted score to accept a label
 
 
 def _weighted_marker_score(
@@ -144,8 +202,7 @@ def _annotate_immune_celltypes(adata: ad.AnnData) -> pd.Series:
 
     # Wilcoxon marker finding per cluster
     logger.info("    Finding cluster markers (Wilcoxon)...")
-    sc.tl.rank_genes_groups(aw, groupby="leiden", method="wilcoxon",
-                            n_genes=_ANNOT_TOP_N)
+    sc.tl.rank_genes_groups(aw, groupby="leiden", method="wilcoxon", n_genes=_ANNOT_TOP_N)
 
     clusters = sorted(aw.obs["leiden"].unique(), key=int)
     cluster_labels: dict[str, str] = {}
@@ -155,17 +212,17 @@ def _annotate_immune_celltypes(adata: ad.AnnData) -> pd.Series:
         result = aw.uns["rank_genes_groups"]
         idx = list(result["names"].dtype.names).index(cl)
         names = [result["names"][i][idx] for i in range(len(result["names"]))]
-        lfcs = [result["logfoldchanges"][i][idx]
-                for i in range(len(result["logfoldchanges"]))]
-        padjs = [result["pvals_adj"][i][idx]
-                 for i in range(len(result["pvals_adj"]))]
+        lfcs = [result["logfoldchanges"][i][idx] for i in range(len(result["logfoldchanges"]))]
+        padjs = [result["pvals_adj"][i][idx] for i in range(len(result["pvals_adj"]))]
 
-        df_markers = pd.DataFrame({
-            "names": names,
-            "logfoldchanges": lfcs,
-            "pvals_adj": padjs,
-            "rank": np.arange(1, len(names) + 1),
-        })
+        df_markers = pd.DataFrame(
+            {
+                "names": names,
+                "logfoldchanges": lfcs,
+                "pvals_adj": padjs,
+                "rank": np.arange(1, len(names) + 1),
+            }
+        )
 
         # Filter by LFC and FDR
         df_markers = df_markers[
@@ -175,12 +232,14 @@ def _annotate_immune_celltypes(adata: ad.AnnData) -> pd.Series:
 
         # If strict filtering yields no markers, use unfiltered markers
         if df_markers.empty:
-            df_markers = pd.DataFrame({
-                "names": names,
-                "logfoldchanges": lfcs,
-                "pvals_adj": padjs,
-                "rank": np.arange(1, len(names) + 1),
-            })
+            df_markers = pd.DataFrame(
+                {
+                    "names": names,
+                    "logfoldchanges": lfcs,
+                    "pvals_adj": padjs,
+                    "rank": np.arange(1, len(names) + 1),
+                }
+            )
 
         # Score against each cell type
         label_scores: dict[str, float] = {}
@@ -191,12 +250,14 @@ def _annotate_immune_celltypes(adata: ad.AnnData) -> pd.Series:
 
         if not label_scores:
             # Fallback: score with unfiltered markers (no LFC/FDR filter)
-            df_unfiltered = pd.DataFrame({
-                "names": names,
-                "logfoldchanges": [max(0, v) for v in lfcs],
-                "pvals_adj": padjs,
-                "rank": np.arange(1, len(names) + 1),
-            })
+            df_unfiltered = pd.DataFrame(
+                {
+                    "names": names,
+                    "logfoldchanges": [max(0, v) for v in lfcs],
+                    "pvals_adj": padjs,
+                    "rank": np.arange(1, len(names) + 1),
+                }
+            )
             for ct, gene_set in _IMMUNE_MARKERS.items():
                 score, _ = _weighted_marker_score(df_unfiltered, gene_set)
                 if score > 0:
@@ -237,9 +298,11 @@ def _annotate_immune_celltypes(adata: ad.AnnData) -> pd.Series:
 
     del aw
     import gc
+
     gc.collect()
 
     return labels
+
 
 __all__ = [
     "load_sade_feldman",
@@ -322,7 +385,11 @@ def _looks_log1p(X, sample: int = 10000, seed: int = 0) -> bool:
     rng = np.random.default_rng(seed)
     if data.size > sample:
         data = rng.choice(data, size=sample, replace=False)
-    return (data.min() >= 0) and (data.max() < 50) and (not np.allclose(data, np.round(data), atol=1e-3))
+    return (
+        (data.min() >= 0)
+        and (data.max() < 50)
+        and (not np.allclose(data, np.round(data), atol=1e-3))
+    )
 
 
 def _download_file(url: str, dest: Path, label: str = "file") -> None:
@@ -353,7 +420,6 @@ def _download_file(url: str, dest: Path, label: str = "file") -> None:
 def _get_counts_matrix(adata: ad.AnnData) -> tuple[np.ndarray | None, str | None]:
     """Get the counts matrix from the AnnData object."""
     return get_counts_matrix(adata)
-
 
 
 def load_sade_feldman(
@@ -406,7 +472,9 @@ def load_sade_feldman(
         adata = ad.read_h5ad(processed_path)
         prev = adata.uns.get("processing_params", {})
         if _params_match(prev, processing_params):
-            logger.info(f"Loaded processed Sade-Feldman dataset: {adata.n_obs:,} cells, {adata.n_vars:,} genes")
+            logger.info(
+                f"Loaded processed Sade-Feldman dataset: {adata.n_obs:,} cells, {adata.n_vars:,} genes"
+            )
             return adata
         # Show what's different for debugging
         logger.info("Processed file parameters differ; reprocessing.")
@@ -418,8 +486,17 @@ def load_sade_feldman(
 
     _GEO_BASE = "https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE120575&format=file&file="
     _sade_feldman_files = [
-        (tpm_path, _GEO_BASE + "GSE120575%5FSade%5FFeldman%5Fmelanoma%5Fsingle%5Fcells%5FTPM%5FGEO%2Etxt%2Egz", "TPM file"),
-        (meta_path, _GEO_BASE + "GSE120575%5Fpatient%5FID%5Fsingle%5Fcells%2Etxt%2Egz", "metadata file"),
+        (
+            tpm_path,
+            _GEO_BASE
+            + "GSE120575%5FSade%5FFeldman%5Fmelanoma%5Fsingle%5Fcells%5FTPM%5FGEO%2Etxt%2Egz",
+            "TPM file",
+        ),
+        (
+            meta_path,
+            _GEO_BASE + "GSE120575%5Fpatient%5FID%5Fsingle%5Fcells%2Etxt%2Egz",
+            "metadata file",
+        ),
     ]
     missing = [(p, url, label) for p, url, label in _sade_feldman_files if not p.exists()]
     if missing:
@@ -453,11 +530,13 @@ def load_sade_feldman(
     mat.columns = sample_ids
 
     meta = pd.read_csv(meta_path, sep="\t", skiprows=19, encoding="latin1")
-    meta = meta.rename(columns={
-        "title": "sample_id",
-        "characteristics: patinet ID (Pre=baseline; Post= on treatment)": "patient_raw",
-        "characteristics: response": "response",
-    })
+    meta = meta.rename(
+        columns={
+            "title": "sample_id",
+            "characteristics: patinet ID (Pre=baseline; Post= on treatment)": "patient_raw",
+            "characteristics: response": "response",
+        }
+    )
     meta["sample_id"] = meta["sample_id"].astype(str)
     meta = meta.dropna(subset=["sample_id"]).copy()
 
@@ -488,7 +567,9 @@ def load_sade_feldman(
                 keep = group.index.values
             keep_indices.extend(keep)
         adata = adata[keep_indices].copy()
-        logger.info(f"Stratified sampling: {adata.n_obs:,} cells (max {max_cells_per_participant_visit} per participant-visit)")
+        logger.info(
+            f"Stratified sampling: {adata.n_obs:,} cells (max {max_cells_per_participant_visit} per participant-visit)"
+        )
     else:
         logger.info(f"Using full dataset: {adata.n_obs:,} cells (no subsampling)")
 
@@ -567,7 +648,11 @@ def load_stephenson_data(
     data_path_resolved = _resolve_file(data_path)
     # Derive processed cache location from the user-provided path so it
     # respects custom directory layouts even when the raw file is missing.
-    data_root = Path(data_path).parent.parent if not data_path_resolved.exists() else data_path_resolved.parent.parent
+    data_root = (
+        Path(data_path).parent.parent
+        if not data_path_resolved.exists()
+        else data_path_resolved.parent.parent
+    )
     processed_path = data_root / "processed" / processed_name
 
     if processed_path.exists() and not force_reprocess:
@@ -582,7 +667,9 @@ def load_stephenson_data(
                 f"Data not found at {data_path_resolved}. Download from: https://www.ebi.ac.uk/biostudies/files/E-MTAB-10026/"
             )
         data_path_resolved.parent.mkdir(parents=True, exist_ok=True)
-        url = "https://www.ebi.ac.uk/biostudies/files/E-MTAB-10026/covid_portal_210320_with_raw.h5ad"
+        url = (
+            "https://www.ebi.ac.uk/biostudies/files/E-MTAB-10026/covid_portal_210320_with_raw.h5ad"
+        )
         _download_file(url, data_path_resolved, "Stephenson COVID-19 data")
     logger.info("Processing raw data...")
     adata = ad.read_h5ad(data_path_resolved)
@@ -681,7 +768,9 @@ def load_vaccine_gse171964(
         adata = ad.read_h5ad(processed_path)
         prev = adata.uns.get("processing_params", {})
         if _params_match(prev, processing_params):
-            logger.info(f"Loaded processed vaccine dataset (GSE171964): {adata.n_obs} cells, {adata.n_vars} genes")
+            logger.info(
+                f"Loaded processed vaccine dataset (GSE171964): {adata.n_obs} cells, {adata.n_vars} genes"
+            )
             logger.info(f"Processed file: {processed_path}")
             logger.info(f"Days: {adata.obs['day'].unique()}")
             logger.info(f"Participants: {adata.obs['pt_id'].nunique()}")
@@ -714,13 +803,13 @@ def load_vaccine_gse171964(
     barcodes = (
         pd.read_csv(barcodes_path, sep="\\s+", header=None, engine="python", skiprows=1)[1]
         .astype(str)
-        .str.strip('\"')
+        .str.strip('"')
         .tolist()
     )
     features = (
         pd.read_csv(feats_path, sep="\\s+", header=None, engine="python", skiprows=1)[1]
         .astype(str)
-        .str.strip('\"')
+        .str.strip('"')
         .tolist()
     )
 
@@ -761,9 +850,8 @@ def load_vaccine_gse171964(
 
     if max_cells_per_group is not None:
         grp = ["pt_id", "day", "clustnm"]
-        sampled = (
-            adata.obs.groupby(grp, observed=True, group_keys=False)
-            .apply(lambda x: x.sample(min(len(x), max_cells_per_group), random_state=seed))
+        sampled = adata.obs.groupby(grp, observed=True, group_keys=False).apply(
+            lambda x: x.sample(min(len(x), max_cells_per_group), random_state=seed)
         )
         adata = adata[sampled.index].copy()
 
@@ -784,7 +872,7 @@ def count_paired(
     obs: pd.DataFrame,
     visit_col: str,
     visits: Sequence[str],
-    participant_col: str = "participant_id"
+    participant_col: str = "participant_id",
 ) -> int:
     """Count participants with data at both visits.
 
@@ -813,11 +901,7 @@ def count_paired(
         raise ValueError(
             f"visits must contain at least 2 labels, got {len(visits)}: {list(visits)}"
         )
-    wide = (
-        obs.groupby([participant_col, visit_col], observed=True)
-        .size()
-        .unstack(fill_value=0)
-    )
+    wide = obs.groupby([participant_col, visit_col], observed=True).size().unstack(fill_value=0)
     if visits[0] not in wide.columns or visits[1] not in wide.columns:
         return 0
     has_both = (wide[visits[0]] > 0) & (wide[visits[1]] > 0)
@@ -859,11 +943,7 @@ def verify_paired_participants(
         raise ValueError(
             f"visits must contain at least 2 labels, got {len(visits)}: {list(visits)}"
         )
-    wide = (
-        obs.groupby([participant_col, visit_col], observed=True)
-        .size()
-        .unstack(fill_value=0)
-    )
+    wide = obs.groupby([participant_col, visit_col], observed=True).size().unstack(fill_value=0)
     if visits[0] not in wide.columns or visits[1] not in wide.columns:
         paired_ids = set()
     else:

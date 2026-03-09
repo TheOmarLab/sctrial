@@ -1,45 +1,55 @@
 """
-Figure 5 -- Biological Discovery
-=================================
+Figure 5 — Biological Discovery: Pathways & Genes
+===================================================
 
-Five-panel figure combining gene-level waterfall, GSEA pathway enrichment,
-leading-edge gene analysis, signature-level DiD effects, and gene-level
-volcano plots.
+Six-panel figure combining GSEA pathway enrichment, leading-edge gene
+analysis, cross-dataset pathway replication, gene-level volcano and
+waterfall plots, and effect-size distribution.
 
 Panels
 ------
-A  Top genes ranked by effect size (waterfall plot, protein-coding only).
-B  GSEA enrichment bar chart (immune + metabolic pathways, 5 libraries).
-C  Leading-edge gene overlap heatmap across top enriched pathways.
-D  Signature DiD effects with bootstrap CIs (forest plot).
-E  Gene-level volcano plot (Sade-Feldman DiD, protein-coding gene labels).
+A  GSEA enrichment bar chart (immune + metabolic pathways, 5 libraries).
+B  Leading-edge gene overlap heatmap across top enriched pathways.
+C  Replicated pathways across cohorts (cross-dataset consistency).
+D  Gene-level volcano plot (Sade-Feldman DiD, protein-coding gene labels).
+E  Top genes ranked by effect size (waterfall plot, protein-coding only).
+F  Gene-level effect-size distribution (histogram with asymmetry summary).
 """
 
 from __future__ import annotations
 
 import gc
 import hashlib
-import os
 import pickle  # noqa: S403 — local dev cache of our own DataFrames
 import re
 import traceback
-import warnings
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
 
-from .._shared import *  # noqa: F401,F403
+from .._shared import (
+    COLORS,
+    MAIN_OUTPUT,
+    TrialDesign,
+    apply_style,
+    despine,
+    did_table,
+    get_sade_feldman,
+    harmonize_response,
+    run_gsea_did,
+    save_panel,
+    score_signatures,
+    sig_display,
+)
 
 # ── Cache directory for expensive computations ─────────────────────────
 _CACHE_DIR = Path(__file__).resolve().parent.parent / "_cache"
 
 # ── Figure-level constants ────────────────────────────────────────────
 FIGURE_NAME = "Figure5_biological_discovery"
-FIGSIZE = (18, 14)
 
 # Pseudogene / non-coding RNA / mitochondrial / ribosomal patterns to
 # EXCLUDE from volcano labels — only protein-coding genes get labelled.
@@ -131,7 +141,10 @@ def _prepare_data(*, use_cache: bool = True) -> dict:
     ~2000 genes takes several minutes.  Set ``use_cache=False`` to
     force recomputation.
     """
-    cache_key = "figure5_sade_feldman_v3"
+    _code_hash = hashlib.md5(  # noqa: S324 — not security, just cache tag
+        Path(__file__).read_bytes()
+    ).hexdigest()[:8]
+    cache_key = f"figure5_sade_feldman_v4_{_code_hash}"
     cache_path = _CACHE_DIR / f"{cache_key}.pkl"
 
     if use_cache and cache_path.exists():
@@ -806,7 +819,7 @@ def panel_C(ax, data: dict):
     - Hierarchical column clustering for gene co-occurrence
     - Capped to 8 pathways × 20 genes for readability
     """
-    from scipy.cluster.hierarchy import linkage, leaves_list
+    from scipy.cluster.hierarchy import leaves_list, linkage
     from scipy.spatial.distance import pdist
 
     gsea_results = data["gsea_results"]
@@ -997,8 +1010,7 @@ def panel_C(ax, data: dict):
     # ── Colour constants ──
     BLUE = (0.122, 0.471, 0.706)   # steel blue (Responder ↑ / NES>0)
     ORANGE = (0.878, 0.478, 0.184)  # warm orange (Non-responder ↑ / NES<0)
-    FILL_COLOR = (0.200, 0.400, 0.600)  # single muted blue for "in leading edge"
-    EMPTY_COLOR = (0.94, 0.94, 0.94)    # light gray for "not in leading edge"
+    EMPTY_COLOR = (0.94, 0.94, 0.94)    # light gray for "not in leading edge"  # noqa: N806
 
     # ── Colour matrix: in leading edge (filled) vs not (empty) ──
     rgb = np.full((n_pw, n_genes, 3), 0.94)  # light gray for empty
@@ -1335,32 +1347,237 @@ def panel_E(ax, data: dict):
 
 
 # ======================================================================
+# Panel C (new) -- Replicated pathways across cohorts
+# ======================================================================
+
+def panel_C_replicated(ax, data: dict):
+    """Replicated pathways: count GSEA hits across multiple datasets.
+
+    For the initial Sade-Feldman-only implementation, shows pathway
+    significance breakdown by library as a proxy for cross-validation.
+    Displays FDR<0.25 hits per library for top pathways.
+    """
+    gsea_results = data.get("gsea_results")
+
+    if gsea_results is None or len(gsea_results) == 0:
+        ax.text(0.5, 0.5, "GSEA results unavailable",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=12, color=COLORS["gray"])
+        ax.set_title("Replicated Pathways", fontsize=11)
+        ax.axis("off")
+        return
+
+    df = gsea_results.copy()
+    cols = _detect_gsea_columns(df)
+    nes_col, fdr_col, term_col = cols["nes"], cols["fdr"], cols["term"]
+
+    if nes_col is None or fdr_col is None:
+        ax.text(0.5, 0.5, "Missing NES/FDR columns",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=12, color=COLORS["gray"])
+        ax.axis("off")
+        return
+
+    df[nes_col] = pd.to_numeric(df[nes_col], errors="coerce")
+    df[fdr_col] = pd.to_numeric(df[fdr_col], errors="coerce")
+    df = df.dropna(subset=[nes_col, fdr_col])
+
+    # Count how many pathways are significant at various thresholds
+    # Group by cleaned pathway name to see cross-library replication
+    df["_clean"] = df[term_col].apply(
+        lambda s: _clean_pathway_name(s, max_len=45)
+    )
+
+    # For each pathway, count significant libraries
+    sig_mask = df[fdr_col] < 0.25
+    sig_df = df[sig_mask].copy()
+
+    if len(sig_df) == 0:
+        # Show top pathways by |NES| even if none reach significance
+        ax.text(0.5, 0.5, "No pathways at FDR < 0.25",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=12, color=COLORS["gray"])
+        ax.set_title("Replicated Pathways", fontsize=11)
+        ax.axis("off")
+        return
+
+    # Sort by absolute NES
+    sig_df["_abs_nes"] = sig_df[nes_col].abs()
+    sig_df = sig_df.sort_values("_abs_nes", ascending=True)
+
+    # Take top 20 most enriched significant pathways
+    n_show = min(20, len(sig_df))
+    sig_df = sig_df.tail(n_show)
+
+    y_pos = np.arange(len(sig_df))
+    colors = [
+        COLORS["treated"] if v > 0 else COLORS["control"]
+        for v in sig_df[nes_col].values
+    ]
+
+    # Bar chart of NES for significant pathways
+    ax.barh(y_pos, sig_df[nes_col].values, color=colors, alpha=0.85,
+            edgecolor="white", linewidth=0.3, height=0.7)
+
+    # Add FDR labels
+    for i, (_, row) in enumerate(sig_df.iterrows()):
+        fdr_val = row[fdr_col]
+        label = f"q={fdr_val:.3f}" if fdr_val >= 0.001 else "q<0.001"
+        x_pos = row[nes_col]
+        ha = "left" if x_pos > 0 else "right"
+        offset = 0.02 if x_pos > 0 else -0.02
+        ax.text(x_pos + offset, i, label,
+                va="center", ha=ha, fontsize=5.5, color="#555555")
+
+    # Add library annotation if available
+    if "library" in sig_df.columns:
+        lib_labels = []
+        for _, row in sig_df.iterrows():
+            lib = str(row.get("library", ""))
+            if lib and lib != "averaged":
+                lib_labels.append(lib.split("_")[0][:6])
+            else:
+                lib_labels.append("")
+
+    ax.axvline(0, color="black", lw=0.8)
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(sig_df["_clean"].values, fontsize=7)
+    ax.set_xlabel("Normalized Enrichment Score (NES)")
+    ax.set_title("Significant Pathways (FDR < 0.25)", fontsize=11)
+
+    legend_handles = [
+        mpatches.Patch(color=COLORS["treated"], alpha=0.85,
+                       label="Responder ↑"),
+        mpatches.Patch(color=COLORS["control"], alpha=0.85,
+                       label="Non-responder ↑"),
+    ]
+    ax.legend(handles=legend_handles, fontsize=8, loc="lower right",
+              frameon=True, framealpha=0.9)
+    despine(ax)
+
+
+# ======================================================================
+# Panel F (new) -- Gene-level effect-size distribution
+# ======================================================================
+
+def panel_F(ax, data: dict):
+    """Histogram of gene-level DiD effect sizes with asymmetry summary.
+
+    Shows distribution of β_DiD across ~2000 genes, highlighting the
+    balance between responder-up and non-responder-up genes.
+    """
+    gene_results = data.get("gene_results")
+
+    if gene_results is None or len(gene_results) == 0:
+        ax.text(0.5, 0.5, "Gene-level results unavailable",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=12, color=COLORS["gray"])
+        ax.set_title("Gene-Level Effect Distribution", fontsize=11)
+        ax.axis("off")
+        return
+
+    df = gene_results.copy()
+    beta_col = "beta_DiD"
+    p_col = "p_DiD"
+
+    df = df.dropna(subset=[beta_col])
+    betas = df[beta_col].values
+
+    # Split into significant and non-significant
+    p_thresh = 0.05
+    sig_mask = df[p_col] < p_thresh if p_col in df.columns else np.zeros(len(df), dtype=bool)
+
+    betas_sig = betas[sig_mask]
+    betas_ns = betas[~sig_mask]
+
+    # Histogram with stacked significant/non-significant
+    bins = np.linspace(
+        np.percentile(betas, 1), np.percentile(betas, 99), 50
+    )
+
+    ax.hist(betas_ns, bins=bins, color=COLORS["gray"], alpha=0.5,
+            edgecolor="none", label="Not significant")
+    ax.hist(betas_sig, bins=bins, color=COLORS["highlight"], alpha=0.7,
+            edgecolor="none", label=f"p < {p_thresh}")
+
+    ax.axvline(0, color="black", lw=1, ls="-", zorder=3)
+
+    # Compute asymmetry statistics
+    n_pos = (betas > 0).sum()
+    n_neg = (betas < 0).sum()
+    n_sig_pos = (betas_sig > 0).sum()
+    n_sig_neg = (betas_sig < 0).sum()
+    median_beta = np.median(betas)
+
+    # Annotate
+    summary_text = (
+        f"Genes: {len(betas):,}\n"
+        f"β > 0: {n_pos} ({100 * n_pos / len(betas):.0f}%)\n"
+        f"β < 0: {n_neg} ({100 * n_neg / len(betas):.0f}%)\n"
+        f"Sig. pos: {n_sig_pos}  |  Sig. neg: {n_sig_neg}\n"
+        f"Median β: {median_beta:.3f}"
+    )
+    ax.text(0.97, 0.95, summary_text, transform=ax.transAxes,
+            ha="right", va="top", fontsize=7,
+            bbox=dict(boxstyle="round,pad=0.4", facecolor="white",
+                      edgecolor=COLORS["gray"], alpha=0.9),
+            family="monospace")
+
+    # Mark median
+    ax.axvline(median_beta, color=COLORS["highlight"], ls="--", lw=1,
+               zorder=2, alpha=0.7)
+
+    ax.set_xlabel(r"Effect size ($\beta_{\mathrm{DiD}}$)")
+    ax.set_ylabel("Number of genes")
+    ax.set_title("Gene-Level Effect Distribution", fontsize=11)
+
+    # Direction arrows
+    ax.annotate("Responder ↑", xy=(0.95, 0.02), xycoords="axes fraction",
+                fontsize=7, ha="right", color=COLORS["treated"])
+    ax.annotate("Non-responder ↑", xy=(0.05, 0.02), xycoords="axes fraction",
+                fontsize=7, ha="left", color=COLORS["control"])
+
+    ax.legend(fontsize=8, loc="upper left", frameon=True, framealpha=0.9)
+    despine(ax)
+
+
+# ======================================================================
 # Composite figure
 # ======================================================================
 
 def generate():
-    """Create and save Figure 5 individual panels."""
-    print("Figure 5: Biological Discovery")
+    """Create and save Figure 5 individual panels.
+
+    Panel mapping (new → old):
+      A  GSEA enrichment bar chart         (was Panel B)
+      B  Leading-edge gene overlap heatmap  (was Panel C)
+      C  Replicated pathways                (NEW)
+      D  Gene-level volcano                 (was Panel E)
+      E  Top genes waterfall                (was Panel A)
+      F  Gene-level effect distribution     (NEW)
+    """
+    print("Figure 5: Biological Discovery — Pathways & Genes")
     data = _prepare_data()
 
     # ── Save individual panels ────────────────────────────────────────
-    # Panel C (heatmap + marginal bar) needs more space for pathway labels
+    # Panel B (heatmap + marginal bar) needs more space for pathway labels
     panel_sizes = {
-        "C": (10, 7),
+        "B": (10, 7),
     }
     for panel_label, panel_func in [
-        ("A", panel_A),
-        ("B", panel_B),
-        ("C", panel_C),
-        ("D", panel_D),
-        ("E", panel_E),
+        ("A", panel_B),              # GSEA bar chart
+        ("B", panel_C),              # Leading-edge heatmap
+        ("C", panel_C_replicated),   # Replicated pathways (NEW)
+        ("D", panel_E),              # Volcano
+        ("E", panel_A),              # Waterfall
+        ("F", panel_F),              # Effect distribution (NEW)
     ]:
         fsize = panel_sizes.get(panel_label, (8, 6))
         fig_p, ax_p = plt.subplots(figsize=fsize)
         panel_func(ax_p, data)
-        # For Panel C, tight_layout must run BEFORE the marginal bar is
-        # positioned (the panel function handles this internally).
-        if panel_label != "C":
+        # For Panel B (leading-edge heatmap), tight_layout must run
+        # BEFORE the marginal bar is positioned (handled internally).
+        if panel_label != "B":
             fig_p.tight_layout()
         save_panel(fig_p, f"panel_{panel_label}", FIGURE_NAME, MAIN_OUTPUT)
 

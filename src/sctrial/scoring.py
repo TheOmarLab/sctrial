@@ -25,14 +25,14 @@ except ImportError:  # pragma: no cover
 
 
 def score_gene_sets(
-        adata: AnnData,
-        gene_sets: dict[str, list[str]],
-        *,
-        layer: str | None = None,
-        method: ScoreMethod = "zmean",
-        prefix: str = "",
-        min_genes: int = 3,
-        overwrite: bool = True,
+    adata: AnnData,
+    gene_sets: dict[str, list[str]],
+    *,
+    layer: str | None = None,
+    method: ScoreMethod = "zmean",
+    prefix: str = "",
+    min_genes: int = 3,
+    overwrite: bool = True,
 ) -> AnnData:
     """Score gene sets and store results in `adata.obs`.
 
@@ -99,8 +99,7 @@ def score_gene_sets(
     for name, gset in gene_sets.items():
         if not isinstance(gset, (list, tuple, set, frozenset)):
             raise TypeError(
-                f"Gene set '{name}' must be a list of gene names, "
-                f"got {type(gset).__name__}."
+                f"Gene set '{name}' must be a list of gene names, got {type(gset).__name__}."
             )
 
     X = adata.layers[layer] if layer is not None else adata.X
@@ -134,7 +133,10 @@ def score_gene_sets(
             logger.warning(
                 "Gene set '%s': only %d/%d unique genes found in data "
                 "(min_genes=%d); setting score to NaN.",
-                name, n_found, n_unique_requested, min_genes,
+                name,
+                n_found,
+                n_unique_requested,
+                min_genes,
             )
             adata.obs[col] = np.nan
             continue
@@ -142,7 +144,9 @@ def score_gene_sets(
         if n_found < n_unique_requested:
             logger.info(
                 "Gene set '%s': %d/%d unique genes found in data.",
-                name, n_found, n_unique_requested,
+                name,
+                n_found,
+                n_unique_requested,
             )
 
         gidx = np.array([idx[g] for g in use], dtype=int)
@@ -156,7 +160,8 @@ def score_gene_sets(
                 logger.warning(
                     "Gene set '%s': %d non-finite value(s) in expression "
                     "matrix; these are excluded from the mean.",
-                    name, n_nonfinite,
+                    name,
+                    n_nonfinite,
                 )
             # nanmean ignores NaN; replace inf with NaN first
             dense_sub = np.where(finite_mask, dense_sub, np.nan)
@@ -175,7 +180,8 @@ def score_gene_sets(
             logger.warning(
                 "Gene set '%s': %d non-finite value(s) in expression "
                 "matrix; these are excluded from scoring.",
-                name, n_nonfinite_expr,
+                name,
+                n_nonfinite_expr,
             )
             sub = np.where(finite_mask, sub, np.nan)
 
@@ -237,7 +243,9 @@ def score_gene_sets_aucell(
         The input AnnData with AUCell scores added to `adata.obs`.
     """
     if create_rankings is None or aucell is None:
-        raise ImportError("pyscenic is required for AUCell scoring. Install with 'pip install pyscenic'.")
+        raise ImportError(
+            "pyscenic is required for AUCell scoring. Install with 'pip install pyscenic'."
+        )
 
     X = adata.layers[layer] if layer is not None else adata.X
     if hasattr(X, "toarray"):

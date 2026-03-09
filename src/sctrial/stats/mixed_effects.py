@@ -55,6 +55,7 @@ Optional random slopes:
 
     This allows the time effect to vary by participant.
 """
+
 from __future__ import annotations
 
 import warnings
@@ -376,9 +377,7 @@ def did_table_mixed(
         df = aggregate_features(df, grp_cols=grp_cols, features=list(features), agg=agg)
 
     # Ensure paired data
-    df = _ensure_paired(
-        df, unit=design.participant_col, time=design.visit_col, visits=visits
-    )
+    df = _ensure_paired(df, unit=design.participant_col, time=design.visit_col, visits=visits)
 
     n_units = df[design.participant_col].nunique()
 
@@ -390,19 +389,21 @@ def did_table_mixed(
         if standardize:
             y_std, ok = standardize_series(df_feat, feat, min_std=1e-12)
             if not ok:
-                rows.append({
-                    "feature": feat,
-                    "beta_DiD": np.nan,
-                    "se_DiD": np.nan,
-                    "p_DiD": np.nan,
-                    "ci_lower": np.nan,
-                    "ci_upper": np.nan,
-                    "var_participant": np.nan,
-                    "var_residual": np.nan,
-                    "icc": np.nan,
-                    "n_units": n_units,
-                    "converged": False,
-                })
+                rows.append(
+                    {
+                        "feature": feat,
+                        "beta_DiD": np.nan,
+                        "se_DiD": np.nan,
+                        "p_DiD": np.nan,
+                        "ci_lower": np.nan,
+                        "ci_upper": np.nan,
+                        "var_participant": np.nan,
+                        "var_residual": np.nan,
+                        "icc": np.nan,
+                        "n_units": n_units,
+                        "converged": False,
+                    }
+                )
                 continue
             df_feat["outcome_std"] = y_std
         else:
@@ -420,19 +421,21 @@ def did_table_mixed(
             visits=visits,
         )
 
-        rows.append({
-            "feature": feat,
-            "beta_DiD": result["beta_DiD"],
-            "se_DiD": result["se_DiD"],
-            "p_DiD": result["p_DiD"],
-            "ci_lower": result["ci_lower"],
-            "ci_upper": result["ci_upper"],
-            "var_participant": result["var_participant"],
-            "var_residual": result["var_residual"],
-            "icc": result["icc"],
-            "n_units": n_units,
-            "converged": result["converged"],
-        })
+        rows.append(
+            {
+                "feature": feat,
+                "beta_DiD": result["beta_DiD"],
+                "se_DiD": result["se_DiD"],
+                "p_DiD": result["p_DiD"],
+                "ci_lower": result["ci_lower"],
+                "ci_upper": result["ci_upper"],
+                "var_participant": result["var_participant"],
+                "var_residual": result["var_residual"],
+                "icc": result["icc"],
+                "n_units": n_units,
+                "converged": result["converged"],
+            }
+        )
 
     res = pd.DataFrame(rows)
     res = apply_fdr(res, p_col="p_DiD", fdr_col="FDR_DiD")
@@ -496,18 +499,22 @@ def compare_fixed_vs_mixed(
 
     # Merge results
     comparison = res_fixed[["feature", "beta_DiD", "se_DiD", "p_DiD"]].copy()
-    comparison = comparison.rename(columns={
-        "beta_DiD": "beta_fixed",
-        "se_DiD": "se_fixed",
-        "p_DiD": "p_fixed",
-    })
+    comparison = comparison.rename(
+        columns={
+            "beta_DiD": "beta_fixed",
+            "se_DiD": "se_fixed",
+            "p_DiD": "p_fixed",
+        }
+    )
 
     mixed_cols = res_mixed[["feature", "beta_DiD", "se_DiD", "p_DiD", "icc"]].copy()
-    mixed_cols = mixed_cols.rename(columns={
-        "beta_DiD": "beta_mixed",
-        "se_DiD": "se_mixed",
-        "p_DiD": "p_mixed",
-    })
+    mixed_cols = mixed_cols.rename(
+        columns={
+            "beta_DiD": "beta_mixed",
+            "se_DiD": "se_mixed",
+            "p_DiD": "p_mixed",
+        }
+    )
 
     comparison = comparison.merge(mixed_cols, on="feature", how="outer")
 

@@ -36,6 +36,7 @@ Hedge's g:
 95% CI via noncentral t-distribution:
     SE(d) ≈ sqrt((n₁+n₂)/(n₁×n₂) + d²/(2(n₁+n₂-2)))
 """
+
 from __future__ import annotations
 
 import warnings
@@ -227,7 +228,7 @@ def effect_size_ci(
 
     if method == "nct":
         # Approximate SE using Hedges & Olkin (1985) formula
-        se_d = np.sqrt((n1 + n2) / (n1 * n2) + (d ** 2) / (2 * (n1 + n2 - 2)))
+        se_d = np.sqrt((n1 + n2) / (n1 * n2) + (d**2) / (2 * (n1 + n2 - 2)))
         df = n1 + n2 - 2
 
         t_crit = stats.t.ppf(1 - alpha / 2, df)
@@ -358,7 +359,7 @@ def _compute_effect_size_from_fit(
     n = fit.nobs
     n1 = n2 = max(n / 2, 1)
     df_resid = max(n1 + n2 - 2, 1)
-    se_d = np.sqrt((n1 + n2) / (n1 * n2) + (d ** 2) / (2 * df_resid)) if not np.isnan(d) else np.nan
+    se_d = np.sqrt((n1 + n2) / (n1 * n2) + (d**2) / (2 * df_resid)) if not np.isnan(d) else np.nan
 
     if not np.isnan(se_d):
         t_crit = stats.t.ppf(0.975, fit.df_resid)
@@ -455,7 +456,13 @@ def add_effect_sizes_to_did(
         if method == "hedges_g" and not np.isnan(d) and n > 2:
             df_hedges = n - 2  # Renamed to avoid shadowing DataFrame parameter
             if df_hedges > 0:
-                j = float(np.exp(gammaln(df_hedges / 2) - (0.5 * np.log(df_hedges / 2)) - gammaln((df_hedges - 1) / 2)))
+                j = float(
+                    np.exp(
+                        gammaln(df_hedges / 2)
+                        - (0.5 * np.log(df_hedges / 2))
+                        - gammaln((df_hedges - 1) / 2)
+                    )
+                )
             else:
                 j = 1.0
             d = d * j
@@ -463,7 +470,7 @@ def add_effect_sizes_to_did(
         # CI via approximate SE (Hedges & Olkin 1985)
         if not np.isnan(d) and n > 2:
             df_ci = n - 2
-            se_d = np.sqrt((n1 + n2) / (n1 * n2) + (d ** 2) / (2 * df_ci))
+            se_d = np.sqrt((n1 + n2) / (n1 * n2) + (d**2) / (2 * df_ci))
             t_crit = stats.t.ppf(0.975, df_ci)
             lower = d - t_crit * se_d
             upper = d + t_crit * se_d

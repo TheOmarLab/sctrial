@@ -15,6 +15,7 @@ import sctrial as st
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_adata(X, *, sparse: bool = False, layer: str = "counts"):
     """Create a minimal AnnData with counts in a layer."""
     if sparse:
@@ -30,6 +31,7 @@ def _make_adata(X, *, sparse: bool = False, layer: str = "counts"):
 # ---------------------------------------------------------------------------
 # Basic functionality
 # ---------------------------------------------------------------------------
+
 
 class TestBasicNormalization:
     """Core normalization correctness."""
@@ -85,6 +87,7 @@ class TestBasicNormalization:
 # ---------------------------------------------------------------------------
 # Input validation (P1)
 # ---------------------------------------------------------------------------
+
 
 class TestInputValidation:
     """Input validation: negative counts and invalid scale."""
@@ -158,6 +161,7 @@ class TestInputValidation:
 # Stale-layer handling (P2)
 # ---------------------------------------------------------------------------
 
+
 class TestOverwriteBehavior:
     """overwrite flag and stale-layer detection."""
 
@@ -200,6 +204,7 @@ class TestOverwriteBehavior:
 # ---------------------------------------------------------------------------
 # Zero-library cells (P2)
 # ---------------------------------------------------------------------------
+
 
 class TestZeroLibraryCells:
     """Cells with zero total counts."""
@@ -261,6 +266,7 @@ class TestZeroLibraryCells:
 # counts_layer=None and layer_out alias
 # ---------------------------------------------------------------------------
 
+
 class TestLayerOptions:
     """counts_layer=None and layer_out backward-compat alias."""
 
@@ -287,9 +293,7 @@ class TestLayerOptions:
         """inplace=False should not modify the original."""
         X = np.array([[1.0, 2.0], [3.0, 4.0]])
         ad = _make_adata(X)
-        result = st.add_log1p_cpm_layer(
-            ad, counts_layer="counts", out_layer="norm", inplace=False
-        )
+        result = st.add_log1p_cpm_layer(ad, counts_layer="counts", out_layer="norm", inplace=False)
         assert "norm" in result.layers
         assert "norm" not in ad.layers, "Original should not be modified"
 
@@ -297,6 +301,7 @@ class TestLayerOptions:
 # ---------------------------------------------------------------------------
 # Provenance tracking
 # ---------------------------------------------------------------------------
+
 
 class TestProvenance:
     """Provenance metadata in adata.uns."""
@@ -317,6 +322,7 @@ class TestProvenance:
 # ---------------------------------------------------------------------------
 # Sparse format conversion
 # ---------------------------------------------------------------------------
+
 
 class TestSparseFormats:
     """Sparse matrix format conversion (CSC/COO → CSR)."""

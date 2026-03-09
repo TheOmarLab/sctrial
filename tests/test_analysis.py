@@ -13,18 +13,21 @@ import sctrial as st
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _toy_adata() -> AnnData:
     """Build a small balanced trial AnnData."""
     obs_rows = []
     for pid in ["P1", "P2", "P3", "P4"]:
         arm = "Treated" if pid in ("P1", "P2") else "Control"
         for visit in ["V1", "V2"]:
-            obs_rows.append({
-                "participant_id": pid,
-                "visit": visit,
-                "arm": arm,
-                "celltype": "TypeA" if pid in ("P1", "P3") else "TypeB",
-            })
+            obs_rows.append(
+                {
+                    "participant_id": pid,
+                    "visit": visit,
+                    "arm": arm,
+                    "celltype": "TypeA" if pid in ("P1", "P3") else "TypeB",
+                }
+            )
     obs = pd.DataFrame(obs_rows)
     rng = np.random.default_rng(42)
     X = rng.normal(size=(len(obs), 2))
@@ -49,8 +52,8 @@ def _default_design() -> st.TrialDesign:
 # fit()
 # ---------------------------------------------------------------------------
 
-class TestFit:
 
+class TestFit:
     def test_basic_fit(self):
         ad = _toy_adata()
         analyzer = st.DiDAnalyzer(ad, _default_design())
@@ -86,9 +89,7 @@ class TestFit:
     def test_fit_with_celltype(self):
         ad = _toy_adata()
         analyzer = st.DiDAnalyzer(ad, _default_design())
-        res = analyzer.fit(
-            features=["score"], visits=("V1", "V2"), celltype="TypeA"
-        )
+        res = analyzer.fit(features=["score"], visits=("V1", "V2"), celltype="TypeA")
         assert not res.empty
 
     def test_fit_overwrites_previous(self):
@@ -104,8 +105,8 @@ class TestFit:
 # summarize()
 # ---------------------------------------------------------------------------
 
-class TestSummarize:
 
+class TestSummarize:
     def test_summarize_after_fit(self):
         ad = _toy_adata()
         analyzer = st.DiDAnalyzer(ad, _default_design())
@@ -125,8 +126,8 @@ class TestSummarize:
 # plot_forest()
 # ---------------------------------------------------------------------------
 
-class TestPlotForest:
 
+class TestPlotForest:
     def test_plot_forest_before_fit_raises(self):
         ad = _toy_adata()
         analyzer = st.DiDAnalyzer(ad, _default_design())
@@ -135,6 +136,7 @@ class TestPlotForest:
 
     def test_plot_forest_after_fit(self):
         import matplotlib
+
         matplotlib.use("Agg")
 
         ad = _toy_adata()

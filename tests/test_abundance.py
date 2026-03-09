@@ -35,7 +35,7 @@ def test_abundance_did_basic():
         arm_col="arm",
         celltype_col="celltype",
         arm_treated="Treated",
-        arm_control="Control"
+        arm_control="Control",
     )
     res = st.abundance_did(adata, design, visits=("V1", "V2"), min_units=2)
 
@@ -45,8 +45,8 @@ def test_abundance_did_basic():
     # Celltype A should show positive DiD (proportion increases more in Treated)
     res_a = res[res["celltype"] == "A"]
     if len(res_a) > 0:
-        assert res_a.iloc[0]["beta_DiD"] > 0, \
+        assert res_a.iloc[0]["beta_DiD"] > 0, (
             "Celltype A should show positive beta_DiD (increased proportion in Treated)"
+        )
         # The effect is strong, so p-value should be significant
-        assert res_a.iloc[0]["p_DiD"] < 0.1, \
-            "Engineered effect should be statistically detectable"
+        assert res_a.iloc[0]["p_DiD"] < 0.1, "Engineered effect should be statistically detectable"

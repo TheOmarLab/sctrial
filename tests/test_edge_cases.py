@@ -33,12 +33,14 @@ class TestEmptyDataFrames:
 
     def test_abundance_did_no_celltypes(self, trial_design):
         """abundance_did should handle data with single celltype gracefully."""
-        obs = pd.DataFrame({
-            "participant_id": ["P1", "P1", "P2", "P2"] * 5,
-            "visit": (["V1", "V2"] * 2) * 5,
-            "arm": (["Treated"] * 2 + ["Control"] * 2) * 5,
-            "celltype": ["A"] * 20  # Only one cell type
-        })
+        obs = pd.DataFrame(
+            {
+                "participant_id": ["P1", "P1", "P2", "P2"] * 5,
+                "visit": (["V1", "V2"] * 2) * 5,
+                "arm": (["Treated"] * 2 + ["Control"] * 2) * 5,
+                "celltype": ["A"] * 20,  # Only one cell type
+            }
+        )
         adata = AnnData(X=np.zeros((20, 1)), obs=obs)
 
         res = st.abundance_did(adata, trial_design, visits=("V1", "V2"), min_units=2)
@@ -51,11 +53,13 @@ class TestSingleParticipant:
 
     def test_did_fit_single_participant(self, trial_design):
         """DiD should return NaN for insufficient participants."""
-        obs = pd.DataFrame({
-            "participant_id": ["P1", "P1"],
-            "visit": ["V1", "V2"],
-            "arm": ["Treated", "Treated"],
-        })
+        obs = pd.DataFrame(
+            {
+                "participant_id": ["P1", "P1"],
+                "visit": ["V1", "V2"],
+                "arm": ["Treated", "Treated"],
+            }
+        )
         adata = AnnData(X=np.array([[1.0], [2.0]]), obs=obs)
         adata.var_names = ["G0"]
 
@@ -71,12 +75,14 @@ class TestSingleParticipant:
 
     def test_abundance_did_insufficient_units(self, trial_design):
         """abundance_did should skip cell types with too few participants."""
-        obs = pd.DataFrame({
-            "participant_id": ["P1", "P1", "P2", "P2"],
-            "visit": ["V1", "V2", "V1", "V2"],
-            "arm": ["Treated", "Treated", "Control", "Control"],
-            "celltype": ["A", "A", "A", "A"]
-        })
+        obs = pd.DataFrame(
+            {
+                "participant_id": ["P1", "P1", "P2", "P2"],
+                "visit": ["V1", "V2", "V1", "V2"],
+                "arm": ["Treated", "Treated", "Control", "Control"],
+                "celltype": ["A", "A", "A", "A"],
+            }
+        )
         adata = AnnData(X=np.zeros((4, 1)), obs=obs)
 
         # min_units=10 should skip all cell types
@@ -212,11 +218,13 @@ class TestDesignValidation:
 
     def test_design_missing_arm_labels(self):
         """Design validation should catch missing arm labels."""
-        obs = pd.DataFrame({
-            "participant_id": ["P1"],
-            "visit": ["V1"],
-            "arm": ["Unknown"]  # Not "Treated" or "Control"
-        })
+        obs = pd.DataFrame(
+            {
+                "participant_id": ["P1"],
+                "visit": ["V1"],
+                "arm": ["Unknown"],  # Not "Treated" or "Control"
+            }
+        )
         adata = AnnData(X=np.zeros((1, 1)), obs=obs)
 
         design = st.TrialDesign()
@@ -248,13 +256,15 @@ class TestWLSWeighting:
         from sctrial.stats.did import did_fit
 
         # Create data where WLS should make a difference
-        df = pd.DataFrame({
-            "participant_id": ["P1", "P1", "P2", "P2", "P3", "P3", "P4", "P4"],
-            "visit_num": [0, 1, 0, 1, 0, 1, 0, 1],
-            "arm_bin": [1, 1, 1, 1, 0, 0, 0, 0],
-            "outcome": [1.0, 2.0, 1.0, 3.0, 1.0, 1.2, 1.0, 1.1],
-            "n_cells": [100, 100, 10, 10, 100, 100, 10, 10],  # Varied cell counts
-        })
+        df = pd.DataFrame(
+            {
+                "participant_id": ["P1", "P1", "P2", "P2", "P3", "P3", "P4", "P4"],
+                "visit_num": [0, 1, 0, 1, 0, 1, 0, 1],
+                "arm_bin": [1, 1, 1, 1, 0, 0, 0, 0],
+                "outcome": [1.0, 2.0, 1.0, 3.0, 1.0, 1.2, 1.0, 1.1],
+                "n_cells": [100, 100, 10, 10, 100, 100, 10, 10],  # Varied cell counts
+            }
+        )
 
         # Run did_fit - should use WLS because n_cells is present
         result = did_fit(

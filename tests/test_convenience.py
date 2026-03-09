@@ -5,6 +5,7 @@ auto-visit deprecation warning, layer creation) and auto_detect_design
 (column detection, arm label detection, word-boundary matching, multi-arm
 handling, missing column errors).
 """
+
 from __future__ import annotations
 
 import logging
@@ -20,6 +21,7 @@ from sctrial.convenience import _find_column
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_trial_adata(
     n_participants: int = 10,
@@ -42,12 +44,14 @@ def _make_trial_adata(
     for i in range(n_participants):
         arm = arms[0] if i < n_treated else arms[1]
         for v in visits:
-            obs_rows.append({
-                col_names["participant"]: f"P{i}",
-                col_names["visit"]: v,
-                col_names["arm"]: arm,
-                col_names["celltype"]: "CT1",
-            })
+            obs_rows.append(
+                {
+                    col_names["participant"]: f"P{i}",
+                    col_names["visit"]: v,
+                    col_names["arm"]: arm,
+                    col_names["celltype"]: "CT1",
+                }
+            )
     obs = pd.DataFrame(obs_rows)
     X = rng.poisson(2, (len(obs), n_genes)).astype(float)
     adata = AnnData(X=X, obs=obs)
@@ -60,6 +64,7 @@ def _make_trial_adata(
 # quick_did — Input Validation
 # ===================================================================
 
+
 class TestQuickDidValidation:
     """Input validation for quick_did."""
 
@@ -67,38 +72,47 @@ class TestQuickDidValidation:
         adata = _make_trial_adata()
         with pytest.raises(ValueError, match="not found"):
             st.quick_did(
-                adata, module_scores={"S": ["G0", "G1", "G2"]},
-                visits=("V1", "V2"), visit_col="nonexistent",
+                adata,
+                module_scores={"S": ["G0", "G1", "G2"]},
+                visits=("V1", "V2"),
+                visit_col="nonexistent",
             )
 
     def test_missing_arm_col_raises(self):
         adata = _make_trial_adata()
         with pytest.raises(ValueError, match="not found"):
             st.quick_did(
-                adata, module_scores={"S": ["G0", "G1", "G2"]},
-                visits=("V1", "V2"), arm_col="nonexistent",
+                adata,
+                module_scores={"S": ["G0", "G1", "G2"]},
+                visits=("V1", "V2"),
+                arm_col="nonexistent",
             )
 
     def test_wrong_arm_treated_raises(self):
         adata = _make_trial_adata()
         with pytest.raises(ValueError, match="arm_treated='Drug'"):
             st.quick_did(
-                adata, module_scores={"S": ["G0", "G1", "G2"]},
-                visits=("V1", "V2"), arm_treated="Drug",
+                adata,
+                module_scores={"S": ["G0", "G1", "G2"]},
+                visits=("V1", "V2"),
+                arm_treated="Drug",
             )
 
     def test_wrong_arm_control_raises(self):
         adata = _make_trial_adata()
         with pytest.raises(ValueError, match="arm_control='Placebo'"):
             st.quick_did(
-                adata, module_scores={"S": ["G0", "G1", "G2"]},
-                visits=("V1", "V2"), arm_control="Placebo",
+                adata,
+                module_scores={"S": ["G0", "G1", "G2"]},
+                visits=("V1", "V2"),
+                arm_control="Placebo",
             )
 
 
 # ===================================================================
 # quick_did — visits is required (no auto-detection)
 # ===================================================================
+
 
 class TestQuickDidVisits:
     """P1 #1: visits must be explicitly specified (no lexicographic guessing)."""
@@ -112,8 +126,10 @@ class TestQuickDidVisits:
     def test_explicit_visits_works(self):
         adata = _make_trial_adata()
         res = st.quick_did(
-            adata, module_scores={"S": ["G0", "G1", "G2"]},
-            visits=("V1", "V2"), counts_layer="counts",
+            adata,
+            module_scores={"S": ["G0", "G1", "G2"]},
+            visits=("V1", "V2"),
+            counts_layer="counts",
         )
         assert not res.empty
 
@@ -122,6 +138,7 @@ class TestQuickDidVisits:
 # quick_did — min_genes Pass-Through
 # ===================================================================
 
+
 class TestQuickDidMinGenes:
     """P2 #4: min_genes is now exposed in quick_did."""
 
@@ -129,8 +146,10 @@ class TestQuickDidMinGenes:
         """1-gene module → NaN with default min_genes=3."""
         adata = _make_trial_adata()
         res = st.quick_did(
-            adata, module_scores={"tiny": ["G0"]},
-            visits=("V1", "V2"), counts_layer="counts",
+            adata,
+            module_scores={"tiny": ["G0"]},
+            visits=("V1", "V2"),
+            counts_layer="counts",
         )
         assert res["beta_DiD"].isna().all()
 
@@ -138,8 +157,10 @@ class TestQuickDidMinGenes:
         """1-gene module → valid result with min_genes=1."""
         adata = _make_trial_adata()
         res = st.quick_did(
-            adata, module_scores={"tiny": ["G0"]},
-            visits=("V1", "V2"), counts_layer="counts",
+            adata,
+            module_scores={"tiny": ["G0"]},
+            visits=("V1", "V2"),
+            counts_layer="counts",
             min_genes=1,
         )
         assert not res["beta_DiD"].isna().all()
@@ -149,6 +170,7 @@ class TestQuickDidMinGenes:
 # quick_did — Layer Creation
 # ===================================================================
 
+
 class TestQuickDidLayer:
     """Layer creation path."""
 
@@ -156,8 +178,10 @@ class TestQuickDidLayer:
         adata = _make_trial_adata()
         assert "log1p_cpm" not in adata.layers
         st.quick_did(
-            adata, module_scores={"S": ["G0", "G1", "G2"]},
-            visits=("V1", "V2"), counts_layer="counts",
+            adata,
+            module_scores={"S": ["G0", "G1", "G2"]},
+            visits=("V1", "V2"),
+            counts_layer="counts",
         )
         # Layer should have been created by quick_did
         assert "log1p_cpm" in adata.layers
@@ -166,7 +190,8 @@ class TestQuickDidLayer:
         adata = _make_trial_adata()
         adata.layers["log1p_cpm"] = adata.X * 0.5
         res = st.quick_did(
-            adata, module_scores={"S": ["G0", "G1", "G2"]},
+            adata,
+            module_scores={"S": ["G0", "G1", "G2"]},
             visits=("V1", "V2"),
         )
         assert not res.empty
@@ -176,14 +201,17 @@ class TestQuickDidLayer:
 # quick_did — End-to-End
 # ===================================================================
 
+
 class TestQuickDidEndToEnd:
     """End-to-end quick_did tests."""
 
     def test_basic_run(self, sample_adata):
         gene_sets = {"Sig": ["G0", "G1", "G2"]}
         res = st.quick_did(
-            sample_adata, module_scores=gene_sets,
-            visits=("V1", "V2"), counts_layer="counts",
+            sample_adata,
+            module_scores=gene_sets,
+            visits=("V1", "V2"),
+            counts_layer="counts",
         )
         assert not res.empty
         assert "feature" in res.columns
@@ -196,8 +224,10 @@ class TestQuickDidEndToEnd:
             "B": ["G3", "G4", "G5"],
         }
         res = st.quick_did(
-            adata, module_scores=gene_sets,
-            visits=("V1", "V2"), counts_layer="counts",
+            adata,
+            module_scores=gene_sets,
+            visits=("V1", "V2"),
+            counts_layer="counts",
         )
         assert len(res) == 2
         assert set(res["feature"]) == {"ms_A", "ms_B"}
@@ -206,6 +236,7 @@ class TestQuickDidEndToEnd:
 # ===================================================================
 # auto_detect_design — Column Detection
 # ===================================================================
+
 
 class TestAutoDetectColumns:
     """Column name pattern matching."""
@@ -286,6 +317,7 @@ class TestAutoDetectColumns:
 # auto_detect_design — Arm Label Detection
 # ===================================================================
 
+
 class TestAutoDetectArmLabels:
     """P1 #2: Arm label auto-detection and failure modes."""
 
@@ -312,19 +344,19 @@ class TestAutoDetectArmLabels:
     def test_explicit_arm_labels_override(self):
         """User-provided arm labels bypass keyword detection."""
         adata = _make_trial_adata(arms=("GroupA", "GroupB"))
-        design = st.auto_detect_design(
-            adata, arm_treated="GroupA", arm_control="GroupB"
-        )
+        design = st.auto_detect_design(adata, arm_treated="GroupA", arm_control="GroupB")
         assert design.arm_treated == "GroupA"
         assert design.arm_control == "GroupB"
 
     def test_multi_arm_raises(self):
         """P3 #5: >2 arms raises ValueError."""
-        obs = pd.DataFrame({
-            "participant_id": ["P1", "P2", "P3"],
-            "visit": ["V1", "V1", "V1"],
-            "arm": ["ArmA", "ArmB", "ArmC"],
-        })
+        obs = pd.DataFrame(
+            {
+                "participant_id": ["P1", "P2", "P3"],
+                "visit": ["V1", "V1", "V1"],
+                "arm": ["ArmA", "ArmB", "ArmC"],
+            }
+        )
         adata = AnnData(X=np.ones((3, 2)), obs=obs)
         adata.var_names = ["G0", "G1"]
         with pytest.raises(ValueError, match="3 arms"):
@@ -332,11 +364,13 @@ class TestAutoDetectArmLabels:
 
     def test_single_arm_raises(self):
         """Only 1 arm raises ValueError."""
-        obs = pd.DataFrame({
-            "participant_id": ["P1", "P2"],
-            "visit": ["V1", "V1"],
-            "arm": ["OnlyArm", "OnlyArm"],
-        })
+        obs = pd.DataFrame(
+            {
+                "participant_id": ["P1", "P2"],
+                "visit": ["V1", "V1"],
+                "arm": ["OnlyArm", "OnlyArm"],
+            }
+        )
         adata = AnnData(X=np.ones((2, 2)), obs=obs)
         adata.var_names = ["G0", "G1"]
         with pytest.raises(ValueError, match="only 1 arm"):
@@ -346,6 +380,7 @@ class TestAutoDetectArmLabels:
 # ===================================================================
 # _find_column — Word-Boundary Matching
 # ===================================================================
+
 
 class TestFindColumn:
     """P2 #3: Word-boundary matching prevents false positives."""
@@ -409,6 +444,7 @@ class TestFindColumn:
 # ===================================================================
 # auto_detect_design — Summary Logging
 # ===================================================================
+
 
 class TestDesignSummaryLogging:
     """Design summary is logged."""

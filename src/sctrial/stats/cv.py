@@ -42,6 +42,7 @@ Interpretation Guidelines
 - Consistently signed CV estimates: Robust effect
 - Estimate changes sign across folds: Unreliable effect
 """
+
 from __future__ import annotations
 
 import warnings
@@ -121,8 +122,13 @@ def loo_cv_did(
 
     # Full-sample estimates for comparison
     full_res = did_table(
-        adata, features, design, visits,
-        exclude_crossovers=exclude_crossovers, layer=layer, aggregate=aggregate,
+        adata,
+        features,
+        design,
+        visits,
+        exclude_crossovers=exclude_crossovers,
+        layer=layer,
+        aggregate=aggregate,
         standardize=standardize,
     )
     full_betas = full_res.set_index("feature")["beta_DiD"].to_dict()
@@ -137,8 +143,13 @@ def loo_cv_did(
 
         try:
             res_loo = did_table(
-                ad_loo, features, design, visits,
-                exclude_crossovers=exclude_crossovers, layer=layer, aggregate=aggregate,
+                ad_loo,
+                features,
+                design,
+                visits,
+                exclude_crossovers=exclude_crossovers,
+                layer=layer,
+                aggregate=aggregate,
                 standardize=standardize,
             )
 
@@ -155,14 +166,16 @@ def loo_cv_did(
                 else:
                     influence = np.nan
 
-                rows.append({
-                    "feature": feat,
-                    "excluded": pid,
-                    "beta_DiD": beta_loo,
-                    "se_DiD": se_loo,
-                    "beta_full": beta_full,
-                    "influence": influence,
-                })
+                rows.append(
+                    {
+                        "feature": feat,
+                        "excluded": pid,
+                        "beta_DiD": beta_loo,
+                        "se_DiD": se_loo,
+                        "beta_full": beta_full,
+                        "influence": influence,
+                    }
+                )
 
         except (ValueError, np.linalg.LinAlgError, KeyError) as exc:
             warnings.warn(
@@ -170,14 +183,16 @@ def loo_cv_did(
                 stacklevel=2,
             )
             for feat in features:
-                rows.append({
-                    "feature": feat,
-                    "excluded": pid,
-                    "beta_DiD": np.nan,
-                    "se_DiD": np.nan,
-                    "beta_full": full_betas.get(feat, np.nan),
-                    "influence": np.nan,
-                })
+                rows.append(
+                    {
+                        "feature": feat,
+                        "excluded": pid,
+                        "beta_DiD": np.nan,
+                        "se_DiD": np.nan,
+                        "beta_full": full_betas.get(feat, np.nan),
+                        "influence": np.nan,
+                    }
+                )
 
     return pd.DataFrame(rows)
 
@@ -251,8 +266,7 @@ def kfold_cv_did(
 
     # Full-sample estimates
     full_res = did_table(
-        adata, features, design, visits,
-        exclude_crossovers=exclude_crossovers, layer=layer
+        adata, features, design, visits, exclude_crossovers=exclude_crossovers, layer=layer
     )
     full_betas = full_res.set_index("feature")["beta_DiD"].to_dict()
 
@@ -300,8 +314,12 @@ def kfold_cv_did(
 
             try:
                 res_fold = did_table(
-                    ad_fold, features, design, visits,
-                    exclude_crossovers=exclude_crossovers, layer=layer
+                    ad_fold,
+                    features,
+                    design,
+                    visits,
+                    exclude_crossovers=exclude_crossovers,
+                    layer=layer,
                 )
 
                 for _, row in res_fold.iterrows():
@@ -342,17 +360,19 @@ def kfold_cv_did(
         else:
             cv_mean = cv_sd = cv_lower = cv_upper = stability = sign_consistency = np.nan
 
-        rows.append({
-            "feature": feat,
-            "beta_full": beta_full,
-            "beta_cv_mean": cv_mean,
-            "beta_cv_sd": cv_sd,
-            "beta_cv_lower": cv_lower,
-            "beta_cv_upper": cv_upper,
-            "cv_stability": stability,
-            "sign_consistency": sign_consistency,
-            "n_cv_samples": len(valid),
-        })
+        rows.append(
+            {
+                "feature": feat,
+                "beta_full": beta_full,
+                "beta_cv_mean": cv_mean,
+                "beta_cv_sd": cv_sd,
+                "beta_cv_lower": cv_lower,
+                "beta_cv_upper": cv_upper,
+                "cv_stability": stability,
+                "sign_consistency": sign_consistency,
+                "n_cv_samples": len(valid),
+            }
+        )
 
     return pd.DataFrame(rows)
 
@@ -431,14 +451,16 @@ def cv_summary(
             else:
                 mean_loo = std_loo = cv = np.nan
 
-            rows.append({
-                "feature": feat,
-                "mean_estimate": beta_full,
-                "mean_loo": mean_loo,
-                "std_loo": std_loo,
-                "cv": cv,
-                "n_loo": len(betas),
-            })
+            rows.append(
+                {
+                    "feature": feat,
+                    "mean_estimate": beta_full,
+                    "mean_loo": mean_loo,
+                    "std_loo": std_loo,
+                    "cv": cv,
+                    "n_loo": len(betas),
+                }
+            )
         return pd.DataFrame(rows)
 
     else:
@@ -452,6 +474,6 @@ def cv_summary(
         result["cv"] = np.where(
             result["mean_loo"].abs() > 1e-12,
             result["std_loo"].abs() / result["mean_loo"].abs(),
-            np.nan
+            np.nan,
         )
         return result

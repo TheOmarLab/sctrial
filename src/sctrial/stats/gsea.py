@@ -29,7 +29,9 @@ __all__ = [
 def _ensure_gseapy() -> None:
     """Ensure gseapy is installed."""
     if gp is None:
-        raise ImportError("gseapy is required for GSEA functions. Install with 'pip install gseapy'.")
+        raise ImportError(
+            "gseapy is required for GSEA functions. Install with 'pip install gseapy'."
+        )
 
 
 def _rank_did_results(
@@ -46,21 +48,18 @@ def _rank_did_results(
         )
 
     if rank_by == "signed_confidence":
-        valid["rank"] = (
-            np.sign(valid["beta_DiD"].fillna(0)) *
-            -np.log10(valid["p_DiD"].fillna(1) + 1e-12)
+        valid["rank"] = np.sign(valid["beta_DiD"].fillna(0)) * -np.log10(
+            valid["p_DiD"].fillna(1) + 1e-12
         )
     elif rank_by == "beta":
         valid["rank"] = valid["beta_DiD"].fillna(0)
     elif rank_by == "tstat":
-        valid["rank"] = (
-            valid["beta_DiD"].fillna(0) /
-            (valid["se_DiD"].fillna(1) + 1e-12)
-        )
+        valid["rank"] = valid["beta_DiD"].fillna(0) / (valid["se_DiD"].fillna(1) + 1e-12)
     else:
         raise ValueError(f"Unknown rank_by: {rank_by}")
 
     return valid[["feature", "rank"]].dropna().sort_values("rank", ascending=False)
+
 
 def run_gsea_did(
     adata: AnnData,
@@ -75,7 +74,7 @@ def run_gsea_did(
     n_boot: int = 999,
     min_units: int = 4,
     return_obj: bool = False,
-    **kwargs
+    **kwargs,
 ) -> pd.DataFrame | gp.Prerank:
     """Perform Gene Set Enrichment Analysis (GSEA) on trial-aware rankings.
 
@@ -148,7 +147,7 @@ def run_gsea_did(
         layer=layer,
         aggregate="participant_visit",
         use_bootstrap=use_bootstrap,
-        n_boot=n_boot
+        n_boot=n_boot,
     )
 
     # 2. Filter genes with insufficient data
@@ -156,11 +155,7 @@ def run_gsea_did(
     ranking = _rank_did_results(res, rank_by=rank_by, min_units=min_units)
 
     # 3. Run GSEA Prerank
-    pre_res = gp.prerank(
-        rnk=ranking,
-        gene_sets=gene_sets,
-        **kwargs
-    )
+    pre_res = gp.prerank(rnk=ranking, gene_sets=gene_sets, **kwargs)
 
     if return_obj:
         return pre_res
