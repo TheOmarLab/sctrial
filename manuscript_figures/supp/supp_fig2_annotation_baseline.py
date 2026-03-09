@@ -1,18 +1,19 @@
 """
-Supplementary Figure 2 — Cellular Atlas and Annotation Confidence.
-==================================================================
+Supplementary Figure 2 — Cell Annotation and Baseline Comparability.
+====================================================================
 
-Establish cell-type annotation quality and embedding reliability.
+Establish cell-type annotation quality and demonstrate that pre-treatment
+groups are comparable before DiD analysis.
 
 Panels:
   A  UMAP per dataset coloured by cell type (5 mini-UMAPs).
-  B  UMAP per dataset coloured by study grouping variable.
-  C  Marker gene dot plot (top 3 markers per cell type, pooled).
-  D  Cluster→cell-type purity per dataset.
-  E  Centroid-silhouette score on PCA/Harmony embedding.
-  F  Embedding neighbourhood purity from full kNN graph.
-  G  Cell-type × dataset cross-tabulation heatmap (normalised).
-  H  Annotation uncertainty (cluster entropy) per dataset.
+  B  Marker gene dot plot (top 3 markers per cell type, pooled).
+  C  Cluster→cell-type purity per dataset.
+  D  Centroid-silhouette score on PCA/Harmony embedding.
+  E  Embedding neighbourhood purity from full kNN graph.
+  F  Cell-type × dataset cross-tabulation heatmap (normalised).
+  G  Baseline PCA overlap between arms per dataset.
+  H  Baseline cell-type composition by arm.
 
 Non-overlap guardrail: no treatment-effect claims, no DiD estimates.
 """
@@ -43,14 +44,13 @@ from .._shared import (
     save_panel,
 )
 
-FIGURE_NAME = "SuppFig2_cell_annotation"
+FIGURE_NAME = "SuppFig2_annotation_baseline"
 
 DOT_SIZE = 1.8
-CELLTYPE_LABEL_SIZE = 9
 
 _DS_PALETTE = dict(zip(
     ["Sade-Feldman", "Stephenson", "Vaccine", "AML", "CAR-T"],
-    sns.color_palette("Set2", 5),
+    ["#1b9e77", "#d95f02", "#7570b3", "#e7298a", "#66a61e"],
 ))
 
 DATASETS = [
@@ -71,13 +71,6 @@ def _find_celltype_col(obs):
             return col
     if "leiden" in obs.columns:
         return "leiden"
-    return None
-
-
-def _find_group_col(obs):
-    for col in ("response_harmonized", "response", "severity", "visit", "timepoint"):
-        if col in obs.columns and obs[col].nunique() > 1:
-            return col
     return None
 
 
@@ -139,10 +132,7 @@ def _get_log_expr(adata):
     import scipy.sparse as sp
     for layer in ("log1p_tpm", "log1p_cpm", "log1p_norm"):
         if layer in adata.layers:
-            X = adata.layers[layer]
-            if sp.issparse(X):
-                return X
-            return X
+            return adata.layers[layer]
     # Fallback: normalise counts
     if "counts" in adata.layers:
         X = adata.layers["counts"].copy()
@@ -152,6 +142,35 @@ def _get_log_expr(adata):
         row_sums[row_sums == 0] = 1
         X = np.log1p(X / row_sums * 1e4)
         return X
+    return None
+
+
+def _pid_col(obs):
+    for c in ("participant_id", "patient_id", "donor_id", "pt_id"):
+        if c in obs.columns:
+            return c
+    return None
+
+
+def _visit_col(obs):
+    for c in ("visit",):
+        if c in obs.columns and obs[c].nunique() > 1:
+            return c
+    return None
+
+
+def _arm_col(obs):
+    for c in ("response", "severity", "therapy"):
+        if c in obs.columns and obs[c].nunique() > 1:
+            return c
+    return None
+
+
+def _ct_col(obs):
+    for c in ("cell_type", "celltype", "CellType", "cell_type_fine",
+              "cell_type_coarse", "celltype_major", "clustnm"):
+        if c in obs.columns and obs[c].nunique() > 1:
+            return c
     return None
 
 
@@ -206,97 +225,10 @@ def _panel_umap_grid(fig, axes, loaded: dict):
         axes[i].axis("off")
 
 
-def _panel_umap_group_grid(fig, axes, loaded: dict):
-    """5 mini-UMAPs coloured by dataset-specific grouping variable."""
-    ds_names = list(loaded.keys())
-    for i, name in enumerate(ds_names):
-        ax = axes[i]
-        adata = loaded[name]["adata"]
-        gcol = loaded[name]["group_col"]
-        if gcol is None or "X_umap" not in adata.obsm:
-            ax.text(0.5, 0.5, "No grouping var", ha="center", va="center",
-                    transform=ax.transAxes, fontsize=9, fontstyle="italic",
-                    color="#888888")
-            ax.set_title(name, fontweight="bold", fontsize=9)
-            ax.axis("off")
-            continue
-
-        labels = adata.obs[gcol].astype(str).values
-        emb = adata.obsm["X_umap"]
-        uniq = sorted(set(labels))
-        pal = dict(zip(uniq, sns.color_palette("Set1", max(3, len(uniq)))[:len(uniq)]))
-        order = np.random.default_rng(42).permutation(len(labels))
-        colors = np.array([pal[labels[j]] for j in order])
-        ax.scatter(emb[order, 0], emb[order, 1], c=colors, s=DOT_SIZE, alpha=0.75,
-                   edgecolors="none", rasterized=True)
-        handles = [mpatches.Patch(facecolor=pal[k], edgecolor="none", label=k) for k in uniq]
-        ax.legend(handles=handles, fontsize=5, loc="best", frameon=True,
-                  framealpha=0.85, ncol=1, handlelength=0.8, borderpad=0.3)
-        ax.set_title(f"{name} ({gcol})", fontweight="bold", fontsize=9)
-        ax.set_xticks([])
-        ax.set_yticks([])
-        despine(ax)
-
-    for i in range(len(ds_names), len(axes)):
-        axes[i].axis("off")
-
-
-# ── Panel B: cell-type proportions (stacked horizontal bars) ──────
-
-def _panel_ct_proportions(ax, loaded: dict):
-    """Stacked horizontal bars: cell-type proportion per dataset."""
-    ds_names = list(loaded.keys())
-    ct_fracs: dict[str, dict[str, float]] = {}
-
-    for name in ds_names:
-        ct_col = loaded[name]["ct_col"]
-        if ct_col is None:
-            ct_fracs[name] = {}
-            continue
-        raw = loaded[name]["adata"].obs[ct_col].astype(str).map(harmonize_celltype)
-        cts = raw.value_counts(normalize=True)
-        ct_fracs[name] = cts.to_dict()
-
-    all_cts_sorted = [c for c in HARMONIZED_CELLTYPE_ORDER
-                      if any(c in ct_fracs.get(n, {}) for n in ds_names)]
-    palette = _build_ct_palette(all_cts_sorted)
-
-    y_pos = np.arange(len(ds_names))
-    for name_i, name in enumerate(ds_names):
-        left = 0.0
-        for ct in all_cts_sorted:
-            frac = ct_fracs.get(name, {}).get(ct, 0)
-            if frac > 0:
-                ax.barh(name_i, frac, left=left, height=0.6,
-                        color=palette[ct], edgecolor="white", linewidth=0.3)
-                if frac > 0.06:
-                    ax.text(left + frac / 2, name_i, ct, ha="center",
-                            va="center", fontsize=4.5, color="white",
-                            fontweight="bold")
-                left += frac
-
-    ax.set_yticks(y_pos)
-    ax.set_yticklabels(ds_names, fontsize=8)
-    ax.set_xlim(0, 1)
-    ax.set_xlabel("Fraction of cells")
-    ax.set_title("Cell-Type Proportions", fontweight="bold")
-
-    # Legend for top cell types
-    top_cts = sorted(all_cts_sorted, key=lambda ct: sum(
-        ct_fracs.get(n, {}).get(ct, 0) for n in ds_names), reverse=True)[:15]
-    handles = [mpatches.Patch(facecolor=palette[ct], edgecolor="none",
-                              label=ct) for ct in top_cts]
-    ax.legend(handles=handles, fontsize=5, loc="lower right", frameon=True,
-              ncol=2, handlelength=0.8, handleheight=0.6,
-              borderpad=0.3, labelspacing=0.15)
-    despine(ax)
-
-
-# ── Panel C: Marker gene dot plot ─────────────────────────────────
+# ── Panel B: Marker gene dot plot ─────────────────────────────────
 
 def _panel_marker_dotplot(fig, ax, loaded: dict):
     """Top 3 marker genes per major cell type, shown as dot plot."""
-    # Canonical markers for major cell types
     canonical_markers = {
         "T cells": ["CD3D", "CD3E", "TRAC"],
         "CD8 T": ["CD8A", "CD8B", "GZMB"],
@@ -308,7 +240,6 @@ def _panel_marker_dotplot(fig, ax, loaded: dict):
         "Plasma": ["MZB1", "JCHAIN", "SDC1"],
     }
 
-    # Pool all datasets and compute fraction expressing + mean expression
     rows = []
     for name, data in loaded.items():
         adata = data["adata"]
@@ -327,10 +258,8 @@ def _panel_marker_dotplot(fig, ax, loaded: dict):
 
         for ct_name, markers in canonical_markers.items():
             for marker in markers:
-                # Case-insensitive lookup
                 idx = gene_idx_map.get(marker)
                 if idx is None:
-                    # Try uppercase
                     marker_up = marker.upper()
                     for g, gi in gene_idx_map.items():
                         if g.upper() == marker_up:
@@ -366,14 +295,11 @@ def _panel_marker_dotplot(fig, ax, loaded: dict):
         return
 
     df = pd.DataFrame(rows)
-    # Average across datasets
     agg = df.groupby(["Cell type", "Marker", "Marker group"]).agg({
         "Fraction expressing": "mean",
         "Mean expression": "mean",
     }).reset_index()
 
-    # Select top cell types per dataset (top 5 each) to avoid
-    # bias toward the largest dataset (Stephenson)
     top_cts_set: set[str] = set()
     for data in loaded.values():
         if data["ct_col"]:
@@ -387,7 +313,6 @@ def _panel_marker_dotplot(fig, ax, loaded: dict):
                 transform=ax.transAxes, fontsize=10, fontstyle="italic")
         return
 
-    # Pivot for dot plot
     markers_used = sorted(agg_filt["Marker"].unique())
     ct_used = sorted(agg_filt["Cell type"].unique())
 
@@ -398,19 +323,17 @@ def _panel_marker_dotplot(fig, ax, loaded: dict):
         index="Cell type", columns="Marker",
         values="Mean expression", fill_value=0)
 
-    # Reindex
     markers_used = [m for m in markers_used if m in pivot_frac.columns]
     ct_used = [c for c in ct_used if c in pivot_frac.index]
     pivot_frac = pivot_frac.reindex(index=ct_used, columns=markers_used, fill_value=0)
     pivot_expr = pivot_expr.reindex(index=ct_used, columns=markers_used, fill_value=0)
 
-    # Draw dot plot
     for yi, ct in enumerate(ct_used):
         for xi, marker in enumerate(markers_used):
             frac = pivot_frac.loc[ct, marker]
             expr = pivot_expr.loc[ct, marker]
             if frac > 0.01:
-                size = frac * 200  # scale dot size
+                size = frac * 200
                 ax.scatter(xi, yi, s=size, c=expr, cmap="Reds",
                            vmin=0, vmax=pivot_expr.values.max(),
                            edgecolors="grey", linewidth=0.3, zorder=3)
@@ -423,7 +346,6 @@ def _panel_marker_dotplot(fig, ax, loaded: dict):
     ax.set_ylim(-0.5, len(ct_used) - 0.5)
     ax.set_title("Canonical Marker Expression", fontweight="bold")
 
-    # Size legend
     for frac_val in [0.25, 0.5, 0.75]:
         ax.scatter([], [], s=frac_val * 200, c="grey", alpha=0.5,
                    edgecolors="grey", label=f"{frac_val:.0%}")
@@ -433,7 +355,7 @@ def _panel_marker_dotplot(fig, ax, loaded: dict):
     despine(ax)
 
 
-# ── Panel D: cluster→cell-type purity ─────────────────────────────
+# ── Panel C: cluster→cell-type purity ─────────────────────────────
 
 def _panel_annotation_confidence(ax, loaded: dict):
     """Distribution of cluster-level purity mapped to cells."""
@@ -462,7 +384,7 @@ def _panel_annotation_confidence(ax, loaded: dict):
     df = pd.concat(rows, ignore_index=True)
     sns.violinplot(data=df, x="Dataset", y="Cluster purity",
                    order=list(loaded.keys()), cut=0, inner="quartile",
-                   linewidth=0.5, palette="Set2", density_norm="width", ax=ax)
+                   linewidth=0.5, palette=_DS_PALETTE, density_norm="width", ax=ax)
     ax.set_xlabel("")
     ax.set_ylabel("Dominant cell-type fraction within Leiden cluster")
     ax.set_title("Cluster→Cell-Type Purity", fontweight="bold")
@@ -470,7 +392,7 @@ def _panel_annotation_confidence(ax, loaded: dict):
     despine(ax)
 
 
-# ── Panel E: Silhouette scores ────────────────────────────────────
+# ── Panel D: Silhouette scores ────────────────────────────────────
 
 def _panel_silhouette(ax, loaded: dict):
     """Centroid-silhouette approximation on PCA/Harmony (full data)."""
@@ -538,89 +460,7 @@ def _panel_silhouette(ax, loaded: dict):
     despine(ax)
 
 
-# ── Panel F: Cell type × dataset cross-tabulation ─────────────────
-
-def _panel_ct_crosstab(ax, loaded: dict):
-    """Heatmap: harmonised cell type × dataset (normalised within dataset)."""
-    rows = []
-    for name, data in loaded.items():
-        ct_col = data["ct_col"]
-        if ct_col is None:
-            continue
-        harmonised = data["adata"].obs[ct_col].astype(str).map(harmonize_celltype)
-        cts = harmonised.value_counts(normalize=True)
-        for ct, frac in cts.items():
-            rows.append({"Dataset": name, "Cell type": ct,
-                         "Fraction": frac})
-
-    if not rows:
-        ax.text(0.5, 0.5, "No cell-type data", ha="center", va="center",
-                transform=ax.transAxes)
-        return
-
-    df = pd.DataFrame(rows)
-    pivot = df.pivot_table(index="Cell type", columns="Dataset",
-                           values="Fraction", aggfunc="sum", fill_value=0)
-
-    # Sort by canonical order, keep only present types
-    order = [c for c in HARMONIZED_CELLTYPE_ORDER if c in pivot.index]
-    pivot = pivot.loc[order]
-
-    sns.heatmap(pivot, cmap="YlOrBr", annot=True, fmt=".2f",
-                linewidths=0.5, ax=ax, vmin=0, vmax=pivot.values.max(),
-                cbar_kws={"label": "Fraction", "shrink": 0.7})
-    ax.set_title("Cell-Type × Dataset (harmonised)", fontweight="bold")
-    ax.set_ylabel("")
-    ax.set_xlabel("")
-    despine(ax)
-
-
-# ── Panel G: Cells per cell type per dataset ──────────────────────
-
-def _panel_cells_per_ct(ax, loaded: dict):
-    """Grouped bars: cell count per harmonised cell type per dataset (log)."""
-    rows = []
-    for name, data in loaded.items():
-        ct_col = data["ct_col"]
-        if ct_col is None:
-            continue
-        harmonised = data["adata"].obs[ct_col].astype(str).map(harmonize_celltype)
-        cts = harmonised.value_counts()
-        for ct, cnt in cts.items():
-            rows.append({"Dataset": name, "Cell type": ct, "Count": cnt})
-
-    if not rows:
-        ax.text(0.5, 0.5, "No data", ha="center", va="center",
-                transform=ax.transAxes)
-        return
-
-    df = pd.DataFrame(rows)
-
-    # Use canonical order, keep only present types
-    present = df.groupby("Cell type")["Count"].sum()
-    top_cts = [c for c in HARMONIZED_CELLTYPE_ORDER if c in present.index]
-
-    ds_names = [n for n in loaded.keys() if loaded[n]["ct_col"] is not None]
-
-    x = np.arange(len(top_cts))
-    width = 0.15
-    for di, ds in enumerate(ds_names):
-        sub = df[df["Dataset"] == ds].set_index("Cell type")
-        vals = [sub.loc[ct, "Count"] if ct in sub.index else 0 for ct in top_cts]
-        offset = (di - (len(ds_names) - 1) / 2) * width
-        ax.bar(x + offset, vals, width * 0.9, label=ds,
-               color=_DS_PALETTE.get(ds, "grey"), edgecolor="white")
-
-    ax.set_xticks(x)
-    ax.set_xticklabels(top_cts, rotation=45, ha="right", fontsize=6)
-    ax.set_ylabel("Cell count")
-    ax.set_yscale("log")
-    ax.set_title("Cells per Cell Type (harmonised)", fontweight="bold")
-    ax.legend(fontsize=6, loc="upper right", frameon=True)
-    despine(ax)
-
-
-# ── Panel H: Embedding neighbourhood purity ──────────────────────
+# ── Panel E: Embedding neighbourhood purity ──────────────────────
 
 def _panel_knn_purity(ax, loaded: dict):
     """Label purity from full Scanpy neighbour graph (no subsampling)."""
@@ -682,35 +522,203 @@ def _panel_knn_purity(ax, loaded: dict):
     despine(ax)
 
 
-def _panel_annotation_uncertainty(ax, loaded: dict):
-    """Annotation uncertainty from normalized cluster entropy."""
+# ── Panel F: Cell type × dataset cross-tabulation ─────────────────
+
+def _panel_ct_crosstab(ax, loaded: dict):
+    """Heatmap: harmonised cell type × dataset (normalised within dataset)."""
     rows = []
     for name, data in loaded.items():
-        adata = data["adata"]
         ct_col = data["ct_col"]
-        if ct_col is None or "leiden" not in adata.obs.columns:
+        if ct_col is None:
             continue
-        tab = pd.crosstab(adata.obs["leiden"], adata.obs[ct_col].astype(str))
-        p = tab.div(tab.sum(axis=1), axis=0).replace(0, np.nan)
-        entropy = -(p * np.log(p)).sum(axis=1)
-        max_h = np.log(tab.shape[1]) if tab.shape[1] > 1 else 1.0
-        norm_entropy = (entropy / max_h).fillna(0.0).to_dict()
-        cell_unc = adata.obs["leiden"].map(norm_entropy).astype(float).values
-        rows.append(pd.DataFrame({"Dataset": name, "Uncertainty": cell_unc}))
+        harmonised = data["adata"].obs[ct_col].astype(str).map(harmonize_celltype)
+        cts = harmonised.value_counts(normalize=True)
+        for ct, frac in cts.items():
+            rows.append({"Dataset": name, "Cell type": ct,
+                         "Fraction": frac})
 
     if not rows:
-        ax.text(0.5, 0.5, "No uncertainty data", ha="center", va="center",
-                transform=ax.transAxes, fontsize=10, fontstyle="italic")
+        ax.text(0.5, 0.5, "No cell-type data", ha="center", va="center",
+                transform=ax.transAxes)
         return
 
-    df = pd.concat(rows, ignore_index=True)
-    sns.violinplot(data=df, x="Dataset", y="Uncertainty",
-                   order=list(loaded.keys()), cut=0, inner="quartile",
-                   linewidth=0.5, palette="Set2", density_norm="width", ax=ax)
+    df = pd.DataFrame(rows)
+    pivot = df.pivot_table(index="Cell type", columns="Dataset",
+                           values="Fraction", aggfunc="sum", fill_value=0)
+
+    order = [c for c in HARMONIZED_CELLTYPE_ORDER if c in pivot.index]
+    pivot = pivot.loc[order]
+
+    sns.heatmap(pivot, cmap="YlOrBr", annot=True, fmt=".2f",
+                linewidths=0.5, ax=ax, vmin=0, vmax=pivot.values.max(),
+                cbar_kws={"label": "Fraction", "shrink": 0.7})
+    ax.set_title("Cell-Type × Dataset (harmonised)", fontweight="bold")
+    ax.set_ylabel("")
     ax.set_xlabel("")
-    ax.set_ylabel("Normalized cluster entropy")
-    ax.set_title("Annotation Uncertainty (Cluster Entropy)", fontweight="bold")
-    ax.tick_params(axis="x", rotation=15)
+    despine(ax)
+
+
+# ── Panel G: Baseline PCA overlap between arms ───────────────────
+
+def _panel_baseline_pca(fig_parent, axes, loaded: dict):
+    """PCA of baseline (pre-treatment) cells coloured by arm."""
+    import scipy.sparse as sp
+
+    ds_with_baseline = []
+    for name, data in loaded.items():
+        vis = data.get("visit_col")
+        arm = data.get("arm_col")
+        if arm is None:
+            continue  # Need arm to show overlap
+        obs = data["adata"].obs
+        if vis:
+            pre_mask = obs[vis].astype(str).str.lower().isin(
+                ["pre", "baseline", "d0", "day0", "0"])
+            if pre_mask.sum() > 50:
+                ds_with_baseline.append((name, True))  # has baseline
+        else:
+            # No visit column: use all cells as baseline
+            if obs.shape[0] > 50:
+                ds_with_baseline.append((name, False))  # use all cells
+
+    n_baseline = len(ds_with_baseline)
+
+    for ax_i, ax in enumerate(axes):
+        if ax_i >= n_baseline:
+            ax.axis("off")
+            continue
+
+        name, has_visit = ds_with_baseline[ax_i]
+        data = loaded[name]
+        adata = data["adata"]
+        obs = adata.obs
+        arm = data["arm_col"]
+
+        if has_visit:
+            vis = data["visit_col"]
+            pre_mask = obs[vis].astype(str).str.lower().isin(
+                ["pre", "baseline", "d0", "day0", "0"])
+            adata_pre = adata[pre_mask]
+        else:
+            adata_pre = adata  # use all cells
+
+        if "X_pca" in adata_pre.obsm:
+            pca = adata_pre.obsm["X_pca"][:, :2]
+        else:
+            for layer in ("log1p_tpm", "log1p_cpm", "log1p_norm"):
+                if layer in adata_pre.layers:
+                    X = adata_pre.layers[layer]
+                    break
+            else:
+                if "counts" in adata_pre.layers:
+                    X = adata_pre.layers["counts"]
+                else:
+                    ax.text(0.5, 0.5, "No data", ha="center", va="center",
+                            transform=ax.transAxes)
+                    continue
+
+            if sp.issparse(X):
+                X = X.toarray()
+            var_genes = np.var(X, axis=0)
+            top_genes = np.argsort(var_genes)[-500:]
+            X_sub = X[:, top_genes]
+            from sklearn.decomposition import PCA
+            pca = PCA(n_components=2, random_state=42).fit_transform(X_sub)
+
+        arms = adata_pre.obs[arm].astype(str).values
+        unique_arms = sorted(set(arms))
+        arm_palette = dict(zip(unique_arms,
+                                sns.color_palette("Set1", len(unique_arms))))
+
+        rng = np.random.default_rng(42)
+        order = rng.permutation(len(arms))
+
+        for a in unique_arms:
+            mask = arms[order] == a
+            ax.scatter(pca[order[mask], 0], pca[order[mask], 1],
+                       c=[arm_palette[a]], s=3, alpha=0.5, label=a,
+                       edgecolors="none", rasterized=True)
+
+        ax.set_title(f"{name} (baseline)", fontweight="bold", fontsize=9)
+        ax.set_xlabel("PC1", fontsize=7)
+        ax.set_ylabel("PC2", fontsize=7)
+        ax.legend(fontsize=5, loc="best", frameon=True)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        despine(ax)
+
+
+# ── Panel H: Baseline cell-type composition by arm ───────────────
+
+def _panel_baseline_ct_by_arm(ax, loaded: dict):
+    """Stacked bars: baseline cell-type composition per arm per dataset."""
+    rows = []
+    for name, data in loaded.items():
+        obs = data["adata"].obs
+        vis = data.get("visit_col")
+        arm = data.get("arm_col")
+        ct = data.get("ct_col")
+        if arm is None or ct is None:
+            continue
+
+        if vis:
+            pre_mask = obs[vis].astype(str).str.lower().isin(
+                ["pre", "baseline", "d0", "day0", "0"])
+            if pre_mask.sum() < 50:
+                continue
+            sub = obs.loc[pre_mask]
+        else:
+            sub = obs
+
+        for a in sorted(sub[arm].dropna().unique()):
+            a_sub = sub[sub[arm] == a]
+            mapped = a_sub[ct].astype(str).map(harmonize_celltype)
+            ct_frac = mapped.value_counts(normalize=True)
+            for c, f in ct_frac.items():
+                rows.append({"Dataset": name, "Arm": str(a),
+                             "Cell type": str(c), "Fraction": f})
+
+    if not rows:
+        ax.text(0.5, 0.5, "No baseline cell-type data", ha="center",
+                va="center", transform=ax.transAxes, fontsize=10,
+                fontstyle="italic")
+        ax.set_title("Baseline Cell-Type Composition", fontweight="bold")
+        return
+
+    df = pd.DataFrame(rows)
+
+    df["Group"] = df["Dataset"] + "\n" + df["Arm"]
+    groups = sorted(df["Group"].unique())
+
+    present = set(df["Cell type"].unique())
+    all_cts = [c for c in HARMONIZED_CELLTYPE_ORDER if c in present]
+    for c in sorted(present - set(all_cts)):
+        all_cts.append(c)
+    n_ct = len(all_cts)
+    pal = sns.color_palette("tab20", max(n_ct, 1))
+    ct_palette = dict(zip(all_cts, pal))
+
+    y_pos = np.arange(len(groups))
+    for gi, group in enumerate(groups):
+        gsub = df[df["Group"] == group]
+        left = 0.0
+        for ct in all_cts:
+            frac = gsub.loc[gsub["Cell type"] == ct, "Fraction"].sum()
+            if frac > 0:
+                ax.barh(gi, frac, left=left, height=0.6,
+                        color=ct_palette[ct], edgecolor="white",
+                        linewidth=0.2)
+                if frac > 0.08:
+                    ax.text(left + frac / 2, gi, ct, ha="center",
+                            va="center", fontsize=4.5, color="black",
+                            fontweight="bold")
+                left += frac
+
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(groups, fontsize=6)
+    ax.set_xlim(0, 1)
+    ax.set_xlabel("Fraction of cells")
+    ax.set_title("Baseline Cell-Type Composition by Arm", fontweight="bold")
     despine(ax)
 
 
@@ -720,7 +728,7 @@ def _panel_annotation_uncertainty(ax, loaded: dict):
 
 def generate():
     """Create and save Supplementary Figure 2 panels (A–H)."""
-    print("Supplementary Figure 2: Annotation & Embedding Reliability")
+    print("Supplementary Figure 2: Cell Annotation and Baseline Comparability")
 
     loaded = {}
     for name, loader in DATASETS:
@@ -730,8 +738,17 @@ def generate():
                 adata = harmonize_response(adata)
             adata = _ensure_umap_and_clusters(adata)
             ct_col = _find_celltype_col(adata.obs)
-            gcol = _find_group_col(adata.obs)
-            loaded[name] = {"adata": adata, "ct_col": ct_col, "group_col": gcol}
+            pid = _pid_col(adata.obs)
+            vis = _visit_col(adata.obs)
+            arm = _arm_col(adata.obs)
+
+            loaded[name] = {
+                "adata": adata,
+                "ct_col": ct_col,
+                "pid_col": pid,
+                "visit_col": vis,
+                "arm_col": arm,
+            }
             ct_info = f", ct_col={ct_col}" if ct_col else ", no cell types"
             print(f"  {name}: {adata.n_obs:,} cells{ct_info}")
         except Exception as exc:
@@ -752,47 +769,55 @@ def generate():
     fig.tight_layout()
     save_panel(fig, "panel_A", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel B: UMAP by study grouping variable
-    fig, axes = plt.subplots(nrows, ncols, figsize=(5 * ncols, 4.5 * nrows))
-    axes_flat = axes.ravel() if hasattr(axes, "ravel") else [axes]
-    _panel_umap_group_grid(fig, axes_flat, loaded)
-    fig.suptitle("Grouping-Variable UMAPs", fontweight="bold", fontsize=12, y=1.02)
-    fig.tight_layout()
-    save_panel(fig, "panel_B", FIGURE_NAME, SUPP_OUTPUT)
-
-    # Panel C: Marker dot plot
+    # Panel B: Marker dot plot
     fig, ax = plt.subplots(figsize=(10, 7))
     _panel_marker_dotplot(fig, ax, loaded)
     fig.tight_layout()
-    save_panel(fig, "panel_C", FIGURE_NAME, SUPP_OUTPUT)
+    save_panel(fig, "panel_B", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel D: Cluster purity
+    # Panel C: Cluster purity
     fig, ax = plt.subplots(figsize=(8, 5))
     _panel_annotation_confidence(ax, loaded)
     fig.tight_layout()
-    save_panel(fig, "panel_D", FIGURE_NAME, SUPP_OUTPUT)
+    save_panel(fig, "panel_C", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel E: Embedding silhouette
+    # Panel D: Embedding silhouette
     fig, ax = plt.subplots(figsize=(7, 5))
     _panel_silhouette(ax, loaded)
     fig.tight_layout()
-    save_panel(fig, "panel_E", FIGURE_NAME, SUPP_OUTPUT)
+    save_panel(fig, "panel_D", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel F: kNN graph purity
+    # Panel E: kNN graph purity
     fig, ax = plt.subplots(figsize=(7, 5))
     _panel_knn_purity(ax, loaded)
     fig.tight_layout()
-    save_panel(fig, "panel_F", FIGURE_NAME, SUPP_OUTPUT)
+    save_panel(fig, "panel_E", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel G: Cell-type proportions cross-tab
+    # Panel F: Cell-type cross-tab
     fig, ax = plt.subplots(figsize=(9, 5))
     _panel_ct_crosstab(ax, loaded)
     fig.tight_layout()
+    save_panel(fig, "panel_F", FIGURE_NAME, SUPP_OUTPUT)
+
+    # Panel G: Baseline PCA overlap (faceted)
+    n_baseline = sum(1 for data in loaded.values()
+                     if data.get("arm_col"))
+    ncols_bl = min(n_baseline, 3) if n_baseline > 0 else 1
+    nrows_bl = max(1, (n_baseline + ncols_bl - 1) // ncols_bl)
+    fig, axes = plt.subplots(nrows_bl, ncols_bl,
+                              figsize=(5 * ncols_bl, 4.5 * nrows_bl))
+    if not hasattr(axes, "__iter__"):
+        axes = [axes]
+    else:
+        axes = axes.ravel()
+    _panel_baseline_pca(fig, axes, loaded)
+    fig.suptitle("Baseline PCA by Arm", fontweight="bold", y=1.02)
+    fig.tight_layout()
     save_panel(fig, "panel_G", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel H: Annotation uncertainty
-    fig, ax = plt.subplots(figsize=(8, 5))
-    _panel_annotation_uncertainty(ax, loaded)
+    # Panel H: Baseline cell-type composition by arm
+    fig, ax = plt.subplots(figsize=(10, 6))
+    _panel_baseline_ct_by_arm(ax, loaded)
     fig.tight_layout()
     save_panel(fig, "panel_H", FIGURE_NAME, SUPP_OUTPUT)
 

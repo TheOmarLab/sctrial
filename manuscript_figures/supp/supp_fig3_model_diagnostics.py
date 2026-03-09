@@ -11,9 +11,9 @@ Panels:
   C  Influence diagnostics: Cook's distance per dataset.
   D  Parallel trends: pre-treatment arm means per feature.
   E  Calibration of observed effects against permutation null.
-  F  Power curves: minimum detectable effect vs sample size.
-  G  Normality and homoscedasticity tests (summary table).
-  H  Funnel plot: effect size vs standard error.
+  F  Normality and homoscedasticity tests (summary table).
+  G  Funnel plot: effect size vs standard error.
+  H  Baseline gene detection by arm (technical confounder check).
 
 Non-overlap guardrail: no sensitivity analysis (→ SF4), no cross-dataset
 biological concordance (→ SF5), no heterogeneity (→ SF6).
@@ -118,7 +118,7 @@ _DATASET_CFG = {
 }
 
 _DS_PALETTE = dict(
-    zip(_DATASET_CFG.keys(), sns.color_palette("Set2", len(_DATASET_CFG)))
+    zip(_DATASET_CFG.keys(), ["#1b9e77", "#d95f02", "#7570b3", "#e7298a", "#66a61e"])
 )
 
 
@@ -434,18 +434,6 @@ def _load_results() -> dict[str, dict]:
     return out
 
 
-def _mde(
-    n: np.ndarray,
-    sigma: float,
-    alpha: float = 0.05,
-    power: float = 0.8,
-) -> np.ndarray:
-    """Minimum detectable effect for a two-sample comparison."""
-    z_a = stats.norm.ppf(1 - alpha / 2)
-    z_b = stats.norm.ppf(power)
-    return (z_a + z_b) * sigma * np.sqrt(2.0 / n)
-
-
 # ── Panel functions ───────────────────────────────────────────────
 
 
@@ -594,12 +582,17 @@ def _panel_parallel_trends(fig, axes, results: dict[str, dict]):
             edgecolors="white", linewidth=0.5, zorder=3,
         )
         texts = [
-            ax.text(cx, ty, feat, fontsize=5, alpha=0.7)
+            ax.text(cx, ty, feat, fontsize=7, fontweight="bold")
             for feat, cx, ty in zip(
                 features, x_vals.values, y_vals.values
             )
         ]
-        adjust_text(texts, ax=ax, arrowprops=dict(arrowstyle="-", lw=0.3))
+        adjust_text(
+            texts, ax=ax,
+            force_text=(2.0, 2.0), force_points=(2.0, 2.0),
+            expand=(1.5, 1.5),
+            arrowprops=dict(arrowstyle="-", color="gray", lw=0.5),
+        )
 
         lo = min(x_vals.min(), y_vals.min()) * 0.9
         hi = max(x_vals.max(), y_vals.max()) * 1.1
@@ -643,39 +636,9 @@ def _panel_calibration(ax, results: dict[str, dict]):
     despine(ax)
 
 
-def _panel_mde(ax, results: dict[str, dict]):
-    """F: Power curves — MDE vs participants per arm."""
-    n_grid = np.arange(4, 61, 2)
-    for name, res in results.items():
-        sigma = float(np.nanmedian(res["effects"]["sigma"].values))
-        if not np.isfinite(sigma) or sigma <= 0:
-            sigma = 1.0
-        y = _mde(n_grid, sigma)
-        ax.plot(
-            n_grid, y, lw=1.8,
-            color=_DS_PALETTE.get(name, "grey"), label=name,
-        )
-        n_actual = res["n_per_group"]
-        if n_actual > 0:
-            ax.scatter(
-                [n_actual],
-                [_mde(np.array([n_actual]), sigma)[0]],
-                color=_DS_PALETTE.get(name, "grey"),
-                edgecolors="black", zorder=5, s=45,
-            )
-    ax.set_xlabel("Participants per arm")
-    ax.set_ylabel("Minimum detectable effect")
-    ax.set_title("Power Curve with Observed Cohort Sizes", fontweight="bold")
-    ax.legend(fontsize=8, frameon=True)
-    despine(ax)
-
 
 def _panel_normality_tests(ax, results: dict[str, dict]):
-    """G: Formal normality and homoscedasticity tests per dataset."""
-    cols = [
-        "Dataset", "N resid", "Skew", "Kurtosis",
-        "Shapiro W", "Shapiro p", "Levene F", "Levene p",
-    ]
+    """F: Visual summary of normality diagnostics per dataset."""
     rows = []
     for name, res in results.items():
         rdf = res["residuals"]
@@ -694,42 +657,14 @@ def _panel_normality_tests(ax, results: dict[str, dict]):
             sw_vals = vals
         sw_stat, sw_p = stats.shapiro(sw_vals)
 
-        # Levene's test: residuals grouped by arm (two-arm) or visit (single).
-        design = res["cfg"].get("design", "two_arm")
-        if design == "two_arm":
-            arm_col = res["cfg"].get("arm_col", "")
-            group_col = arm_col if arm_col in rdf.columns else None
-        else:
-            group_col = None
-        if group_col is None:
-            visit_col = res["cfg"].get("visit_col", "")
-            if visit_col in rdf.columns:
-                group_col = visit_col
-        if group_col is not None:
-            groups = [
-                g["residual"].dropna().values
-                for _, g in rdf.groupby(group_col)
-                if len(g["residual"].dropna()) > 2
-            ]
-            if len(groups) >= 2:
-                lev_f, lev_p = stats.levene(*groups)
-            else:
-                lev_f, lev_p = np.nan, np.nan
-        else:
-            lev_f, lev_p = np.nan, np.nan
+        rows.append({
+            "Dataset": name,
+            "Shapiro W": sw_stat,
+            "Shapiro p": sw_p,
+            "Skewness": sk,
+            "Kurtosis": ku,
+        })
 
-        rows.append([
-            name,
-            f"{len(vals):,}",
-            f"{sk:.2f}",
-            f"{ku:.2f}",
-            f"{sw_stat:.4f}",
-            f"{sw_p:.2e}",
-            f"{lev_f:.2f}" if np.isfinite(lev_f) else "—",
-            f"{lev_p:.2e}" if np.isfinite(lev_p) else "—",
-        ])
-
-    ax.axis("off")
     if not rows:
         ax.text(
             0.5, 0.5, "No test results",
@@ -737,24 +672,29 @@ def _panel_normality_tests(ax, results: dict[str, dict]):
         )
         return
 
-    tbl = ax.table(
-        cellText=rows, colLabels=cols, loc="center", cellLoc="center",
-    )
-    tbl.auto_set_font_size(False)
-    tbl.set_fontsize(9)
-    tbl.scale(1.2, 2.2)
-    for j in range(len(cols)):
-        tbl[0, j].set_facecolor("#2c3e50")
-        tbl[0, j].set_text_props(color="white", fontweight="bold", fontsize=9)
-    # Centre table vertically
-    ax.set_ylim(-0.1, 1.1)
-    ax.set_title(
-        "Normality & Homoscedasticity Tests", fontweight="bold", pad=20,
-    )
+    df = pd.DataFrame(rows)
+    y = np.arange(len(df))
+    colors = [_DS_PALETTE.get(n, "grey") for n in df["Dataset"]]
+
+    # Main: Shapiro W statistic bars
+    ax.barh(y, df["Shapiro W"], color=colors, edgecolor="white",
+            height=0.6, alpha=0.85)
+    for i, (_, row) in enumerate(df.iterrows()):
+        label = f"W={row['Shapiro W']:.3f}, skew={row['Skewness']:.2f}"
+        ax.text(row["Shapiro W"] + 0.002, i, label, va="center",
+                fontsize=7, fontweight="bold")
+
+    ax.set_yticks(y)
+    ax.set_yticklabels(df["Dataset"], fontsize=9)
+    ax.set_xlabel("Shapiro-Wilk W statistic")
+    ax.set_title("Residual Normality Diagnostics", fontweight="bold")
+    ax.axvline(0.95, color="red", ls="--", lw=0.8, alpha=0.7, label="W=0.95 threshold")
+    ax.legend(fontsize=7, frameon=True)
+    despine(ax)
 
 
 def _panel_funnel(ax, results: dict[str, dict]):
-    """H: Funnel plot — effect size vs standard error."""
+    """G: Funnel plot — effect size vs standard error."""
     for name, res in results.items():
         df = res["effects"]
         ax.scatter(
@@ -772,11 +712,117 @@ def _panel_funnel(ax, results: dict[str, dict]):
     despine(ax)
 
 
-# ── Also export for SF3 baseline import ───────────────────────────
-# supp_fig3_clinical.py imports these for its Panel F (sensitivity/MDE).
+# ── Baseline helpers (for Panel H) ─────────────────────────────────
 
-_load_did_datasets = _load_results
-_panel_sensitivity = _panel_mde
+
+def _arm_col(obs):
+    for c in ("response", "severity", "therapy"):
+        if c in obs.columns and obs[c].nunique() > 1:
+            return c
+    return None
+
+
+def _visit_col_detect(obs):
+    for c in ("visit",):
+        if c in obs.columns and obs[c].nunique() > 1:
+            return c
+    return None
+
+
+def _get_ngenes(adata) -> np.ndarray:
+    obs = adata.obs
+    for col in ("n_genes_by_counts", "n_genes", "n_genes_detected"):
+        if col in obs.columns:
+            return np.asarray(obs[col], dtype=float)
+    import scipy.sparse as sp
+    for layer in ("counts", "tpm", "cpm"):
+        if layer in adata.layers:
+            X = adata.layers[layer]
+            if sp.issparse(X):
+                return np.asarray((X > 0).sum(axis=1), dtype=float).ravel()
+            return np.asarray((X > 0).sum(axis=1), dtype=float).ravel()
+    return np.full(adata.n_obs, np.nan)
+
+
+_BASELINE_DATASETS = [
+    ("Sade-Feldman", get_sade_feldman),
+    ("Stephenson", get_stephenson),
+    ("Vaccine", get_vaccine),
+    ("AML", lambda: load_clinical_trial_dataset("aml")),
+    ("CAR-T", lambda: load_clinical_trial_dataset("cart")),
+]
+
+
+def _load_baseline_data():
+    loaded = {}
+    for name, loader in _BASELINE_DATASETS:
+        try:
+            adata = loader()
+            if name == "Sade-Feldman":
+                adata = harmonize_response(adata)
+            obs = adata.obs
+            vis = _visit_col_detect(obs)
+            arm = _arm_col(obs)
+            loaded[name] = {
+                "adata": adata,
+                "visit_col": vis,
+                "arm_col": arm,
+            }
+        except Exception as exc:
+            print(f"  baseline {name}: failed ({exc})")
+    return loaded
+
+
+def _panel_baseline_ngenes(ax, baseline_loaded: dict):
+    """H: Violins of genes detected per cell at baseline, split by arm."""
+    rows = []
+    for name, data in baseline_loaded.items():
+        obs = data["adata"].obs
+        vis = data["visit_col"]
+        arm = data["arm_col"]
+        ngenes = _get_ngenes(data["adata"])
+
+        if vis and arm:
+            pre_mask = obs[vis].astype(str).str.lower().isin(
+                ["pre", "baseline", "d0", "day0", "0"])
+            if pre_mask.sum() < 50:
+                continue
+            arms = obs.loc[pre_mask, arm].astype(str).values
+            ng = ngenes[pre_mask.values]
+        elif arm:
+            arms = obs[arm].astype(str).values
+            ng = ngenes
+        else:
+            # No arm column: show all cells as single group
+            arms = np.full(len(ngenes), "All")
+            ng = ngenes
+
+        for a in sorted(set(arms)):
+            mask = arms == a
+            rows.append(pd.DataFrame({
+                "Dataset": name, "Arm": a, "Genes": ng[mask],
+            }))
+
+    if not rows:
+        ax.text(0.5, 0.5, "No baseline data", ha="center", va="center",
+                transform=ax.transAxes, fontsize=10, fontstyle="italic")
+        ax.set_title("Baseline Gene Detection by Arm", fontweight="bold")
+        return
+
+    df = pd.concat(rows, ignore_index=True)
+    ds_order = [n for n in baseline_loaded.keys()
+                if n in df["Dataset"].unique()]
+
+    sns.violinplot(data=df, x="Dataset", y="Genes", hue="Arm",
+                   order=ds_order, cut=0, inner="quartile", linewidth=0.5,
+                   palette="Dark2", density_norm="width", ax=ax)
+    ax.set_xlabel("")
+    ax.set_ylabel("Genes detected per cell")
+    ax.set_title("Baseline Gene Detection by Arm", fontweight="bold")
+    ax.legend(fontsize=6, title="Arm", title_fontsize=7, loc="upper right",
+              frameon=True, ncol=2)
+    ax.tick_params(axis="x", rotation=15)
+    despine(ax)
 
 
 # ── Generate ──────────────────────────────────────────────────────
@@ -840,23 +886,29 @@ def generate():
     fig.tight_layout()
     save_panel(fig, "panel_E", FIGURE_NAME, SUPP_OUTPUT)
 
-    # F: Power curves (MDE)
-    fig, ax = plt.subplots(figsize=(7.0, 5.8))
-    _panel_mde(ax, results)
-    fig.tight_layout()
-    save_panel(fig, "panel_F", FIGURE_NAME, SUPP_OUTPUT)
-
-    # G: Normality and homoscedasticity tests
+    # F: Normality and homoscedasticity tests
     fig, ax = plt.subplots(figsize=(10.0, 4.8))
     _panel_normality_tests(ax, results)
     fig.tight_layout()
-    save_panel(fig, "panel_G", FIGURE_NAME, SUPP_OUTPUT)
+    save_panel(fig, "panel_F", FIGURE_NAME, SUPP_OUTPUT)
 
-    # H: Funnel plot
+    # G: Funnel plot
     fig, ax = plt.subplots(figsize=(7.0, 5.8))
     _panel_funnel(ax, results)
     fig.tight_layout()
-    save_panel(fig, "panel_H", FIGURE_NAME, SUPP_OUTPUT)
+    save_panel(fig, "panel_G", FIGURE_NAME, SUPP_OUTPUT)
+
+    # H: Baseline gene detection by arm
+    baseline_loaded = _load_baseline_data()
+    if baseline_loaded:
+        fig, ax = plt.subplots(figsize=(9.0, 5.0))
+        _panel_baseline_ngenes(ax, baseline_loaded)
+        fig.tight_layout()
+        save_panel(fig, "panel_H", FIGURE_NAME, SUPP_OUTPUT)
+        for data in baseline_loaded.values():
+            if "adata" in data:
+                del data["adata"]
+        baseline_loaded.clear()
 
     # Cleanup
     results.clear()

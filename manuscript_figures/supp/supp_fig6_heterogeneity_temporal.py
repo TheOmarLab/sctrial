@@ -27,10 +27,13 @@ from matplotlib.colors import TwoSlopeNorm
 from .._shared import (
     COLORS,
     SUPP_OUTPUT,
+    add_log1p_cpm_layer,
     apply_style,
     clear_cache,
     despine,
     get_sade_feldman,
+    get_stephenson,
+    get_vaccine,
     harmonize_response,
     load_clinical_trial_dataset,
     save_panel,
@@ -88,14 +91,39 @@ _DATASET_CFG = {
         "arm_control": "Treatment_Naive",
         "visits": ("Pre", "Post"),
     },
+    "Stephenson": {
+        "loader": get_stephenson,
+        "harmonize": False,
+        "layer": "log1p_cpm",
+        "participant_col": "participant_id",
+        "visit_col": "Collection_Day",
+        "arm_col": "severity",
+        "arm_treated": "Severe",
+        "arm_control": "Mild",
+        "visits": ("D0", "D28"),
+    },
+    "Vaccine": {
+        "loader": get_vaccine,
+        "harmonize": False,
+        "layer": "log1p_cpm",
+        "participant_col": "participant_id",
+        "visit_col": "visit",
+        "arm_col": None,
+        "arm_treated": None,
+        "arm_control": None,
+        "visits": ("Pre", "Post"),
+    },
 }
 
-_DS_COLORS = dict(zip(_DATASET_CFG.keys(), sns.color_palette("Set2", len(_DATASET_CFG))))
+_DS_COLORS = dict(zip(_DATASET_CFG.keys(),
+    ["#1b9e77", "#d95f02", "#7570b3", "#e7298a", "#66a61e", "#e6ab02"]))
 _DS_MARKERS = {
     "Sade-Feldman": "o",
     "AML": "s",
     "CAR-T": "D",
     "Melanoma": "^",
+    "Stephenson": "P",
+    "Vaccine": "X",
 }
 
 
@@ -109,7 +137,10 @@ def _participant_delta(adata, cfg: dict, features: list[str]) -> pd.DataFrame | 
     arm_col = cfg["arm_col"]
     pre_v, post_v = cfg["visits"]
 
-    if not all(c in adata.obs.columns for c in [pid_col, visit_col, arm_col]):
+    required = [pid_col, visit_col]
+    if arm_col:
+        required.append(arm_col)
+    if not all(c in adata.obs.columns for c in required):
         return None
     if not features:
         return None
@@ -118,10 +149,16 @@ def _participant_delta(adata, cfg: dict, features: list[str]) -> pd.DataFrame | 
     df = pd.DataFrame(X, columns=features, index=adata.obs_names)
     df[pid_col] = adata.obs[pid_col].values
     df[visit_col] = adata.obs[visit_col].values
-    df[arm_col] = adata.obs[arm_col].values
+    if arm_col and arm_col in adata.obs.columns:
+        df[arm_col] = adata.obs[arm_col].values
+    else:
+        df["arm"] = "All"
 
+    group_cols = [pid_col, visit_col]
+    arm_key = arm_col if arm_col and arm_col in df.columns else "arm"
+    group_cols.append(arm_key)
     pv = (
-        df.groupby([pid_col, visit_col, arm_col], observed=True)[features]
+        df.groupby(group_cols, observed=True)[features]
         .mean()
         .reset_index()
     )
@@ -134,7 +171,7 @@ def _participant_delta(adata, cfg: dict, features: list[str]) -> pd.DataFrame | 
         return None
 
     delta = post.loc[common, features] - pre.loc[common, features]
-    delta["arm"] = pre.loc[common, arm_col]
+    delta["arm"] = pre.loc[common, arm_key]
     delta = delta.reset_index().rename(columns={pid_col: "participant_id"})
     return delta
 
@@ -146,6 +183,12 @@ def _load_all() -> dict[str, dict]:
             adata = cfg["loader"]()
             if cfg.get("harmonize", False):
                 adata = harmonize_response(adata)
+            layer = cfg["layer"]
+            if layer == "log1p_cpm" and "log1p_cpm" not in adata.layers:
+                if "counts" in adata.layers:
+                    adata = add_log1p_cpm_layer(
+                        adata, counts_layer="counts", out_layer="log1p_cpm",
+                    )
             features = [f for f in FEATURES if f in adata.var_names]
             delta = _participant_delta(adata, cfg, features)
             out[name] = {
@@ -172,11 +215,11 @@ def _panel_strip(ax, effects: pd.DataFrame, features: list[str], treated: str, c
                         var_name="feature", value_name="effect")
 
     arm_colors = {
-        treated: COLORS["treated"],
-        control: COLORS["control"],
+        treated: "#d62728",   # Strong red
+        control: "#2ca02c",   # Strong green
     }
     if treated == control:
-        arm_colors = {treated: COLORS["treated"]}
+        arm_colors = {treated: "#d62728"}
 
     x_map = {f: i for i, f in enumerate(feat_order)}
     rng = np.random.default_rng(42)
@@ -185,7 +228,7 @@ def _panel_strip(ax, effects: pd.DataFrame, features: list[str], treated: str, c
         if sub.empty:
             continue
         x = sub["feature"].map(x_map).values + rng.uniform(-0.2, 0.2, size=len(sub))
-        ax.scatter(x, sub["effect"].values, s=18, alpha=0.55, c=color, edgecolors="none", label=arm)
+        ax.scatter(x, sub["effect"].values, s=25, alpha=0.65, c=color, edgecolors="none", label=arm)
 
     for feat, i in x_map.items():
         mu = long[long["feature"] == feat]["effect"].mean()
@@ -533,22 +576,59 @@ def generate():
         print("  No data loaded; skipping.")
         return
 
-    sf = data.get("Sade-Feldman", {})
-    sf_eff = sf.get("delta")
-    sf_feats = sf.get("features", FEATURES)
-    sf_cfg = sf.get("cfg", {})
-    sf_treated = sf_cfg.get("arm_treated", "Responder")
-    sf_control = sf_cfg.get("arm_control", "Non-responder")
+    # Select the dataset with most paired participants for detailed panels
+    best_name = None
+    best_n = 0
+    for name, ds in data.items():
+        delta = ds.get("delta")
+        if delta is not None:
+            n = delta["participant_id"].nunique()
+            if n > best_n:
+                best_n = n
+                best_name = name
+
+    if best_name is None:
+        print("  No datasets with paired data; skipping.")
+        return
+
+    feat_ds = data[best_name]
+    feat_eff = feat_ds.get("delta")
+    feat_feats = feat_ds.get("features", FEATURES)
+    feat_cfg = feat_ds.get("cfg", {})
+    feat_treated = feat_cfg.get("arm_treated", "Treated")
+    feat_control = feat_cfg.get("arm_control", "Control")
+
+    # Select the best TWO-ARM dataset for panels C/D (response-stratified)
+    twoarm_name = None
+    twoarm_n = 0
+    for name, ds in data.items():
+        delta = ds.get("delta")
+        cfg = ds.get("cfg", {})
+        if delta is not None and cfg.get("arm_col") is not None:
+            arms = delta["arm"].dropna().unique()
+            if len(arms) >= 2:
+                n = delta["participant_id"].nunique()
+                if n > twoarm_n:
+                    twoarm_n = n
+                    twoarm_name = name
+    if twoarm_name is None:
+        twoarm_name = best_name  # fallback
+    ta_ds = data[twoarm_name]
+    ta_eff = ta_ds.get("delta")
+    ta_feats = ta_ds.get("features", FEATURES)
+    ta_cfg = ta_ds.get("cfg", {})
+    ta_treated = ta_cfg.get("arm_treated", "Treated")
+    ta_control = ta_cfg.get("arm_control", "Control")
 
     panels = [
-        ("panel_A", lambda ax: _panel_strip(ax, sf_eff, sf_feats, sf_treated, sf_control, "Sade-Feldman individual effects"), (11.5, 6.0)),
-        ("panel_B", lambda ax: _panel_heatmap(ax, sf_eff, sf_feats, "Sade-Feldman participant x feature map"), (9.5, 6.8)),
-        ("panel_C", lambda ax: _panel_response_box(ax, sf_eff, sf_feats, sf_treated, sf_control, "Sade-Feldman response-stratified effects"), (10.5, 6.0)),
-        ("panel_D", lambda ax: _panel_variance_decomp(ax, sf_eff, sf_feats, "Sade-Feldman variance decomposition"), (8.2, 6.8)),
-        ("panel_E", lambda ax: _panel_direction_diversity(ax, sf_eff, sf_feats, "Sade-Feldman effect direction diversity"), (8.2, 6.8)),
+        ("panel_A", lambda ax: _panel_strip(ax, feat_eff, feat_feats, feat_treated, feat_control, f"{best_name} individual effects"), (11.5, 6.0)),
+        ("panel_B", lambda ax: _panel_heatmap(ax, feat_eff, feat_feats, f"{best_name} participant x feature map"), (9.5, 6.8)),
+        ("panel_C", lambda ax: _panel_response_box(ax, ta_eff, ta_feats, ta_treated, ta_control, f"{twoarm_name} response-stratified effects"), (10.5, 6.0)),
+        ("panel_D", lambda ax: _panel_variance_decomp(ax, ta_eff, ta_feats, f"{twoarm_name} variance decomposition"), (8.2, 6.8)),
+        ("panel_E", lambda ax: _panel_direction_diversity(ax, feat_eff, feat_feats, f"{best_name} effect direction diversity"), (8.2, 6.8)),
         ("panel_F", lambda ax: _panel_sd_bars(ax, data), (8.8, 6.8)),
         ("panel_G", lambda ax: _panel_sd_scatter(ax, data), (7.6, 6.8)),
-        ("panel_H", lambda ax: _panel_within_arm_profile(ax, sf_eff, sf_feats, "Sade-Feldman within-arm change profile"), (10.2, 6.0)),
+        ("panel_H", lambda ax: _panel_within_arm_profile(ax, feat_eff, feat_feats, f"{best_name} within-arm change profile"), (10.2, 6.0)),
         ("panel_I", lambda ax: _panel_aml_cart_profile(ax, data), (10.2, 6.0)),
         ("panel_J", lambda ax: _panel_treated_fc_concordance(ax, data), (7.0, 6.2)),
     ]

@@ -24,10 +24,13 @@ import seaborn as sns
 from .._shared import (
     COLORS,
     SUPP_OUTPUT,
+    add_log1p_cpm_layer,
     apply_style,
     clear_cache,
     despine,
     get_sade_feldman,
+    get_stephenson,
+    get_vaccine,
     harmonize_response,
     load_clinical_trial_dataset,
     save_panel,
@@ -42,10 +45,10 @@ _FEATURES = [
 ]
 
 _GENE_SETS = {
-    "Exhaustion": ["PDCD1", "HAVCR2", "LAG3", "CTLA4", "TIGIT", "TOX", "ENTPD1"],
-    "Cytotoxicity": ["GZMB", "PRF1", "GZMA", "GZMK", "NKG7", "GNLY", "FASLG"],
-    "Activation": ["IFNG", "TNF", "IL2", "CD69", "IL2RA", "HLA-DRA"],
-    "T_cell": ["CD3D", "CD3E", "CD4", "CD8A", "TCF7", "IL7R"],
+    "T cell exhaustion\n(PD-1/TIM-3/LAG-3)": ["PDCD1", "HAVCR2", "LAG3", "CTLA4", "TIGIT", "TOX", "ENTPD1"],
+    "CD8+ cytotoxicity\n(granzyme/perforin)": ["GZMB", "PRF1", "GZMA", "GZMK", "NKG7", "GNLY", "FASLG"],
+    "Pro-inflammatory\nactivation (IFNγ/TNF)": ["IFNG", "TNF", "IL2", "CD69", "IL2RA", "HLA-DRA"],
+    "T cell identity\n(CD3/CD4/CD8)": ["CD3D", "CD3E", "CD4", "CD8A", "TCF7", "IL7R"],
 }
 
 _DATASET_CFG = {
@@ -93,9 +96,32 @@ _DATASET_CFG = {
         "arm_control": "Treatment_Naive",
         "visits": ("Pre", "Post"),
     },
+    "Stephenson": {
+        "loader": get_stephenson,
+        "harmonize": False,
+        "layer": "log1p_cpm",
+        "participant_col": "participant_id",
+        "visit_col": "Collection_Day",
+        "arm_col": "severity",
+        "arm_treated": "Severe",
+        "arm_control": "Mild",
+        "visits": ("D0", "D28"),
+    },
+    "Vaccine": {
+        "loader": get_vaccine,
+        "harmonize": False,
+        "layer": "log1p_cpm",
+        "participant_col": "participant_id",
+        "visit_col": "visit",
+        "arm_col": None,
+        "arm_treated": None,
+        "arm_control": None,
+        "visits": ("Pre", "Post"),
+    },
 }
 
-_DS_PALETTE = dict(zip(_DATASET_CFG.keys(), sns.color_palette("Set2", len(_DATASET_CFG))))
+_DS_PALETTE = dict(zip(_DATASET_CFG.keys(),
+    ["#1b9e77", "#d95f02", "#7570b3", "#e7298a", "#66a61e", "#e6ab02"]))
 
 
 def _to_array(mat) -> np.ndarray:
@@ -124,7 +150,10 @@ def _participant_delta(adata, cfg: dict, features: list[str]) -> pd.DataFrame | 
     arm_col = cfg["arm_col"]
     pre_v, post_v = cfg["visits"]
 
-    if not all(c in adata.obs.columns for c in [pid_col, visit_col, arm_col]):
+    required = [pid_col, visit_col]
+    if arm_col:
+        required.append(arm_col)
+    if not all(c in adata.obs.columns for c in required):
         return None
 
     if not features:
@@ -134,10 +163,14 @@ def _participant_delta(adata, cfg: dict, features: list[str]) -> pd.DataFrame | 
     df = pd.DataFrame(X, columns=features, index=adata.obs_names)
     df[pid_col] = adata.obs[pid_col].values
     df[visit_col] = adata.obs[visit_col].values
-    df[arm_col] = adata.obs[arm_col].values
+    if arm_col and arm_col in adata.obs.columns:
+        df[arm_col] = adata.obs[arm_col].values
 
+    group_cols = [pid_col, visit_col]
+    if arm_col and arm_col in df.columns:
+        group_cols.append(arm_col)
     pv = (
-        df.groupby([pid_col, visit_col, arm_col], observed=True)[features]
+        df.groupby(group_cols, observed=True)[features]
         .mean()
         .reset_index()
     )
@@ -150,7 +183,10 @@ def _participant_delta(adata, cfg: dict, features: list[str]) -> pd.DataFrame | 
         return None
 
     delta = post.loc[common, features] - pre.loc[common, features]
-    delta["arm"] = pre.loc[common, arm_col]
+    if arm_col and arm_col in pre.columns:
+        delta["arm"] = pre.loc[common, arm_col]
+    else:
+        delta["arm"] = "All"
     delta = delta.reset_index().rename(columns={pid_col: "participant_id"})
     return delta
 
@@ -162,11 +198,22 @@ def _participant_visit_gs(adata, cfg: dict, gs_scores: dict[str, np.ndarray]) ->
     visit_col = cfg["visit_col"]
     arm_col = cfg["arm_col"]
 
-    if not all(c in adata.obs.columns for c in [pid_col, visit_col, arm_col]):
+    required = [pid_col, visit_col]
+    if arm_col:
+        required.append(arm_col)
+    if not all(c in adata.obs.columns for c in required):
         return None
 
-    obs = adata.obs[[pid_col, visit_col, arm_col]].copy()
-    obs.columns = ["participant_id", "visit", "arm"]
+    cols = [pid_col, visit_col]
+    if arm_col and arm_col in adata.obs.columns:
+        cols.append(arm_col)
+    obs = adata.obs[cols].copy()
+    col_map = {pid_col: "participant_id", visit_col: "visit"}
+    if arm_col:
+        col_map[arm_col] = "arm"
+    obs = obs.rename(columns=col_map)
+    if "arm" not in obs.columns:
+        obs["arm"] = "All"
     for k, v in gs_scores.items():
         obs[k] = v
 
@@ -196,6 +243,13 @@ def _load_all() -> dict[str, dict]:
             adata = cfg["loader"]()
             if cfg.get("harmonize", False):
                 adata = harmonize_response(adata)
+
+            layer = cfg["layer"]
+            if layer == "log1p_cpm" and "log1p_cpm" not in adata.layers:
+                if "counts" in adata.layers:
+                    adata = add_log1p_cpm_layer(
+                        adata, counts_layer="counts", out_layer="log1p_cpm",
+                    )
 
             features = [f for f in _FEATURES if f in adata.var_names]
             gs_scores = _score_gene_sets(adata, cfg["layer"])
@@ -315,6 +369,12 @@ def _panel_concordant_top_genes(ax, data: dict[str, dict]):
         ax.text(r["mean_abs"] + 0.005, i, f"{r['concordance']:.0%}", va="center", fontsize=7)
     ax.set_xlabel("Mean |effect| across datasets")
     ax.set_title("Shared top genes with concordant direction", fontweight="bold")
+    import matplotlib.patches as mpatches
+    handles = [
+        mpatches.Patch(facecolor=COLORS["treated"], label="Upregulated"),
+        mpatches.Patch(facecolor=COLORS["control"], label="Downregulated"),
+    ]
+    ax.legend(handles=handles, fontsize=7, frameon=True)
     despine(ax)
 
 
@@ -333,53 +393,75 @@ def _panel_gene_dist(ax, data: dict[str, dict]):
     sns.violinplot(data=df, x="Dataset", y="Effect", palette=_DS_PALETTE, cut=0, inner="quartile", ax=ax)
     ax.axhline(0, color="black", lw=0.8, ls="--")
     ax.set_title("Gene-level effect distributions", fontweight="bold")
+    import matplotlib.patches as mpatches
+    handles = [mpatches.Patch(facecolor=_DS_PALETTE[n], label=n)
+               for n in _DS_PALETTE if n in df["Dataset"].values]
+    ax.legend(handles=handles, fontsize=7, frameon=True, loc="upper right")
     despine(ax)
 
 
 def _panel_exhaustion_by_celltype(ax, data: dict[str, dict]):
-    ds = data.get("Sade-Feldman")
-    if ds is None:
-        ax.text(0.5, 0.5, "No Sade-Feldman data", ha="center", va="center", transform=ax.transAxes)
-        return
-
-    adata = ds["adata"]
-    cfg = ds["cfg"]
-    ct_col = next((c for c in ["cell_type", "celltype", "cell_type_annot"] if c in adata.obs.columns), None)
-    ex_genes = [g for g in ["PDCD1", "HAVCR2", "LAG3", "CTLA4", "TOX"] if g in adata.var_names]
-    if ct_col is None or len(ex_genes) < 2:
-        ax.text(0.5, 0.5, "Missing cell-type/exhaustion genes", ha="center", va="center", transform=ax.transAxes)
-        return
-
-    top_ct = adata.obs[ct_col].value_counts().head(10).index.tolist()
+    """E: Exhaustion effects by cell type across datasets."""
+    ex_genes_full = ["PDCD1", "HAVCR2", "LAG3", "CTLA4", "TOX"]
     rows = []
-    for ct in top_ct:
-        sub = adata[adata.obs[ct_col] == ct]
-        delta = _participant_delta(sub, cfg, ex_genes)
-        if delta is None or len(delta) < 4:
+
+    for ds_name, ds in data.items():
+        adata = ds["adata"]
+        cfg = ds["cfg"]
+        ct_col = next((c for c in ["cell_type", "celltype", "cell_type_annot"]
+                       if c in adata.obs.columns), None)
+        ex_genes = [g for g in ex_genes_full if g in adata.var_names]
+        if ct_col is None or len(ex_genes) < 2:
             continue
-        treated = cfg["arm_treated"]
-        control = cfg["arm_control"]
-        if treated != control and treated in delta["arm"].values and control in delta["arm"].values:
-            eff = delta[delta["arm"] == treated][ex_genes].mean().mean() - delta[delta["arm"] == control][ex_genes].mean().mean()
-        else:
-            eff = delta[ex_genes].mean().mean()
-        per_pid = delta[ex_genes].mean(axis=1).values
-        se = np.std(per_pid, ddof=1) / np.sqrt(max(len(per_pid), 1)) if len(per_pid) > 1 else np.nan
-        rows.append({"Cell type": ct, "Effect": float(eff), "SE": float(se) if np.isfinite(se) else 0.0})
+
+        top_ct = adata.obs[ct_col].value_counts().head(6).index.tolist()
+        for ct in top_ct:
+            sub = adata[adata.obs[ct_col] == ct]
+            delta = _participant_delta(sub, cfg, ex_genes)
+            if delta is None or len(delta) < 3:
+                continue
+            treated = cfg.get("arm_treated")
+            control = cfg.get("arm_control")
+            if treated and control and treated != control:
+                t_vals = delta[delta["arm"] == treated][ex_genes] if "arm" in delta.columns and treated in delta["arm"].values else delta[ex_genes]
+                c_vals = delta[delta["arm"] == control][ex_genes] if "arm" in delta.columns and control in delta["arm"].values else pd.DataFrame()
+                if not c_vals.empty:
+                    eff = t_vals.mean().mean() - c_vals.mean().mean()
+                else:
+                    eff = t_vals.mean().mean()
+            else:
+                eff = delta[ex_genes].mean().mean()
+            per_pid = delta[ex_genes].mean(axis=1).values
+            se = np.std(per_pid, ddof=1) / np.sqrt(max(len(per_pid), 1)) if len(per_pid) > 1 else np.nan
+            rows.append({"Dataset": ds_name, "Cell type": ct,
+                        "Effect": float(eff),
+                        "SE": float(se) if np.isfinite(se) else 0.0})
 
     if not rows:
-        ax.text(0.5, 0.5, "No cell-type effects", ha="center", va="center", transform=ax.transAxes)
+        ax.text(0.5, 0.5, "No cell-type effects", ha="center", va="center",
+                transform=ax.transAxes)
         return
 
-    df = pd.DataFrame(rows).sort_values("Effect")
+    df = pd.DataFrame(rows)
+    # Color by dataset
     y = np.arange(len(df))
-    ax.errorbar(df["Effect"], y, xerr=1.96 * df["SE"], fmt="o", color=COLORS["neutral"],
-                ecolor=COLORS["gray"], capsize=2, lw=1.2)
+    colors = [_DS_PALETTE.get(d, "grey") for d in df["Dataset"]]
+    ax.errorbar(df["Effect"], y, xerr=1.96 * df["SE"], fmt="none",
+                ecolor="grey", capsize=2, lw=0.8, zorder=1)
+    ax.scatter(df["Effect"], y, c=colors, s=40, edgecolors="white",
+               linewidth=0.5, zorder=3)
     ax.axvline(0, color="black", lw=0.8, ls="--")
     ax.set_yticks(y)
-    ax.set_yticklabels(df["Cell type"], fontsize=8)
-    ax.set_xlabel("Exhaustion effect")
-    ax.set_title("Exhaustion effects by cell type (Sade-Feldman)", fontweight="bold")
+    ax.set_yticklabels([f"{r['Cell type']}\n({r['Dataset']})" for _, r in df.iterrows()],
+                       fontsize=6)
+    ax.set_xlabel("Exhaustion effect (treatment)")
+    ax.set_title("T cell exhaustion effects by cell type", fontweight="bold")
+
+    # Legend
+    import matplotlib.patches as mpatches
+    handles = [mpatches.Patch(facecolor=_DS_PALETTE[n], label=n)
+               for n in _DS_PALETTE if n in df["Dataset"].values]
+    ax.legend(handles=handles, fontsize=6, loc="best", frameon=True)
     despine(ax)
 
 
@@ -401,12 +483,17 @@ def _panel_effect_heatmap(ax, data: dict[str, dict]):
 
 
 def _panel_paired_trajectories(ax, data: dict[str, dict]):
+    exhaustion_col = next((k for k in _GENE_SETS if "exhaustion" in k.lower()), None)
+    if exhaustion_col is None:
+        ax.text(0.5, 0.5, "No exhaustion gene set", ha="center", va="center", transform=ax.transAxes)
+        return
+
     x_tick = []
     x_tick_lab = []
     xpos = 0
     for name, ds in data.items():
         pv = ds.get("gs_pv")
-        if pv is None or pv.empty or "Exhaustion" not in pv.columns:
+        if pv is None or pv.empty or exhaustion_col not in pv.columns:
             continue
         for arm in pv["arm"].dropna().unique():
             sub = pv[pv["arm"] == arm]
@@ -417,12 +504,12 @@ def _panel_paired_trajectories(ax, data: dict[str, dict]):
                 continue
             x0, x1 = xpos, xpos + 1
             for pid in common:
-                y0 = float(pre.loc[pid, "Exhaustion"])
-                y1 = float(post.loc[pid, "Exhaustion"])
-                ax.plot([x0, x1], [y0, y1], color=_DS_PALETTE.get(name, "grey"), alpha=0.2, lw=0.8)
-            med0 = np.median(pre.loc[common, "Exhaustion"].values)
-            med1 = np.median(post.loc[common, "Exhaustion"].values)
-            ax.plot([x0, x1], [med0, med1], color="black", lw=2.2)
+                y0 = float(pre.loc[pid, exhaustion_col])
+                y1 = float(post.loc[pid, exhaustion_col])
+                ax.plot([x0, x1], [y0, y1], color=_DS_PALETTE.get(name, "grey"), alpha=0.35, lw=0.8)
+            med0 = np.median(pre.loc[common, exhaustion_col].values)
+            med1 = np.median(post.loc[common, exhaustion_col].values)
+            ax.plot([x0, x1], [med0, med1], color=_DS_PALETTE.get(name, "black"), lw=2.8, zorder=5)
             x_tick.extend([x0, x1])
             x_tick_lab.extend([f"{name}\n{arm}\nPre", f"{name}\n{arm}\nPost"])
             xpos += 2.5

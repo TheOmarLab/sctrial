@@ -1,6 +1,6 @@
 """
-Supplementary Figure 5 — Sensitivity to Preprocessing & Modeling Choices.
-=========================================================================
+Supplementary Figure 4 — Sensitivity and Robustness.
+=====================================================
 
 Show how DiD results change under different analytical decisions.
 
@@ -8,11 +8,11 @@ Panels:
   A  Cell-level vs participant-level aggregation (beta comparison).
   B  Analytical vs bootstrap SE (forest-style CI comparison).
   C  Standardised vs unstandardised effect sizes.
-  D  Volcano plot: effect size vs −log₁₀(p) with FDR threshold.
-  E  Mean vs median aggregation comparison.
-  F  Log-transform sensitivity (raw vs log1p betas).
-  G  Cell-type-stratified DiD heatmap.
-  H  Rank-order concordance across preprocessing choices.
+  D  Mean vs median aggregation comparison.
+  E  Log-transform sensitivity (raw vs log1p betas).
+  F  Cell-type-stratified DiD heatmap.
+  G  Rank-order concordance across preprocessing choices.
+  H  Power curves: minimum detectable effect vs sample size.
 
 Non-overlap guardrail: methodological sensitivity only, not biological claims.
 """
@@ -30,11 +30,15 @@ from scipy import stats as sp_stats
 from .._shared import (
     COLORS,
     SUPP_OUTPUT,
+    add_log1p_cpm_layer,
     apply_style,
     clear_cache,
     despine,
     get_sade_feldman,
+    get_stephenson,
+    get_vaccine,
     harmonize_response,
+    load_clinical_trial_dataset,
     save_panel,
 )
 
@@ -68,19 +72,19 @@ def _add_gene_labels(ax, features, x_series, y_series):
         for feat in features:
             texts.append(
                 ax.text(x_series[feat], y_series[feat], feat,
-                        fontsize=7, ha="left")
+                        fontsize=7, fontweight="bold", ha="left")
             )
         _adjust_text(
             texts, ax=ax,
-            force_text=(2.0, 2.0), force_points=(2.0, 2.0),
-            expand=(1.5, 1.5),
-            arrowprops=dict(arrowstyle="-", color="gray", lw=0.5),
+            force_text=(2.5, 2.5), force_points=(2.5, 2.5),
+            expand=(1.8, 1.8),
+            arrowprops=dict(arrowstyle="->", color="gray", lw=0.6),
         )
     else:
         for feat in features:
             ax.annotate(
                 feat, (x_series[feat], y_series[feat]),
-                fontsize=7, alpha=0.85, ha="left",
+                fontsize=7, fontweight="bold", alpha=0.85, ha="left",
                 xytext=(5, 3), textcoords="offset points",
             )
 
@@ -283,70 +287,7 @@ def _panel_std_vs_unstd(ax, data: dict):
     despine(ax)
 
 
-# ── Panel D: Volcano plot ─────────────────────────────────────────
-
-def _panel_volcano(ax, data: dict):
-    """Volcano plot: beta_DiD vs −log₁₀(p_DiD).
-
-    Points coloured by absolute beta magnitude (continuous colormap).
-    Labels the top 5 genes by absolute beta.
-    """
-    df = data["part"].copy()
-    if "beta_DiD" not in df.columns or "p_DiD" not in df.columns:
-        ax.text(0.5, 0.5, "No p-value data", ha="center", va="center",
-                transform=ax.transAxes)
-        return
-
-    df["neglog10p"] = -np.log10(df["p_DiD"].clip(lower=1e-10))
-    df["abs_beta"] = df["beta_DiD"].abs()
-
-    # Continuous colouring by absolute beta magnitude
-    sc = ax.scatter(
-        df["beta_DiD"], df["neglog10p"],
-        c=df["abs_beta"], cmap="YlOrRd", s=50, alpha=0.85,
-        edgecolors="grey", linewidth=0.3, zorder=2,
-    )
-    cbar = plt.colorbar(sc, ax=ax, shrink=0.7, pad=0.02)
-    cbar.set_label(r"$|\beta|$", fontsize=8)
-
-    # Label top 5 genes by absolute beta
-    top5 = df.reindex(
-        df["abs_beta"].sort_values(ascending=False).index
-    ).head(5)
-
-    if _HAS_ADJUSTTEXT:
-        texts = []
-        for _, row in top5.iterrows():
-            texts.append(
-                ax.text(row["beta_DiD"], row["neglog10p"],
-                        row["feature"], fontsize=7, ha="center")
-            )
-        _adjust_text(
-            texts, ax=ax,
-            force_text=(2.0, 2.0), force_points=(2.0, 2.0),
-            expand=(1.5, 1.5),
-            arrowprops=dict(arrowstyle="-", color="gray", lw=0.5),
-        )
-    else:
-        for _, row in top5.iterrows():
-            ax.annotate(
-                row["feature"],
-                (row["beta_DiD"], row["neglog10p"]),
-                fontsize=7, ha="center", va="bottom",
-                xytext=(0, 5), textcoords="offset points",
-            )
-
-    ax.axhline(-np.log10(0.05), color="red", linestyle="--", linewidth=0.5,
-               alpha=0.5, label="p = 0.05")
-    ax.axvline(0, color="black", linewidth=0.5, alpha=0.3)
-    ax.set_xlabel(r"$\beta$ (DiD)")
-    ax.set_ylabel(r"$-\log_{10}(p)$")
-    ax.set_title("Volcano Plot", fontweight="bold")
-    ax.legend(fontsize=6, loc="upper right", frameon=True)
-    despine(ax)
-
-
-# ── Panel E: Mean vs Median aggregation ───────────────────────────
+# ── Panel D: Mean vs Median aggregation ───────────────────────────
 
 def _panel_mean_vs_median(ax, data: dict):
     """Scatter: mean-aggregation vs median-aggregation betas."""
@@ -391,7 +332,7 @@ def _panel_mean_vs_median(ax, data: dict):
     despine(ax)
 
 
-# ── Panel F: Log-transform sensitivity ────────────────────────────
+# ── Panel E: Log-transform sensitivity ────────────────────────────
 
 def _panel_log_sensitivity(ax, data: dict):
     """Scatter: log1p_tpm betas vs raw TPM betas."""
@@ -427,7 +368,7 @@ def _panel_log_sensitivity(ax, data: dict):
     despine(ax)
 
 
-# ── Panel G: Cell-type stratified heatmap ─────────────────────────
+# ── Panel F: Cell-type stratified heatmap ─────────────────────────
 
 def _panel_ct_heatmap(ax, data: dict):
     """Heatmap: DiD effect sizes stratified by top cell types."""
@@ -463,7 +404,7 @@ def _panel_ct_heatmap(ax, data: dict):
     ax.tick_params(axis="y", labelsize=7)
 
 
-# ── Panel H: Rank concordance ────────────────────────────────────
+# ── Panel G: Rank concordance ────────────────────────────────────
 
 def _panel_rank_concordance(ax, data: dict):
     """Bar chart: Spearman rank correlation of feature rankings
@@ -542,6 +483,236 @@ def _panel_rank_concordance(ax, data: dict):
 
 
 # ======================================================================
+# Panel H: Power curves (MDE) — data from OLS DiD across datasets
+# ======================================================================
+
+_MDE_FEATURES = [
+    "CD8A", "CD4", "PDCD1", "HAVCR2", "LAG3", "CTLA4",
+    "GZMB", "PRF1", "IFNG", "TNF", "IL2", "CD19",
+    "CD14", "LYZ", "NKG7", "CD3D", "FOXP3", "IL7R",
+]
+
+_MDE_DATASET_CFG = {
+    "Sade-Feldman": {
+        "design": "two_arm",
+        "loader": get_sade_feldman,
+        "harmonize": True,
+        "layer": "log1p_tpm",
+        "participant_col": "participant_id",
+        "visit_col": "visit",
+        "arm_col": "response",
+        "arm_treated": "Responder",
+        "arm_control": "Non-responder",
+        "visits": ("Pre", "Post"),
+    },
+    "AML": {
+        "design": "single_arm_paired",
+        "loader": lambda: load_clinical_trial_dataset("aml"),
+        "harmonize": False,
+        "layer": "log1p_norm",
+        "participant_col": "participant_id",
+        "visit_col": "visit",
+        "arm_col": "response",
+        "arm_filter": "Treatment",
+        "visits": ("Pre", "Post"),
+    },
+    "CAR-T": {
+        "design": "single_arm_paired",
+        "loader": lambda: load_clinical_trial_dataset("cart"),
+        "harmonize": False,
+        "layer": "log1p_norm",
+        "participant_col": "participant_id",
+        "visit_col": "visit",
+        "arm_col": "response",
+        "arm_filter": "CAR-T",
+        "visits": ("Pre", "Post"),
+    },
+    "Stephenson": {
+        "design": "two_arm",
+        "loader": get_stephenson,
+        "harmonize": False,
+        "layer": "log1p_cpm",
+        "participant_col": "participant_id",
+        "visit_col": "Collection_Day",
+        "arm_col": "severity",
+        "arm_treated": "Severe",
+        "arm_control": "Mild",
+        "visits": ("D0", "D28"),
+    },
+    "Vaccine": {
+        "design": "single_arm_paired",
+        "loader": get_vaccine,
+        "harmonize": False,
+        "layer": "log1p_cpm",
+        "participant_col": "participant_id",
+        "visit_col": "visit",
+        "arm_col": None,
+        "visits": ("Pre", "Post"),
+    },
+}
+
+_MDE_PALETTE = dict(
+    zip(_MDE_DATASET_CFG.keys(), ["#1b9e77", "#d95f02", "#7570b3", "#e7298a", "#66a61e"])
+)
+
+
+def _mde_curve(
+    n: np.ndarray,
+    sigma: float,
+    alpha: float = 0.05,
+    power: float = 0.8,
+) -> np.ndarray:
+    """Minimum detectable effect for a two-sample comparison."""
+    z_a = sp_stats.norm.ppf(1 - alpha / 2)
+    z_b = sp_stats.norm.ppf(power)
+    return (z_a + z_b) * sigma * np.sqrt(2.0 / n)
+
+
+def _load_mde_data() -> dict[str, dict]:
+    """Load datasets and compute sigma + n_per_group for MDE curves."""
+    out: dict[str, dict] = {}
+    for name, cfg in _MDE_DATASET_CFG.items():
+        try:
+            adata = cfg["loader"]()
+            if cfg.get("harmonize", False):
+                adata = harmonize_response(adata)
+            layer = cfg["layer"]
+            if layer == "log1p_cpm" and "log1p_cpm" not in adata.layers:
+                if "counts" in adata.layers:
+                    adata = add_log1p_cpm_layer(
+                        adata, counts_layer="counts", out_layer="log1p_cpm",
+                    )
+                else:
+                    continue
+
+            features = [f for f in _MDE_FEATURES if f in adata.var_names]
+            if len(features) < 4:
+                continue
+
+            pid_col = cfg["participant_col"]
+            visit_col = cfg["visit_col"]
+            arm_col = cfg.get("arm_col")
+            design = cfg.get("design", "two_arm")
+
+            # Get participant-visit means
+            mat = (
+                adata[:, features].layers[layer]
+                if layer in adata.layers
+                else adata[:, features].X
+            )
+            mat = mat.toarray() if hasattr(mat, "toarray") else np.asarray(mat)
+            expr = pd.DataFrame(mat, columns=features, index=adata.obs_names)
+            expr[pid_col] = adata.obs[pid_col].values
+            expr[visit_col] = adata.obs[visit_col].values
+            if arm_col and arm_col in adata.obs.columns:
+                expr[arm_col] = adata.obs[arm_col].values
+
+            arm_filter = cfg.get("arm_filter")
+            if arm_filter and arm_col and arm_col in expr.columns:
+                expr = expr[expr[arm_col] == arm_filter].copy()
+
+            group_cols = [pid_col, visit_col]
+            if arm_col and arm_col in expr.columns:
+                group_cols.append(arm_col)
+            pv = expr.groupby(group_cols, observed=True)[features].mean().reset_index()
+
+            # Paired filter
+            counts = pv.groupby(pid_col)[visit_col].nunique()
+            paired = counts[counts >= 2].index
+            pv = pv[pv[pid_col].isin(paired)].copy()
+
+            if design == "two_arm":
+                pv = pv[
+                    pv[arm_col].isin([cfg["arm_treated"], cfg["arm_control"]])
+                ].copy()
+                arm_counts = pv.groupby(arm_col)[pid_col].nunique()
+                n_per_group = int(min(
+                    arm_counts.get(cfg["arm_treated"], 0),
+                    arm_counts.get(cfg["arm_control"], 0),
+                ))
+            else:
+                n_per_group = int(pv[pid_col].nunique())
+
+            if n_per_group < 2:
+                continue
+
+            # Compute median residual sigma from simple OLS per feature
+            sigmas = []
+            pre_v, post_v = cfg["visits"]
+            pv_sub = pv[pv[visit_col].isin([pre_v, post_v])].copy()
+            post = (pv_sub[visit_col].values == post_v).astype(float)
+            if design == "two_arm":
+                treated = (pv_sub[arm_col].values == cfg["arm_treated"]).astype(float)
+            else:
+                treated = None
+            for feat in features:
+                y = pv_sub[feat].values.astype(float)
+                if treated is not None:
+                    X = np.column_stack(
+                        [np.ones_like(post), post, treated, post * treated]
+                    )
+                else:
+                    X = np.column_stack([np.ones_like(post), post])
+                if np.linalg.matrix_rank(X) < X.shape[1]:
+                    continue
+                beta, _, _, _ = np.linalg.lstsq(X, y, rcond=None)
+                resid = y - X @ beta
+                n, p = X.shape
+                dof = n - p
+                if dof > 0:
+                    sigmas.append(float(np.sqrt(np.sum(resid**2) / dof)))
+
+            sigma = float(np.nanmedian(sigmas)) if sigmas else 1.0
+            out[name] = {"n_per_group": n_per_group, "sigma": sigma}
+            print(f"  MDE {name}: n/group={n_per_group}, sigma={sigma:.3f}")
+        except Exception as exc:
+            print(f"  MDE {name}: failed ({exc})")
+    return out
+
+
+def _panel_mde(ax, mde_data: dict[str, dict]):
+    """H: Power curves — minimum detectable effect vs sample size."""
+    # Determine grid range to include all observed n values
+    all_n = [info["n_per_group"] for info in mde_data.values() if info["n_per_group"] > 0]
+    n_max = max(max(all_n) + 10, 61) if all_n else 61
+    n_grid = np.arange(3, n_max, 1)
+
+    for name, info in mde_data.items():
+        sigma = info["sigma"]
+        if not np.isfinite(sigma) or sigma <= 0:
+            sigma = 1.0
+        y = _mde_curve(n_grid, sigma)
+        ax.plot(
+            n_grid, y, lw=1.8,
+            color=_MDE_PALETTE.get(name, "grey"), label=name,
+        )
+        n_actual = info["n_per_group"]
+        if n_actual >= 3:
+            mde_val = _mde_curve(np.array([n_actual]), sigma)[0]
+            ax.scatter(
+                [n_actual], [mde_val],
+                color=_MDE_PALETTE.get(name, "grey"),
+                edgecolors="black", zorder=5, s=60,
+                linewidth=1.0,
+            )
+            # Add label near dot
+            ax.annotate(
+                f"n={n_actual}",
+                (n_actual, mde_val),
+                textcoords="offset points",
+                xytext=(8, 5),
+                fontsize=6,
+                fontweight="bold",
+                color=_MDE_PALETTE.get(name, "grey"),
+            )
+    ax.set_xlabel("Participants per arm")
+    ax.set_ylabel("Minimum detectable effect")
+    ax.set_title("Power Curve with Observed Cohort Sizes", fontweight="bold")
+    ax.legend(fontsize=8, frameon=True)
+    despine(ax)
+
+
+# ======================================================================
 # Generate
 # ======================================================================
 
@@ -554,11 +725,10 @@ def generate():
         ("panel_A", _panel_cell_vs_part, (7.0, 6.0)),
         ("panel_B", _panel_bootstrap_ci, (8.6, 6.6)),
         ("panel_C", _panel_std_vs_unstd, (7.0, 6.0)),
-        ("panel_D", _panel_volcano, (7.0, 6.0)),
-        ("panel_E", _panel_mean_vs_median, (7.0, 6.0)),
-        ("panel_F", _panel_log_sensitivity, (7.0, 6.0)),
-        ("panel_G", _panel_ct_heatmap, (8.8, 5.8)),
-        ("panel_H", _panel_rank_concordance, (7.2, 5.8)),
+        ("panel_D", _panel_mean_vs_median, (7.0, 6.0)),
+        ("panel_E", _panel_log_sensitivity, (7.0, 6.0)),
+        ("panel_F", _panel_ct_heatmap, (8.8, 5.8)),
+        ("panel_G", _panel_rank_concordance, (7.2, 5.8)),
     ]
 
     for panel_name, fn, size in panels:
@@ -570,6 +740,17 @@ def generate():
     if "adata" in data:
         del data["adata"]
     data.clear()
+
+    # H: Power curves (MDE) — separate data pipeline
+    print("  Loading MDE data ...")
+    mde_data = _load_mde_data()
+    if mde_data:
+        fig, ax = plt.subplots(figsize=(7.0, 5.8))
+        _panel_mde(ax, mde_data)
+        fig.tight_layout()
+        save_panel(fig, "panel_H", FIGURE_NAME, SUPP_OUTPUT)
+    mde_data.clear()
+
     clear_cache()
     gc.collect()
     print("  Done.\n")

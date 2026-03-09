@@ -36,12 +36,12 @@ SUPP_TABLES = {
 }
 
 SUPP_FIGURES = {
-    1: ("Supp Fig 1: Cohort Integrity and QC Readiness", "supp.supp_fig1_cohort_qc"),
-    2: ("Supp Fig 2: Annotation and Embedding Reliability", "supp.supp_fig2_clinical"),
-    3: ("Supp Fig 3: Model Diagnostics and Assumption Checks", "supp.supp_fig4_umap"),
-    4: ("Supp Fig 4: Sensitivity to Modeling Choices", "supp.supp_fig5_robustness_details"),
-    5: ("Supp Fig 5: Cross-Dataset Biological Consistency", "supp.supp_fig6_bio_details"),
-    6: ("Supp Fig 6: Participant Heterogeneity and Temporal Dynamics", "supp.supp_fig7_heterogeneity"),
+    1: ("Supp Fig 1: Data Quality and Cohort Characterisation", "supp.supp_fig1_data_quality_cohort"),
+    2: ("Supp Fig 2: Cell Annotation and Baseline Comparability", "supp.supp_fig2_annotation_baseline"),
+    3: ("Supp Fig 3: Model Diagnostics and Assumption Checks", "supp.supp_fig3_model_diagnostics"),
+    4: ("Supp Fig 4: Sensitivity and Robustness", "supp.supp_fig4_sensitivity_robustness"),
+    5: ("Supp Fig 5: Cross-Dataset Biological Consistency", "supp.supp_fig5_cross_dataset_biology"),
+    6: ("Supp Fig 6: Participant Heterogeneity and Temporal Dynamics", "supp.supp_fig6_heterogeneity_temporal"),
 }
 
 
