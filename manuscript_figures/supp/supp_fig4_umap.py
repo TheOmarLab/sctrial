@@ -32,10 +32,13 @@ from scipy import stats
 
 from .._shared import (
     SUPP_OUTPUT,
+    add_log1p_cpm_layer,
     apply_style,
     clear_cache,
     despine,
     get_sade_feldman,
+    get_stephenson,
+    get_vaccine,
     harmonize_response,
     load_clinical_trial_dataset,
     save_panel,
@@ -76,8 +79,42 @@ _DATASET_CFG = {
         "arm_filter": "Treatment",  # keep only this arm
         "visits": ("Pre", "Post"),
     },
-    # Tirosh melanoma excluded: cross-sectional (no paired pre/post per
-    # patient) and overlaps with Sade-Feldman which IS a melanoma cohort.
+    "CAR-T": {
+        # Single-arm paired: all patients receive CAR-T, Pre vs Post (31 paired).
+        "design": "single_arm_paired",
+        "loader": lambda: load_clinical_trial_dataset("cart"),
+        "harmonize": False,
+        "layer": "log1p_norm",
+        "participant_col": "participant_id",
+        "visit_col": "visit",
+        "arm_col": "response",
+        "arm_filter": "CAR-T",
+        "visits": ("Pre", "Post"),
+    },
+    "Stephenson": {
+        # Two-arm DiD: Mild vs Severe COVID patients, D0 vs D28 (5 paired).
+        "design": "two_arm",
+        "loader": get_stephenson,
+        "harmonize": False,
+        "layer": "log1p_cpm",  # created on-the-fly from counts
+        "participant_col": "participant_id",
+        "visit_col": "Collection_Day",
+        "arm_col": "severity",
+        "arm_treated": "Severe",
+        "arm_control": "Mild",
+        "visits": ("D0", "D28"),
+    },
+    "Vaccine": {
+        # Single-arm paired: all subjects vaccinated, Pre vs Post (6 paired).
+        "design": "single_arm_paired",
+        "loader": get_vaccine,
+        "harmonize": False,
+        "layer": "log1p_cpm",  # created on-the-fly from counts
+        "participant_col": "participant_id",
+        "visit_col": "visit",
+        "arm_col": None,  # no arm column
+        "visits": ("Pre", "Post"),
+    },
 }
 
 _DS_PALETTE = dict(
@@ -103,23 +140,23 @@ def _participant_visit_means(
     """Compute per-participant-visit means, respecting the study design."""
     pid_col = cfg["participant_col"]
     visit_col = cfg["visit_col"]
-    arm_col = cfg.get("arm_col", "response")
+    arm_col = cfg.get("arm_col")  # None for single-arm without arm column
     design = cfg.get("design", "two_arm")
 
     mat = _matrix_from_layer(adata, features, cfg["layer"])
     expr = pd.DataFrame(mat, columns=features, index=adata.obs_names)
     expr[pid_col] = adata.obs[pid_col].values
     expr[visit_col] = adata.obs[visit_col].values
-    if arm_col in adata.obs.columns:
+    if arm_col and arm_col in adata.obs.columns:
         expr[arm_col] = adata.obs[arm_col].values
 
     # Filter to specific arm if single-arm design.
     arm_filter = cfg.get("arm_filter")
-    if arm_filter and arm_col in expr.columns:
+    if arm_filter and arm_col and arm_col in expr.columns:
         expr = expr[expr[arm_col] == arm_filter].copy()
 
     group_cols = [pid_col, visit_col]
-    if arm_col in expr.columns:
+    if arm_col and arm_col in expr.columns:
         group_cols.append(arm_col)
 
     pv = (
@@ -218,7 +255,7 @@ def _fit_dataset(name: str, adata, cfg: dict) -> dict | None:
 
     pid_col = cfg["participant_col"]
     visit_col = cfg["visit_col"]
-    arm_col = cfg.get("arm_col", "response")
+    arm_col = cfg.get("arm_col")  # None for single-arm without arm column
     pre_v, post_v = cfg["visits"]
 
     # Restrict to requested visits.
@@ -260,7 +297,7 @@ def _fit_dataset(name: str, adata, cfg: dict) -> dict | None:
     effect_rows: list[dict] = []
     resid_rows: list[pd.DataFrame] = []
     meta_cols = [pid_col, visit_col]
-    if arm_col in pv.columns:
+    if arm_col and arm_col in pv.columns:
         meta_cols.append(arm_col)
 
     for feat in features:
@@ -371,6 +408,16 @@ def _load_results() -> dict[str, dict]:
             adata = cfg["loader"]()
             if cfg.get("harmonize", False):
                 adata = harmonize_response(adata)
+            # Create log1p_cpm layer if needed but missing.
+            layer = cfg["layer"]
+            if layer == "log1p_cpm" and "log1p_cpm" not in adata.layers:
+                if "counts" in adata.layers:
+                    adata = add_log1p_cpm_layer(
+                        adata, counts_layer="counts", out_layer="log1p_cpm",
+                    )
+                else:
+                    print(f"  {name}: skipped (no counts layer for log1p_cpm)")
+                    continue
             res = _fit_dataset(name, adata, cfg)
             if res is not None:
                 out[name] = res
@@ -380,7 +427,7 @@ def _load_results() -> dict[str, dict]:
                 )
             else:
                 print(
-                    f"  {name}: skipped (insufficient paired two-arm data)"
+                    f"  {name}: skipped (insufficient paired data)"
                 )
         except Exception as exc:
             print(f"  {name}: failed ({exc})")
@@ -647,9 +694,13 @@ def _panel_normality_tests(ax, results: dict[str, dict]):
             sw_vals = vals
         sw_stat, sw_p = stats.shapiro(sw_vals)
 
-        # Levene's test: residuals grouped by arm (or visit for single-arm)
-        arm_col = res["cfg"].get("arm_col", "")
-        group_col = arm_col if arm_col in rdf.columns else None
+        # Levene's test: residuals grouped by arm (two-arm) or visit (single).
+        design = res["cfg"].get("design", "two_arm")
+        if design == "two_arm":
+            arm_col = res["cfg"].get("arm_col", "")
+            group_col = arm_col if arm_col in rdf.columns else None
+        else:
+            group_col = None
         if group_col is None:
             visit_col = res["cfg"].get("visit_col", "")
             if visit_col in rdf.columns:
