@@ -50,6 +50,8 @@ _TEST_FEATURES = [
 
 _DATASET_CFG = {
     "Sade-Feldman": {
+        # Two-arm DiD: Responder vs Non-responder, Pre vs Post (paired).
+        "design": "two_arm",
         "loader": get_sade_feldman,
         "harmonize": True,
         "layer": "log1p_tpm",
@@ -61,28 +63,20 @@ _DATASET_CFG = {
         "visits": ("Pre", "Post"),
     },
     "AML": {
+        # Single-arm paired: Treatment arm only, Pre vs Post (11 paired).
+        # Control arm has Pre only → no two-arm contrast possible.
+        "design": "single_arm_paired",
         "loader": lambda: load_clinical_trial_dataset("aml"),
         "harmonize": False,
         "layer": "log1p_norm",
         "participant_col": "participant_id",
         "visit_col": "visit",
         "arm_col": "response",
-        "arm_treated": "Treatment",
-        "arm_control": "Control",
+        "arm_filter": "Treatment",  # keep only this arm
         "visits": ("Pre", "Post"),
     },
-    "Melanoma": {
-        "loader": lambda: load_clinical_trial_dataset("melanoma"),
-        "harmonize": False,
-        "layer": "log1p_tpm",
-        "participant_col": "participant_id",
-        "visit_col": "visit",
-        "arm_col": "response",
-        "arm_treated": "Post_Treatment",
-        "arm_control": "Treatment_Naive",
-        "visits": ("Pre", "Post"),
-    },
-    # CAR-T intentionally excluded: no valid two-arm contrast.
+    # Tirosh melanoma excluded: cross-sectional (no paired pre/post per
+    # patient) and overlaps with Sade-Feldman which IS a melanoma cohort.
 }
 
 _DS_PALETTE = dict(
@@ -105,32 +99,60 @@ def _matrix_from_layer(adata, features: list[str], layer: str) -> np.ndarray:
 def _participant_visit_means(
     adata, cfg: dict, features: list[str]
 ) -> pd.DataFrame:
+    """Compute per-participant-visit means, respecting the study design."""
     pid_col = cfg["participant_col"]
     visit_col = cfg["visit_col"]
-    arm_col = cfg["arm_col"]
+    arm_col = cfg.get("arm_col", "response")
+    design = cfg.get("design", "two_arm")
 
     mat = _matrix_from_layer(adata, features, cfg["layer"])
     expr = pd.DataFrame(mat, columns=features, index=adata.obs_names)
     expr[pid_col] = adata.obs[pid_col].values
     expr[visit_col] = adata.obs[visit_col].values
-    expr[arm_col] = adata.obs[arm_col].values
+    if arm_col in adata.obs.columns:
+        expr[arm_col] = adata.obs[arm_col].values
+
+    # Filter to specific arm if single-arm design.
+    arm_filter = cfg.get("arm_filter")
+    if arm_filter and arm_col in expr.columns:
+        expr = expr[expr[arm_col] == arm_filter].copy()
+
+    group_cols = [pid_col, visit_col]
+    if arm_col in expr.columns:
+        group_cols.append(arm_col)
 
     pv = (
-        expr.groupby([pid_col, visit_col, arm_col], observed=True)[features]
+        expr.groupby(group_cols, observed=True)[features]
         .mean()
         .reset_index()
     )
 
-    # Keep only paired participants.
+    if design == "unpaired":
+        # Cross-sectional: no pairing requirement.
+        return pv
+
+    # Paired designs: keep only participants with both visits.
     counts = pv.groupby(pid_col)[visit_col].nunique()
     paired = counts[counts >= 2].index
     pv = pv[pv[pid_col].isin(paired)].copy()
     return pv
 
 
-def _ols_interaction(y: np.ndarray, post: np.ndarray, treated: np.ndarray):
-    """Fit Y ~ 1 + post + treated + post:treated and return diagnostics."""
-    X = np.column_stack([np.ones_like(post), post, treated, post * treated])
+def _ols_interaction(y: np.ndarray, post: np.ndarray, treated: np.ndarray | None):
+    """Fit OLS and return diagnostics.
+
+    Two-arm DiD:   Y ~ 1 + post + treated + post:treated  (beta[3] = DiD)
+    Single-arm:    Y ~ 1 + post                           (beta[1] = effect)
+    """
+    if treated is not None:
+        X = np.column_stack(
+            [np.ones_like(post), post, treated, post * treated]
+        )
+        effect_idx = 3
+    else:
+        X = np.column_stack([np.ones_like(post), post])
+        effect_idx = 1
+
     if np.linalg.matrix_rank(X) < X.shape[1]:
         return None
 
@@ -148,14 +170,14 @@ def _ols_interaction(y: np.ndarray, post: np.ndarray, treated: np.ndarray):
     xtx_inv = np.linalg.inv(X.T @ X)
     se = np.sqrt(np.maximum(np.diag(xtx_inv) * sigma2, 0))
 
-    beta_did = float(beta[3])
-    se_did = float(se[3])
-    if not np.isfinite(se_did) or se_did <= 0:
-        t_did = np.nan
-        p_did = np.nan
+    beta_eff = float(beta[effect_idx])
+    se_eff = float(se[effect_idx])
+    if not np.isfinite(se_eff) or se_eff <= 0:
+        t_eff = np.nan
+        p_eff = np.nan
     else:
-        t_did = beta_did / se_did
-        p_did = 2 * stats.t.sf(np.abs(t_did), dof)
+        t_eff = beta_eff / se_eff
+        p_eff = 2 * stats.t.sf(np.abs(t_eff), dof)
 
     # Influence diagnostics.
     hat = np.einsum("ij,jk,ik->i", X, xtx_inv, X)
@@ -164,10 +186,10 @@ def _ols_interaction(y: np.ndarray, post: np.ndarray, treated: np.ndarray):
     cooks[~np.isfinite(cooks)] = np.nan
 
     return {
-        "beta_did": beta_did,
-        "se_did": se_did,
-        "t_did": t_did,
-        "p_did": p_did,
+        "beta_did": beta_eff,
+        "se_did": se_eff,
+        "t_did": t_eff,
+        "p_did": p_eff,
         "resid": resid,
         "fitted": fitted,
         "hat": hat,
@@ -178,7 +200,13 @@ def _ols_interaction(y: np.ndarray, post: np.ndarray, treated: np.ndarray):
 
 
 def _fit_dataset(name: str, adata, cfg: dict) -> dict | None:
-    """Run OLS DiD for each feature and return effect + residual tables."""
+    """Run OLS for each feature and return effect + residual tables.
+
+    Supports two designs via cfg["design"]:
+      "two_arm"           — Y ~ 1 + post + treated + post:treated  (DiD)
+      "single_arm_paired" — Y ~ 1 + post  (within-arm pre/post)
+    """
+    design = cfg.get("design", "two_arm")
     features = [f for f in _TEST_FEATURES if f in adata.var_names]
     if len(features) < 4:
         return None
@@ -189,32 +217,51 @@ def _fit_dataset(name: str, adata, cfg: dict) -> dict | None:
 
     pid_col = cfg["participant_col"]
     visit_col = cfg["visit_col"]
-    arm_col = cfg["arm_col"]
+    arm_col = cfg.get("arm_col", "response")
     pre_v, post_v = cfg["visits"]
 
-    # Restrict to requested visits and two valid arms.
+    # Restrict to requested visits.
     pv = pv[pv[visit_col].isin([pre_v, post_v])].copy()
-    pv = pv[pv[arm_col].isin([cfg["arm_treated"], cfg["arm_control"]])].copy()
     if pv.empty:
         return None
 
-    arm_counts = pv.groupby(arm_col)[pid_col].nunique()
-    if (
-        cfg["arm_treated"] not in arm_counts
-        or cfg["arm_control"] not in arm_counts
-    ):
-        return None
-    n_per_group = int(
-        min(arm_counts[cfg["arm_treated"]], arm_counts[cfg["arm_control"]])
-    )
-    if n_per_group < 2:
-        return None
+    if design == "two_arm":
+        # Two-arm DiD: filter to the two arms.
+        pv = pv[
+            pv[arm_col].isin([cfg["arm_treated"], cfg["arm_control"]])
+        ].copy()
+        if pv.empty:
+            return None
+        arm_counts = pv.groupby(arm_col)[pid_col].nunique()
+        if (
+            cfg["arm_treated"] not in arm_counts
+            or cfg["arm_control"] not in arm_counts
+        ):
+            return None
+        n_per_group = int(
+            min(
+                arm_counts[cfg["arm_treated"]],
+                arm_counts[cfg["arm_control"]],
+            )
+        )
+        if n_per_group < 2:
+            return None
+        treated = (pv[arm_col].values == cfg["arm_treated"]).astype(float)
+    else:
+        # Single-arm: no arm covariate.
+        n_per_group = int(pv[pid_col].nunique())
+        if n_per_group < 2:
+            return None
+        treated = None
 
     post = (pv[visit_col].values == post_v).astype(float)
-    treated = (pv[arm_col].values == cfg["arm_treated"]).astype(float)
 
     effect_rows: list[dict] = []
     resid_rows: list[pd.DataFrame] = []
+    meta_cols = [pid_col, visit_col]
+    if arm_col in pv.columns:
+        meta_cols.append(arm_col)
+
     for feat in features:
         fit = _ols_interaction(pv[feat].values.astype(float), post, treated)
         if fit is None:
@@ -229,7 +276,7 @@ def _fit_dataset(name: str, adata, cfg: dict) -> dict | None:
             "n_obs": fit["n_obs"],
         })
 
-        tmp = pv[[pid_col, visit_col, arm_col]].copy()
+        tmp = pv[meta_cols].copy()
         tmp["feature"] = feat
         tmp["residual"] = fit["resid"]
         tmp["fitted"] = fit["fitted"]
@@ -243,7 +290,7 @@ def _fit_dataset(name: str, adata, cfg: dict) -> dict | None:
     effect_df = pd.DataFrame(effect_rows)
     resid_df = pd.concat(resid_rows, axis=0, ignore_index=True)
 
-    # Permutation null on interaction effects.
+    # Permutation null.
     null_abs = _permutation_null(pv, features, cfg, n_perm=200)
 
     # Store the participant-visit table for parallel-trends panel.
@@ -265,35 +312,52 @@ def _permutation_null(
     cfg: dict,
     n_perm: int = 200,
 ) -> np.ndarray:
-    """Generate null distribution of |beta_DiD| by permuting arm labels."""
+    """Generate null distribution of |beta| by permuting labels.
+
+    Two-arm: permute arm assignment across participants.
+    Single-arm: permute visit assignment across participants.
+    """
+    design = cfg.get("design", "two_arm")
     pid_col = cfg["participant_col"]
     visit_col = cfg["visit_col"]
-    arm_col = cfg["arm_col"]
     _pre_v, post_v = cfg["visits"]
 
     post = (pv[visit_col].values == post_v).astype(float)
-
-    pid_df = pv[[pid_col, arm_col]].drop_duplicates(subset=[pid_col]).copy()
-    orig = (pid_df[arm_col].values == cfg["arm_treated"]).astype(float)
-    pids = pid_df[pid_col].values
-
     rng = np.random.default_rng(42)
     out: list[float] = []
-    for _ in range(n_perm):
-        perm = rng.permutation(orig)
-        map_df = pd.DataFrame({pid_col: pids, "treated_perm": perm})
-        treated = (
-            pv[[pid_col]]
-            .merge(map_df, on=pid_col, how="left")["treated_perm"]
-            .values.astype(float)
-        )
 
-        for feat in features:
-            fit = _ols_interaction(
-                pv[feat].values.astype(float), post, treated
+    if design == "two_arm":
+        arm_col = cfg["arm_col"]
+        pid_df = (
+            pv[[pid_col, arm_col]].drop_duplicates(subset=[pid_col]).copy()
+        )
+        orig = (pid_df[arm_col].values == cfg["arm_treated"]).astype(float)
+        pids = pid_df[pid_col].values
+
+        for _ in range(n_perm):
+            perm = rng.permutation(orig)
+            map_df = pd.DataFrame({pid_col: pids, "treated_perm": perm})
+            treated = (
+                pv[[pid_col]]
+                .merge(map_df, on=pid_col, how="left")["treated_perm"]
+                .values.astype(float)
             )
-            if fit is not None and np.isfinite(fit["beta_did"]):
-                out.append(abs(fit["beta_did"]))
+            for feat in features:
+                fit = _ols_interaction(
+                    pv[feat].values.astype(float), post, treated
+                )
+                if fit is not None and np.isfinite(fit["beta_did"]):
+                    out.append(abs(fit["beta_did"]))
+    else:
+        # Single-arm: permute visit labels within each participant.
+        for _ in range(n_perm):
+            post_perm = rng.permutation(post)
+            for feat in features:
+                fit = _ols_interaction(
+                    pv[feat].values.astype(float), post_perm, None
+                )
+                if fit is not None and np.isfinite(fit["beta_did"]):
+                    out.append(abs(fit["beta_did"]))
 
     return np.asarray(out, dtype=float)
 
@@ -418,11 +482,13 @@ def _panel_influence(ax, results: dict[str, dict]):
 
 
 def _panel_parallel_trends(fig, axes, results: dict[str, dict]):
-    """D: Pre-treatment mean expression by arm (parallel trends check).
+    """D: Pre-treatment baseline check.
 
-    For each dataset, scatter plot of (control-arm pre mean, treated-arm
-    pre mean) per feature. Points near the diagonal indicate comparable
-    baseline expression — the key DiD assumption.
+    Two-arm datasets: scatter of (control pre-mean, treated pre-mean) per
+    feature.  Points near diagonal → parallel trends satisfied.
+
+    Single-arm datasets: scatter of (Pre mean, Post mean) per feature to
+    show the magnitude/direction of change.
     """
     names = list(results)
     for i, ax in enumerate(np.ravel(axes)):
@@ -434,57 +500,73 @@ def _panel_parallel_trends(fig, axes, results: dict[str, dict]):
         pv = res["pv"]
         cfg = res["cfg"]
         features = res["features"]
+        design = cfg.get("design", "two_arm")
 
         visit_col = cfg["visit_col"]
-        arm_col = cfg["arm_col"]
-        pre_v = cfg["visits"][0]
+        pre_v, post_v = cfg["visits"]
 
-        pre = pv[pv[visit_col] == pre_v]
-        if pre.empty:
-            ax.text(
-                0.5, 0.5, "No pre-treatment data",
-                ha="center", va="center", transform=ax.transAxes,
+        if design == "two_arm":
+            arm_col = cfg["arm_col"]
+            pre = pv[pv[visit_col] == pre_v]
+            if pre.empty:
+                ax.text(
+                    0.5, 0.5, "No pre-treatment data",
+                    ha="center", va="center", transform=ax.transAxes,
+                )
+                continue
+            x_vals = (
+                pre[pre[arm_col] == cfg["arm_control"]][features].mean()
             )
-            continue
-
-        treated_mean = (
-            pre[pre[arm_col] == cfg["arm_treated"]][features].mean()
-        )
-        control_mean = (
-            pre[pre[arm_col] == cfg["arm_control"]][features].mean()
-        )
+            y_vals = (
+                pre[pre[arm_col] == cfg["arm_treated"]][features].mean()
+            )
+            x_label = f"{cfg['arm_control']} mean"
+            y_label = f"{cfg['arm_treated']} mean"
+            subtitle = f"{name} — parallel trends"
+        else:
+            # Single-arm: compare Pre vs Post means.
+            pre_data = pv[pv[visit_col] == pre_v]
+            post_data = pv[pv[visit_col] == post_v]
+            if pre_data.empty or post_data.empty:
+                ax.text(
+                    0.5, 0.5, "No pre/post data",
+                    ha="center", va="center", transform=ax.transAxes,
+                )
+                continue
+            x_vals = pre_data[features].mean()
+            y_vals = post_data[features].mean()
+            x_label = "Pre-treatment mean"
+            y_label = "Post-treatment mean"
+            subtitle = f"{name} — pre vs post"
 
         ax.scatter(
-            control_mean.values, treated_mean.values,
+            x_vals.values, y_vals.values,
             s=40, alpha=0.8,
             color=_DS_PALETTE.get(name, "grey"),
             edgecolors="white", linewidth=0.5, zorder=3,
         )
-        # Label each gene
         for feat, cx, ty in zip(
-            features, control_mean.values, treated_mean.values
+            features, x_vals.values, y_vals.values
         ):
             ax.annotate(
                 feat, (cx, ty), fontsize=5, alpha=0.7,
                 xytext=(3, 3), textcoords="offset points",
             )
 
-        # Diagonal reference
-        lo = min(control_mean.min(), treated_mean.min()) * 0.9
-        hi = max(control_mean.max(), treated_mean.max()) * 1.1
+        lo = min(x_vals.min(), y_vals.min()) * 0.9
+        hi = max(x_vals.max(), y_vals.max()) * 1.1
         ax.plot([lo, hi], [lo, hi], ls="--", color="black", lw=0.9)
 
-        # Pearson r annotation
-        r, _ = stats.pearsonr(control_mean.values, treated_mean.values)
+        r, _ = stats.pearsonr(x_vals.values, y_vals.values)
         ax.text(
             0.05, 0.92, f"r = {r:.3f}",
             transform=ax.transAxes, fontsize=8,
             bbox=dict(boxstyle="round,pad=0.3", fc="white", alpha=0.8),
         )
 
-        ax.set_xlabel(f"{cfg['arm_control']} mean", fontsize=8)
-        ax.set_ylabel(f"{cfg['arm_treated']} mean", fontsize=8)
-        ax.set_title(name, fontsize=10, fontweight="bold")
+        ax.set_xlabel(x_label, fontsize=8)
+        ax.set_ylabel(y_label, fontsize=8)
+        ax.set_title(subtitle, fontsize=10, fontweight="bold")
         ax.set_aspect("equal", adjustable="datalim")
         despine(ax)
 
@@ -564,12 +646,17 @@ def _panel_normality_tests(ax, results: dict[str, dict]):
             sw_vals = vals
         sw_stat, sw_p = stats.shapiro(sw_vals)
 
-        # Levene's test: residuals grouped by arm
-        arm_col = res["cfg"]["arm_col"]
-        if arm_col in rdf.columns:
+        # Levene's test: residuals grouped by arm (or visit for single-arm)
+        arm_col = res["cfg"].get("arm_col", "")
+        group_col = arm_col if arm_col in rdf.columns else None
+        if group_col is None:
+            visit_col = res["cfg"].get("visit_col", "")
+            if visit_col in rdf.columns:
+                group_col = visit_col
+        if group_col is not None:
             groups = [
                 g["residual"].dropna().values
-                for _, g in rdf.groupby(arm_col)
+                for _, g in rdf.groupby(group_col)
                 if len(g["residual"].dropna()) > 2
             ]
             if len(groups) >= 2:
