@@ -153,14 +153,14 @@ def _pid_col(obs):
 
 
 def _visit_col(obs):
-    for c in ("visit",):
+    for c in ("visit", "Collection_Day", "dfo_bin", "timepoint"):
         if c in obs.columns and obs[c].nunique() > 1:
             return c
     return None
 
 
 def _arm_col(obs):
-    for c in ("response", "severity", "therapy"):
+    for c in ("response", "severity", "therapy", "condition"):
         if c in obs.columns and obs[c].nunique() > 1:
             return c
     return None
@@ -382,9 +382,13 @@ def _panel_annotation_confidence(ax, loaded: dict):
         return
 
     df = pd.concat(rows, ignore_index=True)
-    sns.violinplot(data=df, x="Dataset", y="Cluster purity",
-                   order=list(loaded.keys()), cut=0, inner="quartile",
-                   linewidth=0.5, palette=_DS_PALETTE, density_norm="width", ax=ax)
+    order = [n for n in loaded.keys() if n in df["Dataset"].values]
+    sns.boxplot(data=df, x="Dataset", y="Cluster purity",
+                order=order, palette=_DS_PALETTE,
+                fliersize=0, linewidth=0.8, width=0.5, ax=ax)
+    sns.stripplot(data=df, x="Dataset", y="Cluster purity",
+                  order=order, palette=_DS_PALETTE,
+                  size=1.5, alpha=0.25, jitter=0.2, ax=ax)
     ax.set_xlabel("")
     ax.set_ylabel("Dominant cell-type fraction within Leiden cluster")
     ax.set_title("Cluster→Cell-Type Purity", fontweight="bold")
@@ -573,7 +577,7 @@ def _panel_baseline_pca(fig_parent, axes, loaded: dict):
         obs = data["adata"].obs
         if vis:
             pre_mask = obs[vis].astype(str).str.lower().isin(
-                ["pre", "baseline", "d0", "day0", "0"])
+                ["pre", "baseline", "d0", "day0", "0", "d000"])
             if pre_mask.sum() > 50:
                 ds_with_baseline.append((name, True))  # has baseline
         else:
@@ -663,7 +667,7 @@ def _panel_baseline_ct_by_arm(ax, loaded: dict):
 
         if vis:
             pre_mask = obs[vis].astype(str).str.lower().isin(
-                ["pre", "baseline", "d0", "day0", "0"])
+                ["pre", "baseline", "d0", "day0", "0", "d000"])
             if pre_mask.sum() < 50:
                 continue
             sub = obs.loc[pre_mask]
@@ -708,9 +712,9 @@ def _panel_baseline_ct_by_arm(ax, loaded: dict):
                 ax.barh(gi, frac, left=left, height=0.6,
                         color=ct_palette[ct], edgecolor="white",
                         linewidth=0.2)
-                if frac > 0.08:
+                if frac > 0.04:
                     ax.text(left + frac / 2, gi, ct, ha="center",
-                            va="center", fontsize=4.5, color="black",
+                            va="center", fontsize=5.5, color="black",
                             fontweight="bold")
                 left += frac
 

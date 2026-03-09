@@ -71,7 +71,7 @@ _DATASET_CFG = {
         "visit_col": "visit",
         "arm_col": "response",
         "arm_treated": "Treatment",
-        "arm_control": "Control",
+        "arm_control": "Treatment",  # single-arm: Control lacks Post
         "visits": ("Pre", "Post"),
     },
     "CAR-T": {
@@ -397,8 +397,11 @@ def _panel_exhaustion_by_celltype(ax, data: dict[str, dict]):
     for ds_name, ds in data.items():
         adata = ds["adata"]
         cfg = ds["cfg"]
-        ct_col = next((c for c in ["cell_type", "celltype", "cell_type_annot"]
-                       if c in adata.obs.columns), None)
+        ct_col = next((c for c in [
+            "cell_type", "celltype", "cell_type_annot",
+            "CellType", "cell_type_original", "cell_label",
+            "leiden",
+        ] if c in adata.obs.columns), None)
         ex_genes = [g for g in ex_genes_full if g in adata.var_names]
         if ct_col is None or len(ex_genes) < 2:
             continue
@@ -482,12 +485,14 @@ def _panel_paired_trajectories(ax, data: dict[str, dict]):
     xpos = 0
     for name, ds in data.items():
         pv = ds.get("gs_pv")
+        cfg = ds.get("cfg", {})
         if pv is None or pv.empty or exhaustion_col not in pv.columns:
             continue
+        pre_v, post_v = cfg.get("visits", ("Pre", "Post"))
         for arm in pv["arm"].dropna().unique():
             sub = pv[pv["arm"] == arm]
-            pre = sub[sub["visit"] == "Pre"].set_index("participant_id")
-            post = sub[sub["visit"] == "Post"].set_index("participant_id")
+            pre = sub[sub["visit"] == pre_v].set_index("participant_id")
+            post = sub[sub["visit"] == post_v].set_index("participant_id")
             common = pre.index.intersection(post.index)
             if len(common) < 2:
                 continue
@@ -500,7 +505,7 @@ def _panel_paired_trajectories(ax, data: dict[str, dict]):
             med1 = np.median(post.loc[common, exhaustion_col].values)
             ax.plot([x0, x1], [med0, med1], color=_DS_PALETTE.get(name, "black"), lw=2.8, zorder=5)
             x_tick.extend([x0, x1])
-            x_tick_lab.extend([f"{name}\n{arm}\nPre", f"{name}\n{arm}\nPost"])
+            x_tick_lab.extend([f"{name}\n{arm}\n{pre_v}", f"{name}\n{arm}\n{post_v}"])
             xpos += 2.5
 
     if not x_tick:

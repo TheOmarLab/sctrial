@@ -78,7 +78,7 @@ def _add_gene_labels(ax, features, x_series, y_series):
             texts, ax=ax,
             force_text=(2.5, 2.5), force_points=(2.5, 2.5),
             expand=(1.8, 1.8),
-            arrowprops=dict(arrowstyle="->", color="gray", lw=0.6),
+            arrowprops=dict(arrowstyle="-", color="gray", lw=0.6),
         )
     else:
         for feat in features:
@@ -561,11 +561,17 @@ def _mde_curve(
     sigma: float,
     alpha: float = 0.05,
     power: float = 0.8,
+    paired: bool = False,
 ) -> np.ndarray:
-    """Minimum detectable effect for a two-sample comparison."""
+    """Minimum detectable effect for a comparison.
+
+    Two-arm unpaired: MDE = (z_a + z_b) * sigma * sqrt(2/n)
+    Single-arm paired: MDE = (z_a + z_b) * sigma * sqrt(1/n)
+    """
     z_a = sp_stats.norm.ppf(1 - alpha / 2)
     z_b = sp_stats.norm.ppf(power)
-    return (z_a + z_b) * sigma * np.sqrt(2.0 / n)
+    scale = np.sqrt(1.0 / n) if paired else np.sqrt(2.0 / n)
+    return (z_a + z_b) * sigma * scale
 
 
 def _load_mde_data() -> dict[str, dict]:
@@ -663,8 +669,12 @@ def _load_mde_data() -> dict[str, dict]:
                     sigmas.append(float(np.sqrt(np.sum(resid**2) / dof)))
 
             sigma = float(np.nanmedian(sigmas)) if sigmas else 1.0
-            out[name] = {"n_per_group": n_per_group, "sigma": sigma}
-            print(f"  MDE {name}: n/group={n_per_group}, sigma={sigma:.3f}")
+            out[name] = {
+                "n_per_group": n_per_group,
+                "sigma": sigma,
+                "design": design,
+            }
+            print(f"  MDE {name}: n/group={n_per_group}, sigma={sigma:.3f}, design={design}")
         except Exception as exc:
             print(f"  MDE {name}: failed ({exc})")
     return out
@@ -681,14 +691,16 @@ def _panel_mde(ax, mde_data: dict[str, dict]):
         sigma = info["sigma"]
         if not np.isfinite(sigma) or sigma <= 0:
             sigma = 1.0
-        y = _mde_curve(n_grid, sigma)
+        paired = info.get("design", "two_arm") == "single_arm_paired"
+        y = _mde_curve(n_grid, sigma, paired=paired)
+        ls = "--" if paired else "-"
         ax.plot(
-            n_grid, y, lw=1.8,
+            n_grid, y, lw=1.8, ls=ls,
             color=_MDE_PALETTE.get(name, "grey"), label=name,
         )
         n_actual = info["n_per_group"]
         if n_actual >= 3:
-            mde_val = _mde_curve(np.array([n_actual]), sigma)[0]
+            mde_val = _mde_curve(np.array([n_actual]), sigma, paired=paired)[0]
             ax.scatter(
                 [n_actual], [mde_val],
                 color=_MDE_PALETTE.get(name, "grey"),
@@ -705,9 +717,9 @@ def _panel_mde(ax, mde_data: dict[str, dict]):
                 fontweight="bold",
                 color=_MDE_PALETTE.get(name, "grey"),
             )
-    ax.set_xlabel("Participants per arm")
+    ax.set_xlabel("Participants per group")
     ax.set_ylabel("Minimum detectable effect")
-    ax.set_title("Power Curve with Observed Cohort Sizes", fontweight="bold")
+    ax.set_title("Power Curves: MDE vs Sample Size", fontweight="bold")
     ax.legend(fontsize=8, frameon=True)
     despine(ax)
 

@@ -387,9 +387,14 @@ def _permutation_null(
                 if fit is not None and np.isfinite(fit["beta_did"]):
                     out.append(abs(fit["beta_did"]))
     else:
-        # Single-arm: permute visit labels within each participant.
+        # Single-arm: permute visit labels WITHIN each participant.
+        pids = pv[pid_col].values
+        unique_pids = np.unique(pids)
         for _ in range(n_perm):
-            post_perm = rng.permutation(post)
+            post_perm = post.copy()
+            for pid in unique_pids:
+                mask = pids == pid
+                post_perm[mask] = rng.permutation(post_perm[mask])
             for feat in features:
                 fit = _ols_interaction(
                     pv[feat].values.astype(float), post_perm, None
@@ -638,7 +643,7 @@ def _panel_calibration(ax, results: dict[str, dict]):
 
 
 def _panel_normality_tests(ax, results: dict[str, dict]):
-    """F: Visual summary of normality diagnostics per dataset."""
+    """F: Visual summary of residual normality diagnostics per dataset."""
     rows = []
     for name, res in results.items():
         rdf = res["residuals"]
@@ -649,13 +654,8 @@ def _panel_normality_tests(ax, results: dict[str, dict]):
         sk = stats.skew(vals)
         ku = stats.kurtosis(vals)
 
-        # Shapiro-Wilk (subsample if >5000 for performance)
-        if len(vals) > 5000:
-            rng = np.random.default_rng(42)
-            sw_vals = rng.choice(vals, 5000, replace=False)
-        else:
-            sw_vals = vals
-        sw_stat, sw_p = stats.shapiro(sw_vals)
+        # Shapiro-Wilk on all residuals (no subsampling)
+        sw_stat, sw_p = stats.shapiro(vals)
 
         rows.append({
             "Dataset": name,
@@ -716,14 +716,14 @@ def _panel_funnel(ax, results: dict[str, dict]):
 
 
 def _arm_col(obs):
-    for c in ("response", "severity", "therapy"):
+    for c in ("response", "severity", "therapy", "condition"):
         if c in obs.columns and obs[c].nunique() > 1:
             return c
     return None
 
 
 def _visit_col_detect(obs):
-    for c in ("visit",):
+    for c in ("visit", "Collection_Day", "dfo_bin", "timepoint"):
         if c in obs.columns and obs[c].nunique() > 1:
             return c
     return None

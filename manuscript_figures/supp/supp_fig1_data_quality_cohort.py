@@ -105,14 +105,14 @@ def _pid_col(obs):
 
 
 def _visit_col(obs):
-    for c in ("visit",):
+    for c in ("visit", "Collection_Day", "dfo_bin", "timepoint"):
         if c in obs.columns and obs[c].nunique() > 1:
             return c
     return None
 
 
 def _arm_col(obs):
-    for c in ("response", "severity", "therapy"):
+    for c in ("response", "severity", "therapy", "condition"):
         if c in obs.columns and obs[c].nunique() > 1:
             return c
     return None

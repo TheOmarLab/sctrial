@@ -471,9 +471,12 @@ def _panel_within_arm_profile(ax, effects: pd.DataFrame, features: list[str], ti
 
 
 def _panel_aml_cart_profile(ax, data: dict[str, dict]):
-    datasets = [d for d in ["AML", "CAR-T"] if d in data]
+    # Include all single-arm datasets (AML, CAR-T, Vaccine, etc.)
+    datasets = [d for d in data if d != "Sade-Feldman" and d != "Stephenson"]
     if not datasets:
-        ax.text(0.5, 0.5, "No AML/CAR-T data", ha="center", va="center", transform=ax.transAxes)
+        datasets = [d for d in ["AML", "CAR-T"] if d in data]
+    if not datasets:
+        ax.text(0.5, 0.5, "No single-arm data", ha="center", va="center", transform=ax.transAxes)
         return
 
     # shared top features by absolute effect
@@ -515,7 +518,7 @@ def _panel_aml_cart_profile(ax, data: dict[str, dict]):
     ax.set_xticks(x)
     ax.set_xticklabels(top_feats, rotation=35, ha="right", fontsize=8)
     ax.set_ylabel("Mean participant effect")
-    ax.set_title("AML + CAR-T within-arm change profile", fontweight="bold")
+    ax.set_title("Single-arm within-arm change profiles", fontweight="bold")
     ax.legend(fontsize=8, frameon=True)
     despine(ax)
 
@@ -564,17 +567,15 @@ def generate():
         print("  No data loaded; skipping.")
         return
 
-    # Select the dataset with most paired participants for detailed panels
-    best_name = None
-    best_n = 0
-    for name, ds in data.items():
-        delta = ds.get("delta")
-        if delta is not None:
-            n = delta["participant_id"].nunique()
-            if n > best_n:
-                best_n = n
-                best_name = name
-
+    # Explicit dataset selection for reproducibility (CODEX #1).
+    # Sade-Feldman is the flagship two-arm dataset (melanoma immunotherapy).
+    best_name = "Sade-Feldman"
+    if best_name not in data or data[best_name].get("delta") is None:
+        # Fallback: pick first dataset with paired data
+        best_name = next(
+            (n for n, ds in data.items() if ds.get("delta") is not None),
+            None,
+        )
     if best_name is None:
         print("  No datasets with paired data; skipping.")
         return
@@ -586,21 +587,8 @@ def generate():
     feat_treated = feat_cfg.get("arm_treated", "Treated")
     feat_control = feat_cfg.get("arm_control", "Control")
 
-    # Select the best TWO-ARM dataset for panels C/D (response-stratified)
-    twoarm_name = None
-    twoarm_n = 0
-    for name, ds in data.items():
-        delta = ds.get("delta")
-        cfg = ds.get("cfg", {})
-        if delta is not None and cfg.get("arm_col") is not None:
-            arms = delta["arm"].dropna().unique()
-            if len(arms) >= 2:
-                n = delta["participant_id"].nunique()
-                if n > twoarm_n:
-                    twoarm_n = n
-                    twoarm_name = name
-    if twoarm_name is None:
-        twoarm_name = best_name  # fallback
+    # Two-arm dataset for panels C/D: Sade-Feldman (Responder vs Non-responder)
+    twoarm_name = best_name  # same dataset — it's the two-arm reference
     ta_ds = data[twoarm_name]
     ta_eff = ta_ds.get("delta")
     ta_feats = ta_ds.get("features", FEATURES)
