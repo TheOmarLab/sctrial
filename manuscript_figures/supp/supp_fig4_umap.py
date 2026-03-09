@@ -27,6 +27,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from adjustText import adjust_text
 from scipy import stats
 
 from .._shared import (
@@ -545,13 +546,13 @@ def _panel_parallel_trends(fig, axes, results: dict[str, dict]):
             color=_DS_PALETTE.get(name, "grey"),
             edgecolors="white", linewidth=0.5, zorder=3,
         )
-        for feat, cx, ty in zip(
-            features, x_vals.values, y_vals.values
-        ):
-            ax.annotate(
-                feat, (cx, ty), fontsize=5, alpha=0.7,
-                xytext=(3, 3), textcoords="offset points",
+        texts = [
+            ax.text(cx, ty, feat, fontsize=5, alpha=0.7)
+            for feat, cx, ty in zip(
+                features, x_vals.values, y_vals.values
             )
+        ]
+        adjust_text(texts, ax=ax, arrowprops=dict(arrowstyle="-", lw=0.3))
 
         lo = min(x_vals.min(), y_vals.min()) * 0.9
         hi = max(x_vals.max(), y_vals.max()) * 1.1
