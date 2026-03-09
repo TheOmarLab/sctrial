@@ -10,8 +10,10 @@ def e_value_rr(
     ci_upper: float | None = None,
 ) -> tuple[float, float | None]:
     """Compute the E-value for a risk ratio estimate (VanderWeele & Ding).
-    Ref:VanderWeele, Tyler J., and Peng Ding. "Sensitivity analysis in observational research: introducing the E-value."
-        Annals of internal medicine 167.4 (2017): 268-274.
+
+    Ref: VanderWeele, Tyler J., and Peng Ding. "Sensitivity analysis in
+    observational research: introducing the E-value."
+    Annals of internal medicine 167.4 (2017): 268-274.
 
     Parameters
     ----------
