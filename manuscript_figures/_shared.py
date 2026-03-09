@@ -345,7 +345,7 @@ CLINICAL_DATASETS_DIR = _resolve_clinical_datasets_dir()
 
 
 def load_clinical_trial_dataset(name: str):
-    """Load a clinical-trial dataset by short name (*aml*, *cart*, *melanoma*)."""
+    """Load a clinical-trial dataset by short name (*aml*, *cart*)."""
     import anndata as ad
 
     paths = {
@@ -353,8 +353,6 @@ def load_clinical_trial_dataset(name: str):
                              "processed", "gse116256_aml_processed.h5ad"),
         "cart": os.path.join(CLINICAL_DATASETS_DIR, "GSE290722_CAR-T",
                              "processed", "gse290722_cart_processed.h5ad"),
-        "melanoma": os.path.join(CLINICAL_DATASETS_DIR, "GSE115978_Melanoma",
-                                 "processed", "gse115978_melanoma_processed.h5ad"),
     }
     if name not in paths:
         raise ValueError(f"Unknown clinical dataset: {name!r}")

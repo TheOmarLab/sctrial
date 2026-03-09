@@ -80,17 +80,6 @@ _DATASET_CFG = {
         "arm_control": "CAR-T",
         "visits": ("Pre", "Post"),
     },
-    "Melanoma": {
-        "loader": lambda: load_clinical_trial_dataset("melanoma"),
-        "harmonize": False,
-        "layer": "log1p_tpm",
-        "participant_col": "participant_id",
-        "visit_col": "visit",
-        "arm_col": "response",
-        "arm_treated": "Post_Treatment",
-        "arm_control": "Treatment_Naive",
-        "visits": ("Pre", "Post"),
-    },
     "Stephenson": {
         "loader": get_stephenson,
         "harmonize": False,
@@ -116,12 +105,11 @@ _DATASET_CFG = {
 }
 
 _DS_COLORS = dict(zip(_DATASET_CFG.keys(),
-    ["#1b9e77", "#d95f02", "#7570b3", "#e7298a", "#66a61e", "#e6ab02"]))
+    ["#1b9e77", "#d95f02", "#7570b3", "#e7298a", "#66a61e"]))
 _DS_MARKERS = {
     "Sade-Feldman": "o",
     "AML": "s",
     "CAR-T": "D",
-    "Melanoma": "^",
     "Stephenson": "P",
     "Vaccine": "X",
 }
