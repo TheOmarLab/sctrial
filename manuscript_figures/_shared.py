@@ -13,11 +13,7 @@ import re
 import warnings
 from pathlib import Path
 
-import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
-from scipy import stats
 
 # Suppress only non-critical warnings; preserve inference/statistics warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -116,14 +112,14 @@ def save_panel(fig, panel_name: str, figure_name: str, output_dir: Path,
 try:
     from sctrial import (
         TrialDesign,
+        add_log1p_cpm_layer,
+        between_arm_comparison,
         did_table,
         hedges_g,
+        loo_cv_did,
         run_gsea_did,
         verify_paired_participants,
-        loo_cv_did,
         within_arm_comparison,
-        between_arm_comparison,
-        add_log1p_cpm_layer,
     )
     SCTRIAL_AVAILABLE = True
 except ImportError:
@@ -404,6 +400,163 @@ def harmonize_response(adata, *, force: bool = False):
         adata.obs["response_harmonized"] = adata.obs["participant_id"].map(pid_resp)
 
     return adata
+
+
+# ---------------------------------------------------------------------------
+# Cell-type harmonization across datasets
+# ---------------------------------------------------------------------------
+
+# Maps every dataset-specific cell-type label to a shared coarse vocabulary.
+# The canonical categories are:
+#   CD4+ T, CD8+ T, Treg, T other, NK, B cell, Plasma,
+#   Monocyte, DC, Erythroid, Platelet, HSC/Prog, Other
+_CELLTYPE_MAP: dict[str, str] = {
+    # -- Sade-Feldman (cell_type from marker-based annotation) --
+    "CD8 T cell": "CD8+ T",
+    "CD4 T cell": "CD4+ T",
+    "Treg": "Treg",
+    "NK cell": "NK",
+    "B cell": "B cell",
+    "Plasma cell": "Plasma",
+    "Monocyte/Macrophage": "Monocyte",
+    "Dendritic cell": "DC",
+    "Unassigned": "Other",
+    # -- Stephenson (celltype from full_clustering) --
+    "CD4.CM": "CD4+ T",
+    "CD4.EM": "CD4+ T",
+    "CD4.IL22": "CD4+ T",
+    "CD4.Naive": "CD4+ T",
+    "CD4.Prolif": "CD4+ T",
+    "CD4.Tfh": "CD4+ T",
+    "CD4.Th1": "CD4+ T",
+    "CD4.Th2": "CD4+ T",
+    "CD4.Th17": "CD4+ T",
+    "CD8.EM": "CD8+ T",
+    "CD8.Naive": "CD8+ T",
+    "CD8.Prolif": "CD8+ T",
+    "CD8.TE": "CD8+ T",
+    "MAIT": "T other",
+    "gdT": "T other",
+    "NKT": "T other",
+    "NK_16hi": "NK",
+    "NK_56hi": "NK",
+    "NK_prolif": "NK",
+    "B_naive": "B cell",
+    "B_immature": "B cell",
+    "B_exhausted": "B cell",
+    "B_non-switched_memory": "B cell",
+    "B_switched_memory": "B cell",
+    "Plasma_cell_IgA": "Plasma",
+    "Plasma_cell_IgG": "Plasma",
+    "Plasma_cell_IgM": "Plasma",
+    "Plasmablast": "Plasma",
+    "CD14_mono": "Monocyte",
+    "CD16_mono": "Monocyte",
+    "CD83_CD14_mono": "Monocyte",
+    "C1_CD16_mono": "Monocyte",
+    "Mono_prolif": "Monocyte",
+    "ASDC": "DC",
+    "DC1": "DC",
+    "DC2": "DC",
+    "DC3": "DC",
+    "DC_prolif": "DC",
+    "pDC": "DC",
+    "ILC1_3": "Other",
+    "ILC2": "Other",
+    "HSC_CD38neg": "HSC/Prog",
+    "HSC_CD38pos": "HSC/Prog",
+    "HSC_MK": "HSC/Prog",
+    "HSC_erythroid": "Erythroid",
+    "HSC_myeloid": "HSC/Prog",
+    "HSC_prolif": "HSC/Prog",
+    "Platelets": "Platelet",
+    "RBC": "Erythroid",
+    # -- Vaccine (clustnm: "C0_CD4 T", "C1_NK", ...) --
+    "C0_CD4 T": "CD4+ T",
+    "C6_CD8 T": "CD8+ T",
+    "C10_Naive CD8 T": "CD8+ T",
+    "C12_Tregs": "Treg",
+    "C1_NK": "NK",
+    "C16_NK T": "T other",
+    "C5_B": "B cell",
+    "C17_Naive B": "B cell",
+    "C14_Plasmablasts": "Plasma",
+    "C3_CD14+ monocytes": "Monocyte",
+    "C4_CD16+ monocytes": "Monocyte",
+    "C8_CD14+BDCA1+PD-L1+ cells": "Monocyte",
+    "C7_cDC2": "DC",
+    "C11_pDC": "DC",
+    "C13_cDC1": "DC",
+    "C9_Platelets": "Platelet",
+    "C15_HPCs": "HSC/Prog",
+    "C2": "Other",
+    # -- AML (cell_type from van Galen CellType / PredictionRefined) --
+    "HSC": "HSC/Prog",
+    "Prog": "HSC/Prog",
+    "GMP": "HSC/Prog",
+    "GMP-like": "HSC/Prog",
+    "ProMono": "HSC/Prog",
+    "ProMono-like": "HSC/Prog",
+    "HSC-like": "HSC/Prog",
+    "Prog-like": "HSC/Prog",
+    "CLP": "HSC/Prog",
+    "MEP": "HSC/Prog",
+    "T": "T other",
+    "T_cell": "T other",
+    "CTL": "CD8+ T",
+    "B": "B cell",
+    "B_cell": "B cell",
+    "ProB": "B cell",
+    "NK": "NK",
+    "Mono": "Monocyte",
+    "Monocyte": "Monocyte",
+    "Macrophage": "Monocyte",
+    "Myeloid": "Monocyte",
+    "Neutrophil": "Monocyte",
+    "cDC": "DC",
+    "cDC-like": "DC",
+    "Dendritic": "DC",
+    "Plasma": "Plasma",
+    "lateEry": "Erythroid",
+    "earlyEry": "Erythroid",
+    "Erythroid": "Erythroid",
+    "Platelet": "Platelet",
+    "Normal": "Other",
+    "Malignant_AML": "Other",
+    "Unknown": "Other",
+    # -- CAR-T (cell_type from marker-based annotation) --
+    "CD4+ T naive": "CD4+ T",
+    "CD4+ T memory": "CD4+ T",
+    "CD4+ T effector": "CD4+ T",
+    "CD8+ T naive": "CD8+ T",
+    "CD8+ T memory": "CD8+ T",
+    "CD8+ T effector": "CD8+ T",
+    "CD8+ T exhausted": "CD8+ T",
+    "T proliferating": "T other",
+    "gdT cell": "T other",
+    "NK CD56bright": "NK",
+    "NK CD56dim": "NK",
+    "ILC": "Other",
+    "Monocyte classical": "Monocyte",
+    "Monocyte intermediate": "Monocyte",
+    "Monocyte non-classical": "Monocyte",
+    "cDC1": "DC",
+    "cDC2": "DC",
+    "B naive": "B cell",
+    "B memory": "B cell",
+    "HSC/MPP": "HSC/Prog",
+}
+
+# Canonical display order for harmonized cell types.
+HARMONIZED_CELLTYPE_ORDER = [
+    "CD4+ T", "CD8+ T", "Treg", "T other", "NK", "B cell", "Plasma",
+    "Monocyte", "DC", "Erythroid", "Platelet", "HSC/Prog", "Other",
+]
+
+
+def harmonize_celltype(label: str) -> str:
+    """Map a dataset-specific cell-type label to the shared vocabulary."""
+    return _CELLTYPE_MAP.get(label, "Other")
 
 
 def dfo_sort_key(label: str) -> tuple[int, int]:

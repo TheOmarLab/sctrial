@@ -29,6 +29,7 @@ import scanpy as sc
 import seaborn as sns
 
 from .._shared import (
+    HARMONIZED_CELLTYPE_ORDER,
     SUPP_OUTPUT,
     apply_style,
     clear_cache,
@@ -36,6 +37,7 @@ from .._shared import (
     get_sade_feldman,
     get_stephenson,
     get_vaccine,
+    harmonize_celltype,
     harmonize_response,
     load_clinical_trial_dataset,
     save_panel,
@@ -244,19 +246,19 @@ def _panel_umap_group_grid(fig, axes, loaded: dict):
 def _panel_ct_proportions(ax, loaded: dict):
     """Stacked horizontal bars: cell-type proportion per dataset."""
     ds_names = list(loaded.keys())
-    all_cts = set()
-    ct_fracs = {}
+    ct_fracs: dict[str, dict[str, float]] = {}
 
     for name in ds_names:
         ct_col = loaded[name]["ct_col"]
         if ct_col is None:
             ct_fracs[name] = {}
             continue
-        cts = loaded[name]["adata"].obs[ct_col].astype(str).value_counts(normalize=True)
+        raw = loaded[name]["adata"].obs[ct_col].astype(str).map(harmonize_celltype)
+        cts = raw.value_counts(normalize=True)
         ct_fracs[name] = cts.to_dict()
-        all_cts.update(cts.index)
 
-    all_cts_sorted = sorted(all_cts)
+    all_cts_sorted = [c for c in HARMONIZED_CELLTYPE_ORDER
+                      if any(c in ct_fracs.get(n, {}) for n in ds_names)]
     palette = _build_ct_palette(all_cts_sorted)
 
     y_pos = np.arange(len(ds_names))
@@ -280,7 +282,7 @@ def _panel_ct_proportions(ax, loaded: dict):
     ax.set_title("Cell-Type Proportions", fontweight="bold")
 
     # Legend for top cell types
-    top_cts = sorted(all_cts, key=lambda ct: sum(
+    top_cts = sorted(all_cts_sorted, key=lambda ct: sum(
         ct_fracs.get(n, {}).get(ct, 0) for n in ds_names), reverse=True)[:15]
     handles = [mpatches.Patch(facecolor=palette[ct], edgecolor="none",
                               label=ct) for ct in top_cts]
@@ -539,15 +541,16 @@ def _panel_silhouette(ax, loaded: dict):
 # ── Panel F: Cell type × dataset cross-tabulation ─────────────────
 
 def _panel_ct_crosstab(ax, loaded: dict):
-    """Heatmap: cell type × dataset (normalised within dataset)."""
+    """Heatmap: harmonised cell type × dataset (normalised within dataset)."""
     rows = []
     for name, data in loaded.items():
         ct_col = data["ct_col"]
         if ct_col is None:
             continue
-        cts = data["adata"].obs[ct_col].astype(str).value_counts(normalize=True)
+        harmonised = data["adata"].obs[ct_col].astype(str).map(harmonize_celltype)
+        cts = harmonised.value_counts(normalize=True)
         for ct, frac in cts.items():
-            rows.append({"Dataset": name, "Cell type": str(ct),
+            rows.append({"Dataset": name, "Cell type": ct,
                          "Fraction": frac})
 
     if not rows:
@@ -557,19 +560,16 @@ def _panel_ct_crosstab(ax, loaded: dict):
 
     df = pd.DataFrame(rows)
     pivot = df.pivot_table(index="Cell type", columns="Dataset",
-                           values="Fraction", fill_value=0)
+                           values="Fraction", aggfunc="sum", fill_value=0)
 
-    # Sort by total frequency
-    pivot = pivot.loc[pivot.sum(axis=1).sort_values(ascending=False).index]
-
-    # Limit to top 15
-    if len(pivot) > 15:
-        pivot = pivot.iloc[:15]
+    # Sort by canonical order, keep only present types
+    order = [c for c in HARMONIZED_CELLTYPE_ORDER if c in pivot.index]
+    pivot = pivot.loc[order]
 
     sns.heatmap(pivot, cmap="YlOrBr", annot=True, fmt=".2f",
                 linewidths=0.5, ax=ax, vmin=0, vmax=pivot.values.max(),
                 cbar_kws={"label": "Fraction", "shrink": 0.7})
-    ax.set_title("Cell-Type × Dataset", fontweight="bold")
+    ax.set_title("Cell-Type × Dataset (harmonised)", fontweight="bold")
     ax.set_ylabel("")
     ax.set_xlabel("")
     despine(ax)
@@ -578,15 +578,16 @@ def _panel_ct_crosstab(ax, loaded: dict):
 # ── Panel G: Cells per cell type per dataset ──────────────────────
 
 def _panel_cells_per_ct(ax, loaded: dict):
-    """Grouped bars: cell count per cell type per dataset (log-scale)."""
+    """Grouped bars: cell count per harmonised cell type per dataset (log)."""
     rows = []
     for name, data in loaded.items():
         ct_col = data["ct_col"]
         if ct_col is None:
             continue
-        cts = data["adata"].obs[ct_col].astype(str).value_counts()
+        harmonised = data["adata"].obs[ct_col].astype(str).map(harmonize_celltype)
+        cts = harmonised.value_counts()
         for ct, cnt in cts.items():
-            rows.append({"Dataset": name, "Cell type": str(ct), "Count": cnt})
+            rows.append({"Dataset": name, "Cell type": ct, "Count": cnt})
 
     if not rows:
         ax.text(0.5, 0.5, "No data", ha="center", va="center",
@@ -595,16 +596,16 @@ def _panel_cells_per_ct(ax, loaded: dict):
 
     df = pd.DataFrame(rows)
 
-    # Top 10 cell types by total count
-    top_cts = df.groupby("Cell type")["Count"].sum().nlargest(10).index.tolist()
-    df_filt = df[df["Cell type"].isin(top_cts)]
+    # Use canonical order, keep only present types
+    present = df.groupby("Cell type")["Count"].sum()
+    top_cts = [c for c in HARMONIZED_CELLTYPE_ORDER if c in present.index]
 
     ds_names = [n for n in loaded.keys() if loaded[n]["ct_col"] is not None]
 
     x = np.arange(len(top_cts))
     width = 0.15
     for di, ds in enumerate(ds_names):
-        sub = df_filt[df_filt["Dataset"] == ds].set_index("Cell type")
+        sub = df[df["Dataset"] == ds].set_index("Cell type")
         vals = [sub.loc[ct, "Count"] if ct in sub.index else 0 for ct in top_cts]
         offset = (di - (len(ds_names) - 1) / 2) * width
         ax.bar(x + offset, vals, width * 0.9, label=ds,
@@ -614,7 +615,7 @@ def _panel_cells_per_ct(ax, loaded: dict):
     ax.set_xticklabels(top_cts, rotation=45, ha="right", fontsize=6)
     ax.set_ylabel("Cell count")
     ax.set_yscale("log")
-    ax.set_title("Cells per Cell Type", fontweight="bold")
+    ax.set_title("Cells per Cell Type (harmonised)", fontweight="bold")
     ax.legend(fontsize=6, loc="upper right", frameon=True)
     despine(ax)
 

@@ -31,6 +31,7 @@ import seaborn as sns
 
 from .._shared import (
     COLORS,
+    HARMONIZED_CELLTYPE_ORDER,
     SUPP_OUTPUT,
     apply_style,
     clear_cache,
@@ -38,6 +39,7 @@ from .._shared import (
     get_sade_feldman,
     get_stephenson,
     get_vaccine,
+    harmonize_celltype,
     harmonize_response,
     load_clinical_trial_dataset,
     save_panel,
@@ -508,7 +510,8 @@ def _panel_baseline_ct_by_arm(ax, loaded: dict):
 
         for a in sorted(sub[arm].dropna().unique()):
             a_sub = sub[sub[arm] == a]
-            ct_frac = a_sub[ct].astype(str).value_counts(normalize=True)
+            mapped = a_sub[ct].astype(str).map(harmonize_celltype)
+            ct_frac = mapped.value_counts(normalize=True)
             for c, f in ct_frac.items():
                 rows.append({"Dataset": name, "Arm": str(a),
                              "Cell type": str(c), "Fraction": f})
@@ -526,15 +529,14 @@ def _panel_baseline_ct_by_arm(ax, loaded: dict):
     df["Group"] = df["Dataset"] + "\n" + df["Arm"]
     groups = sorted(df["Group"].unique())
 
-    # Get all cell types and build palette
-    all_cts = sorted(df["Cell type"].unique())
+    # Use canonical ordering; keep only types present in data
+    present = set(df["Cell type"].unique())
+    all_cts = [c for c in HARMONIZED_CELLTYPE_ORDER if c in present]
+    # Append any labels not in the canonical list (shouldn't happen)
+    for c in sorted(present - set(all_cts)):
+        all_cts.append(c)
     n_ct = len(all_cts)
-    if n_ct <= 10:
-        pal = sns.color_palette("tab10", n_ct)
-    elif n_ct <= 20:
-        pal = sns.color_palette("tab20", n_ct)
-    else:
-        pal = sns.color_palette("husl", n_ct)
+    pal = sns.color_palette("tab20", max(n_ct, 1))
     ct_palette = dict(zip(all_cts, pal))
 
     y_pos = np.arange(len(groups))
