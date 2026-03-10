@@ -9,11 +9,11 @@ Panels:
   A  Q-Q plots of model residuals (faceted, one per dataset).
   B  Residual vs fitted values (multi-dataset overlay).
   C  Influence diagnostics: Cook's distance per dataset.
-  D  Parallel trends: pre-treatment arm means per feature.
+  D  Baseline diagnostics: arm means (two-arm) / pre-post means (single-arm).
   E  Calibration of observed effects against permutation null.
-  F  Normality and homoscedasticity tests (summary table).
+  F  Residual normality diagnostics (Shapiro-Wilk, skewness, kurtosis).
   G  Funnel plot: effect size vs standard error.
-  H  Baseline gene detection by arm (technical confounder check).
+  H  Heteroscedasticity diagnostics (Breusch-Pagan test).
 
 Non-overlap guardrail: no sensitivity analysis (→ SF4), no cross-dataset
 biological concordance (→ SF5), no heterogeneity (→ SF6).
@@ -712,116 +712,68 @@ def _panel_funnel(ax, results: dict[str, dict]):
     despine(ax)
 
 
-# ── Baseline helpers (for Panel H) ─────────────────────────────────
+# ── Panel H: Heteroscedasticity diagnostics ────────────────────────
 
 
-def _arm_col(obs):
-    for c in ("response", "severity", "therapy", "condition"):
-        if c in obs.columns and obs[c].nunique() > 1:
-            return c
-    return None
-
-
-def _visit_col_detect(obs):
-    for c in ("visit", "Collection_Day", "dfo_bin", "timepoint"):
-        if c in obs.columns and obs[c].nunique() > 1:
-            return c
-    return None
-
-
-def _get_ngenes(adata) -> np.ndarray:
-    obs = adata.obs
-    for col in ("n_genes_by_counts", "n_genes", "n_genes_detected"):
-        if col in obs.columns:
-            return np.asarray(obs[col], dtype=float)
-    import scipy.sparse as sp
-    for layer in ("counts", "tpm", "cpm"):
-        if layer in adata.layers:
-            X = adata.layers[layer]
-            if sp.issparse(X):
-                return np.asarray((X > 0).sum(axis=1), dtype=float).ravel()
-            return np.asarray((X > 0).sum(axis=1), dtype=float).ravel()
-    return np.full(adata.n_obs, np.nan)
-
-
-_BASELINE_DATASETS = [
-    ("Sade-Feldman", get_sade_feldman),
-    ("Stephenson", get_stephenson),
-    ("Vaccine", get_vaccine),
-    ("AML", lambda: load_clinical_trial_dataset("aml")),
-    ("CAR-T", lambda: load_clinical_trial_dataset("cart")),
-]
-
-
-def _load_baseline_data():
-    loaded = {}
-    for name, loader in _BASELINE_DATASETS:
-        try:
-            adata = loader()
-            if name == "Sade-Feldman":
-                adata = harmonize_response(adata)
-            obs = adata.obs
-            vis = _visit_col_detect(obs)
-            arm = _arm_col(obs)
-            loaded[name] = {
-                "adata": adata,
-                "visit_col": vis,
-                "arm_col": arm,
-            }
-        except Exception as exc:
-            print(f"  baseline {name}: failed ({exc})")
-    return loaded
-
-
-def _panel_baseline_ngenes(ax, baseline_loaded: dict):
-    """H: Violins of genes detected per cell at baseline, split by arm."""
+def _panel_heteroscedasticity(ax, results: dict[str, dict]):
+    """H: Breusch-Pagan test for residual homoscedasticity per dataset."""
     rows = []
-    for name, data in baseline_loaded.items():
-        obs = data["adata"].obs
-        vis = data["visit_col"]
-        arm = data["arm_col"]
-        ngenes = _get_ngenes(data["adata"])
+    for name, res in results.items():
+        rdf = res["residuals"]
+        vals = rdf["residual"].dropna().values
+        fitted = rdf["fitted"].dropna().values
+        if len(vals) < 8 or len(fitted) < 8:
+            continue
+        # Align lengths
+        n = min(len(vals), len(fitted))
+        vals, fitted = vals[:n], fitted[:n]
 
-        if vis and arm:
-            pre_mask = obs[vis].astype(str).str.lower().isin(
-                ["pre", "baseline", "d0", "day0", "0"])
-            if pre_mask.sum() < 50:
+        # Manual Breusch-Pagan: regress squared residuals on fitted values
+        sq_resid = vals ** 2
+        X_bp = np.column_stack([np.ones(n), fitted])
+        try:
+            beta_bp = np.linalg.lstsq(X_bp, sq_resid, rcond=None)[0]
+            sq_resid_hat = X_bp @ beta_bp
+            ss_reg = np.sum((sq_resid_hat - sq_resid.mean()) ** 2)
+            ss_tot = np.sum((sq_resid - sq_resid.mean()) ** 2)
+            if ss_tot == 0:
                 continue
-            arms = obs.loc[pre_mask, arm].astype(str).values
-            ng = ngenes[pre_mask.values]
-        elif arm:
-            arms = obs[arm].astype(str).values
-            ng = ngenes
-        else:
-            # No arm column: show all cells as single group
-            arms = np.full(len(ngenes), "All")
-            ng = ngenes
+            r2_bp = ss_reg / ss_tot
+            bp_stat = n * r2_bp  # chi-squared(1) under H0
+            bp_p = 1.0 - stats.chi2.cdf(bp_stat, df=1)
+        except Exception:
+            continue
 
-        for a in sorted(set(arms)):
-            mask = arms == a
-            rows.append(pd.DataFrame({
-                "Dataset": name, "Arm": a, "Genes": ng[mask],
-            }))
+        rows.append({
+            "Dataset": name,
+            "BP stat": bp_stat,
+            "BP p": bp_p,
+        })
 
     if not rows:
-        ax.text(0.5, 0.5, "No baseline data", ha="center", va="center",
-                transform=ax.transAxes, fontsize=10, fontstyle="italic")
-        ax.set_title("Baseline Gene Detection by Arm", fontweight="bold")
+        ax.text(0.5, 0.5, "No test results", ha="center", va="center",
+                transform=ax.transAxes)
         return
 
-    df = pd.concat(rows, ignore_index=True)
-    ds_order = [n for n in baseline_loaded.keys()
-                if n in df["Dataset"].unique()]
+    df = pd.DataFrame(rows)
+    y = np.arange(len(df))
+    colors = [_DS_PALETTE.get(n, "grey") for n in df["Dataset"]]
 
-    sns.violinplot(data=df, x="Dataset", y="Genes", hue="Arm",
-                   order=ds_order, cut=0, inner="quartile", linewidth=0.5,
-                   palette="Dark2", density_norm="width", ax=ax)
-    ax.set_xlabel("")
-    ax.set_ylabel("Genes detected per cell")
-    ax.set_title("Baseline Gene Detection by Arm", fontweight="bold")
-    ax.legend(fontsize=6, title="Arm", title_fontsize=7, loc="upper right",
-              frameon=True, ncol=2)
-    ax.tick_params(axis="x", rotation=15)
+    ax.barh(y, df["BP stat"], color=colors, edgecolor="white",
+            height=0.6, alpha=0.85)
+    for i, (_, row) in enumerate(df.iterrows()):
+        pval_str = f"p={row['BP p']:.2e}" if row["BP p"] < 0.001 else f"p={row['BP p']:.3f}"
+        label = f"BP={row['BP stat']:.2f}, {pval_str}"
+        ax.text(row["BP stat"] + 0.05, i, label, va="center",
+                fontsize=7, fontweight="bold")
+
+    ax.set_yticks(y)
+    ax.set_yticklabels(df["Dataset"], fontsize=9)
+    ax.set_xlabel("Breusch-Pagan test statistic")
+    ax.set_title("Heteroscedasticity Diagnostics", fontweight="bold")
+    ax.axvline(3.84, color="red", ls="--", lw=0.8, alpha=0.7,
+               label="χ²(1) = 3.84 (α=0.05)")
+    ax.legend(fontsize=7, frameon=True)
     despine(ax)
 
 
@@ -864,7 +816,7 @@ def generate():
     fig.tight_layout()
     save_panel(fig, "panel_C", FIGURE_NAME, SUPP_OUTPUT)
 
-    # D: Parallel trends (faceted)
+    # D: Baseline diagnostics (faceted)
     ncols_pt = min(n_ds, 3)
     nrows_pt = max(1, (n_ds + ncols_pt - 1) // ncols_pt)
     fig, axes = plt.subplots(
@@ -874,8 +826,8 @@ def generate():
         axes = np.array([axes])
     _panel_parallel_trends(fig, axes, results)
     fig.suptitle(
-        "Parallel Trends: Pre-Treatment Arm Means",
-        fontweight="bold", y=1.02,
+        "Baseline Diagnostics: Arm Means (two-arm) / Pre-Post Means (single-arm)",
+        fontweight="bold", y=1.02, fontsize=11,
     )
     fig.tight_layout()
     save_panel(fig, "panel_D", FIGURE_NAME, SUPP_OUTPUT)
@@ -886,7 +838,7 @@ def generate():
     fig.tight_layout()
     save_panel(fig, "panel_E", FIGURE_NAME, SUPP_OUTPUT)
 
-    # F: Normality and homoscedasticity tests
+    # F: Residual normality diagnostics
     fig, ax = plt.subplots(figsize=(10.0, 4.8))
     _panel_normality_tests(ax, results)
     fig.tight_layout()
@@ -898,17 +850,11 @@ def generate():
     fig.tight_layout()
     save_panel(fig, "panel_G", FIGURE_NAME, SUPP_OUTPUT)
 
-    # H: Baseline gene detection by arm
-    baseline_loaded = _load_baseline_data()
-    if baseline_loaded:
-        fig, ax = plt.subplots(figsize=(9.0, 5.0))
-        _panel_baseline_ngenes(ax, baseline_loaded)
-        fig.tight_layout()
-        save_panel(fig, "panel_H", FIGURE_NAME, SUPP_OUTPUT)
-        for data in baseline_loaded.values():
-            if "adata" in data:
-                del data["adata"]
-        baseline_loaded.clear()
+    # H: Heteroscedasticity diagnostics (Breusch-Pagan)
+    fig, ax = plt.subplots(figsize=(10.0, 4.8))
+    _panel_heteroscedasticity(ax, results)
+    fig.tight_layout()
+    save_panel(fig, "panel_H", FIGURE_NAME, SUPP_OUTPUT)
 
     # Cleanup
     results.clear()

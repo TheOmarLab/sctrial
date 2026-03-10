@@ -400,7 +400,7 @@ def _panel_exhaustion_by_celltype(ax, data: dict[str, dict]):
         ct_col = next((c for c in [
             "cell_type", "celltype", "cell_type_annot",
             "CellType", "cell_type_original", "cell_label",
-            "leiden",
+            "clustnm", "leiden",
         ] if c in adata.obs.columns), None)
         ex_genes = [g for g in ex_genes_full if g in adata.var_names]
         if ct_col is None or len(ex_genes) < 2:

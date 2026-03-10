@@ -601,7 +601,7 @@ def _panel_baseline_pca(fig_parent, axes, loaded: dict):
         if has_visit:
             vis = data["visit_col"]
             pre_mask = obs[vis].astype(str).str.lower().isin(
-                ["pre", "baseline", "d0", "day0", "0"])
+                ["pre", "baseline", "d0", "day0", "0", "d000"])
             adata_pre = adata[pre_mask]
         else:
             adata_pre = adata  # use all cells
@@ -643,10 +643,10 @@ def _panel_baseline_pca(fig_parent, axes, loaded: dict):
                        c=[arm_palette[a]], s=3, alpha=0.5, label=a,
                        edgecolors="none", rasterized=True)
 
-        ax.set_title(f"{name} (baseline)", fontweight="bold", fontsize=9)
-        ax.set_xlabel("PC1", fontsize=7)
-        ax.set_ylabel("PC2", fontsize=7)
-        ax.legend(fontsize=5, loc="best", frameon=True)
+        ax.set_title(f"{name} (baseline)", fontweight="bold", fontsize=11)
+        ax.set_xlabel("PC1", fontsize=9)
+        ax.set_ylabel("PC2", fontsize=9)
+        ax.legend(fontsize=8, loc="best", frameon=True, markerscale=2.5)
         ax.set_xticks([])
         ax.set_yticks([])
         despine(ax)
@@ -654,9 +654,9 @@ def _panel_baseline_pca(fig_parent, axes, loaded: dict):
 
 # ── Panel H: Baseline cell-type composition by arm ───────────────
 
-def _panel_baseline_ct_by_arm(ax, loaded: dict):
-    """Stacked bars: baseline cell-type composition per arm per dataset."""
-    rows = []
+def _panel_baseline_ct_by_arm(fig_parent, loaded: dict):
+    """Parallel-categories plot: Dataset → Arm → Cell type (baseline)."""
+    frac_rows: list[dict] = []
     for name, data in loaded.items():
         obs = data["adata"].obs
         vis = data.get("visit_col")
@@ -674,55 +674,70 @@ def _panel_baseline_ct_by_arm(ax, loaded: dict):
         else:
             sub = obs
 
+        # Vectorised: build cell-type fractions per arm
+        mapped = sub[ct].astype(str).map(harmonize_celltype)
         for a in sorted(sub[arm].dropna().unique()):
-            a_sub = sub[sub[arm] == a]
-            mapped = a_sub[ct].astype(str).map(harmonize_celltype)
-            ct_frac = mapped.value_counts(normalize=True)
+            a_mask = sub[arm] == a
+            ct_frac = mapped[a_mask].value_counts(normalize=True)
             for c, f in ct_frac.items():
-                rows.append({"Dataset": name, "Arm": str(a),
-                             "Cell type": str(c), "Fraction": f})
+                frac_rows.append({"Dataset": name, "Arm": str(a),
+                                  "Cell type": str(c), "Fraction": f})
 
-    if not rows:
+    if not frac_rows:
+        ax = fig_parent.add_subplot(111)
         ax.text(0.5, 0.5, "No baseline cell-type data", ha="center",
                 va="center", transform=ax.transAxes, fontsize=10,
                 fontstyle="italic")
         ax.set_title("Baseline Cell-Type Composition", fontweight="bold")
         return
 
-    df = pd.DataFrame(rows)
+    df = pd.DataFrame(frac_rows)
 
-    df["Group"] = df["Dataset"] + "\n" + df["Arm"]
-    groups = sorted(df["Group"].unique())
-
+    # Build cell-type palette
     present = set(df["Cell type"].unique())
     all_cts = [c for c in HARMONIZED_CELLTYPE_ORDER if c in present]
     for c in sorted(present - set(all_cts)):
         all_cts.append(c)
-    n_ct = len(all_cts)
-    pal = sns.color_palette("tab20", max(n_ct, 1))
+    pal = sns.color_palette("tab20", max(len(all_cts), 1))
     ct_palette = dict(zip(all_cts, pal))
 
-    y_pos = np.arange(len(groups))
-    for gi, group in enumerate(groups):
-        gsub = df[df["Group"] == group]
+    # Build stacked horizontal bar
+    ds_arm_groups = sorted(
+        df[["Dataset", "Arm"]].drop_duplicates().values.tolist(),
+        key=lambda x: (x[0], x[1]),
+    )
+    ax = fig_parent.add_subplot(111)
+
+    y_pos = np.arange(len(ds_arm_groups))
+    for gi, (ds, arm_val) in enumerate(ds_arm_groups):
+        gsub = df[(df["Dataset"] == ds) & (df["Arm"] == arm_val)]
         left = 0.0
-        for ct in all_cts:
-            frac = gsub.loc[gsub["Cell type"] == ct, "Fraction"].sum()
+        for ct_name in all_cts:
+            frac = gsub.loc[gsub["Cell type"] == ct_name, "Fraction"].sum()
             if frac > 0:
-                ax.barh(gi, frac, left=left, height=0.6,
-                        color=ct_palette[ct], edgecolor="white",
-                        linewidth=0.2)
-                if frac > 0.04:
-                    ax.text(left + frac / 2, gi, ct, ha="center",
+                ax.barh(gi, frac, left=left, height=0.65,
+                        color=ct_palette[ct_name], edgecolor="white",
+                        linewidth=0.3)
+                if frac > 0.05:
+                    ax.text(left + frac / 2, gi, ct_name, ha="center",
                             va="center", fontsize=5.5, color="black",
                             fontweight="bold")
                 left += frac
 
     ax.set_yticks(y_pos)
-    ax.set_yticklabels(groups, fontsize=6)
+    ax.set_yticklabels([f"{ds}\n{arm_val}" for ds, arm_val in ds_arm_groups],
+                       fontsize=7)
     ax.set_xlim(0, 1)
-    ax.set_xlabel("Fraction of cells")
+    ax.set_xlabel("Fraction of cells", fontsize=9)
     ax.set_title("Baseline Cell-Type Composition by Arm", fontweight="bold")
+
+    # Legend for top cell types
+    top_cts = (df.groupby("Cell type")["Fraction"].sum()
+               .sort_values(ascending=False).head(12).index)
+    handles = [mpatches.Patch(facecolor=ct_palette[c], label=c)
+               for c in all_cts if c in top_cts]
+    ax.legend(handles=handles, fontsize=6, loc="lower right", frameon=True,
+              ncol=2, title="Cell type", title_fontsize=7)
     despine(ax)
 
 
@@ -809,19 +824,19 @@ def generate():
     ncols_bl = min(n_baseline, 3) if n_baseline > 0 else 1
     nrows_bl = max(1, (n_baseline + ncols_bl - 1) // ncols_bl)
     fig, axes = plt.subplots(nrows_bl, ncols_bl,
-                              figsize=(5 * ncols_bl, 4.5 * nrows_bl))
+                              figsize=(5.5 * ncols_bl, 5.0 * nrows_bl))
     if not hasattr(axes, "__iter__"):
         axes = [axes]
     else:
         axes = axes.ravel()
     _panel_baseline_pca(fig, axes, loaded)
-    fig.suptitle("Baseline PCA by Arm", fontweight="bold", y=1.02)
+    fig.suptitle("Baseline PCA by Arm", fontweight="bold", fontsize=13, y=1.02)
     fig.tight_layout()
     save_panel(fig, "panel_G", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel H: Baseline cell-type composition by arm
-    fig, ax = plt.subplots(figsize=(10, 6))
-    _panel_baseline_ct_by_arm(ax, loaded)
+    # Panel H: Baseline cell-type composition by arm (parallel categories)
+    fig = plt.figure(figsize=(11, 7))
+    _panel_baseline_ct_by_arm(fig, loaded)
     fig.tight_layout()
     save_panel(fig, "panel_H", FIGURE_NAME, SUPP_OUTPUT)
 

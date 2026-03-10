@@ -10,7 +10,7 @@ Panels:
   F  Cross-dataset SD bars.
   G  Cross-dataset heterogeneity scatter.
   H  Sade-Feldman within-arm change profile.
-  I  AML + CAR-T within-arm profile.
+  I  Single-arm datasets within-arm profile.
   J  Cross-dataset treated-arm fold-change concordance.
 """
 

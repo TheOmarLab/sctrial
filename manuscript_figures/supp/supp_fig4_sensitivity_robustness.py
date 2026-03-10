@@ -682,45 +682,51 @@ def _load_mde_data() -> dict[str, dict]:
 
 def _panel_mde(ax, mde_data: dict[str, dict]):
     """H: Power curves — minimum detectable effect vs sample size."""
+    # Filter out datasets with too few participants (< 3)
+    plot_data = {
+        name: info for name, info in mde_data.items()
+        if info["n_per_group"] >= 3
+    }
+    if not plot_data:
+        ax.text(0.5, 0.5, "No datasets with ≥3 participants",
+                ha="center", va="center", transform=ax.transAxes)
+        return
+
     # Determine grid range to include all observed n values
-    all_n = [info["n_per_group"] for info in mde_data.values() if info["n_per_group"] > 0]
-    n_max = max(max(all_n) + 10, 61) if all_n else 61
+    all_n = [info["n_per_group"] for info in plot_data.values()]
+    n_max = max(max(all_n) + 10, 61)
     n_grid = np.arange(3, n_max, 1)
 
-    for name, info in mde_data.items():
+    for name, info in plot_data.items():
         sigma = info["sigma"]
         if not np.isfinite(sigma) or sigma <= 0:
             sigma = 1.0
         paired = info.get("design", "two_arm") == "single_arm_paired"
+        color = _MDE_PALETTE.get(name, "grey")
         y = _mde_curve(n_grid, sigma, paired=paired)
         ls = "--" if paired else "-"
-        ax.plot(
-            n_grid, y, lw=1.8, ls=ls,
-            color=_MDE_PALETTE.get(name, "grey"), label=name,
-        )
+        ax.plot(n_grid, y, lw=2.0, ls=ls, color=color, label=name)
+
         n_actual = info["n_per_group"]
-        if n_actual >= 3:
-            mde_val = _mde_curve(np.array([n_actual]), sigma, paired=paired)[0]
-            ax.scatter(
-                [n_actual], [mde_val],
-                color=_MDE_PALETTE.get(name, "grey"),
-                edgecolors="black", zorder=5, s=60,
-                linewidth=1.0,
-            )
-            # Add label near dot
-            ax.annotate(
-                f"n={n_actual}",
-                (n_actual, mde_val),
-                textcoords="offset points",
-                xytext=(8, 5),
-                fontsize=6,
-                fontweight="bold",
-                color=_MDE_PALETTE.get(name, "grey"),
-            )
+        mde_val = _mde_curve(np.array([n_actual]), sigma, paired=paired)[0]
+        ax.scatter(
+            [n_actual], [mde_val],
+            color=color, edgecolors="black", zorder=5, s=70,
+            linewidth=1.0,
+        )
+        ax.annotate(
+            f"n={n_actual}",
+            (n_actual, mde_val),
+            textcoords="offset points",
+            xytext=(8, 5),
+            fontsize=7,
+            fontweight="bold",
+            color=color,
+        )
     ax.set_xlabel("Participants per group")
     ax.set_ylabel("Minimum detectable effect")
     ax.set_title("Power Curves: MDE vs Sample Size", fontweight="bold")
-    ax.legend(fontsize=8, frameon=True)
+    ax.legend(fontsize=8, frameon=True, loc="upper right")
     despine(ax)
 
 

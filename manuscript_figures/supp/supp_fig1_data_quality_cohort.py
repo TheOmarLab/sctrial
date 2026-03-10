@@ -234,11 +234,11 @@ def _load_all() -> dict:
     return loaded
 
 
-# ── Panel A: Study design summary table ──────────────────────────────
+# ── Panel A: Dataset overview bar chart ──────────────────────────────
 
 
-def _panel_design_table(ax, loaded: dict):
-    """Study design overview: cells, participants, visits per dataset."""
+def _panel_dataset_overview(ax, loaded: dict):
+    """Dataset overview bar chart: cells and participants per dataset."""
     ds_names = list(loaded.keys())
     n_cells = [loaded[n]["n_cells"] for n in ds_names]
     n_parts = [loaded[n]["n_participants"] for n in ds_names]
@@ -706,7 +706,7 @@ def generate():
 
     # Panel A: Study design summary table
     fig, ax = plt.subplots(figsize=(10, 4))
-    _panel_design_table(ax, loaded)
+    _panel_dataset_overview(ax, loaded)
     fig.tight_layout()
     save_panel(fig, "panel_A", FIGURE_NAME, SUPP_OUTPUT)
 
