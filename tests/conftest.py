@@ -10,6 +10,7 @@ from sctrial.design import TrialDesign
 def sample_adata():
     """Fixture to provide a more realistic trial AnnData object."""
     from scipy import sparse
+
     rng = np.random.default_rng(42)
     # Increase size: 20 participants, 100 genes
     n_p, n_g = 20, 100
@@ -19,14 +20,16 @@ def sample_adata():
     for i in range(n_p):
         arm = "Treated" if i < 10 else "Control"
         for v in visits:
-            obs_list.append({
-                "participant_id": f"P{i}",
-                "visit": v,
-                "arm": arm,
-                "celltype": "TypeA" if i % 2 == 0 else "TypeB",
-                "is_crossover": False,
-                "batch": f"B{i % 3}"
-            })
+            obs_list.append(
+                {
+                    "participant_id": f"P{i}",
+                    "visit": v,
+                    "arm": arm,
+                    "celltype": "TypeA" if i % 2 == 0 else "TypeB",
+                    "is_crossover": False,
+                    "batch": f"B{i % 3}",
+                }
+            )
 
     obs = pd.DataFrame(obs_list)
     # Poisson counts with some dropout and treatment effect for G0-G4 in Treated-V2
@@ -45,6 +48,7 @@ def sample_adata():
     # Store raw counts in a layer
     adata.layers["counts"] = adata.X.copy()
     return adata
+
 
 @pytest.fixture
 def trial_design():

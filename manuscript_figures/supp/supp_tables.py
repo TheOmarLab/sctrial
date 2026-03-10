@@ -11,33 +11,30 @@ Table 4  Clinical trial paired pre/post results (AML, CAR-T).
 from __future__ import annotations
 
 import gc
-import warnings
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
 from .._shared import (
-    GENE_SIGNATURES,
     CLINICAL_SIGNATURES,
+    GENE_SIGNATURES,
+    SCRIPT_DIR,
+    SCTRIAL_AVAILABLE,
     SIGNATURE_DISPLAY_NAMES,
     SUPP_OUTPUT,
-    SCRIPT_DIR,
     TrialDesign,
+    apply_style,
+    clear_cache,
     did_table,
-    within_arm_comparison,
     get_sade_feldman,
     get_stephenson,
     get_vaccine,
-    load_clinical_trial_dataset,
     harmonize_response,
-    score_signatures,
+    load_clinical_trial_dataset,
     score_clinical_signatures,
+    score_signatures,
     sig_display,
-    apply_style,
-    clear_cache,
-    dfo_sort_key,
-    SCTRIAL_AVAILABLE,
+    within_arm_comparison,
 )
 
 # ======================================================================

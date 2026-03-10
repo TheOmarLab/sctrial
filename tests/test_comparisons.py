@@ -10,6 +10,7 @@ def test_within_arm_comparison(sample_adata, trial_design):
     X = sample_adata.X.toarray()
     X[treated_v2_mask, 0] += 10.0
     from scipy import sparse
+
     sample_adata.X = sparse.csr_matrix(X)
 
     res = st.within_arm_comparison(
@@ -45,6 +46,7 @@ def test_within_arm_bootstrap(sample_adata, trial_design):
     X = sample_adata.X.toarray()
     X[treated_v2_mask, 0] += 10.0
     from scipy import sparse
+
     sample_adata.X = sparse.csr_matrix(X)
 
     res = st.within_arm_comparison(
@@ -88,6 +90,7 @@ def test_within_arm_bootstrap(sample_adata, trial_design):
 def test_within_arm_bootstrap_schema_consistency(sample_adata, trial_design):
     """Bootstrap columns follow the same naming pattern as did_table bootstrap."""
     from scipy import sparse
+
     X = sample_adata.X.toarray()
     mask = (sample_adata.obs["arm"] == "Treated") & (sample_adata.obs["visit"] == "V2")
     X[mask, 0] += 10.0
@@ -95,13 +98,21 @@ def test_within_arm_bootstrap_schema_consistency(sample_adata, trial_design):
 
     # Run with and without bootstrap
     res_plain = st.within_arm_comparison(
-        sample_adata, arm="Treated", features=["G0", "G1"],
-        design=trial_design, visits=("V1", "V2"),
+        sample_adata,
+        arm="Treated",
+        features=["G0", "G1"],
+        design=trial_design,
+        visits=("V1", "V2"),
     )
     res_boot = st.within_arm_comparison(
-        sample_adata, arm="Treated", features=["G0", "G1"],
-        design=trial_design, visits=("V1", "V2"),
-        use_bootstrap=True, n_boot=99, seed=0,
+        sample_adata,
+        arm="Treated",
+        features=["G0", "G1"],
+        design=trial_design,
+        visits=("V1", "V2"),
+        use_bootstrap=True,
+        n_boot=99,
+        seed=0,
     )
 
     # Plain result must NOT have bootstrap columns
@@ -114,21 +125,31 @@ def test_within_arm_bootstrap_schema_consistency(sample_adata, trial_design):
         assert col in res_boot.columns, f"Missing bootstrap column: {col}"
 
     # Both must share the same base columns
-    base_cols = ["feature", "beta_time", "se_time", "ci_lo_time", "ci_hi_time",
-                 "p_time", "n_units", "FDR_time"]
+    base_cols = [
+        "feature",
+        "beta_time",
+        "se_time",
+        "ci_lo_time",
+        "ci_hi_time",
+        "p_time",
+        "n_units",
+        "FDR_time",
+    ]
     for col in base_cols:
         assert col in res_plain.columns
         assert col in res_boot.columns
 
     # Point estimates must match (same data, same model)
     np.testing.assert_allclose(
-        res_plain["beta_time"].values, res_boot["beta_time"].values,
+        res_plain["beta_time"].values,
+        res_boot["beta_time"].values,
     )
 
 
 def test_within_arm_bootstrap_nan_feature(sample_adata, trial_design):
     """Zero-variance feature returns NaN rows even with bootstrap."""
     from scipy import sparse
+
     X = sample_adata.X.toarray()
     # Set feature G5 to constant across all Treated cells
     treated_mask = sample_adata.obs["arm"] == "Treated"
@@ -136,9 +157,13 @@ def test_within_arm_bootstrap_nan_feature(sample_adata, trial_design):
     sample_adata.X = sparse.csr_matrix(X)
 
     res = st.within_arm_comparison(
-        sample_adata, arm="Treated", features=["G5"],
-        design=trial_design, visits=("V1", "V2"),
-        use_bootstrap=True, n_boot=99,
+        sample_adata,
+        arm="Treated",
+        features=["G5"],
+        design=trial_design,
+        visits=("V1", "V2"),
+        use_bootstrap=True,
+        n_boot=99,
     )
     assert len(res) == 1
     assert np.isnan(res.iloc[0]["beta_time"])
@@ -150,9 +175,7 @@ def test_within_arm_bootstrap_nondefault_index(sample_adata, trial_design):
     from scipy import sparse
 
     # Add signal
-    treated_v2_mask = (sample_adata.obs["arm"] == "Treated") & (
-        sample_adata.obs["visit"] == "V2"
-    )
+    treated_v2_mask = (sample_adata.obs["arm"] == "Treated") & (sample_adata.obs["visit"] == "V2")
     X = sample_adata.X.toarray()
     X[treated_v2_mask, 0] += 10.0
 
@@ -187,12 +210,13 @@ def test_within_arm_bootstrap_nondefault_index(sample_adata, trial_design):
 
 def test_between_arm_comparison(sample_adata, trial_design):
     # Add some signal for Treated group in V2
-    v2_mask = (sample_adata.obs["visit"] == "V2")
-    treated_mask = (sample_adata.obs["arm"] == "Treated")
+    v2_mask = sample_adata.obs["visit"] == "V2"
+    treated_mask = sample_adata.obs["arm"] == "Treated"
 
     X = sample_adata.X.toarray()
     X[v2_mask & treated_mask, 0] += 10.0
     from scipy import sparse
+
     sample_adata.X = sparse.csr_matrix(X)
 
     res = st.between_arm_comparison(
@@ -223,12 +247,13 @@ def test_between_arm_comparison(sample_adata, trial_design):
 
 def test_between_arm_wilcoxon_has_se_ci(sample_adata, trial_design):
     """Wilcoxon method should also return SE and CI columns."""
-    v2_mask = (sample_adata.obs["visit"] == "V2")
-    treated_mask = (sample_adata.obs["arm"] == "Treated")
+    v2_mask = sample_adata.obs["visit"] == "V2"
+    treated_mask = sample_adata.obs["arm"] == "Treated"
 
     X = sample_adata.X.toarray()
     X[v2_mask & treated_mask, 0] += 10.0
     from scipy import sparse
+
     sample_adata.X = sparse.csr_matrix(X)
 
     res = st.between_arm_comparison(

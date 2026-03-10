@@ -121,9 +121,7 @@ def test_treatment_heterogeneity(
     grp_cols = [design.participant_col, design.visit_col, design.arm_col]
     use_cols = list(final_features) + ["biomarker_high", "arm_bin"]
     df_use = (
-        obs_feat.groupby(grp_cols, observed=True)[use_cols]
-        .mean(numeric_only=True)
-        .reset_index()
+        obs_feat.groupby(grp_cols, observed=True)[use_cols].mean(numeric_only=True).reset_index()
     )
     df_use = encode_visit(df_use, design.visit_col, visits)
     unit = design.participant_col

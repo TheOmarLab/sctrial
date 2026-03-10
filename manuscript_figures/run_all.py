@@ -13,25 +13,22 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import sys
 import time
 import traceback
-from pathlib import Path
 
-from ._shared import apply_style, MAIN_OUTPUT, SUPP_OUTPUT
-
+from ._shared import MAIN_OUTPUT, SUPP_OUTPUT, apply_style
 
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
 
 MAIN_FIGURES = {
-    1: ("Figure 1: Problem & Framework",       "main.figure1_problem_framework"),
-    2: ("Figure 2: Immunotherapy DiD",          "main.figure2_immunotherapy_did"),
-    3: ("Figure 3: Multi-Dataset Generalization","main.figure3_multi_dataset"),
-    4: ("Figure 4: Statistical Robustness",     "main.figure4_statistical_robustness"),
-    5: ("Figure 5: Biological Discovery",       "main.figure5_biological_discovery"),
-    6: ("Figure 6: Scalability & Power",        "main.figure6_scalability_power"),
+    1: ("Figure 1: Problem & Framework", "main.figure1_problem_framework"),
+    2: ("Figure 2: Melanoma Analysis", "main.figure2_melanoma_analysis"),
+    3: ("Figure 3: Multi-Dataset Generalization", "main.figure3_multi_dataset"),
+    4: ("Figure 4: Robustness & Benchmarking", "main.figure4_robustness_benchmarking"),
+    5: ("Figure 5: Biological Discovery", "main.figure5_biological_discovery"),
+    6: ("Figure 6: Validation & Dynamics", "main.figure6_validation_dynamics"),
 }
 
 SUPP_TABLES = {
@@ -39,15 +36,12 @@ SUPP_TABLES = {
 }
 
 SUPP_FIGURES = {
-    1: ("Supp Fig 1: QC Metrics",              "supp.supp_fig1_qc"),
-    2: ("Supp Fig 2: Aggregation Sensitivity",  "supp.supp_fig2_aggregation"),
-    3: ("Supp Fig 3: Clinical Trial Details",    "supp.supp_fig3_clinical"),
-    4: ("Supp Fig 4: UMAP",                     "supp.supp_fig4_umap"),
-    5: ("Supp Fig 5: Outcome Correlation",       "supp.supp_fig5_outcome"),
-    6: ("Supp Fig 6: Robustness Details",        "supp.supp_fig6_robustness_details"),
-    7: ("Supp Fig 7: Biological Details",        "supp.supp_fig7_bio_details"),
-    8: ("Supp Fig 8: Individual Heterogeneity",  "supp.supp_fig8_heterogeneity"),
-    9: ("Supp Fig 9: Temporal Dynamics",         "supp.supp_fig9_temporal"),
+    1: ("Supp Fig 1: Data Quality and Cohort Characterisation", "supp.supp_fig1_data_quality_cohort"),
+    2: ("Supp Fig 2: Cell Annotation and Baseline Comparability", "supp.supp_fig2_annotation_baseline"),
+    3: ("Supp Fig 3: Model Diagnostics and Assumption Checks", "supp.supp_fig3_model_diagnostics"),
+    4: ("Supp Fig 4: Sensitivity and Robustness", "supp.supp_fig4_sensitivity_robustness"),
+    5: ("Supp Fig 5: Cross-Dataset Biological Consistency", "supp.supp_fig5_cross_dataset_biology"),
+    6: ("Supp Fig 6: Participant Heterogeneity and Temporal Dynamics", "supp.supp_fig6_heterogeneity_temporal"),
 }
 
 
@@ -75,6 +69,7 @@ def _run(label: str, module_path: str) -> bool:
 # ---------------------------------------------------------------------------
 # Entry points
 # ---------------------------------------------------------------------------
+
 
 def run_main(figures: list[int] | None = None):
     """Generate main figures (all or a subset)."""
@@ -141,6 +136,7 @@ def run_all():
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
+
 
 def main():
     parser = argparse.ArgumentParser(description="Generate manuscript figures")

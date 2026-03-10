@@ -128,7 +128,7 @@ def pseudobulk_expression(
         df_sum["n_cells"] = n_cells.astype(int)
 
     totals = df_sum["total_counts"].to_numpy(dtype=float).reshape(-1, 1)
-    zero_mask = (totals.ravel() == 0)
+    zero_mask = totals.ravel() == 0
     if zero_mask.any():
         n_dropped = int(zero_mask.sum())
         logger.warning(
@@ -308,9 +308,11 @@ def pseudobulk_did(
 
         # paired participants: check visit presence using row counts (not a
         # single gene) so that pairing is consistent across all genes.
-        visit_counts = df_pool.groupby(
-            [design.participant_col, design.visit_col], observed=True
-        ).size().unstack(fill_value=0)
+        visit_counts = (
+            df_pool.groupby([design.participant_col, design.visit_col], observed=True)
+            .size()
+            .unstack(fill_value=0)
+        )
         has_v0 = visit_counts.get(visits[0], pd.Series(0, index=visit_counts.index)) > 0
         has_v1 = visit_counts.get(visits[1], pd.Series(0, index=visit_counts.index)) > 0
         keep = visit_counts.index[has_v0 & has_v1]
@@ -415,7 +417,9 @@ def pseudobulk_within_arm(
     deltas = []
     for ct in pb[celltype_col].unique():
         sub = pb[pb[celltype_col] == ct].copy()
-        wide = sub.pivot_table(index=participant_col, columns=visit_col, aggfunc="size", fill_value=0, observed=True)
+        wide = sub.pivot_table(
+            index=participant_col, columns=visit_col, aggfunc="size", fill_value=0, observed=True
+        )
         keep = wide[(wide.get(visits[0], 0) > 0) & (wide.get(visits[1], 0) > 0)].index
         sub = sub[sub[participant_col].isin(keep)].copy()
         if sub[participant_col].nunique() < min_paired:
@@ -426,12 +430,14 @@ def pseudobulk_within_arm(
                 continue
             delta = (w[visits[1]] - w[visits[0]]).dropna()
             for pid, dv in delta.items():
-                deltas.append({
-                    "celltype": ct,
-                    "feature": g,
-                    "participant_id": pid,
-                    "delta": float(dv),
-                })
+                deltas.append(
+                    {
+                        "celltype": ct,
+                        "feature": g,
+                        "participant_id": pid,
+                        "delta": float(dv),
+                    }
+                )
             if len(delta) < min_paired:
                 p_val = np.nan
             else:
@@ -439,14 +445,16 @@ def pseudobulk_within_arm(
                     _, p_val = wilcoxon(delta.values)
                 except (ValueError, TypeError):
                     p_val = np.nan
-            rows.append({
-                "celltype": ct,
-                "feature": g,
-                "n_units": int(len(delta)),
-                "mean_delta": float(delta.mean()) if len(delta) else np.nan,
-                "median_delta": float(delta.median()) if len(delta) else np.nan,
-                "p_time": float(p_val),
-            })
+            rows.append(
+                {
+                    "celltype": ct,
+                    "feature": g,
+                    "n_units": int(len(delta)),
+                    "mean_delta": float(delta.mean()) if len(delta) else np.nan,
+                    "median_delta": float(delta.median()) if len(delta) else np.nan,
+                    "p_time": float(p_val),
+                }
+            )
 
     summary = pd.DataFrame(rows)
     if not summary.empty:

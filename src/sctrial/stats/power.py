@@ -43,6 +43,7 @@ Key Considerations for Single-Cell Studies
 4. **Effect size uncertainty**: Use pilot data or published studies to estimate
    expected effect sizes. Be conservative.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -321,7 +322,7 @@ def sample_size_did(
 
     # Base sample size formula for DiD
     # n = 4σ²(z_α + z_β)² / δ²
-    n_base = 4 * (sigma ** 2) * ((z_alpha + z_beta) ** 2) / (effect_size ** 2)
+    n_base = 4 * (sigma**2) * ((z_alpha + z_beta) ** 2) / (effect_size**2)
 
     # Apply design effect
     if icc > 0 and cluster_size > 1:
@@ -380,10 +381,9 @@ def power_curve(
     >>> plt.show()
     """
     ns = np.linspace(n_range[0], n_range[1], n_points).astype(int)
-    powers = np.array([
-        power_did(n, effect_size, sigma, alpha, icc=icc, cluster_size=cluster_size)
-        for n in ns
-    ])
+    powers = np.array(
+        [power_did(n, effect_size, sigma, alpha, icc=icc, cluster_size=cluster_size) for n in ns]
+    )
     return ns, powers
 
 

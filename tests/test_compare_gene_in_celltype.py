@@ -13,11 +13,13 @@ def test_compare_gene_in_celltype_basic():
     expr = []
     for pid, grp in zip(participants, groups):
         for _ in range(n_cells_per_participant):
-            obs_rows.append({
-                "participant_id": pid,
-                "group": grp,
-                "celltype": "T",
-            })
+            obs_rows.append(
+                {
+                    "participant_id": pid,
+                    "group": grp,
+                    "celltype": "T",
+                }
+            )
             expr.append(10.0 if grp == "RECeT" else 1.0)
 
     obs = pd.DataFrame(obs_rows)

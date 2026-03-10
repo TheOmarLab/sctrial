@@ -244,8 +244,10 @@ def wild_cluster_bootstrap_t(
         and ``boot_distribution``.
     """
     _nan_result = BootstrapResult(
-        p_boot=np.nan, se_boot=np.nan,
-        ci_lo=np.nan, ci_hi=np.nan,
+        p_boot=np.nan,
+        se_boot=np.nan,
+        ci_lo=np.nan,
+        ci_hi=np.nan,
         boot_distribution=np.array([], dtype=float),
     )
 
@@ -289,13 +291,9 @@ def wild_cluster_bootstrap_t(
 
         cov_kwds = {"groups": clusters} if cov_type == "cluster" else None
         if use_wls:
-            fit_b = sm.WLS(y_star, X, weights=weights).fit(
-                cov_type=cov_type, cov_kwds=cov_kwds
-            )
+            fit_b = sm.WLS(y_star, X, weights=weights).fit(cov_type=cov_type, cov_kwds=cov_kwds)
         else:
-            fit_b = sm.OLS(y_star, X).fit(
-                cov_type=cov_type, cov_kwds=cov_kwds
-            )
+            fit_b = sm.OLS(y_star, X).fit(cov_type=cov_type, cov_kwds=cov_kwds)
 
         beta_b = fit_b.params.iloc[j]
         se_b = fit_b.bse.iloc[j]

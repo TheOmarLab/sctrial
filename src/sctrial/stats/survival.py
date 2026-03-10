@@ -124,7 +124,9 @@ def hazard_regression_with_features(
 
     results = []
     for feat in feat_cols:
-        df_model = df_part[[time_col, event_col, feat] + (list(covariates) if covariates else [])].dropna()
+        df_model = df_part[
+            [time_col, event_col, feat] + (list(covariates) if covariates else [])
+        ].dropna()
         if df_model.shape[0] < 5:
             results.append({"feature": feat, "HR": np.nan, "p": np.nan, "n": df_model.shape[0]})
             continue

@@ -4,6 +4,7 @@ Covers: score_gene_sets (zmean, mean, sparse, dense, validation,
 dedup, non-finite, overwrite, min_genes warnings) and
 score_gene_sets_aucell (import guard only — pyscenic not available).
 """
+
 from __future__ import annotations
 
 import logging
@@ -20,6 +21,7 @@ import sctrial as st
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_adata(n_cells: int = 10, n_genes: int = 5, *, sparse: bool = False) -> AnnData:
     """Small AnnData with known values for deterministic tests."""
     rng = np.random.default_rng(42)
@@ -34,6 +36,7 @@ def _make_adata(n_cells: int = 10, n_genes: int = 5, *, sparse: bool = False) ->
 # ===================================================================
 # Input Validation
 # ===================================================================
+
 
 class TestValidation:
     """Input validation for score_gene_sets."""
@@ -96,6 +99,7 @@ class TestValidation:
 # Core Scoring — zmean
 # ===================================================================
 
+
 class TestZmean:
     """Tests for the zmean scoring method."""
 
@@ -142,6 +146,7 @@ class TestZmean:
 # Core Scoring — mean
 # ===================================================================
 
+
 class TestMean:
     """Tests for the mean scoring method."""
 
@@ -171,6 +176,7 @@ class TestMean:
 # ===================================================================
 # Duplicate Gene Handling
 # ===================================================================
+
 
 class TestDuplicateGenes:
     """P2 #2: Duplicate genes should be deduplicated."""
@@ -218,6 +224,7 @@ class TestDuplicateGenes:
 # min_genes Threshold & Warnings
 # ===================================================================
 
+
 class TestMinGenes:
     """P2 #1: min_genes threshold and warning logging."""
 
@@ -262,6 +269,7 @@ class TestMinGenes:
 # Overwrite Behaviour
 # ===================================================================
 
+
 class TestOverwrite:
     """overwrite parameter."""
 
@@ -282,6 +290,7 @@ class TestOverwrite:
 # Prefix
 # ===================================================================
 
+
 class TestPrefix:
     """prefix parameter."""
 
@@ -301,13 +310,16 @@ class TestPrefix:
 # Layer
 # ===================================================================
 
+
 class TestLayer:
     """layer parameter."""
 
     def test_uses_specified_layer(self):
         adata = _make_adata()
         adata.layers["norm"] = adata.X * 2
-        st.score_gene_sets(adata, {"S": ["G0", "G1", "G2"]}, layer="norm", method="mean", min_genes=1)
+        st.score_gene_sets(
+            adata, {"S": ["G0", "G1", "G2"]}, layer="norm", method="mean", min_genes=1
+        )
         # Score from layer should be ~2x the score from X
         st.score_gene_sets(adata, {"S_x": ["G0", "G1", "G2"]}, method="mean", min_genes=1)
         # Not exact because zmean normalizes, use mean for this test
@@ -324,6 +336,7 @@ class TestLayer:
 # ===================================================================
 # Non-Finite Expression Values
 # ===================================================================
+
 
 class TestNonFinite:
     """P3 #4: Non-finite values in expression data are excluded (not just warned)."""
@@ -400,6 +413,7 @@ class TestNonFinite:
 # Multiple Gene Sets
 # ===================================================================
 
+
 class TestMultipleSets:
     """Multiple gene sets in one call."""
 
@@ -429,12 +443,12 @@ class TestMultipleSets:
 # AUCell (import guard)
 # ===================================================================
 
+
 class TestAucell:
     """score_gene_sets_aucell — test import guard only."""
 
     def test_import_error_when_pyscenic_missing(self):
-        with patch("sctrial.scoring.create_rankings", None), \
-             patch("sctrial.scoring.aucell", None):
+        with patch("sctrial.scoring.create_rankings", None), patch("sctrial.scoring.aucell", None):
             adata = _make_adata()
             with pytest.raises(ImportError, match="pyscenic"):
                 st.score_gene_sets_aucell(adata, {"S": ["G0"]})

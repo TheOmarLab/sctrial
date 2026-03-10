@@ -17,7 +17,7 @@ from .did import MIN_CLUSTERS_FOR_ROBUST_SE
 def abundance_did(
     adata: AnnData,
     design: TrialDesign,
-    visits: tuple[str,str],
+    visits: tuple[str, str],
     exclude_crossovers: bool = True,
     transform: str = "arcsin_sqrt",
     min_units: int = 5,
@@ -106,15 +106,11 @@ def abundance_did(
 
     # We need to preserve covariates. Covariates are usually participant-level or participant-visit level.
     # If they are participant-level, they are constant for all cells of a participant.
-    counts = (
-        obs
-        .groupby(grp_cols, observed=True)
-        .size()
-        .reset_index(name="n_cells")
-    )
+    counts = obs.groupby(grp_cols, observed=True).size().reset_index(name="n_cells")
     totals = (
-        counts
-        .groupby([design.participant_col, design.visit_col, design.arm_col], observed=True)["n_cells"]
+        counts.groupby([design.participant_col, design.visit_col, design.arm_col], observed=True)[
+            "n_cells"
+        ]
         .sum()
         .reset_index(name="total_cells")
     )
@@ -130,7 +126,9 @@ def abundance_did(
         how="right",
     )
     counts["n_cells"] = counts["n_cells"].fillna(0)
-    counts = counts.merge(totals, on=[design.participant_col, design.visit_col, design.arm_col], how="left")
+    counts = counts.merge(
+        totals, on=[design.participant_col, design.visit_col, design.arm_col], how="left"
+    )
     counts["total_cells"] = counts["total_cells"].fillna(0)
     counts["prop"] = counts["n_cells"] / counts["total_cells"].clip(lower=1)
 
@@ -141,11 +139,11 @@ def abundance_did(
         counts = counts.merge(cov_df, on=[design.participant_col, design.visit_col], how="left")
 
     if transform == "arcsin_sqrt":
-        y = np.arcsin(np.sqrt(counts["prop"].clip(0,1)))
+        y = np.arcsin(np.sqrt(counts["prop"].clip(0, 1)))
         counts["y"] = y
     elif transform == "logit":
-        p = counts["prop"].clip(1e-6, 1-1e-6)
-        counts["y"] = np.log(p/(1-p))
+        p = counts["prop"].clip(1e-6, 1 - 1e-6)
+        counts["y"] = np.log(p / (1 - p))
     else:
         counts["y"] = counts["prop"]
 
@@ -163,9 +161,7 @@ def abundance_did(
         aggfunc="mean",
         observed=True,
     )
-    paired_units = wide_tot[
-        wide_tot[visits[0]].notna() & wide_tot[visits[1]].notna()
-    ].index
+    paired_units = wide_tot[wide_tot[visits[0]].notna() & wide_tot[visits[1]].notna()].index
 
     for ct in sorted(counts[design.celltype_col].unique()):
         tmp = counts[counts[design.celltype_col] == ct].copy()
@@ -188,10 +184,8 @@ def abundance_did(
         # to avoid collinearity with participant fixed effects.
         use_diff = False
         if covariates:
-            per_unit = (
-                tmp
-                .groupby(design.participant_col, observed=True)[covariates]
-                .nunique(dropna=False)
+            per_unit = tmp.groupby(design.participant_col, observed=True)[covariates].nunique(
+                dropna=False
             )
             use_diff = bool((per_unit.max(axis=0) <= 1).all())
 
@@ -255,8 +249,7 @@ def abundance_did(
                 term = "arm_bin"
             else:
                 fit = model.fit(
-                    cov_type="cluster",
-                    cov_kwds={"groups": tmp[design.participant_col]}
+                    cov_type="cluster", cov_kwds={"groups": tmp[design.participant_col]}
                 )
                 term = "visit_num:arm_bin"
 
@@ -284,7 +277,7 @@ def abundance_did(
                     clusters=clusters_aligned,
                     term_name=term,
                     B=n_boot,
-                    seed=seed
+                    seed=seed,
                 )
                 p_val = boot_res.p_boot
                 se_boot = boot_res.se_boot
@@ -367,10 +360,18 @@ def abundance_did(
                 continue
 
     if not rows:
-        return pd.DataFrame(columns=[
-            "celltype", "n_participants", "beta_DiD", "se_DiD",
-            "p_DiD", "beta_time", "p_time", "FDR_DiD"
-        ])
+        return pd.DataFrame(
+            columns=[
+                "celltype",
+                "n_participants",
+                "beta_DiD",
+                "se_DiD",
+                "p_DiD",
+                "beta_time",
+                "p_time",
+                "FDR_DiD",
+            ]
+        )
 
     res = pd.DataFrame(rows).sort_values("p_DiD")
     res = apply_fdr(res, p_col="p_DiD", fdr_col="FDR_DiD")

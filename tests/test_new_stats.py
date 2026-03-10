@@ -6,6 +6,7 @@ import sctrial as st
 
 try:
     import matplotlib.pyplot as plt
+
     HAS_MATPLOTLIB = True
 except ImportError:
     HAS_MATPLOTLIB = False
@@ -21,22 +22,26 @@ def test_bootstrap_did(sample_adata, trial_design):
         visits=("V1", "V2"),
         use_bootstrap=True,
         n_boot=10,
-        seed=42
+        seed=42,
     )
     assert "p_DiD" in res.columns
     assert res["p_DiD"].notna().all()
 
+
 @pytest.mark.skipif(not HAS_MATPLOTLIB, reason="matplotlib not installed")
 def test_forest_plot():
-    df = pd.DataFrame({
-        "feature": ["G1", "G2", "G3"],
-        "beta_DiD": [0.5, -0.2, 0.8],
-        "se_DiD": [0.1, 0.1, 0.2],
-        "p_DiD": [0.01, 0.1, 0.001]
-    })
+    df = pd.DataFrame(
+        {
+            "feature": ["G1", "G2", "G3"],
+            "beta_DiD": [0.5, -0.2, 0.8],
+            "se_DiD": [0.1, 0.1, 0.2],
+            "p_DiD": [0.01, 0.1, 0.001],
+        }
+    )
     ax = st.plot_did_forest(df)
     assert isinstance(ax, plt.Axes)
     plt.close()
+
 
 @pytest.mark.skipif(not HAS_MATPLOTLIB, reason="matplotlib not installed")
 def test_within_arm_plot(sample_adata, trial_design):
@@ -46,10 +51,11 @@ def test_within_arm_plot(sample_adata, trial_design):
         feature="G0",
         design=trial_design,
         visits=("V1", "V2"),
-        plot_type="paired"
+        plot_type="paired",
     )
     assert isinstance(ax, plt.Axes)
     plt.close()
+
 
 def test_abundance_did_bootstrap(sample_adata, trial_design):
     # Create a dummy dataset with enough cells for abundance
@@ -65,18 +71,15 @@ def test_abundance_did_bootstrap(sample_adata, trial_design):
                 rows.append({"participant_id": pid, "visit": v, "arm": arm, "celltype": "B"})
     obs = pd.DataFrame(rows)
     from anndata import AnnData
+
     adata = AnnData(X=np.zeros((len(obs), 1)), obs=obs)
 
     res = st.abundance_did(
-        adata,
-        design=trial_design,
-        visits=("V1", "V2"),
-        use_bootstrap=True,
-        n_boot=10,
-        min_units=2
+        adata, design=trial_design, visits=("V1", "V2"), use_bootstrap=True, n_boot=10, min_units=2
     )
     assert "p_DiD" in res.columns
     assert len(res) > 0
+
 
 @pytest.mark.skipif(not HAS_MATPLOTLIB, reason="matplotlib not installed")
 def test_trial_umap(sample_adata, trial_design):

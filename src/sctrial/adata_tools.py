@@ -38,8 +38,7 @@ def _to_bool_series(s: pd.Series) -> pd.Series:
         n_nonfinite = int(s.isna().sum() + np.isinf(s.fillna(0)).sum())
         if n_nonfinite > 0:
             logger.warning(
-                "%d non-finite value(s) (NaN/inf) in boolean column '%s'; "
-                "treating as False.",
+                "%d non-finite value(s) (NaN/inf) in boolean column '%s'; treating as False.",
                 n_nonfinite,
                 s.name,
             )
@@ -55,10 +54,10 @@ def _to_bool_series(s: pd.Series) -> pd.Series:
 
 
 def subset_primary(
-        adata: AnnData,
-        design: TrialDesign,
-        visits: tuple[str, str],
-        exclude_crossovers: bool = True,
+    adata: AnnData,
+    design: TrialDesign,
+    visits: tuple[str, str],
+    exclude_crossovers: bool = True,
 ) -> AnnData:
     """Subset AnnData to the primary (baseline, followup) visits.
 
@@ -88,12 +87,12 @@ def subset_primary(
 
 
 def subset_cells(
-        adata: AnnData,
-        design: TrialDesign,
-        arm: str | None = None,
-        visit: str | None = None,
-        celltype: str | None = None,
-        exclude_crossovers: bool = False,
+    adata: AnnData,
+    design: TrialDesign,
+    arm: str | None = None,
+    visit: str | None = None,
+    celltype: str | None = None,
+    exclude_crossovers: bool = False,
 ) -> AnnData:
     """General-purpose subsetting helper by arm/visit/celltype (+ optional crossover exclusion).
 
@@ -138,13 +137,13 @@ def subset_cells(
     mask = np.ones(obs.shape[0], dtype=bool)
 
     if arm is not None:
-        mask &= (obs[design.arm_col].to_numpy() == arm)
+        mask &= obs[design.arm_col].to_numpy() == arm
 
     if visit is not None:
-        mask &= (obs[design.visit_col].to_numpy() == visit)
+        mask &= obs[design.visit_col].to_numpy() == visit
 
     if celltype is not None:
-        mask &= (obs[design.celltype_col].to_numpy() == celltype)
+        mask &= obs[design.celltype_col].to_numpy() == celltype
 
     if exclude_crossovers and design.crossover_col:
         cross = _to_bool_series(obs[design.crossover_col]).to_numpy(dtype=bool)

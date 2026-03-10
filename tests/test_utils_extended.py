@@ -1,4 +1,5 @@
 """Extended tests for utility functions."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -95,10 +96,7 @@ class TestEnsureUniqueIndex:
 
     def test_ensure_unique_index_with_duplicates_mean(self):
         """Test deduplication using mean aggregation."""
-        df = pd.DataFrame(
-            {"A": [1, 2, 3, 4], "B": [5, 6, 7, 8]},
-            index=["a", "b", "a", "b"]
-        )
+        df = pd.DataFrame({"A": [1, 2, 3, 4], "B": [5, 6, 7, 8]}, index=["a", "b", "a", "b"])
         result = ensure_unique_index(df, agg="mean")
         assert result.index.is_unique
         assert len(result) == 2
@@ -107,10 +105,7 @@ class TestEnsureUniqueIndex:
 
     def test_ensure_unique_index_with_duplicates_sum(self):
         """Test deduplication using sum aggregation."""
-        df = pd.DataFrame(
-            {"A": [1, 2, 3, 4]},
-            index=["a", "b", "a", "b"]
-        )
+        df = pd.DataFrame({"A": [1, 2, 3, 4]}, index=["a", "b", "a", "b"])
         result = ensure_unique_index(df, agg="sum")
         assert result.index.is_unique
         assert result.loc["a", "A"] == 4  # sum of 1 and 3
@@ -201,7 +196,7 @@ class TestResolveFeature:
         adata = AnnData(
             X=np.random.rand(10, 5),
             obs=pd.DataFrame({"CellType": ["A", "B"] * 5}),
-            var=pd.DataFrame(index=[f"Gene{i}" for i in range(5)])
+            var=pd.DataFrame(index=[f"Gene{i}" for i in range(5)]),
         )
         assert resolve_feature(adata, "CellType") == "CellType"
 
@@ -210,7 +205,7 @@ class TestResolveFeature:
         adata = AnnData(
             X=np.random.rand(10, 5),
             obs=pd.DataFrame({"CellType": ["A", "B"] * 5}),
-            var=pd.DataFrame(index=["CD3D", "CD8A", "CD4", "FOXP3", "IL2"])
+            var=pd.DataFrame(index=["CD3D", "CD8A", "CD4", "FOXP3", "IL2"]),
         )
         assert resolve_feature(adata, "CD3D") == "CD3D"
 
@@ -219,16 +214,13 @@ class TestResolveFeature:
         adata = AnnData(
             X=np.random.rand(10, 5),
             obs=pd.DataFrame({"CellType": ["A", "B"] * 5}),
-            var=pd.DataFrame(index=[f"Gene{i}" for i in range(5)])
+            var=pd.DataFrame(index=[f"Gene{i}" for i in range(5)]),
         )
         assert resolve_feature(adata, "celltype") == "CellType"
 
     def test_resolve_feature_case_insensitive_var(self):
         """Test case-insensitive matching in var."""
-        adata = AnnData(
-            X=np.random.rand(10, 2),
-            var=pd.DataFrame(index=["CD3D", "CD8A"])
-        )
+        adata = AnnData(X=np.random.rand(10, 2), var=pd.DataFrame(index=["CD3D", "CD8A"]))
         assert resolve_feature(adata, "cd3d") == "CD3D"
 
     def test_resolve_feature_not_found(self):
@@ -243,7 +235,7 @@ class TestResolveFeature:
         adata = AnnData(
             X=np.random.rand(10, 2),
             obs=pd.DataFrame({"score": [1.0, 2.0] * 5}),
-            var=pd.DataFrame(index=["Score", "Other"])
+            var=pd.DataFrame(index=["Score", "Other"]),
         )
         # Try querying with "score" - should prefer exact match in obs
         result = resolve_feature(adata, "score")
@@ -254,7 +246,7 @@ class TestResolveFeature:
         adata = AnnData(
             X=np.random.rand(10, 5),
             obs=pd.DataFrame({"Score": [1.0, 2.0] * 5}),
-            var=pd.DataFrame(index=["Gene1", "Gene2", "Gene3", "Gene4", "Gene5"])
+            var=pd.DataFrame(index=["Gene1", "Gene2", "Gene3", "Gene4", "Gene5"]),
         )
         # Should return exact match
         assert resolve_feature(adata, "Score") == "Score"

@@ -60,16 +60,21 @@ except ImportError:
 
 try:
     import scanpy as sc  # type: ignore[no-redef]
-except (ImportError, RuntimeError, OSError) as e:  # ImportError or runtime errors (e.g., numba cache)
+except (
+    ImportError,
+    RuntimeError,
+    OSError,
+) as e:  # ImportError or runtime errors (e.g., numba cache)
     _scanpy_import_error = e
 
+
 def did_volcano_frame(
-        df: pd.DataFrame,
-        *,
-        effect_col: str = "beta_DiD",
-        p_col: str = "p_DiD",
-        out_col: str = "neglog10p",
-        p_floor: float = 1e-300,
+    df: pd.DataFrame,
+    *,
+    effect_col: str = "beta_DiD",
+    p_col: str = "p_DiD",
+    out_col: str = "neglog10p",
+    p_floor: float = 1e-300,
 ) -> pd.DataFrame:
     """Return a copy with an added -log10(p) column for volcano plots.
 
@@ -196,11 +201,15 @@ def plot_trial_interaction(
     # Aggregate to participant-level means to avoid pseudoreplication
     # (Zimmerman et al., 2021; Squair et al., 2021)
     obs = (
-        obs.groupby([design.participant_col, design.arm_col, design.visit_col], observed=True)[feature]
+        obs.groupby([design.participant_col, design.arm_col, design.visit_col], observed=True)[
+            feature
+        ]
         .mean()
         .reset_index()
     )
-    obs[design.visit_col] = pd.Categorical(obs[design.visit_col], categories=list(visits), ordered=True)
+    obs[design.visit_col] = pd.Categorical(
+        obs[design.visit_col], categories=list(visits), ordered=True
+    )
 
     if ax is None:
         fig, ax = plt.subplots(figsize=(5, 4))
@@ -272,11 +281,15 @@ def plot_parallel_trends(
     # Aggregate to participant-level means to avoid pseudoreplication
     # (Zimmerman et al., 2021; Squair et al., 2021)
     obs = (
-        obs.groupby([design.participant_col, design.arm_col, design.visit_col], observed=True)[feature]
+        obs.groupby([design.participant_col, design.arm_col, design.visit_col], observed=True)[
+            feature
+        ]
         .mean()
         .reset_index()
     )
-    obs[design.visit_col] = pd.Categorical(obs[design.visit_col], categories=list(visits), ordered=True)
+    obs[design.visit_col] = pd.Categorical(
+        obs[design.visit_col], categories=list(visits), ordered=True
+    )
 
     if ax is None:
         fig, ax = plt.subplots(figsize=(5, 4))
@@ -397,7 +410,7 @@ def plot_did_forest(
         fmt="o",
         color="gray",
         label=f"p >= {alpha}" if sig.any() else None,
-        capsize=3
+        capsize=3,
     )
 
     # Significant points
@@ -409,7 +422,7 @@ def plot_did_forest(
             fmt="o",
             color="firebrick",
             label=f"p < {alpha}",
-            capsize=3
+            capsize=3,
         )
 
     ax.set_yticks(y_pos)
@@ -466,6 +479,7 @@ def plot_within_arm_comparison(
             "Install with: pip install sctrial[plots]"
         )
     from .adata_tools import subset_cells
+
     ad = subset_cells(adata, design, arm=arm)
     ad = ad[ad.obs[design.visit_col].isin(visits)].copy()
 
@@ -475,18 +489,28 @@ def plot_within_arm_comparison(
     else:
         obs[feature] = extract_gene_vector(ad, feature, layer=layer)
 
-    obs[design.visit_col] = pd.Categorical(obs[design.visit_col], categories=list(visits), ordered=True)
+    obs[design.visit_col] = pd.Categorical(
+        obs[design.visit_col], categories=list(visits), ordered=True
+    )
 
     if ax is None:
         fig, ax = plt.subplots(figsize=(4, 5))
 
     # Aggregate to participant-visit means to avoid pseudoreplication
     # (Zimmerman et al., 2021; Squair et al., 2021)
-    obs_agg = obs.groupby([design.participant_col, design.visit_col], observed=True)[feature].mean().reset_index()
-    obs_agg[design.visit_col] = pd.Categorical(obs_agg[design.visit_col], categories=list(visits), ordered=True)
+    obs_agg = (
+        obs.groupby([design.participant_col, design.visit_col], observed=True)[feature]
+        .mean()
+        .reset_index()
+    )
+    obs_agg[design.visit_col] = pd.Categorical(
+        obs_agg[design.visit_col], categories=list(visits), ordered=True
+    )
 
     if plot_type == "box":
-        sns.boxplot(data=obs_agg, x=design.visit_col, y=feature, ax=ax, palette="Set2", showfliers=False)
+        sns.boxplot(
+            data=obs_agg, x=design.visit_col, y=feature, ax=ax, palette="Set2", showfliers=False
+        )
         sns.stripplot(data=obs_agg, x=design.visit_col, y=feature, ax=ax, color="black", alpha=0.3)
     elif plot_type == "paired":
         df_paired = obs_agg
@@ -498,7 +522,16 @@ def plot_within_arm_comparison(
                 ax.plot(tmp[design.visit_col], tmp[feature], color="gray", alpha=0.5, linewidth=1)
 
         # Plot points
-        sns.stripplot(data=df_paired, x=design.visit_col, y=feature, hue=design.visit_col, ax=ax, palette="Set2", size=6, legend=False)
+        sns.stripplot(
+            data=df_paired,
+            x=design.visit_col,
+            y=feature,
+            hue=design.visit_col,
+            ax=ax,
+            palette="Set2",
+            size=6,
+            legend=False,
+        )
 
     ax.set_title(f"{arm}: {feature}")
     sns.despine(ax=ax)
@@ -542,8 +575,7 @@ def plot_trial_umap(
     """
     if plt is None:
         raise ImportError(
-            "matplotlib is required for plotting. "
-            "Install with: pip install sctrial[plots]"
+            "matplotlib is required for plotting. Install with: pip install sctrial[plots]"
         )
     if visits is None:
         visits = design.primary_visits()
@@ -578,12 +610,16 @@ def plot_trial_umap(
                         vmax=vmax,
                         cmap=cmap,
                         title=f"{arm} - {visit}",
-                        frameon=False
+                        frameon=False,
                     )
                 else:
                     if "X_umap" not in sub.obsm:
                         raise KeyError("UMAP coordinates not found in adata.obsm['X_umap'].")
-                    vals_sub = sub.obs[feature].values if feature in sub.obs.columns else extract_gene_vector(sub, feature, layer=layer)
+                    vals_sub = (
+                        sub.obs[feature].values
+                        if feature in sub.obs.columns
+                        else extract_gene_vector(sub, feature, layer=layer)
+                    )
                     ax.scatter(
                         sub.obsm["X_umap"][:, 0],
                         sub.obsm["X_umap"][:, 1],
@@ -642,10 +678,10 @@ def plot_gsea_radar(
     """
     if plt is None:
         raise ImportError(
-            "matplotlib is required for plotting. "
-            "Install with: pip install sctrial[plots]"
+            "matplotlib is required for plotting. Install with: pip install sctrial[plots]"
         )
     from math import pi
+
     df_term = gsea_results[gsea_results[term_col].str.contains(term, case=False, na=False)]
     if df_term.empty:
         raise ValueError(f"Term '{term}' not found in results.")
@@ -668,7 +704,7 @@ def plot_gsea_radar(
     values += values[:1]
 
     fig, ax = plt.subplots(figsize=figsize, subplot_kw=dict(polar=True))
-    ax.plot(angles, values, linewidth=2, linestyle='solid')
+    ax.plot(angles, values, linewidth=2, linestyle="solid")
     ax.fill(angles, values, alpha=0.3)
 
     ax.set_xticks(angles[:-1])
@@ -726,9 +762,7 @@ def plot_trial_dotplot(
             + (f" (scanpy import failed: {_scanpy_import_error})" if _scanpy_import_error else "")
         )
     if design.celltype_col is None:
-        raise ValueError(
-            "TrialDesign.celltype_col must be set for plot_trial_dotplot."
-        )
+        raise ValueError("TrialDesign.celltype_col must be set for plot_trial_dotplot.")
 
     ad = adata.copy()
     if visits:
@@ -736,9 +770,7 @@ def plot_trial_dotplot(
 
     # Create combined variable
     ad.obs["_ct_arm"] = (
-        ad.obs[design.celltype_col].astype(str) +
-        "_" +
-        ad.obs[design.arm_col].astype(str)
+        ad.obs[design.celltype_col].astype(str) + "_" + ad.obs[design.arm_col].astype(str)
     )
 
     # Sorting
@@ -763,7 +795,7 @@ def plot_trial_dotplot(
         use_raw=use_raw,
         standard_scale=standard_scale,
         color_map=cmap,
-        **kwargs
+        **kwargs,
     )
 
 
@@ -804,14 +836,27 @@ def plot_abundance_interaction(
     if visits is None:
         visits = design.primary_visits()
 
-    obs = adata.obs[[design.participant_col, design.arm_col, design.visit_col, design.celltype_col]].copy()
+    obs = adata.obs[
+        [design.participant_col, design.arm_col, design.visit_col, design.celltype_col]
+    ].copy()
     obs = obs[obs[design.visit_col].isin(list(visits))].copy()
 
     # Calculate proportions per participant-visit, ensuring true zeros are
     # represented (a participant with no cells of a given type has proportion 0,
     # not a missing row).
-    counts = obs.groupby([design.participant_col, design.visit_col, design.arm_col, design.celltype_col], observed=True).size().reset_index(name="n")
-    totals = obs.groupby([design.participant_col, design.visit_col], observed=True).size().reset_index(name="total")
+    counts = (
+        obs.groupby(
+            [design.participant_col, design.visit_col, design.arm_col, design.celltype_col],
+            observed=True,
+        )
+        .size()
+        .reset_index(name="n")
+    )
+    totals = (
+        obs.groupby([design.participant_col, design.visit_col], observed=True)
+        .size()
+        .reset_index(name="total")
+    )
     counts = pd.merge(counts, totals, on=[design.participant_col, design.visit_col], how="right")
     counts["n"] = counts["n"].fillna(0)
     counts["prop"] = counts["n"] / counts["total"]
@@ -819,11 +864,20 @@ def plot_abundance_interaction(
     # Filter for specific celltype — use merge to keep participant-visits
     # that have zero cells of this type (they won't appear in counts after
     # groupby, so we need to fill them in).
-    pv_arm = obs.groupby([design.participant_col, design.visit_col, design.arm_col], observed=True).size().reset_index(name="_n").drop(columns="_n")
+    pv_arm = (
+        obs.groupby([design.participant_col, design.visit_col, design.arm_col], observed=True)
+        .size()
+        .reset_index(name="_n")
+        .drop(columns="_n")
+    )
     ct_counts = counts[counts[design.celltype_col] == celltype].copy()
-    df_plot = pd.merge(pv_arm, ct_counts, on=[design.participant_col, design.visit_col, design.arm_col], how="left")
+    df_plot = pd.merge(
+        pv_arm, ct_counts, on=[design.participant_col, design.visit_col, design.arm_col], how="left"
+    )
     df_plot["prop"] = df_plot["prop"].fillna(0.0)
-    df_plot[design.visit_col] = pd.Categorical(df_plot[design.visit_col], categories=list(visits), ordered=True)
+    df_plot[design.visit_col] = pd.Categorical(
+        df_plot[design.visit_col], categories=list(visits), ordered=True
+    )
 
     if ax is None:
         fig, ax = plt.subplots(figsize=(5, 4))
@@ -885,8 +939,7 @@ def plot_trial_umap_panel(
     """
     if plt is None or GridSpec is None:
         raise ImportError(
-            "matplotlib is required for plotting. "
-            "Install with: pip install sctrial[plots]"
+            "matplotlib is required for plotting. Install with: pip install sctrial[plots]"
         )
     if visits is None:
         visits = design.primary_visits()
@@ -908,7 +961,14 @@ def plot_trial_umap_panel(
     ax_big = fig.add_subplot(gs[:, 0])
     if design.celltype_col and design.celltype_col in ad.obs.columns:
         if sc is not None:
-            sc.pl.umap(ad, color=design.celltype_col, ax=ax_big, show=False, frameon=False, title="Cell Types")
+            sc.pl.umap(
+                ad,
+                color=design.celltype_col,
+                ax=ax_big,
+                show=False,
+                frameon=False,
+                title="Cell Types",
+            )
         else:
             if "X_umap" not in ad.obsm:
                 raise KeyError("UMAP coordinates not found in adata.obsm['X_umap'].")
@@ -956,13 +1016,24 @@ def plot_trial_umap_panel(
         if sub.n_obs > 0:
             if sc is not None:
                 sc.pl.umap(
-                    sub, color=feature, ax=ax, show=False, frameon=False,
-                    vmin=vmin, vmax=vmax, cmap=cmap, title=f"{arm} - {visit}"
+                    sub,
+                    color=feature,
+                    ax=ax,
+                    show=False,
+                    frameon=False,
+                    vmin=vmin,
+                    vmax=vmax,
+                    cmap=cmap,
+                    title=f"{arm} - {visit}",
                 )
             else:
                 if "X_umap" not in sub.obsm:
                     raise KeyError("UMAP coordinates not found in adata.obsm['X_umap'].")
-                vals_sub = sub.obs[feature].values if feature in sub.obs.columns else extract_gene_vector(sub, feature, layer=layer)
+                vals_sub = (
+                    sub.obs[feature].values
+                    if feature in sub.obs.columns
+                    else extract_gene_vector(sub, feature, layer=layer)
+                )
                 ax.scatter(
                     sub.obsm["X_umap"][:, 0],
                     sub.obsm["X_umap"][:, 1],
@@ -1162,7 +1233,9 @@ def plot_gsea_heatmap(
     mat = mat.astype(float)
 
     plt.figure(figsize=figsize)
-    ax = sns.heatmap(mat, cmap="RdBu_r", center=0, linewidths=0.5, linecolor="gray", cbar_kws={"label": "NES"})
+    ax = sns.heatmap(
+        mat, cmap="RdBu_r", center=0, linewidths=0.5, linecolor="gray", cbar_kws={"label": "NES"}
+    )
 
     if title is None:
         title = f"GSEA NES Heatmap: {collection if collection else 'Top Pathways'}"

@@ -16,6 +16,7 @@ from sctrial.adata_tools import _require_cols, _to_bool_series
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_trial_adata(
     n: int = 6,
     *,
@@ -33,12 +34,14 @@ def _make_trial_adata(
     if celltypes is None:
         celltypes = (["A", "B"] * ((n + 1) // 2))[:n]
 
-    obs = pd.DataFrame({
-        "arm": arms[:n],
-        "visit": visits[:n],
-        "celltype": celltypes[:n],
-        "participant_id": [f"P{i}" for i in range(n)],
-    })
+    obs = pd.DataFrame(
+        {
+            "arm": arms[:n],
+            "visit": visits[:n],
+            "celltype": celltypes[:n],
+            "participant_id": [f"P{i}" for i in range(n)],
+        }
+    )
     if crossover is not None:
         obs["is_crossover"] = crossover[:n]
 
@@ -52,8 +55,8 @@ def _make_trial_adata(
 # _require_cols
 # ---------------------------------------------------------------------------
 
-class TestRequireCols:
 
+class TestRequireCols:
     def test_all_present(self):
         obs = pd.DataFrame({"a": [1], "b": [2]})
         _require_cols(obs, ["a", "b"])  # should not raise
@@ -71,6 +74,7 @@ class TestRequireCols:
 # ---------------------------------------------------------------------------
 # _to_bool_series
 # ---------------------------------------------------------------------------
+
 
 class TestToBoolSeries:
     """Test all conversion paths of _to_bool_series."""
@@ -153,8 +157,8 @@ class TestToBoolSeries:
 # subset_primary
 # ---------------------------------------------------------------------------
 
-class TestSubsetPrimary:
 
+class TestSubsetPrimary:
     def test_basic_visit_filter(self):
         ad = _make_trial_adata(6, visits=["V1", "V2", "V3", "V1", "V2", "V3"])
         design = st.TrialDesign(visit_col="visit")
@@ -165,53 +169,41 @@ class TestSubsetPrimary:
     def test_crossover_exclusion_true(self):
         ad = _make_trial_adata(4, crossover=[False, True, False, False])
         design = st.TrialDesign(visit_col="visit", crossover_col="is_crossover")
-        result = st.subset_primary(
-            ad, design, visits=("V1", "V2"), exclude_crossovers=True
-        )
+        result = st.subset_primary(ad, design, visits=("V1", "V2"), exclude_crossovers=True)
         assert len(result) == 3
 
     def test_crossover_exclusion_false(self):
         ad = _make_trial_adata(4, crossover=[False, True, False, False])
         design = st.TrialDesign(visit_col="visit", crossover_col="is_crossover")
-        result = st.subset_primary(
-            ad, design, visits=("V1", "V2"), exclude_crossovers=False
-        )
+        result = st.subset_primary(ad, design, visits=("V1", "V2"), exclude_crossovers=False)
         assert len(result) == 4
 
     def test_no_crossover_col(self):
         """exclude_crossovers=True but no crossover_col set → no filtering."""
         ad = _make_trial_adata(4)
         design = st.TrialDesign(visit_col="visit")
-        result = st.subset_primary(
-            ad, design, visits=("V1", "V2"), exclude_crossovers=True
-        )
+        result = st.subset_primary(ad, design, visits=("V1", "V2"), exclude_crossovers=True)
         assert len(result) == 4
 
     def test_fractional_crossover_excluded(self):
         """P2 fix: fractional non-zero crossover values should be excluded."""
         ad = _make_trial_adata(4, crossover=[0.0, 0.5, 0.0, 0.0])
         design = st.TrialDesign(visit_col="visit", crossover_col="is_crossover")
-        result = st.subset_primary(
-            ad, design, visits=("V1", "V2"), exclude_crossovers=True
-        )
+        result = st.subset_primary(ad, design, visits=("V1", "V2"), exclude_crossovers=True)
         assert len(result) == 3
 
     def test_inf_crossover_treated_as_false(self):
         """P2 fix: inf crossover should not crash, treated as False."""
         ad = _make_trial_adata(4, crossover=[0.0, np.inf, 0.0, 1.0])
         design = st.TrialDesign(visit_col="visit", crossover_col="is_crossover")
-        result = st.subset_primary(
-            ad, design, visits=("V1", "V2"), exclude_crossovers=True
-        )
+        result = st.subset_primary(ad, design, visits=("V1", "V2"), exclude_crossovers=True)
         # inf → False (kept), 1.0 → True (excluded)
         assert len(result) == 3
 
     def test_string_crossover(self):
         ad = _make_trial_adata(4, crossover=["false", "true", "no", "yes"])
         design = st.TrialDesign(visit_col="visit", crossover_col="is_crossover")
-        result = st.subset_primary(
-            ad, design, visits=("V1", "V2"), exclude_crossovers=True
-        )
+        result = st.subset_primary(ad, design, visits=("V1", "V2"), exclude_crossovers=True)
         assert len(result) == 2
 
     def test_missing_visit_col_raises(self):
@@ -238,8 +230,8 @@ class TestSubsetPrimary:
 # subset_cells
 # ---------------------------------------------------------------------------
 
-class TestSubsetCells:
 
+class TestSubsetCells:
     def test_filter_by_arm(self):
         ad = _make_trial_adata(4, arms=["T", "T", "C", "C"])
         design = st.TrialDesign(arm_col="arm", visit_col="visit")
@@ -268,9 +260,7 @@ class TestSubsetCells:
             visits=["V1", "V2", "V1", "V2"],
             celltypes=["A", "A", "B", "B"],
         )
-        design = st.TrialDesign(
-            arm_col="arm", visit_col="visit", celltype_col="celltype"
-        )
+        design = st.TrialDesign(arm_col="arm", visit_col="visit", celltype_col="celltype")
         result = st.subset_cells(ad, design, arm="T", visit="V1", celltype="A")
         assert len(result) == 1
 
@@ -315,8 +305,8 @@ class TestSubsetCells:
 # profile_features
 # ---------------------------------------------------------------------------
 
-class TestProfileFeatures:
 
+class TestProfileFeatures:
     def test_gene_feature(self):
         ad = _make_trial_adata(4, arms=["T", "T", "C", "C"])
         result = st.profile_features(ad, features=["G0"], groupby="arm")
@@ -335,30 +325,20 @@ class TestProfileFeatures:
         """Both gene and obs-column features in one call."""
         ad = _make_trial_adata(4, arms=["T", "T", "C", "C"])
         ad.obs["score"] = [10.0, 20.0, 30.0, 40.0]
-        result = st.profile_features(
-            ad, features=["G0", "score"], groupby="arm"
-        )
+        result = st.profile_features(ad, features=["G0", "score"], groupby="arm")
         assert list(result.columns) == ["G0", "score"]
 
     def test_with_layer(self):
         ad = _make_trial_adata(4, arms=["T", "T", "C", "C"])
         ad.layers["norm"] = ad.X * 2
-        result = st.profile_features(
-            ad, features=["G0"], groupby="arm", layer="norm"
-        )
-        result_no_layer = st.profile_features(
-            ad, features=["G0"], groupby="arm"
-        )
+        result = st.profile_features(ad, features=["G0"], groupby="arm", layer="norm")
+        result_no_layer = st.profile_features(ad, features=["G0"], groupby="arm")
         # layer values should be 2x
-        assert result.loc["T", "G0"] == pytest.approx(
-            result_no_layer.loc["T", "G0"] * 2
-        )
+        assert result.loc["T", "G0"] == pytest.approx(result_no_layer.loc["T", "G0"] * 2)
 
     def test_agg_median(self):
         ad = _make_trial_adata(4, arms=["T", "T", "C", "C"])
-        result = st.profile_features(
-            ad, features=["G0"], groupby="arm", agg="median"
-        )
+        result = st.profile_features(ad, features=["G0"], groupby="arm", agg="median")
         assert "G0" in result.columns
 
     def test_unknown_feature_raises(self):

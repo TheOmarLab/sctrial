@@ -1,4 +1,5 @@
 """Tests for previously untested code paths identified in audit."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -17,6 +18,7 @@ from sctrial.utils import wild_cluster_bootstrap_t
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_trial_adata(
     n_participants: int = 20,
@@ -37,12 +39,14 @@ def _make_trial_adata(
         arm = "Treated" if i < n_participants // 2 else "Control"
         ct = "TypeA" if i % 2 == 0 else "TypeB"
         for v in all_visits:
-            obs_list.append({
-                "participant_id": f"P{i}",
-                "visit": v,
-                "arm": arm,
-                "celltype": ct,
-            })
+            obs_list.append(
+                {
+                    "participant_id": f"P{i}",
+                    "visit": v,
+                    "arm": arm,
+                    "celltype": ct,
+                }
+            )
 
     obs = pd.DataFrame(obs_list)
     X = rng.poisson(2, size=(len(obs), n_genes)).astype(float)
@@ -70,6 +74,7 @@ def _make_trial_adata(
 # 1-3: resolve_gene_name
 # ---------------------------------------------------------------------------
 
+
 class TestResolveGeneName:
     def test_exact_match(self):
         adata = AnnData(X=np.zeros((2, 3)))
@@ -92,6 +97,7 @@ class TestResolveGeneName:
 # 4-5: wild_cluster_bootstrap_t
 # ---------------------------------------------------------------------------
 
+
 class TestWildClusterBootstrap:
     @staticmethod
     def _fit_clustered_ols(seed: int = 0, effect: float = 2.0):
@@ -104,33 +110,25 @@ class TestWildClusterBootstrap:
         arm = (clusters < 6).astype(float)
         y = effect * arm + rng.normal(0, 1, n)
         df = pd.DataFrame({"y": y, "arm_bin": arm})
-        fit = smf.ols("y ~ arm_bin", data=df).fit(
-            cov_type="cluster", cov_kwds={"groups": clusters}
-        )
+        fit = smf.ols("y ~ arm_bin", data=df).fit(cov_type="cluster", cov_kwds={"groups": clusters})
         X = fit.model.exog
         return fit, X, clusters
 
     def test_known_data_p_in_range(self):
         fit, X, clusters = self._fit_clustered_ols(effect=2.0)
-        result = wild_cluster_bootstrap_t(
-            fit, X, clusters, term_name="arm_bin", B=299, seed=42
-        )
+        result = wild_cluster_bootstrap_t(fit, X, clusters, term_name="arm_bin", B=299, seed=42)
         assert 0.0 <= result.p_boot <= 1.0
 
     def test_no_effect_p_in_range(self):
         fit, X, clusters = self._fit_clustered_ols(effect=0.0, seed=7)
-        result = wild_cluster_bootstrap_t(
-            fit, X, clusters, term_name="arm_bin", B=299, seed=42
-        )
+        result = wild_cluster_bootstrap_t(fit, X, clusters, term_name="arm_bin", B=299, seed=42)
         # With zero true effect, p may occasionally be small due to noise;
         # just verify it's a valid p-value.
         assert 0.0 <= result.p_boot <= 1.0
 
     def test_returns_bootstrap_result_with_ci(self):
         fit, X, clusters = self._fit_clustered_ols(effect=2.0)
-        result = wild_cluster_bootstrap_t(
-            fit, X, clusters, term_name="arm_bin", B=299, seed=42
-        )
+        result = wild_cluster_bootstrap_t(fit, X, clusters, term_name="arm_bin", B=299, seed=42)
         # Check BootstrapResult fields exist and are finite
         assert np.isfinite(result.p_boot)
         assert np.isfinite(result.se_boot)
@@ -142,9 +140,7 @@ class TestWildClusterBootstrap:
 
     def test_ci_contains_point_estimate(self):
         fit, X, clusters = self._fit_clustered_ols(effect=2.0, seed=0)
-        result = wild_cluster_bootstrap_t(
-            fit, X, clusters, term_name="arm_bin", B=999, seed=42
-        )
+        result = wild_cluster_bootstrap_t(fit, X, clusters, term_name="arm_bin", B=999, seed=42)
         beta_hat = fit.params["arm_bin"]
         # 95% CI should contain the point estimate for a well-powered test
         assert result.ci_lo <= beta_hat <= result.ci_hi
@@ -165,6 +161,7 @@ class TestWildClusterBootstrap:
 # 6-7: _compute_effect_size_from_fit
 # ---------------------------------------------------------------------------
 
+
 class TestComputeEffectSizeFromFit:
     @staticmethod
     def _fit_ols():
@@ -173,10 +170,12 @@ class TestComputeEffectSizeFromFit:
 
         rng = np.random.default_rng(99)
         n = 40
-        df = pd.DataFrame({
-            "y": 0.8 * np.concatenate([np.ones(20), np.zeros(20)]) + rng.normal(0, 1, n),
-            "arm_bin": np.concatenate([np.ones(20), np.zeros(20)]),
-        })
+        df = pd.DataFrame(
+            {
+                "y": 0.8 * np.concatenate([np.ones(20), np.zeros(20)]) + rng.normal(0, 1, n),
+                "arm_bin": np.concatenate([np.ones(20), np.zeros(20)]),
+            }
+        )
         fit = smf.ols("y ~ arm_bin", data=df).fit()
         return fit
 
@@ -192,10 +191,12 @@ class TestComputeEffectSizeFromFit:
         import statsmodels.formula.api as smf
 
         rng = np.random.default_rng(88)
-        df = pd.DataFrame({
-            "y": 0.5 * np.concatenate([np.ones(30), np.zeros(10)]) + rng.normal(0, 1, 40),
-            "arm_bin": np.concatenate([np.ones(30), np.zeros(10)]),
-        })
+        df = pd.DataFrame(
+            {
+                "y": 0.5 * np.concatenate([np.ones(30), np.zeros(10)]) + rng.normal(0, 1, 40),
+                "arm_bin": np.concatenate([np.ones(30), np.zeros(10)]),
+            }
+        )
         fit = smf.ols("y ~ arm_bin", data=df).fit()
         res = _compute_effect_size_from_fit(fit, "arm_bin", method="hedges_g")
         assert np.isfinite(res["se_d"])
@@ -205,6 +206,7 @@ class TestComputeEffectSizeFromFit:
 # ---------------------------------------------------------------------------
 # 8-9: abundance_did transform paths
 # ---------------------------------------------------------------------------
+
 
 class TestAbundanceDidTransform:
     @staticmethod
@@ -252,6 +254,7 @@ class TestAbundanceDidTransform:
 # 10: abundance_did fallback (no paired participants)
 # ---------------------------------------------------------------------------
 
+
 def test_abundance_did_fallback_empty():
     """When no paired participants exist, result should be empty."""
     obs_list = []
@@ -283,6 +286,7 @@ def test_abundance_did_fallback_empty():
 # 11-12: trend_interaction quadratic/cubic
 # ---------------------------------------------------------------------------
 
+
 class TestTrendInteraction:
     @staticmethod
     def _make_longitudinal_adata(n_visits: int = 4, seed: int = 0):
@@ -295,11 +299,13 @@ class TestTrendInteraction:
         for i in range(n_p):
             arm = "Treated" if i < n_p // 2 else "Control"
             for v in visits:
-                obs_list.append({
-                    "participant_id": f"P{i}",
-                    "visit": v,
-                    "arm": arm,
-                })
+                obs_list.append(
+                    {
+                        "participant_id": f"P{i}",
+                        "visit": v,
+                        "arm": arm,
+                    }
+                )
 
         obs = pd.DataFrame(obs_list)
         n_obs = len(obs)
@@ -323,7 +329,11 @@ class TestTrendInteraction:
     def test_quadratic(self):
         adata, design, visits = self._make_longitudinal_adata(n_visits=4)
         res = st.trend_interaction(
-            adata, features=["score1"], design=design, visits=visits, model="quadratic",
+            adata,
+            features=["score1"],
+            design=design,
+            visits=visits,
+            model="quadratic",
         )
         assert not res.empty
         assert "beta_treat_trend" in res.columns
@@ -332,7 +342,11 @@ class TestTrendInteraction:
     def test_cubic(self):
         adata, design, visits = self._make_longitudinal_adata(n_visits=5)
         res = st.trend_interaction(
-            adata, features=["score1"], design=design, visits=visits, model="cubic",
+            adata,
+            features=["score1"],
+            design=design,
+            visits=visits,
+            model="cubic",
         )
         assert not res.empty
         assert "beta_treat_trend3" in res.columns
@@ -342,6 +356,7 @@ class TestTrendInteraction:
 # ---------------------------------------------------------------------------
 # 13: pseudobulk_did with use_bootstrap=True
 # ---------------------------------------------------------------------------
+
 
 def test_pseudobulk_did_bootstrap():
     rng = np.random.default_rng(42)
@@ -353,11 +368,13 @@ def test_pseudobulk_did_bootstrap():
         for v in ("V1", "V2"):
             # Multiple cells per participant-visit for pseudobulk
             for _ in range(10):
-                obs_list.append({
-                    "participant_id": f"P{i}",
-                    "visit": v,
-                    "arm": arm,
-                })
+                obs_list.append(
+                    {
+                        "participant_id": f"P{i}",
+                        "visit": v,
+                        "arm": arm,
+                    }
+                )
 
     obs = pd.DataFrame(obs_list)
     X = rng.poisson(5, size=(len(obs), n_genes)).astype(float)
@@ -374,8 +391,13 @@ def test_pseudobulk_did_bootstrap():
     )
 
     res = st.pseudobulk_did(
-        adata, genes=["Gene0", "Gene1"], design=design,
-        visits=("V1", "V2"), use_bootstrap=True, n_boot=99, seed=1,
+        adata,
+        genes=["Gene0", "Gene1"],
+        design=design,
+        visits=("V1", "V2"),
+        use_bootstrap=True,
+        n_boot=99,
+        seed=1,
     )
     assert not res.empty
     assert "beta_DiD" in res.columns
@@ -387,6 +409,7 @@ def test_pseudobulk_did_bootstrap():
 # ---------------------------------------------------------------------------
 # 14: within_arm_comparison with aggregate="cell"
 # ---------------------------------------------------------------------------
+
 
 def test_within_arm_cell_aggregate():
     adata, design = _make_trial_adata(n_participants=20, n_genes=10, seed=11)
@@ -412,6 +435,7 @@ def test_within_arm_cell_aggregate():
 # 15: run_gsea_pseudobulk with return_obj=True
 # ---------------------------------------------------------------------------
 
+
 def test_gsea_pseudobulk_return_obj():
     pytest.importorskip("gseapy")
 
@@ -422,11 +446,13 @@ def test_gsea_pseudobulk_return_obj():
         arm = "Treated" if i < n_p // 2 else "Control"
         for v in ("V1", "V2"):
             for _ in range(15):
-                obs_list.append({
-                    "participant_id": f"P{i}",
-                    "visit": v,
-                    "arm": arm,
-                })
+                obs_list.append(
+                    {
+                        "participant_id": f"P{i}",
+                        "visit": v,
+                        "arm": arm,
+                    }
+                )
 
     obs = pd.DataFrame(obs_list)
     X = rng.poisson(5, size=(len(obs), n_genes)).astype(float)
@@ -445,9 +471,14 @@ def test_gsea_pseudobulk_return_obj():
     gene_sets = {"pathway1": list(adata.var_names[:10])}
 
     result = st.run_gsea_pseudobulk(
-        adata, gene_sets=gene_sets, design=design,
-        visits=("V1", "V2"), return_obj=True, min_units=2,
-        min_size=1, max_size=5000,
+        adata,
+        gene_sets=gene_sets,
+        design=design,
+        visits=("V1", "V2"),
+        return_obj=True,
+        min_units=2,
+        min_size=1,
+        max_size=5000,
     )
     # return_obj=True should return a gseapy Prerank object (not a DataFrame)
     assert not isinstance(result, pd.DataFrame)
@@ -456,6 +487,7 @@ def test_gsea_pseudobulk_return_obj():
 # ---------------------------------------------------------------------------
 # 16: _perm_test_diff with explicit treated_label
 # ---------------------------------------------------------------------------
+
 
 def test_perm_test_diff_treated_label():
     rng = np.random.default_rng(99)

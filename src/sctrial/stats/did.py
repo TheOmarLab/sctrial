@@ -183,12 +183,18 @@ def _aggregate_for_did(
                         )
                     cov_agg[c] = "first"
 
-        df_use = df.groupby(grp_cols, observed=True).agg({
-            **{f: agg for f in final_features},
-            **cov_agg,
-            "n_cells": "sum",
-            "arm_bin": "first",
-        }).reset_index()
+        df_use = (
+            df.groupby(grp_cols, observed=True)
+            .agg(
+                {
+                    **{f: agg for f in final_features},
+                    **cov_agg,
+                    "n_cells": "sum",
+                    "arm_bin": "first",
+                }
+            )
+            .reset_index()
+        )
         unit = design.participant_col
         time = "visit_num"
         arm_bin = "arm_bin"
@@ -215,12 +221,18 @@ def _aggregate_for_did(
                         )
                     cov_agg_ct[c] = "first"
 
-        df_use = df.groupby(grp_cols, observed=True).agg({
-            **{f: agg for f in final_features},
-            **cov_agg_ct,
-            "n_cells": "sum",
-            "arm_bin": "first",
-        }).reset_index()
+        df_use = (
+            df.groupby(grp_cols, observed=True)
+            .agg(
+                {
+                    **{f: agg for f in final_features},
+                    **cov_agg_ct,
+                    "n_cells": "sum",
+                    "arm_bin": "first",
+                }
+            )
+            .reset_index()
+        )
         unit = design.participant_col
         time = "visit_num"
         arm_bin = "arm_bin"
@@ -236,6 +248,7 @@ def _aggregate_for_did(
     df_use = _ensure_paired(df_use, unit=unit, time=design.visit_col, visits=visits)
     df_use = encode_visit(df_use, design.visit_col, visits)
     return df_use, unit, time, arm_bin
+
 
 AggregateMode = Literal["cell", "participant_visit", "participant_visit_celltype"]
 """Supported aggregation modes for DiD analysis."""
@@ -260,11 +273,13 @@ class DidFitResult(TypedDict):
     ci_hi_boot: NotRequired[float]
     cov_type_used: NotRequired[str]
 
-def _ensure_paired(df: pd.DataFrame, unit: str, time: str, visits: tuple[str,str]) -> pd.DataFrame:
+
+def _ensure_paired(df: pd.DataFrame, unit: str, time: str, visits: tuple[str, str]) -> pd.DataFrame:
     """Ensure that the data is paired."""
     wide = df.groupby([unit, time], observed=True).size().unstack(fill_value=0)
     keep = wide[(wide.get(visits[0], 0) > 0) & (wide.get(visits[1], 0) > 0)].index
     return df[df[unit].isin(keep)].copy()
+
 
 def did_fit(
     df: pd.DataFrame,
@@ -422,7 +437,9 @@ def did_fit(
             stacklevel=2,
         )
 
-    fit = model.fit(cov_type=cov_type, cov_kwds={"groups": tmp[unit]} if cov_type == "cluster" else None)
+    fit = model.fit(
+        cov_type=cov_type, cov_kwds={"groups": tmp[unit]} if cov_type == "cluster" else None
+    )
     term = f"{time}:{arm_bin}"
 
     se_did = float(fit.bse.get(term, np.nan))
@@ -494,6 +511,7 @@ def did_fit(
         res["p_DiD"] = boot_res.p_boot
 
     return cast(DidFitResult, res)
+
 
 def did_table(
     adata: AnnData,
@@ -632,7 +650,7 @@ def did_table(
             standardize=standardize,
             use_bootstrap=use_bootstrap,
             n_boot=n_boot,
-            seed=seed
+            seed=seed,
         )
         row = dict(out)
         row["feature"] = feat
