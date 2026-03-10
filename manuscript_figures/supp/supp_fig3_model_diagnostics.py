@@ -11,9 +11,9 @@ Panels:
   C  Influence diagnostics: Cook's distance per dataset.
   D  Baseline diagnostics: arm means (two-arm) / pre-post means (single-arm).
   E  Calibration of observed effects against permutation null.
-  F  Residual normality diagnostics (Shapiro-Wilk, skewness, kurtosis).
+  F  Full assumption diagnostics: normality + heteroscedasticity (merged 1×2).
   G  Funnel plot: effect size vs standard error.
-  H  Heteroscedasticity diagnostics (Breusch-Pagan test).
+  H  Null rejection calibration vs nominal alpha.
 
 Non-overlap guardrail: no sensitivity analysis (→ SF4), no cross-dataset
 biological concordance (→ SF5), no heterogeneity (→ SF6).
@@ -509,7 +509,7 @@ def _panel_influence(ax, results: dict[str, dict]):
         data=df, x="Dataset", y="Cook's D",
         ax=ax, color="black", size=2.0, alpha=0.25, jitter=0.2,
     )
-    # 4/n threshold per dataset
+    # 4/n threshold per dataset + flagged count annotation
     for i, name in enumerate(df["Dataset"].unique()):
         n = results[name]["effects"]["n_obs"].median()
         if np.isfinite(n) and n > 0:
@@ -517,6 +517,15 @@ def _panel_influence(ax, results: dict[str, dict]):
             ax.plot(
                 [i - 0.35, i + 0.35], [thr, thr],
                 color="red", lw=1.0, ls="--",
+            )
+            # Count observations exceeding 4/n threshold
+            ds_vals = df.loc[df["Dataset"] == name, "Cook's D"].values
+            n_flagged = int(np.sum(ds_vals > thr))
+            ax.text(
+                i, ax.get_ylim()[1] * 0.95,
+                f"n>{thr:.2f}: {n_flagged}",
+                ha="center", va="top", fontsize=6.5, color="red",
+                fontstyle="italic",
             )
     ax.set_title("Influence Diagnostics (Cook's D)", fontweight="bold")
     despine(ax)
@@ -643,7 +652,7 @@ def _panel_calibration(ax, results: dict[str, dict]):
 
 
 def _panel_normality_tests(ax, results: dict[str, dict]):
-    """F: Visual summary of residual normality diagnostics per dataset."""
+    """F-left: Visual summary of residual normality diagnostics per dataset."""
     rows = []
     for name, res in results.items():
         rdf = res["residuals"]
@@ -712,11 +721,48 @@ def _panel_funnel(ax, results: dict[str, dict]):
     despine(ax)
 
 
-# ── Panel H: Heteroscedasticity diagnostics ────────────────────────
+def _panel_assumptions_merged(fig_merged, results: dict[str, dict]):
+    """F: Combined normality + heteroscedasticity in 1×2 subplot."""
+    ax1, ax2 = fig_merged.subplots(1, 2)
+    _panel_normality_tests(ax1, results)
+    _panel_heteroscedasticity(ax2, results)
+
+
+def _panel_null_rejection(ax, results: dict[str, dict]):
+    """H: Null rejection calibration vs nominal alpha.
+
+    For alphas in [0.01..0.20], compute the fraction of features where
+    |observed beta| > quantile(|null betas|, 1-alpha).  Diagonal = well-calibrated.
+    """
+    alphas = np.arange(0.01, 0.205, 0.01)
+    for name, res in results.items():
+        obs_abs = np.abs(res["effects"]["beta_DiD"].dropna().values)
+        null = res.get("null_abs", np.array([]))
+        if len(obs_abs) < 3 or len(null) < 10:
+            continue
+        rates = []
+        for alpha in alphas:
+            thr = np.quantile(null, 1 - alpha)
+            rate = np.mean(obs_abs > thr)
+            rates.append(float(rate))
+        ax.plot(alphas, rates, marker="o", ms=3, lw=1.3,
+                color=_DS_PALETTE.get(name, "grey"), label=name)
+    ax.plot([0, 0.25], [0, 0.25], ls="--", color="black", lw=0.9,
+            label="Well-calibrated")
+    ax.set_xlabel("Nominal α")
+    ax.set_ylabel("Observed rejection rate")
+    ax.set_title("Null Rejection Calibration", fontweight="bold")
+    ax.legend(fontsize=7, frameon=True)
+    ax.set_xlim(0, 0.22)
+    ax.set_ylim(0, 1.05)
+    despine(ax)
+
+
+# ── Heteroscedasticity helper (used by merged panel F) ─────────────
 
 
 def _panel_heteroscedasticity(ax, results: dict[str, dict]):
-    """H: Breusch-Pagan test for residual homoscedasticity per dataset."""
+    """F-right: Breusch-Pagan test for residual homoscedasticity per dataset."""
     rows = []
     for name, res in results.items():
         rdf = res["residuals"]
@@ -838,9 +884,9 @@ def generate():
     fig.tight_layout()
     save_panel(fig, "panel_E", FIGURE_NAME, SUPP_OUTPUT)
 
-    # F: Residual normality diagnostics
-    fig, ax = plt.subplots(figsize=(10.0, 4.8))
-    _panel_normality_tests(ax, results)
+    # F: Merged normality + heteroscedasticity (1×2)
+    fig = plt.figure(figsize=(16.0, 5.2))
+    _panel_assumptions_merged(fig, results)
     fig.tight_layout()
     save_panel(fig, "panel_F", FIGURE_NAME, SUPP_OUTPUT)
 
@@ -850,9 +896,9 @@ def generate():
     fig.tight_layout()
     save_panel(fig, "panel_G", FIGURE_NAME, SUPP_OUTPUT)
 
-    # H: Heteroscedasticity diagnostics (Breusch-Pagan)
-    fig, ax = plt.subplots(figsize=(10.0, 4.8))
-    _panel_heteroscedasticity(ax, results)
+    # H: Null rejection calibration vs nominal alpha
+    fig, ax = plt.subplots(figsize=(7.0, 5.8))
+    _panel_null_rejection(ax, results)
     fig.tight_layout()
     save_panel(fig, "panel_H", FIGURE_NAME, SUPP_OUTPUT)
 

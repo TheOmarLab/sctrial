@@ -2,9 +2,9 @@
 Supplementary Figure 6 - Participant heterogeneity and temporal dynamics.
 
 Panels:
-  A  Sade-Feldman individual-effect strip.
+  A  Sade-Feldman individual-effect raincloud (violin+strip+boxplot).
   B  Sade-Feldman participant x feature heatmap.
-  C  Sade-Feldman response-stratified boxplots.
+  C  Sade-Feldman response-stratified boxplots with Hedges' g.
   D  Sade-Feldman variance decomposition.
   E  Sade-Feldman direction-diversity profile.
   F  Cross-dataset SD bars.
@@ -192,9 +192,12 @@ def _load_all() -> dict[str, dict]:
     return out
 
 
-def _panel_strip(ax, effects: pd.DataFrame, features: list[str], treated: str, control: str, title: str):
+def _panel_raincloud(ax, effects: pd.DataFrame, features: list[str],
+                     treated: str, control: str, title: str):
+    """Raincloud plot: half-violin + jittered strip + narrow boxplot."""
     if effects is None or effects.empty:
-        ax.text(0.5, 0.5, "No paired effects", ha="center", va="center", transform=ax.transAxes)
+        ax.text(0.5, 0.5, "No paired effects", ha="center", va="center",
+                transform=ax.transAxes)
         ax.axis("off")
         return
 
@@ -202,32 +205,36 @@ def _panel_strip(ax, effects: pd.DataFrame, features: list[str], treated: str, c
     long = effects.melt(id_vars=["participant_id", "arm"], value_vars=feat_order,
                         var_name="feature", value_name="effect")
 
-    arm_colors = {
-        treated: "#d62728",   # Strong red
-        control: "#2ca02c",   # Strong green
-    }
+    palette = {treated: COLORS["treated"], control: COLORS["control"]}
     if treated == control:
-        arm_colors = {treated: "#d62728"}
+        palette = {treated: COLORS["treated"]}
 
-    x_map = {f: i for i, f in enumerate(feat_order)}
-    rng = np.random.default_rng(42)
-    for arm, color in arm_colors.items():
-        sub = long[long["arm"] == arm]
-        if sub.empty:
-            continue
-        x = sub["feature"].map(x_map).values + rng.uniform(-0.2, 0.2, size=len(sub))
-        ax.scatter(x, sub["effect"].values, s=25, alpha=0.65, c=color, edgecolors="none", label=arm)
-
-    for feat, i in x_map.items():
-        mu = long[long["feature"] == feat]["effect"].mean()
-        ax.hlines(mu, i - 0.35, i + 0.35, color="black", lw=2)
+    # Layer 1: half-violin (cut at 0 to avoid tails beyond data)
+    sns.violinplot(data=long, x="feature", y="effect", hue="arm",
+                   palette=palette, inner=None, cut=0, linewidth=0.5,
+                   order=feat_order, ax=ax, alpha=0.45, dodge=True)
+    # Layer 2: strip
+    sns.stripplot(data=long, x="feature", y="effect", hue="arm",
+                  palette=palette, size=2, alpha=0.3, jitter=0.12,
+                  order=feat_order, dodge=True, ax=ax, legend=False)
+    # Layer 3: narrow boxplot
+    sns.boxplot(data=long, x="feature", y="effect", hue="arm",
+                palette=palette, width=0.12, showfliers=False,
+                order=feat_order, ax=ax, linewidth=0.7,
+                boxprops=dict(zorder=5), legend=False)
 
     ax.axhline(0, color="black", lw=0.8, ls="--", alpha=0.5)
     ax.set_xticks(range(len(feat_order)))
     ax.set_xticklabels(feat_order, rotation=40, ha="right", fontsize=8)
-    ax.set_ylabel("Participant effect (Post - Pre)")
+    ax.set_ylabel("Participant effect (Post − Pre)")
     ax.set_title(title, fontweight="bold")
-    ax.legend(fontsize=8, frameon=True)
+    # De-duplicate legend entries from the violin layer
+    handles, labels = ax.get_legend_handles_labels()
+    seen = {}
+    for h, lbl in zip(handles, labels):
+        if lbl not in seen:
+            seen[lbl] = h
+    ax.legend(seen.values(), seen.keys(), fontsize=8, frameon=True)
     despine(ax)
 
 
@@ -257,9 +264,27 @@ def _panel_heatmap(ax, effects: pd.DataFrame, features: list[str], title: str):
     ax.set_ylabel("Participants")
 
 
-def _panel_response_box(ax, effects: pd.DataFrame, features: list[str], treated: str, control: str, title: str):
+def _hedges_g(x: np.ndarray, y: np.ndarray) -> float:
+    """Hedges' g (bias-corrected standardised mean difference)."""
+    nx, ny = len(x), len(y)
+    if nx < 2 or ny < 2:
+        return np.nan
+    pooled = np.sqrt(((nx - 1) * np.var(x, ddof=1) + (ny - 1) * np.var(y, ddof=1))
+                     / (nx + ny - 2))
+    if pooled < 1e-12:
+        return 0.0
+    d = (np.mean(x) - np.mean(y)) / pooled
+    # Hedges' correction factor
+    df = nx + ny - 2
+    cf = 1 - 3 / (4 * df - 1) if df > 1 else 1.0
+    return float(d * cf)
+
+
+def _panel_response_box(ax, effects: pd.DataFrame, features: list[str],
+                        treated: str, control: str, title: str):
     if effects is None or effects.empty:
-        ax.text(0.5, 0.5, "No paired effects", ha="center", va="center", transform=ax.transAxes)
+        ax.text(0.5, 0.5, "No paired effects", ha="center", va="center",
+                transform=ax.transAxes)
         ax.axis("off")
         return
 
@@ -274,6 +299,19 @@ def _panel_response_box(ax, effects: pd.DataFrame, features: list[str], treated:
     sns.boxplot(data=long, x="feature", y="effect", hue="arm", palette=palette,
                 linewidth=0.8, fliersize=1.5, ax=ax)
     ax.axhline(0, color="black", lw=0.8, ls="--")
+
+    # Annotate Hedges' g between treated and control for each feature
+    if treated != control:
+        for i, feat in enumerate(top):
+            t_vals = effects.loc[effects["arm"] == treated, feat].dropna().values
+            c_vals = effects.loc[effects["arm"] == control, feat].dropna().values
+            g = _hedges_g(t_vals, c_vals)
+            if np.isfinite(g):
+                ymax = long.loc[long["feature"] == feat, "effect"].max()
+                ax.text(i, ymax + 0.02 * (ax.get_ylim()[1] - ax.get_ylim()[0]),
+                        f"g={g:.2f}", ha="center", va="bottom", fontsize=6.5,
+                        fontstyle="italic", color="grey")
+
     for tick in ax.get_xticklabels():
         tick.set_rotation(35)
         tick.set_ha("right")
@@ -597,7 +635,7 @@ def generate():
     ta_control = ta_cfg.get("arm_control", "Control")
 
     panels = [
-        ("panel_A", lambda ax: _panel_strip(ax, feat_eff, feat_feats, feat_treated, feat_control, f"{best_name} individual effects"), (11.5, 6.0)),
+        ("panel_A", lambda ax: _panel_raincloud(ax, feat_eff, feat_feats, feat_treated, feat_control, f"{best_name} individual effects"), (11.5, 6.0)),
         ("panel_B", lambda ax: _panel_heatmap(ax, feat_eff, feat_feats, f"{best_name} participant x feature map"), (9.5, 6.8)),
         ("panel_C", lambda ax: _panel_response_box(ax, ta_eff, ta_feats, ta_treated, ta_control, f"{twoarm_name} response-stratified effects"), (10.5, 6.0)),
         ("panel_D", lambda ax: _panel_variance_decomp(ax, ta_eff, ta_feats, f"{twoarm_name} variance decomposition"), (8.2, 6.8)),

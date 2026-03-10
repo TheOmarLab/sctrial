@@ -112,6 +112,22 @@ _DATASET_CFG = {
 _DS_PALETTE = dict(zip(_DATASET_CFG.keys(),
     ["#1b9e77", "#d95f02", "#7570b3", "#e7298a", "#66a61e"]))
 
+# Design-type label for legend annotations: DiD = two-arm difference-in-differences,
+# Δ = single-arm pre/post change.
+_DESIGN_LABEL: dict[str, str] = {
+    "Sade-Feldman": "DiD",
+    "Stephenson": "DiD",
+    "AML": "Δ",
+    "CAR-T": "Δ",
+    "Vaccine": "Δ",
+}
+
+
+def _ds_label(name: str) -> str:
+    """Return dataset name with design-type suffix for legends."""
+    tag = _DESIGN_LABEL.get(name, "")
+    return f"{name} ({tag})" if tag else name
+
 
 def _to_array(mat) -> np.ndarray:
     return mat.toarray() if hasattr(mat, "toarray") else np.asarray(mat)
@@ -292,7 +308,10 @@ def _panel_gs_distributions(ax, data: dict[str, dict]):
         return
 
     df = pd.DataFrame(rows)
-    sns.violinplot(data=df, x="Gene set", y="Score", hue="Dataset", palette=_DS_PALETTE,
+    # Map dataset names to design-labelled versions for legend
+    df["Dataset"] = df["Dataset"].map(_ds_label)
+    palette = {_ds_label(k): v for k, v in _DS_PALETTE.items()}
+    sns.violinplot(data=df, x="Gene set", y="Score", hue="Dataset", palette=palette,
                    cut=0, linewidth=0.6, ax=ax)
     ax.set_title("Gene-set score distributions", fontweight="bold")
     ax.tick_params(axis="x", rotation=20)
@@ -306,6 +325,8 @@ def _panel_pairwise_corr(ax, data: dict[str, dict]):
         ax.text(0.5, 0.5, "Need >=2 datasets", ha="center", va="center", transform=ax.transAxes)
         return
 
+    # Rename columns/index to include design-type label
+    mat = mat.rename(columns=_ds_label)
     corr = pd.DataFrame(index=mat.columns, columns=mat.columns, dtype=float)
     for a in mat.columns:
         for b in mat.columns:
@@ -379,12 +400,14 @@ def _panel_gene_dist(ax, data: dict[str, dict]):
         ax.text(0.5, 0.5, "No effect distributions", ha="center", va="center", transform=ax.transAxes)
         return
     df = pd.DataFrame(rows)
-    sns.violinplot(data=df, x="Dataset", y="Effect", palette=_DS_PALETTE, cut=0, inner="quartile", ax=ax)
+    df["Dataset"] = df["Dataset"].map(_ds_label)
+    palette = {_ds_label(k): v for k, v in _DS_PALETTE.items()}
+    sns.violinplot(data=df, x="Dataset", y="Effect", palette=palette, cut=0, inner="quartile", ax=ax)
     ax.axhline(0, color="black", lw=0.8, ls="--")
     ax.set_title("Gene-level effect distributions", fontweight="bold")
     import matplotlib.patches as mpatches
-    handles = [mpatches.Patch(facecolor=_DS_PALETTE[n], label=n)
-               for n in _DS_PALETTE if n in df["Dataset"].values]
+    handles = [mpatches.Patch(facecolor=_DS_PALETTE[n], label=_ds_label(n))
+               for n in _DS_PALETTE if _ds_label(n) in df["Dataset"].values]
     ax.legend(handles=handles, fontsize=7, frameon=True, loc="upper right")
     despine(ax)
 
@@ -444,14 +467,14 @@ def _panel_exhaustion_by_celltype(ax, data: dict[str, dict]):
                linewidth=0.5, zorder=3)
     ax.axvline(0, color="black", lw=0.8, ls="--")
     ax.set_yticks(y)
-    ax.set_yticklabels([f"{r['Cell type']}\n({r['Dataset']})" for _, r in df.iterrows()],
+    ax.set_yticklabels([f"{r['Cell type']}\n({_ds_label(r['Dataset'])})" for _, r in df.iterrows()],
                        fontsize=6)
     ax.set_xlabel("Exhaustion effect (treatment)")
     ax.set_title("T cell exhaustion effects by cell type", fontweight="bold")
 
     # Legend
     import matplotlib.patches as mpatches
-    handles = [mpatches.Patch(facecolor=_DS_PALETTE[n], label=n)
+    handles = [mpatches.Patch(facecolor=_DS_PALETTE[n], label=_ds_label(n))
                for n in _DS_PALETTE if n in df["Dataset"].values]
     ax.legend(handles=handles, fontsize=6, loc="best", frameon=True)
     despine(ax)
@@ -465,7 +488,7 @@ def _panel_effect_heatmap(ax, data: dict[str, dict]):
     # Top 15 most variable features across datasets
     vv = mat.var(axis=1, skipna=True).sort_values(ascending=False)
     top = vv.head(15).index.tolist()
-    plot_df = mat.loc[top]
+    plot_df = mat.loc[top].rename(columns=_ds_label)
     sns.heatmap(plot_df, cmap="RdBu_r", center=0, linewidths=0.4, linecolor="white",
                 annot=True, fmt=".2f", annot_kws={"fontsize": 7}, ax=ax,
                 cbar_kws={"label": "Effect"})
@@ -505,7 +528,8 @@ def _panel_paired_trajectories(ax, data: dict[str, dict]):
             med1 = np.median(post.loc[common, exhaustion_col].values)
             ax.plot([x0, x1], [med0, med1], color=_DS_PALETTE.get(name, "black"), lw=2.8, zorder=5)
             x_tick.extend([x0, x1])
-            x_tick_lab.extend([f"{name}\n{arm}\n{pre_v}", f"{name}\n{arm}\n{post_v}"])
+            lbl = _ds_label(name)
+            x_tick_lab.extend([f"{lbl}\n{arm}\n{pre_v}", f"{lbl}\n{arm}\n{post_v}"])
             xpos += 2.5
 
     if not x_tick:
@@ -533,7 +557,7 @@ def _panel_enrichment_heatmap(ax, data: dict[str, dict]):
                 sub = pv[(pv["arm"] == arm) & (pv["visit"] == visit)]
                 if sub.empty:
                     continue
-                label = f"{name}\n{arm}\n{visit}"
+                label = f"{_ds_label(name)}\n{arm}\n{visit}"
                 means = sub[gs_cols].mean(axis=0)
                 for gs in gs_cols:
                     rows.append({"Gene set": gs, "Group": label, "Score": float(means[gs])})

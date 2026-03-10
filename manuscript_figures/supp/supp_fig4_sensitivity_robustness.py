@@ -4,15 +4,16 @@ Supplementary Figure 4 — Sensitivity and Robustness.
 
 Show how DiD results change under different analytical decisions.
 
-Panels:
-  A  Cell-level vs participant-level aggregation (beta comparison).
-  B  Analytical vs bootstrap SE (forest-style CI comparison).
-  C  Standardised vs unstandardised effect sizes.
-  D  Mean vs median aggregation comparison.
-  E  Log-transform sensitivity (raw vs log1p betas).
-  F  Cell-type-stratified DiD heatmap.
-  G  Rank-order concordance across preprocessing choices.
-  H  Power curves: minimum detectable effect vs sample size.
+Panels
+------
+  A  Analytical vs bootstrap SE (all 5 datasets, forest plot).
+  B  Standardised vs unstandardised effect sizes.
+  C  Mean vs median aggregation comparison.
+  D  Log-transform sensitivity (raw vs log1p betas).
+  E  Cell-type-stratified DiD heatmap.
+  F  Rank-order concordance across preprocessing choices.
+  G  Leave-one-out stability matrix (LOO CV of betas).
+  H  Precision decomposition (participant vs cell subsampling).
 
 Non-overlap guardrail: methodological sensitivity only, not biological claims.
 """
@@ -189,74 +190,160 @@ def _run_sensitivity():
     return out
 
 
-# ── Panel A: Cell vs Participant betas ────────────────────────────
+# ── Panel A: Multi-dataset analytical vs bootstrap SE ──────────────
 
-def _panel_cell_vs_part(ax, data: dict):
-    """Scatter comparing cell-level vs participant-level beta_DiD."""
-    cell = data["cell"].set_index("feature")["beta_DiD"]
-    part = data["part"].set_index("feature")["beta_DiD"]
-    common = cell.index.intersection(part.index)
-    if len(common) < 2:
-        ax.text(0.5, 0.5, "Insufficient data", ha="center", va="center",
-                transform=ax.transAxes, fontsize=9, color="#888")
-        return
+def _run_multi_bootstrap():
+    """Run analytical + bootstrap DiD on all 5 datasets."""
+    import sctrial
 
-    x, y = cell[common].values, part[common].values
-    ax.scatter(x, y, s=50, alpha=0.85, color=COLORS.get("highlight", "#5B9BD5"),
-               edgecolors="grey", linewidth=0.3)
+    results = {}
+    for name, cfg in _MDE_DATASET_CFG.items():
+        try:
+            adata = cfg["loader"]()
+            if cfg.get("harmonize", False):
+                adata = harmonize_response(adata)
+            layer = cfg["layer"]
+            if layer == "log1p_cpm" and "log1p_cpm" not in adata.layers:
+                if "counts" in adata.layers:
+                    adata = add_log1p_cpm_layer(
+                        adata, counts_layer="counts", out_layer="log1p_cpm",
+                    )
+                else:
+                    continue
 
-    # Labels — non-overlapping
-    _add_gene_labels(ax, common, cell, part)
+            feats = [f for f in _FEATURES if f in adata.var_names]
+            if len(feats) < 3:
+                continue
 
-    # Identity + correlation
-    lims = [min(min(x), min(y)) - 0.1, max(max(x), max(y)) + 0.1]
-    ax.plot(lims, lims, "k--", linewidth=0.5, alpha=0.3)
-    r, p = sp_stats.pearsonr(x, y)
-    p_str = f"{p:.1e}" if p < 0.001 else f"{p:.3f}"
-    ax.text(0.05, 0.95, f"r = {r:.2f}\np = {p_str}",
-            transform=ax.transAxes, fontsize=7, va="top",
-            bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
-                      edgecolor="#ccc", alpha=0.8))
-    ax.set_xlabel("β (cell-level)")
-    ax.set_ylabel("β (participant-level)")
-    ax.set_title("Cell vs Participant Aggregation", fontweight="bold")
-    despine(ax)
+            arm_col = cfg.get("arm_col")
+            design_type = cfg.get("design", "two_arm")
+
+            if design_type == "two_arm" and arm_col:
+                design = sctrial.TrialDesign(
+                    participant_col=cfg["participant_col"],
+                    visit_col=cfg["visit_col"],
+                    arm_col=arm_col,
+                    arm_treated=cfg["arm_treated"],
+                    arm_control=cfg["arm_control"],
+                )
+                print(f"  bootstrap {name}: analytical ...")
+                part = sctrial.did_table(
+                    adata, feats, design, cfg["visits"],
+                    layer=layer, aggregate="participant_visit", standardize=True,
+                )
+                print(f"  bootstrap {name}: bootstrap ...")
+                boot = sctrial.did_table(
+                    adata, feats, design, cfg["visits"],
+                    layer=layer, aggregate="participant_visit", standardize=True,
+                    use_bootstrap=True, n_boot=200, seed=42,
+                )
+                results[name] = {"part": part, "boot": boot}
+            else:
+                # Single-arm: use within_arm_comparison
+                arm_filter = cfg.get("arm_filter")
+                arm_value = arm_filter or "All"
+                if arm_filter and arm_col and arm_col in adata.obs.columns:
+                    adata = adata[adata.obs[arm_col] == arm_filter].copy()
+                # Build a design for within-arm comparison
+                design = sctrial.TrialDesign(
+                    participant_col=cfg["participant_col"],
+                    visit_col=cfg["visit_col"],
+                    arm_col=arm_col if arm_col and arm_col in adata.obs.columns else None,
+                )
+                print(f"  bootstrap {name}: within-arm analytical ...")
+                part = sctrial.within_arm_comparison(
+                    adata, arm_value, feats, design, cfg["visits"],
+                    layer=layer, aggregate="participant_visit",
+                )
+                print(f"  bootstrap {name}: within-arm bootstrap ...")
+                boot = sctrial.within_arm_comparison(
+                    adata, arm_value, feats, design, cfg["visits"],
+                    layer=layer, aggregate="participant_visit",
+                    use_bootstrap=True, n_boot=200, seed=42,
+                )
+                results[name] = {"part": part, "boot": boot}
+            del adata
+        except Exception as exc:
+            print(f"  bootstrap {name}: failed ({exc})")
+    return results
 
 
-# ── Panel B: Analytical vs Bootstrap SE ───────────────────────────
-
-def _panel_bootstrap_ci(ax, data: dict):
-    """Forest plot: analytical SE vs bootstrap SE."""
-    part = data["part"]
-    boot = data["boot"]
-    if part is None or boot is None:
-        ax.text(0.5, 0.5, "No data", ha="center", va="center",
+def _panel_bootstrap_multi(fig, boot_data: dict):
+    """A: Faceted forest plot — analytical vs bootstrap SE per dataset."""
+    names = [n for n in boot_data if boot_data[n].get("part") is not None]
+    if not names:
+        ax = fig.subplots(1, 1)
+        ax.text(0.5, 0.5, "No bootstrap data", ha="center", va="center",
                 transform=ax.transAxes)
         return
 
-    df_a = part.set_index("feature")[["beta_DiD", "se_DiD"]].rename(
-        columns={"beta_DiD": "beta", "se_DiD": "se_analytical"})
-    df_b = boot.set_index("feature")[["se_DiD"]].rename(
-        columns={"se_DiD": "se_boot"})
-    df = df_a.join(df_b, how="inner").reset_index()
-    df = df.sort_values("beta", ascending=True).reset_index(drop=True)
+    ncols = len(names)
+    axes = fig.subplots(1, ncols, sharey=False)
+    if ncols == 1:
+        axes = [axes]
 
-    y = np.arange(len(df))
-    off = 0.15
+    # Detect which column holds the beta / SE
+    def _beta_col(df):
+        for c in ("beta_DiD", "beta_delta", "beta_time", "beta"):
+            if c in df.columns:
+                return c
+        return None
 
-    ax.errorbar(df["beta"], y - off, xerr=1.96 * df["se_analytical"],
-                fmt="s", markersize=4, color=_PAL["cell"], elinewidth=1,
-                capsize=2, label="Analytical SE")
-    ax.errorbar(df["beta"], y + off, xerr=1.96 * df["se_boot"],
-                fmt="o", markersize=4, color=_PAL["participant"], elinewidth=1,
-                capsize=2, label="Bootstrap SE")
-    ax.axvline(0, color="black", linewidth=0.8)
-    ax.set_yticks(y)
-    ax.set_yticklabels(df["feature"], fontsize=7)
-    ax.set_xlabel("β with 95% CI")
-    ax.set_title("Analytical vs Bootstrap SE", fontweight="bold")
-    ax.legend(fontsize=7, loc="lower right", frameon=True)
-    despine(ax)
+    def _se_col(df):
+        for c in ("se_DiD", "se_delta", "se_time", "se"):
+            if c in df.columns:
+                return c
+        return None
+
+    def _se_boot_col(df):
+        """Find the bootstrap SE column."""
+        for c in ("se_DiD_boot", "se_delta_boot", "se_time_boot"):
+            if c in df.columns:
+                return c
+        # Fallback: use the analytical SE column from the bootstrap run
+        return _se_col(df)
+
+    for ax, name in zip(axes, names):
+        part = boot_data[name]["part"]
+        boot = boot_data[name]["boot"]
+
+        bc = _beta_col(part)
+        sc_a = _se_col(part)
+        sc_b = _se_boot_col(boot)
+        if bc is None or sc_a is None or sc_b is None:
+            ax.set_title(name, fontweight="bold", fontsize=9)
+            ax.text(0.5, 0.5, "No data", ha="center", va="center",
+                    transform=ax.transAxes, fontsize=8)
+            continue
+
+        df_a = part.set_index("feature")[[bc, sc_a]].rename(
+            columns={bc: "beta", sc_a: "se_analytical"})
+        df_b = boot.set_index("feature")[[sc_b]].rename(
+            columns={sc_b: "se_boot"})
+        df = df_a.join(df_b, how="inner").reset_index()
+        df = df.sort_values("beta", ascending=True).reset_index(drop=True)
+
+        y = np.arange(len(df))
+        off = 0.15
+
+        ax.errorbar(df["beta"], y - off, xerr=1.96 * df["se_analytical"],
+                     fmt="s", markersize=3, color=_PAL["cell"], elinewidth=0.8,
+                     capsize=1.5, label="Analytical")
+        ax.errorbar(df["beta"], y + off, xerr=1.96 * df["se_boot"],
+                     fmt="o", markersize=3, color=_PAL["participant"],
+                     elinewidth=0.8, capsize=1.5, label="Bootstrap")
+        ax.axvline(0, color="black", linewidth=0.6)
+        ax.set_yticks(y)
+        ax.set_yticklabels(df["feature"], fontsize=6)
+        ax.set_title(name, fontweight="bold", fontsize=9)
+        if ax == axes[0]:
+            ax.set_xlabel("β with 95% CI", fontsize=8)
+            ax.legend(fontsize=6, loc="lower right", frameon=True)
+        else:
+            ax.set_xlabel("")
+        despine(ax)
+
+    fig.suptitle("Analytical vs Bootstrap SE", fontweight="bold", fontsize=11)
 
 
 # ── Panel C: Standardised vs Unstandardised ───────────────────────
@@ -482,15 +569,288 @@ def _panel_rank_concordance(ax, data: dict):
     despine(ax)
 
 
-# ======================================================================
-# Panel H: Power curves (MDE) — data from OLS DiD across datasets
-# ======================================================================
+# ── Panel G: Leave-one-out stability ──────────────────────────────
 
-_MDE_FEATURES = [
-    "CD8A", "CD4", "PDCD1", "HAVCR2", "LAG3", "CTLA4",
-    "GZMB", "PRF1", "IFNG", "TNF", "IL2", "CD19",
-    "CD14", "LYZ", "NKG7", "CD3D", "FOXP3", "IL7R",
-]
+def _panel_loo_stability(ax):
+    """G: LOO CV of betas — heatmap of features × datasets."""
+    import sctrial
+
+    rows = {}
+    for name, cfg in _MDE_DATASET_CFG.items():
+        try:
+            adata = cfg["loader"]()
+            if cfg.get("harmonize", False):
+                adata = harmonize_response(adata)
+            layer = cfg["layer"]
+            if layer == "log1p_cpm" and "log1p_cpm" not in adata.layers:
+                if "counts" in adata.layers:
+                    adata = add_log1p_cpm_layer(
+                        adata, counts_layer="counts", out_layer="log1p_cpm",
+                    )
+                else:
+                    continue
+
+            feats = [f for f in _FEATURES[:4] if f in adata.var_names]
+            if len(feats) < 2:
+                continue
+
+            arm_col = cfg.get("arm_col")
+            design_type = cfg.get("design", "two_arm")
+            pid_col = cfg["participant_col"]
+            vis_col = cfg["visit_col"]
+
+            # Get participant IDs
+            obs = adata.obs
+            pids = obs[pid_col].unique().tolist()
+            if len(pids) < 4:
+                continue
+            # Cap LOO iterations to keep computation tractable
+            max_loo = 15
+            if len(pids) > max_loo:
+                rng_loo = np.random.default_rng(42)
+                pids = list(rng_loo.choice(pids, size=max_loo, replace=False))
+
+            # Full-data betas
+            if design_type == "two_arm" and arm_col:
+                design = sctrial.TrialDesign(
+                    participant_col=pid_col, visit_col=vis_col,
+                    arm_col=arm_col, arm_treated=cfg["arm_treated"],
+                    arm_control=cfg["arm_control"],
+                )
+                full_df = sctrial.did_table(
+                    adata, feats, design, cfg["visits"],
+                    layer=layer, aggregate="participant_visit", standardize=True,
+                )
+                beta_col = "beta_DiD"
+            else:
+                arm_filter = cfg.get("arm_filter")
+                arm_value = arm_filter or "All"
+                sub = adata
+                if arm_filter and arm_col and arm_col in obs.columns:
+                    sub = adata[obs[arm_col] == arm_filter].copy()
+                design = sctrial.TrialDesign(
+                    participant_col=pid_col, visit_col=vis_col,
+                    arm_col=arm_col if arm_col and arm_col in obs.columns else None,
+                )
+                full_df = sctrial.within_arm_comparison(
+                    sub, arm_value, feats, design, cfg["visits"],
+                    layer=layer, aggregate="participant_visit",
+                )
+                beta_col = "beta_delta" if "beta_delta" in full_df.columns else "beta_DiD"
+
+            # LOO: drop each participant, recompute betas
+            loo_betas = []
+            for pid in pids:
+                mask = obs[pid_col] != pid
+                sub = adata[mask].copy()
+                try:
+                    if design_type == "two_arm" and arm_col:
+                        df_loo = sctrial.did_table(
+                            sub, feats, design, cfg["visits"],
+                            layer=layer, aggregate="participant_visit",
+                            standardize=True,
+                        )
+                        loo_betas.append(df_loo.set_index("feature")[beta_col])
+                    else:
+                        if arm_filter and arm_col and arm_col in sub.obs.columns:
+                            sub = sub[sub.obs[arm_col] == arm_filter].copy()
+                        loo_design = sctrial.TrialDesign(
+                            participant_col=pid_col, visit_col=vis_col,
+                            arm_col=arm_col if arm_col and arm_col in sub.obs.columns else None,
+                        )
+                        df_loo = sctrial.within_arm_comparison(
+                            sub, arm_value, feats, loo_design, cfg["visits"],
+                            layer=layer, aggregate="participant_visit",
+                        )
+                        bc = "beta_delta" if "beta_delta" in df_loo.columns else "beta_DiD"
+                        loo_betas.append(df_loo.set_index("feature")[bc])
+                except Exception:
+                    pass
+
+            if len(loo_betas) < 3:
+                continue
+
+            loo_mat = pd.DataFrame(loo_betas)
+            # CV = std(LOO betas) / |mean(LOO betas)|
+            cv = loo_mat.std() / (loo_mat.mean().abs() + 1e-10)
+            rows[name] = cv
+            print(f"  LOO {name}: {len(pids)} pids, {len(feats)} feats")
+            del adata
+        except Exception as exc:
+            print(f"  LOO {name}: failed ({exc})")
+
+    if not rows:
+        ax.text(0.5, 0.5, "No LOO data", ha="center", va="center",
+                transform=ax.transAxes)
+        return
+
+    mat = pd.DataFrame(rows)
+    # Clip extreme CVs for display
+    mat = mat.clip(upper=5.0)
+
+    sns.heatmap(mat, ax=ax, cmap="YlOrRd", linewidths=0.5,
+                linecolor="white", cbar_kws={"shrink": 0.7, "label": "CV(β)"},
+                annot=True, fmt=".2f", annot_kws={"fontsize": 7})
+    ax.set_xlabel("Dataset")
+    ax.set_ylabel("Feature")
+    ax.set_title("Leave-One-Out Stability (CV of β)", fontweight="bold")
+    ax.tick_params(axis="x", labelsize=8, rotation=30)
+    ax.tick_params(axis="y", labelsize=8)
+
+
+# ── Panel H: Precision decomposition ─────────────────────────────
+
+def _panel_precision_decomp(ax):
+    """H: SE reduction from subsampling participants vs cells."""
+    import sctrial
+
+    fractions = [0.5, 0.75, 1.0]
+    n_reps = 3
+    all_rows = []
+
+    for name, cfg in _MDE_DATASET_CFG.items():
+        try:
+            adata = cfg["loader"]()
+            if cfg.get("harmonize", False):
+                adata = harmonize_response(adata)
+            layer = cfg["layer"]
+            if layer == "log1p_cpm" and "log1p_cpm" not in adata.layers:
+                if "counts" in adata.layers:
+                    adata = add_log1p_cpm_layer(
+                        adata, counts_layer="counts", out_layer="log1p_cpm",
+                    )
+                else:
+                    continue
+
+            feats = [f for f in _FEATURES[:4] if f in adata.var_names]
+            if len(feats) < 2:
+                continue
+
+            arm_col = cfg.get("arm_col")
+            arm_filter = cfg.get("arm_filter")
+            design_type = cfg.get("design", "two_arm")
+            pid_col = cfg["participant_col"]
+            vis_col = cfg["visit_col"]
+            obs = adata.obs
+
+            # Build design for subsampling
+            arm_value = arm_filter or "All"
+            if design_type == "two_arm" and arm_col:
+                design = sctrial.TrialDesign(
+                    participant_col=pid_col, visit_col=vis_col,
+                    arm_col=arm_col, arm_treated=cfg["arm_treated"],
+                    arm_control=cfg["arm_control"],
+                )
+            else:
+                design = sctrial.TrialDesign(
+                    participant_col=pid_col, visit_col=vis_col,
+                    arm_col=arm_col if arm_col and arm_col in obs.columns else None,
+                )
+
+            def _run_sub(sub_ad):
+                """Run DiD or within-arm on a subset, return median SE."""
+                if design_type == "two_arm" and arm_col:
+                    df_sub = sctrial.did_table(
+                        sub_ad, feats, design, cfg["visits"],
+                        layer=layer, aggregate="participant_visit",
+                        standardize=True,
+                    )
+                    return df_sub["se_DiD"].median()
+                else:
+                    s = sub_ad
+                    if arm_filter and arm_col and arm_col in s.obs.columns:
+                        s = s[s.obs[arm_col] == arm_filter].copy()
+                    sa_design = sctrial.TrialDesign(
+                        participant_col=pid_col, visit_col=vis_col,
+                        arm_col=arm_col if arm_col and arm_col in s.obs.columns else None,
+                    )
+                    df_sub = sctrial.within_arm_comparison(
+                        s, arm_value, feats, sa_design, cfg["visits"],
+                        layer=layer, aggregate="participant_visit",
+                    )
+                    sc = "se_delta" if "se_delta" in df_sub.columns else "se_DiD"
+                    return df_sub[sc].median()
+
+            # Subsample participants
+            pids = obs[pid_col].unique()
+            rng = np.random.default_rng(42)
+            for frac in fractions:
+                ses = []
+                for _ in range(n_reps):
+                    n_sub = max(3, int(len(pids) * frac))
+                    sel_pids = rng.choice(pids, size=n_sub, replace=False)
+                    sub = adata[obs[pid_col].isin(sel_pids)].copy()
+                    try:
+                        ses.append(_run_sub(sub))
+                    except Exception:
+                        pass
+                if ses:
+                    all_rows.append({
+                        "Dataset": name, "Subsample": "Participants",
+                        "Fraction": frac, "SE": float(np.nanmedian(ses)),
+                    })
+
+            # Subsample cells (keep all participants)
+            for frac in fractions:
+                ses = []
+                for _ in range(n_reps):
+                    n_cells = max(50, int(adata.n_obs * frac))
+                    idx = rng.choice(adata.n_obs, size=n_cells, replace=False)
+                    sub = adata[idx].copy()
+                    try:
+                        ses.append(_run_sub(sub))
+                    except Exception:
+                        pass
+                if ses:
+                    all_rows.append({
+                        "Dataset": name, "Subsample": "Cells",
+                        "Fraction": frac, "SE": float(np.nanmedian(ses)),
+                    })
+
+            print(f"  precision {name}: done")
+            del adata
+        except Exception as exc:
+            print(f"  precision {name}: failed ({exc})")
+
+    if not all_rows:
+        ax.text(0.5, 0.5, "No precision data", ha="center", va="center",
+                transform=ax.transAxes)
+        return
+
+    df = pd.DataFrame(all_rows)
+    # Grouped bar: x = Dataset, hue = Subsample type, facet by fraction
+    # Simplify: show SE at 50% fraction for each subsample type per dataset
+    half = df[df["Fraction"] == 0.5].copy()
+    full = df[df["Fraction"] == 1.0].copy()
+
+    if half.empty:
+        ax.text(0.5, 0.5, "Insufficient data", ha="center", va="center",
+                transform=ax.transAxes)
+        return
+
+    # Compute relative SE increase at 50% subsample vs full
+    merged = half.merge(full[["Dataset", "Subsample", "SE"]],
+                        on=["Dataset", "Subsample"], suffixes=("_50", "_100"),
+                        how="inner")
+    merged["SE_ratio"] = merged["SE_50"] / merged["SE_100"].clip(lower=1e-10)
+
+    sns.barplot(data=merged, x="Dataset", y="SE_ratio", hue="Subsample",
+                palette={"Participants": _PAL["participant"],
+                         "Cells": _PAL["cell"]},
+                edgecolor="white", ax=ax)
+
+    ax.axhline(1.0, color="grey", linewidth=0.8, linestyle="--", alpha=0.5)
+    ax.set_xlabel("")
+    ax.set_ylabel("Relative SE (50% subsample / full)")
+    ax.set_title("Precision: Participants vs Cells", fontweight="bold")
+    ax.legend(fontsize=7, frameon=True, title="Subsample", title_fontsize=8)
+    ax.tick_params(axis="x", rotation=15)
+    despine(ax)
+
+
+# ======================================================================
+# Legacy dataset config (shared by panels G, H, and bootstrap)
+# ======================================================================
 
 _MDE_DATASET_CFG = {
     "Sade-Feldman": {
@@ -551,191 +911,7 @@ _MDE_DATASET_CFG = {
     },
 }
 
-_MDE_PALETTE = dict(
-    zip(_MDE_DATASET_CFG.keys(), ["#1b9e77", "#d95f02", "#7570b3", "#e7298a", "#66a61e"])
-)
 
-
-def _mde_curve(
-    n: np.ndarray,
-    sigma: float,
-    alpha: float = 0.05,
-    power: float = 0.8,
-    paired: bool = False,
-) -> np.ndarray:
-    """Minimum detectable effect for a comparison.
-
-    Two-arm unpaired: MDE = (z_a + z_b) * sigma * sqrt(2/n)
-    Single-arm paired: MDE = (z_a + z_b) * sigma * sqrt(1/n)
-    """
-    z_a = sp_stats.norm.ppf(1 - alpha / 2)
-    z_b = sp_stats.norm.ppf(power)
-    scale = np.sqrt(1.0 / n) if paired else np.sqrt(2.0 / n)
-    return (z_a + z_b) * sigma * scale
-
-
-def _load_mde_data() -> dict[str, dict]:
-    """Load datasets and compute sigma + n_per_group for MDE curves."""
-    out: dict[str, dict] = {}
-    for name, cfg in _MDE_DATASET_CFG.items():
-        try:
-            adata = cfg["loader"]()
-            if cfg.get("harmonize", False):
-                adata = harmonize_response(adata)
-            layer = cfg["layer"]
-            if layer == "log1p_cpm" and "log1p_cpm" not in adata.layers:
-                if "counts" in adata.layers:
-                    adata = add_log1p_cpm_layer(
-                        adata, counts_layer="counts", out_layer="log1p_cpm",
-                    )
-                else:
-                    continue
-
-            features = [f for f in _MDE_FEATURES if f in adata.var_names]
-            if len(features) < 4:
-                continue
-
-            pid_col = cfg["participant_col"]
-            visit_col = cfg["visit_col"]
-            arm_col = cfg.get("arm_col")
-            design = cfg.get("design", "two_arm")
-
-            # Get participant-visit means
-            mat = (
-                adata[:, features].layers[layer]
-                if layer in adata.layers
-                else adata[:, features].X
-            )
-            mat = mat.toarray() if hasattr(mat, "toarray") else np.asarray(mat)
-            expr = pd.DataFrame(mat, columns=features, index=adata.obs_names)
-            expr[pid_col] = adata.obs[pid_col].values
-            expr[visit_col] = adata.obs[visit_col].values
-            if arm_col and arm_col in adata.obs.columns:
-                expr[arm_col] = adata.obs[arm_col].values
-
-            arm_filter = cfg.get("arm_filter")
-            if arm_filter and arm_col and arm_col in expr.columns:
-                expr = expr[expr[arm_col] == arm_filter].copy()
-
-            group_cols = [pid_col, visit_col]
-            if arm_col and arm_col in expr.columns:
-                group_cols.append(arm_col)
-            pv = expr.groupby(group_cols, observed=True)[features].mean().reset_index()
-
-            # Paired filter
-            counts = pv.groupby(pid_col)[visit_col].nunique()
-            paired = counts[counts >= 2].index
-            pv = pv[pv[pid_col].isin(paired)].copy()
-
-            if design == "two_arm":
-                pv = pv[
-                    pv[arm_col].isin([cfg["arm_treated"], cfg["arm_control"]])
-                ].copy()
-                arm_counts = pv.groupby(arm_col)[pid_col].nunique()
-                n_per_group = int(min(
-                    arm_counts.get(cfg["arm_treated"], 0),
-                    arm_counts.get(cfg["arm_control"], 0),
-                ))
-            else:
-                n_per_group = int(pv[pid_col].nunique())
-
-            if n_per_group < 2:
-                continue
-
-            # Compute median residual sigma from simple OLS per feature
-            sigmas = []
-            pre_v, post_v = cfg["visits"]
-            pv_sub = pv[pv[visit_col].isin([pre_v, post_v])].copy()
-            post = (pv_sub[visit_col].values == post_v).astype(float)
-            if design == "two_arm":
-                treated = (pv_sub[arm_col].values == cfg["arm_treated"]).astype(float)
-            else:
-                treated = None
-            for feat in features:
-                y = pv_sub[feat].values.astype(float)
-                if treated is not None:
-                    X = np.column_stack(
-                        [np.ones_like(post), post, treated, post * treated]
-                    )
-                else:
-                    X = np.column_stack([np.ones_like(post), post])
-                if np.linalg.matrix_rank(X) < X.shape[1]:
-                    continue
-                beta, _, _, _ = np.linalg.lstsq(X, y, rcond=None)
-                resid = y - X @ beta
-                n, p = X.shape
-                dof = n - p
-                if dof > 0:
-                    sigmas.append(float(np.sqrt(np.sum(resid**2) / dof)))
-
-            sigma = float(np.nanmedian(sigmas)) if sigmas else 1.0
-            out[name] = {
-                "n_per_group": n_per_group,
-                "sigma": sigma,
-                "design": design,
-            }
-            print(f"  MDE {name}: n/group={n_per_group}, sigma={sigma:.3f}, design={design}")
-        except Exception as exc:
-            print(f"  MDE {name}: failed ({exc})")
-    return out
-
-
-def _panel_mde(ax, mde_data: dict[str, dict]):
-    """H: Power curves — minimum detectable effect vs sample size."""
-    # Filter out datasets with too few participants (< 3)
-    plot_data = {
-        name: info for name, info in mde_data.items()
-        if info["n_per_group"] >= 3
-    }
-    if not plot_data:
-        ax.text(0.5, 0.5, "No datasets with ≥3 participants",
-                ha="center", va="center", transform=ax.transAxes)
-        return
-
-    # Determine grid range to include all observed n values
-    all_n = [info["n_per_group"] for info in plot_data.values()]
-    n_max = max(max(all_n) + 10, 61)
-    n_grid = np.arange(3, n_max, 1)
-
-    for name, info in plot_data.items():
-        sigma = info["sigma"]
-        if not np.isfinite(sigma) or sigma <= 0:
-            sigma = 1.0
-        paired = info.get("design", "two_arm") == "single_arm_paired"
-        color = _MDE_PALETTE.get(name, "grey")
-        y = _mde_curve(n_grid, sigma, paired=paired)
-        # Distinct dash patterns per dataset for clarity
-        _dash_map = {
-            "Sade-Feldman": "-",
-            "AML": (0, (5, 3)),        # dashed
-            "CAR-T": (0, (3, 1, 1, 1)),  # dash-dot
-            "Vaccine": (0, (8, 4)),     # long dash
-            "Stephenson": (0, (1, 2)),  # dotted
-        }
-        ls = _dash_map.get(name, "--" if paired else "-")
-        ax.plot(n_grid, y, lw=2.5, ls=ls, color=color, label=name)
-
-        n_actual = info["n_per_group"]
-        mde_val = _mde_curve(np.array([n_actual]), sigma, paired=paired)[0]
-        ax.scatter(
-            [n_actual], [mde_val],
-            color=color, edgecolors="black", zorder=5, s=70,
-            linewidth=1.0,
-        )
-        ax.annotate(
-            f"n={n_actual}",
-            (n_actual, mde_val),
-            textcoords="offset points",
-            xytext=(8, 5),
-            fontsize=7,
-            fontweight="bold",
-            color=color,
-        )
-    ax.set_xlabel("Participants per group")
-    ax.set_ylabel("Minimum detectable effect")
-    ax.set_title("Power Curves: MDE vs Sample Size", fontweight="bold")
-    ax.legend(fontsize=8, frameon=True, loc="upper right")
-    despine(ax)
 
 
 # ======================================================================
@@ -743,21 +919,44 @@ def _panel_mde(ax, mde_data: dict[str, dict]):
 # ======================================================================
 
 def generate():
-    """Create and save Supplementary Figure 4 panels (A-H)."""
+    """Create and save Supplementary Figure 4 panels (A–H).
+
+    Layout:
+      A  Analytical vs bootstrap SE (all 5 datasets, faceted forest plot)
+      B  Standardised vs unstandardised effect sizes
+      C  Mean vs median aggregation comparison
+      D  Log-transform sensitivity
+      E  Cell-type-stratified DiD heatmap
+      F  Rank-order concordance across choices
+      G  Leave-one-out stability matrix
+      H  Precision decomposition (participants vs cells)
+    """
     print("Supplementary Figure 4: Sensitivity to Modeling and Preprocessing")
     data = _run_sensitivity()
 
-    panels = [
-        ("panel_A", _panel_cell_vs_part, (7.0, 6.0)),
-        ("panel_B", _panel_bootstrap_ci, (8.6, 6.6)),
-        ("panel_C", _panel_std_vs_unstd, (7.0, 6.0)),
-        ("panel_D", _panel_mean_vs_median, (7.0, 6.0)),
-        ("panel_E", _panel_log_sensitivity, (7.0, 6.0)),
-        ("panel_F", _panel_ct_heatmap, (8.8, 5.8)),
-        ("panel_G", _panel_rank_concordance, (7.2, 5.8)),
+    # Panel A: Multi-dataset bootstrap SE (separate pipeline)
+    print("  Loading multi-dataset bootstrap data ...")
+    boot_data = _run_multi_bootstrap()
+    # Filter to datasets that actually returned results
+    boot_ok = {k: v for k, v in boot_data.items() if v.get("part") is not None}
+    if boot_ok:
+        ncols_a = len(boot_ok)
+        fig = plt.figure(figsize=(4.5 * ncols_a, 6.5))
+        _panel_bootstrap_multi(fig, boot_ok)
+        fig.tight_layout(rect=[0, 0, 1, 0.93])
+        save_panel(fig, "panel_A", FIGURE_NAME, SUPP_OUTPUT)
+    boot_data.clear()
+
+    # Panels B–F from single-dataset sensitivity (Sade-Feldman)
+    panels_bf = [
+        ("panel_B", _panel_std_vs_unstd, (7.0, 6.0)),
+        ("panel_C", _panel_mean_vs_median, (7.0, 6.0)),
+        ("panel_D", _panel_log_sensitivity, (7.0, 6.0)),
+        ("panel_E", _panel_ct_heatmap, (8.8, 5.8)),
+        ("panel_F", _panel_rank_concordance, (7.2, 5.8)),
     ]
 
-    for panel_name, fn, size in panels:
+    for panel_name, fn, size in panels_bf:
         fig, ax = plt.subplots(figsize=size)
         fn(ax, data)
         fig.tight_layout()
@@ -767,15 +966,19 @@ def generate():
         del data["adata"]
     data.clear()
 
-    # H: Power curves (MDE) — separate data pipeline
-    print("  Loading MDE data ...")
-    mde_data = _load_mde_data()
-    if mde_data:
-        fig, ax = plt.subplots(figsize=(7.0, 5.8))
-        _panel_mde(ax, mde_data)
-        fig.tight_layout()
-        save_panel(fig, "panel_H", FIGURE_NAME, SUPP_OUTPUT)
-    mde_data.clear()
+    # Panel G: LOO stability (heavy computation)
+    print("  Computing LOO stability ...")
+    fig, ax = plt.subplots(figsize=(9, 6))
+    _panel_loo_stability(ax)
+    fig.tight_layout()
+    save_panel(fig, "panel_G", FIGURE_NAME, SUPP_OUTPUT)
+
+    # Panel H: Precision decomposition (heavy computation)
+    print("  Computing precision decomposition ...")
+    fig, ax = plt.subplots(figsize=(9, 5.5))
+    _panel_precision_decomp(ax)
+    fig.tight_layout()
+    save_panel(fig, "panel_H", FIGURE_NAME, SUPP_OUTPUT)
 
     clear_cache()
     gc.collect()

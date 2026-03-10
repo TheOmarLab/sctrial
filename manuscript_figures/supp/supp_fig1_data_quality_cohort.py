@@ -7,14 +7,15 @@ inference.  Supports Main Figure 1 (Problem & Framework).
 
 Panels
 ------
-  A  Study design summary table (design, pairing, arms, N).
+  A  Study design summary table (matplotlib table).
   B  Participant pairing structure per dataset.
-  C  Cells per participant per arm (box + strip).
-  D  Genes detected per cell distributions by dataset and group.
-  E  Total counts per cell distributions by dataset and group.
-  F  Mitochondrial & ribosomal content with threshold overlays.
+  C  Participant counts per arm × visit (grouped bar chart).
+  D  Cells per participant by arm (box + strip).
+  E  Genes detected per cell distributions by dataset and group.
+  F  Total counts + mito/ribo QC merged (1×2).
   G  Lorenz curve + Gini inequality per dataset.
-  H  Attrition + visit completeness (side-by-side).
+  H  Post-QC threshold compliance per dataset.
+  I  Visit completeness per dataset.
 
 Non-overlap guardrail: no treatment-effect claims, no DiD estimates.
 """
@@ -27,7 +28,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from matplotlib.ticker import FuncFormatter, MaxNLocator
+from matplotlib.ticker import FuncFormatter
 
 from .._shared import (
     SUPP_OUTPUT,
@@ -67,30 +68,40 @@ _DESIGN_META = {
         "pairing": "Partially paired",
         "arms": "Responder vs Non-responder",
         "indication": "Melanoma",
+        "visits": "Pre, Post",
+        "estimand": "DiD (two-arm)",
     },
     "Stephenson": {
-        "design": "Cross-sectional COVID-19",
-        "pairing": "Single observation",
+        "design": "COVID-19 severity comparison",
+        "pairing": "Multi-visit (grouped by severity)",
         "arms": "Severity groups",
         "indication": "COVID-19",
+        "visits": "Multiple collection days",
+        "estimand": "DiD (two-arm)",
     },
     "Vaccine": {
         "design": "Pre/post vaccination",
         "pairing": "Paired",
         "arms": "Single arm",
         "indication": "Influenza",
+        "visits": "Pre, Post",
+        "estimand": "Δ (single-arm)",
     },
     "AML": {
         "design": "Pre/post treatment",
-        "pairing": "Paired (partial)",
+        "pairing": "Paired (partial); control largely pre-only",
         "arms": "Treatment vs Control",
         "indication": "AML",
+        "visits": "Pre, Post",
+        "estimand": "Δ (two-arm)",
     },
     "CAR-T": {
         "design": "Pre/post CAR-T infusion",
-        "pairing": "Paired",
+        "pairing": "Partially paired",
         "arms": "Single arm (CAR-T)",
         "indication": "B-ALL / DLBCL",
+        "visits": "Pre, Post",
+        "estimand": "Δ (single-arm)",
     },
 }
 
@@ -234,34 +245,51 @@ def _load_all() -> dict:
     return loaded
 
 
-# ── Panel A: Dataset overview bar chart ──────────────────────────────
+# ── Panel A: Study design summary table ──────────────────────────────
 
 
-def _panel_dataset_overview(ax, loaded: dict):
-    """Dataset overview bar chart: cells and participants per dataset."""
-    ds_names = list(loaded.keys())
-    n_cells = [loaded[n]["n_cells"] for n in ds_names]
-    n_parts = [loaded[n]["n_participants"] for n in ds_names]
+def _panel_design_table(ax, loaded: dict):
+    """Render _DESIGN_META as a matplotlib table."""
+    col_labels = ["Dataset", "Design", "Arms", "Visits", "Pairing",
+                  "Estimand", "Indication", "Participants", "Cells"]
+    rows = []
+    for name in loaded:
+        meta = _DESIGN_META.get(name, {})
+        rows.append([
+            name,
+            meta.get("design", "—"),
+            meta.get("arms", "—"),
+            meta.get("visits", "—"),
+            meta.get("pairing", "—"),
+            meta.get("estimand", "—"),
+            meta.get("indication", "—"),
+            f"{loaded[name]['n_participants']:,}",
+            f"{loaded[name]['n_cells']:,}",
+        ])
 
-    x = np.arange(len(ds_names))
-    colors = [_DS_PALETTE.get(n, "grey") for n in ds_names]
+    ax.axis("off")
+    table = ax.table(
+        cellText=rows, colLabels=col_labels,
+        loc="center", cellLoc="center",
+    )
+    table.auto_set_font_size(False)
+    table.set_fontsize(8)
+    table.scale(1.0, 1.6)
 
-    bars = ax.bar(x, n_cells, color=colors, edgecolor="white", width=0.6)
-    for bar, nc, np_ in zip(bars, n_cells, n_parts):
-        ax.text(bar.get_x() + bar.get_width() / 2, nc + nc * 0.02,
-                f"{nc:,}\n({np_} pts)",
-                ha="center", va="bottom", fontsize=7, fontweight="bold")
+    # Style header row
+    for j in range(len(col_labels)):
+        cell = table[0, j]
+        cell.set_facecolor("#2c3e50")
+        cell.set_text_props(color="white", fontweight="bold")
 
-    ax.set_xticks(x)
-    ax.set_xticklabels(ds_names, fontsize=9)
-    ax.set_ylabel("Number of cells", fontsize=9)
-    ax.set_title("Dataset Overview: Cells and Participants", fontweight="bold")
-    # Linear scale with equally spaced, readable tick labels
-    ax.yaxis.set_major_locator(MaxNLocator(nbins=6, integer=True))
-    ax.yaxis.set_major_formatter(
-        FuncFormatter(lambda v, _: f"{int(v):,}" if v >= 1 else "0"))
-    ax.tick_params(axis="y", labelsize=8)
-    despine(ax)
+    # Alternate row colors
+    for i in range(1, len(rows) + 1):
+        color = "#ecf0f1" if i % 2 == 0 else "white"
+        for j in range(len(col_labels)):
+            table[i, j].set_facecolor(color)
+
+    ax.set_title("Study Design and Cohort Summary", fontweight="bold",
+                 fontsize=11, pad=12)
 
 
 # ── Panel B: Participant pairing structure ────────────────────────────
@@ -326,7 +354,84 @@ def _panel_pairing(ax, loaded: dict):
     despine(ax)
 
 
-# ── Panel C: Cells per participant per arm ────────────────────────────
+# ── Panel C: Participant counts per arm × visit ──────────────────────
+
+
+def _panel_participant_counts(fig, loaded: dict):
+    """Faceted bar chart: participant N per arm × visit (one subplot per dataset)."""
+    names = list(loaded.keys())
+    ncols = len(names)
+    axes = fig.subplots(1, ncols, sharey=False)
+    if ncols == 1:
+        axes = [axes]
+
+    for ax, name in zip(axes, names):
+        data = loaded[name]
+        obs = data["adata"].obs
+        pid = data["pid_col"]
+        arm = data["arm_col"]
+        vis = data["visit_col"]
+
+        if pid is None:
+            ax.set_title(name, fontweight="bold", fontsize=9)
+            ax.axis("off")
+            continue
+
+        # Build grouped counts (observed=True to avoid phantom bins)
+        if arm and vis and arm in obs.columns and vis in obs.columns:
+            grp = (obs.groupby([arm, vis], observed=True)[pid]
+                   .nunique().reset_index(name="N"))
+            grp.rename(columns={arm: "Arm", vis: "Visit"}, inplace=True)
+            x_col, hue_col = "Visit", "Arm"
+        elif vis and vis in obs.columns:
+            grp = (obs.groupby(vis, observed=True)[pid]
+                   .nunique().reset_index(name="N"))
+            grp.rename(columns={vis: "Visit"}, inplace=True)
+            grp["Arm"] = "All"
+            x_col, hue_col = "Visit", None
+        elif arm and arm in obs.columns:
+            grp = (obs.groupby(arm, observed=True)[pid]
+                   .nunique().reset_index(name="N"))
+            grp.rename(columns={arm: "Arm"}, inplace=True)
+            grp["Visit"] = "All"
+            x_col, hue_col = "Arm", None
+        else:
+            ax.set_title(name, fontweight="bold", fontsize=9)
+            ax.axis("off")
+            continue
+
+        # Drop zero-count bins from unobserved categorical combos
+        grp = grp[grp["N"] > 0]
+
+        if hue_col:
+            sns.barplot(data=grp, x=x_col, y="N", hue=hue_col,
+                        palette="Dark2", edgecolor="white", ax=ax)
+            ax.legend(fontsize=6, title=hue_col, title_fontsize=7,
+                      loc="upper right", frameon=True)
+        else:
+            sns.barplot(data=grp, x=x_col, y="N",
+                        color="#1b9e77", edgecolor="white", ax=ax)
+
+        # Annotate bar values
+        for bar in ax.patches:
+            h = bar.get_height()
+            if h > 0:
+                ax.text(bar.get_x() + bar.get_width() / 2, h + 0.3,
+                        f"{int(h)}", ha="center", va="bottom", fontsize=6)
+
+        ax.set_title(name, fontweight="bold", fontsize=9)
+        ax.set_xlabel("")
+        if ax == axes[0]:
+            ax.set_ylabel("Participants")
+        else:
+            ax.set_ylabel("")
+        ax.tick_params(axis="x", rotation=30, labelsize=7)
+        despine(ax)
+
+    fig.suptitle("Participants per Arm × Visit", fontweight="bold", fontsize=11)
+
+
+# ── Panel D: Cells per participant per arm ────────────────────────────
 
 
 def _panel_cells_per_pid_arm(ax, loaded: dict):
@@ -340,10 +445,16 @@ def _panel_cells_per_pid_arm(ax, loaded: dict):
             continue
 
         if arm and arm in obs.columns:
-            per_pid = obs.groupby([pid, arm]).size().reset_index(name="Cells")
+            per_pid = (
+                obs.groupby([pid, arm], observed=True)
+                .size()
+                .reset_index(name="Cells")
+            )
+            per_pid = per_pid[per_pid["Cells"] > 0]
             per_pid.rename(columns={arm: "Arm"}, inplace=True)
         else:
-            per_pid = obs.groupby(pid).size().reset_index(name="Cells")
+            per_pid = obs.groupby(pid, observed=True).size().reset_index(name="Cells")
+            per_pid = per_pid[per_pid["Cells"] > 0]
             per_pid["Arm"] = "All"
 
         per_pid["Dataset"] = name
@@ -373,7 +484,7 @@ def _panel_cells_per_pid_arm(ax, loaded: dict):
     despine(ax)
 
 
-# ── Panel D: n_genes distributions ──────────────────────────────────
+# ── Panel E: n_genes distributions ──────────────────────────────────
 
 
 def _panel_ngenes_dist(ax, loaded: dict):
@@ -419,7 +530,7 @@ def _panel_ngenes_dist(ax, loaded: dict):
     despine(ax)
 
 
-# ── Panel E: total_counts distributions ──────────────────────────────
+# ── Panel F helper: total_counts distributions ──────────────────────
 
 
 def _panel_counts_dist(ax, loaded: dict):
@@ -512,6 +623,71 @@ def _panel_mito_ribo(ax, loaded: dict):
     despine(ax)
 
 
+# ── Panel F merged: Total counts + mito/ribo in 1×2 ──────────────────
+
+
+def _panel_counts_mito_merged(fig_merged, loaded: dict):
+    """F: Combined total counts + mito/ribo QC in 1×2 subplot."""
+    ax1, ax2 = fig_merged.subplots(1, 2)
+    _panel_counts_dist(ax1, loaded)
+    _panel_mito_ribo(ax2, loaded)
+
+
+# ── Panel H: QC attrition waterfall ──────────────────────────────────
+
+
+def _panel_qc_waterfall(ax, loaded: dict):
+    """Post-QC threshold check: cells meeting each criterion in processed data."""
+    thresholds = [
+        ("All cells", None),
+        ("genes ≥ 200", lambda ng, tc, mt: ng >= 200),
+        ("counts ≥ 500", lambda ng, tc, mt: tc >= 500),
+        ("mito < 20%", lambda ng, tc, mt: mt < 20),
+    ]
+
+    ds_names = list(loaded.keys())
+    x = np.arange(len(thresholds))
+    width = 0.15
+    offsets = np.linspace(-(len(ds_names) - 1) * width / 2,
+                          (len(ds_names) - 1) * width / 2,
+                          len(ds_names))
+
+    for di, name in enumerate(ds_names):
+        data = loaded[name]
+        ngenes = data["ngenes"]
+        total_counts = data["total_counts"]
+        pct_mito = data["pct_mito"]
+
+        # Start with all cells (already QC-filtered upstream)
+        mask = np.ones(len(ngenes), dtype=bool)
+        counts_at_stage = []
+
+        for label, filt_fn in thresholds:
+            if filt_fn is not None:
+                stage_mask = filt_fn(ngenes, total_counts, pct_mito)
+                # NaN values → fail the threshold (conservative)
+                stage_mask = np.where(np.isnan(stage_mask), False, stage_mask)
+                mask = mask & stage_mask
+            counts_at_stage.append(int(mask.sum()))
+
+        color = _DS_PALETTE.get(name, "grey")
+        bars = ax.bar(x + offsets[di], counts_at_stage, width,
+                      color=color, edgecolor="white", label=name)
+        for bar, cnt in zip(bars, counts_at_stage):
+            ax.text(bar.get_x() + bar.get_width() / 2, cnt + cnt * 0.01,
+                    f"{cnt:,}", ha="center", va="bottom", fontsize=5,
+                    rotation=90)
+
+    ax.set_xticks(x)
+    ax.set_xticklabels([t[0] for t in thresholds], fontsize=8)
+    ax.set_ylabel("Cells meeting threshold")
+    ax.set_title("Post-QC Threshold Compliance", fontweight="bold")
+    ax.yaxis.set_major_formatter(
+        FuncFormatter(lambda v, _: f"{int(v):,}" if v >= 1 else "0"))
+    ax.legend(fontsize=7, frameon=True, ncol=2)
+    despine(ax)
+
+
 # ── Panel G: Lorenz curve + Gini per dataset ─────────────────────────
 
 
@@ -546,82 +722,7 @@ def _panel_lorenz_gini(ax, loaded: dict):
     despine(ax)
 
 
-# ── Panel H helpers: Dropout + Completeness ──────────────────────────
-
-
-def _panel_dropout(ax, loaded: dict):
-    """Dropout rates: fraction of participants missing post-treatment."""
-    rows = []
-    for name, data in loaded.items():
-        obs = data["adata"].obs
-        pid = data["pid_col"]
-        vis = data["visit_col"]
-
-        if pid is None or vis is None:
-            continue
-
-        visits = sorted(obs[vis].dropna().unique())
-        if len(visits) < 2:
-            continue
-
-        # Identify pre and post
-        pre_visits = [v for v in visits
-                      if str(v).lower() in ("pre", "baseline", "d0", "day0", "0")]
-        post_visits = [v for v in visits if v not in pre_visits]
-
-        if not pre_visits or not post_visits:
-            pre_visits = [visits[0]]
-            post_visits = visits[1:]
-
-        pre_pids = set(obs.loc[obs[vis].isin(pre_visits), pid].dropna().unique())
-        post_pids = set(obs.loc[obs[vis].isin(post_visits), pid].dropna().unique())
-
-        n_pre = len(pre_pids)
-        n_post = len(pre_pids & post_pids)
-        dropout_rate = 1 - (n_post / n_pre) if n_pre > 0 else 0
-
-        rows.append({
-            "Dataset": name,
-            "N pre": n_pre,
-            "N retained": n_post,
-            "Dropout rate": dropout_rate,
-        })
-
-    # Include cross-sectional datasets as 0% dropout
-    for name, data in loaded.items():
-        if name not in [r["Dataset"] for r in rows]:
-            pid = data["pid_col"]
-            if pid:
-                n = data["adata"].obs[pid].nunique()
-                rows.append({
-                    "Dataset": name,
-                    "N pre": n,
-                    "N retained": n,
-                    "Dropout rate": 0.0,
-                })
-
-    if not rows:
-        ax.text(0.5, 0.5, "No longitudinal data", ha="center", va="center",
-                transform=ax.transAxes, fontsize=10, fontstyle="italic")
-        ax.set_title("Attrition Rates", fontweight="bold")
-        return
-
-    df = pd.DataFrame(rows)
-    colors = [_DS_PALETTE.get(n, "grey") for n in df["Dataset"]]
-
-    bars = ax.bar(df["Dataset"], df["Dropout rate"], color=colors,
-                  edgecolor="white", width=0.6)
-    for bar, (_, row) in zip(bars, df.iterrows()):
-        ax.text(bar.get_x() + bar.get_width() / 2,
-                row["Dropout rate"] + 0.02,
-                f"{row['Dropout rate']:.0%}\n({row['N retained']}/{row['N pre']})",
-                ha="center", va="bottom", fontsize=6)
-
-    ax.set_ylabel("Dropout rate")
-    ax.set_title("Participant Attrition (Pre → Post)", fontweight="bold")
-    ax.set_ylim(0, min(1.0, df["Dropout rate"].max() * 1.5 + 0.1))
-    ax.tick_params(axis="x", rotation=15)
-    despine(ax)
+# ── Panel I: Visit completeness ──────────────────────────────────────
 
 
 def _panel_completeness_detailed(ax, loaded: dict):
@@ -688,15 +789,16 @@ def _panel_completeness_detailed(ax, loaded: dict):
 def generate():
     """Create and save Supplementary Figure 1 panels.
 
-    Layout (8 panels):
-      A  Study design summary table
+    Layout (9 panels):
+      A  Study design summary table (matplotlib table)
       B  Participant pairing structure
-      C  Cells per participant by arm
-      D  Genes detected per cell distributions
-      E  Total counts per cell distributions
-      F  Mitochondrial & ribosomal content
+      C  Participant counts per arm × visit
+      D  Cells per participant by arm
+      E  Genes detected per cell distributions
+      F  Total counts + mito/ribo QC merged (1×2)
       G  Lorenz curve + Gini inequality
-      H  Attrition + visit completeness (side-by-side)
+      H  Post-QC threshold compliance
+      I  Visit completeness
     """
     print("Supplementary Figure 1: Data Quality & Cohort Characterisation")
     loaded = _load_all()
@@ -706,8 +808,8 @@ def generate():
         return
 
     # Panel A: Study design summary table
-    fig, ax = plt.subplots(figsize=(10, 4))
-    _panel_dataset_overview(ax, loaded)
+    fig, ax = plt.subplots(figsize=(16, 3.5))
+    _panel_design_table(ax, loaded)
     fig.tight_layout()
     save_panel(fig, "panel_A", FIGURE_NAME, SUPP_OUTPUT)
 
@@ -717,27 +819,28 @@ def generate():
     fig.tight_layout()
     save_panel(fig, "panel_B", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel C: Cells per participant by arm
+    # Panel C: Participant counts per arm × visit (faceted)
+    ncols_c = len(loaded)
+    fig = plt.figure(figsize=(3.5 * ncols_c, 4))
+    _panel_participant_counts(fig, loaded)
+    fig.tight_layout(rect=[0, 0, 1, 0.93])
+    save_panel(fig, "panel_C", FIGURE_NAME, SUPP_OUTPUT)
+
+    # Panel D: Cells per participant by arm
     fig, ax = plt.subplots(figsize=(9, 5))
     _panel_cells_per_pid_arm(ax, loaded)
     fig.tight_layout()
-    save_panel(fig, "panel_C", FIGURE_NAME, SUPP_OUTPUT)
+    save_panel(fig, "panel_D", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel D: Genes detected per cell distributions
+    # Panel E: Genes detected per cell distributions
     fig, ax = plt.subplots(figsize=(9, 5))
     _panel_ngenes_dist(ax, loaded)
     fig.tight_layout()
-    save_panel(fig, "panel_D", FIGURE_NAME, SUPP_OUTPUT)
-
-    # Panel E: Total counts per cell distributions
-    fig, ax = plt.subplots(figsize=(9, 5))
-    _panel_counts_dist(ax, loaded)
-    fig.tight_layout()
     save_panel(fig, "panel_E", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel F: Mitochondrial & ribosomal content
-    fig, ax = plt.subplots(figsize=(9, 5))
-    _panel_mito_ribo(ax, loaded)
+    # Panel F: Total counts + mito/ribo QC merged (1×2)
+    fig = plt.figure(figsize=(18, 5.5))
+    _panel_counts_mito_merged(fig, loaded)
     fig.tight_layout()
     save_panel(fig, "panel_F", FIGURE_NAME, SUPP_OUTPUT)
 
@@ -747,12 +850,17 @@ def generate():
     fig.tight_layout()
     save_panel(fig, "panel_G", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel H: Attrition + visit completeness (side-by-side)
-    fig, (ax_left, ax_right) = plt.subplots(1, 2, figsize=(14, 6))
-    _panel_dropout(ax_left, loaded)
-    _panel_completeness_detailed(ax_right, loaded)
+    # Panel H: QC threshold compliance
+    fig, ax = plt.subplots(figsize=(10, 5.5))
+    _panel_qc_waterfall(ax, loaded)
     fig.tight_layout()
     save_panel(fig, "panel_H", FIGURE_NAME, SUPP_OUTPUT)
+
+    # Panel I: Visit completeness
+    fig, ax = plt.subplots(figsize=(8, 5.5))
+    _panel_completeness_detailed(ax, loaded)
+    fig.tight_layout()
+    save_panel(fig, "panel_I", FIGURE_NAME, SUPP_OUTPUT)
 
     # Cleanup
     for data in loaded.values():
