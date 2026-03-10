@@ -377,20 +377,25 @@ def _panel_participant_counts(fig, loaded: dict):
             ax.axis("off")
             continue
 
-        # Build grouped counts (observed=True to avoid phantom bins)
+        # Build grouped counts (observed=True to avoid phantom bins).
+        # Cast grouping columns to str to strip categorical phantom levels.
         if arm and vis and arm in obs.columns and vis in obs.columns:
-            grp = (obs.groupby([arm, vis], observed=True)[pid]
+            grp = (obs.assign(**{arm: obs[arm].astype(str),
+                                 vis: obs[vis].astype(str)})
+                   .groupby([arm, vis], observed=True)[pid]
                    .nunique().reset_index(name="N"))
             grp.rename(columns={arm: "Arm", vis: "Visit"}, inplace=True)
             x_col, hue_col = "Visit", "Arm"
         elif vis and vis in obs.columns:
-            grp = (obs.groupby(vis, observed=True)[pid]
+            grp = (obs.assign(**{vis: obs[vis].astype(str)})
+                   .groupby(vis, observed=True)[pid]
                    .nunique().reset_index(name="N"))
             grp.rename(columns={vis: "Visit"}, inplace=True)
             grp["Arm"] = "All"
             x_col, hue_col = "Visit", None
         elif arm and arm in obs.columns:
-            grp = (obs.groupby(arm, observed=True)[pid]
+            grp = (obs.assign(**{arm: obs[arm].astype(str)})
+                   .groupby(arm, observed=True)[pid]
                    .nunique().reset_index(name="N"))
             grp.rename(columns={arm: "Arm"}, inplace=True)
             grp["Visit"] = "All"

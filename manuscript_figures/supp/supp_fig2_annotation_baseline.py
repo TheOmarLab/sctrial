@@ -97,11 +97,11 @@ def _ensure_umap_and_clusters(adata):
         del adata_work
         gc.collect()
 
-    has_conn = ("connectivities" in adata.obsp) if adata.obsp else False
-    if "neighbors" not in adata.uns or not has_conn:
-        print("    Computing neighbors...")
-        use_rep = "X_pca_harmony" if "X_pca_harmony" in adata.obsm else "X_pca"
-        sc.pp.neighbors(adata, use_rep=use_rep, n_neighbors=15)
+    # Always recompute neighbors uniformly (n_neighbors=15, same rep) so that
+    # purity and silhouette scores are comparable across datasets.
+    use_rep = "X_pca_harmony" if "X_pca_harmony" in adata.obsm else "X_pca"
+    print("    (Re)computing neighbors uniformly (n_neighbors=15)...")
+    sc.pp.neighbors(adata, use_rep=use_rep, n_neighbors=15)
 
     if "X_umap" not in adata.obsm:
         print("    Computing UMAP...")
@@ -202,9 +202,9 @@ def _panel_umap_grid(fig, axes, loaded: dict):
         if len(unique_cts) > 12:
             handles.append(mpatches.Patch(facecolor="grey", edgecolor="none",
                                           label=f"+ {len(unique_cts)-12} more"))
-        ax.legend(handles=handles, fontsize=4.5, loc="best", frameon=True,
-                  framealpha=0.8, ncol=1, handlelength=0.7, handleheight=0.6,
-                  borderpad=0.3, labelspacing=0.15, markerscale=0.4)
+        ax.legend(handles=handles, fontsize=6, loc="best", frameon=True,
+                  framealpha=0.8, ncol=1, handlelength=0.8, handleheight=0.7,
+                  borderpad=0.4, labelspacing=0.2, markerscale=0.5)
 
         ax.set_title(name, fontweight="bold", fontsize=9)
         ax.set_xticks([])
@@ -251,9 +251,9 @@ def _panel_umap_grouping(fig, axes, loaded: dict):
 
         handles = [mpatches.Patch(facecolor=palette[v], edgecolor="none",
                                   label=v) for v in unique_vals]
-        ax.legend(handles=handles, fontsize=5, loc="best", frameon=True,
-                  framealpha=0.8, handlelength=0.7, handleheight=0.6,
-                  borderpad=0.3, labelspacing=0.15)
+        ax.legend(handles=handles, fontsize=6.5, loc="best", frameon=True,
+                  framealpha=0.8, handlelength=0.8, handleheight=0.7,
+                  borderpad=0.4, labelspacing=0.2)
 
         grp_label = "arm" if arm else "visit"
         ax.set_title(f"{name} ({grp_label})", fontweight="bold", fontsize=9)
@@ -268,17 +268,25 @@ def _panel_umap_grouping(fig, axes, loaded: dict):
 # ── Panel C: Marker gene dot plot ─────────────────────────────────
 
 def _panel_marker_dotplot(fig, ax, loaded: dict):
-    """Top 3 marker genes per major cell type, shown as dot plot."""
+    """Top 3 marker genes per cell type, dot plot.
+
+    Color = mean log-expression (averaged across datasets).
+    Size  = fraction of cells expressing the marker.
+    """
+    # canonical_markers keys must match HARMONIZED_CELLTYPE_ORDER labels
     canonical_markers = {
-        "T cells": ["CD3D", "CD3E", "TRAC"],
-        "CD8 T": ["CD8A", "CD8B", "GZMB"],
-        "CD4 T": ["CD4", "IL7R", "CCR7"],
-        "B cells": ["CD19", "MS4A1", "CD79A"],
-        "NK cells": ["NKG7", "GNLY", "KLRD1"],
-        "Monocytes": ["CD14", "LYZ", "S100A9"],
+        "T other": ["CD3D", "CD3E", "TRAC"],
+        "CD8+ T": ["CD8A", "CD8B", "GZMB"],
+        "CD4+ T": ["CD4", "IL7R", "CCR7"],
+        "B cell": ["CD19", "MS4A1", "CD79A"],
+        "NK": ["NKG7", "GNLY", "KLRD1"],
+        "Monocyte": ["CD14", "LYZ", "S100A9"],
         "DC": ["FCER1A", "CLEC10A", "CD1C"],
         "Plasma": ["MZB1", "JCHAIN", "SDC1"],
     }
+    all_markers = [m for mks in canonical_markers.values() for m in mks]
+
+    import scipy.sparse as sp
 
     rows = []
     for name, data in loaded.items():
@@ -286,47 +294,39 @@ def _panel_marker_dotplot(fig, ax, loaded: dict):
         X = _get_log_expr(adata)
         if X is None:
             continue
-        import scipy.sparse as sp
         gene_names = list(adata.var_names)
-        gene_idx_map = {g: i for i, g in enumerate(gene_names)}
+        gene_idx_map = {g.upper(): i for i, g in enumerate(gene_names)}
 
         ct_col = data["ct_col"]
         if ct_col is None:
             continue
 
-        labels = adata.obs[ct_col].astype(str).values
+        raw_labels = adata.obs[ct_col].astype(str).values
+        harm_labels = np.array([harmonize_celltype(l) for l in raw_labels])
 
-        for ct_name, markers in canonical_markers.items():
-            for marker in markers:
-                idx = gene_idx_map.get(marker)
-                if idx is None:
-                    marker_up = marker.upper()
-                    for g, gi in gene_idx_map.items():
-                        if g.upper() == marker_up:
-                            idx = gi
-                            break
-                if idx is None:
+        if sp.issparse(X):
+            X_arr = X.toarray()
+        else:
+            X_arr = np.asarray(X, dtype=float)
+
+        for marker in all_markers:
+            idx = gene_idx_map.get(marker.upper())
+            if idx is None:
+                continue
+            raw_col = X_arr[:, idx].ravel()
+
+            for ct_label in HARMONIZED_CELLTYPE_ORDER:
+                mask = harm_labels == ct_label
+                if mask.sum() < 10:
                     continue
-
-                if sp.issparse(X):
-                    col = np.asarray(X[:, idx].todense()).ravel()
-                else:
-                    col = X[:, idx].ravel()
-
-                for ct_label in sorted(set(labels)):
-                    mask = labels == ct_label
-                    if mask.sum() < 10:
-                        continue
-                    vals = col[mask]
-                    frac_expr = (vals > 0).mean()
-                    mean_expr = vals[vals > 0].mean() if (vals > 0).any() else 0
-                    rows.append({
-                        "Cell type": ct_label, "Marker": marker,
-                        "Marker group": ct_name,
-                        "Fraction expressing": frac_expr,
-                        "Mean expression": mean_expr,
-                        "Dataset": name,
-                    })
+                raw_vals = raw_col[mask]
+                rows.append({
+                    "Dataset": name,
+                    "Marker": marker,
+                    "Cell type": ct_label,
+                    "Mean expr": float(raw_vals.mean()),
+                    "Fraction expressing": float((raw_vals > 0).mean()),
+                })
 
     if not rows:
         ax.text(0.5, 0.5, "No marker data", ha="center", va="center",
@@ -335,48 +335,48 @@ def _panel_marker_dotplot(fig, ax, loaded: dict):
         return
 
     df = pd.DataFrame(rows)
-    agg = df.groupby(["Cell type", "Marker", "Marker group"]).agg({
-        "Fraction expressing": "mean",
-        "Mean expression": "mean",
-    }).reset_index()
+    agg = df.groupby(["Marker", "Cell type"]).agg(
+        mean_expr=("Mean expr", "mean"),
+        frac_expr=("Fraction expressing", "mean"),
+    ).reset_index()
 
-    top_cts_set: set[str] = set()
-    for data in loaded.values():
-        if data["ct_col"]:
-            per_ds = data["adata"].obs[data["ct_col"]].value_counts().head(5).index
-            top_cts_set.update(str(ct) for ct in per_ds)
-    top_cts = sorted(top_cts_set)
+    ct_used = [ct for ct in HARMONIZED_CELLTYPE_ORDER if ct in agg["Cell type"].values]
+    marker_order = [m for mks in canonical_markers.values() for m in mks
+                    if m in agg["Marker"].values]
+    markers_used = list(dict.fromkeys(marker_order))
 
-    agg_filt = agg[agg["Cell type"].isin(top_cts)]
-    if agg_filt.empty:
+    if not ct_used or not markers_used:
         ax.text(0.5, 0.5, "No overlap", ha="center", va="center",
                 transform=ax.transAxes, fontsize=10, fontstyle="italic")
         return
 
-    markers_used = sorted(agg_filt["Marker"].unique())
-    ct_used = sorted(agg_filt["Cell type"].unique())
+    pivot_expr = agg.pivot_table(
+        index="Cell type", columns="Marker", values="mean_expr", fill_value=0)
+    pivot_frac = agg.pivot_table(
+        index="Cell type", columns="Marker", values="frac_expr", fill_value=0)
 
-    pivot_frac = agg_filt.pivot_table(
-        index="Cell type", columns="Marker",
-        values="Fraction expressing", fill_value=0)
-    pivot_expr = agg_filt.pivot_table(
-        index="Cell type", columns="Marker",
-        values="Mean expression", fill_value=0)
-
-    markers_used = [m for m in markers_used if m in pivot_frac.columns]
-    ct_used = [c for c in ct_used if c in pivot_frac.index]
-    pivot_frac = pivot_frac.reindex(index=ct_used, columns=markers_used, fill_value=0)
     pivot_expr = pivot_expr.reindex(index=ct_used, columns=markers_used, fill_value=0)
+    pivot_frac = pivot_frac.reindex(index=ct_used, columns=markers_used, fill_value=0)
 
+    expr_max = max(float(pivot_expr.values.max()), 0.01)
+
+    sc_handle = None
     for yi, ct in enumerate(ct_used):
         for xi, marker in enumerate(markers_used):
-            frac = pivot_frac.loc[ct, marker]
-            expr = pivot_expr.loc[ct, marker]
+            frac = float(pivot_frac.loc[ct, marker])
+            expr = float(pivot_expr.loc[ct, marker])
             if frac > 0.01:
-                size = frac * 200
-                ax.scatter(xi, yi, s=size, c=expr, cmap="Reds",
-                           vmin=0, vmax=pivot_expr.values.max(),
-                           edgecolors="grey", linewidth=0.3, zorder=3)
+                size = max(frac * 200, 2)
+                sc_handle = ax.scatter(
+                    xi, yi, s=size, c=expr,
+                    cmap="Reds", vmin=0, vmax=expr_max,
+                    edgecolors="grey", linewidth=0.3, zorder=3,
+                )
+
+    if sc_handle is not None:
+        cbar = fig.colorbar(sc_handle, ax=ax, shrink=0.4, pad=0.02, aspect=15)
+        cbar.set_label("Mean log\nexpression", fontsize=5)
+        cbar.ax.tick_params(labelsize=5)
 
     ax.set_xticks(range(len(markers_used)))
     ax.set_xticklabels(markers_used, rotation=90, fontsize=6)
@@ -540,16 +540,22 @@ def _panel_arm_mixing(ax, loaded: dict):
     """Quantitative baseline arm overlap via kNN arm-mixing score.
 
     For each dataset with an arm column, at baseline: build kNN graph
-    (k=15) in PCA space, compute fraction of neighbors from opposite arm
-    per cell. Bar chart: arm-mixing score per dataset.
-    Higher = better overlap = arms are well mixed.
+    (k=15) in PCA space, compute participant-weighted fraction of neighbors
+    from the opposite arm.  The expected value under random mixing is
+    2*p*(1-p) (for two arms with proportions p and 1-p), NOT 0.5, which
+    only holds when arms are equal-sized.  Each dataset gets its own
+    dataset-specific reference line.
     """
+    from sklearn.neighbors import NearestNeighbors
+
     ds_names = []
     mix_scores = []
+    null_lines = []  # dataset-specific expected mixing under random assignment
 
     for name, data in loaded.items():
         arm = data.get("arm_col")
         vis = data.get("visit_col")
+        pid = data.get("pid_col")
         if arm is None:
             continue
         adata = data["adata"]
@@ -575,41 +581,59 @@ def _panel_arm_mixing(ax, loaded: dict):
         if len(unique_arms) < 2:
             continue
 
-        # Build kNN (k=15) via brute-force on PCA embedding
-        from sklearn.neighbors import NearestNeighbors
+        # Build kNN (k=15)
         nn = NearestNeighbors(n_neighbors=min(16, len(idx)),
                               metric="euclidean", algorithm="auto")
         nn.fit(emb)
         _, nbr_idx = nn.kneighbors(emb)
         nbr_idx = nbr_idx[:, 1:]  # exclude self
 
-        # Fraction of neighbors from different arm
-        mix_per_cell = []
-        for i in range(len(idx)):
-            nbr_arms = arms[nbr_idx[i]]
-            frac_diff = np.mean(nbr_arms != arms[i])
-            mix_per_cell.append(float(frac_diff))
+        # Participant-weighted mixing: average per-participant mean mixing score
+        obs_sub = obs.iloc[idx].copy()
+        obs_sub["_mix"] = [float(np.mean(arms[nbr_idx[i]] != arms[i]))
+                           for i in range(len(idx))]
+        if pid and pid in obs_sub.columns:
+            pid_scores = obs_sub.groupby(pid)["_mix"].mean()
+            mix_score = float(pid_scores.mean())
+        else:
+            mix_score = float(obs_sub["_mix"].mean())
+
+        # Expected mixing under random assignment: 2*p*(1-p)
+        # Use cell-level arm proportions (reliable, no mapping overhead).
+        arm_counts = pd.Series(arms).value_counts(normalize=True)
+        p = float(arm_counts.iloc[0])
+        expected_null = 2.0 * p * (1.0 - p)
 
         ds_names.append(name)
-        mix_scores.append(float(np.mean(mix_per_cell)))
+        mix_scores.append(mix_score)
+        null_lines.append(expected_null)
 
     if not ds_names:
         ax.text(0.5, 0.5, "No arm-overlap data", ha="center", va="center",
                 transform=ax.transAxes)
         return
 
+    x_pos = np.arange(len(ds_names))
     colors = [_DS_PALETTE.get(n, "grey") for n in ds_names]
-    bars = ax.bar(ds_names, mix_scores, color=colors, edgecolor="white",
-                  width=0.6)
+    bars = ax.bar(x_pos, mix_scores, color=colors, edgecolor="white", width=0.6)
     for bar, s in zip(bars, mix_scores):
         ax.text(bar.get_x() + bar.get_width() / 2, s + 0.01, f"{s:.3f}",
                 ha="center", va="bottom", fontsize=7, fontweight="bold")
 
-    ax.set_ylabel("Arm-mixing score (frac. opposite-arm neighbors)")
+    # Per-dataset expected null line (tick marks spanning the bar width)
+    bar_w = 0.6
+    for xi, null in enumerate(null_lines):
+        ax.plot([xi - bar_w / 2, xi + bar_w / 2], [null, null],
+                color="black", linewidth=1.2, linestyle="--", zorder=4)
+    # Add a single legend entry for the null lines
+    ax.plot([], [], color="black", linewidth=1.2, linestyle="--",
+            label="Expected (random, 2p(1−p))")
+
+    ax.set_xticks(x_pos)
+    ax.set_xticklabels(ds_names)
+    ax.set_ylabel("Arm-mixing score (participant-weighted)")
     ax.set_title("Baseline Arm Overlap (kNN mixing, k=15)", fontweight="bold")
-    ax.set_ylim(0, min(max(mix_scores) * 1.3, 1.0) if mix_scores else 1)
-    ax.axhline(0.5, color="grey", linewidth=0.5, linestyle="--", alpha=0.5,
-               label="Perfect mixing")
+    ax.set_ylim(0, min(max(mix_scores + null_lines) * 1.3, 1.0) if mix_scores else 1)
     ax.legend(fontsize=7, frameon=True)
     ax.tick_params(axis="x", rotation=15)
     despine(ax)
@@ -638,6 +662,10 @@ def _panel_ct_crosstab(ax, loaded: dict):
     df = pd.DataFrame(rows)
     pivot = df.pivot_table(index="Cell type", columns="Dataset",
                            values="Fraction", aggfunc="sum", fill_value=0)
+
+    # Enforce manuscript dataset order in columns
+    ds_order = [name for name, _ in DATASETS if name in pivot.columns]
+    pivot = pivot.reindex(columns=ds_order, fill_value=0)
 
     order = [c for c in HARMONIZED_CELLTYPE_ORDER if c in pivot.index]
     pivot = pivot.loc[order]
@@ -677,8 +705,10 @@ def _single_parcats(ax, ds_name: str, obs_sub, right_col: str, ct_col: str,
     *right_col* is typically the arm column for two-arm datasets or
     the visit column for single-arm datasets.
 
-    When *pid_col* is given, flows are participant-weighted (count unique
-    participants per Cell-type × Right combination) instead of cell-weighted.
+    When *pid_col* is given, widths reflect participant-presence incidence
+    (number of unique participants appearing in each Cell-type × Right
+    combination; a participant who appears in multiple cell types contributes
+    to each).  This is NOT participant composition — it is participant presence.
     """
     mapped = obs_sub[ct_col].astype(str).map(harmonize_celltype)
     right_vals = obs_sub[right_col].astype(str)
@@ -824,6 +854,11 @@ def _single_parcats(ax, ds_name: str, obs_sub, right_col: str, ct_col: str,
                        fontweight="bold")
     ax.set_yticks([])
     ax.set_title(ds_name, fontweight="bold", fontsize=11)
+    ax.text(0.5, -0.03,
+            "Width = participant presence (# unique participants per flow;\n"
+            "one participant may contribute to multiple cell types)",
+            ha="center", va="top", transform=ax.transAxes,
+            fontsize=6, color="#555555", fontstyle="italic")
     for sp in ax.spines.values():
         sp.set_visible(False)
 
