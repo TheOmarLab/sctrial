@@ -7,13 +7,12 @@ Show how DiD results change under different analytical decisions.
 Panels
 ------
   A  Analytical vs bootstrap SE (all 5 datasets, forest plot).
-  B  Standardised vs unstandardised effect sizes.
-  C  Mean vs median aggregation comparison.
-  D  Log-transform sensitivity (raw vs log1p betas).
-  E  Cell-type-stratified DiD heatmap.
-  F  Rank-order concordance across preprocessing choices.
-  G  Leave-one-out stability matrix (LOO CV of betas).
-  H  Precision decomposition (participant vs cell subsampling).
+  B  Standardised vs unstandardised effect sizes (Sade-Feldman).
+  C  Mean vs median aggregation comparison (Sade-Feldman).
+  D  Log-transform sensitivity (Sade-Feldman).
+  E  Cell-type-stratified DiD heatmap (Sade-Feldman).
+  F  Rank-order concordance across preprocessing choices (Sade-Feldman).
+  G  Leave-one-out stability matrix (max influence, all datasets).
 
 Non-overlap guardrail: methodological sensitivity only, not biological claims.
 """
@@ -296,12 +295,11 @@ def _panel_bootstrap_multi(fig, boot_data: dict):
         return None
 
     def _se_boot_col(df):
-        """Find the bootstrap SE column."""
+        """Find the bootstrap SE column. Returns None if not present."""
         for c in ("se_DiD_boot", "se_delta_boot", "se_time_boot"):
             if c in df.columns:
                 return c
-        # Fallback: use the analytical SE column from the bootstrap run
-        return _se_col(df)
+        return None
 
     for ax, name in zip(axes, names):
         part = boot_data[name]["part"]
@@ -370,7 +368,8 @@ def _panel_std_vs_unstd(ax, data: dict):
                                 edgecolor="#ccc", alpha=0.8))
     ax.set_xlabel("β (standardised)")
     ax.set_ylabel("β (unstandardised)")
-    ax.set_title("Standardised vs Unstandardised", fontweight="bold")
+    ax.set_title("Standardised vs Unstandardised (Sade-Feldman)",
+                 fontweight="bold")
     despine(ax)
 
 
@@ -385,7 +384,8 @@ def _panel_mean_vs_median(ax, data: dict):
     if med_res is None or med_res.empty:
         ax.text(0.5, 0.5, "No median-aggregation results", ha="center",
                 va="center", transform=ax.transAxes, fontsize=9, color="#888")
-        ax.set_title("Mean vs Median Aggregation", fontweight="bold")
+        ax.set_title("Mean vs Median Aggregation (Sade-Feldman)",
+                 fontweight="bold")
         despine(ax)
         return
 
@@ -397,7 +397,8 @@ def _panel_mean_vs_median(ax, data: dict):
     if len(common) < 2:
         ax.text(0.5, 0.5, "Insufficient data", ha="center", va="center",
                 transform=ax.transAxes)
-        ax.set_title("Mean vs Median Aggregation", fontweight="bold")
+        ax.set_title("Mean vs Median Aggregation (Sade-Feldman)",
+                 fontweight="bold")
         despine(ax)
         return
 
@@ -415,7 +416,8 @@ def _panel_mean_vs_median(ax, data: dict):
                                 edgecolor="#ccc", alpha=0.8))
     ax.set_xlabel("β (mean aggregation)")
     ax.set_ylabel("β (median aggregation)")
-    ax.set_title("Mean vs Median Aggregation", fontweight="bold")
+    ax.set_title("Mean vs Median Aggregation (Sade-Feldman)",
+                 fontweight="bold")
     despine(ax)
 
 
@@ -428,7 +430,8 @@ def _panel_log_sensitivity(ax, data: dict):
     if raw_res is None or raw_res.empty:
         ax.text(0.5, 0.5, "No raw-TPM results", ha="center", va="center",
                 transform=ax.transAxes, fontsize=9, color="#888")
-        ax.set_title("Log-Transform Sensitivity", fontweight="bold")
+        ax.set_title("Log-Transform Sensitivity (Sade-Feldman)",
+                 fontweight="bold")
         despine(ax)
         return
 
@@ -451,7 +454,8 @@ def _panel_log_sensitivity(ax, data: dict):
                                 edgecolor="#ccc", alpha=0.8))
     ax.set_xlabel("β (log1p TPM)")
     ax.set_ylabel("β (raw TPM)")
-    ax.set_title("Log-Transform Sensitivity", fontweight="bold")
+    ax.set_title("Log-Transform Sensitivity (Sade-Feldman)",
+                 fontweight="bold")
     despine(ax)
 
 
@@ -463,7 +467,8 @@ def _panel_ct_heatmap(ax, data: dict):
     if not ct_results:
         ax.text(0.5, 0.5, "No cell-type-stratified results", ha="center",
                 va="center", transform=ax.transAxes, fontsize=9, color="#888")
-        ax.set_title("Cell-Type Stratified DiD", fontweight="bold")
+        ax.set_title("Cell-Type Stratified DiD (Sade-Feldman)",
+                 fontweight="bold")
         despine(ax)
         return
 
@@ -486,7 +491,8 @@ def _panel_ct_heatmap(ax, data: dict):
                 annot=True, fmt=".2f", annot_kws={"fontsize": 6})
     ax.set_xlabel("Cell type")
     ax.set_ylabel("Feature")
-    ax.set_title("Cell-Type Stratified DiD", fontweight="bold")
+    ax.set_title("Cell-Type Stratified DiD (Sade-Feldman)",
+                 fontweight="bold")
     ax.tick_params(axis="x", labelsize=7, rotation=45)
     ax.tick_params(axis="y", labelsize=7)
 
@@ -561,7 +567,8 @@ def _panel_rank_concordance(ax, data: dict):
     ax.set_yticklabels(labels, fontsize=8)
     ax.set_xlabel(f"Spearman ρ (vs {ref_key})")
     ax.set_xlim(0, 1.05)
-    ax.set_title("Rank Concordance Across Choices", fontweight="bold")
+    ax.set_title("Rank Concordance Across Choices (Sade-Feldman)",
+                 fontweight="bold")
 
     for i, rho in enumerate(rhos):
         ax.text(rho + 0.02, i, f"{rho:.2f}", va="center", fontsize=7)
@@ -571,8 +578,22 @@ def _panel_rank_concordance(ax, data: dict):
 
 # ── Panel G: Leave-one-out stability ──────────────────────────────
 
+def _find_beta_col(df):
+    """Return the first beta column present in *df*."""
+    for c in ("beta_DiD", "beta_delta", "beta_time", "beta_arm"):
+        if c in df.columns:
+            return c
+    raise KeyError(f"No beta column in {list(df.columns)}")
+
+
 def _panel_loo_stability(ax):
-    """G: LOO CV of betas — heatmap of features × datasets."""
+    """G: LOO max-deviation of betas — heatmap of features × datasets.
+
+    Metric: max_i |beta_LOO_i - beta_full| / (|beta_full| + 0.01)
+    This measures the worst-case influence of any single participant,
+    normalised by the full-data effect size. Stable near zero unlike CV.
+    Uses all participants per dataset (no data subsampling).
+    """
     import sctrial
 
     rows = {}
@@ -590,25 +611,24 @@ def _panel_loo_stability(ax):
                 else:
                     continue
 
-            feats = [f for f in _FEATURES[:4] if f in adata.var_names]
+            feats = [f for f in _FEATURES[:3] if f in adata.var_names]
             if len(feats) < 2:
                 continue
+
+            # Slice to only needed genes — reduces memory ~6000×
+            # so LOO copies are tiny (~34 participants × 3 genes)
+            adata = adata[:, feats].copy()
 
             arm_col = cfg.get("arm_col")
             design_type = cfg.get("design", "two_arm")
             pid_col = cfg["participant_col"]
             vis_col = cfg["visit_col"]
 
-            # Get participant IDs
+            # Use all participants — no data subsampling
             obs = adata.obs
             pids = obs[pid_col].unique().tolist()
             if len(pids) < 4:
                 continue
-            # Cap LOO iterations to keep computation tractable
-            max_loo = 15
-            if len(pids) > max_loo:
-                rng_loo = np.random.default_rng(42)
-                pids = list(rng_loo.choice(pids, size=max_loo, replace=False))
 
             # Full-data betas
             if design_type == "two_arm" and arm_col:
@@ -636,7 +656,9 @@ def _panel_loo_stability(ax):
                     sub, arm_value, feats, design, cfg["visits"],
                     layer=layer, aggregate="participant_visit",
                 )
-                beta_col = "beta_delta" if "beta_delta" in full_df.columns else "beta_DiD"
+                beta_col = _find_beta_col(full_df)
+
+            full_betas = full_df.set_index("feature")[beta_col]
 
             # LOO: drop each participant, recompute betas
             loo_betas = []
@@ -650,7 +672,9 @@ def _panel_loo_stability(ax):
                             layer=layer, aggregate="participant_visit",
                             standardize=True,
                         )
-                        loo_betas.append(df_loo.set_index("feature")[beta_col])
+                        loo_betas.append(
+                            df_loo.set_index("feature")[_find_beta_col(df_loo)]
+                        )
                     else:
                         if arm_filter and arm_col and arm_col in sub.obs.columns:
                             sub = sub[sub.obs[arm_col] == arm_filter].copy()
@@ -662,8 +686,9 @@ def _panel_loo_stability(ax):
                             sub, arm_value, feats, loo_design, cfg["visits"],
                             layer=layer, aggregate="participant_visit",
                         )
-                        bc = "beta_delta" if "beta_delta" in df_loo.columns else "beta_DiD"
-                        loo_betas.append(df_loo.set_index("feature")[bc])
+                        loo_betas.append(
+                            df_loo.set_index("feature")[_find_beta_col(df_loo)]
+                        )
                 except Exception:
                     pass
 
@@ -671,9 +696,10 @@ def _panel_loo_stability(ax):
                 continue
 
             loo_mat = pd.DataFrame(loo_betas)
-            # CV = std(LOO betas) / |mean(LOO betas)|
-            cv = loo_mat.std() / (loo_mat.mean().abs() + 1e-10)
-            rows[name] = cv
+            # Max-deviation: max_i |beta_LOO_i - beta_full| / (|beta_full| + 0.01)
+            deviations = loo_mat.subtract(full_betas, axis=1).abs()
+            max_dev = deviations.max() / (full_betas.abs() + 0.01)
+            rows[name] = max_dev
             print(f"  LOO {name}: {len(pids)} pids, {len(feats)} feats")
             del adata
         except Exception as exc:
@@ -685,167 +711,16 @@ def _panel_loo_stability(ax):
         return
 
     mat = pd.DataFrame(rows)
-    # Clip extreme CVs for display
-    mat = mat.clip(upper=5.0)
 
     sns.heatmap(mat, ax=ax, cmap="YlOrRd", linewidths=0.5,
-                linecolor="white", cbar_kws={"shrink": 0.7, "label": "CV(β)"},
+                linecolor="white",
+                cbar_kws={"shrink": 0.7, "label": "Max LOO deviation"},
                 annot=True, fmt=".2f", annot_kws={"fontsize": 7})
     ax.set_xlabel("Dataset")
     ax.set_ylabel("Feature")
-    ax.set_title("Leave-One-Out Stability (CV of β)", fontweight="bold")
+    ax.set_title("Leave-One-Out Stability (max influence)", fontweight="bold")
     ax.tick_params(axis="x", labelsize=8, rotation=30)
     ax.tick_params(axis="y", labelsize=8)
-
-
-# ── Panel H: Precision decomposition ─────────────────────────────
-
-def _panel_precision_decomp(ax):
-    """H: SE reduction from subsampling participants vs cells."""
-    import sctrial
-
-    fractions = [0.5, 0.75, 1.0]
-    n_reps = 3
-    all_rows = []
-
-    for name, cfg in _MDE_DATASET_CFG.items():
-        try:
-            adata = cfg["loader"]()
-            if cfg.get("harmonize", False):
-                adata = harmonize_response(adata)
-            layer = cfg["layer"]
-            if layer == "log1p_cpm" and "log1p_cpm" not in adata.layers:
-                if "counts" in adata.layers:
-                    adata = add_log1p_cpm_layer(
-                        adata, counts_layer="counts", out_layer="log1p_cpm",
-                    )
-                else:
-                    continue
-
-            feats = [f for f in _FEATURES[:4] if f in adata.var_names]
-            if len(feats) < 2:
-                continue
-
-            arm_col = cfg.get("arm_col")
-            arm_filter = cfg.get("arm_filter")
-            design_type = cfg.get("design", "two_arm")
-            pid_col = cfg["participant_col"]
-            vis_col = cfg["visit_col"]
-            obs = adata.obs
-
-            # Build design for subsampling
-            arm_value = arm_filter or "All"
-            if design_type == "two_arm" and arm_col:
-                design = sctrial.TrialDesign(
-                    participant_col=pid_col, visit_col=vis_col,
-                    arm_col=arm_col, arm_treated=cfg["arm_treated"],
-                    arm_control=cfg["arm_control"],
-                )
-            else:
-                design = sctrial.TrialDesign(
-                    participant_col=pid_col, visit_col=vis_col,
-                    arm_col=arm_col if arm_col and arm_col in obs.columns else None,
-                )
-
-            def _run_sub(sub_ad):
-                """Run DiD or within-arm on a subset, return median SE."""
-                if design_type == "two_arm" and arm_col:
-                    df_sub = sctrial.did_table(
-                        sub_ad, feats, design, cfg["visits"],
-                        layer=layer, aggregate="participant_visit",
-                        standardize=True,
-                    )
-                    return df_sub["se_DiD"].median()
-                else:
-                    s = sub_ad
-                    if arm_filter and arm_col and arm_col in s.obs.columns:
-                        s = s[s.obs[arm_col] == arm_filter].copy()
-                    sa_design = sctrial.TrialDesign(
-                        participant_col=pid_col, visit_col=vis_col,
-                        arm_col=arm_col if arm_col and arm_col in s.obs.columns else None,
-                    )
-                    df_sub = sctrial.within_arm_comparison(
-                        s, arm_value, feats, sa_design, cfg["visits"],
-                        layer=layer, aggregate="participant_visit",
-                    )
-                    sc = "se_delta" if "se_delta" in df_sub.columns else "se_DiD"
-                    return df_sub[sc].median()
-
-            # Subsample participants
-            pids = obs[pid_col].unique()
-            rng = np.random.default_rng(42)
-            for frac in fractions:
-                ses = []
-                for _ in range(n_reps):
-                    n_sub = max(3, int(len(pids) * frac))
-                    sel_pids = rng.choice(pids, size=n_sub, replace=False)
-                    sub = adata[obs[pid_col].isin(sel_pids)].copy()
-                    try:
-                        ses.append(_run_sub(sub))
-                    except Exception:
-                        pass
-                if ses:
-                    all_rows.append({
-                        "Dataset": name, "Subsample": "Participants",
-                        "Fraction": frac, "SE": float(np.nanmedian(ses)),
-                    })
-
-            # Subsample cells (keep all participants)
-            for frac in fractions:
-                ses = []
-                for _ in range(n_reps):
-                    n_cells = max(50, int(adata.n_obs * frac))
-                    idx = rng.choice(adata.n_obs, size=n_cells, replace=False)
-                    sub = adata[idx].copy()
-                    try:
-                        ses.append(_run_sub(sub))
-                    except Exception:
-                        pass
-                if ses:
-                    all_rows.append({
-                        "Dataset": name, "Subsample": "Cells",
-                        "Fraction": frac, "SE": float(np.nanmedian(ses)),
-                    })
-
-            print(f"  precision {name}: done")
-            del adata
-        except Exception as exc:
-            print(f"  precision {name}: failed ({exc})")
-
-    if not all_rows:
-        ax.text(0.5, 0.5, "No precision data", ha="center", va="center",
-                transform=ax.transAxes)
-        return
-
-    df = pd.DataFrame(all_rows)
-    # Grouped bar: x = Dataset, hue = Subsample type, facet by fraction
-    # Simplify: show SE at 50% fraction for each subsample type per dataset
-    half = df[df["Fraction"] == 0.5].copy()
-    full = df[df["Fraction"] == 1.0].copy()
-
-    if half.empty:
-        ax.text(0.5, 0.5, "Insufficient data", ha="center", va="center",
-                transform=ax.transAxes)
-        return
-
-    # Compute relative SE increase at 50% subsample vs full
-    merged = half.merge(full[["Dataset", "Subsample", "SE"]],
-                        on=["Dataset", "Subsample"], suffixes=("_50", "_100"),
-                        how="inner")
-    merged["SE_ratio"] = merged["SE_50"] / merged["SE_100"].clip(lower=1e-10)
-
-    sns.barplot(data=merged, x="Dataset", y="SE_ratio", hue="Subsample",
-                palette={"Participants": _PAL["participant"],
-                         "Cells": _PAL["cell"]},
-                edgecolor="white", ax=ax)
-
-    ax.axhline(1.0, color="grey", linewidth=0.8, linestyle="--", alpha=0.5)
-    ax.set_xlabel("")
-    ax.set_ylabel("Relative SE (50% subsample / full)")
-    ax.set_title("Precision: Participants vs Cells", fontweight="bold")
-    ax.legend(fontsize=7, frameon=True, title="Subsample", title_fontsize=8)
-    ax.tick_params(axis="x", rotation=15)
-    despine(ax)
 
 
 # ======================================================================
@@ -919,17 +794,16 @@ _MDE_DATASET_CFG = {
 # ======================================================================
 
 def generate():
-    """Create and save Supplementary Figure 4 panels (A–H).
+    """Create and save Supplementary Figure 4 panels (A–G).
 
     Layout:
       A  Analytical vs bootstrap SE (all 5 datasets, faceted forest plot)
-      B  Standardised vs unstandardised effect sizes
-      C  Mean vs median aggregation comparison
-      D  Log-transform sensitivity
-      E  Cell-type-stratified DiD heatmap
-      F  Rank-order concordance across choices
-      G  Leave-one-out stability matrix
-      H  Precision decomposition (participants vs cells)
+      B  Standardised vs unstandardised effect sizes (Sade-Feldman)
+      C  Mean vs median aggregation comparison (Sade-Feldman)
+      D  Log-transform sensitivity (Sade-Feldman)
+      E  Cell-type-stratified DiD heatmap (Sade-Feldman)
+      F  Rank-order concordance across choices (Sade-Feldman)
+      G  Leave-one-out stability matrix (all datasets)
     """
     print("Supplementary Figure 4: Sensitivity to Modeling and Preprocessing")
     data = _run_sensitivity()
@@ -947,7 +821,7 @@ def generate():
         save_panel(fig, "panel_A", FIGURE_NAME, SUPP_OUTPUT)
     boot_data.clear()
 
-    # Panels B–F from single-dataset sensitivity (Sade-Feldman)
+    # Panels B–F: single-dataset sensitivity (Sade-Feldman only)
     panels_bf = [
         ("panel_B", _panel_std_vs_unstd, (7.0, 6.0)),
         ("panel_C", _panel_mean_vs_median, (7.0, 6.0)),
@@ -972,13 +846,6 @@ def generate():
     _panel_loo_stability(ax)
     fig.tight_layout()
     save_panel(fig, "panel_G", FIGURE_NAME, SUPP_OUTPUT)
-
-    # Panel H: Precision decomposition (heavy computation)
-    print("  Computing precision decomposition ...")
-    fig, ax = plt.subplots(figsize=(9, 5.5))
-    _panel_precision_decomp(ax)
-    fig.tight_layout()
-    save_panel(fig, "panel_H", FIGURE_NAME, SUPP_OUTPUT)
 
     clear_cache()
     gc.collect()
