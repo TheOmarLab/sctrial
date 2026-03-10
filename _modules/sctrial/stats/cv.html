@@ -383,6 +383,7 @@
 <span class="sd">- Consistently signed CV estimates: Robust effect</span>
 <span class="sd">- Estimate changes sign across folds: Unreliable effect</span>
 <span class="sd">&quot;&quot;&quot;</span>
+
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
@@ -464,8 +465,13 @@
 
     <span class="c1"># Full-sample estimates for comparison</span>
     <span class="n">full_res</span> <span class="o">=</span> <span class="n">did_table</span><span class="p">(</span>
-        <span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="p">,</span>
-        <span class="n">exclude_crossovers</span><span class="o">=</span><span class="n">exclude_crossovers</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="n">layer</span><span class="p">,</span> <span class="n">aggregate</span><span class="o">=</span><span class="n">aggregate</span><span class="p">,</span>
+        <span class="n">adata</span><span class="p">,</span>
+        <span class="n">features</span><span class="p">,</span>
+        <span class="n">design</span><span class="p">,</span>
+        <span class="n">visits</span><span class="p">,</span>
+        <span class="n">exclude_crossovers</span><span class="o">=</span><span class="n">exclude_crossovers</span><span class="p">,</span>
+        <span class="n">layer</span><span class="o">=</span><span class="n">layer</span><span class="p">,</span>
+        <span class="n">aggregate</span><span class="o">=</span><span class="n">aggregate</span><span class="p">,</span>
         <span class="n">standardize</span><span class="o">=</span><span class="n">standardize</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">full_betas</span> <span class="o">=</span> <span class="n">full_res</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s2">&quot;feature&quot;</span><span class="p">)[</span><span class="s2">&quot;beta_DiD&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
@@ -480,8 +486,13 @@
 
         <span class="k">try</span><span class="p">:</span>
             <span class="n">res_loo</span> <span class="o">=</span> <span class="n">did_table</span><span class="p">(</span>
-                <span class="n">ad_loo</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="p">,</span>
-                <span class="n">exclude_crossovers</span><span class="o">=</span><span class="n">exclude_crossovers</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="n">layer</span><span class="p">,</span> <span class="n">aggregate</span><span class="o">=</span><span class="n">aggregate</span><span class="p">,</span>
+                <span class="n">ad_loo</span><span class="p">,</span>
+                <span class="n">features</span><span class="p">,</span>
+                <span class="n">design</span><span class="p">,</span>
+                <span class="n">visits</span><span class="p">,</span>
+                <span class="n">exclude_crossovers</span><span class="o">=</span><span class="n">exclude_crossovers</span><span class="p">,</span>
+                <span class="n">layer</span><span class="o">=</span><span class="n">layer</span><span class="p">,</span>
+                <span class="n">aggregate</span><span class="o">=</span><span class="n">aggregate</span><span class="p">,</span>
                 <span class="n">standardize</span><span class="o">=</span><span class="n">standardize</span><span class="p">,</span>
             <span class="p">)</span>
 
@@ -498,14 +509,16 @@
                 <span class="k">else</span><span class="p">:</span>
                     <span class="n">influence</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
 
-                <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
-                    <span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
-                    <span class="s2">&quot;excluded&quot;</span><span class="p">:</span> <span class="n">pid</span><span class="p">,</span>
-                    <span class="s2">&quot;beta_DiD&quot;</span><span class="p">:</span> <span class="n">beta_loo</span><span class="p">,</span>
-                    <span class="s2">&quot;se_DiD&quot;</span><span class="p">:</span> <span class="n">se_loo</span><span class="p">,</span>
-                    <span class="s2">&quot;beta_full&quot;</span><span class="p">:</span> <span class="n">beta_full</span><span class="p">,</span>
-                    <span class="s2">&quot;influence&quot;</span><span class="p">:</span> <span class="n">influence</span><span class="p">,</span>
-                <span class="p">})</span>
+                <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="p">{</span>
+                        <span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
+                        <span class="s2">&quot;excluded&quot;</span><span class="p">:</span> <span class="n">pid</span><span class="p">,</span>
+                        <span class="s2">&quot;beta_DiD&quot;</span><span class="p">:</span> <span class="n">beta_loo</span><span class="p">,</span>
+                        <span class="s2">&quot;se_DiD&quot;</span><span class="p">:</span> <span class="n">se_loo</span><span class="p">,</span>
+                        <span class="s2">&quot;beta_full&quot;</span><span class="p">:</span> <span class="n">beta_full</span><span class="p">,</span>
+                        <span class="s2">&quot;influence&quot;</span><span class="p">:</span> <span class="n">influence</span><span class="p">,</span>
+                    <span class="p">}</span>
+                <span class="p">)</span>
 
         <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">LinAlgError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">)</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
             <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
@@ -513,14 +526,16 @@
                 <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="k">for</span> <span class="n">feat</span> <span class="ow">in</span> <span class="n">features</span><span class="p">:</span>
-                <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
-                    <span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
-                    <span class="s2">&quot;excluded&quot;</span><span class="p">:</span> <span class="n">pid</span><span class="p">,</span>
-                    <span class="s2">&quot;beta_DiD&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
-                    <span class="s2">&quot;se_DiD&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
-                    <span class="s2">&quot;beta_full&quot;</span><span class="p">:</span> <span class="n">full_betas</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">feat</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span>
-                    <span class="s2">&quot;influence&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
-                <span class="p">})</span>
+                <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="p">{</span>
+                        <span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
+                        <span class="s2">&quot;excluded&quot;</span><span class="p">:</span> <span class="n">pid</span><span class="p">,</span>
+                        <span class="s2">&quot;beta_DiD&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                        <span class="s2">&quot;se_DiD&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                        <span class="s2">&quot;beta_full&quot;</span><span class="p">:</span> <span class="n">full_betas</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">feat</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span>
+                        <span class="s2">&quot;influence&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                    <span class="p">}</span>
+                <span class="p">)</span>
 
     <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span></div>
 
@@ -597,8 +612,7 @@
 
     <span class="c1"># Full-sample estimates</span>
     <span class="n">full_res</span> <span class="o">=</span> <span class="n">did_table</span><span class="p">(</span>
-        <span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="p">,</span>
-        <span class="n">exclude_crossovers</span><span class="o">=</span><span class="n">exclude_crossovers</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="n">layer</span>
+        <span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="p">,</span> <span class="n">exclude_crossovers</span><span class="o">=</span><span class="n">exclude_crossovers</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="n">layer</span>
     <span class="p">)</span>
     <span class="n">full_betas</span> <span class="o">=</span> <span class="n">full_res</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s2">&quot;feature&quot;</span><span class="p">)[</span><span class="s2">&quot;beta_DiD&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
 
@@ -646,8 +660,12 @@
 
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">res_fold</span> <span class="o">=</span> <span class="n">did_table</span><span class="p">(</span>
-                    <span class="n">ad_fold</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="p">,</span>
-                    <span class="n">exclude_crossovers</span><span class="o">=</span><span class="n">exclude_crossovers</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="n">layer</span>
+                    <span class="n">ad_fold</span><span class="p">,</span>
+                    <span class="n">features</span><span class="p">,</span>
+                    <span class="n">design</span><span class="p">,</span>
+                    <span class="n">visits</span><span class="p">,</span>
+                    <span class="n">exclude_crossovers</span><span class="o">=</span><span class="n">exclude_crossovers</span><span class="p">,</span>
+                    <span class="n">layer</span><span class="o">=</span><span class="n">layer</span><span class="p">,</span>
                 <span class="p">)</span>
 
                 <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">res_fold</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
@@ -688,17 +706,19 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="n">cv_mean</span> <span class="o">=</span> <span class="n">cv_sd</span> <span class="o">=</span> <span class="n">cv_lower</span> <span class="o">=</span> <span class="n">cv_upper</span> <span class="o">=</span> <span class="n">stability</span> <span class="o">=</span> <span class="n">sign_consistency</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
 
-        <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
-            <span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
-            <span class="s2">&quot;beta_full&quot;</span><span class="p">:</span> <span class="n">beta_full</span><span class="p">,</span>
-            <span class="s2">&quot;beta_cv_mean&quot;</span><span class="p">:</span> <span class="n">cv_mean</span><span class="p">,</span>
-            <span class="s2">&quot;beta_cv_sd&quot;</span><span class="p">:</span> <span class="n">cv_sd</span><span class="p">,</span>
-            <span class="s2">&quot;beta_cv_lower&quot;</span><span class="p">:</span> <span class="n">cv_lower</span><span class="p">,</span>
-            <span class="s2">&quot;beta_cv_upper&quot;</span><span class="p">:</span> <span class="n">cv_upper</span><span class="p">,</span>
-            <span class="s2">&quot;cv_stability&quot;</span><span class="p">:</span> <span class="n">stability</span><span class="p">,</span>
-            <span class="s2">&quot;sign_consistency&quot;</span><span class="p">:</span> <span class="n">sign_consistency</span><span class="p">,</span>
-            <span class="s2">&quot;n_cv_samples&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid</span><span class="p">),</span>
-        <span class="p">})</span>
+        <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
+                <span class="s2">&quot;beta_full&quot;</span><span class="p">:</span> <span class="n">beta_full</span><span class="p">,</span>
+                <span class="s2">&quot;beta_cv_mean&quot;</span><span class="p">:</span> <span class="n">cv_mean</span><span class="p">,</span>
+                <span class="s2">&quot;beta_cv_sd&quot;</span><span class="p">:</span> <span class="n">cv_sd</span><span class="p">,</span>
+                <span class="s2">&quot;beta_cv_lower&quot;</span><span class="p">:</span> <span class="n">cv_lower</span><span class="p">,</span>
+                <span class="s2">&quot;beta_cv_upper&quot;</span><span class="p">:</span> <span class="n">cv_upper</span><span class="p">,</span>
+                <span class="s2">&quot;cv_stability&quot;</span><span class="p">:</span> <span class="n">stability</span><span class="p">,</span>
+                <span class="s2">&quot;sign_consistency&quot;</span><span class="p">:</span> <span class="n">sign_consistency</span><span class="p">,</span>
+                <span class="s2">&quot;n_cv_samples&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid</span><span class="p">),</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
 
     <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span></div>
 
@@ -783,14 +803,16 @@
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">mean_loo</span> <span class="o">=</span> <span class="n">std_loo</span> <span class="o">=</span> <span class="n">cv</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
 
-            <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
-                <span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
-                <span class="s2">&quot;mean_estimate&quot;</span><span class="p">:</span> <span class="n">beta_full</span><span class="p">,</span>
-                <span class="s2">&quot;mean_loo&quot;</span><span class="p">:</span> <span class="n">mean_loo</span><span class="p">,</span>
-                <span class="s2">&quot;std_loo&quot;</span><span class="p">:</span> <span class="n">std_loo</span><span class="p">,</span>
-                <span class="s2">&quot;cv&quot;</span><span class="p">:</span> <span class="n">cv</span><span class="p">,</span>
-                <span class="s2">&quot;n_loo&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">betas</span><span class="p">),</span>
-            <span class="p">})</span>
+            <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
+                    <span class="s2">&quot;mean_estimate&quot;</span><span class="p">:</span> <span class="n">beta_full</span><span class="p">,</span>
+                    <span class="s2">&quot;mean_loo&quot;</span><span class="p">:</span> <span class="n">mean_loo</span><span class="p">,</span>
+                    <span class="s2">&quot;std_loo&quot;</span><span class="p">:</span> <span class="n">std_loo</span><span class="p">,</span>
+                    <span class="s2">&quot;cv&quot;</span><span class="p">:</span> <span class="n">cv</span><span class="p">,</span>
+                    <span class="s2">&quot;n_loo&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">betas</span><span class="p">),</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
         <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
 
     <span class="k">else</span><span class="p">:</span>
@@ -804,7 +826,7 @@
         <span class="n">result</span><span class="p">[</span><span class="s2">&quot;cv&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
             <span class="n">result</span><span class="p">[</span><span class="s2">&quot;mean_loo&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mf">1e-12</span><span class="p">,</span>
             <span class="n">result</span><span class="p">[</span><span class="s2">&quot;std_loo&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span> <span class="o">/</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;mean_loo&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">abs</span><span class="p">(),</span>
-            <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="k">return</span> <span class="n">result</span></div>
 

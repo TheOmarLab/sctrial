@@ -360,6 +360,291 @@
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Marker-based cell-type annotation for immune cells</span>
+<span class="c1"># Approach adapted from Diab_duod project: Leiden clustering -&gt; Wilcoxon</span>
+<span class="c1"># marker finding -&gt; weighted scoring against canonical marker gene sets</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+<span class="c1"># Immune cell markers from Sade-Feldman et al. (Cell 2018, Fig 1, Table S1).</span>
+<span class="c1"># The paper identifies 11 clusters (G1-G11) among CD45+ sorted cells:</span>
+<span class="c1">#   G1: B cells, G2: Plasma cells, G3: Monocytes/Macrophages,</span>
+<span class="c1">#   G4: Dendritic cells, G5-G11: T/NK/NKT subtypes.</span>
+<span class="c1"># CD8 T cells are further split into memory-like (CD8_G) and</span>
+<span class="c1"># exhausted (CD8_B) states.</span>
+<span class="n">_IMMUNE_MARKERS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;CD8 T cell&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;CD8A&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;CD8B&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;GZMK&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;GZMB&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;GZMA&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;PRF1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;NKG7&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;CD3D&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;CD3E&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;IFNG&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;EOMES&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;TBX21&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;CD4 T cell&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;CD4&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;IL7R&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;CCR7&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;LEF1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;TCF7&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;ICOS&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;CD3D&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;CD3E&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;CD40LG&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;Treg&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;FOXP3&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;IL2RA&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;CTLA4&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;IKZF2&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;TNFRSF18&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;CD4&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;CD3D&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;CD3E&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;B cell&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="c1"># G1 markers from publication: IGKC, LTB, LY9, SELL, TCF7, CCR7</span>
+        <span class="s2">&quot;MS4A1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;CD79A&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;CD79B&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;BANK1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;CD74&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;CD19&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;PAX5&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;BLK&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;IGKC&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;LTB&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;LY9&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;Plasma cell&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="c1"># G2 cluster</span>
+        <span class="s2">&quot;MZB1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;SDC1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;XBP1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;JCHAIN&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;PRDM1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;IGKC&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;IGHG1&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;NK cell&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;KLRD1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;KLRF1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;KLRB1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;GNLY&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;PRF1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;NKG7&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;GZMB&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;NCAM1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;FCGR3A&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;Monocyte/Macrophage&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="c1"># G3 cluster</span>
+        <span class="s2">&quot;CD14&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;CD68&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;LYZ&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;CST3&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;S100A8&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;S100A9&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;C1QA&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;C1QB&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;C1QC&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;MRC1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;CSF1R&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;FCGR3A&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;Dendritic cell&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="c1"># G4 cluster</span>
+        <span class="s2">&quot;FCER1A&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;CLEC10A&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;CD1C&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;ITGAX&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;HLA-DRA&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;HLA-DQA1&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+<span class="p">}</span>
+
+<span class="c1"># Annotation parameters (following Diab_duod conventions)</span>
+<span class="n">_ANNOT_TOP_N</span> <span class="o">=</span> <span class="mi">50</span>  <span class="c1"># top markers per cluster from Wilcoxon</span>
+<span class="n">_ANNOT_MIN_LFC</span> <span class="o">=</span> <span class="mf">0.25</span>  <span class="c1"># minimum log fold-change</span>
+<span class="n">_ANNOT_MAX_FDR</span> <span class="o">=</span> <span class="mf">0.1</span>  <span class="c1"># maximum adjusted p-value</span>
+<span class="n">_ANNOT_SECOND_DELTA</span> <span class="o">=</span> <span class="mf">0.25</span>  <span class="c1"># delta to flag ambiguous clusters</span>
+<span class="n">_ANNOT_MIN_ACCEPT</span> <span class="o">=</span> <span class="mf">0.3</span>  <span class="c1"># minimum weighted score to accept a label</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_weighted_marker_score</span><span class="p">(</span>
+    <span class="n">marker_df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+    <span class="n">gene_set</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute weighted score of a gene set against ranked cluster markers.</span>
+
+<span class="sd">    Weight per gene = (1 / rank) * log1p(exp(clipped_logFC)).</span>
+<span class="sd">    Mirrors the ``weighted_score`` function from the Diab_duod project.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">hits</span> <span class="o">=</span> <span class="n">marker_df</span><span class="p">[</span><span class="n">marker_df</span><span class="p">[</span><span class="s2">&quot;names&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">gene_set</span><span class="p">)]</span>
+    <span class="k">if</span> <span class="n">hits</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mf">0.0</span><span class="p">,</span> <span class="p">[]</span>
+    <span class="n">lfc</span> <span class="o">=</span> <span class="n">hits</span><span class="p">[</span><span class="s2">&quot;logfoldchanges&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">lower</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">ranks</span> <span class="o">=</span> <span class="n">hits</span><span class="p">[</span><span class="s2">&quot;rank&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">weights</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">/</span> <span class="n">ranks</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log1p</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">lfc</span><span class="p">))</span>
+    <span class="n">top_genes</span> <span class="o">=</span> <span class="n">hits</span><span class="p">[</span><span class="s2">&quot;names&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="o">-</span><span class="n">weights</span><span class="p">)]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">weights</span><span class="o">.</span><span class="n">sum</span><span class="p">()),</span> <span class="n">top_genes</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_annotate_immune_celltypes</span><span class="p">(</span><span class="n">adata</span><span class="p">:</span> <span class="n">ad</span><span class="o">.</span><span class="n">AnnData</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Assign cell types to immune cells via cluster-level marker scoring.</span>
+
+<span class="sd">    Pipeline (adapted from Diab_duod project):</span>
+<span class="sd">    1. Use pre-computed Leiden clusters (from caller), or compute them here.</span>
+<span class="sd">    2. Find differentially expressed markers per cluster (Wilcoxon).</span>
+<span class="sd">    3. Score each cluster against canonical immune marker sets using</span>
+<span class="sd">       a rank-weighted scoring function.</span>
+<span class="sd">    4. Assign the best-scoring cell type to each cluster.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    adata : AnnData</span>
+<span class="sd">        Must contain expression values (TPM) in ``adata.X`` and gene names</span>
+<span class="sd">        in ``adata.var_names``.  If ``adata.obs[&quot;leiden&quot;]`` already exists</span>
+<span class="sd">        (with PCA/neighbors pre-computed), those clusters are reused so that</span>
+<span class="sd">        annotation and UMAP share the same embedding.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.Series</span>
+<span class="sd">        Cell-type labels indexed like ``adata.obs``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">scanpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sc</span>  <span class="c1"># local import to avoid top-level dependency</span>
+
+    <span class="c1"># Work on a copy so we don&#39;t modify the caller&#39;s object</span>
+    <span class="n">aw</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="c1"># Normalise for clustering if raw TPM</span>
+    <span class="k">if</span> <span class="n">aw</span><span class="o">.</span><span class="n">X</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">50</span><span class="p">:</span>
+        <span class="n">aw</span><span class="o">.</span><span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log1p</span><span class="p">(</span><span class="n">aw</span><span class="o">.</span><span class="n">X</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="s2">&quot;leiden&quot;</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="c1"># Reuse pre-computed Leiden clusters (same embedding used for UMAP)</span>
+        <span class="n">aw</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;leiden&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;leiden&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;    Using pre-computed Leiden clusters for annotation...&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Fallback: compute PCA -&gt; neighbors -&gt; Leiden internally</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;    Computing PCA for cell-type annotation...&quot;</span><span class="p">)</span>
+        <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">highly_variable_genes</span><span class="p">(</span><span class="n">aw</span><span class="p">,</span> <span class="n">n_top_genes</span><span class="o">=</span><span class="mi">2000</span><span class="p">,</span> <span class="n">flavor</span><span class="o">=</span><span class="s2">&quot;seurat&quot;</span><span class="p">)</span>
+        <span class="n">sc</span><span class="o">.</span><span class="n">tl</span><span class="o">.</span><span class="n">pca</span><span class="p">(</span><span class="n">aw</span><span class="p">,</span> <span class="n">n_comps</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+        <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">neighbors</span><span class="p">(</span><span class="n">aw</span><span class="p">,</span> <span class="n">n_neighbors</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">n_pcs</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+        <span class="n">sc</span><span class="o">.</span><span class="n">tl</span><span class="o">.</span><span class="n">leiden</span><span class="p">(</span><span class="n">aw</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+
+    <span class="c1"># Wilcoxon marker finding per cluster</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;    Finding cluster markers (Wilcoxon)...&quot;</span><span class="p">)</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">tl</span><span class="o">.</span><span class="n">rank_genes_groups</span><span class="p">(</span><span class="n">aw</span><span class="p">,</span> <span class="n">groupby</span><span class="o">=</span><span class="s2">&quot;leiden&quot;</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;wilcoxon&quot;</span><span class="p">,</span> <span class="n">n_genes</span><span class="o">=</span><span class="n">_ANNOT_TOP_N</span><span class="p">)</span>
+
+    <span class="n">clusters</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">aw</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;leiden&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">cluster_labels</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">for</span> <span class="n">cl</span> <span class="ow">in</span> <span class="n">clusters</span><span class="p">:</span>
+        <span class="c1"># Extract marker table for this cluster</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">aw</span><span class="o">.</span><span class="n">uns</span><span class="p">[</span><span class="s2">&quot;rank_genes_groups&quot;</span><span class="p">]</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;names&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">names</span><span class="p">)</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">cl</span><span class="p">)</span>
+        <span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;names&quot;</span><span class="p">][</span><span class="n">i</span><span class="p">][</span><span class="n">idx</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;names&quot;</span><span class="p">]))]</span>
+        <span class="n">lfcs</span> <span class="o">=</span> <span class="p">[</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;logfoldchanges&quot;</span><span class="p">][</span><span class="n">i</span><span class="p">][</span><span class="n">idx</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;logfoldchanges&quot;</span><span class="p">]))]</span>
+        <span class="n">padjs</span> <span class="o">=</span> <span class="p">[</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;pvals_adj&quot;</span><span class="p">][</span><span class="n">i</span><span class="p">][</span><span class="n">idx</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;pvals_adj&quot;</span><span class="p">]))]</span>
+
+        <span class="n">df_markers</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;names&quot;</span><span class="p">:</span> <span class="n">names</span><span class="p">,</span>
+                <span class="s2">&quot;logfoldchanges&quot;</span><span class="p">:</span> <span class="n">lfcs</span><span class="p">,</span>
+                <span class="s2">&quot;pvals_adj&quot;</span><span class="p">:</span> <span class="n">padjs</span><span class="p">,</span>
+                <span class="s2">&quot;rank&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">names</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Filter by LFC and FDR</span>
+        <span class="n">df_markers</span> <span class="o">=</span> <span class="n">df_markers</span><span class="p">[</span>
+            <span class="p">(</span><span class="n">df_markers</span><span class="p">[</span><span class="s2">&quot;logfoldchanges&quot;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">_ANNOT_MIN_LFC</span><span class="p">)</span>
+            <span class="o">&amp;</span> <span class="p">(</span><span class="n">df_markers</span><span class="p">[</span><span class="s2">&quot;pvals_adj&quot;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">_ANNOT_MAX_FDR</span><span class="p">)</span>
+        <span class="p">]</span>
+
+        <span class="c1"># If strict filtering yields no markers, use unfiltered markers</span>
+        <span class="k">if</span> <span class="n">df_markers</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="n">df_markers</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;names&quot;</span><span class="p">:</span> <span class="n">names</span><span class="p">,</span>
+                    <span class="s2">&quot;logfoldchanges&quot;</span><span class="p">:</span> <span class="n">lfcs</span><span class="p">,</span>
+                    <span class="s2">&quot;pvals_adj&quot;</span><span class="p">:</span> <span class="n">padjs</span><span class="p">,</span>
+                    <span class="s2">&quot;rank&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">names</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Score against each cell type</span>
+        <span class="n">label_scores</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">ct</span><span class="p">,</span> <span class="n">gene_set</span> <span class="ow">in</span> <span class="n">_IMMUNE_MARKERS</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">score</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">_weighted_marker_score</span><span class="p">(</span><span class="n">df_markers</span><span class="p">,</span> <span class="n">gene_set</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">score</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">label_scores</span><span class="p">[</span><span class="n">ct</span><span class="p">]</span> <span class="o">=</span> <span class="n">score</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">label_scores</span><span class="p">:</span>
+            <span class="c1"># Fallback: score with unfiltered markers (no LFC/FDR filter)</span>
+            <span class="n">df_unfiltered</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;names&quot;</span><span class="p">:</span> <span class="n">names</span><span class="p">,</span>
+                    <span class="s2">&quot;logfoldchanges&quot;</span><span class="p">:</span> <span class="p">[</span><span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">lfcs</span><span class="p">],</span>
+                    <span class="s2">&quot;pvals_adj&quot;</span><span class="p">:</span> <span class="n">padjs</span><span class="p">,</span>
+                    <span class="s2">&quot;rank&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">names</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+            <span class="k">for</span> <span class="n">ct</span><span class="p">,</span> <span class="n">gene_set</span> <span class="ow">in</span> <span class="n">_IMMUNE_MARKERS</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">score</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">_weighted_marker_score</span><span class="p">(</span><span class="n">df_unfiltered</span><span class="p">,</span> <span class="n">gene_set</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">score</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">label_scores</span><span class="p">[</span><span class="n">ct</span><span class="p">]</span> <span class="o">=</span> <span class="n">score</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">label_scores</span><span class="p">:</span>
+            <span class="n">cluster_labels</span><span class="p">[</span><span class="n">cl</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Unassigned&quot;</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;    Cluster </span><span class="si">{</span><span class="n">cl</span><span class="si">}</span><span class="s2">: no marker overlap with any canonical &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;gene set — labelled &#39;Unassigned&#39;&quot;</span>
+            <span class="p">)</span>
+            <span class="k">continue</span>
+
+        <span class="n">sorted_labels</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">label_scores</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="o">-</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">best_label</span><span class="p">,</span> <span class="n">best_score</span> <span class="o">=</span> <span class="n">sorted_labels</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="c1"># Always assign the best-scoring type (no &quot;Unknown immune&quot;)</span>
+        <span class="n">cluster_labels</span><span class="p">[</span><span class="n">cl</span><span class="p">]</span> <span class="o">=</span> <span class="n">best_label</span>
+
+        <span class="c1"># Log ambiguous clusters</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sorted_labels</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">second_label</span><span class="p">,</span> <span class="n">second_score</span> <span class="o">=</span> <span class="n">sorted_labels</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">best_score</span> <span class="o">-</span> <span class="n">second_score</span> <span class="o">&lt;</span> <span class="n">_ANNOT_SECOND_DELTA</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;    Cluster </span><span class="si">{</span><span class="n">cl</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">best_label</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">best_score</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">) &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;vs </span><span class="si">{</span><span class="n">second_label</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">second_score</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">) [ambiguous]&quot;</span>
+                <span class="p">)</span>
+
+    <span class="c1"># Map cluster -&gt; cell type onto every cell</span>
+    <span class="n">labels</span> <span class="o">=</span> <span class="n">aw</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;leiden&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">cluster_labels</span><span class="p">)</span>
+    <span class="n">labels</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">index</span>
+    <span class="n">labels</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;cell_type&quot;</span>
+
+    <span class="c1"># Log summary</span>
+    <span class="n">vc</span> <span class="o">=</span> <span class="n">labels</span><span class="o">.</span><span class="n">value_counts</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">ct</span><span class="p">,</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">vc</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    </span><span class="si">{</span><span class="n">ct</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">n</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> cells&quot;</span><span class="p">)</span>
+
+    <span class="k">del</span> <span class="n">aw</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">gc</span>
+
+    <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">labels</span>
+
+
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
     <span class="s2">&quot;load_sade_feldman&quot;</span><span class="p">,</span>
     <span class="s2">&quot;load_stephenson_data&quot;</span><span class="p">,</span>
@@ -441,7 +726,11 @@
     <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="n">sample</span><span class="p">:</span>
         <span class="n">data</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">sample</span><span class="p">,</span> <span class="n">replace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-    <span class="k">return</span> <span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">50</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">atol</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">))</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="ow">and</span> <span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">50</span><span class="p">)</span>
+        <span class="ow">and</span> <span class="p">(</span><span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">atol</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">))</span>
+    <span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_download_file</span><span class="p">(</span><span class="n">url</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">dest</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;file&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -474,12 +763,11 @@
     <span class="k">return</span> <span class="n">get_counts_matrix</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
 
 
-
 <div class="viewcode-block" id="load_sade_feldman">
 <a class="viewcode-back" href="../../api.html#sctrial.datasets.load_sade_feldman">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">load_sade_feldman</span><span class="p">(</span>
     <span class="n">data_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;data/sade_feldman&quot;</span><span class="p">,</span>
-    <span class="n">processed_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;sade_feldman_processed_v5.h5ad&quot;</span><span class="p">,</span>
+    <span class="n">processed_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;sade_feldman_processed_v6.h5ad&quot;</span><span class="p">,</span>
     <span class="n">max_cells_per_participant_visit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">42</span><span class="p">,</span>
     <span class="n">allow_download</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
@@ -517,7 +805,7 @@
     <span class="n">processed_path</span> <span class="o">=</span> <span class="n">data_dir_path</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span>
 
     <span class="n">processing_params</span> <span class="o">=</span> <span class="p">{</span>
-        <span class="s2">&quot;version&quot;</span><span class="p">:</span> <span class="s2">&quot;v5&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;version&quot;</span><span class="p">:</span> <span class="s2">&quot;v6&quot;</span><span class="p">,</span>
         <span class="s2">&quot;max_cells_per_participant_visit&quot;</span><span class="p">:</span> <span class="n">max_cells_per_participant_visit</span><span class="p">,</span>
         <span class="s2">&quot;seed&quot;</span><span class="p">:</span> <span class="n">seed</span><span class="p">,</span>
         <span class="s2">&quot;assay&quot;</span><span class="p">:</span> <span class="s2">&quot;TPM&quot;</span><span class="p">,</span>
@@ -527,7 +815,9 @@
         <span class="n">adata</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="n">processed_path</span><span class="p">)</span>
         <span class="n">prev</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">uns</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;processing_params&quot;</span><span class="p">,</span> <span class="p">{})</span>
         <span class="k">if</span> <span class="n">_params_match</span><span class="p">(</span><span class="n">prev</span><span class="p">,</span> <span class="n">processing_params</span><span class="p">):</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded processed Sade-Feldman dataset: </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> genes&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Loaded processed Sade-Feldman dataset: </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> genes&quot;</span>
+            <span class="p">)</span>
             <span class="k">return</span> <span class="n">adata</span>
         <span class="c1"># Show what&#39;s different for debugging</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Processed file parameters differ; reprocessing.&quot;</span><span class="p">)</span>
@@ -539,8 +829,17 @@
 
     <span class="n">_GEO_BASE</span> <span class="o">=</span> <span class="s2">&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE120575&amp;format=file&amp;file=&quot;</span>
     <span class="n">_sade_feldman_files</span> <span class="o">=</span> <span class="p">[</span>
-        <span class="p">(</span><span class="n">tpm_path</span><span class="p">,</span> <span class="n">_GEO_BASE</span> <span class="o">+</span> <span class="s2">&quot;GSE120575</span><span class="si">%5F</span><span class="s2">Sade</span><span class="si">%5F</span><span class="s2">Feldman</span><span class="si">%5F</span><span class="s2">melanoma</span><span class="si">%5F</span><span class="s2">single</span><span class="si">%5F</span><span class="s2">cells</span><span class="si">%5F</span><span class="s2">TPM</span><span class="si">%5F</span><span class="s2">GEO</span><span class="si">%2E</span><span class="s2">txt</span><span class="si">%2E</span><span class="s2">gz&quot;</span><span class="p">,</span> <span class="s2">&quot;TPM file&quot;</span><span class="p">),</span>
-        <span class="p">(</span><span class="n">meta_path</span><span class="p">,</span> <span class="n">_GEO_BASE</span> <span class="o">+</span> <span class="s2">&quot;GSE120575</span><span class="si">%5F</span><span class="s2">patient</span><span class="si">%5F</span><span class="s2">ID</span><span class="si">%5F</span><span class="s2">single</span><span class="si">%5F</span><span class="s2">cells</span><span class="si">%2E</span><span class="s2">txt</span><span class="si">%2E</span><span class="s2">gz&quot;</span><span class="p">,</span> <span class="s2">&quot;metadata file&quot;</span><span class="p">),</span>
+        <span class="p">(</span>
+            <span class="n">tpm_path</span><span class="p">,</span>
+            <span class="n">_GEO_BASE</span>
+            <span class="o">+</span> <span class="s2">&quot;GSE120575</span><span class="si">%5F</span><span class="s2">Sade</span><span class="si">%5F</span><span class="s2">Feldman</span><span class="si">%5F</span><span class="s2">melanoma</span><span class="si">%5F</span><span class="s2">single</span><span class="si">%5F</span><span class="s2">cells</span><span class="si">%5F</span><span class="s2">TPM</span><span class="si">%5F</span><span class="s2">GEO</span><span class="si">%2E</span><span class="s2">txt</span><span class="si">%2E</span><span class="s2">gz&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;TPM file&quot;</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="p">(</span>
+            <span class="n">meta_path</span><span class="p">,</span>
+            <span class="n">_GEO_BASE</span> <span class="o">+</span> <span class="s2">&quot;GSE120575</span><span class="si">%5F</span><span class="s2">patient</span><span class="si">%5F</span><span class="s2">ID</span><span class="si">%5F</span><span class="s2">single</span><span class="si">%5F</span><span class="s2">cells</span><span class="si">%2E</span><span class="s2">txt</span><span class="si">%2E</span><span class="s2">gz&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;metadata file&quot;</span><span class="p">,</span>
+        <span class="p">),</span>
     <span class="p">]</span>
     <span class="n">missing</span> <span class="o">=</span> <span class="p">[(</span><span class="n">p</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">_sade_feldman_files</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">p</span><span class="o">.</span><span class="n">exists</span><span class="p">()]</span>
     <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
@@ -574,11 +873,13 @@
     <span class="n">mat</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="n">sample_ids</span>
 
     <span class="n">meta</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">meta_path</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">skiprows</span><span class="o">=</span><span class="mi">19</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;latin1&quot;</span><span class="p">)</span>
-    <span class="n">meta</span> <span class="o">=</span> <span class="n">meta</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span>
-        <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;sample_id&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;characteristics: patinet ID (Pre=baseline; Post= on treatment)&quot;</span><span class="p">:</span> <span class="s2">&quot;patient_raw&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;characteristics: response&quot;</span><span class="p">:</span> <span class="s2">&quot;response&quot;</span><span class="p">,</span>
-    <span class="p">})</span>
+    <span class="n">meta</span> <span class="o">=</span> <span class="n">meta</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span>
+        <span class="n">columns</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;sample_id&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;characteristics: patinet ID (Pre=baseline; Post= on treatment)&quot;</span><span class="p">:</span> <span class="s2">&quot;patient_raw&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;characteristics: response&quot;</span><span class="p">:</span> <span class="s2">&quot;response&quot;</span><span class="p">,</span>
+        <span class="p">}</span>
+    <span class="p">)</span>
     <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;sample_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;sample_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
     <span class="n">meta</span> <span class="o">=</span> <span class="n">meta</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;sample_id&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
@@ -598,8 +899,6 @@
     <span class="n">adata</span><span class="o">.</span><span class="n">obs</span> <span class="o">=</span> <span class="n">meta</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
     <span class="n">adata</span><span class="o">.</span><span class="n">var_names</span> <span class="o">=</span> <span class="n">genes</span>
 
-    <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;cell_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Immune&quot;</span>
-
     <span class="k">if</span> <span class="n">max_cells_per_participant_visit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
         <span class="n">keep_indices</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="p">[]</span>
@@ -611,12 +910,45 @@
                 <span class="n">keep</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">values</span>
             <span class="n">keep_indices</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">keep</span><span class="p">)</span>
         <span class="n">adata</span> <span class="o">=</span> <span class="n">adata</span><span class="p">[</span><span class="n">keep_indices</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Stratified sampling: </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> cells (max </span><span class="si">{</span><span class="n">max_cells_per_participant_visit</span><span class="si">}</span><span class="s2"> per participant-visit)&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Stratified sampling: </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> cells (max </span><span class="si">{</span><span class="n">max_cells_per_participant_visit</span><span class="si">}</span><span class="s2"> per participant-visit)&quot;</span>
+        <span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using full dataset: </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> cells (no subsampling)&quot;</span><span class="p">)</span>
 
     <span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">&quot;tpm&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">X</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
     <span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">&quot;log1p_tpm&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">X</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> <span class="k">if</span> <span class="n">_looks_log1p</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">X</span><span class="p">)</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">log1p</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">X</span><span class="p">)</span>
+
+    <span class="c1"># Requires scanpy (optional dependency in [plots] extra).</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">scanpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sc</span>  <span class="c1"># noqa: F401 — check availability before heavy work</span>
+    <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
+            <span class="s2">&quot;scanpy is required for Sade-Feldman cell type annotation. &quot;</span>
+            <span class="s2">&quot;Install with: pip install sctrial[plots]&quot;</span>
+        <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
+
+    <span class="c1"># ── PCA → neighbors → UMAP → Leiden ────────────────────────────────</span>
+    <span class="c1"># Compute BEFORE annotation so that cell-type labels are assigned to</span>
+    <span class="c1"># the SAME Leiden clusters that the UMAP is built from.</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Computing PCA / neighbors / UMAP / Leiden...&quot;</span><span class="p">)</span>
+    <span class="n">adata_work</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">adata_work</span><span class="o">.</span><span class="n">X</span> <span class="o">=</span> <span class="n">adata_work</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">&quot;log1p_tpm&quot;</span><span class="p">]</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">highly_variable_genes</span><span class="p">(</span><span class="n">adata_work</span><span class="p">,</span> <span class="n">n_top_genes</span><span class="o">=</span><span class="mi">3000</span><span class="p">,</span> <span class="n">flavor</span><span class="o">=</span><span class="s2">&quot;seurat&quot;</span><span class="p">)</span>
+    <span class="n">adata_hvg</span> <span class="o">=</span> <span class="n">adata_work</span><span class="p">[:,</span> <span class="n">adata_work</span><span class="o">.</span><span class="n">var</span><span class="p">[</span><span class="s2">&quot;highly_variable&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">scale</span><span class="p">(</span><span class="n">adata_hvg</span><span class="p">,</span> <span class="n">max_value</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">tl</span><span class="o">.</span><span class="n">pca</span><span class="p">(</span><span class="n">adata_hvg</span><span class="p">,</span> <span class="n">n_comps</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">obsm</span><span class="p">[</span><span class="s2">&quot;X_pca&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata_hvg</span><span class="o">.</span><span class="n">obsm</span><span class="p">[</span><span class="s2">&quot;X_pca&quot;</span><span class="p">]</span>
+    <span class="k">del</span> <span class="n">adata_work</span><span class="p">,</span> <span class="n">adata_hvg</span>
+
+    <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">neighbors</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">use_rep</span><span class="o">=</span><span class="s2">&quot;X_pca&quot;</span><span class="p">,</span> <span class="n">n_neighbors</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">tl</span><span class="o">.</span><span class="n">umap</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">tl</span><span class="o">.</span><span class="n">leiden</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+
+    <span class="c1"># ── Cell type annotation ────────────────────────────────────────────</span>
+    <span class="c1"># Uses the Leiden clusters computed above (same embedding as UMAP).</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Annotating cell types from marker genes...&quot;</span><span class="p">)</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;cell_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">_annotate_immune_celltypes</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
 
     <span class="n">adata</span><span class="o">.</span><span class="n">uns</span><span class="p">[</span><span class="s2">&quot;processing_params&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">processing_params</span>
     <span class="n">adata</span><span class="o">.</span><span class="n">uns</span><span class="p">[</span><span class="s2">&quot;data_source&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;GSE120575&quot;</span>
@@ -662,7 +994,11 @@
     <span class="n">data_path_resolved</span> <span class="o">=</span> <span class="n">_resolve_file</span><span class="p">(</span><span class="n">data_path</span><span class="p">)</span>
     <span class="c1"># Derive processed cache location from the user-provided path so it</span>
     <span class="c1"># respects custom directory layouts even when the raw file is missing.</span>
-    <span class="n">data_root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">data_path</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">data_path_resolved</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="k">else</span> <span class="n">data_path_resolved</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span>
+    <span class="n">data_root</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">Path</span><span class="p">(</span><span class="n">data_path</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">data_path_resolved</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span>
+        <span class="k">else</span> <span class="n">data_path_resolved</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span>
+    <span class="p">)</span>
     <span class="n">processed_path</span> <span class="o">=</span> <span class="n">data_root</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span>
 
     <span class="k">if</span> <span class="n">processed_path</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">force_reprocess</span><span class="p">:</span>
@@ -677,7 +1013,9 @@
                 <span class="sa">f</span><span class="s2">&quot;Data not found at </span><span class="si">{</span><span class="n">data_path_resolved</span><span class="si">}</span><span class="s2">. Download from: https://www.ebi.ac.uk/biostudies/files/E-MTAB-10026/&quot;</span>
             <span class="p">)</span>
         <span class="n">data_path_resolved</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="n">url</span> <span class="o">=</span> <span class="s2">&quot;https://www.ebi.ac.uk/biostudies/files/E-MTAB-10026/covid_portal_210320_with_raw.h5ad&quot;</span>
+        <span class="n">url</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s2">&quot;https://www.ebi.ac.uk/biostudies/files/E-MTAB-10026/covid_portal_210320_with_raw.h5ad&quot;</span>
+        <span class="p">)</span>
         <span class="n">_download_file</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">data_path_resolved</span><span class="p">,</span> <span class="s2">&quot;Stephenson COVID-19 data&quot;</span><span class="p">)</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Processing raw data...&quot;</span><span class="p">)</span>
     <span class="n">adata</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="n">data_path_resolved</span><span class="p">)</span>
@@ -779,7 +1117,9 @@
         <span class="n">adata</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="n">processed_path</span><span class="p">)</span>
         <span class="n">prev</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">uns</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;processing_params&quot;</span><span class="p">,</span> <span class="p">{})</span>
         <span class="k">if</span> <span class="n">_params_match</span><span class="p">(</span><span class="n">prev</span><span class="p">,</span> <span class="n">processing_params</span><span class="p">):</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded processed vaccine dataset (GSE171964): </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">}</span><span class="s2"> genes&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Loaded processed vaccine dataset (GSE171964): </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">}</span><span class="s2"> genes&quot;</span>
+            <span class="p">)</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Processed file: </span><span class="si">{</span><span class="n">processed_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Days: </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s1">&#39;day&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Participants: </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s1">&#39;pt_id&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -812,13 +1152,13 @@
     <span class="n">barcodes</span> <span class="o">=</span> <span class="p">(</span>
         <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">barcodes_path</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">s+&quot;</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="s2">&quot;python&quot;</span><span class="p">,</span> <span class="n">skiprows</span><span class="o">=</span><span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
         <span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
-        <span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\&quot;</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s1">&#39;&quot;&#39;</span><span class="p">)</span>
         <span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
     <span class="p">)</span>
     <span class="n">features</span> <span class="o">=</span> <span class="p">(</span>
         <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">feats_path</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">s+&quot;</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="s2">&quot;python&quot;</span><span class="p">,</span> <span class="n">skiprows</span><span class="o">=</span><span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
         <span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
-        <span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\&quot;</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s1">&#39;&quot;&#39;</span><span class="p">)</span>
         <span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
     <span class="p">)</span>
 
@@ -859,9 +1199,8 @@
 
     <span class="k">if</span> <span class="n">max_cells_per_group</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">grp</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;pt_id&quot;</span><span class="p">,</span> <span class="s2">&quot;day&quot;</span><span class="p">,</span> <span class="s2">&quot;clustnm&quot;</span><span class="p">]</span>
-        <span class="n">sampled</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">grp</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">group_keys</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-            <span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="n">max_cells_per_group</span><span class="p">),</span> <span class="n">random_state</span><span class="o">=</span><span class="n">seed</span><span class="p">))</span>
+        <span class="n">sampled</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">grp</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">group_keys</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+            <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="n">max_cells_per_group</span><span class="p">),</span> <span class="n">random_state</span><span class="o">=</span><span class="n">seed</span><span class="p">)</span>
         <span class="p">)</span>
         <span class="n">adata</span> <span class="o">=</span> <span class="n">adata</span><span class="p">[</span><span class="n">sampled</span><span class="o">.</span><span class="n">index</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
@@ -885,7 +1224,7 @@
     <span class="n">obs</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">visit_col</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">visits</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
-    <span class="n">participant_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;participant_id&quot;</span>
+    <span class="n">participant_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;participant_id&quot;</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Count participants with data at both visits.</span>
 
@@ -914,11 +1253,7 @@
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
             <span class="sa">f</span><span class="s2">&quot;visits must contain at least 2 labels, got </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">visits</span><span class="p">)</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">visits</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
         <span class="p">)</span>
-    <span class="n">wide</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">visit_col</span><span class="p">],</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="o">.</span><span class="n">size</span><span class="p">()</span>
-        <span class="o">.</span><span class="n">unstack</span><span class="p">(</span><span class="n">fill_value</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-    <span class="p">)</span>
+    <span class="n">wide</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">visit_col</span><span class="p">],</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">size</span><span class="p">()</span><span class="o">.</span><span class="n">unstack</span><span class="p">(</span><span class="n">fill_value</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">visits</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">wide</span><span class="o">.</span><span class="n">columns</span> <span class="ow">or</span> <span class="n">visits</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">wide</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
         <span class="k">return</span> <span class="mi">0</span>
     <span class="n">has_both</span> <span class="o">=</span> <span class="p">(</span><span class="n">wide</span><span class="p">[</span><span class="n">visits</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">wide</span><span class="p">[</span><span class="n">visits</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
@@ -963,11 +1298,7 @@
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
             <span class="sa">f</span><span class="s2">&quot;visits must contain at least 2 labels, got </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">visits</span><span class="p">)</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">visits</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
         <span class="p">)</span>
-    <span class="n">wide</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">visit_col</span><span class="p">],</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="o">.</span><span class="n">size</span><span class="p">()</span>
-        <span class="o">.</span><span class="n">unstack</span><span class="p">(</span><span class="n">fill_value</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-    <span class="p">)</span>
+    <span class="n">wide</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">visit_col</span><span class="p">],</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">size</span><span class="p">()</span><span class="o">.</span><span class="n">unstack</span><span class="p">(</span><span class="n">fill_value</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">visits</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">wide</span><span class="o">.</span><span class="n">columns</span> <span class="ow">or</span> <span class="n">visits</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">wide</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
         <span class="n">paired_ids</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
     <span class="k">else</span><span class="p">:</span>

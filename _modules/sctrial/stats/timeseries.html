@@ -384,6 +384,7 @@
 <span class="sd">3. Treatment effect timing is correctly specified</span>
 <span class="sd">4. Panel is balanced or missingness is random (MCAR)</span>
 <span class="sd">&quot;&quot;&quot;</span>
+
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
@@ -533,9 +534,7 @@
     <span class="n">time_map</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">visits</span><span class="p">,</span> <span class="n">time_values</span><span class="p">))</span>
 
     <span class="c1"># Prepare data</span>
-    <span class="n">df</span> <span class="o">=</span> <span class="n">_prepare_longitudinal_data</span><span class="p">(</span>
-        <span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="n">layer</span><span class="p">,</span> <span class="n">exclude_crossovers</span>
-    <span class="p">)</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">_prepare_longitudinal_data</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="n">layer</span><span class="p">,</span> <span class="n">exclude_crossovers</span><span class="p">)</span>
 
     <span class="c1"># Add numeric time</span>
     <span class="n">df</span><span class="p">[</span><span class="s2">&quot;time_num&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">time_map</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
@@ -589,8 +588,7 @@
                     <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
                 <span class="p">)</span>
             <span class="n">fit</span> <span class="o">=</span> <span class="n">smf</span><span class="o">.</span><span class="n">ols</span><span class="p">(</span><span class="n">formula</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">df_feat</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span>
-                <span class="n">cov_type</span><span class="o">=</span><span class="s2">&quot;cluster&quot;</span><span class="p">,</span>
-                <span class="n">cov_kwds</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;groups&quot;</span><span class="p">:</span> <span class="n">df_feat</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]}</span>
+                <span class="n">cov_type</span><span class="o">=</span><span class="s2">&quot;cluster&quot;</span><span class="p">,</span> <span class="n">cov_kwds</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;groups&quot;</span><span class="p">:</span> <span class="n">df_feat</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]}</span>
             <span class="p">)</span>
 
             <span class="n">result</span> <span class="o">=</span> <span class="p">{</span>
@@ -614,12 +612,14 @@
             <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
 
         <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">LinAlgError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-            <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
-                <span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
-                <span class="s2">&quot;n_units&quot;</span><span class="p">:</span> <span class="n">n_units</span><span class="p">,</span>
-                <span class="s2">&quot;n_timepoints&quot;</span><span class="p">:</span> <span class="n">n_timepoints</span><span class="p">,</span>
-                <span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">),</span>
-            <span class="p">})</span>
+            <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
+                    <span class="s2">&quot;n_units&quot;</span><span class="p">:</span> <span class="n">n_units</span><span class="p">,</span>
+                    <span class="s2">&quot;n_timepoints&quot;</span><span class="p">:</span> <span class="n">n_timepoints</span><span class="p">,</span>
+                    <span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">),</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
 
     <span class="n">res</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
 
@@ -733,6 +733,7 @@
         <span class="c1"># family-wise error control (each did_table() only corrects within its visit).</span>
         <span class="k">if</span> <span class="s2">&quot;p_DiD&quot;</span> <span class="ow">in</span> <span class="n">combined</span><span class="o">.</span><span class="n">columns</span> <span class="ow">and</span> <span class="s2">&quot;FDR_DiD&quot;</span> <span class="ow">in</span> <span class="n">combined</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
             <span class="kn">from</span><span class="w"> </span><span class="nn">._utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">apply_fdr</span>
+
             <span class="n">combined</span> <span class="o">=</span> <span class="n">apply_fdr</span><span class="p">(</span><span class="n">combined</span><span class="p">,</span> <span class="n">p_col</span><span class="o">=</span><span class="s2">&quot;p_DiD&quot;</span><span class="p">,</span> <span class="n">fdr_col</span><span class="o">=</span><span class="s2">&quot;FDR_DiD&quot;</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">combined</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
@@ -825,7 +826,7 @@
             <span class="k">for</span> <span class="n">pid</span> <span class="ow">in</span> <span class="n">all_pids</span><span class="p">:</span>
                 <span class="n">row_dict</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;time_num&quot;</span><span class="p">:</span> <span class="n">t</span><span class="p">,</span> <span class="s2">&quot;arm_bin&quot;</span><span class="p">:</span> <span class="n">treat</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">:</span> <span class="n">pid</span><span class="p">}</span>
                 <span class="k">for</span> <span class="n">d_i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">degree</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
-                    <span class="n">row_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;time_num</span><span class="si">{</span><span class="n">d_i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">t</span> <span class="o">**</span> <span class="n">d_i</span>
+                    <span class="n">row_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;time_num</span><span class="si">{</span><span class="n">d_i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">t</span><span class="o">**</span><span class="n">d_i</span>
                 <span class="n">preds_for_t</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row_dict</span><span class="p">)</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">pid_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">preds_for_t</span><span class="p">)</span>
@@ -919,18 +920,16 @@
     <span class="p">)</span>
 
     <span class="c1"># Rename columns for clarity</span>
-    <span class="n">res</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span>
-        <span class="s2">&quot;beta_treat_trend&quot;</span><span class="p">:</span> <span class="s2">&quot;beta_pretrend&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;p_treat_trend&quot;</span><span class="p">:</span> <span class="s2">&quot;p_pretrend&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;FDR_treat_trend&quot;</span><span class="p">:</span> <span class="s2">&quot;FDR_pretrend&quot;</span><span class="p">,</span>
-    <span class="p">})</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span>
+        <span class="n">columns</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">&quot;beta_treat_trend&quot;</span><span class="p">:</span> <span class="s2">&quot;beta_pretrend&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;p_treat_trend&quot;</span><span class="p">:</span> <span class="s2">&quot;p_pretrend&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;FDR_treat_trend&quot;</span><span class="p">:</span> <span class="s2">&quot;FDR_pretrend&quot;</span><span class="p">,</span>
+        <span class="p">}</span>
+    <span class="p">)</span>
 
     <span class="c1"># Flag potential violations</span>
-    <span class="n">res</span><span class="p">[</span><span class="s2">&quot;warning&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
-        <span class="n">res</span><span class="p">[</span><span class="s2">&quot;p_pretrend&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mf">0.10</span><span class="p">,</span>
-        <span class="s2">&quot;Potential violation&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;OK&quot;</span>
-    <span class="p">)</span>
+    <span class="n">res</span><span class="p">[</span><span class="s2">&quot;warning&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">res</span><span class="p">[</span><span class="s2">&quot;p_pretrend&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mf">0.10</span><span class="p">,</span> <span class="s2">&quot;Potential violation&quot;</span><span class="p">,</span> <span class="s2">&quot;OK&quot;</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">res</span><span class="p">[[</span><span class="s2">&quot;feature&quot;</span><span class="p">,</span> <span class="s2">&quot;beta_pretrend&quot;</span><span class="p">,</span> <span class="s2">&quot;p_pretrend&quot;</span><span class="p">,</span> <span class="s2">&quot;FDR_pretrend&quot;</span><span class="p">,</span> <span class="s2">&quot;warning&quot;</span><span class="p">,</span> <span class="s2">&quot;n_units&quot;</span><span class="p">]]</span></div>
 

@@ -391,6 +391,7 @@
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">sctrial</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
 
 <span class="c1"># Sade-Feldman melanoma immunotherapy (GSE120575)</span>
+<span class="c1"># Requires scanpy for cell-type annotation: pip install sctrial[plots]</span>
 <span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">load_sade_feldman</span><span class="p">(</span><span class="n">allow_download</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
 <span class="c1"># Stephenson COVID-19 (E-MTAB-10026)</span>
@@ -403,6 +404,12 @@
 <p>Downloads are disabled by default (<code class="docutils literal notranslate"><span class="pre">allow_download=False</span></code>) so nothing is
 fetched without explicit consent. Only missing files are downloaded; files
 already on disk are reused.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The Sade-Feldman loader performs marker-based cell-type annotation using
+scanpy (Leiden clustering + Wilcoxon marker scoring). Install the <code class="docutils literal notranslate"><span class="pre">plots</span></code>
+extra to enable this: <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">sctrial[plots]</span></code>.</p>
+</div>
 </section>
 </section>
 <section id="data-requirements">

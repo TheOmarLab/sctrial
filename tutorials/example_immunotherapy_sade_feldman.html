@@ -1079,7 +1079,7 @@ Activation: 6/6 genes (100%) [OK]
 Scored 5 signatures using zmean method
 Signature scores: [&#39;sig_Cytotoxicity&#39;, &#39;sig_Exhaustion&#39;, &#39;sig_IFN_Response&#39;, &#39;sig_Memory&#39;, &#39;sig_Activation&#39;]
 
-Features for analysis: [&#39;sig_Cytotoxicity&#39;, &#39;sig_Exhaustion&#39;, &#39;sig_IFN_Response&#39;, &#39;sig_Memory&#39;, &#39;sig_Activation&#39;]
+Features for analysis (after filtering): [&#39;sig_Cytotoxicity&#39;, &#39;sig_Exhaustion&#39;, &#39;sig_IFN_Response&#39;, &#39;sig_Memory&#39;, &#39;sig_Activation&#39;]
 </pre></div></div>
 </div>
 <div class="nbinput docutils container">
@@ -1990,6 +1990,30 @@ DIFFERENCE-IN-DIFFERENCES ANALYSIS
 ============================================================
 
 Paired participants: Responders=3, Non-responders=7
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Exhaustion&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_IFN_Response&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Memory&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Activation&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
 
 DiD Results (permutation p-values, bootstrap SEs):
 </pre></div></div>
@@ -2029,23 +2053,23 @@ DiD Results (permutation p-values, bootstrap SEs):
   <tbody>
     <tr>
       <th>4</th>
-      <td>sig_Activation</td>
-      <td>-2.0677</td>
+      <td>sig_Cytotoxicity</td>
+      <td>-0.4285</td>
       <td>0.0570</td>
       <td>0.0094</td>
       <td>0.0470</td>
-      <td>-0.2062</td>
-      <td>small</td>
+      <td>-0.0206</td>
+      <td>negligible</td>
       <td>10</td>
     </tr>
     <tr>
       <th>2</th>
-      <td>sig_IFN_Response</td>
-      <td>-1.7115</td>
+      <td>sig_Exhaustion</td>
+      <td>-0.8100</td>
       <td>0.3140</td>
       <td>0.1208</td>
       <td>0.3020</td>
-      <td>-0.0928</td>
+      <td>-0.0562</td>
       <td>negligible</td>
       <td>10</td>
     </tr>
@@ -2062,24 +2086,24 @@ DiD Results (permutation p-values, bootstrap SEs):
     </tr>
     <tr>
       <th>1</th>
-      <td>sig_Exhaustion</td>
-      <td>-0.8100</td>
+      <td>sig_IFN_Response</td>
+      <td>-1.7115</td>
       <td>0.1577</td>
       <td>0.3684</td>
       <td>0.4605</td>
-      <td>-0.0562</td>
+      <td>-0.0928</td>
       <td>negligible</td>
       <td>10</td>
     </tr>
     <tr>
       <th>0</th>
-      <td>sig_Cytotoxicity</td>
-      <td>-0.4285</td>
+      <td>sig_Activation</td>
+      <td>-2.0677</td>
       <td>0.2171</td>
       <td>0.8130</td>
       <td>0.8130</td>
-      <td>-0.0206</td>
-      <td>negligible</td>
+      <td>-0.2062</td>
+      <td>small</td>
       <td>10</td>
     </tr>
   </tbody>
@@ -2097,7 +2121,7 @@ Interpretation:
   beta_DiD &lt; 0: Non-responders increase MORE (or decrease less) than Responders
 
 Significant DiD effects (FDR &lt; 0.25):
-  sig_Activation: Non-responders increase more (beta=-2.068, FDR=0.047)
+  sig_Cytotoxicity: Non-responders increase more (beta=-0.429, FDR=0.047)
 </pre></div></div>
 </div>
 <section id="Trial-Interaction-Plot">
@@ -2650,6 +2674,30 @@ MIXED EFFECTS MODEL COMPARISON
 
 Note: With n=10 paired participants, the fixed effects OLS model is rank-deficient
 (NaN standard errors). Mixed effects models handle this via random intercepts.
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Exhaustion&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_IFN_Response&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Memory&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Activation&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
 
 Mixed Effects DiD Results:
 </pre></div></div>
@@ -2778,7 +2826,7 @@ Point Estimate Comparison (fixed vs mixed):
       <td>sig_Activation</td>
       <td>-2.0677</td>
       <td>-2.0052</td>
-      <td>False</td>
+      <td>True</td>
     </tr>
     <tr>
       <th>1</th>
@@ -2925,7 +2973,7 @@ CROSS-VALIDATION: EFFECT STABILITY
 Running leave-one-out cross-validation on 10 paired participants...
 This assesses how stable DiD estimates are when each participant is removed.
 
-Feature: sig_Activation
+Feature: sig_Cytotoxicity
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -2933,25 +2981,75 @@ Feature: sig_Activation
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:571: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
   out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:571: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
   out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:571: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 9 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
   out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:571: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
   out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:571: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 9 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
   out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:571: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
   out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:571: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 9 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
   out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:571: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
   out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:571: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 9 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
   out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:571: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 9 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 9 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 9 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 9 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 9 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 9 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
   out = did_fit(
 </pre></div></div>
 </div>
@@ -2962,12 +3060,21 @@ Feature: sig_Activation
 <div class="highlight"><pre>
 
 LOO-CV Results:
-  Full sample beta_DiD: -2.0677
-  Mean LOO beta_DiD:    -2.0695
-  Std of LOO estimates: 0.1113
-  CV (coefficient of variation): 5.38%
+  Full sample beta_DiD: -0.4285
+  Mean LOO beta_DiD:    -0.4183
+  Std of LOO estimates: 0.2748
+  CV (coefficient of variation): 65.69%
 
 Influence Diagnostics (beta_full - beta_loo):
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -3001,151 +3108,151 @@ Influence Diagnostics (beta_full - beta_loo):
     <tr>
       <th>0</th>
       <td>P1</td>
-      <td>-1.6532</td>
-      <td>-0.4144</td>
+      <td>-0.3854</td>
+      <td>-0.0431</td>
     </tr>
     <tr>
       <th>1</th>
       <td>P2</td>
-      <td>-2.0451</td>
-      <td>-0.0226</td>
+      <td>-0.5432</td>
+      <td>0.1147</td>
     </tr>
     <tr>
       <th>2</th>
       <td>P3</td>
-      <td>-2.1708</td>
-      <td>0.1031</td>
+      <td>-0.4605</td>
+      <td>0.0319</td>
     </tr>
     <tr>
       <th>3</th>
       <td>P4</td>
-      <td>-2.0788</td>
-      <td>0.0112</td>
+      <td>0.5289</td>
+      <td>-0.9575</td>
     </tr>
     <tr>
       <th>4</th>
       <td>P6</td>
-      <td>-1.9992</td>
-      <td>-0.0684</td>
+      <td>0.0017</td>
+      <td>-0.4303</td>
     </tr>
     <tr>
       <th>5</th>
       <td>P7</td>
-      <td>-2.3185</td>
-      <td>0.2509</td>
+      <td>-1.2078</td>
+      <td>0.7793</td>
     </tr>
     <tr>
       <th>6</th>
       <td>P11</td>
-      <td>-2.0677</td>
-      <td>0.0000</td>
+      <td>-0.4285</td>
+      <td>-0.0000</td>
     </tr>
     <tr>
       <th>7</th>
       <td>P12</td>
-      <td>-2.0737</td>
-      <td>0.0061</td>
+      <td>-0.4403</td>
+      <td>0.0118</td>
     </tr>
     <tr>
       <th>8</th>
       <td>P13</td>
-      <td>-2.0677</td>
+      <td>-0.4285</td>
       <td>0.0000</td>
     </tr>
     <tr>
       <th>9</th>
       <td>P14</td>
-      <td>-2.0677</td>
+      <td>-0.4285</td>
       <td>0.0000</td>
     </tr>
     <tr>
       <th>10</th>
       <td>P15</td>
-      <td>-2.1298</td>
-      <td>0.0621</td>
+      <td>-0.4487</td>
+      <td>0.0201</td>
     </tr>
     <tr>
       <th>11</th>
       <td>P18</td>
-      <td>-2.0677</td>
-      <td>0.0000</td>
+      <td>-0.4285</td>
+      <td>-0.0000</td>
     </tr>
     <tr>
       <th>12</th>
       <td>P20</td>
-      <td>-1.9920</td>
-      <td>-0.0756</td>
+      <td>-0.3561</td>
+      <td>-0.0724</td>
     </tr>
     <tr>
       <th>13</th>
       <td>P21</td>
-      <td>-2.0677</td>
+      <td>-0.4285</td>
       <td>0.0000</td>
     </tr>
     <tr>
       <th>14</th>
       <td>P23</td>
-      <td>-2.0677</td>
+      <td>-0.4285</td>
       <td>0.0000</td>
     </tr>
     <tr>
       <th>15</th>
       <td>P24</td>
-      <td>-2.0677</td>
+      <td>-0.4285</td>
       <td>0.0000</td>
     </tr>
     <tr>
       <th>16</th>
       <td>P25</td>
-      <td>-2.0677</td>
+      <td>-0.4285</td>
       <td>0.0000</td>
     </tr>
     <tr>
       <th>17</th>
       <td>P26</td>
-      <td>-2.0677</td>
+      <td>-0.4285</td>
       <td>0.0000</td>
     </tr>
     <tr>
       <th>18</th>
       <td>P27</td>
-      <td>-2.0677</td>
+      <td>-0.4285</td>
       <td>0.0000</td>
     </tr>
     <tr>
       <th>19</th>
       <td>P28</td>
-      <td>-2.2608</td>
-      <td>0.1932</td>
+      <td>-0.7188</td>
+      <td>0.2902</td>
     </tr>
     <tr>
       <th>20</th>
       <td>P29</td>
-      <td>-2.0677</td>
+      <td>-0.4285</td>
       <td>0.0000</td>
     </tr>
     <tr>
       <th>21</th>
       <td>P30</td>
-      <td>-2.0677</td>
+      <td>-0.4285</td>
       <td>0.0000</td>
     </tr>
     <tr>
       <th>22</th>
       <td>P31</td>
-      <td>-2.0677</td>
+      <td>-0.4285</td>
       <td>0.0000</td>
     </tr>
     <tr>
       <th>23</th>
       <td>P33</td>
-      <td>-2.0677</td>
+      <td>-0.4285</td>
       <td>0.0000</td>
     </tr>
     <tr>
       <th>24</th>
       <td>P35</td>
-      <td>-2.0677</td>
+      <td>-0.4285</td>
       <td>0.0000</td>
     </tr>
   </tbody>
@@ -3158,16 +3265,16 @@ Influence Diagnostics (beta_full - beta_loo):
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 
-Highly influential participants (|influence| &gt; 2 SD = 0.218):
-  P1: removing decreases estimate by 0.414
-  P7: removing increases estimate by 0.251
+Highly influential participants (|influence| &gt; 2 SD = 0.539):
+  P4: removing decreases estimate by 0.957
+  P7: removing increases estimate by 0.779
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/tutorials_example_immunotherapy_sade_feldman_35_5.png" src="../_images/tutorials_example_immunotherapy_sade_feldman_35_5.png" />
+<img alt="../_images/tutorials_example_immunotherapy_sade_feldman_35_6.png" src="../_images/tutorials_example_immunotherapy_sade_feldman_35_6.png" />
 </div>
 </div>
 </section>
@@ -3240,6 +3347,23 @@ DiDAnalyzer Results (augmented with permutation p-values and bootstrap SEs):
 <div class="nboutput docutils container">
 <div class="prompt empty docutils container">
 </div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Exhaustion&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_IFN_Response&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Memory&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:625: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Activation&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
 <div class="output_area rendered_html docutils container">
 <div>
 <style scoped>
@@ -3270,8 +3394,8 @@ DiDAnalyzer Results (augmented with permutation p-values and bootstrap SEs):
   <tbody>
     <tr>
       <th>0</th>
-      <td>sig_Cytotoxicity</td>
-      <td>-0.4285</td>
+      <td>sig_Activation</td>
+      <td>-2.0677</td>
       <td>0.2171</td>
       <td>0.8130</td>
       <td>0.8130</td>
@@ -3279,8 +3403,8 @@ DiDAnalyzer Results (augmented with permutation p-values and bootstrap SEs):
     </tr>
     <tr>
       <th>1</th>
-      <td>sig_Exhaustion</td>
-      <td>-0.8100</td>
+      <td>sig_IFN_Response</td>
+      <td>-1.7115</td>
       <td>0.1577</td>
       <td>0.3684</td>
       <td>0.4605</td>
@@ -3288,8 +3412,8 @@ DiDAnalyzer Results (augmented with permutation p-values and bootstrap SEs):
     </tr>
     <tr>
       <th>2</th>
-      <td>sig_IFN_Response</td>
-      <td>-1.7115</td>
+      <td>sig_Exhaustion</td>
+      <td>-0.8100</td>
       <td>0.3140</td>
       <td>0.1208</td>
       <td>0.3020</td>
@@ -3306,8 +3430,8 @@ DiDAnalyzer Results (augmented with permutation p-values and bootstrap SEs):
     </tr>
     <tr>
       <th>4</th>
-      <td>sig_Activation</td>
-      <td>-2.0677</td>
+      <td>sig_Cytotoxicity</td>
+      <td>-0.4285</td>
       <td>0.0570</td>
       <td>0.0094</td>
       <td>0.0470</td>
@@ -3321,7 +3445,7 @@ DiDAnalyzer Results (augmented with permutation p-values and bootstrap SEs):
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/tutorials_example_immunotherapy_sade_feldman_37_2.png" src="../_images/tutorials_example_immunotherapy_sade_feldman_37_2.png" />
+<img alt="../_images/tutorials_example_immunotherapy_sade_feldman_37_3.png" src="../_images/tutorials_example_immunotherapy_sade_feldman_37_3.png" />
 </div>
 </div>
 </section>
@@ -3360,7 +3484,7 @@ DiDAnalyzer Results (augmented with permutation p-values and bootstrap SEs):
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-{&#39;bp_pvalue&#39;: 0.1116488510841677, &#39;jb_pvalue&#39;: 0.9679380796482168, &#39;resid_mean&#39;: -3.241454723682377e-17, &#39;resid_std&#39;: 0.030560006415365375}
+{&#39;bp_pvalue&#39;: 0.1116488510841677, &#39;jb_pvalue&#39;: 0.06168329354351301, &#39;resid_mean&#39;: -6.026924990822278e-17, &#39;resid_std&#39;: 0.11152634579204851}
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -3368,7 +3492,7 @@ DiDAnalyzer Results (augmented with permutation p-values and bootstrap SEs):
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_78839/320937397.py:20: UserWarning: FigureCanvasAgg is non-interactive, and thus cannot be shown
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_78559/320937397.py:20: UserWarning: FigureCanvasAgg is non-interactive, and thus cannot be shown
   fig.show()
 </pre></div></div>
 </div>
@@ -3437,7 +3561,7 @@ Biomarker: baseline sig_Cytotoxicity (median split)
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_78839/3047706628.py:9: UserWarning: biomarker_col &#39;biomarker_base&#39; contained non-numeric values that were coerced to NaN.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_78559/3047706628.py:9: UserWarning: biomarker_col &#39;biomarker_base&#39; contained non-numeric values that were coerced to NaN.
   res_het = st.test_treatment_heterogeneity(
 </pre></div></div>
 </div>
@@ -3579,13 +3703,13 @@ This is expected given the small sample size (n=10 paired).
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-Feature: sig_Activation
-  |Effect size| = 2.564
-  Approximate RR = exp(0.91 * 2.564) = 10.307
-  E-value = 20.102
+Feature: sig_Cytotoxicity
+  |Effect size| = 0.176
+  Approximate RR = exp(0.91 * 0.176) = 1.174
+  E-value = 1.625
 
   Interpretation: An unmeasured confounder would need to be associated
-  with both treatment and outcome by a risk ratio of at least 20.10
+  with both treatment and outcome by a risk ratio of at least 1.63
   to explain away this observed effect.
 </pre></div></div>
 </div>
@@ -3815,7 +3939,7 @@ If rhat &gt; 1.01 or ESS is low, increase draws/tune or consider stronger priors
 <li><p><strong>Very small sample</strong>: Only 3 paired Responders vs 7 Non-responders. This study is severely underpowered for detecting medium effects (d = 0.5). Power analysis shows that detecting d = 0.5 at 80% power would require ~64 participants per arm.</p></li>
 <li><p><strong>Rank-deficient fixed effects</strong>: The OLS DiD model produces NaN standard errors with n=10 participants (20 observations, 12+ parameters). We addressed this with permutation p-values and bootstrap standard errors.</p></li>
 <li><p><strong>Exploratory FDR threshold</strong>: We used FDR &lt; 0.25 (exploratory). At the conventional FDR &lt; 0.05, only Activation remains significant.</p></li>
-<li><p><strong>No cell-type stratification</strong>: All cells were treated as a single “Immune” type. Cell-type stratified DiD (<code class="docutils literal notranslate"><span class="pre">st.did_table_by_celltype()</span></code>) would be more informative with finer annotations.</p></li>
+<li><p><strong>No cell-type stratification</strong>: Although v6 provides marker-based cell-type labels (CD8 T, CD4 T, Treg, B cell, etc.), this tutorial analyses all immune cells as a single pool. Cell-type stratified DiD (<code class="docutils literal notranslate"><span class="pre">st.did_table_by_celltype()</span></code>) could reveal type-specific dynamics.</p></li>
 <li><p><strong>Parallel trends untestable</strong>: With only two timepoints, the parallel trends assumption underlying DiD cannot be formally tested.</p></li>
 <li><p><strong>Bayesian analysis requires PyMC</strong>: Install with <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">'sctrial[bayes]'</span></code> for Bayesian DiD with posterior credible intervals.</p></li>
 </ul>

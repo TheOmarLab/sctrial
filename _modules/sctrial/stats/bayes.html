@@ -397,10 +397,7 @@
         <span class="n">beta_arm</span> <span class="o">=</span> <span class="n">pm</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="s2">&quot;beta_arm&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">prior_scale</span><span class="p">)</span>
         <span class="n">beta_did</span> <span class="o">=</span> <span class="n">pm</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="s2">&quot;beta_did&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">prior_scale</span><span class="p">)</span>
         <span class="n">mu</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="n">alpha</span><span class="p">[</span><span class="n">unit_codes</span><span class="p">]</span>
-            <span class="o">+</span> <span class="n">beta_time</span> <span class="o">*</span> <span class="n">time_vals</span>
-            <span class="o">+</span> <span class="n">beta_arm</span> <span class="o">*</span> <span class="n">arm_vals</span>
-            <span class="o">+</span> <span class="n">beta_did</span> <span class="o">*</span> <span class="n">interaction</span>
+            <span class="n">alpha</span><span class="p">[</span><span class="n">unit_codes</span><span class="p">]</span> <span class="o">+</span> <span class="n">beta_time</span> <span class="o">*</span> <span class="n">time_vals</span> <span class="o">+</span> <span class="n">beta_arm</span> <span class="o">*</span> <span class="n">arm_vals</span> <span class="o">+</span> <span class="n">beta_did</span> <span class="o">*</span> <span class="n">interaction</span>
         <span class="p">)</span>
         <span class="c1"># Add covariate fixed effects if provided</span>
         <span class="k">if</span> <span class="n">covariate_matrix</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">covariate_matrix</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
@@ -571,8 +568,13 @@
             <span class="n">cov_matrix</span> <span class="o">=</span> <span class="n">cov_df</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
 
         <span class="n">model</span> <span class="o">=</span> <span class="n">_build_did_model</span><span class="p">(</span>
-            <span class="n">unit_codes</span><span class="p">,</span> <span class="n">n_units</span><span class="p">,</span> <span class="n">time_vals</span><span class="p">,</span> <span class="n">arm_vals</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span>
-            <span class="n">prior_scale</span><span class="o">=</span><span class="n">prior_scale</span><span class="p">,</span> <span class="n">sigma_scale</span><span class="o">=</span><span class="n">sigma_scale</span><span class="p">,</span>
+            <span class="n">unit_codes</span><span class="p">,</span>
+            <span class="n">n_units</span><span class="p">,</span>
+            <span class="n">time_vals</span><span class="p">,</span>
+            <span class="n">arm_vals</span><span class="p">,</span>
+            <span class="n">y</span><span class="p">,</span>
+            <span class="n">prior_scale</span><span class="o">=</span><span class="n">prior_scale</span><span class="p">,</span>
+            <span class="n">sigma_scale</span><span class="o">=</span><span class="n">sigma_scale</span><span class="p">,</span>
             <span class="n">covariate_matrix</span><span class="o">=</span><span class="n">cov_matrix</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="k">with</span> <span class="n">model</span><span class="p">:</span>
@@ -710,8 +712,13 @@
             <span class="n">time_vals</span> <span class="o">=</span> <span class="n">df_feat</span><span class="p">[</span><span class="n">time</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
             <span class="n">arm_vals</span> <span class="o">=</span> <span class="n">df_feat</span><span class="p">[</span><span class="n">arm_bin</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
             <span class="n">model</span> <span class="o">=</span> <span class="n">_build_did_model</span><span class="p">(</span>
-                <span class="n">unit_codes</span><span class="p">,</span> <span class="n">n_units</span><span class="p">,</span> <span class="n">time_vals</span><span class="p">,</span> <span class="n">arm_vals</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span>
-                <span class="n">prior_scale</span><span class="o">=</span><span class="n">prior_scale</span><span class="p">,</span> <span class="n">sigma_scale</span><span class="o">=</span><span class="n">sigma_scale</span><span class="p">,</span>
+                <span class="n">unit_codes</span><span class="p">,</span>
+                <span class="n">n_units</span><span class="p">,</span>
+                <span class="n">time_vals</span><span class="p">,</span>
+                <span class="n">arm_vals</span><span class="p">,</span>
+                <span class="n">y</span><span class="p">,</span>
+                <span class="n">prior_scale</span><span class="o">=</span><span class="n">prior_scale</span><span class="p">,</span>
+                <span class="n">sigma_scale</span><span class="o">=</span><span class="n">sigma_scale</span><span class="p">,</span>
             <span class="p">)</span>
 
     <span class="k">if</span> <span class="n">model</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>

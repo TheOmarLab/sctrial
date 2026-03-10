@@ -215,7 +215,7 @@
     "(adata, load_time, _) = timed_run(\n",
     "    load_sade_feldman,\n",
     "    max_cells_per_participant_visit=MAX_CELLS_PER_PARTICIPANT_VISIT,\n",
-    "    processed_name=\"sade_feldman_processed_v5_subsample.h5ad\",\n",
+    "    processed_name=\"sade_feldman_processed_v6_subsample.h5ad\",\n",
     "    allow_download=True,\n",
     "    n_repeats=1\n",
     ")\n",

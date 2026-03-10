@@ -368,14 +368,14 @@
 <div class="viewcode-block" id="score_gene_sets">
 <a class="viewcode-back" href="../../api.html#sctrial.scoring.score_gene_sets">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">score_gene_sets</span><span class="p">(</span>
-        <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
-        <span class="n">gene_sets</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]],</span>
-        <span class="o">*</span><span class="p">,</span>
-        <span class="n">layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">method</span><span class="p">:</span> <span class="n">ScoreMethod</span> <span class="o">=</span> <span class="s2">&quot;zmean&quot;</span><span class="p">,</span>
-        <span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
-        <span class="n">min_genes</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
-        <span class="n">overwrite</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
+    <span class="n">gene_sets</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]],</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">method</span><span class="p">:</span> <span class="n">ScoreMethod</span> <span class="o">=</span> <span class="s2">&quot;zmean&quot;</span><span class="p">,</span>
+    <span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+    <span class="n">min_genes</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
+    <span class="n">overwrite</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AnnData</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Score gene sets and store results in `adata.obs`.</span>
 
@@ -442,8 +442,7 @@
     <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">gset</span> <span class="ow">in</span> <span class="n">gene_sets</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">gset</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">,</span> <span class="nb">set</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">)):</span>
             <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Gene set &#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; must be a list of gene names, &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">gset</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">.&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;Gene set &#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; must be a list of gene names, got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">gset</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">.&quot;</span>
             <span class="p">)</span>
 
     <span class="n">X</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="n">layer</span><span class="p">]</span> <span class="k">if</span> <span class="n">layer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">adata</span><span class="o">.</span><span class="n">X</span>
@@ -477,7 +476,10 @@
             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
                 <span class="s2">&quot;Gene set &#39;</span><span class="si">%s</span><span class="s2">&#39;: only </span><span class="si">%d</span><span class="s2">/</span><span class="si">%d</span><span class="s2"> unique genes found in data &quot;</span>
                 <span class="s2">&quot;(min_genes=</span><span class="si">%d</span><span class="s2">); setting score to NaN.&quot;</span><span class="p">,</span>
-                <span class="n">name</span><span class="p">,</span> <span class="n">n_found</span><span class="p">,</span> <span class="n">n_unique_requested</span><span class="p">,</span> <span class="n">min_genes</span><span class="p">,</span>
+                <span class="n">name</span><span class="p">,</span>
+                <span class="n">n_found</span><span class="p">,</span>
+                <span class="n">n_unique_requested</span><span class="p">,</span>
+                <span class="n">min_genes</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
             <span class="k">continue</span>
@@ -485,7 +487,9 @@
         <span class="k">if</span> <span class="n">n_found</span> <span class="o">&lt;</span> <span class="n">n_unique_requested</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
                 <span class="s2">&quot;Gene set &#39;</span><span class="si">%s</span><span class="s2">&#39;: </span><span class="si">%d</span><span class="s2">/</span><span class="si">%d</span><span class="s2"> unique genes found in data.&quot;</span><span class="p">,</span>
-                <span class="n">name</span><span class="p">,</span> <span class="n">n_found</span><span class="p">,</span> <span class="n">n_unique_requested</span><span class="p">,</span>
+                <span class="n">name</span><span class="p">,</span>
+                <span class="n">n_found</span><span class="p">,</span>
+                <span class="n">n_unique_requested</span><span class="p">,</span>
             <span class="p">)</span>
 
         <span class="n">gidx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">idx</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">use</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
@@ -499,7 +503,8 @@
                 <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
                     <span class="s2">&quot;Gene set &#39;</span><span class="si">%s</span><span class="s2">&#39;: </span><span class="si">%d</span><span class="s2"> non-finite value(s) in expression &quot;</span>
                     <span class="s2">&quot;matrix; these are excluded from the mean.&quot;</span><span class="p">,</span>
-                    <span class="n">name</span><span class="p">,</span> <span class="n">n_nonfinite</span><span class="p">,</span>
+                    <span class="n">name</span><span class="p">,</span>
+                    <span class="n">n_nonfinite</span><span class="p">,</span>
                 <span class="p">)</span>
             <span class="c1"># nanmean ignores NaN; replace inf with NaN first</span>
             <span class="n">dense_sub</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">finite_mask</span><span class="p">,</span> <span class="n">dense_sub</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
@@ -518,7 +523,8 @@
             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
                 <span class="s2">&quot;Gene set &#39;</span><span class="si">%s</span><span class="s2">&#39;: </span><span class="si">%d</span><span class="s2"> non-finite value(s) in expression &quot;</span>
                 <span class="s2">&quot;matrix; these are excluded from scoring.&quot;</span><span class="p">,</span>
-                <span class="n">name</span><span class="p">,</span> <span class="n">n_nonfinite_expr</span><span class="p">,</span>
+                <span class="n">name</span><span class="p">,</span>
+                <span class="n">n_nonfinite_expr</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="n">sub</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">finite_mask</span><span class="p">,</span> <span class="n">sub</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
 
@@ -583,7 +589,9 @@
 <span class="sd">        The input AnnData with AUCell scores added to `adata.obs`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">create_rankings</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">aucell</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span><span class="s2">&quot;pyscenic is required for AUCell scoring. Install with &#39;pip install pyscenic&#39;.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
+            <span class="s2">&quot;pyscenic is required for AUCell scoring. Install with &#39;pip install pyscenic&#39;.&quot;</span>
+        <span class="p">)</span>
 
     <span class="n">X</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="n">layer</span><span class="p">]</span> <span class="k">if</span> <span class="n">layer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">adata</span><span class="o">.</span><span class="n">X</span>
     <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="s2">&quot;toarray&quot;</span><span class="p">):</span>

@@ -340,6 +340,7 @@
                   
   <h1>Source code for sctrial.convenience</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Convenience functions for quick trial analysis workflows.&quot;&quot;&quot;</span>
+
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
@@ -447,9 +448,7 @@
     <span class="c1"># Validate arm labels exist in the data</span>
     <span class="n">actual_arms</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">arm_col</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">())</span> <span class="k">if</span> <span class="n">arm_col</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span> <span class="k">else</span> <span class="nb">set</span><span class="p">()</span>
     <span class="k">if</span> <span class="n">arm_col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;Column &#39;</span><span class="si">{</span><span class="n">arm_col</span><span class="si">}</span><span class="s2">&#39; not found in adata.obs.&quot;</span>
-        <span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Column &#39;</span><span class="si">{</span><span class="n">arm_col</span><span class="si">}</span><span class="s2">&#39; not found in adata.obs.&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">arm_treated</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">actual_arms</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
             <span class="sa">f</span><span class="s2">&quot;arm_treated=&#39;</span><span class="si">{</span><span class="n">arm_treated</span><span class="si">}</span><span class="s2">&#39; not found in column &#39;</span><span class="si">{</span><span class="n">arm_col</span><span class="si">}</span><span class="s2">&#39;. &quot;</span>
@@ -474,15 +473,17 @@
     <span class="c1"># 2. Ensure preprocessing</span>
     <span class="k">if</span> <span class="n">layer</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">:</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Creating &#39;</span><span class="si">%s</span><span class="s2">&#39; layer from &#39;</span><span class="si">%s</span><span class="s2">&#39;...&quot;</span><span class="p">,</span> <span class="n">layer</span><span class="p">,</span> <span class="n">counts_layer</span><span class="p">)</span>
-        <span class="n">adata</span> <span class="o">=</span> <span class="n">add_log1p_cpm_layer</span><span class="p">(</span>
-            <span class="n">adata</span><span class="p">,</span> <span class="n">counts_layer</span><span class="o">=</span><span class="n">counts_layer</span><span class="p">,</span> <span class="n">out_layer</span><span class="o">=</span><span class="n">layer</span>
-        <span class="p">)</span>
+        <span class="n">adata</span> <span class="o">=</span> <span class="n">add_log1p_cpm_layer</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">counts_layer</span><span class="o">=</span><span class="n">counts_layer</span><span class="p">,</span> <span class="n">out_layer</span><span class="o">=</span><span class="n">layer</span><span class="p">)</span>
 
     <span class="c1"># 3. Score gene sets</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Scoring </span><span class="si">%d</span><span class="s2"> gene sets...&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">module_scores</span><span class="p">))</span>
     <span class="n">adata</span> <span class="o">=</span> <span class="n">score_gene_sets</span><span class="p">(</span>
-        <span class="n">adata</span><span class="p">,</span> <span class="n">module_scores</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="n">layer</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="n">score_method</span><span class="p">,</span>
-        <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;ms_&quot;</span><span class="p">,</span> <span class="n">min_genes</span><span class="o">=</span><span class="n">min_genes</span><span class="p">,</span>
+        <span class="n">adata</span><span class="p">,</span>
+        <span class="n">module_scores</span><span class="p">,</span>
+        <span class="n">layer</span><span class="o">=</span><span class="n">layer</span><span class="p">,</span>
+        <span class="n">method</span><span class="o">=</span><span class="n">score_method</span><span class="p">,</span>
+        <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;ms_&quot;</span><span class="p">,</span>
+        <span class="n">min_genes</span><span class="o">=</span><span class="n">min_genes</span><span class="p">,</span>
     <span class="p">)</span>
 
     <span class="c1"># 4. Run DiD</span>
@@ -653,19 +654,12 @@
     <span class="c1"># Validate required columns were detected (check early)</span>
     <span class="k">if</span> <span class="n">participant_col</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-            <span class="s2">&quot;Could not detect participant column. Please specify manually &quot;</span>
-            <span class="s2">&quot;or rename column.&quot;</span>
+            <span class="s2">&quot;Could not detect participant column. Please specify manually or rename column.&quot;</span>
         <span class="p">)</span>
     <span class="k">if</span> <span class="n">visit_col</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-            <span class="s2">&quot;Could not detect visit column. Please specify manually &quot;</span>
-            <span class="s2">&quot;or rename column.&quot;</span>
-        <span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Could not detect visit column. Please specify manually or rename column.&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">arm_col</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-            <span class="s2">&quot;Could not detect arm column. Please specify manually &quot;</span>
-            <span class="s2">&quot;or rename column.&quot;</span>
-        <span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Could not detect arm column. Please specify manually or rename column.&quot;</span><span class="p">)</span>
 
     <span class="c1"># Auto-detect arm labels if not provided</span>
     <span class="k">if</span> <span class="n">arm_treated</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">arm_control</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -687,7 +681,8 @@
 
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
                 <span class="s2">&quot;Auto-detected arms: treated=&#39;</span><span class="si">%s</span><span class="s2">&#39;, control=&#39;</span><span class="si">%s</span><span class="s2">&#39;&quot;</span><span class="p">,</span>
-                <span class="n">arm_treated</span><span class="p">,</span> <span class="n">arm_control</span><span class="p">,</span>
+                <span class="n">arm_treated</span><span class="p">,</span>
+                <span class="n">arm_control</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Please verify these are correct!&quot;</span><span class="p">)</span>
         <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">unique_arms</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
