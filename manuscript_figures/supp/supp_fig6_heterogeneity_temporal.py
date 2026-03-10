@@ -48,6 +48,7 @@ FEATURES = [
 
 _DATASET_CFG = {
     "Sade-Feldman": {
+        "design": "two_arm",
         "loader": get_sade_feldman,
         "harmonize": True,
         "layer": "log1p_tpm",
@@ -59,28 +60,31 @@ _DATASET_CFG = {
         "visits": ("Pre", "Post"),
     },
     "AML": {
+        "design": "single_arm",
         "loader": lambda: load_clinical_trial_dataset("aml"),
         "harmonize": False,
         "layer": "log1p_norm",
         "participant_col": "participant_id",
         "visit_col": "visit",
         "arm_col": "response",
+        "arm_filter": "Treatment",
         "arm_treated": "Treatment",
-        "arm_control": "Control",
         "visits": ("Pre", "Post"),
     },
     "CAR-T": {
+        "design": "single_arm",
         "loader": lambda: load_clinical_trial_dataset("cart"),
         "harmonize": False,
         "layer": "log1p_norm",
         "participant_col": "participant_id",
         "visit_col": "visit",
         "arm_col": "response",
+        "arm_filter": "CAR-T",
         "arm_treated": "CAR-T",
-        "arm_control": "CAR-T",
         "visits": ("Pre", "Post"),
     },
     "Stephenson": {
+        "design": "two_arm",
         "loader": get_stephenson,
         "harmonize": False,
         "layer": "log1p_cpm",
@@ -92,6 +96,7 @@ _DATASET_CFG = {
         "visits": ("D0", "D28"),
     },
     "Vaccine": {
+        "design": "single_arm",
         "loader": get_vaccine,
         "harmonize": False,
         "layer": "log1p_cpm",
@@ -99,10 +104,24 @@ _DATASET_CFG = {
         "visit_col": "visit",
         "arm_col": None,
         "arm_treated": None,
-        "arm_control": None,
         "visits": ("Pre", "Post"),
     },
 }
+
+# Design-type label for legend annotations
+_DESIGN_LABEL: dict[str, str] = {
+    "Sade-Feldman": "DiD",
+    "Stephenson": "DiD",
+    "AML": "Δ",
+    "CAR-T": "Δ",
+    "Vaccine": "Δ",
+}
+
+
+def _ds_label(name: str) -> str:
+    """Return dataset name with design-type suffix for legends."""
+    tag = _DESIGN_LABEL.get(name, "")
+    return f"{name} ({tag})" if tag else name
 
 _DS_COLORS = dict(zip(_DATASET_CFG.keys(),
     ["#1b9e77", "#d95f02", "#7570b3", "#e7298a", "#66a61e"]))
@@ -120,46 +139,56 @@ def _to_array(mat) -> np.ndarray:
 
 
 def _participant_delta(adata, cfg: dict, features: list[str]) -> pd.DataFrame | None:
+    """Compute per-participant pre→post deltas.
+
+    For single-arm datasets with ``arm_filter``, subset to that arm first
+    so that participant IDs are unique per arm stratum.  Arm is carried
+    through the groupby so that deltas are keyed by (participant, arm).
+    """
     pid_col = cfg["participant_col"]
     visit_col = cfg["visit_col"]
-    arm_col = cfg["arm_col"]
+    arm_col = cfg.get("arm_col")
+    arm_filter = cfg.get("arm_filter")
     pre_v, post_v = cfg["visits"]
 
     required = [pid_col, visit_col]
-    if arm_col:
+    if arm_col and arm_col in adata.obs.columns:
         required.append(arm_col)
     if not all(c in adata.obs.columns for c in required):
         return None
     if not features:
         return None
 
-    X = _to_array(adata[:, features].layers[cfg["layer"]] if cfg["layer"] in adata.layers else adata[:, features].X)
-    df = pd.DataFrame(X, columns=features, index=adata.obs_names)
-    df[pid_col] = adata.obs[pid_col].values
-    df[visit_col] = adata.obs[visit_col].values
-    if arm_col and arm_col in adata.obs.columns:
-        df[arm_col] = adata.obs[arm_col].values
+    # Single-arm: filter to treatment arm before computing deltas
+    ad = adata
+    if arm_filter and arm_col and arm_col in adata.obs.columns:
+        ad = adata[adata.obs[arm_col] == arm_filter]
+
+    X = _to_array(ad[:, features].layers[cfg["layer"]] if cfg["layer"] in ad.layers else ad[:, features].X)
+    df = pd.DataFrame(X, columns=features, index=ad.obs_names)
+    df[pid_col] = ad.obs[pid_col].values
+    df[visit_col] = ad.obs[visit_col].values
+    if arm_col and arm_col in ad.obs.columns:
+        df["arm"] = ad.obs[arm_col].values
     else:
         df["arm"] = "All"
 
-    group_cols = [pid_col, visit_col]
-    arm_key = arm_col if arm_col and arm_col in df.columns else "arm"
-    group_cols.append(arm_key)
+    # Group by (participant, visit, arm) to get unique pseudobulk per stratum
     pv = (
-        df.groupby(group_cols, observed=True)[features]
+        df.groupby([pid_col, visit_col, "arm"], observed=True)[features]
         .mean()
         .reset_index()
     )
     pv = pv[pv[visit_col].isin([pre_v, post_v])].copy()
 
-    pre = pv[pv[visit_col] == pre_v].set_index(pid_col)
-    post = pv[pv[visit_col] == post_v].set_index(pid_col)
+    # Index by (participant, arm) to ensure correct arm pairing
+    pre = pv[pv[visit_col] == pre_v].set_index([pid_col, "arm"])
+    post = pv[pv[visit_col] == post_v].set_index([pid_col, "arm"])
     common = pre.index.intersection(post.index)
     if len(common) < 3:
         return None
 
     delta = post.loc[common, features] - pre.loc[common, features]
-    delta["arm"] = pre.loc[common, arm_key]
     delta = delta.reset_index().rename(columns={pid_col: "participant_id"})
     return delta
 
@@ -244,7 +273,8 @@ def _panel_heatmap(ax, effects: pd.DataFrame, features: list[str], title: str):
         ax.axis("off")
         return
 
-    mat = effects.set_index("participant_id")[features].fillna(0)
+    # NaN masking instead of fillna(0) — zeros would fabricate absent data
+    mat = effects.set_index("participant_id")[features]
     vmax = np.nanpercentile(np.abs(mat.values), 95)
     vmax = 1.0 if not np.isfinite(vmax) or vmax <= 0 else float(vmax)
 
@@ -253,6 +283,7 @@ def _panel_heatmap(ax, effects: pd.DataFrame, features: list[str], title: str):
         ax=ax,
         cmap="RdBu_r",
         norm=TwoSlopeNorm(vmin=-vmax, vcenter=0, vmax=vmax),
+        mask=mat.isna(),
         cbar_kws={"label": "Effect (Post - Pre)", "shrink": 0.8},
         xticklabels=True,
         yticklabels=False,
@@ -322,6 +353,11 @@ def _panel_response_box(ax, effects: pd.DataFrame, features: list[str],
 
 
 def _panel_variance_decomp(ax, effects: pd.DataFrame, features: list[str], title: str):
+    """One-way ANOVA decomposition: SS_between / SS_total per feature.
+
+    Uses group-size-weighted sums of squares (type I ANOVA) so that
+    unbalanced arm sizes are handled correctly.
+    """
     if effects is None or effects.empty:
         ax.text(0.5, 0.5, "No paired effects", ha="center", va="center", transform=ax.transAxes)
         ax.axis("off")
@@ -339,19 +375,19 @@ def _panel_variance_decomp(ax, effects: pd.DataFrame, features: list[str], title
         if len(vals) < 4:
             continue
         grand = vals[feat].mean()
+        # SS_total = sum((x_i - grand_mean)^2)
+        ss_total = float(((vals[feat] - grand) ** 2).sum())
+        # SS_between = sum(n_k * (mean_k - grand_mean)^2)  [group-size weighted]
         ss_between = 0.0
-        ss_within = 0.0
         for arm in arms:
             g = vals[vals["arm"] == arm][feat]
             if g.empty:
                 continue
-            gm = g.mean()
-            ss_between += len(g) * (gm - grand) ** 2
-            ss_within += float(((g - gm) ** 2).sum())
-        tot = ss_between + ss_within
-        if tot <= 0:
+            ss_between += len(g) * (g.mean() - grand) ** 2
+        if ss_total <= 0:
             continue
-        rows.append({"feature": feat, "between": ss_between / tot, "within": ss_within / tot})
+        eta_sq = ss_between / ss_total
+        rows.append({"feature": feat, "between": eta_sq, "within": 1.0 - eta_sq})
 
     if not rows:
         ax.text(0.5, 0.5, "No variance decomposition", ha="center", va="center", transform=ax.transAxes)
@@ -360,19 +396,27 @@ def _panel_variance_decomp(ax, effects: pd.DataFrame, features: list[str], title
 
     df = pd.DataFrame(rows).sort_values("between", ascending=False)
     y = np.arange(len(df))
-    ax.barh(y, df["between"], color=COLORS["highlight"], alpha=0.85, label="Between-arm")
+    ax.barh(y, df["between"], color=COLORS["highlight"], alpha=0.85, label="Between-arm (η²)")
     ax.barh(y, df["within"], left=df["between"], color=COLORS["gray"], alpha=0.8, label="Within-arm")
     ax.set_yticks(y)
     ax.set_yticklabels(df["feature"], fontsize=8)
     ax.set_xlim(0, 1)
-    ax.set_xlabel("Fraction of total variance")
+    ax.set_xlabel("Fraction of total SS (η²)")
     ax.set_title(title, fontweight="bold")
     ax.legend(fontsize=8, frameon=True)
     ax.invert_yaxis()
     despine(ax)
 
 
-def _panel_direction_diversity(ax, effects: pd.DataFrame, features: list[str], title: str):
+def _panel_direction_diversity(ax, effects: pd.DataFrame, features: list[str],
+                               title: str, *, effect_threshold: float = 0.05):
+    """Direction-diversity bar chart with effect-size threshold.
+
+    Only participant deltas with |Δ| > *effect_threshold* are counted,
+    preventing near-zero noise from inflating agreement.  Genes are sorted
+    by absolute net imbalance (|frac_pos − frac_neg|) so the most polarised
+    features appear at the top.
+    """
     if effects is None or effects.empty:
         ax.text(0.5, 0.5, "No paired effects", ha="center", va="center", transform=ax.transAxes)
         ax.axis("off")
@@ -383,8 +427,9 @@ def _panel_direction_diversity(ax, effects: pd.DataFrame, features: list[str], t
         vals = effects[feat].dropna()
         if len(vals) < 3:
             continue
-        pos = (vals > 0).sum()
-        neg = (vals < 0).sum()
+        # Apply effect-size threshold to filter near-zero noise
+        pos = (vals > effect_threshold).sum()
+        neg = (vals < -effect_threshold).sum()
         if pos + neg == 0:
             continue
         rows.append({"feature": feat, "pos": pos / (pos + neg), "neg": neg / (pos + neg)})
@@ -394,7 +439,10 @@ def _panel_direction_diversity(ax, effects: pd.DataFrame, features: list[str], t
         ax.axis("off")
         return
 
-    df = pd.DataFrame(rows).sort_values("pos")
+    df = pd.DataFrame(rows)
+    # Sort by absolute net imbalance — most polarised features at top
+    df["imbalance"] = (df["pos"] - df["neg"]).abs()
+    df = df.sort_values("imbalance", ascending=True)
     y = np.arange(len(df))
     ax.barh(y, -df["neg"], color=COLORS["control"], alpha=0.85, label="Negative")
     ax.barh(y, df["pos"], color=COLORS["treated"], alpha=0.85, label="Positive")
@@ -430,7 +478,8 @@ def _panel_sd_bars(ax, data: dict[str, dict]):
     for i, name in enumerate(sd_map):
         vals = [sd_map[name].get(f, np.nan) for f in top_feats]
         ax.barh(y + i * width - 0.35 + width / 2, vals, height=width,
-                color=_DS_COLORS.get(name, COLORS["gray"]), alpha=0.85, label=name)
+                color=_DS_COLORS.get(name, COLORS["gray"]), alpha=0.85,
+                label=_ds_label(name))
 
     ax.set_yticks(y)
     ax.set_yticklabels(top_feats, fontsize=8)
@@ -467,7 +516,8 @@ def _panel_sd_scatter(ax, data: dict[str, dict]):
         y = s[common].values
         max_lim = max(max_lim, float(np.nanmax(np.r_[x, y])))
         ax.scatter(x, y, s=45, alpha=0.85, marker=_DS_MARKERS.get(name, "o"),
-                   color=_DS_COLORS.get(name, COLORS["neutral"]), edgecolors="white", linewidth=0.4, label=name)
+                   color=_DS_COLORS.get(name, COLORS["neutral"]), edgecolors="white",
+                   linewidth=0.4, label=_ds_label(name))
 
     if max_lim <= 0:
         max_lim = 1.0
@@ -526,8 +576,8 @@ def _panel_aml_cart_profile(ax, data: dict[str, dict]):
         if eff is None or eff.empty:
             continue
         cfg = ds["cfg"]
-        treated = cfg["arm_treated"]
-        sub = eff[eff["arm"] == treated] if treated in eff["arm"].values else eff
+        treated = cfg.get("arm_treated")
+        sub = eff[eff["arm"] == treated] if treated and treated in eff["arm"].values else eff
         mu = sub[feats].mean(axis=0)
         for f in mu.index:
             score[f] = score.get(f, 0.0) + abs(float(mu[f]))
@@ -545,12 +595,16 @@ def _panel_aml_cart_profile(ax, data: dict[str, dict]):
         if eff is None or eff.empty:
             continue
         cfg = ds["cfg"]
-        treated = cfg["arm_treated"]
-        sub = eff[eff["arm"] == treated] if treated in eff["arm"].values else eff
-        mu = sub[top_feats].mean(axis=0).values
-        se = sub[top_feats].std(axis=0, ddof=1).values / np.sqrt(max(sub.shape[0], 1))
+        treated = cfg.get("arm_treated")
+        sub = eff[eff["arm"] == treated] if treated and treated in eff["arm"].values else eff
+        avail = [f for f in top_feats if f in sub.columns]
+        if not avail:
+            continue
+        mu = sub[avail].mean(axis=0).reindex(top_feats).values
+        se = sub[avail].std(axis=0, ddof=1).reindex(top_feats).values / np.sqrt(max(sub.shape[0], 1))
         ax.errorbar(x, mu, yerr=1.96 * se, marker="o", lw=1.6, ms=4,
-                    color=_DS_COLORS.get(ds_name, COLORS["neutral"]), label=ds_name)
+                    color=_DS_COLORS.get(ds_name, COLORS["neutral"]),
+                    label=_ds_label(ds_name))
 
     ax.axhline(0, color="black", lw=0.8, ls="--")
     ax.set_xticks(x)
@@ -569,8 +623,8 @@ def _panel_treated_fc_concordance(ax, data: dict[str, dict]):
         if eff is None or eff.empty:
             continue
         cfg = ds["cfg"]
-        t = cfg["arm_treated"]
-        sub = eff[eff["arm"] == t] if t in eff["arm"].values else eff
+        t = cfg.get("arm_treated")
+        sub = eff[eff["arm"] == t] if t and t in eff["arm"].values else eff
         vec = sub[feats].mean(axis=0)
         treated_vectors[name] = vec
 
@@ -579,19 +633,20 @@ def _panel_treated_fc_concordance(ax, data: dict[str, dict]):
         return
 
     names = list(treated_vectors)
-    corr = pd.DataFrame(index=names, columns=names, dtype=float)
-    for a in names:
-        for b in names:
+    labels = [_ds_label(n) for n in names]
+    corr = pd.DataFrame(index=labels, columns=labels, dtype=float)
+    for a, la in zip(names, labels):
+        for b, lb in zip(names, labels):
             if a == b:
-                corr.loc[a, b] = 1.0
+                corr.loc[la, lb] = 1.0
                 continue
             s1 = treated_vectors[a]
             s2 = treated_vectors[b]
             common = s1.index.intersection(s2.index)
             if len(common) < 3:
-                corr.loc[a, b] = np.nan
+                corr.loc[la, lb] = np.nan
             else:
-                corr.loc[a, b] = s1[common].corr(s2[common])
+                corr.loc[la, lb] = s1[common].corr(s2[common])
 
     sns.heatmap(corr, cmap="RdBu_r", vmin=-1, vmax=1, annot=True, fmt=".2f",
                 linewidths=0.5, linecolor="white", cbar_kws={"label": "Pearson r"}, ax=ax)
