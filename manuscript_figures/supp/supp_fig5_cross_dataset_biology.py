@@ -161,6 +161,9 @@ def _participant_delta(adata, cfg: dict, features: list[str]) -> pd.DataFrame | 
 
     For single-arm datasets with ``arm_filter``, subset to that arm first.
     Returns a DataFrame with columns = features + ["participant_id", "arm"].
+
+    Deltas are indexed by (participant, arm) to prevent arm misassignment
+    when participant IDs are not strictly unique per arm stratum.
     """
     pid_col = cfg["participant_col"]
     visit_col = cfg["visit_col"]
@@ -187,29 +190,26 @@ def _participant_delta(adata, cfg: dict, features: list[str]) -> pd.DataFrame | 
     df[pid_col] = ad.obs[pid_col].values
     df[visit_col] = ad.obs[visit_col].values
     if arm_col and arm_col in ad.obs.columns:
-        df[arm_col] = ad.obs[arm_col].values
+        df["arm"] = ad.obs[arm_col].values
+    else:
+        df["arm"] = "All"
 
-    group_cols = [pid_col, visit_col]
-    if arm_col and arm_col in df.columns:
-        group_cols.append(arm_col)
+    # Group by (participant, visit, arm) to get unique pseudobulk per stratum
     pv = (
-        df.groupby(group_cols, observed=True)[features]
+        df.groupby([pid_col, visit_col, "arm"], observed=True)[features]
         .mean()
         .reset_index()
     )
     pv = pv[pv[visit_col].isin([pre_v, post_v])].copy()
 
-    pre = pv[pv[visit_col] == pre_v].set_index(pid_col)
-    post = pv[pv[visit_col] == post_v].set_index(pid_col)
+    # Index by (participant, arm) to ensure correct arm pairing
+    pre = pv[pv[visit_col] == pre_v].set_index([pid_col, "arm"])
+    post = pv[pv[visit_col] == post_v].set_index([pid_col, "arm"])
     common = pre.index.intersection(post.index)
     if len(common) < 3:
         return None
 
     delta = post.loc[common, features] - pre.loc[common, features]
-    if arm_col and arm_col in pre.columns:
-        delta["arm"] = pre.loc[common, arm_col]
-    else:
-        delta["arm"] = "All"
     delta = delta.reset_index().rename(columns={pid_col: "participant_id"})
     return delta
 

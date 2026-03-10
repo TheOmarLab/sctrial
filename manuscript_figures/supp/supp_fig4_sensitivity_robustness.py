@@ -483,8 +483,9 @@ def _panel_ct_heatmap(ax, data: dict):
         return
 
     mat = pd.DataFrame(rows)
-    # Limit display
-    mat = mat.iloc[:8]
+    # Show top features by mean absolute effect across cell types
+    mat["_mean_abs"] = mat.abs().mean(axis=1)
+    mat = mat.sort_values("_mean_abs", ascending=False).head(12).drop(columns="_mean_abs")
 
     sns.heatmap(mat, ax=ax, cmap="RdBu_r", center=0, linewidths=0.5,
                 linecolor="white", cbar_kws={"shrink": 0.6, "label": "β"},
@@ -611,7 +612,7 @@ def _panel_loo_stability(ax):
                 else:
                     continue
 
-            feats = [f for f in _FEATURES[:3] if f in adata.var_names]
+            feats = [f for f in _FEATURES if f in adata.var_names]
             if len(feats) < 2:
                 continue
 

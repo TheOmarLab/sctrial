@@ -471,22 +471,32 @@ def _panel_qq(fig, axes, results: dict[str, dict]):
         despine(ax)
 
 
-def _panel_resid_fitted(ax, results: dict[str, dict]):
-    """B: Residual vs fitted value scatter (all datasets overlaid)."""
-    for name, res in results.items():
-        df = res["residuals"]
+def _panel_resid_fitted(fig_faceted, results: dict[str, dict]):
+    """B: Residual vs fitted value scatter, faceted per dataset."""
+    names = list(results.keys())
+    n_ds = len(names)
+    ncols = min(n_ds, 3)
+    nrows = max(1, (n_ds + ncols - 1) // ncols)
+    axes = fig_faceted.subplots(nrows, ncols, squeeze=False)
+    for idx, name in enumerate(names):
+        r, c = divmod(idx, ncols)
+        ax = axes[r][c]
+        df = results[name]["residuals"]
         ax.scatter(
             df["fitted"], df["residual"],
             s=10, alpha=0.35,
             color=_DS_PALETTE.get(name, "grey"),
-            label=name, rasterized=True,
+            rasterized=True,
         )
-    ax.axhline(0, color="black", lw=0.8, ls="--")
-    ax.set_xlabel("Fitted value")
-    ax.set_ylabel("Residual")
-    ax.set_title("Residual vs Fitted", fontweight="bold")
-    ax.legend(fontsize=8, frameon=True)
-    despine(ax)
+        ax.axhline(0, color="black", lw=0.8, ls="--")
+        ax.set_xlabel("Fitted value", fontsize=8)
+        ax.set_ylabel("Residual", fontsize=8)
+        ax.set_title(name, fontsize=10, fontweight="bold")
+        despine(ax)
+    # Hide unused axes
+    for idx in range(n_ds, nrows * ncols):
+        r, c = divmod(idx, ncols)
+        axes[r][c].set_visible(False)
 
 
 def _panel_influence(ax, results: dict[str, dict]):
@@ -511,7 +521,7 @@ def _panel_influence(ax, results: dict[str, dict]):
         data=df, x="Dataset", y="Cook's D",
         ax=ax, color="black", size=2.0, alpha=0.25, jitter=0.2,
     )
-    # 4/n threshold per dataset + per-feature flagged rate annotation
+    # 4/n threshold per dataset + participant-level flagged rate annotation
     for i, name in enumerate(df["Dataset"].unique()):
         n = results[name]["effects"]["n_obs"].median()
         n_features = len(results[name]["features"])
@@ -521,18 +531,34 @@ def _panel_influence(ax, results: dict[str, dict]):
                 [i - 0.35, i + 0.35], [thr, thr],
                 color="red", lw=1.0, ls="--",
             )
-            # Count flagged observations and express as rate per feature
-            ds_vals = df.loc[df["Dataset"] == name, "Cook's D"].values
-            n_flagged = int(np.sum(ds_vals > thr))
-            n_total = len(ds_vals)
-            rate = n_flagged / n_total if n_total > 0 else 0
-            ax.text(
-                i, ax.get_ylim()[1] * 0.95,
-                f"{rate:.0%} obs. flagged\n({n_flagged}/{n_total} across "
-                f"{n_features} features)",
-                ha="center", va="top", fontsize=5.5, color="red",
-                fontstyle="italic",
-            )
+            # Count participants flagged in ≥1 feature (not pooled obs)
+            resid_df = results[name]["residuals"]
+            if "participant" in resid_df.columns:
+                flagged_pids = resid_df.loc[
+                    resid_df["cooks_d"] > thr, "participant"
+                ].nunique()
+                total_pids = resid_df["participant"].nunique()
+                rate = flagged_pids / total_pids if total_pids > 0 else 0
+                ax.text(
+                    i, ax.get_ylim()[1] * 0.95,
+                    f"{flagged_pids}/{total_pids} participants\nflagged"
+                    f" ({rate:.0%})",
+                    ha="center", va="top", fontsize=5.5, color="red",
+                    fontstyle="italic",
+                )
+            else:
+                # Fallback: pooled observation count
+                ds_vals = df.loc[df["Dataset"] == name, "Cook's D"].values
+                n_flagged = int(np.sum(ds_vals > thr))
+                n_total = len(ds_vals)
+                rate = n_flagged / n_total if n_total > 0 else 0
+                ax.text(
+                    i, ax.get_ylim()[1] * 0.95,
+                    f"{n_flagged}/{n_total} obs. flagged\n({rate:.0%},"
+                    f" {n_features} features)",
+                    ha="center", va="top", fontsize=5.5, color="red",
+                    fontstyle="italic",
+                )
     ax.set_title("Influence Diagnostics (Cook's D)", fontweight="bold")
     despine(ax)
 
@@ -867,9 +893,12 @@ def generate():
     fig.tight_layout()
     save_panel(fig, "panel_A", FIGURE_NAME, SUPP_OUTPUT)
 
-    # B: Residual vs fitted
-    fig, ax = plt.subplots(figsize=(7.0, 5.8))
-    _panel_resid_fitted(ax, results)
+    # B: Residual vs fitted (faceted per dataset)
+    ncols_b = min(n_ds, 3)
+    nrows_b = max(1, (n_ds + ncols_b - 1) // ncols_b)
+    fig = plt.figure(figsize=(5.2 * ncols_b, 4.8 * nrows_b))
+    _panel_resid_fitted(fig, results)
+    fig.suptitle("Residual vs Fitted", fontweight="bold", y=1.02)
     fig.tight_layout()
     save_panel(fig, "panel_B", FIGURE_NAME, SUPP_OUTPUT)
 

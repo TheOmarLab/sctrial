@@ -302,7 +302,7 @@ def _panel_marker_dotplot(fig, ax, loaded: dict):
             continue
 
         raw_labels = adata.obs[ct_col].astype(str).values
-        harm_labels = np.array([harmonize_celltype(l) for l in raw_labels])
+        harm_labels = np.array([harmonize_celltype(lbl) for lbl in raw_labels])
 
         if sp.issparse(X):
             X_arr = X.toarray()
@@ -483,23 +483,23 @@ def _panel_knn_purity(ax, loaded: dict):
                 continue
             conn = conn.tocsr()
             labels = pd.Categorical(adata.obs[ct_col].astype(str)).codes
-            per_cell = []
-            for i in range(adata.n_obs):
-                start, end = conn.indptr[i], conn.indptr[i + 1]
-                nbrs = conn.indices[start:end]
-                w = conn.data[start:end]
-                if nbrs.size == 0:
-                    continue
-                mask = nbrs != i
-                nbrs = nbrs[mask]
-                w = w[mask]
-                if nbrs.size == 0 or w.sum() == 0:
-                    continue
-                same = w[labels[nbrs] == labels[i]].sum()
-                per_cell.append(float(same / w.sum()))
-            if not per_cell:
+            # Vectorised kNN purity: build same-label weight matrix, row-sum
+            label_arr = np.asarray(labels)
+            # For each non-zero entry, check if source and target share a label
+            rows, cols = conn.nonzero()
+            same_label = label_arr[rows] == label_arr[cols]
+            # Build sparse matrix of same-label weights only
+            from scipy import sparse as sp
+            same_w = sp.csr_matrix(
+                (conn.data * same_label, (rows, cols)), shape=conn.shape
+            )
+            total_w = np.asarray(conn.sum(axis=1)).ravel()
+            same_w_sum = np.asarray(same_w.sum(axis=1)).ravel()
+            # Mask out cells with no neighbours
+            valid = total_w > 0
+            if not valid.any():
                 continue
-            purity = float(np.mean(per_cell))
+            purity = float(np.mean(same_w_sum[valid] / total_w[valid]))
             ds_names.append(name)
             purities.append(purity)
         except Exception as exc:
@@ -679,192 +679,83 @@ def _panel_ct_crosstab(ax, loaded: dict):
     despine(ax)
 
 
-# ── Panel G: Baseline cell-type composition — per-dataset alluvial ──
-
-def _draw_sigmoid_ribbon(ax, x0, x1, y0_bot, y0_top, y1_bot, y1_top,
-                         color, alpha=0.45):
-    """Draw a smooth sigmoid ribbon between two vertical bars."""
-    n_pts = 80
-    t = np.linspace(0, 1, n_pts)
-    s = 1.0 / (1.0 + np.exp(-10 * (t - 0.5)))
-    top = y0_top + s * (y1_top - y0_top)
-    bot = y0_bot + s * (y1_bot - y0_bot)
-    xs = x0 + t * (x1 - x0)
-    verts = np.concatenate([
-        np.column_stack([xs, top]),
-        np.column_stack([xs[::-1], bot[::-1]]),
-    ])
-    poly = plt.Polygon(verts, closed=True, fc=color, ec="none", alpha=alpha)
-    ax.add_patch(poly)
+# ── Panel G: Baseline cell-type composition — plotly parallel categories ──
 
 
-def _single_parcats(ax, ds_name: str, obs_sub, right_col: str, ct_col: str,
-                    right_label: str = "Arm", pid_col: str | None = None):
-    """One parallel-categories subplot: Cell type (left) → right_col (right).
+def _make_plotly_parcats(ds_name: str, obs_sub, right_col: str, ct_col: str,
+                         right_label: str = "Arm", pid_col: str | None = None):
+    """Build a plotly parallel-categories figure for one dataset.
 
-    *right_col* is typically the arm column for two-arm datasets or
-    the visit column for single-arm datasets.
-
-    When *pid_col* is given, widths reflect participant-presence incidence
-    (number of unique participants appearing in each Cell-type × Right
-    combination; a participant who appears in multiple cell types contributes
-    to each).  This is NOT participant composition — it is participant presence.
+    Returns a plotly Figure or None if insufficient data.
     """
+    import plotly.express as px
+
     mapped = obs_sub[ct_col].astype(str).map(harmonize_celltype)
     right_vals = obs_sub[right_col].astype(str)
 
-    # Count flows: Cell type → Right
-    flow = pd.DataFrame({"Cell type": mapped.values, "Right": right_vals.values})
+    # Build per-cell dataframe with harmonised labels
+    df = pd.DataFrame({"Cell type": mapped.values, right_label: right_vals.values})
     if pid_col and pid_col in obs_sub.columns:
-        flow["pid"] = obs_sub[pid_col].values
-        counts = (
-            flow.groupby(["Cell type", "Right"])["pid"]
+        df["pid"] = obs_sub[pid_col].values
+
+    if len(df) == 0:
+        return None
+
+    # Cap at top 15 cell types
+    max_ct = 15
+    ct_order = df["Cell type"].value_counts().index.tolist()
+    if len(ct_order) > max_ct:
+        top_set = set(ct_order[:max_ct])
+        df.loc[~df["Cell type"].isin(top_set), "Cell type"] = "Other"
+
+    # Participant-weighted counts per flow
+    if pid_col and "pid" in df.columns:
+        flow = (
+            df.groupby(["Cell type", right_label])["pid"]
             .nunique()
-            .reset_index(name="n")
+            .reset_index(name="count")
         )
     else:
-        counts = flow.groupby(["Cell type", "Right"]).size().reset_index(name="n")
-    total = counts["n"].sum()
-    if total == 0:
-        ax.text(0.5, 0.5, "No data", ha="center", va="center",
-                transform=ax.transAxes)
-        return
+        flow = df.groupby(["Cell type", right_label]).size().reset_index(name="count")
 
-    # Orders — cap at top 15 cell types to keep figure renderable
-    max_ct = 15
-    ct_order_local = (
-        flow["Cell type"].value_counts().sort_values(ascending=False).index
-        .tolist()
+    # Expand flow counts back to a long dataframe for px.parallel_categories
+    # (plotly weights by row count, so repeat rows by participant count)
+    rows = []
+    for _, r in flow.iterrows():
+        for _ in range(int(r["count"])):
+            rows.append({"Cell type": r["Cell type"], right_label: r[right_label]})
+    df_expanded = pd.DataFrame(rows)
+    if len(df_expanded) == 0:
+        return None
+
+    # Color by cell type using Dark24 palette
+    palette = px.colors.qualitative.Dark24 + px.colors.qualitative.Light24
+    ct_unique = sorted(df_expanded["Cell type"].unique())
+    ct_color_map = {ct: palette[i % len(palette)] for i, ct in enumerate(ct_unique)}
+    color_vals = df_expanded["Cell type"].map(ct_color_map)
+
+    fig = px.parallel_categories(
+        df_expanded,
+        dimensions=["Cell type", right_label],
+        color=color_vals,
+        title=ds_name,
+        width=700,
+        height=600,
     )
-    if len(ct_order_local) > max_ct:
-        top_cts_set = set(ct_order_local[:max_ct])
-        flow.loc[~flow["Cell type"].isin(top_cts_set), "Cell type"] = "Other"
-        # Recompute counts after collapsing
-        if pid_col and pid_col in obs_sub.columns:
-            counts = (
-                flow.groupby(["Cell type", "Right"])["pid"]
-                .nunique()
-                .reset_index(name="n")
-            )
-        else:
-            counts = flow.groupby(["Cell type", "Right"]).size().reset_index(name="n")
-        total = counts["n"].sum()
-        ct_order_local = (
-            flow["Cell type"].value_counts().sort_values(ascending=False).index
-            .tolist()
-        )
-    right_order = sorted(flow["Right"].unique())
-
-    # Palette: cell types use tab20, right values use Set2
-    pal20 = sns.color_palette("tab20", max(len(ct_order_local), 1))
-    ct_palette = dict(zip(ct_order_local, pal20))
-    right_pal = dict(zip(right_order,
-                         sns.color_palette("Set2", len(right_order))))
-
-    col_x = [0.0, 1.0]
-    bar_w = 0.10
-    gap = 0.012
-
-    def _positions(categories, counts_map):
-        usable = 1.0 - gap * max(len(categories) - 1, 0)
-        pos = {}
-        y = 0.0
-        for cat in categories:
-            h = usable * counts_map.get(cat, 0) / total
-            pos[cat] = (y, y + h)
-            y += h + gap
-        return pos
-
-    # Derive marginal counts from the (possibly participant-weighted) counts df
-    ct_counts = counts.groupby("Cell type")["n"].sum().to_dict()
-    right_counts = counts.groupby("Right")["n"].sum().to_dict()
-    ct_pos = _positions(ct_order_local, ct_counts)
-    right_pos = _positions(right_order, right_counts)
-
-    # Draw bars and collect label y-positions for repulsion
-    # Left column: Cell type
-    left_labels: list[tuple[float, str]] = []  # (y_centre, name)
-    for ct_name in ct_order_local:
-        yb, yt = ct_pos[ct_name]
-        ax.fill_between([col_x[0] - bar_w, col_x[0] + bar_w], yb, yt,
-                        color=ct_palette[ct_name], alpha=0.85,
-                        edgecolor="white", lw=0.5)
-        left_labels.append(((yb + yt) / 2, ct_name))
-
-    # Right column
-    right_labels: list[tuple[float, str]] = []
-    for rv in right_order:
-        yb, yt = right_pos[rv]
-        ax.fill_between([col_x[1] - bar_w, col_x[1] + bar_w], yb, yt,
-                        color=right_pal[rv], alpha=0.85,
-                        edgecolor="white", lw=0.5)
-        right_labels.append(((yb + yt) / 2, rv))
-
-    # Greedy repulsion to avoid overlapping labels (bounded to [0, 1])
-    def _repel(labels, min_gap=0.028):
-        """Shift label y-positions so they don't overlap, staying in [0,1]."""
-        if not labels:
-            return labels
-        out = [(y, name) for y, name in labels]
-        for _ in range(50):
-            moved = False
-            for i in range(1, len(out)):
-                dy = out[i][0] - out[i - 1][0]
-                if dy < min_gap:
-                    shift = (min_gap - dy) / 2 + 0.001
-                    out[i - 1] = (max(0.0, out[i - 1][0] - shift), out[i - 1][1])
-                    out[i] = (min(1.0, out[i][0] + shift), out[i][1])
-                    moved = True
-            if not moved:
-                break
-        return out
-
-    for y_pos, ct_name in _repel(left_labels):
-        ax.text(col_x[0] - bar_w - 0.03, y_pos, ct_name,
-                ha="right", va="center", fontsize=6.5, fontweight="bold")
-
-    for y_pos, rv in _repel(right_labels):
-        ax.text(col_x[1] + bar_w + 0.03, y_pos, rv,
-                ha="left", va="center", fontsize=8, fontweight="bold")
-
-    # Draw ribbons: Cell type → Right
-    ct_cursor = {c: ct_pos[c][0] for c in ct_order_local}
-    right_cursor = {r: right_pos[r][0] for r in right_order}
-
-    usable_frac = 1.0 - gap * max(len(ct_order_local) - 1, 0)
-    for _, row in counts.iterrows():
-        ct_name, rv, cnt = row["Cell type"], row["Right"], row["n"]
-        h = usable_frac * cnt / total
-        y0_bot = ct_cursor[ct_name]
-        y0_top = y0_bot + h
-        y1_bot = right_cursor[rv]
-        y1_top = y1_bot + h
-        _draw_sigmoid_ribbon(
-            ax, col_x[0] + bar_w, col_x[1] - bar_w,
-            y0_bot, y0_top, y1_bot, y1_top,
-            color=ct_palette[ct_name], alpha=0.35,
-        )
-        ct_cursor[ct_name] = y0_top
-        right_cursor[rv] = y1_top
-
-    ax.set_xlim(-0.55, 1.55)
-    ax.set_ylim(-0.02, 1.02)
-    ax.set_xticks(col_x)
-    ax.set_xticklabels(["Cell type", right_label], fontsize=9,
-                       fontweight="bold")
-    ax.set_yticks([])
-    ax.set_title(ds_name, fontweight="bold", fontsize=11)
-    ax.text(0.5, -0.03,
-            "Width = participant presence (# unique participants per flow;\n"
-            "one participant may contribute to multiple cell types)",
-            ha="center", va="top", transform=ax.transAxes,
-            fontsize=6, color="#555555", fontstyle="italic")
-    for sp in ax.spines.values():
-        sp.set_visible(False)
+    fig.update_layout(
+        coloraxis_showscale=False,
+        font=dict(size=12),
+        title=dict(text=ds_name, font=dict(size=16, family="Arial"),
+                   x=0.5, xanchor="center", y=0.98, yanchor="top"),
+        margin=dict(l=120, r=80, t=60, b=20),
+        paper_bgcolor="white",
+        plot_bgcolor="white",
+    )
+    return fig
 
 
 def _panel_baseline_ct_by_arm_separate(loaded: dict):
-    """Per-dataset parallel categories saved as separate PNGs.
+    """Per-dataset parallel categories saved as HTML + PNG via plotly.
 
     Two-arm datasets: Cell type → Arm (baseline cells only).
     Single-arm datasets: Cell type → Visit (all cells).
@@ -898,16 +789,20 @@ def _panel_baseline_ct_by_arm_separate(loaded: dict):
     panel_dir = SUPP_OUTPUT / f"{FIGURE_NAME}_panels"
     panel_dir.mkdir(parents=True, exist_ok=True)
     for ds_name, sub, right_col, ct_col, right_label, pid_col in ds_entries:
-        fig, ax = plt.subplots(figsize=(7.0, 7.0))
-        _single_parcats(ax, ds_name, sub, right_col, ct_col,
-                        right_label=right_label, pid_col=pid_col)
-        fig.subplots_adjust(left=0.30, right=0.75, top=0.92, bottom=0.05)
+        fig = _make_plotly_parcats(
+            ds_name, sub, right_col, ct_col,
+            right_label=right_label, pid_col=pid_col,
+        )
+        if fig is None:
+            continue
         safe_name = ds_name.replace(" ", "_").replace("-", "_")
-        path = panel_dir / f"panel_G_{safe_name}.png"
-        fig.savefig(str(path), format="png", dpi=600,
-                    facecolor="white", edgecolor="none")
+        # Save interactive HTML
+        html_path = panel_dir / f"panel_G_{safe_name}.html"
+        fig.write_html(str(html_path), include_plotlyjs="cdn")
+        # Save static PNG (600 DPI equivalent at 3× scale)
+        png_path = panel_dir / f"panel_G_{safe_name}.png"
+        fig.write_image(str(png_path), format="png", scale=3)
         print(f"    Saved panel: panel_G_{safe_name}")
-        plt.close(fig)
 
 
 # ======================================================================
@@ -957,6 +852,14 @@ def generate():
     fig.tight_layout()
     save_panel(fig, "panel_A", FIGURE_NAME, SUPP_OUTPUT)
 
+    # Save individual cell-type UMAPs
+    for name, data in loaded.items():
+        fig_ind, ax_ind = plt.subplots(figsize=(5.5, 5.0))
+        _panel_umap_grid(fig_ind, [ax_ind], {name: data})
+        fig_ind.tight_layout()
+        safe = name.replace(" ", "_").replace("-", "_")
+        save_panel(fig_ind, f"panel_A_{safe}", FIGURE_NAME, SUPP_OUTPUT)
+
     # Panel B: UMAP grid coloured by grouping variable (arm/visit)
     fig, axes = plt.subplots(nrows, ncols, figsize=(5 * ncols, 4.5 * nrows))
     axes_flat = axes.ravel() if hasattr(axes, "ravel") else [axes]
@@ -965,6 +868,14 @@ def generate():
                  fontsize=12, y=1.02)
     fig.tight_layout()
     save_panel(fig, "panel_B", FIGURE_NAME, SUPP_OUTPUT)
+
+    # Save individual grouping UMAPs
+    for name, data in loaded.items():
+        fig_ind, ax_ind = plt.subplots(figsize=(5.5, 5.0))
+        _panel_umap_grouping(fig_ind, [ax_ind], {name: data})
+        fig_ind.tight_layout()
+        safe = name.replace(" ", "_").replace("-", "_")
+        save_panel(fig_ind, f"panel_B_{safe}", FIGURE_NAME, SUPP_OUTPUT)
 
     # Panel C: Marker gene dot plot
     fig, ax = plt.subplots(figsize=(10, 7))
