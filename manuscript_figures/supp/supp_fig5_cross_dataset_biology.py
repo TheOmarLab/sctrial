@@ -2,14 +2,20 @@
 Supplementary Figure 5 - Cross-dataset biological consistency.
 
 Panels:
-  A  Gene-set score distributions by dataset.
-  B  All-pairs cross-dataset effect correlation matrix.
-  C  Shared top genes with concordant direction.
-  D  Gene-level effect distributions by dataset.
-  E  Exhaustion effects by cell type (Sade-Feldman).
-  F  Effect heatmap across datasets.
+  A  Gene-set score distributions (within-dataset z-score).
+  B  All-pairs cross-dataset effect correlation (DiD/Δ labelled).
+  C  Shared top genes with concordant direction (|β|>0.05 threshold).
+  D  Gene-level effect distributions (DiD/Δ labelled).
+  E  Exhaustion effects by cell type (proper two-sample SE for DiD).
+  F  Effect heatmap across datasets (DiD/Δ labelled).
   G  Participant-level paired gene-set trajectories.
-  H  Enrichment summary heatmap (dataset x arm x visit).
+  H  Enrichment summary heatmap (within-dataset z-score).
+
+Design-type handling:
+  Two-arm datasets (Sade-Feldman, Stephenson) use DiD estimand
+  (treated Δ − control Δ).  Single-arm datasets (AML, CAR-T, Vaccine)
+  use within-arm pre→post change (Δ).  Panels mixing both estimands
+  label each dataset with (DiD) or (Δ) to avoid silent conflation.
 """
 
 from __future__ import annotations
@@ -53,6 +59,7 @@ _GENE_SETS = {
 
 _DATASET_CFG = {
     "Sade-Feldman": {
+        "design": "two_arm",
         "loader": get_sade_feldman,
         "harmonize": True,
         "layer": "log1p_tpm",
@@ -64,28 +71,29 @@ _DATASET_CFG = {
         "visits": ("Pre", "Post"),
     },
     "AML": {
+        "design": "single_arm",
         "loader": lambda: load_clinical_trial_dataset("aml"),
         "harmonize": False,
         "layer": "log1p_norm",
         "participant_col": "participant_id",
         "visit_col": "visit",
         "arm_col": "response",
-        "arm_treated": "Treatment",
-        "arm_control": "Treatment",  # single-arm: Control lacks Post
+        "arm_filter": "Treatment",
         "visits": ("Pre", "Post"),
     },
     "CAR-T": {
+        "design": "single_arm",
         "loader": lambda: load_clinical_trial_dataset("cart"),
         "harmonize": False,
         "layer": "log1p_norm",
         "participant_col": "participant_id",
         "visit_col": "visit",
         "arm_col": "response",
-        "arm_treated": "CAR-T",
-        "arm_control": "CAR-T",
+        "arm_filter": "CAR-T",
         "visits": ("Pre", "Post"),
     },
     "Stephenson": {
+        "design": "two_arm",
         "loader": get_stephenson,
         "harmonize": False,
         "layer": "log1p_cpm",
@@ -97,14 +105,13 @@ _DATASET_CFG = {
         "visits": ("D0", "D28"),
     },
     "Vaccine": {
+        "design": "single_arm",
         "loader": get_vaccine,
         "harmonize": False,
         "layer": "log1p_cpm",
         "participant_col": "participant_id",
         "visit_col": "visit",
         "arm_col": None,
-        "arm_treated": None,
-        "arm_control": None,
         "visits": ("Pre", "Post"),
     },
 }
@@ -150,13 +157,19 @@ def _score_gene_sets(adata, layer: str) -> dict[str, np.ndarray]:
 
 
 def _participant_delta(adata, cfg: dict, features: list[str]) -> pd.DataFrame | None:
+    """Compute per-participant pre→post deltas.
+
+    For single-arm datasets with ``arm_filter``, subset to that arm first.
+    Returns a DataFrame with columns = features + ["participant_id", "arm"].
+    """
     pid_col = cfg["participant_col"]
     visit_col = cfg["visit_col"]
-    arm_col = cfg["arm_col"]
+    arm_col = cfg.get("arm_col")
+    arm_filter = cfg.get("arm_filter")
     pre_v, post_v = cfg["visits"]
 
     required = [pid_col, visit_col]
-    if arm_col:
+    if arm_col and arm_col in adata.obs.columns:
         required.append(arm_col)
     if not all(c in adata.obs.columns for c in required):
         return None
@@ -164,12 +177,17 @@ def _participant_delta(adata, cfg: dict, features: list[str]) -> pd.DataFrame | 
     if not features:
         return None
 
-    X = _to_array(adata[:, features].layers[cfg["layer"]] if cfg["layer"] in adata.layers else adata[:, features].X)
-    df = pd.DataFrame(X, columns=features, index=adata.obs_names)
-    df[pid_col] = adata.obs[pid_col].values
-    df[visit_col] = adata.obs[visit_col].values
-    if arm_col and arm_col in adata.obs.columns:
-        df[arm_col] = adata.obs[arm_col].values
+    # Single-arm: filter to treatment arm before computing deltas
+    ad = adata
+    if arm_filter and arm_col and arm_col in adata.obs.columns:
+        ad = adata[adata.obs[arm_col] == arm_filter]
+
+    X = _to_array(ad[:, features].layers[cfg["layer"]] if cfg["layer"] in ad.layers else ad[:, features].X)
+    df = pd.DataFrame(X, columns=features, index=ad.obs_names)
+    df[pid_col] = ad.obs[pid_col].values
+    df[visit_col] = ad.obs[visit_col].values
+    if arm_col and arm_col in ad.obs.columns:
+        df[arm_col] = ad.obs[arm_col].values
 
     group_cols = [pid_col, visit_col]
     if arm_col and arm_col in df.columns:
@@ -227,17 +245,22 @@ def _participant_visit_gs(adata, cfg: dict, gs_scores: dict[str, np.ndarray]) ->
 
 
 def _effect_vector(delta: pd.DataFrame, cfg: dict, features: list[str]) -> pd.Series:
-    treated = cfg["arm_treated"]
-    control = cfg["arm_control"]
+    """Mean effect per feature.
+
+    Two-arm: treated mean Δ − control mean Δ  (difference-in-differences).
+    Single-arm: mean Δ across all participants in the treated arm.
+    """
     if delta is None or delta.empty:
         return pd.Series(dtype=float)
 
-    if treated != control and treated in delta["arm"].values and control in delta["arm"].values:
+    if cfg.get("design") == "two_arm":
+        treated = cfg["arm_treated"]
+        control = cfg["arm_control"]
         t = delta[delta["arm"] == treated][features].mean(axis=0)
         c = delta[delta["arm"] == control][features].mean(axis=0)
         return t - c
 
-    # Single-arm fallback (CAR-T): mean post-pre within arm.
+    # Single-arm: mean pre→post delta
     return delta[features].mean(axis=0)
 
 
@@ -313,7 +336,7 @@ def _panel_gs_distributions(ax, data: dict[str, dict]):
     palette = {_ds_label(k): v for k, v in _DS_PALETTE.items()}
     sns.violinplot(data=df, x="Gene set", y="Score", hue="Dataset", palette=palette,
                    cut=0, linewidth=0.6, ax=ax)
-    ax.set_title("Gene-set score distributions", fontweight="bold")
+    ax.set_title("Gene-set score distributions (within-dataset z-score)", fontweight="bold")
     ax.tick_params(axis="x", rotation=20)
     ax.legend(fontsize=7, frameon=True, ncol=2)
     despine(ax)
@@ -350,19 +373,27 @@ def _panel_concordant_top_genes(ax, data: dict[str, dict]):
         ax.text(0.5, 0.5, "No effects", ha="center", va="center", transform=ax.transAxes)
         return
 
+    # Minimum |effect| threshold to count toward concordance — prevents
+    # near-zero noisy estimates from inflating the concordance fraction.
+    abs_thresh = 0.05
+
     stats_df = []
     for feat, row in mat.iterrows():
         vals = row.dropna().values
         if len(vals) < 2:
             continue
-        pos = int(np.sum(vals > 0))
-        neg = int(np.sum(vals < 0))
-        concord = max(pos, neg) / len(vals)
+        # Only count effects above threshold for concordance
+        sig = vals[np.abs(vals) > abs_thresh]
+        if len(sig) < 2:
+            continue
+        pos = int(np.sum(sig > 0))
+        neg = int(np.sum(sig < 0))
+        concord = max(pos, neg) / len(sig)
         stats_df.append({
             "feature": feat,
             "mean_abs": float(np.mean(np.abs(vals))),
             "concordance": float(concord),
-            "n_datasets": int(len(vals)),
+            "n_datasets": int(len(sig)),
             "direction": "up" if pos >= neg else "down",
         })
 
@@ -378,7 +409,7 @@ def _panel_concordant_top_genes(ax, data: dict[str, dict]):
     for i, (_, r) in enumerate(df.iterrows()):
         ax.text(r["mean_abs"] + 0.005, i, f"{r['concordance']:.0%}", va="center", fontsize=7)
     ax.set_xlabel("Mean |effect| across datasets")
-    ax.set_title("Shared top genes with concordant direction", fontweight="bold")
+    ax.set_title("Shared top genes with concordant direction (|β|>0.05)", fontweight="bold")
     import matplotlib.patches as mpatches
     handles = [
         mpatches.Patch(facecolor=COLORS["treated"], label="Upregulated"),
@@ -413,7 +444,13 @@ def _panel_gene_dist(ax, data: dict[str, dict]):
 
 
 def _panel_exhaustion_by_celltype(ax, data: dict[str, dict]):
-    """E: Exhaustion effects by cell type across datasets."""
+    """E: Exhaustion effects by cell type across datasets.
+
+    Two-arm: effect = mean(treated Δ) − mean(control Δ),
+             SE = sqrt(var_t/n_t + var_c/n_c)  (two-sample).
+    Single-arm: effect = mean(Δ),
+                SE = sd(Δ) / sqrt(n)  (one-sample).
+    """
     ex_genes_full = ["PDCD1", "HAVCR2", "LAG3", "CTLA4", "TOX"]
     rows = []
 
@@ -429,25 +466,35 @@ def _panel_exhaustion_by_celltype(ax, data: dict[str, dict]):
         if ct_col is None or len(ex_genes) < 2:
             continue
 
-        top_ct = adata.obs[ct_col].value_counts().head(6).index.tolist()
+        # Use top 5 cell types with ≥50 cells to ensure reasonable estimates
+        cts = adata.obs[ct_col].value_counts()
+        top_ct = cts[cts >= 50].head(5).index.tolist()
         for ct in top_ct:
             sub = adata[adata.obs[ct_col] == ct]
             delta = _participant_delta(sub, cfg, ex_genes)
             if delta is None or len(delta) < 3:
                 continue
-            treated = cfg.get("arm_treated")
-            control = cfg.get("arm_control")
-            if treated and control and treated != control:
-                t_vals = delta[delta["arm"] == treated][ex_genes] if "arm" in delta.columns and treated in delta["arm"].values else delta[ex_genes]
-                c_vals = delta[delta["arm"] == control][ex_genes] if "arm" in delta.columns and control in delta["arm"].values else pd.DataFrame()
-                if not c_vals.empty:
-                    eff = t_vals.mean().mean() - c_vals.mean().mean()
-                else:
-                    eff = t_vals.mean().mean()
+
+            # Per-participant mean exhaustion score (average across genes)
+            if cfg.get("design") == "two_arm":
+                treated = cfg["arm_treated"]
+                control = cfg["arm_control"]
+                t_scores = delta[delta["arm"] == treated][ex_genes].mean(axis=1).values
+                c_scores = delta[delta["arm"] == control][ex_genes].mean(axis=1).values
+                if len(t_scores) < 2 or len(c_scores) < 2:
+                    continue
+                eff = float(np.mean(t_scores) - np.mean(c_scores))
+                # Two-sample SE: sqrt(var_t/n_t + var_c/n_c)
+                se = float(np.sqrt(
+                    np.var(t_scores, ddof=1) / len(t_scores)
+                    + np.var(c_scores, ddof=1) / len(c_scores)
+                ))
             else:
-                eff = delta[ex_genes].mean().mean()
-            per_pid = delta[ex_genes].mean(axis=1).values
-            se = np.std(per_pid, ddof=1) / np.sqrt(max(len(per_pid), 1)) if len(per_pid) > 1 else np.nan
+                # Single-arm: one-sample mean and SE
+                per_pid = delta[ex_genes].mean(axis=1).values
+                eff = float(np.mean(per_pid))
+                se = float(np.std(per_pid, ddof=1) / np.sqrt(len(per_pid))) if len(per_pid) > 1 else np.nan
+
             rows.append({"Dataset": ds_name, "Cell type": ct,
                         "Effect": float(eff),
                         "SE": float(se) if np.isfinite(se) else 0.0})
@@ -467,7 +514,7 @@ def _panel_exhaustion_by_celltype(ax, data: dict[str, dict]):
                linewidth=0.5, zorder=3)
     ax.axvline(0, color="black", lw=0.8, ls="--")
     ax.set_yticks(y)
-    ax.set_yticklabels([f"{r['Cell type']}\n({_ds_label(r['Dataset'])})" for _, r in df.iterrows()],
+    ax.set_yticklabels([f"{r['Cell type']} [{r['Dataset']}]" for _, r in df.iterrows()],
                        fontsize=6)
     ax.set_xlabel("Exhaustion effect (treatment)")
     ax.set_title("T cell exhaustion effects by cell type", fontweight="bold")
@@ -569,8 +616,8 @@ def _panel_enrichment_heatmap(ax, data: dict[str, dict]):
     df = pd.DataFrame(rows)
     piv = df.pivot(index="Gene set", columns="Group", values="Score")
     sns.heatmap(piv, cmap="RdBu_r", center=0, linewidths=0.3, linecolor="white",
-                ax=ax, cbar_kws={"label": "Mean score"})
-    ax.set_title("Enrichment summary: dataset x arm x visit", fontweight="bold")
+                ax=ax, cbar_kws={"label": "Mean z-score (within-dataset)"})
+    ax.set_title("Enrichment summary (within-dataset z-score)", fontweight="bold")
     ax.tick_params(axis="x", labelsize=7, rotation=45)
     ax.tick_params(axis="y", labelsize=8)
 
