@@ -10,10 +10,10 @@ Panels:
   B  Residual vs fitted values (multi-dataset overlay).
   C  Influence diagnostics: Cook's distance per dataset.
   D  Baseline diagnostics: arm means (two-arm) / pre-post means (single-arm).
-  E  Calibration of observed effects against permutation null.
+  E  Signal enrichment: observed |effect| vs permutation null quantiles.
   F  Full assumption diagnostics: normality + heteroscedasticity (merged 1×2).
-  G  Funnel plot: effect size vs standard error.
-  H  Null rejection calibration vs nominal alpha.
+  G  Funnel plot: model effect vs standard error.
+  H  Observed rejection rate vs nominal alpha (signal excess over null).
 
 Non-overlap guardrail: no sensitivity analysis (→ SF4), no cross-dataset
 biological concordance (→ SF5), no heterogeneity (→ SF6).
@@ -224,10 +224,10 @@ def _ols_interaction(y: np.ndarray, post: np.ndarray, treated: np.ndarray | None
     cooks[~np.isfinite(cooks)] = np.nan
 
     return {
-        "beta_did": beta_eff,
-        "se_did": se_eff,
-        "t_did": t_eff,
-        "p_did": p_eff,
+        "beta": beta_eff,
+        "se": se_eff,
+        "t": t_eff,
+        "p": p_eff,
         "resid": resid,
         "fitted": fitted,
         "hat": hat,
@@ -306,10 +306,10 @@ def _fit_dataset(name: str, adata, cfg: dict) -> dict | None:
             continue
         effect_rows.append({
             "feature": feat,
-            "beta_DiD": fit["beta_did"],
-            "se_DiD": fit["se_did"],
-            "t_DiD": fit["t_did"],
-            "p_DiD": fit["p_did"],
+            "beta": fit["beta"],
+            "se": fit["se"],
+            "t": fit["t"],
+            "p": fit["p"],
             "sigma": fit["sigma"],
             "n_obs": fit["n_obs"],
         })
@@ -331,7 +331,8 @@ def _fit_dataset(name: str, adata, cfg: dict) -> dict | None:
     # Permutation null.
     null_abs = _permutation_null(pv, features, cfg, n_perm=200)
 
-    # Store the participant-visit table for parallel-trends panel.
+    design_label = "DiD" if design == "two_arm" else "pre–post"
+
     return {
         "name": name,
         "effects": effect_df,
@@ -341,6 +342,7 @@ def _fit_dataset(name: str, adata, cfg: dict) -> dict | None:
         "null_abs": null_abs,
         "pv": pv,
         "cfg": cfg,
+        "design_label": design_label,
     }
 
 
@@ -384,8 +386,8 @@ def _permutation_null(
                 fit = _ols_interaction(
                     pv[feat].values.astype(float), post, treated
                 )
-                if fit is not None and np.isfinite(fit["beta_did"]):
-                    out.append(abs(fit["beta_did"]))
+                if fit is not None and np.isfinite(fit["beta"]):
+                    out.append(abs(fit["beta"]))
     else:
         # Single-arm: permute visit labels WITHIN each participant.
         pids = pv[pid_col].values
@@ -399,8 +401,8 @@ def _permutation_null(
                 fit = _ols_interaction(
                     pv[feat].values.astype(float), post_perm, None
                 )
-                if fit is not None and np.isfinite(fit["beta_did"]):
-                    out.append(abs(fit["beta_did"]))
+                if fit is not None and np.isfinite(fit["beta"]):
+                    out.append(abs(fit["beta"]))
 
     return np.asarray(out, dtype=float)
 
@@ -509,33 +511,37 @@ def _panel_influence(ax, results: dict[str, dict]):
         data=df, x="Dataset", y="Cook's D",
         ax=ax, color="black", size=2.0, alpha=0.25, jitter=0.2,
     )
-    # 4/n threshold per dataset + flagged count annotation
+    # 4/n threshold per dataset + per-feature flagged rate annotation
     for i, name in enumerate(df["Dataset"].unique()):
         n = results[name]["effects"]["n_obs"].median()
+        n_features = len(results[name]["features"])
         if np.isfinite(n) and n > 0:
             thr = 4.0 / n
             ax.plot(
                 [i - 0.35, i + 0.35], [thr, thr],
                 color="red", lw=1.0, ls="--",
             )
-            # Count observations exceeding 4/n threshold
+            # Count flagged observations and express as rate per feature
             ds_vals = df.loc[df["Dataset"] == name, "Cook's D"].values
             n_flagged = int(np.sum(ds_vals > thr))
+            n_total = len(ds_vals)
+            rate = n_flagged / n_total if n_total > 0 else 0
             ax.text(
                 i, ax.get_ylim()[1] * 0.95,
-                f"n>{thr:.2f}: {n_flagged}",
-                ha="center", va="top", fontsize=6.5, color="red",
+                f"{rate:.0%} obs. flagged\n({n_flagged}/{n_total} across "
+                f"{n_features} features)",
+                ha="center", va="top", fontsize=5.5, color="red",
                 fontstyle="italic",
             )
     ax.set_title("Influence Diagnostics (Cook's D)", fontweight="bold")
     despine(ax)
 
 
-def _panel_parallel_trends(fig, axes, results: dict[str, dict]):
-    """D: Pre-treatment baseline check.
+def _panel_baseline_comparability(fig, axes, results: dict[str, dict]):
+    """D: Baseline mean comparability.
 
     Two-arm datasets: scatter of (control pre-mean, treated pre-mean) per
-    feature.  Points near diagonal → parallel trends satisfied.
+    feature.  Points near diagonal → arms have similar baseline expression.
 
     Single-arm datasets: scatter of (Pre mean, Post mean) per feature to
     show the magnitude/direction of change.
@@ -572,7 +578,7 @@ def _panel_parallel_trends(fig, axes, results: dict[str, dict]):
             )
             x_label = f"{cfg['arm_control']} mean"
             y_label = f"{cfg['arm_treated']} mean"
-            subtitle = f"{name} — parallel trends"
+            subtitle = f"{name} — baseline comparability"
         else:
             # Single-arm: compare Pre vs Post means.
             pre_data = pv[pv[visit_col] == pre_v]
@@ -626,10 +632,15 @@ def _panel_parallel_trends(fig, axes, results: dict[str, dict]):
         despine(ax)
 
 
-def _panel_calibration(ax, results: dict[str, dict]):
-    """E: Observed |beta| quantiles vs permutation null quantiles."""
+def _panel_signal_enrichment(ax, results: dict[str, dict]):
+    """E: Observed |effect| quantiles vs permutation null quantiles.
+
+    Points above the diagonal indicate features with effects larger than
+    expected under the null (signal enrichment), NOT type-I error calibration.
+    """
     for name, res in results.items():
-        obs = np.sort(np.abs(res["effects"]["beta_DiD"].dropna().values))
+        label = f"{name} ({res['design_label']})"
+        obs = np.sort(np.abs(res["effects"]["beta"].dropna().values))
         null = np.sort(res.get("null_abs", np.array([])))
         if len(obs) < 3 or len(null) < 3:
             continue
@@ -638,15 +649,16 @@ def _panel_calibration(ax, results: dict[str, dict]):
         null_q = np.quantile(null, q)
         ax.plot(
             null_q, obs_q, marker="o", ms=3.0, lw=1.2,
-            color=_DS_PALETTE.get(name, "grey"), label=name,
+            color=_DS_PALETTE.get(name, "grey"), label=label,
         )
     lim = ax.get_xlim()
     hi = max(ax.get_ylim()[1], lim[1])
-    ax.plot([0, hi], [0, hi], ls="--", color="black", lw=0.9)
-    ax.set_xlabel("Permutation |beta| quantiles")
-    ax.set_ylabel("Observed |beta| quantiles")
-    ax.set_title("Calibration vs Permutation Null", fontweight="bold")
-    ax.legend(fontsize=8, frameon=True)
+    ax.plot([0, hi], [0, hi], ls="--", color="black", lw=0.9,
+            label="No enrichment")
+    ax.set_xlabel("Permutation null |effect| quantiles")
+    ax.set_ylabel("Observed |effect| quantiles")
+    ax.set_title("Signal Enrichment vs Permutation Null", fontweight="bold")
+    ax.legend(fontsize=7, frameon=True)
     despine(ax)
 
 
@@ -697,27 +709,29 @@ def _panel_normality_tests(ax, results: dict[str, dict]):
     ax.set_yticklabels(df["Dataset"], fontsize=9)
     ax.set_xlabel("Shapiro-Wilk W statistic")
     ax.set_title("Residual Normality Diagnostics", fontweight="bold")
-    ax.axvline(0.95, color="red", ls="--", lw=0.8, alpha=0.7, label="W=0.95 threshold")
-    ax.legend(fontsize=7, frameon=True)
+    ax.axvline(0.95, color="red", ls="--", lw=0.8, alpha=0.7,
+               label="W=0.95 (indicative; power varies with n)")
+    ax.legend(fontsize=6, frameon=True)
     despine(ax)
 
 
 def _panel_funnel(ax, results: dict[str, dict]):
-    """G: Funnel plot — effect size vs standard error."""
+    """G: Funnel plot — model effect vs standard error."""
     for name, res in results.items():
+        label = f"{name} ({res['design_label']})"
         df = res["effects"]
         ax.scatter(
-            df["beta_DiD"], df["se_DiD"],
+            df["beta"], df["se"],
             s=45, alpha=0.8,
             color=_DS_PALETTE.get(name, "grey"),
-            edgecolors="white", linewidth=0.5, label=name,
+            edgecolors="white", linewidth=0.5, label=label,
         )
     ax.axvline(0, color="black", lw=0.8, ls="--")
     ax.invert_yaxis()  # convention: SE=0 at top
-    ax.set_xlabel("DiD effect (beta)")
+    ax.set_xlabel("Model effect (β)")
     ax.set_ylabel("Standard error")
     ax.set_title("Effect Size vs Standard Error (Funnel)", fontweight="bold")
-    ax.legend(fontsize=8, frameon=True)
+    ax.legend(fontsize=7, frameon=True)
     despine(ax)
 
 
@@ -728,15 +742,18 @@ def _panel_assumptions_merged(fig_merged, results: dict[str, dict]):
     _panel_heteroscedasticity(ax2, results)
 
 
-def _panel_null_rejection(ax, results: dict[str, dict]):
-    """H: Null rejection calibration vs nominal alpha.
+def _panel_rejection_vs_alpha(ax, results: dict[str, dict]):
+    """H: Observed rejection rate vs nominal alpha.
 
     For alphas in [0.01..0.20], compute the fraction of features where
-    |observed beta| > quantile(|null betas|, 1-alpha).  Diagonal = well-calibrated.
+    |observed effect| > quantile(|null effects|, 1-alpha).  Above the
+    diagonal indicates more signal than expected under the null (not
+    type-I error calibration, since observed effects may contain true signal).
     """
     alphas = np.arange(0.01, 0.205, 0.01)
     for name, res in results.items():
-        obs_abs = np.abs(res["effects"]["beta_DiD"].dropna().values)
+        label = f"{name} ({res['design_label']})"
+        obs_abs = np.abs(res["effects"]["beta"].dropna().values)
         null = res.get("null_abs", np.array([]))
         if len(obs_abs) < 3 or len(null) < 10:
             continue
@@ -746,13 +763,13 @@ def _panel_null_rejection(ax, results: dict[str, dict]):
             rate = np.mean(obs_abs > thr)
             rates.append(float(rate))
         ax.plot(alphas, rates, marker="o", ms=3, lw=1.3,
-                color=_DS_PALETTE.get(name, "grey"), label=name)
+                color=_DS_PALETTE.get(name, "grey"), label=label)
     ax.plot([0, 0.25], [0, 0.25], ls="--", color="black", lw=0.9,
-            label="Well-calibrated")
-    ax.set_xlabel("Nominal α")
-    ax.set_ylabel("Observed rejection rate")
-    ax.set_title("Null Rejection Calibration", fontweight="bold")
-    ax.legend(fontsize=7, frameon=True)
+            label="No signal (null)")
+    ax.set_xlabel("Nominal α (permutation threshold)")
+    ax.set_ylabel("Fraction of features exceeding threshold")
+    ax.set_title("Observed Rejection Rate vs Nominal α", fontweight="bold")
+    ax.legend(fontsize=6, frameon=True)
     ax.set_xlim(0, 0.22)
     ax.set_ylim(0, 1.05)
     despine(ax)
@@ -818,8 +835,8 @@ def _panel_heteroscedasticity(ax, results: dict[str, dict]):
     ax.set_xlabel("Breusch-Pagan test statistic")
     ax.set_title("Heteroscedasticity Diagnostics", fontweight="bold")
     ax.axvline(3.84, color="red", ls="--", lw=0.8, alpha=0.7,
-               label="χ²(1) = 3.84 (α=0.05)")
-    ax.legend(fontsize=7, frameon=True)
+               label="χ²(1) = 3.84 (indicative; depends on n)")
+    ax.legend(fontsize=6, frameon=True)
     despine(ax)
 
 
@@ -870,17 +887,17 @@ def generate():
     )
     if n_ds == 1:
         axes = np.array([axes])
-    _panel_parallel_trends(fig, axes, results)
+    _panel_baseline_comparability(fig, axes, results)
     fig.suptitle(
-        "Baseline Diagnostics: Arm Means (two-arm) / Pre-Post Means (single-arm)",
+        "Baseline Mean Comparability",
         fontweight="bold", y=1.02, fontsize=11,
     )
     fig.tight_layout()
     save_panel(fig, "panel_D", FIGURE_NAME, SUPP_OUTPUT)
 
-    # E: Calibration vs permutation null
+    # E: Signal enrichment vs permutation null
     fig, ax = plt.subplots(figsize=(7.0, 5.8))
-    _panel_calibration(ax, results)
+    _panel_signal_enrichment(ax, results)
     fig.tight_layout()
     save_panel(fig, "panel_E", FIGURE_NAME, SUPP_OUTPUT)
 
@@ -896,9 +913,9 @@ def generate():
     fig.tight_layout()
     save_panel(fig, "panel_G", FIGURE_NAME, SUPP_OUTPUT)
 
-    # H: Null rejection calibration vs nominal alpha
+    # H: Observed rejection rate vs nominal alpha
     fig, ax = plt.subplots(figsize=(7.0, 5.8))
-    _panel_null_rejection(ax, results)
+    _panel_rejection_vs_alpha(ax, results)
     fig.tight_layout()
     save_panel(fig, "panel_H", FIGURE_NAME, SUPP_OUTPUT)
 
