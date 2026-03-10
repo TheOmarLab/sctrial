@@ -27,7 +27,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from matplotlib.ticker import LogFormatterSciNotation, LogLocator
+from matplotlib.ticker import FuncFormatter, MaxNLocator
 
 from .._shared import (
     SUPP_OUTPUT,
@@ -254,12 +254,13 @@ def _panel_dataset_overview(ax, loaded: dict):
 
     ax.set_xticks(x)
     ax.set_xticklabels(ds_names, fontsize=9)
-    ax.set_ylabel("Number of cells")
+    ax.set_ylabel("Number of cells", fontsize=9)
     ax.set_title("Dataset Overview: Cells and Participants", fontweight="bold")
-    ax.set_yscale("log")
-    # Powers-of-10 ticks only
-    ax.yaxis.set_major_locator(LogLocator(base=10, numticks=10))
-    ax.yaxis.set_major_formatter(LogFormatterSciNotation())
+    # Linear scale with equally spaced, readable tick labels
+    ax.yaxis.set_major_locator(MaxNLocator(nbins=6, integer=True))
+    ax.yaxis.set_major_formatter(
+        FuncFormatter(lambda v, _: f"{int(v):,}" if v >= 1 else "0"))
+    ax.tick_params(axis="y", labelsize=8)
     despine(ax)
 
 

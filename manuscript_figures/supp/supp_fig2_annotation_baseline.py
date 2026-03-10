@@ -652,93 +652,163 @@ def _panel_baseline_pca(fig_parent, axes, loaded: dict):
         despine(ax)
 
 
-# ── Panel H: Baseline cell-type composition by arm ───────────────
+# ── Panel H: Baseline cell-type composition — per-dataset alluvial ──
 
-def _panel_baseline_ct_by_arm(fig_parent, loaded: dict):
-    """Parallel-categories plot: Dataset → Arm → Cell type (baseline)."""
-    frac_rows: list[dict] = []
-    for name, data in loaded.items():
-        obs = data["adata"].obs
-        vis = data.get("visit_col")
-        arm = data.get("arm_col")
-        ct = data.get("ct_col")
-        if arm is None or ct is None:
-            continue
+def _draw_sigmoid_ribbon(ax, x0, x1, y0_bot, y0_top, y1_bot, y1_top,
+                         color, alpha=0.45):
+    """Draw a smooth sigmoid ribbon between two vertical bars."""
+    n_pts = 80
+    t = np.linspace(0, 1, n_pts)
+    s = 1.0 / (1.0 + np.exp(-10 * (t - 0.5)))
+    top = y0_top + s * (y1_top - y0_top)
+    bot = y0_bot + s * (y1_bot - y0_bot)
+    xs = x0 + t * (x1 - x0)
+    verts = np.concatenate([
+        np.column_stack([xs, top]),
+        np.column_stack([xs[::-1], bot[::-1]]),
+    ])
+    poly = plt.Polygon(verts, closed=True, fc=color, ec="none", alpha=alpha)
+    ax.add_patch(poly)
 
-        if vis:
-            pre_mask = obs[vis].astype(str).str.lower().isin(
-                ["pre", "baseline", "d0", "day0", "0", "d000"])
-            if pre_mask.sum() < 50:
-                continue
-            sub = obs.loc[pre_mask]
-        else:
-            sub = obs
 
-        # Vectorised: build cell-type fractions per arm
-        mapped = sub[ct].astype(str).map(harmonize_celltype)
-        for a in sorted(sub[arm].dropna().unique()):
-            a_mask = sub[arm] == a
-            ct_frac = mapped[a_mask].value_counts(normalize=True)
-            for c, f in ct_frac.items():
-                frac_rows.append({"Dataset": name, "Arm": str(a),
-                                  "Cell type": str(c), "Fraction": f})
+def _single_parcats(ax, ds_name: str, obs_sub, right_col: str, ct_col: str,
+                    right_label: str = "Arm"):
+    """One parallel-categories subplot: Cell type (left) → right_col (right).
 
-    if not frac_rows:
-        ax = fig_parent.add_subplot(111)
-        ax.text(0.5, 0.5, "No baseline cell-type data", ha="center",
-                va="center", transform=ax.transAxes, fontsize=10,
-                fontstyle="italic")
-        ax.set_title("Baseline Cell-Type Composition", fontweight="bold")
+    *right_col* is typically the arm column for two-arm datasets or
+    the visit column for single-arm datasets.
+    """
+    mapped = obs_sub[ct_col].astype(str).map(harmonize_celltype)
+    right_vals = obs_sub[right_col].astype(str)
+
+    # Count flows: Cell type → Right
+    flow = pd.DataFrame({"Cell type": mapped.values, "Right": right_vals.values})
+    counts = flow.groupby(["Cell type", "Right"]).size().reset_index(name="n")
+    total = counts["n"].sum()
+    if total == 0:
+        ax.text(0.5, 0.5, "No data", ha="center", va="center",
+                transform=ax.transAxes)
         return
 
-    df = pd.DataFrame(frac_rows)
-
-    # Build cell-type palette
-    present = set(df["Cell type"].unique())
-    all_cts = [c for c in HARMONIZED_CELLTYPE_ORDER if c in present]
-    for c in sorted(present - set(all_cts)):
-        all_cts.append(c)
-    pal = sns.color_palette("tab20", max(len(all_cts), 1))
-    ct_palette = dict(zip(all_cts, pal))
-
-    # Build stacked horizontal bar
-    ds_arm_groups = sorted(
-        df[["Dataset", "Arm"]].drop_duplicates().values.tolist(),
-        key=lambda x: (x[0], x[1]),
+    # Orders
+    ct_order_local = (
+        flow["Cell type"].value_counts().sort_values(ascending=False).index
+        .tolist()
     )
-    ax = fig_parent.add_subplot(111)
+    right_order = sorted(flow["Right"].unique())
 
-    y_pos = np.arange(len(ds_arm_groups))
-    for gi, (ds, arm_val) in enumerate(ds_arm_groups):
-        gsub = df[(df["Dataset"] == ds) & (df["Arm"] == arm_val)]
-        left = 0.0
-        for ct_name in all_cts:
-            frac = gsub.loc[gsub["Cell type"] == ct_name, "Fraction"].sum()
-            if frac > 0:
-                ax.barh(gi, frac, left=left, height=0.65,
-                        color=ct_palette[ct_name], edgecolor="white",
-                        linewidth=0.3)
-                if frac > 0.05:
-                    ax.text(left + frac / 2, gi, ct_name, ha="center",
-                            va="center", fontsize=5.5, color="black",
-                            fontweight="bold")
-                left += frac
+    # Palette: cell types use tab20, right values use Set2
+    pal20 = sns.color_palette("tab20", max(len(ct_order_local), 1))
+    ct_palette = dict(zip(ct_order_local, pal20))
+    right_pal = dict(zip(right_order,
+                         sns.color_palette("Set2", len(right_order))))
 
-    ax.set_yticks(y_pos)
-    ax.set_yticklabels([f"{ds}\n{arm_val}" for ds, arm_val in ds_arm_groups],
-                       fontsize=7)
-    ax.set_xlim(0, 1)
-    ax.set_xlabel("Fraction of cells", fontsize=9)
-    ax.set_title("Baseline Cell-Type Composition by Arm", fontweight="bold")
+    col_x = [0.0, 1.0]
+    bar_w = 0.10
+    gap = 0.012
 
-    # Legend for top cell types
-    top_cts = (df.groupby("Cell type")["Fraction"].sum()
-               .sort_values(ascending=False).head(12).index)
-    handles = [mpatches.Patch(facecolor=ct_palette[c], label=c)
-               for c in all_cts if c in top_cts]
-    ax.legend(handles=handles, fontsize=6, loc="lower right", frameon=True,
-              ncol=2, title="Cell type", title_fontsize=7)
-    despine(ax)
+    def _positions(categories, counts_map):
+        usable = 1.0 - gap * max(len(categories) - 1, 0)
+        pos = {}
+        y = 0.0
+        for cat in categories:
+            h = usable * counts_map.get(cat, 0) / total
+            pos[cat] = (y, y + h)
+            y += h + gap
+        return pos
+
+    ct_counts = flow["Cell type"].value_counts().to_dict()
+    right_counts = flow["Right"].value_counts().to_dict()
+    ct_pos = _positions(ct_order_local, ct_counts)
+    right_pos = _positions(right_order, right_counts)
+
+    # Draw bars: left = Cell type, right = Right column
+    for ct_name in ct_order_local:
+        yb, yt = ct_pos[ct_name]
+        ax.fill_between([col_x[0] - bar_w, col_x[0] + bar_w], yb, yt,
+                        color=ct_palette[ct_name], alpha=0.85,
+                        edgecolor="white", lw=0.5)
+        if (yt - yb) > 0.025:
+            ax.text(col_x[0] - bar_w - 0.03, (yb + yt) / 2, ct_name,
+                    ha="right", va="center", fontsize=7, fontweight="bold")
+
+    for rv in right_order:
+        yb, yt = right_pos[rv]
+        ax.fill_between([col_x[1] - bar_w, col_x[1] + bar_w], yb, yt,
+                        color=right_pal[rv], alpha=0.85,
+                        edgecolor="white", lw=0.5)
+        if (yt - yb) > 0.025:
+            ax.text(col_x[1] + bar_w + 0.03, (yb + yt) / 2, rv,
+                    ha="left", va="center", fontsize=8, fontweight="bold")
+
+    # Draw ribbons: Cell type → Right
+    ct_cursor = {c: ct_pos[c][0] for c in ct_order_local}
+    right_cursor = {r: right_pos[r][0] for r in right_order}
+
+    usable_frac = 1.0 - gap * max(len(ct_order_local) - 1, 0)
+    for _, row in counts.iterrows():
+        ct_name, rv, cnt = row["Cell type"], row["Right"], row["n"]
+        h = usable_frac * cnt / total
+        y0_bot = ct_cursor[ct_name]
+        y0_top = y0_bot + h
+        y1_bot = right_cursor[rv]
+        y1_top = y1_bot + h
+        _draw_sigmoid_ribbon(
+            ax, col_x[0] + bar_w, col_x[1] - bar_w,
+            y0_bot, y0_top, y1_bot, y1_top,
+            color=ct_palette[ct_name], alpha=0.35,
+        )
+        ct_cursor[ct_name] = y0_top
+        right_cursor[rv] = y1_top
+
+    ax.set_xlim(-0.55, 1.55)
+    ax.set_ylim(-0.02, 1.02)
+    ax.set_xticks(col_x)
+    ax.set_xticklabels(["Cell type", right_label], fontsize=9,
+                       fontweight="bold")
+    ax.set_yticks([])
+    ax.set_title(ds_name, fontweight="bold", fontsize=11)
+    for sp in ax.spines.values():
+        sp.set_visible(False)
+
+
+def _panel_baseline_ct_by_arm(fig, axes, loaded: dict):
+    """Faceted parallel-categories: one subplot per dataset.
+
+    Two-arm datasets: Cell type → Arm (baseline cells only).
+    Single-arm datasets: Cell type → Visit (all cells).
+    """
+    ds_entries: list[tuple[str, pd.DataFrame, str, str, str]] = []
+    for name, data in loaded.items():
+        ct = data.get("ct_col")
+        if ct is None:
+            continue
+        obs = data["adata"].obs
+        arm = data.get("arm_col")
+        vis = data.get("visit_col")
+
+        if arm is not None:
+            # Two-arm: restrict to baseline, flow Cell type → Arm
+            if vis:
+                pre_mask = obs[vis].astype(str).str.lower().isin(
+                    ["pre", "baseline", "d0", "day0", "0", "d000"])
+                if pre_mask.sum() < 50:
+                    continue
+                sub = obs.loc[pre_mask]
+            else:
+                sub = obs
+            ds_entries.append((name, sub, arm, ct, "Arm"))
+        elif vis is not None:
+            # Single-arm: flow Cell type → Visit
+            ds_entries.append((name, obs, vis, ct, "Visit"))
+
+    for i, ax in enumerate(np.ravel(axes)):
+        if i >= len(ds_entries):
+            ax.axis("off")
+            continue
+        ds_name, sub, right_col, ct_col, right_label = ds_entries[i]
+        _single_parcats(ax, ds_name, sub, right_col, ct_col,
+                        right_label=right_label)
 
 
 # ======================================================================
@@ -834,9 +904,22 @@ def generate():
     fig.tight_layout()
     save_panel(fig, "panel_G", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel H: Baseline cell-type composition by arm (parallel categories)
-    fig = plt.figure(figsize=(11, 7))
-    _panel_baseline_ct_by_arm(fig, loaded)
+    # Panel H: Cell-type composition (parallel categories, all datasets)
+    n_parcats = sum(
+        1 for d in loaded.values()
+        if d.get("ct_col") and (d.get("arm_col") or d.get("visit_col"))
+    )
+    ncols_h = min(n_parcats, 3) if n_parcats > 0 else 1
+    nrows_h = max(1, (n_parcats + ncols_h - 1) // ncols_h)
+    fig, axes = plt.subplots(nrows_h, ncols_h,
+                              figsize=(6.0 * ncols_h, 6.5 * nrows_h))
+    if not hasattr(axes, "__iter__"):
+        axes = [axes]
+    else:
+        axes = np.ravel(axes)
+    _panel_baseline_ct_by_arm(fig, axes, loaded)
+    fig.suptitle("Cell-Type Composition by Arm / Visit",
+                 fontweight="bold", fontsize=13, y=1.02)
     fig.tight_layout()
     save_panel(fig, "panel_H", FIGURE_NAME, SUPP_OUTPUT)
 

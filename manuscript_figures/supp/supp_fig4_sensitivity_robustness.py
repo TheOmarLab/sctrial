@@ -704,8 +704,16 @@ def _panel_mde(ax, mde_data: dict[str, dict]):
         paired = info.get("design", "two_arm") == "single_arm_paired"
         color = _MDE_PALETTE.get(name, "grey")
         y = _mde_curve(n_grid, sigma, paired=paired)
-        ls = "--" if paired else "-"
-        ax.plot(n_grid, y, lw=2.0, ls=ls, color=color, label=name)
+        # Distinct dash patterns per dataset for clarity
+        _dash_map = {
+            "Sade-Feldman": "-",
+            "AML": (0, (5, 3)),        # dashed
+            "CAR-T": (0, (3, 1, 1, 1)),  # dash-dot
+            "Vaccine": (0, (8, 4)),     # long dash
+            "Stephenson": (0, (1, 2)),  # dotted
+        }
+        ls = _dash_map.get(name, "--" if paired else "-")
+        ax.plot(n_grid, y, lw=2.5, ls=ls, color=color, label=name)
 
         n_actual = info["n_per_group"]
         mde_val = _mde_curve(np.array([n_actual]), sigma, paired=paired)[0]
