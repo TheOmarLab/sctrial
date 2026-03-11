@@ -666,6 +666,12 @@ def load_stephenson_data(
     AnnData
         The processed AnnData object.
     """
+    # Backward compat: if someone passes an .h5ad file path positionally
+    # as data_dir (old API had data_path as first param), treat it as data_path.
+    if data_path is None and data_dir.endswith(".h5ad"):
+        data_path = data_dir
+        data_dir = "data/stephenson"  # reset to default
+
     if data_path is not None:
         import warnings
 
