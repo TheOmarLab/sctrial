@@ -48,7 +48,8 @@ from .._shared import (
     get_stephenson,
     get_vaccine,
     harmonize_response,
-    load_clinical_trial_dataset,
+    get_aml,
+    get_cart,
     save_panel,
     score_signatures,
     sig_display,
@@ -267,7 +268,7 @@ def _load_all_datasets() -> list[DatasetInfo]:
         print(f"    Vaccine: FAILED to load ({exc})")
 
     try:
-        aml = load_clinical_trial_dataset("aml")
+        aml = get_aml()
         aml, aml_sigs = score_signatures(aml, layer="counts")
         aml.obs["arm_dummy"] = "Treatment"
         pid_col = ("participant_id" if "participant_id" in aml.obs.columns
@@ -286,7 +287,7 @@ def _load_all_datasets() -> list[DatasetInfo]:
         print(f"    AML: FAILED to load ({exc})")
 
     try:
-        cart = load_clinical_trial_dataset("cart")
+        cart = get_cart()
         cart, cart_sigs = score_signatures(cart, layer="counts")
         cart.obs["arm_dummy"] = "CAR-T"
         pid_col = ("participant_id" if "participant_id" in cart.obs.columns

@@ -40,7 +40,8 @@ from .._shared import (
     get_stephenson,
     get_vaccine,
     harmonize_response,
-    load_clinical_trial_dataset,
+    get_aml,
+    get_cart,
     save_panel,
 )
 
@@ -70,7 +71,7 @@ _DATASET_CFG = {
         # Single-arm paired: Treatment arm only, Pre vs Post (11 paired).
         # Control arm has Pre only → no two-arm contrast possible.
         "design": "single_arm_paired",
-        "loader": lambda: load_clinical_trial_dataset("aml"),
+        "loader": lambda: get_aml(),
         "harmonize": False,
         "layer": "log1p_norm",
         "participant_col": "participant_id",
@@ -82,7 +83,7 @@ _DATASET_CFG = {
     "CAR-T": {
         # Single-arm paired: all patients receive CAR-T, Pre vs Post (31 paired).
         "design": "single_arm_paired",
-        "loader": lambda: load_clinical_trial_dataset("cart"),
+        "loader": lambda: get_cart(),
         "harmonize": False,
         "layer": "log1p_norm",
         "participant_col": "participant_id",
