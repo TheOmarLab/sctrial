@@ -56,10 +56,7 @@ def _build_did_model(
         beta_arm = pm.Normal("beta_arm", 0.0, prior_scale)
         beta_did = pm.Normal("beta_did", 0.0, prior_scale)
         mu = (
-            alpha[unit_codes]
-            + beta_time * time_vals
-            + beta_arm * arm_vals
-            + beta_did * interaction
+            alpha[unit_codes] + beta_time * time_vals + beta_arm * arm_vals + beta_did * interaction
         )
         # Add covariate fixed effects if provided
         if covariate_matrix is not None and covariate_matrix.shape[1] > 0:
@@ -228,8 +225,13 @@ def did_table_bayes(
             cov_matrix = cov_df.to_numpy(dtype=float)
 
         model = _build_did_model(
-            unit_codes, n_units, time_vals, arm_vals, y,
-            prior_scale=prior_scale, sigma_scale=sigma_scale,
+            unit_codes,
+            n_units,
+            time_vals,
+            arm_vals,
+            y,
+            prior_scale=prior_scale,
+            sigma_scale=sigma_scale,
             covariate_matrix=cov_matrix,
         )
         with model:
@@ -364,8 +366,13 @@ def prior_predictive_check(
             time_vals = df_feat[time].to_numpy()
             arm_vals = df_feat[arm_bin].to_numpy()
             model = _build_did_model(
-                unit_codes, n_units, time_vals, arm_vals, y,
-                prior_scale=prior_scale, sigma_scale=sigma_scale,
+                unit_codes,
+                n_units,
+                time_vals,
+                arm_vals,
+                y,
+                prior_scale=prior_scale,
+                sigma_scale=sigma_scale,
             )
 
     if model is None:

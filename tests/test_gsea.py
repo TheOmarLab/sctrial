@@ -7,10 +7,12 @@ import sctrial as st
 
 try:
     import gseapy as gp
+
     HAS_GSEAPY = True
 except ImportError:
     HAS_GSEAPY = False
     gp = None
+
 
 @pytest.mark.skipif(not HAS_GSEAPY, reason="gseapy not installed")
 def test_run_gsea_did_real_logic(sample_adata, trial_design):
@@ -21,10 +23,7 @@ def test_run_gsea_did_real_logic(sample_adata, trial_design):
     adata_sub = sample_adata[:, genes].copy()
 
     # Create a dummy gene set
-    gene_sets = {
-        "PATHWAY_UP": ["G0", "G1", "G2"],
-        "PATHWAY_DOWN": ["G8", "G9"]
-    }
+    gene_sets = {"PATHWAY_UP": ["G0", "G1", "G2"], "PATHWAY_DOWN": ["G8", "G9"]}
 
     # Run GSEA Prerank
     # We use a real call to gp.prerank but with small data
@@ -34,14 +33,15 @@ def test_run_gsea_did_real_logic(sample_adata, trial_design):
         design=trial_design,
         visits=("V1", "V2"),
         rank_by="signed_confidence",
-        permutation_num=10, # small for speed
+        permutation_num=10,  # small for speed
         min_size=1,
-        max_size=100
+        max_size=100,
     )
 
     # By default, function returns DataFrame (res2d), not Prerank object
     assert isinstance(res, pd.DataFrame)
     assert "PATHWAY_UP" in res["Term"].values or "PATHWAY_UP" in res.index
+
 
 @pytest.mark.skipif(not HAS_GSEAPY, reason="gseapy not installed")
 def test_run_gsea_did_mock(sample_adata, trial_design):
@@ -59,7 +59,7 @@ def test_run_gsea_did_mock(sample_adata, trial_design):
             gene_sets="KEGG_2021_Human",
             design=trial_design,
             visits=("V1", "V2"),
-            rank_by="signed_confidence"
+            rank_by="signed_confidence",
         )
 
         assert mock_prerank.called

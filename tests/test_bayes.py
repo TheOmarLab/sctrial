@@ -57,12 +57,14 @@ def test_did_table_bayes_categorical_covariate():
     for pid in ["P1", "P2", "P3", "P4"]:
         arm = "Treated" if pid in ["P1", "P2"] else "Control"
         for visit in ["V1", "V2"]:
-            obs.append({
-                "participant_id": pid,
-                "visit": visit,
-                "arm": arm,
-                "sex": "M" if pid in ["P1", "P3"] else "F",
-            })
+            obs.append(
+                {
+                    "participant_id": pid,
+                    "visit": visit,
+                    "arm": arm,
+                    "sex": "M" if pid in ["P1", "P3"] else "F",
+                }
+            )
     obs = pd.DataFrame(obs)
     X = np.random.RandomState(0).normal(size=(len(obs), 1))
     adata = AnnData(X=X, obs=obs, var=pd.DataFrame(index=["G1"]))

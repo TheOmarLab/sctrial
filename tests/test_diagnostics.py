@@ -54,7 +54,9 @@ def test_pseudobulk_export():
     for pid in ["P1", "P2"]:
         for visit in ["V1", "V2"]:
             for _ in range(3):
-                obs.append({"participant_id": pid, "visit": visit, "arm": "Treated", "cell_type": "A"})
+                obs.append(
+                    {"participant_id": pid, "visit": visit, "arm": "Treated", "cell_type": "A"}
+                )
     obs = pd.DataFrame(obs)
     X = np.random.poisson(2, size=(len(obs), 2)).astype(float)
     adata = AnnData(X=X, obs=obs)

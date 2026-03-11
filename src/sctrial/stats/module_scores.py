@@ -119,7 +119,9 @@ def module_score_pseudobulk(
     pb = pb[pb["module_score"].notna()].copy()
 
     counts = (
-        df.groupby([design.participant_col, design.visit_col, design.arm_col, "pool"], observed=True)
+        df.groupby(
+            [design.participant_col, design.visit_col, design.arm_col, "pool"], observed=True
+        )
         .size()
         .reset_index(name="n_cells")
     )
@@ -274,17 +276,19 @@ def module_score_did_by_pool(
             # Report effective participant count after model row drops
             model_row_idx = fit.model.data.row_labels
             n_units_eff = int(df[design.participant_col].loc[model_row_idx].nunique())
-            rows.append({
-                "pool": pool,
-                "module": module,
-                "mean_delta_treated": mean_delta_treated,
-                "mean_delta_control": mean_delta_control,
-                "beta_DiD": float(fit.params.get("visit_num:arm_bin", np.nan)),
-                "p_DiD": float(fit.pvalues.get("visit_num:arm_bin", np.nan)),
-                "p_treated": p_treated,
-                "p_control": p_control,
-                "n_units": n_units_eff,
-            })
+            rows.append(
+                {
+                    "pool": pool,
+                    "module": module,
+                    "mean_delta_treated": mean_delta_treated,
+                    "mean_delta_control": mean_delta_control,
+                    "beta_DiD": float(fit.params.get("visit_num:arm_bin", np.nan)),
+                    "p_DiD": float(fit.pvalues.get("visit_num:arm_bin", np.nan)),
+                    "p_treated": p_treated,
+                    "p_control": p_control,
+                    "n_units": n_units_eff,
+                }
+            )
             continue
 
         wide = sub.pivot_table(
@@ -333,21 +337,26 @@ def module_score_did_by_pool(
         did = mean_delta_treated - mean_delta_control
 
         p_did = _perm_test_diff(
-            deltas["delta"], deltas["arm"], n_perm=n_perm, seed=seed,
+            deltas["delta"],
+            deltas["arm"],
+            n_perm=n_perm,
+            seed=seed,
             treated_label=arm_treated,
         )
 
-        rows.append({
-            "pool": pool,
-            "module": module,
-            "mean_delta_treated": mean_delta_treated,
-            "mean_delta_control": mean_delta_control,
-            "beta_DiD": float(did),
-            "p_DiD": float(p_did),
-            "p_treated": float(p_arm.get(arm_treated, np.nan)),
-            "p_control": float(p_arm.get(arm_control, np.nan)),
-            "n_units": int(deltas.index.nunique()),
-        })
+        rows.append(
+            {
+                "pool": pool,
+                "module": module,
+                "mean_delta_treated": mean_delta_treated,
+                "mean_delta_control": mean_delta_control,
+                "beta_DiD": float(did),
+                "p_DiD": float(p_did),
+                "p_treated": float(p_arm.get(arm_treated, np.nan)),
+                "p_control": float(p_arm.get(arm_control, np.nan)),
+                "n_units": int(deltas.index.nunique()),
+            }
+        )
 
     res = pd.DataFrame(rows)
     if res.empty:
@@ -440,13 +449,15 @@ def module_score_within_arm_by_pool(
         except (ValueError, TypeError):
             p_val = np.nan
 
-        rows.append({
-            "pool": pool,
-            "module": module,
-            "mean_delta": float(delta.mean()),
-            "p_time": float(p_val),
-            "n_units": int(len(wide)),
-        })
+        rows.append(
+            {
+                "pool": pool,
+                "module": module,
+                "mean_delta": float(delta.mean()),
+                "p_time": float(p_val),
+                "n_units": int(len(wide)),
+            }
+        )
 
     res = pd.DataFrame(rows)
     if res.empty:

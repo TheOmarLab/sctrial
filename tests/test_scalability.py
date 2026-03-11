@@ -13,11 +13,13 @@ def test_did_parallel_small():
     for i in range(n_p):
         arm = "Treated" if i < 6 else "Control"
         for v in visits:
-            rows.append({
-                "participant_id": f"P{i}",
-                "visit": v,
-                "arm": arm,
-            })
+            rows.append(
+                {
+                    "participant_id": f"P{i}",
+                    "visit": v,
+                    "arm": arm,
+                }
+            )
     obs = pd.DataFrame(rows)
     X = np.random.RandomState(1).poisson(1.0, size=(len(obs), 10)).astype(float)
     adata = AnnData(X=X, obs=obs)

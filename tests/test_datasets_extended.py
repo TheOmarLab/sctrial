@@ -1,4 +1,5 @@
 """Extended tests for dataset loading and helper functions."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -148,45 +149,55 @@ class TestCountPaired:
 
     def test_count_paired_basic(self):
         """Test basic paired participant counting."""
-        obs = pd.DataFrame({
-            "participant_id": ["P1", "P1", "P2", "P2", "P3"],
-            "visit": ["V1", "V2", "V1", "V2", "V1"],
-        })
+        obs = pd.DataFrame(
+            {
+                "participant_id": ["P1", "P1", "P2", "P2", "P3"],
+                "visit": ["V1", "V2", "V1", "V2", "V1"],
+            }
+        )
         n_paired = count_paired(obs, "visit", ["V1", "V2"])
         assert n_paired == 2  # P1 and P2 have both visits
 
     def test_count_paired_no_pairs(self):
         """Test when no participants have both visits."""
-        obs = pd.DataFrame({
-            "participant_id": ["P1", "P2", "P3"],
-            "visit": ["V1", "V1", "V2"],
-        })
+        obs = pd.DataFrame(
+            {
+                "participant_id": ["P1", "P2", "P3"],
+                "visit": ["V1", "V1", "V2"],
+            }
+        )
         n_paired = count_paired(obs, "visit", ["V1", "V2"])
         assert n_paired == 0
 
     def test_count_paired_all_paired(self):
         """Test when all participants have both visits."""
-        obs = pd.DataFrame({
-            "participant_id": ["P1", "P1", "P2", "P2", "P3", "P3"],
-            "visit": ["V1", "V2", "V1", "V2", "V1", "V2"],
-        })
+        obs = pd.DataFrame(
+            {
+                "participant_id": ["P1", "P1", "P2", "P2", "P3", "P3"],
+                "visit": ["V1", "V2", "V1", "V2", "V1", "V2"],
+            }
+        )
         n_paired = count_paired(obs, "visit", ["V1", "V2"])
         assert n_paired == 3
 
     def test_count_paired_single_visit_raises(self):
         """Fewer than 2 visits must raise ValueError."""
-        obs = pd.DataFrame({
-            "participant_id": ["P1", "P1"],
-            "visit": ["V1", "V2"],
-        })
+        obs = pd.DataFrame(
+            {
+                "participant_id": ["P1", "P1"],
+                "visit": ["V1", "V2"],
+            }
+        )
         with pytest.raises(ValueError, match="at least 2 labels"):
             count_paired(obs, "visit", ["V1"])
 
     def test_count_paired_empty_visits_raises(self):
-        obs = pd.DataFrame({
-            "participant_id": ["P1"],
-            "visit": ["V1"],
-        })
+        obs = pd.DataFrame(
+            {
+                "participant_id": ["P1"],
+                "visit": ["V1"],
+            }
+        )
         with pytest.raises(ValueError, match="at least 2 labels"):
             count_paired(obs, "visit", [])
 
@@ -250,31 +261,37 @@ class TestEnsureFDR:
 
     def test_ensure_fdr_adds_column(self):
         """Test that FDR column is added."""
-        df = pd.DataFrame({
-            "feature": ["G1", "G2", "G3"],
-            "p_time": [0.001, 0.05, 0.5],
-        })
+        df = pd.DataFrame(
+            {
+                "feature": ["G1", "G2", "G3"],
+                "p_time": [0.001, 0.05, 0.5],
+            }
+        )
         result = ensure_fdr(df, p_col="p_time", fdr_col="FDR_time")
         assert "FDR_time" in result.columns
         assert result["FDR_time"].notna().all()
 
     def test_ensure_fdr_preserves_existing(self):
         """Test that existing FDR column is preserved."""
-        df = pd.DataFrame({
-            "feature": ["G1", "G2"],
-            "p_time": [0.001, 0.05],
-            "FDR_time": [0.01, 0.1],
-        })
+        df = pd.DataFrame(
+            {
+                "feature": ["G1", "G2"],
+                "p_time": [0.001, 0.05],
+                "FDR_time": [0.01, 0.1],
+            }
+        )
         result = ensure_fdr(df, p_col="p_time", fdr_col="FDR_time")
         # Should not recalculate
         assert result["FDR_time"].tolist() == [0.01, 0.1]
 
     def test_ensure_fdr_with_na(self):
         """Test FDR calculation with NA p-values."""
-        df = pd.DataFrame({
-            "feature": ["G1", "G2", "G3"],
-            "p_time": [0.001, np.nan, 0.5],
-        })
+        df = pd.DataFrame(
+            {
+                "feature": ["G1", "G2", "G3"],
+                "p_time": [0.001, np.nan, 0.5],
+            }
+        )
         result = ensure_fdr(df, p_col="p_time", fdr_col="FDR_time")
         assert result["FDR_time"].notna().sum() == 2  # Only 2 valid p-values
 
@@ -286,10 +303,12 @@ class TestEnsureFDR:
 
     def test_ensure_fdr_ordering(self):
         """Test that FDR is correctly ordered."""
-        df = pd.DataFrame({
-            "feature": ["G1", "G2", "G3", "G4"],
-            "p_time": [0.001, 0.01, 0.05, 0.1],
-        })
+        df = pd.DataFrame(
+            {
+                "feature": ["G1", "G2", "G3", "G4"],
+                "p_time": [0.001, 0.01, 0.05, 0.1],
+            }
+        )
         result = ensure_fdr(df, p_col="p_time", fdr_col="FDR_time")
         # FDR should be monotonically increasing (or equal) for increasing p-values
         fdr_values = result["FDR_time"].values
@@ -300,53 +319,59 @@ class TestVerifyPairedParticipants:
     """Tests for verify_paired_participants."""
 
     def test_basic_pairing(self):
-        obs = pd.DataFrame({
-            "participant_id": ["P1", "P1", "P2", "P2", "P3"],
-            "visit": ["V1", "V2", "V1", "V2", "V1"],
-        })
+        obs = pd.DataFrame(
+            {
+                "participant_id": ["P1", "P1", "P2", "P2", "P3"],
+                "visit": ["V1", "V2", "V1", "V2", "V1"],
+            }
+        )
         result = verify_paired_participants(obs, "visit", ["V1", "V2"])
         assert result["n_paired"] == 2
         assert "P3" in result["dropped_ids"]
 
     def test_single_visit_raises(self):
-        obs = pd.DataFrame({
-            "participant_id": ["P1", "P1"],
-            "visit": ["V1", "V2"],
-        })
+        obs = pd.DataFrame(
+            {
+                "participant_id": ["P1", "P1"],
+                "visit": ["V1", "V2"],
+            }
+        )
         with pytest.raises(ValueError, match="at least 2 labels"):
             verify_paired_participants(obs, "visit", ["V1"])
 
     def test_categorical_features(self):
         """Categorical features should not raise TypeError."""
-        obs = pd.DataFrame({
-            "participant_id": ["P1", "P1", "P2", "P2"],
-            "visit": ["V1", "V2", "V1", "V2"],
-            "sex": ["M", "M", "F", "F"],
-        })
+        obs = pd.DataFrame(
+            {
+                "participant_id": ["P1", "P1", "P2", "P2"],
+                "visit": ["V1", "V2", "V1", "V2"],
+                "sex": ["M", "M", "F", "F"],
+            }
+        )
         result = verify_paired_participants(obs, "visit", ["V1", "V2"], features=["sex"])
         assert result["n_paired"] == 2
 
     def test_mixed_numeric_categorical_features(self):
-        obs = pd.DataFrame({
-            "participant_id": ["P1", "P1", "P2", "P2"],
-            "visit": ["V1", "V2", "V1", "V2"],
-            "sex": ["M", "M", "F", "F"],
-            "age": [30.0, 30.0, 40.0, 40.0],
-        })
-        result = verify_paired_participants(
-            obs, "visit", ["V1", "V2"], features=["sex", "age"]
+        obs = pd.DataFrame(
+            {
+                "participant_id": ["P1", "P1", "P2", "P2"],
+                "visit": ["V1", "V2", "V1", "V2"],
+                "sex": ["M", "M", "F", "F"],
+                "age": [30.0, 30.0, 40.0, 40.0],
+            }
         )
+        result = verify_paired_participants(obs, "visit", ["V1", "V2"], features=["sex", "age"])
         assert result["n_paired"] == 2
 
     def test_feature_with_nan_drops_participant(self):
-        obs = pd.DataFrame({
-            "participant_id": ["P1", "P1", "P2", "P2"],
-            "visit": ["V1", "V2", "V1", "V2"],
-            "score": [1.0, 2.0, np.nan, 4.0],
-        })
-        result = verify_paired_participants(
-            obs, "visit", ["V1", "V2"], features=["score"]
+        obs = pd.DataFrame(
+            {
+                "participant_id": ["P1", "P1", "P2", "P2"],
+                "visit": ["V1", "V2", "V1", "V2"],
+                "score": [1.0, 2.0, np.nan, 4.0],
+            }
         )
+        result = verify_paired_participants(obs, "visit", ["V1", "V2"], features=["score"])
         # P2 has NaN at V1 so should be dropped
         assert result["n_paired"] == 1
         assert "P1" in result["paired_ids"]

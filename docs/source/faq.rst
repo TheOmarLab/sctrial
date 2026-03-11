@@ -56,6 +56,7 @@ Yes! The built-in data loaders can download directly from GEO or EBI:
    import sctrial as st
 
    # Sade-Feldman melanoma immunotherapy (GSE120575)
+   # Requires scanpy for cell-type annotation: pip install sctrial[plots]
    adata = st.load_sade_feldman(allow_download=True)
 
    # Stephenson COVID-19 (E-MTAB-10026)
@@ -67,6 +68,12 @@ Yes! The built-in data loaders can download directly from GEO or EBI:
 Downloads are disabled by default (``allow_download=False``) so nothing is
 fetched without explicit consent. Only missing files are downloaded; files
 already on disk are reused.
+
+.. note::
+
+   The Sade-Feldman loader performs marker-based cell-type annotation using
+   scanpy (Leiden clustering + Wilcoxon marker scoring). Install the ``plots``
+   extra to enable this: ``pip install sctrial[plots]``.
 
 Data Requirements
 -----------------

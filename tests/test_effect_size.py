@@ -39,7 +39,7 @@ class TestCohensD:
     def test_known_value(self):
         """Test against known value."""
         group1 = np.array([-1.0, 0.0, 1.0])  # mean=0, sd=1
-        group2 = np.array([0.0, 1.0, 2.0])   # mean=1, sd=1
+        group2 = np.array([0.0, 1.0, 2.0])  # mean=1, sd=1
         d = cohens_d(group1, group2)
         assert d == pytest.approx(-1.0, abs=0.1)
 
@@ -160,12 +160,14 @@ class TestAddEffectSizesToDiD:
 
     def test_adds_columns(self):
         """Should add effect_size, CI, and interpretation columns."""
-        df = pd.DataFrame({
-            "feature": ["A", "B"],
-            "beta_DiD": [0.5, -1.2],
-            "se_DiD": [0.1, 0.3],
-            "n_units": [20, 20],
-        })
+        df = pd.DataFrame(
+            {
+                "feature": ["A", "B"],
+                "beta_DiD": [0.5, -1.2],
+                "se_DiD": [0.1, 0.3],
+                "n_units": [20, 20],
+            }
+        )
         result = add_effect_sizes_to_did(df)
         assert "effect_size" in result.columns
         assert "effect_size_lower" in result.columns
@@ -175,35 +177,41 @@ class TestAddEffectSizesToDiD:
 
     def test_ci_contains_effect_size(self):
         """CI should contain the point estimate."""
-        df = pd.DataFrame({
-            "feature": ["A"],
-            "beta_DiD": [0.5],
-            "se_DiD": [0.1],
-            "n_units": [30],
-        })
+        df = pd.DataFrame(
+            {
+                "feature": ["A"],
+                "beta_DiD": [0.5],
+                "se_DiD": [0.1],
+                "n_units": [30],
+            }
+        )
         result = add_effect_sizes_to_did(df)
         assert result.iloc[0]["effect_size_lower"] < result.iloc[0]["effect_size"]
         assert result.iloc[0]["effect_size"] < result.iloc[0]["effect_size_upper"]
 
     def test_nan_beta_produces_nan(self):
         """NaN beta should produce NaN effect size."""
-        df = pd.DataFrame({
-            "feature": ["A"],
-            "beta_DiD": [np.nan],
-            "se_DiD": [0.1],
-            "n_units": [20],
-        })
+        df = pd.DataFrame(
+            {
+                "feature": ["A"],
+                "beta_DiD": [np.nan],
+                "se_DiD": [0.1],
+                "n_units": [20],
+            }
+        )
         result = add_effect_sizes_to_did(df)
         assert np.isnan(result.iloc[0]["effect_size"])
 
     def test_hedges_g_default(self):
         """Default method should be hedges_g (smaller than cohens_d)."""
-        df = pd.DataFrame({
-            "feature": ["A"],
-            "beta_DiD": [1.0],
-            "se_DiD": [0.2],
-            "n_units": [10],
-        })
+        df = pd.DataFrame(
+            {
+                "feature": ["A"],
+                "beta_DiD": [1.0],
+                "se_DiD": [0.2],
+                "n_units": [10],
+            }
+        )
         res_g = add_effect_sizes_to_did(df, method="hedges_g")
         res_d = add_effect_sizes_to_did(df, method="cohens_d")
         assert abs(res_g.iloc[0]["effect_size"]) <= abs(res_d.iloc[0]["effect_size"]) + 1e-10

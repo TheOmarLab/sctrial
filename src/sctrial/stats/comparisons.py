@@ -100,10 +100,16 @@ def _prepare_between_arm_df(
                             "use numeric or constant covariates only."
                         )
                     cov_agg[c] = "first"
-        df = df.groupby(grp_cols, observed=True).agg({
-            **{f: agg for f in features},
-            **cov_agg,
-        }).reset_index()
+        df = (
+            df.groupby(grp_cols, observed=True)
+            .agg(
+                {
+                    **{f: agg for f in features},
+                    **cov_agg,
+                }
+            )
+            .reset_index()
+        )
 
     return df
 
@@ -282,10 +288,16 @@ def within_arm_comparison(
                             "use numeric or constant covariates only."
                         )
                     cov_agg[c] = "first"
-        df_use = df.groupby(grp_cols, observed=True).agg({
-            **{f: agg for f in features},
-            **cov_agg,
-        }).reset_index()
+        df_use = (
+            df.groupby(grp_cols, observed=True)
+            .agg(
+                {
+                    **{f: agg for f in features},
+                    **cov_agg,
+                }
+            )
+            .reset_index()
+        )
         unit = design.participant_col
     else:
         df_use = df.copy()
@@ -304,15 +316,17 @@ def within_arm_comparison(
             y_std, ok = standardize_series(df_feat, feat, min_std=1e-12)
             if not ok:
                 # Skip features with near-zero variance
-                rows.append({
-                    "feature": feat,
-                    "beta_time": np.nan,
-                    "se_time": np.nan,
-                    "ci_lo_time": np.nan,
-                    "ci_hi_time": np.nan,
-                    "p_time": np.nan,
-                    "n_units": int(df_feat[unit].nunique()),
-                })
+                rows.append(
+                    {
+                        "feature": feat,
+                        "beta_time": np.nan,
+                        "se_time": np.nan,
+                        "ci_lo_time": np.nan,
+                        "ci_hi_time": np.nan,
+                        "p_time": np.nan,
+                        "n_units": int(df_feat[unit].nunique()),
+                    }
+                )
                 continue
             df_feat["outcome_std"] = y_std
         else:
@@ -327,9 +341,7 @@ def within_arm_comparison(
         # drop rows with missing values during formula parsing, so
         # df_feat can be longer than model.exog.
         model_row_idx = model.data.row_labels
-        clusters_aligned = np.asarray(
-            df_feat[unit].loc[model_row_idx].to_numpy()
-        )
+        clusters_aligned = np.asarray(df_feat[unit].loc[model_row_idx].to_numpy())
 
         n_units_feat = len(np.unique(clusters_aligned))
         if n_units_feat < MIN_CLUSTERS_FOR_ROBUST_SE:
@@ -337,8 +349,11 @@ def within_arm_comparison(
                 f"Only {n_units_feat} clusters (participants) available. Cluster-robust "
                 f"standard errors are unreliable with fewer than {MIN_CLUSTERS_FOR_ROBUST_SE} "
                 f"clusters."
-                + (" Consider using use_bootstrap=True for more reliable p-values."
-                   if not use_bootstrap else ""),
+                + (
+                    " Consider using use_bootstrap=True for more reliable p-values."
+                    if not use_bootstrap
+                    else ""
+                ),
                 UserWarning,
                 stacklevel=2,
             )
@@ -512,15 +527,17 @@ def between_arm_comparison(
                     ci_lo = np.nan
                     ci_hi = np.nan
 
-                rows.append({
-                    "feature": feat,
-                    "beta_arm": beta,
-                    "se_arm": se,
-                    "ci_lo_arm": ci_lo,
-                    "ci_hi_arm": ci_hi,
-                    "p_arm": float(p_val),
-                    "n_units": int(df_use[design.participant_col].nunique()),
-                })
+                rows.append(
+                    {
+                        "feature": feat,
+                        "beta_arm": beta,
+                        "se_arm": se,
+                        "ci_lo_arm": ci_lo,
+                        "ci_hi_arm": ci_hi,
+                        "p_arm": float(p_val),
+                        "n_units": int(df_use[design.participant_col].nunique()),
+                    }
+                )
             else:
                 warnings.warn(
                     f"Between-arm comparison skipped for feature '{feat}': "
@@ -528,15 +545,17 @@ def between_arm_comparison(
                     UserWarning,
                     stacklevel=2,
                 )
-                rows.append({
-                    "feature": feat,
-                    "beta_arm": np.nan,
-                    "se_arm": np.nan,
-                    "ci_lo_arm": np.nan,
-                    "ci_hi_arm": np.nan,
-                    "p_arm": np.nan,
-                    "n_units": int(df_use[design.participant_col].nunique()),
-                })
+                rows.append(
+                    {
+                        "feature": feat,
+                        "beta_arm": np.nan,
+                        "se_arm": np.nan,
+                        "ci_lo_arm": np.nan,
+                        "ci_hi_arm": np.nan,
+                        "p_arm": np.nan,
+                        "n_units": int(df_use[design.participant_col].nunique()),
+                    }
+                )
 
     res = pd.DataFrame(rows)
     res = apply_fdr(res, p_col="p_arm", fdr_col="FDR_arm")
@@ -621,26 +640,28 @@ def compare_gene_in_celltype(
     if log1p:
         expr = np.log1p(expr)
 
-    df = pd.DataFrame({
-        participant_col: adata_sub.obs[participant_col].values,
-        "group": adata_sub.obs[group_col].values,
-        "expr": expr,
-    })
+    df = pd.DataFrame(
+        {
+            participant_col: adata_sub.obs[participant_col].values,
+            "group": adata_sub.obs[group_col].values,
+            "expr": expr,
+        }
+    )
     df = df.dropna(subset=[participant_col, "group"])
 
     def _summarize(group_df: pd.DataFrame) -> pd.Series:
         vals = np.asarray(group_df["expr"].values, dtype=float)
-        return pd.Series({
-            "mean_expr": float(np.mean(vals)),
-            "median_expr": float(np.median(vals)),
-            "pct_expressing": float(np.mean(vals > expr_threshold) * 100.0),
-            "n_cells": int(len(vals)),
-        })
+        return pd.Series(
+            {
+                "mean_expr": float(np.mean(vals)),
+                "median_expr": float(np.median(vals)),
+                "pct_expressing": float(np.mean(vals > expr_threshold) * 100.0),
+                "n_cells": int(len(vals)),
+            }
+        )
 
     df_patient = (
-        df.groupby([participant_col, "group"], observed=True)
-        .apply(_summarize)
-        .reset_index()
+        df.groupby([participant_col, "group"], observed=True).apply(_summarize).reset_index()
     )
     df_patient = df_patient[df_patient["n_cells"] >= min_cells_per_patient].copy()
 

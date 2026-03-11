@@ -43,6 +43,7 @@ Key Assumptions
 3. Treatment effect timing is correctly specified
 4. Panel is balanced or missingness is random (MCAR)
 """
+
 from __future__ import annotations
 
 import warnings
@@ -190,9 +191,7 @@ def trend_interaction(
     time_map = dict(zip(visits, time_values))
 
     # Prepare data
-    df = _prepare_longitudinal_data(
-        adata, design, visits, features, layer, exclude_crossovers
-    )
+    df = _prepare_longitudinal_data(adata, design, visits, features, layer, exclude_crossovers)
 
     # Add numeric time
     df["time_num"] = df[design.visit_col].map(time_map).astype(float)
@@ -246,8 +245,7 @@ def trend_interaction(
                     stacklevel=2,
                 )
             fit = smf.ols(formula, data=df_feat).fit(
-                cov_type="cluster",
-                cov_kwds={"groups": df_feat[design.participant_col]}
+                cov_type="cluster", cov_kwds={"groups": df_feat[design.participant_col]}
             )
 
             result = {
@@ -271,12 +269,14 @@ def trend_interaction(
             rows.append(result)
 
         except (ValueError, np.linalg.LinAlgError, KeyError) as e:
-            rows.append({
-                "feature": feat,
-                "n_units": n_units,
-                "n_timepoints": n_timepoints,
-                "error": str(e),
-            })
+            rows.append(
+                {
+                    "feature": feat,
+                    "n_units": n_units,
+                    "n_timepoints": n_timepoints,
+                    "error": str(e),
+                }
+            )
 
     res = pd.DataFrame(rows)
 
@@ -387,6 +387,7 @@ def event_study_did(
         # family-wise error control (each did_table() only corrects within its visit).
         if "p_DiD" in combined.columns and "FDR_DiD" in combined.columns:
             from ._utils import apply_fdr
+
             combined = apply_fdr(combined, p_col="p_DiD", fdr_col="FDR_DiD")
     else:
         combined = pd.DataFrame()
@@ -476,7 +477,7 @@ def polynomial_trend(
             for pid in all_pids:
                 row_dict = {"time_num": t, "arm_bin": treat, design.participant_col: pid}
                 for d_i in range(2, degree + 1):
-                    row_dict[f"time_num{d_i}"] = t ** d_i
+                    row_dict[f"time_num{d_i}"] = t**d_i
                 preds_for_t.append(row_dict)
             try:
                 pid_df = pd.DataFrame(preds_for_t)
@@ -567,17 +568,15 @@ def test_parallel_trends(
     )
 
     # Rename columns for clarity
-    res = res.rename(columns={
-        "beta_treat_trend": "beta_pretrend",
-        "p_treat_trend": "p_pretrend",
-        "FDR_treat_trend": "FDR_pretrend",
-    })
+    res = res.rename(
+        columns={
+            "beta_treat_trend": "beta_pretrend",
+            "p_treat_trend": "p_pretrend",
+            "FDR_treat_trend": "FDR_pretrend",
+        }
+    )
 
     # Flag potential violations
-    res["warning"] = np.where(
-        res["p_pretrend"] < 0.10,
-        "Potential violation",
-        "OK"
-    )
+    res["warning"] = np.where(res["p_pretrend"] < 0.10, "Potential violation", "OK")
 
     return res[["feature", "beta_pretrend", "p_pretrend", "FDR_pretrend", "warning", "n_units"]]

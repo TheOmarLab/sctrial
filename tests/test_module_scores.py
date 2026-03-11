@@ -15,13 +15,15 @@ def test_module_score_pseudobulk_and_did():
     for pid, arm in zip(participants, arms):
         for visit in visits:
             for _ in range(5):
-                obs_rows.append({
-                    "participant_id": pid,
-                    "arm": arm,
-                    "visit": visit,
-                    "celltype": "CT1",
-                    "pool": "Immune",
-                })
+                obs_rows.append(
+                    {
+                        "participant_id": pid,
+                        "arm": arm,
+                        "visit": visit,
+                        "celltype": "CT1",
+                        "pool": "Immune",
+                    }
+                )
                 # Module score increases only in Treated at V2
                 if arm == "Treated" and visit == "V2":
                     scores.append([2.0, 1.0])

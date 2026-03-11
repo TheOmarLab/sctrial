@@ -1,4 +1,5 @@
 """Convenience functions for quick trial analysis workflows."""
+
 from __future__ import annotations
 
 import logging
@@ -104,9 +105,7 @@ def quick_did(
     # Validate arm labels exist in the data
     actual_arms = set(adata.obs[arm_col].unique()) if arm_col in adata.obs.columns else set()
     if arm_col not in adata.obs.columns:
-        raise ValueError(
-            f"Column '{arm_col}' not found in adata.obs."
-        )
+        raise ValueError(f"Column '{arm_col}' not found in adata.obs.")
     if arm_treated not in actual_arms:
         raise ValueError(
             f"arm_treated='{arm_treated}' not found in column '{arm_col}'. "
@@ -131,15 +130,17 @@ def quick_did(
     # 2. Ensure preprocessing
     if layer not in adata.layers:
         logger.info("Creating '%s' layer from '%s'...", layer, counts_layer)
-        adata = add_log1p_cpm_layer(
-            adata, counts_layer=counts_layer, out_layer=layer
-        )
+        adata = add_log1p_cpm_layer(adata, counts_layer=counts_layer, out_layer=layer)
 
     # 3. Score gene sets
     logger.info("Scoring %d gene sets...", len(module_scores))
     adata = score_gene_sets(
-        adata, module_scores, layer=layer, method=score_method,
-        prefix="ms_", min_genes=min_genes,
+        adata,
+        module_scores,
+        layer=layer,
+        method=score_method,
+        prefix="ms_",
+        min_genes=min_genes,
     )
 
     # 4. Run DiD
@@ -307,19 +308,12 @@ def auto_detect_design(
     # Validate required columns were detected (check early)
     if participant_col is None:
         raise ValueError(
-            "Could not detect participant column. Please specify manually "
-            "or rename column."
+            "Could not detect participant column. Please specify manually or rename column."
         )
     if visit_col is None:
-        raise ValueError(
-            "Could not detect visit column. Please specify manually "
-            "or rename column."
-        )
+        raise ValueError("Could not detect visit column. Please specify manually or rename column.")
     if arm_col is None:
-        raise ValueError(
-            "Could not detect arm column. Please specify manually "
-            "or rename column."
-        )
+        raise ValueError("Could not detect arm column. Please specify manually or rename column.")
 
     # Auto-detect arm labels if not provided
     if arm_treated is None or arm_control is None:
@@ -341,7 +335,8 @@ def auto_detect_design(
 
             logger.info(
                 "Auto-detected arms: treated='%s', control='%s'",
-                arm_treated, arm_control,
+                arm_treated,
+                arm_control,
             )
             logger.warning("Please verify these are correct!")
         elif len(unique_arms) > 2:

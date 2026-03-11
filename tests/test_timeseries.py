@@ -11,11 +11,13 @@ def _make_three_visit_adata():
     for i in range(12):
         arm = "Treated" if i < 6 else "Control"
         for v in visits:
-            rows.append({
-                "participant_id": f"P{i}",
-                "visit": v,
-                "arm": arm,
-            })
+            rows.append(
+                {
+                    "participant_id": f"P{i}",
+                    "visit": v,
+                    "arm": arm,
+                }
+            )
     obs = pd.DataFrame(rows)
     X = np.random.RandomState(0).poisson(2.0, size=(len(obs), 5)).astype(float)
     adata = AnnData(X=X, obs=obs)

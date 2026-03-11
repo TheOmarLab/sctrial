@@ -15,12 +15,14 @@ def test_pseudobulk_did_basic():
     for pid, arm in zip(participants, arms):
         for visit in visits:
             for _ in range(10):
-                obs_rows.append({
-                    "participant_id": pid,
-                    "arm": arm,
-                    "visit": visit,
-                    "celltype": "CT1",
-                })
+                obs_rows.append(
+                    {
+                        "participant_id": pid,
+                        "arm": arm,
+                        "visit": visit,
+                        "celltype": "CT1",
+                    }
+                )
                 if arm == "Treated" and visit == "V2":
                     expr.append([20.0, 10.0])
                 else:
@@ -58,16 +60,20 @@ def test_pseudobulk_did_basic():
 
 
 def test_pseudobulk_expression_matches_groupby():
-    obs = pd.DataFrame({
-        "participant_id": ["P1", "P1", "P2", "P2"],
-        "visit": ["V1", "V2", "V1", "V2"],
-    })
-    X = np.asarray([
-        [10.0, 5.0],
-        [20.0, 5.0],
-        [15.0, 5.0],
-        [25.0, 5.0],
-    ])
+    obs = pd.DataFrame(
+        {
+            "participant_id": ["P1", "P1", "P2", "P2"],
+            "visit": ["V1", "V2", "V1", "V2"],
+        }
+    )
+    X = np.asarray(
+        [
+            [10.0, 5.0],
+            [20.0, 5.0],
+            [15.0, 5.0],
+            [25.0, 5.0],
+        ]
+    )
     adata = AnnData(X=X, obs=obs)
     adata.var_names = ["G1", "G2"]
     adata.layers["counts"] = adata.X.copy()
@@ -83,11 +89,15 @@ def test_pseudobulk_expression_matches_groupby():
 
     # Manual groupby for comparison (pure numpy)
     manual_rows = []
-    for (pid, visit), idx in obs.groupby(["participant_id", "visit"], observed=True).indices.items():
+    for (pid, visit), idx in obs.groupby(
+        ["participant_id", "visit"], observed=True
+    ).indices.items():
         sub = X[idx]
         sums = sub.sum(axis=0)
         total = sums.sum()
-        manual_rows.append([pid, visit, sums[0] / (total + 1e-12) * 1e6, sums[1] / (total + 1e-12) * 1e6])
+        manual_rows.append(
+            [pid, visit, sums[0] / (total + 1e-12) * 1e6, sums[1] / (total + 1e-12) * 1e6]
+        )
     manual = pd.DataFrame(manual_rows, columns=["participant_id", "visit", "G1", "G2"])
     manual = manual.sort_values(["participant_id", "visit"]).reset_index(drop=True)
     pb_sorted = pb.sort_values(["participant_id", "visit"]).reset_index(drop=True)
@@ -105,9 +115,13 @@ def _make_did_adata(n_per_arm=4, n_cells=5, seed=42):
     for pid, arm in zip(participants, arms):
         for visit in ["Pre", "Post"]:
             for _ in range(n_cells):
-                obs_rows.append({
-                    "participant_id": pid, "arm": arm, "visit": visit,
-                })
+                obs_rows.append(
+                    {
+                        "participant_id": pid,
+                        "arm": arm,
+                        "visit": visit,
+                    }
+                )
                 base = 15.0 if (arm == "Treated" and visit == "Post") else 10.0
                 expr.append([base + rng.normal(0, 1)])
 
@@ -122,16 +136,24 @@ def test_did_table_surfaces_cov_type_used():
     """did_table output must include ``cov_type_used`` for transparency."""
     adata = _make_did_adata(n_per_arm=4, seed=42)
     design = st.TrialDesign(
-        participant_col="participant_id", visit_col="visit", arm_col="arm",
-        arm_treated="Treated", arm_control="Control",
+        participant_col="participant_id",
+        visit_col="visit",
+        arm_col="arm",
+        arm_treated="Treated",
+        arm_control="Control",
     )
 
     import warnings as _w
+
     with _w.catch_warnings(record=True):
         _w.simplefilter("always")
         res = st.did_table(
-            adata, features=["GENE1"], design=design, visits=("Pre", "Post"),
-            aggregate="participant_visit", use_bootstrap=False,
+            adata,
+            features=["GENE1"],
+            design=design,
+            visits=("Pre", "Post"),
+            aggregate="participant_visit",
+            use_bootstrap=False,
         )
 
     assert not res.empty
@@ -157,12 +179,16 @@ def test_did_table_nonrobust_fallback_on_nan_se():
 
     adata = _make_did_adata(n_per_arm=4, seed=42)
     design = st.TrialDesign(
-        participant_col="participant_id", visit_col="visit", arm_col="arm",
-        arm_treated="Treated", arm_control="Control",
+        participant_col="participant_id",
+        visit_col="visit",
+        arm_col="arm",
+        arm_treated="Treated",
+        arm_control="Control",
     )
 
     class _NanSEResult:
         """Wrapper that makes the cluster-robust fit return NaN SE."""
+
         def __init__(self, real_fit):
             self.params = real_fit.params
             self.pvalues = real_fit.pvalues
@@ -175,6 +201,7 @@ def test_did_table_nonrobust_fallback_on_nan_se():
     class _FakeModel:
         def __init__(self, real_model):
             self._real = real_model
+
         def fit(self, **kwargs):
             real_fit = self._real.fit(**kwargs)
             if kwargs.get("cov_type") == "cluster":
@@ -191,14 +218,19 @@ def test_did_table_nonrobust_fallback_on_nan_se():
         return _FakeModel(_orig_wls(formula, data, **kw))
 
     # Patch both ols and wls (aggregation adds n_cells → WLS path)
-    with patch.object(did_module.smf, "ols", new=_patched_ols), \
-         patch.object(did_module.smf, "wls", new=_patched_wls):
+    with (
+        patch.object(did_module.smf, "ols", new=_patched_ols),
+        patch.object(did_module.smf, "wls", new=_patched_wls),
+    ):
         with _w.catch_warnings(record=True) as caught:
             _w.simplefilter("always")
             res = st.did_table(
-                adata, features=["GENE1"], design=design,
+                adata,
+                features=["GENE1"],
+                design=design,
                 visits=("Pre", "Post"),
-                aggregate="participant_visit", use_bootstrap=False,
+                aggregate="participant_visit",
+                use_bootstrap=False,
             )
 
     # Core: finite outputs after fallback
@@ -216,16 +248,26 @@ def test_did_table_bootstrap_with_nonrobust_fallback():
     """When cluster-robust falls back, bootstrap should also use nonrobust."""
     adata = _make_did_adata(n_per_arm=4, seed=99)
     design = st.TrialDesign(
-        participant_col="participant_id", visit_col="visit", arm_col="arm",
-        arm_treated="Treated", arm_control="Control",
+        participant_col="participant_id",
+        visit_col="visit",
+        arm_col="arm",
+        arm_treated="Treated",
+        arm_control="Control",
     )
 
     import warnings as _w
+
     with _w.catch_warnings(record=True):
         _w.simplefilter("always")
         res = st.did_table(
-            adata, features=["GENE1"], design=design, visits=("Pre", "Post"),
-            aggregate="participant_visit", use_bootstrap=True, n_boot=99, seed=42,
+            adata,
+            features=["GENE1"],
+            design=design,
+            visits=("Pre", "Post"),
+            aggregate="participant_visit",
+            use_bootstrap=True,
+            n_boot=99,
+            seed=42,
         )
 
     assert not res.empty
@@ -238,16 +280,26 @@ def test_did_table_bootstrap_returns_ci_columns():
     """Bootstrap mode should populate se_DiD_boot, ci_lo_boot, ci_hi_boot."""
     adata = _make_did_adata(n_per_arm=5, seed=42)
     design = st.TrialDesign(
-        participant_col="participant_id", visit_col="visit", arm_col="arm",
-        arm_treated="Treated", arm_control="Control",
+        participant_col="participant_id",
+        visit_col="visit",
+        arm_col="arm",
+        arm_treated="Treated",
+        arm_control="Control",
     )
 
     import warnings as _w
+
     with _w.catch_warnings(record=True):
         _w.simplefilter("always")
         res = st.did_table(
-            adata, features=["GENE1"], design=design, visits=("Pre", "Post"),
-            aggregate="participant_visit", use_bootstrap=True, n_boot=199, seed=42,
+            adata,
+            features=["GENE1"],
+            design=design,
+            visits=("Pre", "Post"),
+            aggregate="participant_visit",
+            use_bootstrap=True,
+            n_boot=199,
+            seed=42,
         )
 
     assert not res.empty
@@ -269,16 +321,24 @@ def test_did_table_no_bootstrap_omits_ci_columns():
     """Without bootstrap, CI columns should not be present."""
     adata = _make_did_adata(n_per_arm=5, seed=42)
     design = st.TrialDesign(
-        participant_col="participant_id", visit_col="visit", arm_col="arm",
-        arm_treated="Treated", arm_control="Control",
+        participant_col="participant_id",
+        visit_col="visit",
+        arm_col="arm",
+        arm_treated="Treated",
+        arm_control="Control",
     )
 
     import warnings as _w
+
     with _w.catch_warnings(record=True):
         _w.simplefilter("always")
         res = st.did_table(
-            adata, features=["GENE1"], design=design, visits=("Pre", "Post"),
-            aggregate="participant_visit", use_bootstrap=False,
+            adata,
+            features=["GENE1"],
+            design=design,
+            visits=("Pre", "Post"),
+            aggregate="participant_visit",
+            use_bootstrap=False,
         )
 
     assert not res.empty

@@ -19,6 +19,291 @@ from .utils import get_counts_matrix
 
 logger = logging.getLogger(__name__)
 
+
+# ---------------------------------------------------------------------------
+# Marker-based cell-type annotation for immune cells
+# Approach adapted from Diab_duod project: Leiden clustering -> Wilcoxon
+# marker finding -> weighted scoring against canonical marker gene sets
+# ---------------------------------------------------------------------------
+
+# Immune cell markers from Sade-Feldman et al. (Cell 2018, Fig 1, Table S1).
+# The paper identifies 11 clusters (G1-G11) among CD45+ sorted cells:
+#   G1: B cells, G2: Plasma cells, G3: Monocytes/Macrophages,
+#   G4: Dendritic cells, G5-G11: T/NK/NKT subtypes.
+# CD8 T cells are further split into memory-like (CD8_G) and
+# exhausted (CD8_B) states.
+_IMMUNE_MARKERS: dict[str, set[str]] = {
+    "CD8 T cell": {
+        "CD8A",
+        "CD8B",
+        "GZMK",
+        "GZMB",
+        "GZMA",
+        "PRF1",
+        "NKG7",
+        "CD3D",
+        "CD3E",
+        "IFNG",
+        "EOMES",
+        "TBX21",
+    },
+    "CD4 T cell": {
+        "CD4",
+        "IL7R",
+        "CCR7",
+        "LEF1",
+        "TCF7",
+        "ICOS",
+        "CD3D",
+        "CD3E",
+        "CD40LG",
+    },
+    "Treg": {
+        "FOXP3",
+        "IL2RA",
+        "CTLA4",
+        "IKZF2",
+        "TNFRSF18",
+        "CD4",
+        "CD3D",
+        "CD3E",
+    },
+    "B cell": {
+        # G1 markers from publication: IGKC, LTB, LY9, SELL, TCF7, CCR7
+        "MS4A1",
+        "CD79A",
+        "CD79B",
+        "BANK1",
+        "CD74",
+        "CD19",
+        "PAX5",
+        "BLK",
+        "IGKC",
+        "LTB",
+        "LY9",
+    },
+    "Plasma cell": {
+        # G2 cluster
+        "MZB1",
+        "SDC1",
+        "XBP1",
+        "JCHAIN",
+        "PRDM1",
+        "IGKC",
+        "IGHG1",
+    },
+    "NK cell": {
+        "KLRD1",
+        "KLRF1",
+        "KLRB1",
+        "GNLY",
+        "PRF1",
+        "NKG7",
+        "GZMB",
+        "NCAM1",
+        "FCGR3A",
+    },
+    "Monocyte/Macrophage": {
+        # G3 cluster
+        "CD14",
+        "CD68",
+        "LYZ",
+        "CST3",
+        "S100A8",
+        "S100A9",
+        "C1QA",
+        "C1QB",
+        "C1QC",
+        "MRC1",
+        "CSF1R",
+        "FCGR3A",
+    },
+    "Dendritic cell": {
+        # G4 cluster
+        "FCER1A",
+        "CLEC10A",
+        "CD1C",
+        "ITGAX",
+        "HLA-DRA",
+        "HLA-DQA1",
+    },
+}
+
+# Annotation parameters (following Diab_duod conventions)
+_ANNOT_TOP_N = 50  # top markers per cluster from Wilcoxon
+_ANNOT_MIN_LFC = 0.25  # minimum log fold-change
+_ANNOT_MAX_FDR = 0.1  # maximum adjusted p-value
+_ANNOT_SECOND_DELTA = 0.25  # delta to flag ambiguous clusters
+_ANNOT_MIN_ACCEPT = 0.3  # minimum weighted score to accept a label
+
+
+def _weighted_marker_score(
+    marker_df: pd.DataFrame,
+    gene_set: set[str],
+) -> tuple[float, list[str]]:
+    """Compute weighted score of a gene set against ranked cluster markers.
+
+    Weight per gene = (1 / rank) * log1p(exp(clipped_logFC)).
+    Mirrors the ``weighted_score`` function from the Diab_duod project.
+    """
+    hits = marker_df[marker_df["names"].isin(gene_set)]
+    if hits.empty:
+        return 0.0, []
+    lfc = hits["logfoldchanges"].clip(lower=0).values.astype(float)
+    ranks = hits["rank"].values.astype(float)
+    weights = (1.0 / ranks) * np.log1p(np.exp(lfc))
+    top_genes = hits["names"].values[np.argsort(-weights)].tolist()
+    return float(weights.sum()), top_genes
+
+
+def _annotate_immune_celltypes(adata: ad.AnnData) -> pd.Series:
+    """Assign cell types to immune cells via cluster-level marker scoring.
+
+    Pipeline (adapted from Diab_duod project):
+    1. Use pre-computed Leiden clusters (from caller), or compute them here.
+    2. Find differentially expressed markers per cluster (Wilcoxon).
+    3. Score each cluster against canonical immune marker sets using
+       a rank-weighted scoring function.
+    4. Assign the best-scoring cell type to each cluster.
+
+    Parameters
+    ----------
+    adata : AnnData
+        Must contain expression values (TPM) in ``adata.X`` and gene names
+        in ``adata.var_names``.  If ``adata.obs["leiden"]`` already exists
+        (with PCA/neighbors pre-computed), those clusters are reused so that
+        annotation and UMAP share the same embedding.
+
+    Returns
+    -------
+    pd.Series
+        Cell-type labels indexed like ``adata.obs``.
+    """
+    import scanpy as sc  # local import to avoid top-level dependency
+
+    # Work on a copy so we don't modify the caller's object
+    aw = adata.copy()
+
+    # Normalise for clustering if raw TPM
+    if aw.X.max() > 50:
+        aw.X = np.log1p(aw.X)
+
+    if "leiden" in adata.obs.columns:
+        # Reuse pre-computed Leiden clusters (same embedding used for UMAP)
+        aw.obs["leiden"] = adata.obs["leiden"].values
+        logger.info("    Using pre-computed Leiden clusters for annotation...")
+    else:
+        # Fallback: compute PCA -> neighbors -> Leiden internally
+        logger.info("    Computing PCA for cell-type annotation...")
+        sc.pp.highly_variable_genes(aw, n_top_genes=2000, flavor="seurat")
+        sc.tl.pca(aw, n_comps=30)
+        sc.pp.neighbors(aw, n_neighbors=15, n_pcs=20)
+        sc.tl.leiden(aw, resolution=1.0)
+
+    # Wilcoxon marker finding per cluster
+    logger.info("    Finding cluster markers (Wilcoxon)...")
+    sc.tl.rank_genes_groups(aw, groupby="leiden", method="wilcoxon", n_genes=_ANNOT_TOP_N)
+
+    clusters = sorted(aw.obs["leiden"].unique(), key=int)
+    cluster_labels: dict[str, str] = {}
+
+    for cl in clusters:
+        # Extract marker table for this cluster
+        result = aw.uns["rank_genes_groups"]
+        idx = list(result["names"].dtype.names).index(cl)
+        names = [result["names"][i][idx] for i in range(len(result["names"]))]
+        lfcs = [result["logfoldchanges"][i][idx] for i in range(len(result["logfoldchanges"]))]
+        padjs = [result["pvals_adj"][i][idx] for i in range(len(result["pvals_adj"]))]
+
+        df_markers = pd.DataFrame(
+            {
+                "names": names,
+                "logfoldchanges": lfcs,
+                "pvals_adj": padjs,
+                "rank": np.arange(1, len(names) + 1),
+            }
+        )
+
+        # Filter by LFC and FDR
+        df_markers = df_markers[
+            (df_markers["logfoldchanges"] >= _ANNOT_MIN_LFC)
+            & (df_markers["pvals_adj"] <= _ANNOT_MAX_FDR)
+        ]
+
+        # If strict filtering yields no markers, use unfiltered markers
+        if df_markers.empty:
+            df_markers = pd.DataFrame(
+                {
+                    "names": names,
+                    "logfoldchanges": lfcs,
+                    "pvals_adj": padjs,
+                    "rank": np.arange(1, len(names) + 1),
+                }
+            )
+
+        # Score against each cell type
+        label_scores: dict[str, float] = {}
+        for ct, gene_set in _IMMUNE_MARKERS.items():
+            score, _ = _weighted_marker_score(df_markers, gene_set)
+            if score > 0:
+                label_scores[ct] = score
+
+        if not label_scores:
+            # Fallback: score with unfiltered markers (no LFC/FDR filter)
+            df_unfiltered = pd.DataFrame(
+                {
+                    "names": names,
+                    "logfoldchanges": [max(0, v) for v in lfcs],
+                    "pvals_adj": padjs,
+                    "rank": np.arange(1, len(names) + 1),
+                }
+            )
+            for ct, gene_set in _IMMUNE_MARKERS.items():
+                score, _ = _weighted_marker_score(df_unfiltered, gene_set)
+                if score > 0:
+                    label_scores[ct] = score
+
+        if not label_scores:
+            cluster_labels[cl] = "Unassigned"
+            logger.warning(
+                f"    Cluster {cl}: no marker overlap with any canonical "
+                f"gene set — labelled 'Unassigned'"
+            )
+            continue
+
+        sorted_labels = sorted(label_scores.items(), key=lambda x: -x[1])
+        best_label, best_score = sorted_labels[0]
+
+        # Always assign the best-scoring type (no "Unknown immune")
+        cluster_labels[cl] = best_label
+
+        # Log ambiguous clusters
+        if len(sorted_labels) > 1:
+            second_label, second_score = sorted_labels[1]
+            if best_score - second_score < _ANNOT_SECOND_DELTA:
+                logger.debug(
+                    f"    Cluster {cl}: {best_label} ({best_score:.2f}) "
+                    f"vs {second_label} ({second_score:.2f}) [ambiguous]"
+                )
+
+    # Map cluster -> cell type onto every cell
+    labels = aw.obs["leiden"].map(cluster_labels)
+    labels.index = adata.obs.index
+    labels.name = "cell_type"
+
+    # Log summary
+    vc = labels.value_counts()
+    for ct, n in vc.items():
+        logger.info(f"    {ct}: {n:,} cells")
+
+    del aw
+    import gc
+
+    gc.collect()
+
+    return labels
+
+
 __all__ = [
     "load_sade_feldman",
     "load_stephenson_data",
@@ -100,7 +385,11 @@ def _looks_log1p(X, sample: int = 10000, seed: int = 0) -> bool:
     rng = np.random.default_rng(seed)
     if data.size > sample:
         data = rng.choice(data, size=sample, replace=False)
-    return (data.min() >= 0) and (data.max() < 50) and (not np.allclose(data, np.round(data), atol=1e-3))
+    return (
+        (data.min() >= 0)
+        and (data.max() < 50)
+        and (not np.allclose(data, np.round(data), atol=1e-3))
+    )
 
 
 def _download_file(url: str, dest: Path, label: str = "file") -> None:
@@ -133,10 +422,9 @@ def _get_counts_matrix(adata: ad.AnnData) -> tuple[np.ndarray | None, str | None
     return get_counts_matrix(adata)
 
 
-
 def load_sade_feldman(
     data_dir: str = "data/sade_feldman",
-    processed_name: str = "sade_feldman_processed_v5.h5ad",
+    processed_name: str = "sade_feldman_processed_v6.h5ad",
     max_cells_per_participant_visit: int | None = None,
     seed: int = 42,
     allow_download: bool = False,
@@ -174,7 +462,7 @@ def load_sade_feldman(
     processed_path = data_dir_path.parent / "processed" / processed_name
 
     processing_params = {
-        "version": "v5",
+        "version": "v6",
         "max_cells_per_participant_visit": max_cells_per_participant_visit,
         "seed": seed,
         "assay": "TPM",
@@ -184,7 +472,9 @@ def load_sade_feldman(
         adata = ad.read_h5ad(processed_path)
         prev = adata.uns.get("processing_params", {})
         if _params_match(prev, processing_params):
-            logger.info(f"Loaded processed Sade-Feldman dataset: {adata.n_obs:,} cells, {adata.n_vars:,} genes")
+            logger.info(
+                f"Loaded processed Sade-Feldman dataset: {adata.n_obs:,} cells, {adata.n_vars:,} genes"
+            )
             return adata
         # Show what's different for debugging
         logger.info("Processed file parameters differ; reprocessing.")
@@ -196,8 +486,17 @@ def load_sade_feldman(
 
     _GEO_BASE = "https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE120575&format=file&file="
     _sade_feldman_files = [
-        (tpm_path, _GEO_BASE + "GSE120575%5FSade%5FFeldman%5Fmelanoma%5Fsingle%5Fcells%5FTPM%5FGEO%2Etxt%2Egz", "TPM file"),
-        (meta_path, _GEO_BASE + "GSE120575%5Fpatient%5FID%5Fsingle%5Fcells%2Etxt%2Egz", "metadata file"),
+        (
+            tpm_path,
+            _GEO_BASE
+            + "GSE120575%5FSade%5FFeldman%5Fmelanoma%5Fsingle%5Fcells%5FTPM%5FGEO%2Etxt%2Egz",
+            "TPM file",
+        ),
+        (
+            meta_path,
+            _GEO_BASE + "GSE120575%5Fpatient%5FID%5Fsingle%5Fcells%2Etxt%2Egz",
+            "metadata file",
+        ),
     ]
     missing = [(p, url, label) for p, url, label in _sade_feldman_files if not p.exists()]
     if missing:
@@ -231,11 +530,13 @@ def load_sade_feldman(
     mat.columns = sample_ids
 
     meta = pd.read_csv(meta_path, sep="\t", skiprows=19, encoding="latin1")
-    meta = meta.rename(columns={
-        "title": "sample_id",
-        "characteristics: patinet ID (Pre=baseline; Post= on treatment)": "patient_raw",
-        "characteristics: response": "response",
-    })
+    meta = meta.rename(
+        columns={
+            "title": "sample_id",
+            "characteristics: patinet ID (Pre=baseline; Post= on treatment)": "patient_raw",
+            "characteristics: response": "response",
+        }
+    )
     meta["sample_id"] = meta["sample_id"].astype(str)
     meta = meta.dropna(subset=["sample_id"]).copy()
 
@@ -255,8 +556,6 @@ def load_sade_feldman(
     adata.obs = meta.copy()
     adata.var_names = genes
 
-    adata.obs["cell_type"] = "Immune"
-
     if max_cells_per_participant_visit is not None:
         rng = np.random.default_rng(seed)
         keep_indices: list = []
@@ -268,12 +567,45 @@ def load_sade_feldman(
                 keep = group.index.values
             keep_indices.extend(keep)
         adata = adata[keep_indices].copy()
-        logger.info(f"Stratified sampling: {adata.n_obs:,} cells (max {max_cells_per_participant_visit} per participant-visit)")
+        logger.info(
+            f"Stratified sampling: {adata.n_obs:,} cells (max {max_cells_per_participant_visit} per participant-visit)"
+        )
     else:
         logger.info(f"Using full dataset: {adata.n_obs:,} cells (no subsampling)")
 
     adata.layers["tpm"] = adata.X.copy()
     adata.layers["log1p_tpm"] = adata.X.copy() if _looks_log1p(adata.X) else np.log1p(adata.X)
+
+    # Requires scanpy (optional dependency in [plots] extra).
+    try:
+        import scanpy as sc  # noqa: F401 — check availability before heavy work
+    except ImportError:
+        raise ImportError(
+            "scanpy is required for Sade-Feldman cell type annotation. "
+            "Install with: pip install sctrial[plots]"
+        ) from None
+
+    # ── PCA → neighbors → UMAP → Leiden ────────────────────────────────
+    # Compute BEFORE annotation so that cell-type labels are assigned to
+    # the SAME Leiden clusters that the UMAP is built from.
+    logger.info("Computing PCA / neighbors / UMAP / Leiden...")
+    adata_work = adata.copy()
+    adata_work.X = adata_work.layers["log1p_tpm"]
+    sc.pp.highly_variable_genes(adata_work, n_top_genes=3000, flavor="seurat")
+    adata_hvg = adata_work[:, adata_work.var["highly_variable"]].copy()
+    sc.pp.scale(adata_hvg, max_value=10)
+    sc.tl.pca(adata_hvg, n_comps=50)
+    adata.obsm["X_pca"] = adata_hvg.obsm["X_pca"]
+    del adata_work, adata_hvg
+
+    sc.pp.neighbors(adata, use_rep="X_pca", n_neighbors=15)
+    sc.tl.umap(adata)
+    sc.tl.leiden(adata, resolution=1.0)
+
+    # ── Cell type annotation ────────────────────────────────────────────
+    # Uses the Leiden clusters computed above (same embedding as UMAP).
+    logger.info("Annotating cell types from marker genes...")
+    adata.obs["cell_type"] = _annotate_immune_celltypes(adata)
 
     adata.uns["processing_params"] = processing_params
     adata.uns["data_source"] = "GSE120575"
@@ -318,7 +650,12 @@ def load_stephenson_data(
     data_path_resolved = data_dir_path / "covid_portal_210320_with_raw.h5ad"
     # Derive processed cache location from the user-provided path so it
     # respects custom directory layouts even when the raw file is missing.
-    processed_path = data_dir_path.parent / "processed" / processed_name
+    data_root = (
+        Path(data_path).parent.parent
+        if not data_path_resolved.exists()
+        else data_path_resolved.parent.parent
+    )
+    processed_path = data_root / "processed" / processed_name
 
     if processed_path.exists() and not force_reprocess:
         adata = ad.read_h5ad(processed_path)
@@ -331,9 +668,10 @@ def load_stephenson_data(
             raise FileNotFoundError(
                 f"Data not found at {data_path_resolved}. Download from: https://www.ebi.ac.uk/biostudies/files/E-MTAB-10026/"
             )
-        data_dir_path.mkdir(parents=True, exist_ok=True)
-        url = "https://www.ebi.ac.uk/biostudies/files/E-MTAB-10026/covid_portal_210320_with_raw.h5ad"
-        logger.info(f"downloading data from {url} to {data_path_resolved}")
+        data_path_resolved.parent.mkdir(parents=True, exist_ok=True)
+        url = (
+            "https://www.ebi.ac.uk/biostudies/files/E-MTAB-10026/covid_portal_210320_with_raw.h5ad"
+        )
         _download_file(url, data_path_resolved, "Stephenson COVID-19 data")
     logger.info("Processing raw data...")
     adata = ad.read_h5ad(data_path_resolved)
@@ -432,7 +770,9 @@ def load_vaccine_gse171964(
         adata = ad.read_h5ad(processed_path)
         prev = adata.uns.get("processing_params", {})
         if _params_match(prev, processing_params):
-            logger.info(f"Loaded processed vaccine dataset (GSE171964): {adata.n_obs} cells, {adata.n_vars} genes")
+            logger.info(
+                f"Loaded processed vaccine dataset (GSE171964): {adata.n_obs} cells, {adata.n_vars} genes"
+            )
             logger.info(f"Processed file: {processed_path}")
             logger.info(f"Days: {adata.obs['day'].unique()}")
             logger.info(f"Participants: {adata.obs['pt_id'].nunique()}")
@@ -465,13 +805,13 @@ def load_vaccine_gse171964(
     barcodes = (
         pd.read_csv(barcodes_path, sep="\\s+", header=None, engine="python", skiprows=1)[1]
         .astype(str)
-        .str.strip('\"')
+        .str.strip('"')
         .tolist()
     )
     features = (
         pd.read_csv(feats_path, sep="\\s+", header=None, engine="python", skiprows=1)[1]
         .astype(str)
-        .str.strip('\"')
+        .str.strip('"')
         .tolist()
     )
 
@@ -512,9 +852,8 @@ def load_vaccine_gse171964(
 
     if max_cells_per_group is not None:
         grp = ["pt_id", "day", "clustnm"]
-        sampled = (
-            adata.obs.groupby(grp, observed=True, group_keys=False)
-            .apply(lambda x: x.sample(min(len(x), max_cells_per_group), random_state=seed))
+        sampled = adata.obs.groupby(grp, observed=True, group_keys=False).apply(
+            lambda x: x.sample(min(len(x), max_cells_per_group), random_state=seed)
         )
         adata = adata[sampled.index].copy()
 
@@ -535,7 +874,7 @@ def count_paired(
     obs: pd.DataFrame,
     visit_col: str,
     visits: Sequence[str],
-    participant_col: str = "participant_id"
+    participant_col: str = "participant_id",
 ) -> int:
     """Count participants with data at both visits.
 
@@ -564,11 +903,7 @@ def count_paired(
         raise ValueError(
             f"visits must contain at least 2 labels, got {len(visits)}: {list(visits)}"
         )
-    wide = (
-        obs.groupby([participant_col, visit_col], observed=True)
-        .size()
-        .unstack(fill_value=0)
-    )
+    wide = obs.groupby([participant_col, visit_col], observed=True).size().unstack(fill_value=0)
     if visits[0] not in wide.columns or visits[1] not in wide.columns:
         return 0
     has_both = (wide[visits[0]] > 0) & (wide[visits[1]] > 0)
@@ -610,11 +945,7 @@ def verify_paired_participants(
         raise ValueError(
             f"visits must contain at least 2 labels, got {len(visits)}: {list(visits)}"
         )
-    wide = (
-        obs.groupby([participant_col, visit_col], observed=True)
-        .size()
-        .unstack(fill_value=0)
-    )
+    wide = obs.groupby([participant_col, visit_col], observed=True).size().unstack(fill_value=0)
     if visits[0] not in wide.columns or visits[1] not in wide.columns:
         paired_ids = set()
     else:

@@ -24,6 +24,7 @@ Effect Sizes & Power
 - **power_did**: Power calculations
 - **sample_size_did**: Sample size determination
 """
+
 from .abundance import abundance_did
 from .bayes import did_table_bayes, prior_predictive_check
 from .comparisons import between_arm_comparison, compare_gene_in_celltype, within_arm_comparison

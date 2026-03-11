@@ -1,4 +1,5 @@
 """Integration tests for end-to-end workflows."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -45,12 +46,14 @@ def trial_adata_large():
                 cells_data.append(expr)
 
     X = np.vstack(cells_data)
-    obs = pd.DataFrame({
-        "participant_id": participants,
-        "visit": visits,
-        "arm": arms,
-        "celltype": celltypes,
-    })
+    obs = pd.DataFrame(
+        {
+            "participant_id": participants,
+            "visit": visits,
+            "arm": arms,
+            "celltype": celltypes,
+        }
+    )
     var = pd.DataFrame(index=[f"Gene{i:03d}" for i in range(n_genes)])
 
     adata = AnnData(X=X, obs=obs, var=var)
@@ -76,9 +79,7 @@ class TestEndToEndDidWorkflow:
 
         # 2. Preprocessing
         adata = st.add_log1p_cpm_layer(
-            trial_adata_large,
-            counts_layer="counts",
-            out_layer="log1p_cpm"
+            trial_adata_large, counts_layer="counts", out_layer="log1p_cpm"
         )
         assert "log1p_cpm" in adata.layers
 
@@ -88,11 +89,7 @@ class TestEndToEndDidWorkflow:
             "LateGenes": [f"Gene{i:03d}" for i in range(25, 50)],
         }
         adata = st.score_gene_sets(
-            adata,
-            gene_sets,
-            layer="log1p_cpm",
-            method="zmean",
-            prefix="ms_"
+            adata, gene_sets, layer="log1p_cpm", method="zmean", prefix="ms_"
         )
         assert "ms_EarlyGenes" in adata.obs.columns
         assert "ms_LateGenes" in adata.obs.columns
@@ -120,12 +117,10 @@ class TestEndToEndDidWorkflow:
         # 5. Verify plotting works (just test it doesn't crash)
         try:
             import matplotlib
-            matplotlib.use('Agg')  # Non-interactive backend
+
+            matplotlib.use("Agg")  # Non-interactive backend
             fig = st.plot_trial_interaction(
-                adata,
-                feature="ms_EarlyGenes",
-                design=design,
-                visits=("V1", "V2")
+                adata, feature="ms_EarlyGenes", design=design, visits=("V1", "V2")
             )
             assert fig is not None
         except ImportError:
@@ -320,11 +315,13 @@ class TestDataValidation:
         """Test handling of insufficient participants."""
         # Create dataset with only 2 participants
         X = np.random.poisson(5, (20, 50)).astype(float)
-        obs = pd.DataFrame({
-            "participant_id": ["P1", "P1"] * 5 + ["P2", "P2"] * 5,
-            "visit": ["V1", "V2"] * 10,
-            "arm": ["Treated"] * 10 + ["Control"] * 10,
-        })
+        obs = pd.DataFrame(
+            {
+                "participant_id": ["P1", "P1"] * 5 + ["P2", "P2"] * 5,
+                "visit": ["V1", "V2"] * 10,
+                "arm": ["Treated"] * 10 + ["Control"] * 10,
+            }
+        )
         var = pd.DataFrame(index=[f"Gene{i}" for i in range(50)])
         adata = AnnData(X=X, obs=obs, var=var)
         adata.layers["counts"] = X.copy()

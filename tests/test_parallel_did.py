@@ -14,12 +14,18 @@ def _make_simple_adata() -> AnnData:
             obs.append({"participant_id": pid, "visit": visit, "arm": arm})
     obs = pd.DataFrame(obs)
     # Single gene with small treatment effect at V2
-    X = np.array([
-        [1.0], [1.5],  # P1
-        [1.2], [1.6],  # P2
-        [1.1], [1.2],  # P3
-        [1.0], [1.1],  # P4
-    ])
+    X = np.array(
+        [
+            [1.0],
+            [1.5],  # P1
+            [1.2],
+            [1.6],  # P2
+            [1.1],
+            [1.2],  # P3
+            [1.0],
+            [1.1],  # P4
+        ]
+    )
     adata = AnnData(X=X, obs=obs, var=pd.DataFrame(index=["G1"]))
     return adata
 

@@ -1,4 +1,5 @@
 """Data validation utilities for trial analysis."""
+
 from __future__ import annotations
 
 import logging
@@ -281,7 +282,9 @@ def diagnose_trial_data(
             paired_counts = {}
             for i, v1 in enumerate(visits):
                 for v2 in visits[i + 1 :]:
-                    n_paired = count_paired(adata.obs, design.visit_col, [v1, v2], design.participant_col)
+                    n_paired = count_paired(
+                        adata.obs, design.visit_col, [v1, v2], design.participant_col
+                    )
                     paired_counts[(v1, v2)] = n_paired
 
                     if n_paired < 4:
@@ -411,16 +414,18 @@ def check_covariate_balance(
             sd_c = float(control.std(ddof=1))
             pooled = np.sqrt((sd_t**2 + sd_c**2) / 2) if (sd_t > 0 and sd_c > 0) else np.nan
             smd = (mean_t - mean_c) / pooled if np.isfinite(pooled) and pooled > 0 else np.nan
-            rows.append({
-                "covariate": cov,
-                "level": None,
-                "mean_treated": mean_t,
-                "mean_control": mean_c,
-                "smd": float(smd) if np.isfinite(smd) else np.nan,
-                "n_treated": int(treated.shape[0]),
-                "n_control": int(control.shape[0]),
-                "balanced": bool(np.isfinite(smd) and abs(smd) < smd_threshold),
-            })
+            rows.append(
+                {
+                    "covariate": cov,
+                    "level": None,
+                    "mean_treated": mean_t,
+                    "mean_control": mean_c,
+                    "smd": float(smd) if np.isfinite(smd) else np.nan,
+                    "n_treated": int(treated.shape[0]),
+                    "n_control": int(control.shape[0]),
+                    "balanced": bool(np.isfinite(smd) and abs(smd) < smd_threshold),
+                }
+            )
         else:
             # categorical: compute SMD for each level via proportions
             levels = pd.Series(sub[cov].astype(str)).unique()
@@ -430,16 +435,18 @@ def check_covariate_balance(
                 p_pool = (p_t + p_c) / 2
                 denom = np.sqrt(p_pool * (1 - p_pool)) if 0 < p_pool < 1 else np.nan
                 smd = (p_t - p_c) / denom if denom and np.isfinite(denom) else np.nan
-                rows.append({
-                    "covariate": cov,
-                    "level": str(lvl),
-                    "mean_treated": p_t,
-                    "mean_control": p_c,
-                    "smd": float(smd) if np.isfinite(smd) else np.nan,
-                    "n_treated": int(treated.shape[0]),
-                    "n_control": int(control.shape[0]),
-                    "balanced": bool(np.isfinite(smd) and abs(smd) < smd_threshold),
-                })
+                rows.append(
+                    {
+                        "covariate": cov,
+                        "level": str(lvl),
+                        "mean_treated": p_t,
+                        "mean_control": p_c,
+                        "smd": float(smd) if np.isfinite(smd) else np.nan,
+                        "n_treated": int(treated.shape[0]),
+                        "n_control": int(control.shape[0]),
+                        "balanced": bool(np.isfinite(smd) and abs(smd) < smd_threshold),
+                    }
+                )
 
     return pd.DataFrame(rows)
 
