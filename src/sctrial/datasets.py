@@ -650,12 +650,7 @@ def load_stephenson_data(
     data_path_resolved = data_dir_path / "covid_portal_210320_with_raw.h5ad"
     # Derive processed cache location from the user-provided path so it
     # respects custom directory layouts even when the raw file is missing.
-    data_root = (
-        Path(data_path).parent.parent
-        if not data_path_resolved.exists()
-        else data_path_resolved.parent.parent
-    )
-    processed_path = data_root / "processed" / processed_name
+    processed_path = data_dir_path.parent / "processed" / processed_name
 
     if processed_path.exists() and not force_reprocess:
         adata = ad.read_h5ad(processed_path)
