@@ -1001,7 +1001,7 @@ def verify_paired_participants(
         # don't raise TypeError.  For numeric columns the NaN-presence check
         # below is still correct because .first() returns NaN for empty groups.
         df_pv = grouped.first().reset_index()
-        valid_ids = None
+        valid_ids: set | None = None
         for feat in features:
             wide_feat = df_pv.pivot(index=participant_col, columns=visit_col, values=feat)
             if visits[0] not in wide_feat.columns or visits[1] not in wide_feat.columns:
@@ -1090,14 +1090,14 @@ def _process_aml_raw(
     # Build file mapping: match dem ↔ anno by sample name
     dem_files: dict[str, Path] = {}
     anno_files: dict[str, Path] = {}
-    for f in raw_dir.glob("GSM*_*.dem.txt.gz"):
-        name = _extract_aml_sample_name(f.name)
+    for fp in raw_dir.glob("GSM*_*.dem.txt.gz"):
+        name = _extract_aml_sample_name(fp.name)
         if name:
-            dem_files[name] = f
-    for f in raw_dir.glob("GSM*_*.anno.txt.gz"):
-        name = _extract_aml_sample_name(f.name)
+            dem_files[name] = fp
+    for fp in raw_dir.glob("GSM*_*.anno.txt.gz"):
+        name = _extract_aml_sample_name(fp.name)
         if name:
-            anno_files[name] = f
+            anno_files[name] = fp
 
     matched = sorted(set(dem_files) & set(anno_files))
     if not matched:
