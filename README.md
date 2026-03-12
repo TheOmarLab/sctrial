@@ -61,14 +61,41 @@ cd sctrial
 pip install -e ".[dev]"
 ```
 
-## Quick Start
+## 30-Second Demo
+
+Try sctrial on a real dataset with zero setup:
 
 ```python
-import scanpy as sc
+import sctrial as st
+
+# Load a real immunotherapy trial dataset (auto-downloads on first use)
+adata = st.load_sade_feldman()
+adata = st.harmonize_response(adata)  # creates 'response_harmonized' column
+
+# One-line Difference-in-Differences analysis
+results = st.quick_did(
+    adata,
+    module_scores={"Cytotoxicity": ["GZMA", "GZMB", "PRF1", "GNLY", "NKG7"]},
+    visits=("Pre", "Post"),
+    arm_col="response_harmonized",
+    arm_treated="Responder",
+    arm_control="Non-responder",
+    celltype_col="cell_type",
+)
+
+print(results[["feature", "celltype", "beta_DiD", "pval_DiD", "qval_DiD"]])
+```
+
+> Requires `pip install "sctrial[plots]"` for built-in dataset loaders.
+
+## Quick Start (Custom Data)
+
+```python
+import anndata as ad
 import sctrial as st
 
 # Load your AnnData (must have counts layer + obs columns for design)
-adata = sc.read_h5ad("my_trial.h5ad")
+adata = ad.read_h5ad("my_trial.h5ad")
 
 # Define trial design
 design = st.TrialDesign(
@@ -90,14 +117,19 @@ features = [c for c in adata.obs.columns if c.startswith("ms_")]
 results = st.did_table(adata, features, design, visits=("Baseline", "Week12"))
 ```
 
-## Tutorials
+## Supported Study Designs & Datasets
 
-| Notebook | Dataset | Analysis Type |
-|----------|---------|---------------|
-| [COVID-19 Immune Profiling](tutorials/example_covid19_stephenson.ipynb) | Stephenson et al., Nature 2021 | Cross-sectional severity comparison |
-| [Immunotherapy Response](tutorials/example_immunotherapy_sade_feldman.ipynb) | Sade-Feldman et al., Cell 2018 | Longitudinal DiD with response groups |
-| [Vaccine Response](tutorials/example_vaccine_immport.ipynb) | ImmPort GSE171964 | Within-arm paired analysis |
-| [Scalability Benchmark](tutorials/stress_test_real_scale.ipynb) | Sade-Feldman et al. | Performance and scalability testing |
+sctrial ships with five real clinical trial datasets, accessible via built-in loaders (`st.load_*()`). Each demonstrates a different study design:
+
+| Design | Description | Dataset | Source | Tutorial |
+|--------|-------------|---------|--------|----------|
+| **Two-arm paired DiD** | Pre/post × treatment/control interaction | Sade-Feldman et al., *Cell* 2018 — melanoma immunotherapy | [GSE120575](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE120575) | [Immunotherapy](tutorials/example_immunotherapy_sade_feldman.ipynb) |
+| **Single-arm pre/post** | Paired within-arm contrasts over time | ImmPort GSE171964 — PBMC vaccine response | [GSE171964](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE171964) | [Vaccine](tutorials/example_vaccine_immport.ipynb) |
+| **Single-arm pre/post** | Paired within-arm, multi-timepoint | van Galen et al., *Cell* 2019 — AML chemotherapy | [GSE116256](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE116256) | — |
+| **Single-arm multi-timepoint** | Longitudinal tracking across 4 visits | GSE290722 — CAR-T cell therapy (ZUMA-1) | [GSE290722](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE290722) | — |
+| **Cross-sectional between-arm** | Between-group comparison at one timepoint | Stephenson et al., *Nature Medicine* 2021 — COVID-19 severity | [E-MTAB-10026](https://www.ebi.ac.uk/biostudies/arrayexpress/studies/E-MTAB-10026) | [COVID-19](tutorials/example_covid19_stephenson.ipynb) |
+
+Additional tutorial: [Scalability Benchmark](tutorials/stress_test_real_scale.ipynb) — performance testing on the Sade-Feldman dataset.
 
 ## Documentation
 
