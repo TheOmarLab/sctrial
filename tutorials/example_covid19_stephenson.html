@@ -431,7 +431,8 @@ sctrial version: 0.2.1.dev1
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Dataset loaders and helpers (from sctrial)</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Dataset loaders and helpers</span>
+<span class="c1"># All available at top-level: st.load_stephenson_data, st.count_paired, st.categorize_celltype</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">sctrial.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_stephenson_data</span><span class="p">,</span> <span class="n">count_paired</span><span class="p">,</span> <span class="n">categorize_celltype</span>
 <br/></pre></div>
 </div>
@@ -453,7 +454,7 @@ sctrial version: 0.2.1.dev1
 </pre></div>
 </div>
 </div>
-<div class="nboutput nblast docutils container">
+<div class="nboutput docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
@@ -466,6 +467,15 @@ Severity groups: [&#39;Severe&#39;, &#39;Mild&#39;]
 DFO bins: [&#39;DFO_0-7&#39;, &#39;DFO_15+&#39;, &#39;DFO_8-14&#39;]
 Cell types: 50
 Participants: 34
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_25151/900064142.py:2: UserWarning: Cached file lacks processing_params metadata; cannot verify it matches current settings. Consider reprocessing with force_reprocess=True.
+  adata = load_stephenson_data(force_reprocess=False)
 </pre></div></div>
 </div>
 </section>
@@ -1386,8 +1396,8 @@ DFO_8-14:
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Adjusted cross-sectional analysis (includes covariates)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Adjusted cross-sectional analysis (covariates):&#39;</span><span class="p">,</span> <span class="n">covariates_adj</span><span class="p">)</span>
 <span class="n">cross_sectional_adj</span> <span class="o">=</span> <span class="p">[]</span>
-<span class="n">features_adj</span> <span class="o">=</span> <span class="n">features_use</span> <span class="k">if</span> <span class="s1">&#39;features_use&#39;</span> <span class="ow">in</span> <span class="nb">globals</span><span class="p">()</span> <span class="k">else</span> <span class="n">signature_cols</span>
-<span class="n">visits_adj</span> <span class="o">=</span> <span class="n">visits</span> <span class="k">if</span> <span class="s1">&#39;visits&#39;</span> <span class="ow">in</span> <span class="nb">globals</span><span class="p">()</span> <span class="k">else</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span>
+<span class="n">features_adj</span> <span class="o">=</span> <span class="n">signature_cols</span>
+<span class="n">visits_adj</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span>
     <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">unique</span><span class="p">(),</span>
     <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">c</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;-&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s1">&#39;+&#39;</span><span class="p">)),</span>
 <span class="p">)[:</span><span class="mi">2</span><span class="p">])</span>
@@ -2152,7 +2162,7 @@ Note: Each data point = one participant&#39;s cell type proportion
 
 <span class="k">if</span> <span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">:</span>
     <span class="c1"># Diagnostic: participant counts per celltype at selected visits</span>
-    <span class="n">visits_ab</span> <span class="o">=</span> <span class="n">visits</span> <span class="k">if</span> <span class="s1">&#39;visits&#39;</span> <span class="ow">in</span> <span class="nb">globals</span><span class="p">()</span> <span class="k">else</span> <span class="nb">sorted</span><span class="p">(</span>
+    <span class="n">visits_ab</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span>
         <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">unique</span><span class="p">(),</span>
         <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">c</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;-&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s1">&#39;+&#39;</span><span class="p">)),</span>
     <span class="p">)[:</span><span class="mi">2</span><span class="p">]</span>
@@ -3431,11 +3441,9 @@ KEY INSIGHTS
 <span class="n">celltypes</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;lineage&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">unique</span><span class="p">())</span>
 
 <span class="c1"># Compute participant-level means per celltype and group</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">sctrial.stats.comparisons</span><span class="w"> </span><span class="kn">import</span> <span class="n">resolve_gene_name</span>
-<span class="n">gene_name</span> <span class="o">=</span> <span class="n">resolve_gene_name</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">gene</span><span class="p">)</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">sctrial.stats._extract</span><span class="w"> </span><span class="kn">import</span> <span class="n">extract_gene_vector</span>
+<span class="n">gene_name</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">resolve_feature</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">gene</span><span class="p">)</span>
 <span class="c1"># Use log1p-CPM (library-size normalized) to avoid confounding by sequencing depth</span>
-<span class="n">expr</span> <span class="o">=</span> <span class="n">extract_gene_vector</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">gene_name</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;log1p_cpm&quot;</span><span class="p">)</span>
+<span class="n">expr</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">extract_gene_vector</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">gene_name</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;log1p_cpm&quot;</span><span class="p">)</span>
 <span class="n">df_expr</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[[</span><span class="s2">&quot;participant_id&quot;</span><span class="p">,</span> <span class="s2">&quot;severity&quot;</span><span class="p">,</span> <span class="s2">&quot;lineage&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 <span class="n">df_expr</span><span class="p">[</span><span class="s2">&quot;expr&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">expr</span>
 
@@ -3897,7 +3905,7 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_27459/2438914800.py:67: UserWarning: FDR correction is applied within each &#39;module&#39; group (column FDR_DiD). Per-group FDR does not control the overall false discovery rate across all tests. Consult FDR_DiD_global (when fdr_global=True) for a globally corrected q-value.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_25151/2438914800.py:67: UserWarning: FDR correction is applied within each &#39;module&#39; group (column FDR_DiD). Per-group FDR does not control the overall false discovery rate across all tests. Consult FDR_DiD_global (when fdr_global=True) for a globally corrected q-value.
   return st.module_score_did_by_pool(
 </pre></div></div>
 </div>

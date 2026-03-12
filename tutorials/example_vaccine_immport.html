@@ -373,7 +373,6 @@
 <p><strong>Sampling and scope:</strong></p>
 <ul class="simple">
 <li><p>We restrict to participants with both Day 0 and Day 7 samples</p></li>
-<li><p>For speed, we cap the number of participants and cells per participant/day/cell type</p></li>
 </ul>
 </section>
 <section id="1.-Setup">
@@ -418,24 +417,19 @@
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Dataset loader and helpers (from sctrial)</span>
+<span class="c1"># Also available at top-level: st.load_vaccine_gse171964, st.verify_paired_participants, st.ensure_fdr</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">sctrial.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_vaccine_gse171964</span><span class="p">,</span> <span class="n">verify_paired_participants</span><span class="p">,</span> <span class="n">ensure_fdr</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">statsmodels.stats.multitest</span><span class="w"> </span><span class="kn">import</span> <span class="n">multipletests</span>
-</pre></div>
+<br/></pre></div>
 </div>
 </div>
 <section id="2.1-Load-processed-AnnData">
 <h3>2.1 Load processed AnnData<a class="headerlink" href="#2.1-Load-processed-AnnData" title="Link to this heading">#</a></h3>
-<blockquote>
-<div><p><strong>Demo mode:</strong> The data below is <strong>subsampled</strong> (<code class="docutils literal notranslate"><span class="pre">max_participants=30</span></code>, <code class="docutils literal notranslate"><span class="pre">max_cells_per_group=200</span></code>) for fast execution. Statistical outputs (p-values, effect sizes) are illustrative only — <strong>do not cite these numbers</strong>. Remove the caps or re-run on full data for publication-grade results.</p>
-</div></blockquote>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">adata</span> <span class="o">=</span> <span class="n">load_vaccine_gse171964</span><span class="p">(</span>
-    <span class="n">max_participants</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
-    <span class="n">max_cells_per_group</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
-    <span class="c1"># ⚠ DEMO SUBSAMPLE — remove caps for publication-grade results</span>
     <span class="n">seed</span><span class="o">=</span><span class="n">SEED</span><span class="p">,</span>
     <span class="n">allow_download</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span>
@@ -450,7 +444,7 @@
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-AnnData object with n_obs × n_vars = 21331 × 20102
+AnnData object with n_obs × n_vars = 78488 × 20102
     obs: &#39;pt_id&#39;, &#39;day&#39;, &#39;clustnm&#39;, &#39;sample_id&#39;
     uns: &#39;processing_params&#39;
     layers: &#39;counts&#39;
@@ -567,7 +561,7 @@ Name: pt_id, dtype: int64
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 Paired participants (0 vs 7): 6
-Analysis subset cells: 21331
+Analysis subset cells: 78488
 Covariates available (not modeled here): []
 
 --- Trial Diagnostics ---
@@ -578,7 +572,7 @@ Covariates available (not modeled here): []
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-{&#39;n_cells&#39;: 21331,
+{&#39;n_cells&#39;: 78488,
  &#39;n_genes&#39;: 20102,
  &#39;n_participants&#39;: 6,
  &#39;n_visits&#39;: 2,
@@ -586,24 +580,24 @@ Covariates available (not modeled here): []
  &#39;paired_participants&#39;: {(&#39;0&#39;, &#39;7&#39;): 6},
  &#39;n_arms&#39;: 1,
  &#39;arms&#39;: [&#39;Vaccinated&#39;],
- &#39;cells_per_participant_visit_mean&#39;: 1777.5833333333333,
- &#39;cells_per_participant_visit_median&#39;: 1933.5,
- &#39;cells_per_participant_visit_min&#39;: 214,
+ &#39;cells_per_participant_visit_mean&#39;: 6540.666666666667,
+ &#39;cells_per_participant_visit_median&#39;: 5350.5,
+ &#39;cells_per_participant_visit_min&#39;: 3464,
  &#39;n_celltypes&#39;: 18,
- &#39;celltype_distribution&#39;: {&#39;C6_CD8 T&#39;: 2202,
-  &#39;C3_CD14+ monocytes&#39;: 2201,
-  &#39;C0_CD4 T&#39;: 2200,
-  &#39;C1_NK&#39;: 2200,
-  &#39;C5_B&#39;: 2102,
-  &#39;C4_CD16+ monocytes&#39;: 2042,
-  &#39;C10_Naive CD8 T&#39;: 1958,
-  &#39;C7_cDC2&#39;: 1949,
-  &#39;C9_Platelets&#39;: 1671,
+ &#39;celltype_distribution&#39;: {&#39;C2&#39;: 21632,
+  &#39;C0_CD4 T&#39;: 13633,
+  &#39;C1_NK&#39;: 10816,
+  &#39;C3_CD14+ monocytes&#39;: 7312,
+  &#39;C4_CD16+ monocytes&#39;: 4879,
+  &#39;C6_CD8 T&#39;: 4862,
+  &#39;C5_B&#39;: 4597,
+  &#39;C7_cDC2&#39;: 3878,
+  &#39;C10_Naive CD8 T&#39;: 2464,
+  &#39;C9_Platelets&#39;: 1883,
   &#39;C11_pDC&#39;: 741,
   &#39;C12_Tregs&#39;: 465,
   &#39;C13_cDC1&#39;: 389,
   &#39;C14_Plasmablasts&#39;: 297,
-  &#39;C2&#39;: 274,
   &#39;C17_Naive B&#39;: 222,
   &#39;C16_NK T&#39;: 204,
   &#39;C15_HPCs&#39;: 184,
@@ -937,17 +931,17 @@ WITHIN-ARM COMPARISONS: MODULE SCORES (Day 0 vs Day 7)
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_54595/1601061899.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/1601061899.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_54595/1601061899.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/1601061899.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_54595/1601061899.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/1601061899.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_54595/1601061899.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/1601061899.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_54595/1601061899.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/1601061899.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_54595/1601061899.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/1601061899.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
 </pre></div></div>
 </div>
@@ -989,79 +983,79 @@ WITHIN-ARM COMPARISONS: MODULE SCORES (Day 0 vs Day 7)
     <tr>
       <th>0</th>
       <td>ms_B_Cell_Response</td>
-      <td>0.1108</td>
-      <td>0.8918</td>
-      <td>0.949</td>
-      <td>0.949</td>
-      <td>0.5480</td>
-      <td>-1.4440</td>
-      <td>1.7537</td>
-      <td>0.949</td>
+      <td>0.0254</td>
+      <td>0.4494</td>
+      <td>0.956</td>
+      <td>0.956</td>
+      <td>0.2709</td>
+      <td>-0.5921</td>
+      <td>0.6240</td>
+      <td>0.9560</td>
       <td>6</td>
     </tr>
     <tr>
       <th>1</th>
       <td>ms_IFN_Signature</td>
-      <td>0.6007</td>
-      <td>0.6241</td>
-      <td>0.129</td>
-      <td>0.129</td>
-      <td>0.4337</td>
-      <td>-0.4875</td>
-      <td>1.6889</td>
-      <td>0.354</td>
+      <td>0.7952</td>
+      <td>0.5897</td>
+      <td>0.078</td>
+      <td>0.078</td>
+      <td>0.4608</td>
+      <td>-0.0036</td>
+      <td>1.5941</td>
+      <td>0.2340</td>
       <td>6</td>
     </tr>
     <tr>
       <th>2</th>
       <td>ms_Inflammatory</td>
-      <td>-0.1222</td>
-      <td>1.0352</td>
-      <td>0.852</td>
-      <td>0.852</td>
-      <td>0.6346</td>
-      <td>-1.8091</td>
-      <td>1.4299</td>
-      <td>0.949</td>
+      <td>-0.1978</td>
+      <td>1.1930</td>
+      <td>0.764</td>
+      <td>0.764</td>
+      <td>0.7326</td>
+      <td>-2.2434</td>
+      <td>1.5163</td>
+      <td>0.9168</td>
       <td>6</td>
     </tr>
     <tr>
       <th>3</th>
       <td>ms_T_Cell_Activation</td>
-      <td>0.7555</td>
-      <td>0.6706</td>
-      <td>0.137</td>
-      <td>0.137</td>
-      <td>0.5015</td>
-      <td>-0.3045</td>
-      <td>1.8155</td>
-      <td>0.354</td>
+      <td>0.2428</td>
+      <td>0.6512</td>
+      <td>0.604</td>
+      <td>0.604</td>
+      <td>0.4141</td>
+      <td>-0.9511</td>
+      <td>1.4367</td>
+      <td>0.9060</td>
       <td>6</td>
     </tr>
     <tr>
       <th>4</th>
       <td>ms_Cytotoxic</td>
-      <td>0.9041</td>
-      <td>0.9120</td>
-      <td>0.177</td>
-      <td>0.177</td>
-      <td>0.6763</td>
-      <td>-0.1352</td>
-      <td>1.9434</td>
-      <td>0.354</td>
+      <td>1.2288</td>
+      <td>0.5657</td>
+      <td>0.001</td>
+      <td>0.001</td>
+      <td>0.6064</td>
+      <td>0.1025</td>
+      <td>2.2272</td>
+      <td>0.0060</td>
       <td>6</td>
     </tr>
     <tr>
       <th>5</th>
       <td>ms_Memory_T</td>
-      <td>-0.4674</td>
-      <td>0.9685</td>
-      <td>0.556</td>
-      <td>0.556</td>
-      <td>0.6335</td>
-      <td>-1.9396</td>
-      <td>1.0047</td>
-      <td>0.834</td>
+      <td>-0.7647</td>
+      <td>0.8561</td>
+      <td>0.266</td>
+      <td>0.266</td>
+      <td>0.6222</td>
+      <td>-2.1013</td>
+      <td>0.5719</td>
+      <td>0.5320</td>
       <td>6</td>
     </tr>
   </tbody>
@@ -1074,7 +1068,9 @@ WITHIN-ARM COMPARISONS: MODULE SCORES (Day 0 vs Day 7)
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 
-No module scores reached FDR &lt; 0.25.
+Module score changes (FDR &lt; 0.25):
+  ms_IFN_Signature: increased (beta=0.795, FDR=0.234)
+  ms_Cytotoxic: increased (beta=1.229, FDR=0.006)
 
 Boxplots show participant-level distributions by day; points indicate individual participants.
 </pre></div></div>
@@ -1156,73 +1152,19 @@ Boxplots show participant-level distributions by day; points indicate individual
   </thead>
   <tbody>
     <tr>
-      <th>21</th>
-      <td>C12_Tregs</td>
-      <td>ms_Inflammatory</td>
-      <td>-0.170378</td>
-      <td>0.0625</td>
-      <td>5</td>
-      <td>0.118056</td>
-    </tr>
-    <tr>
-      <th>47</th>
+      <th>44</th>
       <td>C16_NK T</td>
-      <td>ms_T_Cell_Activation</td>
-      <td>0.144895</td>
-      <td>0.0625</td>
-      <td>5</td>
-      <td>0.354167</td>
-    </tr>
-    <tr>
-      <th>55</th>
-      <td>C1_NK</td>
-      <td>ms_Cytotoxic</td>
-      <td>0.272274</td>
-      <td>0.0625</td>
-      <td>5</td>
-      <td>0.354167</td>
-    </tr>
-    <tr>
-      <th>56</th>
-      <td>C1_NK</td>
       <td>ms_IFN_Signature</td>
-      <td>0.073823</td>
-      <td>0.0625</td>
-      <td>5</td>
-      <td>0.106250</td>
-    </tr>
-    <tr>
-      <th>57</th>
-      <td>C1_NK</td>
-      <td>ms_Inflammatory</td>
-      <td>-0.156709</td>
+      <td>0.127046</td>
       <td>0.0625</td>
       <td>5</td>
       <td>0.118056</td>
     </tr>
     <tr>
-      <th>33</th>
-      <td>C14_Plasmablasts</td>
-      <td>ms_Inflammatory</td>
-      <td>-0.111641</td>
-      <td>0.0625</td>
-      <td>5</td>
-      <td>0.118056</td>
-    </tr>
-    <tr>
-      <th>59</th>
-      <td>C1_NK</td>
-      <td>ms_T_Cell_Activation</td>
-      <td>0.052057</td>
-      <td>0.0625</td>
-      <td>5</td>
-      <td>0.354167</td>
-    </tr>
-    <tr>
-      <th>31</th>
-      <td>C14_Plasmablasts</td>
-      <td>ms_Cytotoxic</td>
-      <td>0.591136</td>
+      <th>76</th>
+      <td>C4_CD16+ monocytes</td>
+      <td>ms_Memory_T</td>
+      <td>-0.034321</td>
       <td>0.0625</td>
       <td>5</td>
       <td>0.354167</td>
@@ -1231,43 +1173,7 @@ Boxplots show participant-level distributions by day; points indicate individual
       <th>68</th>
       <td>C3_CD14+ monocytes</td>
       <td>ms_IFN_Signature</td>
-      <td>0.103884</td>
-      <td>0.0625</td>
-      <td>5</td>
-      <td>0.106250</td>
-    </tr>
-    <tr>
-      <th>74</th>
-      <td>C4_CD16+ monocytes</td>
-      <td>ms_IFN_Signature</td>
-      <td>0.147047</td>
-      <td>0.0625</td>
-      <td>5</td>
-      <td>0.106250</td>
-    </tr>
-    <tr>
-      <th>76</th>
-      <td>C4_CD16+ monocytes</td>
-      <td>ms_Memory_T</td>
-      <td>-0.045714</td>
-      <td>0.0625</td>
-      <td>5</td>
-      <td>0.531250</td>
-    </tr>
-    <tr>
-      <th>80</th>
-      <td>C5_B</td>
-      <td>ms_IFN_Signature</td>
-      <td>0.082253</td>
-      <td>0.0625</td>
-      <td>5</td>
-      <td>0.106250</td>
-    </tr>
-    <tr>
-      <th>81</th>
-      <td>C5_B</td>
-      <td>ms_Inflammatory</td>
-      <td>-0.156416</td>
+      <td>0.074320</td>
       <td>0.0625</td>
       <td>5</td>
       <td>0.118056</td>
@@ -1276,64 +1182,154 @@ Boxplots show participant-level distributions by day; points indicate individual
       <th>45</th>
       <td>C16_NK T</td>
       <td>ms_Inflammatory</td>
-      <td>-0.195075</td>
+      <td>-0.194590</td>
       <td>0.0625</td>
       <td>5</td>
       <td>0.118056</td>
     </tr>
     <tr>
-      <th>84</th>
-      <td>C6_CD8 T</td>
-      <td>ms_B_Cell_Response</td>
-      <td>0.044710</td>
+      <th>21</th>
+      <td>C12_Tregs</td>
+      <td>ms_Inflammatory</td>
+      <td>-0.170266</td>
       <td>0.0625</td>
       <td>5</td>
-      <td>0.986607</td>
+      <td>0.118056</td>
     </tr>
     <tr>
-      <th>85</th>
-      <td>C6_CD8 T</td>
+      <th>31</th>
+      <td>C14_Plasmablasts</td>
       <td>ms_Cytotoxic</td>
-      <td>0.207906</td>
+      <td>0.549445</td>
       <td>0.0625</td>
       <td>5</td>
       <td>0.354167</td>
     </tr>
     <tr>
-      <th>44</th>
-      <td>C16_NK T</td>
-      <td>ms_IFN_Signature</td>
-      <td>0.129314</td>
+      <th>59</th>
+      <td>C1_NK</td>
+      <td>ms_T_Cell_Activation</td>
+      <td>0.042359</td>
       <td>0.0625</td>
       <td>5</td>
-      <td>0.106250</td>
+      <td>0.455357</td>
     </tr>
     <tr>
-      <th>86</th>
-      <td>C6_CD8 T</td>
+      <th>80</th>
+      <td>C5_B</td>
       <td>ms_IFN_Signature</td>
-      <td>0.070929</td>
-      <td>0.0625</td>
-      <td>5</td>
-      <td>0.106250</td>
-    </tr>
-    <tr>
-      <th>99</th>
-      <td>C9_Platelets</td>
-      <td>ms_Inflammatory</td>
-      <td>-0.201979</td>
+      <td>0.087895</td>
       <td>0.0625</td>
       <td>5</td>
       <td>0.118056</td>
     </tr>
     <tr>
-      <th>2</th>
-      <td>C0_CD4 T</td>
-      <td>ms_IFN_Signature</td>
-      <td>0.085384</td>
+      <th>81</th>
+      <td>C5_B</td>
+      <td>ms_Inflammatory</td>
+      <td>-0.163149</td>
       <td>0.0625</td>
       <td>5</td>
-      <td>0.106250</td>
+      <td>0.118056</td>
+    </tr>
+    <tr>
+      <th>33</th>
+      <td>C14_Plasmablasts</td>
+      <td>ms_Inflammatory</td>
+      <td>-0.111602</td>
+      <td>0.0625</td>
+      <td>5</td>
+      <td>0.118056</td>
+    </tr>
+    <tr>
+      <th>57</th>
+      <td>C1_NK</td>
+      <td>ms_Inflammatory</td>
+      <td>-0.160659</td>
+      <td>0.0625</td>
+      <td>5</td>
+      <td>0.118056</td>
+    </tr>
+    <tr>
+      <th>85</th>
+      <td>C6_CD8 T</td>
+      <td>ms_Cytotoxic</td>
+      <td>0.171548</td>
+      <td>0.0625</td>
+      <td>5</td>
+      <td>0.354167</td>
+    </tr>
+    <tr>
+      <th>74</th>
+      <td>C4_CD16+ monocytes</td>
+      <td>ms_IFN_Signature</td>
+      <td>0.163654</td>
+      <td>0.0625</td>
+      <td>5</td>
+      <td>0.118056</td>
+    </tr>
+    <tr>
+      <th>86</th>
+      <td>C6_CD8 T</td>
+      <td>ms_IFN_Signature</td>
+      <td>0.071140</td>
+      <td>0.0625</td>
+      <td>5</td>
+      <td>0.118056</td>
+    </tr>
+    <tr>
+      <th>92</th>
+      <td>C7_cDC2</td>
+      <td>ms_IFN_Signature</td>
+      <td>0.102951</td>
+      <td>0.0625</td>
+      <td>5</td>
+      <td>0.118056</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>C10_Naive CD8 T</td>
+      <td>ms_Memory_T</td>
+      <td>0.215776</td>
+      <td>0.0625</td>
+      <td>5</td>
+      <td>0.354167</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>C10_Naive CD8 T</td>
+      <td>ms_Inflammatory</td>
+      <td>-0.170429</td>
+      <td>0.0625</td>
+      <td>5</td>
+      <td>0.118056</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>C10_Naive CD8 T</td>
+      <td>ms_IFN_Signature</td>
+      <td>0.060588</td>
+      <td>0.0625</td>
+      <td>5</td>
+      <td>0.118056</td>
+    </tr>
+    <tr>
+      <th>56</th>
+      <td>C1_NK</td>
+      <td>ms_IFN_Signature</td>
+      <td>0.076553</td>
+      <td>0.0625</td>
+      <td>5</td>
+      <td>0.118056</td>
+    </tr>
+    <tr>
+      <th>55</th>
+      <td>C1_NK</td>
+      <td>ms_Cytotoxic</td>
+      <td>0.241627</td>
+      <td>0.0625</td>
+      <td>5</td>
+      <td>0.354167</td>
     </tr>
   </tbody>
 </table>
@@ -1467,43 +1463,43 @@ WITHIN-ARM COMPARISONS: PANEL GENES (Day 0 vs Day 7)
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_54595/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_54595/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_54595/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_54595/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_54595/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_54595/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_54595/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_54595/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_54595/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_54595/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_54595/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_54595/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_54595/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_54595/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_54595/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_54595/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_54595/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_54595/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_54595/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
 </pre></div></div>
 </div>
@@ -1545,248 +1541,248 @@ WITHIN-ARM COMPARISONS: PANEL GENES (Day 0 vs Day 7)
     <tr>
       <th>0</th>
       <td>CD79A</td>
-      <td>-0.2122</td>
-      <td>0.9436</td>
-      <td>0.520</td>
-      <td>0.520</td>
-      <td>0.5858</td>
-      <td>-1.3417</td>
-      <td>0.9173</td>
-      <td>0.8982</td>
+      <td>-0.2768</td>
+      <td>0.3962</td>
+      <td>0.427</td>
+      <td>0.427</td>
+      <td>0.2591</td>
+      <td>-1.2937</td>
+      <td>0.3502</td>
+      <td>0.7375</td>
       <td>6</td>
     </tr>
     <tr>
       <th>1</th>
       <td>CD79B</td>
-      <td>0.2711</td>
-      <td>1.0874</td>
-      <td>0.708</td>
-      <td>0.708</td>
-      <td>0.6796</td>
-      <td>-1.6590</td>
-      <td>2.2012</td>
-      <td>0.9411</td>
+      <td>0.2965</td>
+      <td>0.3855</td>
+      <td>0.293</td>
+      <td>0.293</td>
+      <td>0.2574</td>
+      <td>-0.3634</td>
+      <td>0.9564</td>
+      <td>0.6422</td>
       <td>6</td>
     </tr>
     <tr>
       <th>2</th>
       <td>MS4A1</td>
-      <td>-0.6702</td>
-      <td>0.6568</td>
-      <td>0.053</td>
-      <td>0.053</td>
-      <td>0.4887</td>
-      <td>-1.3325</td>
+      <td>-0.4912</td>
+      <td>0.2044</td>
+      <td>0.071</td>
+      <td>0.071</td>
+      <td>0.2352</td>
+      <td>-0.9824</td>
       <td>0.0000</td>
-      <td>0.5035</td>
+      <td>0.2698</td>
       <td>6</td>
     </tr>
     <tr>
       <th>3</th>
       <td>MZB1</td>
-      <td>0.2472</td>
-      <td>0.6455</td>
-      <td>0.690</td>
-      <td>0.690</td>
-      <td>0.4031</td>
-      <td>-0.7011</td>
-      <td>1.1956</td>
-      <td>0.9411</td>
+      <td>0.1200</td>
+      <td>0.4993</td>
+      <td>0.710</td>
+      <td>0.710</td>
+      <td>0.3022</td>
+      <td>-0.7010</td>
+      <td>0.7794</td>
+      <td>0.8993</td>
       <td>6</td>
     </tr>
     <tr>
       <th>4</th>
       <td>XBP1</td>
-      <td>0.0470</td>
-      <td>0.6996</td>
-      <td>0.906</td>
-      <td>0.906</td>
-      <td>0.4293</td>
-      <td>-0.9665</td>
-      <td>1.0891</td>
-      <td>0.9540</td>
+      <td>0.4798</td>
+      <td>0.6779</td>
+      <td>0.338</td>
+      <td>0.338</td>
+      <td>0.4441</td>
+      <td>-0.6366</td>
+      <td>1.5963</td>
+      <td>0.6422</td>
       <td>6</td>
     </tr>
     <tr>
       <th>5</th>
       <td>ISG15</td>
-      <td>0.7015</td>
-      <td>0.9272</td>
-      <td>0.300</td>
-      <td>0.300</td>
-      <td>0.6125</td>
-      <td>-0.5736</td>
-      <td>1.9766</td>
-      <td>0.8028</td>
+      <td>1.1085</td>
+      <td>0.4714</td>
+      <td>0.042</td>
+      <td>0.042</td>
+      <td>0.5085</td>
+      <td>0.2535</td>
+      <td>1.9635</td>
+      <td>0.1995</td>
       <td>6</td>
     </tr>
     <tr>
       <th>6</th>
       <td>IFI6</td>
-      <td>0.7143</td>
-      <td>0.1495</td>
-      <td>0.025</td>
-      <td>0.025</td>
-      <td>0.2991</td>
-      <td>0.4997</td>
-      <td>0.9732</td>
-      <td>0.4750</td>
+      <td>0.8359</td>
+      <td>0.1878</td>
+      <td>0.013</td>
+      <td>0.013</td>
+      <td>0.3461</td>
+      <td>0.5357</td>
+      <td>1.1361</td>
+      <td>0.1235</td>
       <td>6</td>
     </tr>
     <tr>
       <th>7</th>
       <td>IFIT1</td>
-      <td>0.3211</td>
-      <td>0.6227</td>
-      <td>0.476</td>
-      <td>0.476</td>
-      <td>0.3875</td>
-      <td>-0.6959</td>
-      <td>1.3381</td>
-      <td>0.8982</td>
+      <td>0.3859</td>
+      <td>0.5645</td>
+      <td>0.312</td>
+      <td>0.312</td>
+      <td>0.3626</td>
+      <td>-0.5277</td>
+      <td>1.2996</td>
+      <td>0.6422</td>
       <td>6</td>
     </tr>
     <tr>
       <th>8</th>
       <td>MX1</td>
-      <td>0.3230</td>
-      <td>0.4174</td>
-      <td>0.228</td>
-      <td>0.228</td>
-      <td>0.2771</td>
-      <td>-0.4799</td>
-      <td>1.1259</td>
-      <td>0.8028</td>
+      <td>0.1928</td>
+      <td>0.4423</td>
+      <td>0.498</td>
+      <td>0.498</td>
+      <td>0.2729</td>
+      <td>-0.5749</td>
+      <td>1.1062</td>
+      <td>0.7885</td>
       <td>6</td>
     </tr>
     <tr>
       <th>9</th>
       <td>S100A8</td>
-      <td>0.0531</td>
-      <td>1.0108</td>
-      <td>0.954</td>
-      <td>0.954</td>
-      <td>0.6207</td>
-      <td>-1.3225</td>
-      <td>1.4029</td>
-      <td>0.9540</td>
+      <td>-0.0273</td>
+      <td>1.1353</td>
+      <td>0.988</td>
+      <td>0.988</td>
+      <td>0.6959</td>
+      <td>-1.7140</td>
+      <td>1.4773</td>
+      <td>0.9880</td>
       <td>6</td>
     </tr>
     <tr>
       <th>10</th>
       <td>S100A9</td>
-      <td>-0.0825</td>
-      <td>1.0633</td>
-      <td>0.876</td>
-      <td>0.876</td>
-      <td>0.6516</td>
-      <td>-1.6631</td>
-      <td>1.4981</td>
-      <td>0.9540</td>
+      <td>-0.0694</td>
+      <td>1.1747</td>
+      <td>0.914</td>
+      <td>0.914</td>
+      <td>0.7196</td>
+      <td>-1.7879</td>
+      <td>1.6492</td>
+      <td>0.9648</td>
       <td>6</td>
     </tr>
     <tr>
       <th>11</th>
       <td>LYZ</td>
-      <td>-0.1199</td>
-      <td>1.0592</td>
+      <td>-0.1502</td>
+      <td>1.1776</td>
       <td>0.807</td>
       <td>0.807</td>
-      <td>0.6468</td>
-      <td>-1.6780</td>
-      <td>1.4382</td>
-      <td>0.9540</td>
+      <td>0.7199</td>
+      <td>-1.9382</td>
+      <td>1.6378</td>
+      <td>0.9142</td>
       <td>6</td>
     </tr>
     <tr>
       <th>12</th>
       <td>VCAN</td>
-      <td>-0.5267</td>
-      <td>0.9341</td>
-      <td>0.466</td>
-      <td>0.466</td>
-      <td>0.6137</td>
-      <td>-2.0500</td>
-      <td>0.9965</td>
-      <td>0.8982</td>
+      <td>-0.4103</td>
+      <td>1.1010</td>
+      <td>0.641</td>
+      <td>0.641</td>
+      <td>0.6907</td>
+      <td>-2.5379</td>
+      <td>1.0782</td>
+      <td>0.8993</td>
       <td>6</td>
     </tr>
     <tr>
       <th>13</th>
       <td>CD69</td>
-      <td>-0.4312</td>
-      <td>1.1254</td>
-      <td>0.743</td>
-      <td>0.743</td>
-      <td>0.7227</td>
-      <td>-1.9332</td>
-      <td>1.0708</td>
-      <td>0.9411</td>
+      <td>-0.4415</td>
+      <td>1.0923</td>
+      <td>0.709</td>
+      <td>0.709</td>
+      <td>0.7009</td>
+      <td>-1.9212</td>
+      <td>1.0382</td>
+      <td>0.8993</td>
       <td>6</td>
     </tr>
     <tr>
       <th>14</th>
       <td>CD38</td>
-      <td>0.2996</td>
-      <td>0.9613</td>
-      <td>0.633</td>
-      <td>0.633</td>
-      <td>0.6010</td>
-      <td>-1.4804</td>
-      <td>2.0797</td>
-      <td>0.9411</td>
+      <td>0.7758</td>
+      <td>0.7686</td>
+      <td>0.148</td>
+      <td>0.148</td>
+      <td>0.5447</td>
+      <td>-0.4501</td>
+      <td>2.0018</td>
+      <td>0.4017</td>
       <td>6</td>
     </tr>
     <tr>
       <th>15</th>
       <td>IL2RA</td>
-      <td>0.8136</td>
-      <td>0.8069</td>
-      <td>0.217</td>
-      <td>0.217</td>
-      <td>0.5701</td>
-      <td>-0.4442</td>
-      <td>2.1192</td>
-      <td>0.8028</td>
+      <td>0.1781</td>
+      <td>0.9794</td>
+      <td>0.818</td>
+      <td>0.818</td>
+      <td>0.5992</td>
+      <td>-1.6672</td>
+      <td>2.0233</td>
+      <td>0.9142</td>
       <td>6</td>
     </tr>
     <tr>
       <th>16</th>
       <td>GZMB</td>
-      <td>0.6578</td>
-      <td>0.8976</td>
-      <td>0.338</td>
-      <td>0.338</td>
-      <td>0.6187</td>
-      <td>-0.3964</td>
-      <td>1.7120</td>
-      <td>0.8028</td>
+      <td>1.0583</td>
+      <td>0.6385</td>
+      <td>0.086</td>
+      <td>0.086</td>
+      <td>0.5845</td>
+      <td>-0.0109</td>
+      <td>2.1275</td>
+      <td>0.2723</td>
       <td>6</td>
     </tr>
     <tr>
       <th>17</th>
       <td>PRF1</td>
-      <td>0.6091</td>
-      <td>0.5684</td>
-      <td>0.129</td>
-      <td>0.129</td>
-      <td>0.4118</td>
-      <td>-0.1704</td>
-      <td>1.3886</td>
-      <td>0.8028</td>
+      <td>0.9534</td>
+      <td>0.4088</td>
+      <td>0.025</td>
+      <td>0.025</td>
+      <td>0.4497</td>
+      <td>0.1868</td>
+      <td>1.5973</td>
+      <td>0.1583</td>
       <td>6</td>
     </tr>
     <tr>
       <th>18</th>
       <td>NKG7</td>
-      <td>0.7755</td>
-      <td>0.9912</td>
-      <td>0.271</td>
-      <td>0.271</td>
-      <td>0.6939</td>
-      <td>-0.2765</td>
-      <td>1.8275</td>
-      <td>0.8028</td>
+      <td>1.1979</td>
+      <td>0.6640</td>
+      <td>0.001</td>
+      <td>0.001</td>
+      <td>0.6379</td>
+      <td>0.0210</td>
+      <td>2.3747</td>
+      <td>0.0190</td>
       <td>6</td>
     </tr>
   </tbody>
@@ -1799,7 +1795,11 @@ WITHIN-ARM COMPARISONS: PANEL GENES (Day 0 vs Day 7)
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 
-No panel genes reached FDR &lt; 0.25.
+Panel genes with significant changes (FDR &lt; 0.25):
+  ISG15: increased (beta=1.108, FDR=0.200)
+  IFI6: increased (beta=0.836, FDR=0.123)
+  PRF1: increased (beta=0.953, FDR=0.158)
+  NKG7: increased (beta=1.198, FDR=0.019)
 
 Boxplots show participant-level log1p CPM by day; points indicate individual participants.
 </pre></div></div>
@@ -1942,304 +1942,304 @@ Pseudobulk paired deltas with Wilcoxon signed-rank test (panel genes × cell typ
   </thead>
   <tbody>
     <tr>
-      <th>217</th>
-      <td>C3_CD14+ monocytes</td>
-      <td>MX1</td>
-      <td>6</td>
-      <td>0.376383</td>
-      <td>0.397559</td>
-      <td>0.03125</td>
-      <td>0.363153</td>
-    </tr>
-    <tr>
-      <th>222</th>
-      <td>C3_CD14+ monocytes</td>
-      <td>CD69</td>
-      <td>6</td>
-      <td>-1.000836</td>
-      <td>-0.699824</td>
-      <td>0.03125</td>
-      <td>0.363153</td>
-    </tr>
-    <tr>
-      <th>284</th>
-      <td>C6_CD8 T</td>
-      <td>NKG7</td>
-      <td>6</td>
-      <td>0.406716</td>
-      <td>0.355028</td>
-      <td>0.03125</td>
-      <td>0.363153</td>
-    </tr>
-    <tr>
-      <th>278</th>
+      <th>69</th>
       <td>C6_CD8 T</td>
       <td>VCAN</td>
       <td>6</td>
-      <td>-0.986688</td>
-      <td>-0.894316</td>
-      <td>0.03125</td>
-      <td>0.363153</td>
+      <td>-1.062615</td>
+      <td>-1.030314</td>
+      <td>0.031250</td>
+      <td>0.326838</td>
     </tr>
     <tr>
-      <th>283</th>
+      <th>74</th>
       <td>C6_CD8 T</td>
       <td>PRF1</td>
       <td>6</td>
-      <td>0.662143</td>
-      <td>0.633262</td>
-      <td>0.03125</td>
-      <td>0.363153</td>
+      <td>0.617359</td>
+      <td>0.488505</td>
+      <td>0.031250</td>
+      <td>0.326838</td>
     </tr>
     <tr>
-      <th>188</th>
-      <td>C1_NK</td>
-      <td>PRF1</td>
-      <td>5</td>
-      <td>0.300962</td>
-      <td>0.254804</td>
-      <td>0.06250</td>
-      <td>0.363153</td>
-    </tr>
-    <tr>
-      <th>225</th>
-      <td>C3_CD14+ monocytes</td>
-      <td>GZMB</td>
-      <td>6</td>
-      <td>-0.894293</td>
-      <td>-1.008885</td>
-      <td>0.06250</td>
-      <td>0.363153</td>
-    </tr>
-    <tr>
-      <th>189</th>
-      <td>C1_NK</td>
+      <th>75</th>
+      <td>C6_CD8 T</td>
       <td>NKG7</td>
-      <td>5</td>
-      <td>0.334008</td>
-      <td>0.208272</td>
-      <td>0.06250</td>
-      <td>0.363153</td>
+      <td>6</td>
+      <td>0.367804</td>
+      <td>0.298231</td>
+      <td>0.031250</td>
+      <td>0.326838</td>
     </tr>
     <tr>
-      <th>256</th>
-      <td>C5_B</td>
-      <td>S100A8</td>
-      <td>5</td>
-      <td>-1.368936</td>
-      <td>-1.233742</td>
-      <td>0.06250</td>
-      <td>0.363153</td>
+      <th>25</th>
+      <td>C3_CD14+ monocytes</td>
+      <td>IFI6</td>
+      <td>6</td>
+      <td>0.428861</td>
+      <td>0.122172</td>
+      <td>0.031250</td>
+      <td>0.326838</td>
     </tr>
     <tr>
-      <th>257</th>
-      <td>C5_B</td>
-      <td>S100A9</td>
-      <td>5</td>
-      <td>-1.506106</td>
-      <td>-1.401379</td>
-      <td>0.06250</td>
-      <td>0.363153</td>
-    </tr>
-    <tr>
-      <th>258</th>
-      <td>C5_B</td>
-      <td>LYZ</td>
-      <td>5</td>
-      <td>-1.287004</td>
-      <td>-1.345394</td>
-      <td>0.06250</td>
-      <td>0.363153</td>
-    </tr>
-    <tr>
-      <th>84</th>
-      <td>C13_cDC1</td>
+      <th>27</th>
+      <td>C3_CD14+ monocytes</td>
       <td>MX1</td>
-      <td>5</td>
-      <td>0.948768</td>
-      <td>0.269145</td>
-      <td>0.06250</td>
-      <td>0.363153</td>
+      <td>6</td>
+      <td>0.349177</td>
+      <td>0.244993</td>
+      <td>0.031250</td>
+      <td>0.326838</td>
     </tr>
     <tr>
-      <th>182</th>
-      <td>C1_NK</td>
+      <th>32</th>
+      <td>C3_CD14+ monocytes</td>
+      <td>CD69</td>
+      <td>6</td>
+      <td>-0.905529</td>
+      <td>-0.860747</td>
+      <td>0.031250</td>
+      <td>0.326838</td>
+    </tr>
+    <tr>
+      <th>36</th>
+      <td>C3_CD14+ monocytes</td>
+      <td>PRF1</td>
+      <td>6</td>
+      <td>-0.309773</td>
+      <td>-0.350772</td>
+      <td>0.043114</td>
+      <td>0.326838</td>
+    </tr>
+    <tr>
+      <th>201</th>
+      <td>C9_Platelets</td>
       <td>LYZ</td>
       <td>5</td>
-      <td>-1.319216</td>
-      <td>-1.371082</td>
-      <td>0.06250</td>
-      <td>0.363153</td>
+      <td>-1.036649</td>
+      <td>-1.036991</td>
+      <td>0.062500</td>
+      <td>0.326838</td>
     </tr>
     <tr>
-      <th>144</th>
-      <td>C16_NK T</td>
-      <td>LYZ</td>
-      <td>5</td>
-      <td>-2.341090</td>
-      <td>-2.702975</td>
-      <td>0.06250</td>
-      <td>0.363153</td>
-    </tr>
-    <tr>
-      <th>77</th>
-      <td>C13_cDC1</td>
-      <td>CD79B</td>
-      <td>5</td>
-      <td>0.745523</td>
-      <td>0.390479</td>
-      <td>0.06250</td>
-      <td>0.363153</td>
-    </tr>
-    <tr>
-      <th>181</th>
-      <td>C1_NK</td>
-      <td>S100A9</td>
-      <td>5</td>
-      <td>-1.572891</td>
-      <td>-1.683997</td>
-      <td>0.06250</td>
-      <td>0.363153</td>
-    </tr>
-    <tr>
-      <th>142</th>
-      <td>C16_NK T</td>
-      <td>S100A8</td>
-      <td>5</td>
-      <td>-1.993884</td>
-      <td>-1.821093</td>
-      <td>0.06250</td>
-      <td>0.363153</td>
-    </tr>
-    <tr>
-      <th>141</th>
-      <td>C16_NK T</td>
-      <td>MX1</td>
-      <td>5</td>
-      <td>0.942817</td>
-      <td>0.242598</td>
-      <td>0.06250</td>
-      <td>0.363153</td>
-    </tr>
-    <tr>
-      <th>180</th>
-      <td>C1_NK</td>
-      <td>S100A8</td>
-      <td>5</td>
-      <td>-1.283162</td>
-      <td>-1.227646</td>
-      <td>0.06250</td>
-      <td>0.363153</td>
-    </tr>
-    <tr>
-      <th>137</th>
-      <td>C16_NK T</td>
-      <td>XBP1</td>
-      <td>5</td>
-      <td>0.549529</td>
-      <td>0.575212</td>
-      <td>0.06250</td>
-      <td>0.363153</td>
-    </tr>
-    <tr>
-      <th>229</th>
-      <td>C4_CD16+ monocytes</td>
-      <td>CD79B</td>
-      <td>5</td>
-      <td>0.116131</td>
-      <td>0.110090</td>
-      <td>0.06250</td>
-      <td>0.363153</td>
-    </tr>
-    <tr>
-      <th>233</th>
-      <td>C4_CD16+ monocytes</td>
-      <td>ISG15</td>
-      <td>5</td>
-      <td>0.140215</td>
-      <td>0.097124</td>
-      <td>0.06250</td>
-      <td>0.363153</td>
-    </tr>
-    <tr>
-      <th>122</th>
-      <td>C15_HPCs</td>
-      <td>MX1</td>
-      <td>5</td>
-      <td>1.939940</td>
-      <td>1.948266</td>
-      <td>0.06250</td>
-      <td>0.363153</td>
-    </tr>
-    <tr>
-      <th>68</th>
-      <td>C12_Tregs</td>
-      <td>LYZ</td>
-      <td>5</td>
-      <td>-1.847370</td>
-      <td>-1.804193</td>
-      <td>0.06250</td>
-      <td>0.363153</td>
-    </tr>
-    <tr>
-      <th>128</th>
-      <td>C15_HPCs</td>
-      <td>CD38</td>
-      <td>5</td>
-      <td>0.913558</td>
-      <td>0.871752</td>
-      <td>0.06250</td>
-      <td>0.363153</td>
-    </tr>
-    <tr>
-      <th>61</th>
+      <th>270</th>
       <td>C12_Tregs</td>
       <td>XBP1</td>
       <td>5</td>
       <td>-0.368027</td>
       <td>-0.220880</td>
-      <td>0.06250</td>
-      <td>0.363153</td>
+      <td>0.062500</td>
+      <td>0.326838</td>
     </tr>
     <tr>
-      <th>67</th>
-      <td>C12_Tregs</td>
-      <td>S100A9</td>
-      <td>5</td>
-      <td>-1.417875</td>
-      <td>-1.580606</td>
-      <td>0.06250</td>
-      <td>0.363153</td>
-    </tr>
-    <tr>
-      <th>66</th>
-      <td>C12_Tregs</td>
-      <td>S100A8</td>
-      <td>5</td>
-      <td>-1.525288</td>
-      <td>-1.673220</td>
-      <td>0.06250</td>
-      <td>0.363153</td>
-    </tr>
-    <tr>
-      <th>30</th>
-      <td>C10_Naive CD8 T</td>
-      <td>LYZ</td>
-      <td>5</td>
-      <td>-1.585559</td>
-      <td>-1.801518</td>
-      <td>0.06250</td>
-      <td>0.363153</td>
-    </tr>
-    <tr>
-      <th>65</th>
+      <th>274</th>
       <td>C12_Tregs</td>
       <td>MX1</td>
       <td>5</td>
       <td>1.676067</td>
       <td>1.203632</td>
-      <td>0.06250</td>
-      <td>0.363153</td>
+      <td>0.062500</td>
+      <td>0.326838</td>
+    </tr>
+    <tr>
+      <th>275</th>
+      <td>C12_Tregs</td>
+      <td>S100A8</td>
+      <td>5</td>
+      <td>-1.525288</td>
+      <td>-1.673220</td>
+      <td>0.062500</td>
+      <td>0.326838</td>
+    </tr>
+    <tr>
+      <th>276</th>
+      <td>C12_Tregs</td>
+      <td>S100A9</td>
+      <td>5</td>
+      <td>-1.417875</td>
+      <td>-1.580606</td>
+      <td>0.062500</td>
+      <td>0.326838</td>
+    </tr>
+    <tr>
+      <th>143</th>
+      <td>C5_B</td>
+      <td>S100A9</td>
+      <td>5</td>
+      <td>-1.497778</td>
+      <td>-1.237037</td>
+      <td>0.062500</td>
+      <td>0.326838</td>
+    </tr>
+    <tr>
+      <th>277</th>
+      <td>C12_Tregs</td>
+      <td>LYZ</td>
+      <td>5</td>
+      <td>-1.847370</td>
+      <td>-1.804193</td>
+      <td>0.062500</td>
+      <td>0.326838</td>
+    </tr>
+    <tr>
+      <th>141</th>
+      <td>C5_B</td>
+      <td>MX1</td>
+      <td>5</td>
+      <td>0.199000</td>
+      <td>0.157742</td>
+      <td>0.062500</td>
+      <td>0.326838</td>
+    </tr>
+    <tr>
+      <th>142</th>
+      <td>C5_B</td>
+      <td>S100A8</td>
+      <td>5</td>
+      <td>-1.525760</td>
+      <td>-1.447638</td>
+      <td>0.062500</td>
+      <td>0.326838</td>
+    </tr>
+    <tr>
+      <th>105</th>
+      <td>C1_NK</td>
+      <td>S100A9</td>
+      <td>5</td>
+      <td>-1.492362</td>
+      <td>-1.526757</td>
+      <td>0.062500</td>
+      <td>0.326838</td>
+    </tr>
+    <tr>
+      <th>294</th>
+      <td>C17_Naive B</td>
+      <td>S100A8</td>
+      <td>5</td>
+      <td>-2.814811</td>
+      <td>-2.584364</td>
+      <td>0.062500</td>
+      <td>0.326838</td>
+    </tr>
+    <tr>
+      <th>49</th>
+      <td>C10_Naive CD8 T</td>
+      <td>LYZ</td>
+      <td>5</td>
+      <td>-1.502563</td>
+      <td>-1.387574</td>
+      <td>0.062500</td>
+      <td>0.326838</td>
+    </tr>
+    <tr>
+      <th>48</th>
+      <td>C10_Naive CD8 T</td>
+      <td>S100A9</td>
+      <td>5</td>
+      <td>-1.651697</td>
+      <td>-1.466530</td>
+      <td>0.062500</td>
+      <td>0.326838</td>
+    </tr>
+    <tr>
+      <th>47</th>
+      <td>C10_Naive CD8 T</td>
+      <td>S100A8</td>
+      <td>5</td>
+      <td>-1.387385</td>
+      <td>-1.265103</td>
+      <td>0.062500</td>
+      <td>0.326838</td>
+    </tr>
+    <tr>
+      <th>65</th>
+      <td>C6_CD8 T</td>
+      <td>MX1</td>
+      <td>6</td>
+      <td>0.553320</td>
+      <td>0.270780</td>
+      <td>0.062500</td>
+      <td>0.326838</td>
+    </tr>
+    <tr>
+      <th>58</th>
+      <td>C6_CD8 T</td>
+      <td>CD79B</td>
+      <td>6</td>
+      <td>0.726657</td>
+      <td>0.510624</td>
+      <td>0.062500</td>
+      <td>0.326838</td>
+    </tr>
+    <tr>
+      <th>202</th>
+      <td>C9_Platelets</td>
+      <td>VCAN</td>
+      <td>5</td>
+      <td>-1.334796</td>
+      <td>-0.983637</td>
+      <td>0.062500</td>
+      <td>0.326838</td>
+    </tr>
+    <tr>
+      <th>73</th>
+      <td>C6_CD8 T</td>
+      <td>GZMB</td>
+      <td>6</td>
+      <td>0.581737</td>
+      <td>0.489481</td>
+      <td>0.062500</td>
+      <td>0.326838</td>
+    </tr>
+    <tr>
+      <th>104</th>
+      <td>C1_NK</td>
+      <td>S100A8</td>
+      <td>5</td>
+      <td>-1.393820</td>
+      <td>-1.332844</td>
+      <td>0.062500</td>
+      <td>0.326838</td>
+    </tr>
+    <tr>
+      <th>107</th>
+      <td>C1_NK</td>
+      <td>VCAN</td>
+      <td>5</td>
+      <td>-1.112814</td>
+      <td>-1.184198</td>
+      <td>0.062500</td>
+      <td>0.326838</td>
+    </tr>
+    <tr>
+      <th>109</th>
+      <td>C1_NK</td>
+      <td>CD38</td>
+      <td>5</td>
+      <td>0.165797</td>
+      <td>0.101300</td>
+      <td>0.062500</td>
+      <td>0.326838</td>
+    </tr>
+    <tr>
+      <th>101</th>
+      <td>C1_NK</td>
+      <td>IFI6</td>
+      <td>5</td>
+      <td>0.114627</td>
+      <td>0.119478</td>
+      <td>0.062500</td>
+      <td>0.326838</td>
+    </tr>
+    <tr>
+      <th>112</th>
+      <td>C1_NK</td>
+      <td>PRF1</td>
+      <td>5</td>
+      <td>0.277160</td>
+      <td>0.159133</td>
+      <td>0.062500</td>
+      <td>0.326838</td>
     </tr>
   </tbody>
 </table>
@@ -2515,61 +2515,61 @@ Effect sizes for Day 0 → Day 7 changes:
     <tr>
       <th>0</th>
       <td>ms_B_Cell_Response</td>
-      <td>0.008</td>
-      <td>0.075</td>
-      <td>0.063</td>
-      <td>-1.054</td>
-      <td>0.839</td>
+      <td>0.003</td>
+      <td>0.034</td>
+      <td>0.029</td>
+      <td>-0.792</td>
+      <td>0.929</td>
       <td>6</td>
     </tr>
     <tr>
       <th>1</th>
       <td>ms_IFN_Signature</td>
-      <td>0.048</td>
-      <td>0.583</td>
-      <td>0.491</td>
-      <td>-0.213</td>
-      <td>2.571</td>
+      <td>0.058</td>
+      <td>0.817</td>
+      <td>0.688</td>
+      <td>0.067</td>
+      <td>2.058</td>
       <td>6</td>
     </tr>
     <tr>
       <th>2</th>
       <td>ms_Inflammatory</td>
-      <td>-0.017</td>
-      <td>-0.071</td>
-      <td>-0.060</td>
-      <td>-1.537</td>
-      <td>0.564</td>
+      <td>-0.030</td>
+      <td>-0.100</td>
+      <td>-0.085</td>
+      <td>-1.801</td>
+      <td>0.511</td>
       <td>6</td>
     </tr>
     <tr>
       <th>3</th>
       <td>ms_T_Cell_Activation</td>
-      <td>0.014</td>
-      <td>0.682</td>
-      <td>0.574</td>
-      <td>-0.108</td>
-      <td>2.098</td>
+      <td>0.006</td>
+      <td>0.226</td>
+      <td>0.190</td>
+      <td>-0.422</td>
+      <td>5.010</td>
       <td>6</td>
     </tr>
     <tr>
       <th>4</th>
       <td>ms_Cytotoxic</td>
-      <td>0.117</td>
-      <td>0.600</td>
-      <td>0.505</td>
-      <td>0.079</td>
-      <td>1.210</td>
+      <td>0.265</td>
+      <td>1.315</td>
+      <td>1.108</td>
+      <td>0.651</td>
+      <td>3.278</td>
       <td>6</td>
     </tr>
     <tr>
       <th>5</th>
       <td>ms_Memory_T</td>
-      <td>-0.049</td>
-      <td>-0.292</td>
-      <td>-0.246</td>
-      <td>-1.070</td>
-      <td>0.711</td>
+      <td>-0.163</td>
+      <td>-0.541</td>
+      <td>-0.455</td>
+      <td>-1.382</td>
+      <td>0.333</td>
       <td>6</td>
     </tr>
   </tbody>
@@ -2734,15 +2734,15 @@ EFFECTIVE SAMPLE SIZE
 ============================================================
 
 Participants: 6
-Total cells: 21,331
-Average cells per participant: 3555
+Total cells: 78,488
+Average cells per participant: 13081
 
 Design effect and effective sample size (cells within participant):
   n_clusters = number of participants (not total cells)
-  ICC=0.01: Design effect=36.5, Effective n=584
-  ICC=0.05: Design effect=178.7, Effective n=119
-  ICC=0.1: Design effect=356.4, Effective n=60
-  ICC=0.2: Design effect=711.8, Effective n=30
+  ICC=0.01: Design effect=131.8, Effective n=595
+  ICC=0.05: Design effect=655.0, Effective n=120
+  ICC=0.1: Design effect=1309.0, Effective n=60
+  ICC=0.2: Design effect=2617.1, Effective n=30
 
 Note: Participant-level aggregation accounts for clustering automatically.
 </pre></div></div>
@@ -2826,28 +2826,28 @@ AnnData object with n_obs × n_vars = 202 × 5
       <td>2047</td>
       <td>0</td>
       <td>Vaccinated</td>
-      <td>C10_Naive CD8 T</td>
+      <td>C3_CD14+ monocytes</td>
     </tr>
     <tr>
       <th>2</th>
       <td>2047</td>
       <td>0</td>
       <td>Vaccinated</td>
-      <td>C11_pDC</td>
+      <td>C10_Naive CD8 T</td>
     </tr>
     <tr>
       <th>3</th>
       <td>2047</td>
       <td>0</td>
       <td>Vaccinated</td>
-      <td>C12_Tregs</td>
+      <td>C6_CD8 T</td>
     </tr>
     <tr>
       <th>4</th>
       <td>2047</td>
       <td>0</td>
       <td>Vaccinated</td>
-      <td>C13_cDC1</td>
+      <td>C4_CD16+ monocytes</td>
     </tr>
   </tbody>
 </table>

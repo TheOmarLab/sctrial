@@ -348,6 +348,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">tarfile</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">urllib.error</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">urllib.request</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sequence</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">io</span><span class="w"> </span><span class="kn">import</span> <span class="n">StringIO</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
@@ -362,6 +363,23 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_counts_matrix</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Dataset root: resolved relative to the *repository* (two levels up from</span>
+<span class="c1"># src/sctrial/), so loaders work regardless of the caller&#39;s cwd.</span>
+<span class="c1"># When installed as a proper package (no repo checkout), falls back to cwd.</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="n">_PACKAGE_DIR</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span><span class="o">.</span><span class="n">parent</span>          <span class="c1"># src/sctrial/</span>
+<span class="n">_REPO_ROOT</span> <span class="o">=</span> <span class="n">_PACKAGE_DIR</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span>                 <span class="c1"># sc_trial_inference/</span>
+<span class="n">_DATASETS_ROOT</span> <span class="o">=</span> <span class="n">_REPO_ROOT</span> <span class="o">/</span> <span class="s2">&quot;datasets&quot;</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">_DATASETS_ROOT</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+    <span class="c1"># Installed package without repo structure — fall back to cwd</span>
+    <span class="n">_DATASETS_ROOT</span> <span class="o">=</span> <span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span> <span class="o">/</span> <span class="s2">&quot;datasets&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_default_data_dir</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the absolute default data_dir for a given dataset name.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">_DATASETS_ROOT</span> <span class="o">/</span> <span class="n">name</span><span class="p">)</span>
 
 
 <span class="c1"># ---------------------------------------------------------------------------</span>
@@ -772,7 +790,7 @@
 <div class="viewcode-block" id="load_sade_feldman">
 <a class="viewcode-back" href="../../api.html#sctrial.datasets.load_sade_feldman">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">load_sade_feldman</span><span class="p">(</span>
-    <span class="n">data_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;data/sade_feldman&quot;</span><span class="p">,</span>
+    <span class="n">data_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">processed_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;sade_feldman_processed_v6.h5ad&quot;</span><span class="p">,</span>
     <span class="n">max_cells_per_participant_visit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">42</span><span class="p">,</span>
@@ -808,35 +826,42 @@
         <span class="s2">&quot;assay&quot;</span><span class="p">:</span> <span class="s2">&quot;TPM&quot;</span><span class="p">,</span>
     <span class="p">}</span>
 
-    <span class="c1"># Search for cached processed file BEFORE resolving raw data directory.</span>
-    <span class="n">cache_candidates</span> <span class="o">=</span> <span class="p">[</span><span class="n">Path</span><span class="p">(</span><span class="n">data_dir</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span><span class="p">]</span>
-    <span class="k">for</span> <span class="n">base</span> <span class="ow">in</span> <span class="p">[</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">(),</span> <span class="o">*</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">]:</span>
-        <span class="n">cache_candidates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">base</span> <span class="o">/</span> <span class="s2">&quot;data&quot;</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span><span class="p">)</span>
-        <span class="n">cache_candidates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">base</span> <span class="o">/</span> <span class="s2">&quot;data&quot;</span> <span class="o">/</span> <span class="s2">&quot;sade_feldman&quot;</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span><span class="p">)</span>
+    <span class="n">data_dir</span> <span class="o">=</span> <span class="n">data_dir</span> <span class="ow">or</span> <span class="n">_default_data_dir</span><span class="p">(</span><span class="s2">&quot;sade_feldman&quot;</span><span class="p">)</span>
+    <span class="n">data_dir_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">data_dir</span><span class="p">)</span>
+    <span class="n">processed_path</span> <span class="o">=</span> <span class="n">data_dir_path</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span>
 
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">force_reprocess</span><span class="p">:</span>
-        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cache_candidates</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-                <span class="n">adata</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
-                <span class="n">prev</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">uns</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;processing_params&quot;</span><span class="p">,</span> <span class="p">{})</span>
-                <span class="k">if</span> <span class="n">_params_match</span><span class="p">(</span><span class="n">prev</span><span class="p">,</span> <span class="n">processing_params</span><span class="p">):</span>
-                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;Loaded processed Sade-Feldman dataset: </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> genes&quot;</span>
-                    <span class="p">)</span>
-                    <span class="k">return</span> <span class="n">adata</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Processed file parameters differ; reprocessing.&quot;</span><span class="p">)</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Stored: </span><span class="si">{</span><span class="n">prev</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Current: </span><span class="si">{</span><span class="n">processing_params</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                <span class="k">break</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">force_reprocess</span> <span class="ow">and</span> <span class="n">processed_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="n">adata</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="n">processed_path</span><span class="p">)</span>
+        <span class="n">prev</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">uns</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;processing_params&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="k">if</span> <span class="n">prev</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">_params_match</span><span class="p">(</span><span class="n">prev</span><span class="p">,</span> <span class="n">processing_params</span><span class="p">):</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Loaded processed Sade-Feldman dataset: </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> genes&quot;</span>
+                <span class="p">)</span>
+                <span class="k">return</span> <span class="n">adata</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Processed file parameters differ; reprocessing.&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Stored: </span><span class="si">{</span><span class="n">prev</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Current: </span><span class="si">{</span><span class="n">processing_params</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="s2">&quot;Cached file lacks processing_params metadata; cannot verify it matches &quot;</span>
+                <span class="s2">&quot;current settings. Consider reprocessing with force_reprocess=True.&quot;</span><span class="p">,</span>
+                <span class="ne">UserWarning</span><span class="p">,</span>
+                <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Loaded processed Sade-Feldman dataset: </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> genes&quot;</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="n">adata</span>
 
-    <span class="n">data_dir_path</span> <span class="o">=</span> <span class="n">_resolve_dir_with_files</span><span class="p">(</span>
-        <span class="n">data_dir</span><span class="p">,</span>
+    <span class="n">raw_dir</span> <span class="o">=</span> <span class="n">data_dir_path</span> <span class="o">/</span> <span class="s2">&quot;raw&quot;</span>
+    <span class="n">raw_dir_resolved</span> <span class="o">=</span> <span class="n">_resolve_dir_with_files</span><span class="p">(</span>
+        <span class="nb">str</span><span class="p">(</span><span class="n">raw_dir</span><span class="p">),</span>
         <span class="p">[</span>
             <span class="s2">&quot;GSE120575_Sade_Feldman_melanoma_single_cells_TPM_GEO.txt.gz&quot;</span><span class="p">,</span>
             <span class="s2">&quot;GSE120575_patient_ID_single_cells.txt.gz&quot;</span><span class="p">,</span>
         <span class="p">],</span>
     <span class="p">)</span>
-    <span class="n">processed_path</span> <span class="o">=</span> <span class="n">data_dir_path</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span>
 
     <span class="c1"># Check scanpy availability BEFORE downloading to avoid wasted bandwidth.</span>
     <span class="c1"># scanpy is required for cell-type annotation (Leiden + Wilcoxon scoring).</span>
@@ -848,8 +873,8 @@
             <span class="s2">&quot;Install with: pip install sctrial[plots]  or  pip install scanpy&quot;</span>
         <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
 
-    <span class="n">tpm_path</span> <span class="o">=</span> <span class="n">data_dir_path</span> <span class="o">/</span> <span class="s2">&quot;GSE120575_Sade_Feldman_melanoma_single_cells_TPM_GEO.txt.gz&quot;</span>
-    <span class="n">meta_path</span> <span class="o">=</span> <span class="n">data_dir_path</span> <span class="o">/</span> <span class="s2">&quot;GSE120575_patient_ID_single_cells.txt.gz&quot;</span>
+    <span class="n">tpm_path</span> <span class="o">=</span> <span class="n">raw_dir_resolved</span> <span class="o">/</span> <span class="s2">&quot;GSE120575_Sade_Feldman_melanoma_single_cells_TPM_GEO.txt.gz&quot;</span>
+    <span class="n">meta_path</span> <span class="o">=</span> <span class="n">raw_dir_resolved</span> <span class="o">/</span> <span class="s2">&quot;GSE120575_patient_ID_single_cells.txt.gz&quot;</span>
 
     <span class="n">_GEO_BASE</span> <span class="o">=</span> <span class="s2">&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE120575&amp;format=file&amp;file=&quot;</span>
     <span class="n">_sade_feldman_files</span> <span class="o">=</span> <span class="p">[</span>
@@ -873,7 +898,7 @@
                 <span class="sa">f</span><span class="s2">&quot;Missing file(s): </span><span class="si">{</span><span class="n">names</span><span class="si">}</span><span class="s2">. Download from GEO: &quot;</span>
                 <span class="s2">&quot;https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE120575&quot;</span>
             <span class="p">)</span>
-        <span class="n">data_dir_path</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">raw_dir_resolved</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">dest</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">missing</span><span class="p">:</span>
             <span class="n">_download_file</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">dest</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Processing raw data (this may take a minute)...&quot;</span><span class="p">)</span>
@@ -980,7 +1005,7 @@
 <div class="viewcode-block" id="load_stephenson_data">
 <a class="viewcode-back" href="../../api.html#sctrial.datasets.load_stephenson_data">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">load_stephenson_data</span><span class="p">(</span>
-    <span class="n">data_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;data/stephenson&quot;</span><span class="p">,</span>
+    <span class="n">data_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">processed_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;stephenson_covid19_v3.h5ad&quot;</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">42</span><span class="p">,</span>
     <span class="n">allow_download</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
@@ -1012,15 +1037,15 @@
 <span class="sd">    AnnData</span>
 <span class="sd">        The processed AnnData object.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">data_dir</span> <span class="o">=</span> <span class="n">data_dir</span> <span class="ow">or</span> <span class="n">_default_data_dir</span><span class="p">(</span><span class="s2">&quot;stephenson&quot;</span><span class="p">)</span>
+
     <span class="c1"># Backward compat: if someone passes an .h5ad file path positionally</span>
     <span class="c1"># as data_dir (old API had data_path as first param), treat it as data_path.</span>
-    <span class="k">if</span> <span class="n">data_path</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">data_dir</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.h5ad&quot;</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">data_path</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">str</span><span class="p">(</span><span class="n">data_dir</span><span class="p">)</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.h5ad&quot;</span><span class="p">):</span>
         <span class="n">data_path</span> <span class="o">=</span> <span class="n">data_dir</span>
-        <span class="n">data_dir</span> <span class="o">=</span> <span class="s2">&quot;data/stephenson&quot;</span>  <span class="c1"># reset to default</span>
+        <span class="n">data_dir</span> <span class="o">=</span> <span class="n">_default_data_dir</span><span class="p">(</span><span class="s2">&quot;stephenson&quot;</span><span class="p">)</span>  <span class="c1"># reset to default</span>
 
     <span class="k">if</span> <span class="n">data_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
-
         <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
             <span class="s2">&quot;load_stephenson_data(data_path=...) is deprecated. &quot;</span>
             <span class="s2">&quot;Use data_dir=... instead.&quot;</span><span class="p">,</span>
@@ -1028,38 +1053,44 @@
             <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">raw_file</span> <span class="o">=</span> <span class="n">_resolve_file</span><span class="p">(</span><span class="n">data_path</span><span class="p">)</span>
-        <span class="n">data_root</span> <span class="o">=</span> <span class="n">raw_file</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span> <span class="k">if</span> <span class="n">raw_file</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="k">else</span> <span class="n">Path</span><span class="p">(</span><span class="n">data_path</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span>
+        <span class="n">data_dir_path</span> <span class="o">=</span> <span class="n">raw_file</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span> <span class="k">if</span> <span class="n">raw_file</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="k">else</span> <span class="n">Path</span><span class="p">(</span><span class="n">data_path</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">raw_file</span> <span class="o">=</span> <span class="n">_resolve_file</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">data_dir</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;covid_portal_210320_with_raw.h5ad&quot;</span><span class="p">))</span>
-        <span class="n">data_root</span> <span class="o">=</span> <span class="n">raw_file</span><span class="o">.</span><span class="n">parent</span>
+        <span class="n">data_dir_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">data_dir</span><span class="p">)</span>
+        <span class="n">raw_file</span> <span class="o">=</span> <span class="n">data_dir_path</span> <span class="o">/</span> <span class="s2">&quot;raw&quot;</span> <span class="o">/</span> <span class="s2">&quot;covid_portal_210320_with_raw.h5ad&quot;</span>
 
-    <span class="n">processed_path</span> <span class="o">=</span> <span class="n">data_root</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span>
+    <span class="n">processed_path</span> <span class="o">=</span> <span class="n">data_dir_path</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span>
 
-    <span class="c1"># Also search common alternative locations for the cached file.</span>
-    <span class="n">cache_candidates</span> <span class="o">=</span> <span class="p">[</span><span class="n">processed_path</span><span class="p">]</span>
-    <span class="k">for</span> <span class="n">base</span> <span class="ow">in</span> <span class="p">[</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">(),</span> <span class="o">*</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">]:</span>
-        <span class="n">cache_candidates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">base</span> <span class="o">/</span> <span class="s2">&quot;data&quot;</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span><span class="p">)</span>
-        <span class="n">cache_candidates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">base</span> <span class="o">/</span> <span class="s2">&quot;data&quot;</span> <span class="o">/</span> <span class="s2">&quot;stephenson&quot;</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span><span class="p">)</span>
-
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">force_reprocess</span><span class="p">:</span>
-        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cache_candidates</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-                <span class="n">adata</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded cached file: </span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> genes&quot;</span><span class="p">)</span>
-                <span class="k">return</span> <span class="n">adata</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">force_reprocess</span> <span class="ow">and</span> <span class="n">processed_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="n">adata</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="n">processed_path</span><span class="p">)</span>
+        <span class="n">prev</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">uns</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;processing_params&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">prev</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="s2">&quot;Cached file lacks processing_params metadata; cannot verify it matches &quot;</span>
+                <span class="s2">&quot;current settings. Consider reprocessing with force_reprocess=True.&quot;</span><span class="p">,</span>
+                <span class="ne">UserWarning</span><span class="p">,</span>
+                <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded cached file: </span><span class="si">{</span><span class="n">processed_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> genes&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">adata</span>
 
     <span class="k">if</span> <span class="ow">not</span> <span class="n">raw_file</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">allow_download</span><span class="p">:</span>
+        <span class="c1"># Also check old location (data_dir directly, not raw subdir)</span>
+        <span class="n">legacy_raw</span> <span class="o">=</span> <span class="n">data_dir_path</span> <span class="o">/</span> <span class="s2">&quot;covid_portal_210320_with_raw.h5ad&quot;</span>
+        <span class="k">if</span> <span class="n">legacy_raw</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="n">raw_file</span> <span class="o">=</span> <span class="n">legacy_raw</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="n">allow_download</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span>
                 <span class="sa">f</span><span class="s2">&quot;Data not found at </span><span class="si">{</span><span class="n">raw_file</span><span class="si">}</span><span class="s2">. Download from: &quot;</span>
                 <span class="s2">&quot;https://www.ebi.ac.uk/biostudies/files/E-MTAB-10026/&quot;</span>
             <span class="p">)</span>
-        <span class="n">raw_file</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="n">url</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="s2">&quot;https://www.ebi.ac.uk/biostudies/files/E-MTAB-10026/covid_portal_210320_with_raw.h5ad&quot;</span>
-        <span class="p">)</span>
-        <span class="n">_download_file</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">raw_file</span><span class="p">,</span> <span class="s2">&quot;Stephenson COVID-19 data&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">raw_file</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">url</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="s2">&quot;https://www.ebi.ac.uk/biostudies/files/E-MTAB-10026/&quot;</span>
+                <span class="s2">&quot;covid_portal_210320_with_raw.h5ad&quot;</span>
+            <span class="p">)</span>
+            <span class="n">_download_file</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">raw_file</span><span class="p">,</span> <span class="s2">&quot;Stephenson COVID-19 data&quot;</span><span class="p">)</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Processing raw data...&quot;</span><span class="p">)</span>
     <span class="n">adata</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="n">raw_file</span><span class="p">)</span>
 
@@ -1105,10 +1136,10 @@
 <div class="viewcode-block" id="load_vaccine_gse171964">
 <a class="viewcode-back" href="../../api.html#sctrial.datasets.load_vaccine_gse171964">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">load_vaccine_gse171964</span><span class="p">(</span>
-    <span class="n">data_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;data/vaccine_gse171964&quot;</span><span class="p">,</span>
-    <span class="n">processed_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;vaccine_gse171964_day0_day7.h5ad&quot;</span><span class="p">,</span>
-    <span class="n">max_participants</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="mi">30</span><span class="p">,</span>
-    <span class="n">max_cells_per_group</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="mi">200</span><span class="p">,</span>
+    <span class="n">data_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">processed_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;vaccine_gse171964.h5ad&quot;</span><span class="p">,</span>
+    <span class="n">max_participants</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">max_cells_per_group</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">42</span><span class="p">,</span>
     <span class="n">allow_download</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="n">force_reprocess</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
@@ -1145,29 +1176,37 @@
         <span class="s2">&quot;days&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">7</span><span class="p">],</span>
     <span class="p">}</span>
 
-    <span class="c1"># Search for cached processed file BEFORE resolving raw data directory.</span>
-    <span class="n">cache_candidates</span> <span class="o">=</span> <span class="p">[</span><span class="n">Path</span><span class="p">(</span><span class="n">data_dir</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span><span class="p">]</span>
-    <span class="k">for</span> <span class="n">base</span> <span class="ow">in</span> <span class="p">[</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">(),</span> <span class="o">*</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">]:</span>
-        <span class="n">cache_candidates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">base</span> <span class="o">/</span> <span class="s2">&quot;data&quot;</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span><span class="p">)</span>
-        <span class="n">cache_candidates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">base</span> <span class="o">/</span> <span class="s2">&quot;data&quot;</span> <span class="o">/</span> <span class="s2">&quot;vaccine_gse171964&quot;</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span><span class="p">)</span>
+    <span class="n">data_dir</span> <span class="o">=</span> <span class="n">data_dir</span> <span class="ow">or</span> <span class="n">_default_data_dir</span><span class="p">(</span><span class="s2">&quot;vaccine_gse171964&quot;</span><span class="p">)</span>
+    <span class="n">data_dir_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">data_dir</span><span class="p">)</span>
+    <span class="n">processed_path</span> <span class="o">=</span> <span class="n">data_dir_path</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span>
 
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">force_reprocess</span><span class="p">:</span>
-        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cache_candidates</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-                <span class="n">adata</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
-                <span class="n">prev</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">uns</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;processing_params&quot;</span><span class="p">,</span> <span class="p">{})</span>
-                <span class="k">if</span> <span class="n">_params_match</span><span class="p">(</span><span class="n">prev</span><span class="p">,</span> <span class="n">processing_params</span><span class="p">):</span>
-                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;Loaded processed vaccine dataset (GSE171964): </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">}</span><span class="s2"> genes&quot;</span>
-                    <span class="p">)</span>
-                    <span class="k">return</span> <span class="n">adata</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Processed file parameters differ; reprocessing.&quot;</span><span class="p">)</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Stored: </span><span class="si">{</span><span class="n">prev</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Current: </span><span class="si">{</span><span class="n">processing_params</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                <span class="k">break</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">force_reprocess</span> <span class="ow">and</span> <span class="n">processed_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="n">adata</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="n">processed_path</span><span class="p">)</span>
+        <span class="n">prev</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">uns</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;processing_params&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="k">if</span> <span class="n">prev</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">_params_match</span><span class="p">(</span><span class="n">prev</span><span class="p">,</span> <span class="n">processing_params</span><span class="p">):</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Loaded processed vaccine dataset (GSE171964): </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">}</span><span class="s2"> genes&quot;</span>
+                <span class="p">)</span>
+                <span class="k">return</span> <span class="n">adata</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Processed file parameters differ; reprocessing.&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Stored: </span><span class="si">{</span><span class="n">prev</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Current: </span><span class="si">{</span><span class="n">processing_params</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="s2">&quot;Cached file lacks processing_params metadata; cannot verify it matches &quot;</span>
+                <span class="s2">&quot;current settings. Consider reprocessing with force_reprocess=True.&quot;</span><span class="p">,</span>
+                <span class="ne">UserWarning</span><span class="p">,</span>
+                <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Loaded processed vaccine dataset (GSE171964): </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">}</span><span class="s2"> genes&quot;</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="n">adata</span>
 
-    <span class="n">data_dir_path</span> <span class="o">=</span> <span class="n">_resolve_dir_with_files</span><span class="p">(</span>
-        <span class="n">data_dir</span><span class="p">,</span>
+    <span class="n">raw_dir</span> <span class="o">=</span> <span class="n">data_dir_path</span> <span class="o">/</span> <span class="s2">&quot;raw&quot;</span>
+    <span class="n">raw_dir_resolved</span> <span class="o">=</span> <span class="n">_resolve_dir_with_files</span><span class="p">(</span>
+        <span class="nb">str</span><span class="p">(</span><span class="n">raw_dir</span><span class="p">),</span>
         <span class="p">[</span>
             <span class="s2">&quot;GSE171964_barcodes_v2.tsv.gz&quot;</span><span class="p">,</span>
             <span class="s2">&quot;GSE171964_feats_v2.tsv.gz&quot;</span><span class="p">,</span>
@@ -1175,12 +1214,11 @@
             <span class="s2">&quot;GSE171964_countsmatrix_v2.mtx.gz&quot;</span><span class="p">,</span>
         <span class="p">],</span>
     <span class="p">)</span>
-    <span class="n">processed_path</span> <span class="o">=</span> <span class="n">data_dir_path</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span>
 
-    <span class="n">barcodes_path</span> <span class="o">=</span> <span class="n">data_dir_path</span> <span class="o">/</span> <span class="s2">&quot;GSE171964_barcodes_v2.tsv.gz&quot;</span>
-    <span class="n">feats_path</span> <span class="o">=</span> <span class="n">data_dir_path</span> <span class="o">/</span> <span class="s2">&quot;GSE171964_feats_v2.tsv.gz&quot;</span>
-    <span class="n">pheno_path</span> <span class="o">=</span> <span class="n">data_dir_path</span> <span class="o">/</span> <span class="s2">&quot;GSE171964_geo_pheno_v2.csv.gz&quot;</span>
-    <span class="n">mtx_path</span> <span class="o">=</span> <span class="n">data_dir_path</span> <span class="o">/</span> <span class="s2">&quot;GSE171964_countsmatrix_v2.mtx.gz&quot;</span>
+    <span class="n">barcodes_path</span> <span class="o">=</span> <span class="n">raw_dir_resolved</span> <span class="o">/</span> <span class="s2">&quot;GSE171964_barcodes_v2.tsv.gz&quot;</span>
+    <span class="n">feats_path</span> <span class="o">=</span> <span class="n">raw_dir_resolved</span> <span class="o">/</span> <span class="s2">&quot;GSE171964_feats_v2.tsv.gz&quot;</span>
+    <span class="n">pheno_path</span> <span class="o">=</span> <span class="n">raw_dir_resolved</span> <span class="o">/</span> <span class="s2">&quot;GSE171964_geo_pheno_v2.csv.gz&quot;</span>
+    <span class="n">mtx_path</span> <span class="o">=</span> <span class="n">raw_dir_resolved</span> <span class="o">/</span> <span class="s2">&quot;GSE171964_countsmatrix_v2.mtx.gz&quot;</span>
 
     <span class="n">_GEO_BASE_V</span> <span class="o">=</span> <span class="s2">&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE171964&amp;format=file&amp;file=&quot;</span>
     <span class="n">_vaccine_files</span> <span class="o">=</span> <span class="p">[</span>
@@ -1198,7 +1236,7 @@
                 <span class="s2">&quot;https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE171964 &quot;</span>
                 <span class="s2">&quot;or set allow_download=True to fetch automatically.&quot;</span>
             <span class="p">)</span>
-        <span class="n">data_dir_path</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">raw_dir_resolved</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">dest</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">missing</span><span class="p">:</span>
             <span class="n">_download_file</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">dest</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
     <span class="n">barcodes</span> <span class="o">=</span> <span class="p">(</span>
@@ -1441,7 +1479,7 @@
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_process_aml_raw</span><span class="p">(</span>
     <span class="n">raw_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
-    <span class="n">max_cells_per_sample</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">500</span><span class="p">,</span>
+    <span class="n">max_cells_per_sample</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">42</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ad</span><span class="o">.</span><span class="n">AnnData</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Process raw GSE116256 AML files into an AnnData object.</span>
@@ -1600,9 +1638,9 @@
 <div class="viewcode-block" id="load_aml">
 <a class="viewcode-back" href="../../api.html#sctrial.datasets.load_aml">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">load_aml</span><span class="p">(</span>
-    <span class="n">data_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;data/aml&quot;</span><span class="p">,</span>
+    <span class="n">data_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">processed_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;gse116256_aml_processed.h5ad&quot;</span><span class="p">,</span>
-    <span class="n">max_cells_per_sample</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">500</span><span class="p">,</span>
+    <span class="n">max_cells_per_sample</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">42</span><span class="p">,</span>
     <span class="n">allow_download</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="n">force_reprocess</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
@@ -1646,6 +1684,7 @@
 <span class="sd">    --------</span>
 <span class="sd">    &gt;&gt;&gt; adata = sctrial.load_aml(allow_download=True)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">data_dir</span> <span class="o">=</span> <span class="n">data_dir</span> <span class="ow">or</span> <span class="n">_default_data_dir</span><span class="p">(</span><span class="s2">&quot;aml&quot;</span><span class="p">)</span>
     <span class="n">data_dir_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">data_dir</span><span class="p">)</span>
 
     <span class="n">processing_params</span> <span class="o">=</span> <span class="p">{</span>
@@ -1655,29 +1694,25 @@
     <span class="p">}</span>
 
     <span class="c1"># ── Try to load cached processed file ─────────────────────────────</span>
-    <span class="n">candidates</span> <span class="o">=</span> <span class="p">[</span>
-        <span class="n">data_dir_path</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span><span class="p">,</span>
-        <span class="n">_resolve_file</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">data_dir_path</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span><span class="p">)),</span>
-    <span class="p">]</span>
-    <span class="k">for</span> <span class="n">base</span> <span class="ow">in</span> <span class="p">[</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">(),</span> <span class="o">*</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">]:</span>
-        <span class="n">candidates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">base</span> <span class="o">/</span> <span class="s2">&quot;data&quot;</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span><span class="p">)</span>
-        <span class="n">candidates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">base</span> <span class="o">/</span> <span class="s2">&quot;data&quot;</span> <span class="o">/</span> <span class="s2">&quot;aml&quot;</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span><span class="p">)</span>
-        <span class="n">candidates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">base</span> <span class="o">/</span> <span class="s2">&quot;manuscript&quot;</span> <span class="o">/</span> <span class="s2">&quot;datasets&quot;</span> <span class="o">/</span> <span class="s2">&quot;GSE116256_AML&quot;</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span><span class="p">)</span>
+    <span class="n">processed_path</span> <span class="o">=</span> <span class="n">data_dir_path</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span>
 
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">force_reprocess</span><span class="p">:</span>
-        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">candidates</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-                <span class="n">adata</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
-                <span class="n">prev</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">uns</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;processing_params&quot;</span><span class="p">,</span> <span class="p">{})</span>
-                <span class="k">if</span> <span class="n">prev</span> <span class="ow">and</span> <span class="n">_params_match</span><span class="p">(</span><span class="n">prev</span><span class="p">,</span> <span class="n">processing_params</span><span class="p">):</span>
-                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded AML dataset (GSE116256): </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> genes&quot;</span><span class="p">)</span>
-                    <span class="k">return</span> <span class="n">adata</span>
-                <span class="k">if</span> <span class="n">prev</span><span class="p">:</span>
-                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Processed file parameters differ; reprocessing.&quot;</span><span class="p">)</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="c1"># No processing_params stored — accept older cached file</span>
-                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded AML dataset (GSE116256): </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> genes&quot;</span><span class="p">)</span>
-                    <span class="k">return</span> <span class="n">adata</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">force_reprocess</span> <span class="ow">and</span> <span class="n">processed_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="n">adata</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="n">processed_path</span><span class="p">)</span>
+        <span class="n">prev</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">uns</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;processing_params&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="k">if</span> <span class="n">prev</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">_params_match</span><span class="p">(</span><span class="n">prev</span><span class="p">,</span> <span class="n">processing_params</span><span class="p">):</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded AML dataset (GSE116256): </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> genes&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">adata</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Processed file parameters differ; reprocessing.&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="s2">&quot;Cached file lacks processing_params metadata; cannot verify it matches &quot;</span>
+                <span class="s2">&quot;current settings. Consider reprocessing with force_reprocess=True.&quot;</span><span class="p">,</span>
+                <span class="ne">UserWarning</span><span class="p">,</span>
+                <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded AML dataset (GSE116256): </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> genes&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">adata</span>
 
     <span class="c1"># ── Locate or download raw files ──────────────────────────────────</span>
     <span class="k">try</span><span class="p">:</span>
@@ -1688,20 +1723,8 @@
             <span class="s2">&quot;Install with: pip install sctrial[plots]  or  pip install scanpy&quot;</span>
         <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
 
-    <span class="c1"># Search for raw directory with dem/anno files</span>
     <span class="n">raw_dir</span> <span class="o">=</span> <span class="n">data_dir_path</span> <span class="o">/</span> <span class="s2">&quot;raw&quot;</span>
-    <span class="n">raw_candidates</span> <span class="o">=</span> <span class="p">[</span>
-        <span class="n">raw_dir</span><span class="p">,</span>
-    <span class="p">]</span>
-    <span class="k">for</span> <span class="n">base</span> <span class="ow">in</span> <span class="p">[</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">(),</span> <span class="o">*</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">]:</span>
-        <span class="n">raw_candidates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">base</span> <span class="o">/</span> <span class="s2">&quot;manuscript&quot;</span> <span class="o">/</span> <span class="s2">&quot;datasets&quot;</span> <span class="o">/</span> <span class="s2">&quot;GSE116256_AML&quot;</span> <span class="o">/</span> <span class="s2">&quot;raw&quot;</span><span class="p">)</span>
-        <span class="n">raw_candidates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">base</span> <span class="o">/</span> <span class="s2">&quot;data&quot;</span> <span class="o">/</span> <span class="s2">&quot;aml&quot;</span> <span class="o">/</span> <span class="s2">&quot;raw&quot;</span><span class="p">)</span>
-
-    <span class="n">found_raw</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="k">for</span> <span class="n">rd</span> <span class="ow">in</span> <span class="n">raw_candidates</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">rd</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span> <span class="ow">and</span> <span class="nb">list</span><span class="p">(</span><span class="n">rd</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;GSM*_*.dem.txt.gz&quot;</span><span class="p">)):</span>
-            <span class="n">found_raw</span> <span class="o">=</span> <span class="n">rd</span>
-            <span class="k">break</span>
+    <span class="n">found_raw</span> <span class="o">=</span> <span class="n">raw_dir</span> <span class="k">if</span> <span class="n">raw_dir</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span> <span class="ow">and</span> <span class="nb">list</span><span class="p">(</span><span class="n">raw_dir</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;GSM*_*.dem.txt.gz&quot;</span><span class="p">))</span> <span class="k">else</span> <span class="kc">None</span>
 
     <span class="k">if</span> <span class="n">found_raw</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">allow_download</span><span class="p">:</span>
@@ -1763,7 +1786,7 @@
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_process_cart_raw</span><span class="p">(</span>
     <span class="n">raw_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
-    <span class="n">max_cells_per_sample</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">500</span><span class="p">,</span>
+    <span class="n">max_cells_per_sample</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">42</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ad</span><span class="o">.</span><span class="n">AnnData</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Process raw GSE290722 CAR-T files into an AnnData object.</span>
@@ -1919,9 +1942,9 @@
 <div class="viewcode-block" id="load_cart">
 <a class="viewcode-back" href="../../api.html#sctrial.datasets.load_cart">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">load_cart</span><span class="p">(</span>
-    <span class="n">data_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;data/cart&quot;</span><span class="p">,</span>
+    <span class="n">data_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">processed_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;gse290722_cart_processed.h5ad&quot;</span><span class="p">,</span>
-    <span class="n">max_cells_per_sample</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">500</span><span class="p">,</span>
+    <span class="n">max_cells_per_sample</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">42</span><span class="p">,</span>
     <span class="n">allow_download</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="n">force_reprocess</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
@@ -1965,6 +1988,7 @@
 <span class="sd">    --------</span>
 <span class="sd">    &gt;&gt;&gt; adata = sctrial.load_cart(allow_download=True)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">data_dir</span> <span class="o">=</span> <span class="n">data_dir</span> <span class="ow">or</span> <span class="n">_default_data_dir</span><span class="p">(</span><span class="s2">&quot;cart&quot;</span><span class="p">)</span>
     <span class="n">data_dir_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">data_dir</span><span class="p">)</span>
 
     <span class="n">processing_params</span> <span class="o">=</span> <span class="p">{</span>
@@ -1974,28 +1998,25 @@
     <span class="p">}</span>
 
     <span class="c1"># ── Try to load cached processed file ─────────────────────────────</span>
-    <span class="n">candidates</span> <span class="o">=</span> <span class="p">[</span>
-        <span class="n">data_dir_path</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span><span class="p">,</span>
-        <span class="n">_resolve_file</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">data_dir_path</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span><span class="p">)),</span>
-    <span class="p">]</span>
-    <span class="k">for</span> <span class="n">base</span> <span class="ow">in</span> <span class="p">[</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">(),</span> <span class="o">*</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">]:</span>
-        <span class="n">candidates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">base</span> <span class="o">/</span> <span class="s2">&quot;data&quot;</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span><span class="p">)</span>
-        <span class="n">candidates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">base</span> <span class="o">/</span> <span class="s2">&quot;data&quot;</span> <span class="o">/</span> <span class="s2">&quot;cart&quot;</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span><span class="p">)</span>
-        <span class="n">candidates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">base</span> <span class="o">/</span> <span class="s2">&quot;manuscript&quot;</span> <span class="o">/</span> <span class="s2">&quot;datasets&quot;</span> <span class="o">/</span> <span class="s2">&quot;GSE290722_CAR-T&quot;</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span><span class="p">)</span>
+    <span class="n">processed_path</span> <span class="o">=</span> <span class="n">data_dir_path</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span>
 
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">force_reprocess</span><span class="p">:</span>
-        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">candidates</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-                <span class="n">adata</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
-                <span class="n">prev</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">uns</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;processing_params&quot;</span><span class="p">,</span> <span class="p">{})</span>
-                <span class="k">if</span> <span class="n">prev</span> <span class="ow">and</span> <span class="n">_params_match</span><span class="p">(</span><span class="n">prev</span><span class="p">,</span> <span class="n">processing_params</span><span class="p">):</span>
-                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded CAR-T dataset (GSE290722): </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> genes&quot;</span><span class="p">)</span>
-                    <span class="k">return</span> <span class="n">adata</span>
-                <span class="k">if</span> <span class="n">prev</span><span class="p">:</span>
-                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Processed file parameters differ; reprocessing.&quot;</span><span class="p">)</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded CAR-T dataset (GSE290722): </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> genes&quot;</span><span class="p">)</span>
-                    <span class="k">return</span> <span class="n">adata</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">force_reprocess</span> <span class="ow">and</span> <span class="n">processed_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="n">adata</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="n">processed_path</span><span class="p">)</span>
+        <span class="n">prev</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">uns</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;processing_params&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="k">if</span> <span class="n">prev</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">_params_match</span><span class="p">(</span><span class="n">prev</span><span class="p">,</span> <span class="n">processing_params</span><span class="p">):</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded CAR-T dataset (GSE290722): </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> genes&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">adata</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Processed file parameters differ; reprocessing.&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="s2">&quot;Cached file lacks processing_params metadata; cannot verify it matches &quot;</span>
+                <span class="s2">&quot;current settings. Consider reprocessing with force_reprocess=True.&quot;</span><span class="p">,</span>
+                <span class="ne">UserWarning</span><span class="p">,</span>
+                <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded CAR-T dataset (GSE290722): </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> genes&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">adata</span>
 
     <span class="c1"># ── Locate or download raw files ──────────────────────────────────</span>
     <span class="k">try</span><span class="p">:</span>
@@ -2007,16 +2028,7 @@
         <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
 
     <span class="n">raw_dir</span> <span class="o">=</span> <span class="n">data_dir_path</span> <span class="o">/</span> <span class="s2">&quot;raw&quot;</span>
-    <span class="n">raw_candidates</span> <span class="o">=</span> <span class="p">[</span><span class="n">raw_dir</span><span class="p">]</span>
-    <span class="k">for</span> <span class="n">base</span> <span class="ow">in</span> <span class="p">[</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">(),</span> <span class="o">*</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">]:</span>
-        <span class="n">raw_candidates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">base</span> <span class="o">/</span> <span class="s2">&quot;manuscript&quot;</span> <span class="o">/</span> <span class="s2">&quot;datasets&quot;</span> <span class="o">/</span> <span class="s2">&quot;GSE290722_CAR-T&quot;</span> <span class="o">/</span> <span class="s2">&quot;raw&quot;</span><span class="p">)</span>
-        <span class="n">raw_candidates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">base</span> <span class="o">/</span> <span class="s2">&quot;data&quot;</span> <span class="o">/</span> <span class="s2">&quot;cart&quot;</span> <span class="o">/</span> <span class="s2">&quot;raw&quot;</span><span class="p">)</span>
-
-    <span class="n">found_raw</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="k">for</span> <span class="n">rd</span> <span class="ow">in</span> <span class="n">raw_candidates</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">rd</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span> <span class="ow">and</span> <span class="nb">list</span><span class="p">(</span><span class="n">rd</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;GSM*_*_rna.csv.gz&quot;</span><span class="p">)):</span>
-            <span class="n">found_raw</span> <span class="o">=</span> <span class="n">rd</span>
-            <span class="k">break</span>
+    <span class="n">found_raw</span> <span class="o">=</span> <span class="n">raw_dir</span> <span class="k">if</span> <span class="n">raw_dir</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span> <span class="ow">and</span> <span class="nb">list</span><span class="p">(</span><span class="n">raw_dir</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;GSM*_*_rna.csv.gz&quot;</span><span class="p">))</span> <span class="k">else</span> <span class="kc">None</span>
 
     <span class="k">if</span> <span class="n">found_raw</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">allow_download</span><span class="p">:</span>
