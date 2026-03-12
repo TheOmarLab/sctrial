@@ -33,7 +33,8 @@ from .._shared import (
     get_sade_feldman,
     get_stephenson,
     get_vaccine,
-    load_clinical_trial_dataset,
+    get_aml,
+    get_cart,
     harmonize_response,
     # scoring
     score_signatures,
@@ -375,10 +376,11 @@ def _prepare_data() -> dict[str, Any]:
     # degenerate (beta_DiD == beta_time).  We therefore analyse the
     # Treatment arm longitudinally, matching CAR-T's single-arm design.
     _TREATED_ARM = {"aml": "Treatment", "cart": None}  # None → auto-detect
+    _LOADERS = {"aml": get_aml, "cart": get_cart}
     for tag, name, panel_label in [("aml", "aml", "C"), ("cart", "cart", "D")]:
         try:
             print(f"  [{panel_label}] Loading {name.upper()} ...")
-            adata_clin = load_clinical_trial_dataset(name)
+            adata_clin = _LOADERS[name]()
             adata_clin, sig_cols_clin = score_signatures(adata_clin)
 
             # Harmonise column names

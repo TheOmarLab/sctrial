@@ -52,6 +52,7 @@ all = [
   "seaborn>=0.12",
   "scanpy>=1.9",
   "plotly>=5.0",
+  "adjustText>=1.0",
   "gseapy>=1.0",
   "pyscenic>=0.12",
   "lifelines>=0.27",

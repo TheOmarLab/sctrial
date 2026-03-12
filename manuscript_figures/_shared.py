@@ -111,12 +111,15 @@ def save_panel(fig, panel_name: str, figure_name: str, output_dir: Path,
 # ---------------------------------------------------------------------------
 
 try:
-    from sctrial import (
+    from sctrial import (  # noqa: F401 — re-exported for figure scripts
         TrialDesign,
         add_log1p_cpm_layer,
         between_arm_comparison,
         did_table,
+        harmonize_response,
         hedges_g,
+        load_aml,
+        load_cart,
         loo_cv_did,
         run_gsea_did,
         verify_paired_participants,
@@ -131,7 +134,7 @@ except ImportError:
 # Gene signatures & scoring
 # ---------------------------------------------------------------------------
 
-GENE_SIGNATURES = {
+GENE_SIGNATURES: dict[str, list[str]] = {
     "Cytotoxic T Cell Activity": [
         "GZMB", "GZMA", "GZMH", "GZMK", "PRF1", "GNLY", "NKG7", "KLRK1",
         "KLRD1", "FASLG", "IFNG",
@@ -182,8 +185,25 @@ GENE_SIGNATURES = {
     ],
 }
 
-SIGNATURE_DISPLAY_NAMES = {
-    # Full signature set (GENE_SIGNATURES keys)
+CLINICAL_SIGNATURES: dict[str, list[str]] = {
+    "Cytotoxic": [
+        "GZMB", "GZMA", "GZMK", "GZMH", "PRF1", "NKG7", "GNLY", "IFNG",
+    ],
+    "Exhaustion": [
+        "PDCD1", "LAG3", "HAVCR2", "TIGIT", "CTLA4", "TOX", "ENTPD1",
+    ],
+    "Memory_T": [
+        "IL7R", "TCF7", "LEF1", "CCR7", "SELL", "CD27", "CD28",
+    ],
+    "IFN_response": [
+        "ISG15", "IFI6", "IFIT1", "IFIT3", "MX1", "OAS1", "IRF7",
+    ],
+    "Proliferation": [
+        "MKI67", "TOP2A", "PCNA", "CDK1", "CCNB1", "CCNA2",
+    ],
+}
+
+SIGNATURE_DISPLAY_NAMES: dict[str, str] = {
     "Cytotoxic T Cell Activity": "Cytotoxic T Cells",
     "Immune Exhaustion": "T Cell Exhaustion",
     "Interferon Response": "IFN Response",
@@ -196,9 +216,6 @@ SIGNATURE_DISPLAY_NAMES = {
     "NK Cell Activity": "NK Cell Activity",
     "Apoptosis": "Apoptosis",
     "Oxidative Stress Response": "Oxidative Stress",
-    # Clinical signature set (CLINICAL_SIGNATURES keys) — mapped to
-    # the same display names as their full-set counterparts so that
-    # heatmaps and cross-dataset comparisons merge correctly.
     "Cytotoxic": "Cytotoxic T Cells",
     "Exhaustion": "T Cell Exhaustion",
     "Memory_T": "Memory T Cells",
@@ -206,24 +223,15 @@ SIGNATURE_DISPLAY_NAMES = {
     "Proliferation": "Cell Proliferation",
 }
 
-# Smaller signature set used by clinical-trial datasets
-CLINICAL_SIGNATURES = {
-    "Cytotoxic":      ["GZMB", "GZMA", "GZMK", "GZMH", "PRF1", "NKG7", "GNLY", "IFNG"],
-    "Exhaustion":     ["PDCD1", "LAG3", "HAVCR2", "TIGIT", "CTLA4", "TOX", "ENTPD1"],
-    "Memory_T":       ["IL7R", "TCF7", "LEF1", "CCR7", "SELL", "CD27", "CD28"],
-    "IFN_response":   ["ISG15", "IFI6", "IFIT1", "IFIT3", "MX1", "OAS1", "IRF7"],
-    "Proliferation":  ["MKI67", "TOP2A", "PCNA", "CDK1", "CCNB1", "CCNA2"],
-}
-
 
 def sig_display(name: str) -> str:
-    """Short display name for a signature column (``sig_*`` prefix stripped)."""
+    """Return the short display name for a signature column."""
     clean = name.replace("sig_", "")
     return SIGNATURE_DISPLAY_NAMES.get(clean, clean)
 
 
 def score_signatures(adata, *, layer=None, min_genes=3):
-    """Score all 12 gene signatures, returning *(adata, sig_cols)*."""
+    """Score all 12 GENE_SIGNATURES using scanpy.tl.score_genes."""
     import scanpy as sc
 
     if layer is None:
@@ -232,23 +240,24 @@ def score_signatures(adata, *, layer=None, min_genes=3):
                 layer = candidate
                 break
 
-    print(f"  Scoring {len(GENE_SIGNATURES)} signatures (layer={layer})")
     sig_cols: list[str] = []
     for name, genes in GENE_SIGNATURES.items():
         available = [g for g in genes if g in adata.var_names]
         if len(available) >= min_genes:
             col = f"sig_{name}"
             try:
-                sc.tl.score_genes(adata, available, score_name=col,
-                                  use_raw=False, layer=layer)
+                sc.tl.score_genes(
+                    adata, available, score_name=col,
+                    use_raw=False, layer=layer,
+                )
                 sig_cols.append(col)
             except Exception as exc:
-                print(f"    Warning: could not score {name}: {exc}")
+                warnings.warn(f"score_genes failed for {name}: {exc}", stacklevel=2)
     return adata, sig_cols
 
 
 def score_clinical_signatures(adata, *, layer=None, min_genes=3):
-    """Score the smaller clinical-trial signature set."""
+    """Score the 5 CLINICAL_SIGNATURES using scanpy.tl.score_genes."""
     import scanpy as sc
 
     sig_cols: list[str] = []
@@ -257,11 +266,13 @@ def score_clinical_signatures(adata, *, layer=None, min_genes=3):
         if len(available) >= min_genes:
             col = f"sig_{name}"
             try:
-                sc.tl.score_genes(adata, available, score_name=col,
-                                  use_raw=False, layer=layer)
+                sc.tl.score_genes(
+                    adata, available, score_name=col,
+                    use_raw=False, layer=layer,
+                )
                 sig_cols.append(col)
             except Exception as exc:
-                print(f"    Warning: could not score {name}: {exc}")
+                warnings.warn(f"score_genes failed for {name}: {exc}", stacklevel=2)
     return adata, sig_cols
 
 
@@ -328,81 +339,62 @@ def get_vaccine():
     return adata
 
 
-def _resolve_clinical_datasets_dir() -> str:
-    """Locate clinical-trial dataset root."""
-    env_dir = os.environ.get("SCTRIAL_CLINICAL_DATASETS_DIR")
-    candidates: list[Path] = []
-    if env_dir:
-        candidates.append(Path(env_dir))
-    candidates.extend([
-        REPO_ROOT / "manuscript" / "datasets",          # sc-trialdiff/manuscript/datasets/
-        SCRIPT_DIR / "datasets",
-        PROJECT_DIR / "manuscript_figures" / "datasets",
-        PROJECT_DIR.parent / "manuscript_figures" / "datasets",
-    ])
-    for c in candidates:
-        if c.exists():
-            return str(c)
-    return str(candidates[0])
+def get_aml():
+    """AML chemotherapy dataset (GSE116256, ~16 K cells)."""
+    if "aml" in _DATA_CACHE:
+        return _DATA_CACHE["aml"]
+    from sctrial.datasets import load_aml
+    adata = load_aml()
+    print(f"  AML: {adata.n_obs:,} cells, {adata.n_vars:,} genes")
+    _DATA_CACHE["aml"] = adata
+    return adata
 
 
-CLINICAL_DATASETS_DIR = _resolve_clinical_datasets_dir()
+def get_cart():
+    """CAR-T therapy dataset (GSE290722, ~44 K cells)."""
+    if "cart" in _DATA_CACHE:
+        return _DATA_CACHE["cart"]
+    from sctrial.datasets import load_cart
+    adata = load_cart()
+    print(f"  CAR-T: {adata.n_obs:,} cells, {adata.n_vars:,} genes")
+    _DATA_CACHE["cart"] = adata
+    return adata
 
 
 def load_clinical_trial_dataset(name: str):
-    """Load a clinical-trial dataset by short name (*aml*, *cart*)."""
-    import anndata as ad
+    """Load a clinical-trial dataset by short name (*aml*, *cart*).
 
-    paths = {
-        "aml":  os.path.join(CLINICAL_DATASETS_DIR, "GSE116256_AML",
-                             "processed", "gse116256_aml_processed.h5ad"),
-        "cart": os.path.join(CLINICAL_DATASETS_DIR, "GSE290722_CAR-T",
-                             "processed", "gse290722_cart_processed.h5ad"),
-    }
-    if name not in paths:
+    .. deprecated::
+        Use :func:`get_aml` or :func:`get_cart` directly instead.
+    """
+    _loaders = {"aml": get_aml, "cart": get_cart}
+    if name not in _loaders:
         raise ValueError(f"Unknown clinical dataset: {name!r}")
-    path = paths[name]
-    if not os.path.exists(path):
-        raise FileNotFoundError(f"{name} not found at {path}")
-    adata = ad.read_h5ad(path)
-    print(f"  {name}: {adata.n_obs:,} cells, {adata.n_vars:,} genes")
-    return adata
+    return _loaders[name]()
 
 
-def harmonize_response(adata, *, force: bool = False):
-    """Create ``response_harmonized`` column with consistent labels."""
-    if force and "response_harmonized" in adata.obs.columns:
-        del adata.obs["response_harmonized"]
+if not SCTRIAL_AVAILABLE:
+    # Inline fallback only when sctrial is not installed.
+    def harmonize_response(adata, *, force: bool = False):  # type: ignore[misc]
+        """Create ``response_harmonized`` column (fallback implementation)."""
+        if force and "response_harmonized" in adata.obs.columns:
+            del adata.obs["response_harmonized"]
 
-    if "response_harmonized" in adata.obs.columns:
-        if "participant_id" in adata.obs.columns:
-            n_per = adata.obs.groupby("participant_id")["response_harmonized"].nunique()
-            if (n_per > 1).any():
-                pid_resp = adata.obs.groupby("participant_id")["response_harmonized"].agg(
-                    lambda x: x.mode().iloc[0] if len(x.mode()) > 0 else x.iloc[0]
+        if "response_harmonized" in adata.obs.columns:
+            return adata
+
+        mapping = {
+            "responder": "Responder", "Responder": "Responder", "R": "Responder",
+            "non-responder": "Non-responder", "Non-responder": "Non-responder",
+            "NR": "Non-responder", "nonresponder": "Non-responder",
+        }
+        for col in ("response", "Response", "clinical_response"):
+            if col in adata.obs.columns:
+                adata.obs["response_harmonized"] = (
+                    adata.obs[col].astype(str).map(lambda x: mapping.get(x, x))
                 )
-                adata.obs["response_harmonized"] = adata.obs["participant_id"].map(pid_resp)
+                break
         return adata
-
-    mapping = {
-        "responder": "Responder", "Responder": "Responder", "R": "Responder",
-        "non-responder": "Non-responder", "Non-responder": "Non-responder",
-        "NR": "Non-responder", "nonresponder": "Non-responder",
-    }
-    for col in ("response", "Response", "clinical_response"):
-        if col in adata.obs.columns:
-            adata.obs["response_harmonized"] = (
-                adata.obs[col].astype(str).map(lambda x: mapping.get(x, x))
-            )
-            break
-
-    if "response_harmonized" in adata.obs.columns and "participant_id" in adata.obs.columns:
-        pid_resp = adata.obs.groupby("participant_id")["response_harmonized"].agg(
-            lambda x: x.mode().iloc[0] if len(x.mode()) > 0 else x.iloc[0]
-        )
-        adata.obs["response_harmonized"] = adata.obs["participant_id"].map(pid_resp)
-
-    return adata
 
 
 # ---------------------------------------------------------------------------

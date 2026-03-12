@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import gc
 import gzip
 import logging
+import re
+import tarfile
 import urllib.error
 import urllib.request
 from collections.abc import Sequence
@@ -308,6 +311,9 @@ __all__ = [
     "load_sade_feldman",
     "load_stephenson_data",
     "load_vaccine_gse171964",
+    "load_aml",
+    "load_cart",
+    "harmonize_response",
     "count_paired",
     "verify_paired_participants",
     "categorize_celltype",
@@ -452,6 +458,34 @@ def load_sade_feldman(
     AnnData
         The processed AnnData object.
     """
+    processing_params = {
+        "version": "v6",
+        "max_cells_per_participant_visit": max_cells_per_participant_visit,
+        "seed": seed,
+        "assay": "TPM",
+    }
+
+    # Search for cached processed file BEFORE resolving raw data directory.
+    cache_candidates = [Path(data_dir).parent / "processed" / processed_name]
+    for base in [Path.cwd(), *Path.cwd().parents]:
+        cache_candidates.append(base / "data" / "processed" / processed_name)
+        cache_candidates.append(base / "data" / "sade_feldman" / "processed" / processed_name)
+
+    if not force_reprocess:
+        for c in cache_candidates:
+            if c.exists():
+                adata = ad.read_h5ad(c)
+                prev = adata.uns.get("processing_params", {})
+                if _params_match(prev, processing_params):
+                    logger.info(
+                        f"Loaded processed Sade-Feldman dataset: {adata.n_obs:,} cells, {adata.n_vars:,} genes"
+                    )
+                    return adata
+                logger.info("Processed file parameters differ; reprocessing.")
+                logger.debug(f"  Stored: {prev}")
+                logger.debug(f"  Current: {processing_params}")
+                break
+
     data_dir_path = _resolve_dir_with_files(
         data_dir,
         [
@@ -461,25 +495,15 @@ def load_sade_feldman(
     )
     processed_path = data_dir_path.parent / "processed" / processed_name
 
-    processing_params = {
-        "version": "v6",
-        "max_cells_per_participant_visit": max_cells_per_participant_visit,
-        "seed": seed,
-        "assay": "TPM",
-    }
-
-    if processed_path.exists() and not force_reprocess:
-        adata = ad.read_h5ad(processed_path)
-        prev = adata.uns.get("processing_params", {})
-        if _params_match(prev, processing_params):
-            logger.info(
-                f"Loaded processed Sade-Feldman dataset: {adata.n_obs:,} cells, {adata.n_vars:,} genes"
-            )
-            return adata
-        # Show what's different for debugging
-        logger.info("Processed file parameters differ; reprocessing.")
-        logger.debug(f"  Stored: {prev}")
-        logger.debug(f"  Current: {processing_params}")
+    # Check scanpy availability BEFORE downloading to avoid wasted bandwidth.
+    # scanpy is required for cell-type annotation (Leiden + Wilcoxon scoring).
+    try:
+        import scanpy as sc  # noqa: F401
+    except ImportError:
+        raise ImportError(
+            "scanpy is required for Sade-Feldman cell type annotation. "
+            "Install with: pip install sctrial[plots]  or  pip install scanpy"
+        ) from None
 
     tpm_path = data_dir_path / "GSE120575_Sade_Feldman_melanoma_single_cells_TPM_GEO.txt.gz"
     meta_path = data_dir_path / "GSE120575_patient_ID_single_cells.txt.gz"
@@ -576,15 +600,6 @@ def load_sade_feldman(
     adata.layers["tpm"] = adata.X.copy()
     adata.layers["log1p_tpm"] = adata.X.copy() if _looks_log1p(adata.X) else np.log1p(adata.X)
 
-    # Requires scanpy (optional dependency in [plots] extra).
-    try:
-        import scanpy as sc  # noqa: F401 — check availability before heavy work
-    except ImportError:
-        raise ImportError(
-            "scanpy is required for Sade-Feldman cell type annotation. "
-            "Install with: pip install sctrial[plots]"
-        ) from None
-
     # ── PCA → neighbors → UMAP → Leiden ────────────────────────────────
     # Compute BEFORE annotation so that cell-type labels are assigned to
     # the SAME Leiden clusters that the UMAP is built from.
@@ -624,6 +639,8 @@ def load_stephenson_data(
     seed: int = 42,
     allow_download: bool = False,
     force_reprocess: bool = False,
+    *,
+    data_path: str | None = None,
 ) -> ad.AnnData:
     """Load and preprocess Stephenson COVID-19 dataset (E-MTAB-10026).
 
@@ -632,6 +649,8 @@ def load_stephenson_data(
     data_dir : str
         Directory containing the raw data files.
         Path to the raw h5ad data file.
+    data_dir : str
+        Directory containing (or to store) the raw data files.
     processed_name : str
         Filename for the cached processed h5ad file.
     seed : int
@@ -640,6 +659,10 @@ def load_stephenson_data(
         If True, download the data file automatically when missing.
     force_reprocess : bool
         If True, reprocess even when a cached file exists.
+    data_path : str or None
+        .. deprecated:: 0.2.2
+            Use *data_dir* instead.  When supplied, *data_dir* is ignored
+            and the parent directory of *data_path* is used.
 
     Returns
     -------
@@ -652,24 +675,33 @@ def load_stephenson_data(
     # respects custom directory layouts even when the raw file is missing.
     processed_path = data_dir_path.parent / "processed" / processed_name
 
-    if processed_path.exists() and not force_reprocess:
-        adata = ad.read_h5ad(processed_path)
-        logger.info(f"Loaded cached file: {processed_path}")
-        logger.info(f"  {adata.n_obs:,} cells, {adata.n_vars:,} genes")
-        return adata
+    # Also search common alternative locations for the cached file.
+    cache_candidates = [processed_path]
+    for base in [Path.cwd(), *Path.cwd().parents]:
+        cache_candidates.append(base / "data" / "processed" / processed_name)
+        cache_candidates.append(base / "data" / "stephenson" / "processed" / processed_name)
 
-    if not data_path_resolved.exists():
+    if not force_reprocess:
+        for c in cache_candidates:
+            if c.exists():
+                adata = ad.read_h5ad(c)
+                logger.info(f"Loaded cached file: {c}")
+                logger.info(f"  {adata.n_obs:,} cells, {adata.n_vars:,} genes")
+                return adata
+
+    if not raw_file.exists():
         if not allow_download:
             raise FileNotFoundError(
-                f"Data not found at {data_path_resolved}. Download from: https://www.ebi.ac.uk/biostudies/files/E-MTAB-10026/"
+                f"Data not found at {raw_file}. Download from: "
+                "https://www.ebi.ac.uk/biostudies/files/E-MTAB-10026/"
             )
-        data_path_resolved.parent.mkdir(parents=True, exist_ok=True)
+        raw_file.parent.mkdir(parents=True, exist_ok=True)
         url = (
             "https://www.ebi.ac.uk/biostudies/files/E-MTAB-10026/covid_portal_210320_with_raw.h5ad"
         )
-        _download_file(url, data_path_resolved, "Stephenson COVID-19 data")
+        _download_file(url, raw_file, "Stephenson COVID-19 data")
     logger.info("Processing raw data...")
-    adata = ad.read_h5ad(data_path_resolved)
+    adata = ad.read_h5ad(raw_file)
 
     X_counts, source = _get_counts_matrix(adata)
     if X_counts is None:
@@ -742,6 +774,35 @@ def load_vaccine_gse171964(
     AnnData
         The processed AnnData object.
     """
+    processing_params = {
+        "version": "v2",
+        "max_participants": max_participants,
+        "max_cells_per_group": max_cells_per_group,
+        "seed": seed,
+        "days": [0, 7],
+    }
+
+    # Search for cached processed file BEFORE resolving raw data directory.
+    cache_candidates = [Path(data_dir).parent / "processed" / processed_name]
+    for base in [Path.cwd(), *Path.cwd().parents]:
+        cache_candidates.append(base / "data" / "processed" / processed_name)
+        cache_candidates.append(base / "data" / "vaccine_gse171964" / "processed" / processed_name)
+
+    if not force_reprocess:
+        for c in cache_candidates:
+            if c.exists():
+                adata = ad.read_h5ad(c)
+                prev = adata.uns.get("processing_params", {})
+                if _params_match(prev, processing_params):
+                    logger.info(
+                        f"Loaded processed vaccine dataset (GSE171964): {adata.n_obs} cells, {adata.n_vars} genes"
+                    )
+                    return adata
+                logger.info("Processed file parameters differ; reprocessing.")
+                logger.debug(f"  Stored: {prev}")
+                logger.debug(f"  Current: {processing_params}")
+                break
+
     data_dir_path = _resolve_dir_with_files(
         data_dir,
         [
@@ -752,30 +813,6 @@ def load_vaccine_gse171964(
         ],
     )
     processed_path = data_dir_path.parent / "processed" / processed_name
-
-    processing_params = {
-        "version": "v2",
-        "max_participants": max_participants,
-        "max_cells_per_group": max_cells_per_group,
-        "seed": seed,
-        "days": [0, 7],
-    }
-
-    if processed_path.exists() and not force_reprocess:
-        adata = ad.read_h5ad(processed_path)
-        prev = adata.uns.get("processing_params", {})
-        if _params_match(prev, processing_params):
-            logger.info(
-                f"Loaded processed vaccine dataset (GSE171964): {adata.n_obs} cells, {adata.n_vars} genes"
-            )
-            logger.info(f"Processed file: {processed_path}")
-            logger.info(f"Days: {adata.obs['day'].unique()}")
-            logger.info(f"Participants: {adata.obs['pt_id'].nunique()}")
-            logger.info(f"Cell types: {adata.obs['clustnm'].nunique()}")
-            return adata
-        logger.info("Processed file parameters differ; reprocessing.")
-        logger.debug(f"  Stored: {prev}")
-        logger.debug(f"  Current: {processing_params}")
 
     barcodes_path = data_dir_path / "GSE171964_barcodes_v2.tsv.gz"
     feats_path = data_dir_path / "GSE171964_feats_v2.tsv.gz"
@@ -793,7 +830,11 @@ def load_vaccine_gse171964(
     if missing:
         if not allow_download:
             names = ", ".join(str(p) for p, _, _ in missing)
-            raise FileNotFoundError(f"Missing file(s): {names}")
+            raise FileNotFoundError(
+                f"Missing file(s): {names}. Download from GEO: "
+                "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE171964 "
+                "or set allow_download=True to fetch automatically."
+            )
         data_dir_path.mkdir(parents=True, exist_ok=True)
         for dest, url, label in missing:
             _download_file(url, dest, label)
@@ -952,7 +993,7 @@ def verify_paired_participants(
         # don't raise TypeError.  For numeric columns the NaN-presence check
         # below is still correct because .first() returns NaN for empty groups.
         df_pv = grouped.first().reset_index()
-        valid_ids = None
+        valid_ids: set | None = None
         for feat in features:
             wide_feat = df_pv.pivot(index=participant_col, columns=visit_col, values=feat)
             if visits[0] not in wide_feat.columns or visits[1] not in wide_feat.columns:
@@ -1002,6 +1043,691 @@ def categorize_celltype(ct: str) -> str:
     if "mono" in ct_lower or "cd14" in ct_lower or "cd16" in ct_lower:
         return "Monocytes"
     return "Other"
+
+
+def _extract_aml_sample_name(filename: str) -> str | None:
+    """Extract sample name from AML filename (ignoring GSM number)."""
+    m = re.search(r"GSM\d+_(.+)\.(dem|anno)\.txt\.gz", filename)
+    return m.group(1) if m else None
+
+
+def _parse_aml_sample_info(sample_name: str) -> tuple[str, str, int]:
+    """Parse patient ID and day from AML sample name."""
+    if "-D" in sample_name:
+        parts = sample_name.rsplit("-D", 1)
+        patient = parts[0]
+        try:
+            day = int(parts[1])
+        except ValueError:
+            day = 0
+    else:
+        patient = sample_name
+        day = 0
+    return sample_name, patient, day
+
+
+def _process_aml_raw(
+    raw_dir: Path,
+    max_cells_per_sample: int = 500,
+    seed: int = 42,
+) -> ad.AnnData:
+    """Process raw GSE116256 AML files into an AnnData object.
+
+    Reads per-sample expression (.dem.txt.gz) and annotation (.anno.txt.gz)
+    files, combines them, applies QC, normalisation, and computes embeddings.
+    Cell-type labels come from the original van Galen et al. annotations.
+    """
+    import scanpy as sc
+
+    # Build file mapping: match dem ↔ anno by sample name
+    dem_files: dict[str, Path] = {}
+    anno_files: dict[str, Path] = {}
+    for fp in raw_dir.glob("GSM*_*.dem.txt.gz"):
+        name = _extract_aml_sample_name(fp.name)
+        if name:
+            dem_files[name] = fp
+    for fp in raw_dir.glob("GSM*_*.anno.txt.gz"):
+        name = _extract_aml_sample_name(fp.name)
+        if name:
+            anno_files[name] = fp
+
+    matched = sorted(set(dem_files) & set(anno_files))
+    if not matched:
+        raise ValueError(
+            f"No matched sample pairs found in {raw_dir}. "
+            f"Found {len(dem_files)} expression and {len(anno_files)} annotation files."
+        )
+    logger.info(f"Found {len(matched)} matched AML sample pairs")
+
+    # Pass 1: collect all gene names
+    all_genes: set[str] = set()
+    for sname in matched:
+        with gzip.open(dem_files[sname], "rt") as f:
+            df = pd.read_csv(f, sep="\t", usecols=[0])
+            all_genes.update(df.iloc[:, 0].tolist())
+    all_genes_sorted = sorted(all_genes)
+    gene_to_idx = {g: i for i, g in enumerate(all_genes_sorted)}
+    logger.info(f"Total unique genes across samples: {len(all_genes_sorted)}")
+
+    # Pass 2: load expression + annotations
+    rng = np.random.default_rng(seed)
+    all_X: list[sp.csr_matrix] = []
+    all_obs: list[pd.DataFrame] = []
+    n_genes_total = len(all_genes_sorted)
+
+    for sname in matched:
+        with gzip.open(dem_files[sname], "rt") as f:
+            expr_df = pd.read_csv(f, sep="\t", index_col=0)
+        with gzip.open(anno_files[sname], "rt") as f:
+            anno_df = pd.read_csv(f, sep="\t", index_col=0)
+
+        common_cells = sorted(set(expr_df.columns) & set(anno_df.index))
+        if not common_cells:
+            logger.warning(f"No common cells for {sname}, skipping")
+            continue
+
+        if max_cells_per_sample and len(common_cells) > max_cells_per_sample:
+            common_cells = list(
+                rng.choice(common_cells, max_cells_per_sample, replace=False)
+            )
+
+        expr_df = expr_df[common_cells]
+        anno_df = anno_df.loc[common_cells]
+
+        X_raw = sp.csr_matrix(expr_df.T.values.astype(np.float32))
+        genes = list(expr_df.index)
+
+        # Re-index genes to common set
+        X_re = sp.lil_matrix((X_raw.shape[0], n_genes_total), dtype=np.float32)
+        for j, gene in enumerate(genes):
+            if gene in gene_to_idx:
+                X_re[:, gene_to_idx[gene]] = X_raw[:, j].toarray()
+
+        _, patient, day = _parse_aml_sample_info(sname)
+        unique_cells = [f"{sname}_{c}" for c in common_cells]
+        obs_df = anno_df.copy()
+        obs_df.index = unique_cells
+        obs_df["sample_id"] = sname
+        obs_df["patient_id"] = patient
+        obs_df["day"] = day
+
+        all_X.append(sp.csr_matrix(X_re))
+        all_obs.append(obs_df)
+        del X_raw, X_re
+        gc.collect()
+
+    if not all_X:
+        raise ValueError("No samples could be loaded from raw AML data.")
+
+    X_combined = sp.vstack(all_X)
+    obs_combined = pd.concat(all_obs, axis=0)
+    adata = ad.AnnData(X=X_combined, obs=obs_combined, var=pd.DataFrame(index=all_genes_sorted))
+    del all_X
+    gc.collect()
+
+    # ── QC and normalisation ──────────────────────────────────────────
+    adata.layers["counts"] = adata.X.copy()
+    adata.var["mt"] = adata.var_names.str.startswith("MT-")
+    sc.pp.calculate_qc_metrics(adata, qc_vars=["mt"], inplace=True)
+
+    n_before = adata.n_obs
+    sc.pp.filter_cells(adata, min_genes=200)
+    sc.pp.filter_cells(adata, max_genes=6000)
+    adata = adata[adata.obs["pct_counts_mt"] < 20].copy()
+    sc.pp.filter_genes(adata, min_cells=10)
+    logger.info(f"QC: {n_before:,} → {adata.n_obs:,} cells, {adata.n_vars:,} genes")
+
+    sc.pp.normalize_total(adata, target_sum=1e4)
+    sc.pp.log1p(adata)
+    adata.layers["log1p_norm"] = adata.X.copy()
+
+    # ── Standardised sctrial obs columns ──────────────────────────────
+    obs = adata.obs
+    obs["participant_id"] = obs["patient_id"].astype(str)
+    obs["visit"] = obs["day"].apply(lambda d: "Pre" if d == 0 else "Post")
+    obs["sample_type"] = obs["patient_id"].apply(
+        lambda pid: "AML" if str(pid).startswith("AML") else "Healthy"
+    )
+    if "CellType" in obs.columns:
+        obs["cell_type"] = obs["CellType"]
+    elif "PredictionRefined" in obs.columns:
+        obs["cell_type"] = obs["PredictionRefined"]
+    else:
+        obs["cell_type"] = "Unknown"
+    if "PredictionRefined" in obs.columns:
+        obs["is_malignant"] = obs["PredictionRefined"].apply(
+            lambda x: "malignant" in str(x).lower() if pd.notna(x) else False
+        )
+    else:
+        obs["is_malignant"] = False
+    obs["response"] = obs["sample_type"].map({"AML": "Treatment", "Healthy": "Control"}).fillna("Unknown")
+    adata.obs = obs
+
+    # ── Embeddings (HVG → PCA → neighbours → UMAP) ───────────────────
+    sc.pp.highly_variable_genes(adata, n_top_genes=2000, flavor="seurat", subset=False)
+    sc.tl.pca(adata, n_comps=50, use_highly_variable=True)
+    sc.pp.neighbors(adata, n_neighbors=15, n_pcs=30)
+    sc.tl.umap(adata)
+
+    # Store paired-patient list
+    aml_obs = adata.obs[adata.obs["sample_type"] == "AML"]
+    paired = []
+    for pid in aml_obs["participant_id"].unique():
+        days = set(aml_obs.loc[aml_obs["participant_id"] == pid, "day"].unique())
+        if 0 in days and any(d > 0 for d in days):
+            paired.append(pid)
+    adata.uns["paired_aml_patients"] = paired
+
+    adata.uns["dataset"] = "GSE116256"
+    adata.uns["paper"] = "van Galen et al., Cell 2019"
+    adata.uns["description"] = "AML chemotherapy longitudinal scRNA-seq"
+    return adata
+
+
+def load_aml(
+    data_dir: str = "data/aml",
+    processed_name: str = "gse116256_aml_processed.h5ad",
+    max_cells_per_sample: int = 500,
+    seed: int = 42,
+    allow_download: bool = False,
+    force_reprocess: bool = False,
+) -> ad.AnnData:
+    """Load the van Galen AML chemotherapy dataset (GSE116256).
+
+    This dataset contains pre/post-chemotherapy bone marrow samples from AML
+    patients with cell-type annotations and treatment-response metadata.
+
+    Parameters
+    ----------
+    data_dir : str
+        Directory containing (or to store) the data files.
+        Raw files go in ``<data_dir>/raw/`` and the processed cache in
+        ``<data_dir>/processed/``.
+    processed_name : str
+        Filename for the cached processed h5ad file.
+    max_cells_per_sample : int
+        Maximum cells to keep per sample after subsampling.
+    seed : int
+        Random seed for reproducibility.
+    allow_download : bool
+        If True, download raw data from GEO when not found locally.
+    force_reprocess : bool
+        If True, reprocess even when a cached file exists.
+
+    Returns
+    -------
+    AnnData
+        The processed AnnData object.
+
+    Notes
+    -----
+    The raw data is automatically downloaded from GEO when
+    ``allow_download=True``:
+    https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE116256
+
+    Reference: van Galen et al., Cell 2019.
+
+    Examples
+    --------
+    >>> adata = sctrial.load_aml(allow_download=True)
+    """
+    data_dir_path = Path(data_dir)
+
+    processing_params = {
+        "version": "v1",
+        "max_cells_per_sample": max_cells_per_sample,
+        "seed": seed,
+    }
+
+    # ── Try to load cached processed file ─────────────────────────────
+    candidates = [
+        data_dir_path / "processed" / processed_name,
+        _resolve_file(str(data_dir_path / "processed" / processed_name)),
+    ]
+    for base in [Path.cwd(), *Path.cwd().parents]:
+        candidates.append(base / "data" / "processed" / processed_name)
+        candidates.append(base / "data" / "aml" / "processed" / processed_name)
+        candidates.append(base / "manuscript" / "datasets" / "GSE116256_AML" / "processed" / processed_name)
+
+    if not force_reprocess:
+        for c in candidates:
+            if c.exists():
+                adata = ad.read_h5ad(c)
+                prev = adata.uns.get("processing_params", {})
+                if prev and _params_match(prev, processing_params):
+                    logger.info(f"Loaded AML dataset (GSE116256): {adata.n_obs:,} cells, {adata.n_vars:,} genes")
+                    return adata
+                if prev:
+                    logger.info("Processed file parameters differ; reprocessing.")
+                else:
+                    # No processing_params stored — accept older cached file
+                    logger.info(f"Loaded AML dataset (GSE116256): {adata.n_obs:,} cells, {adata.n_vars:,} genes")
+                    return adata
+
+    # ── Locate or download raw files ──────────────────────────────────
+    try:
+        import scanpy  # noqa: F401
+    except ImportError:
+        raise ImportError(
+            "scanpy is required for AML dataset processing. "
+            "Install with: pip install sctrial[plots]  or  pip install scanpy"
+        ) from None
+
+    # Search for raw directory with dem/anno files
+    raw_dir = data_dir_path / "raw"
+    raw_candidates = [
+        raw_dir,
+    ]
+    for base in [Path.cwd(), *Path.cwd().parents]:
+        raw_candidates.append(base / "manuscript" / "datasets" / "GSE116256_AML" / "raw")
+        raw_candidates.append(base / "data" / "aml" / "raw")
+
+    found_raw = None
+    for rd in raw_candidates:
+        if rd.is_dir() and list(rd.glob("GSM*_*.dem.txt.gz")):
+            found_raw = rd
+            break
+
+    if found_raw is None:
+        if not allow_download:
+            raise FileNotFoundError(
+                f"AML dataset not found. Searched for raw files and "
+                f"'{processed_name}' in several locations including {data_dir_path}. "
+                "Download from GEO: "
+                "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE116256 "
+                "or set allow_download=True to fetch automatically."
+            )
+        # Download tar from GEO and extract
+        raw_dir.mkdir(parents=True, exist_ok=True)
+        tar_url = (
+            "https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE116256"
+            "&format=file"
+        )
+        tar_dest = raw_dir / "GSE116256_RAW.tar"
+        _download_file(tar_url, tar_dest, "GSE116256 supplementary tar")
+        logger.info("Extracting raw files...")
+        with tarfile.open(tar_dest, "r") as tf:
+            tf.extractall(path=raw_dir)
+        # Clean up tar to save disk space
+        tar_dest.unlink(missing_ok=True)
+        found_raw = raw_dir
+
+    # ── Process raw data ──────────────────────────────────────────────
+    logger.info("Processing raw AML data (this may take several minutes)...")
+    adata = _process_aml_raw(found_raw, max_cells_per_sample=max_cells_per_sample, seed=seed)
+    adata.uns["processing_params"] = processing_params
+
+    # Save cache
+    processed_dir = data_dir_path / "processed"
+    processed_dir.mkdir(parents=True, exist_ok=True)
+    out_path = processed_dir / processed_name
+    adata.write_h5ad(out_path)
+    logger.info(f"Saved processed AML file: {out_path}")
+    logger.info(f"Loaded AML dataset (GSE116256): {adata.n_obs:,} cells, {adata.n_vars:,} genes")
+    return adata
+
+
+def _parse_cart_sample_info(filename: str) -> tuple[str | None, str | None, int]:
+    """Parse patient and timepoint from CAR-T filename."""
+    m = re.search(r"GSM\d+_(P\d+)_(.+)_rna\.csv\.gz", filename)
+    if not m:
+        return None, None, -1
+    patient = m.group(1)
+    tp_raw = m.group(2)
+    if "Leukapheresis" in tp_raw:
+        return patient, "Leukapheresis", 0
+    if "4wk" in tp_raw:
+        return patient, "4wk_post", 28
+    if "6mo" in tp_raw:
+        return patient, "6mo_post", 180
+    if "12mo" in tp_raw:
+        return patient, "12mo_post", 365
+    return patient, tp_raw, -1
+
+
+def _process_cart_raw(
+    raw_dir: Path,
+    max_cells_per_sample: int = 500,
+    seed: int = 42,
+) -> ad.AnnData:
+    """Process raw GSE290722 CAR-T files into an AnnData object.
+
+    Reads per-sample expression CSV files, combines them, applies QC,
+    normalisation, computes embeddings, and annotates cell types via
+    Leiden clustering + Wilcoxon marker scoring.
+    """
+    import scanpy as sc
+
+    rna_files = sorted(raw_dir.glob("GSM*_*_rna.csv.gz"))
+    if not rna_files:
+        raise ValueError(f"No RNA expression files found in {raw_dir}")
+
+    samples: list[dict] = []
+    for f in rna_files:
+        patient, timepoint, days = _parse_cart_sample_info(f.name)
+        if patient is None:
+            continue
+        samples.append({
+            "file": f,
+            "patient": patient,
+            "timepoint": timepoint,
+            "days": days,
+            "sample_id": f"{patient}_{timepoint}",
+        })
+
+    if not samples:
+        raise ValueError("No valid CAR-T samples found.")
+
+    logger.info(f"Found {len(samples)} CAR-T RNA expression files")
+
+    # Load first sample to get gene names
+    first_df = pd.read_csv(samples[0]["file"])
+    gene_col = first_df.columns[-1]
+    gene_names = first_df[gene_col].tolist()
+    logger.info(f"Detected {len(gene_names)} genes")
+
+    # Load all samples
+    rng = np.random.default_rng(seed)
+    all_X: list[np.ndarray] = []
+    all_obs: list[pd.DataFrame] = []
+
+    for sample in samples:
+        df = pd.read_csv(sample["file"])
+        gc_col = df.columns[-1]
+        genes = df[gc_col].tolist()
+        expr_df = df.drop(columns=[gc_col])
+        cells = list(expr_df.columns)
+        X = expr_df.values.T.astype(np.float32)  # cells × genes
+
+        # Re-order genes if needed
+        if genes != gene_names:
+            if set(genes) == set(gene_names):
+                g2i = {g: i for i, g in enumerate(genes)}
+                new_order = [g2i[g] for g in gene_names]
+                X = X[:, new_order]
+            else:
+                logger.warning(f"Gene mismatch for {sample['sample_id']}, skipping")
+                continue
+
+        # Subsample
+        if max_cells_per_sample and X.shape[0] > max_cells_per_sample:
+            idx = rng.choice(X.shape[0], max_cells_per_sample, replace=False)
+            X = X[idx]
+            cells = [cells[i] for i in idx]
+
+        obs_df = pd.DataFrame({
+            "cell_id": cells,
+            "sample_id": sample["sample_id"],
+            "patient_id": sample["patient"],
+            "timepoint": sample["timepoint"],
+            "days_post_treatment": sample["days"],
+        }, index=[f"{sample['sample_id']}_{c}" for c in cells])
+
+        all_X.append(X)
+        all_obs.append(obs_df)
+        del df, expr_df
+        gc.collect()
+
+    if not all_X:
+        raise ValueError("No CAR-T samples could be loaded.")
+
+    X_combined = sp.csr_matrix(np.vstack(all_X))
+    obs_combined = pd.concat(all_obs, axis=0)
+    adata = ad.AnnData(X=X_combined, obs=obs_combined, var=pd.DataFrame(index=gene_names))
+    del all_X
+    gc.collect()
+
+    # ── QC and normalisation ──────────────────────────────────────────
+    adata.layers["counts"] = adata.X.copy()
+    adata.var["mt"] = adata.var_names.str.startswith("MT-")
+    sc.pp.calculate_qc_metrics(adata, qc_vars=["mt"], inplace=True)
+
+    n_before = adata.n_obs
+    sc.pp.filter_cells(adata, min_genes=200)
+    sc.pp.filter_cells(adata, max_genes=6000)
+    if "pct_counts_mt" in adata.obs.columns:
+        adata = adata[adata.obs["pct_counts_mt"] < 20].copy()
+    sc.pp.filter_genes(adata, min_cells=10)
+    logger.info(f"QC: {n_before:,} → {adata.n_obs:,} cells, {adata.n_vars:,} genes")
+
+    sc.pp.normalize_total(adata, target_sum=1e4)
+    sc.pp.log1p(adata)
+    adata.layers["log1p_norm"] = adata.X.copy()
+
+    # ── Standardised sctrial obs columns ──────────────────────────────
+    obs = adata.obs
+    obs["participant_id"] = obs["patient_id"].astype(str)
+    obs["visit"] = obs["timepoint"].apply(
+        lambda t: "Pre" if t == "Leukapheresis" else "Post"
+    )
+    obs["is_paired"] = False  # filled below
+    obs["response"] = "CAR-T"
+    adata.obs = obs
+
+    # ── Embeddings + clustering ───────────────────────────────────────
+    sc.pp.highly_variable_genes(adata, n_top_genes=2000, flavor="seurat", subset=False)
+    sc.tl.pca(adata, n_comps=50, use_highly_variable=True)
+    sc.pp.neighbors(adata, n_neighbors=15, n_pcs=30)
+    sc.tl.umap(adata)
+
+    # Clustering — try Leiden, fallback to KMeans
+    try:
+        sc.tl.leiden(adata, resolution=0.8)
+    except Exception:
+        from sklearn.cluster import MiniBatchKMeans
+        X_pca = adata.obsm["X_pca"][:, :20]
+        kmeans = MiniBatchKMeans(n_clusters=15, random_state=seed, batch_size=1000)
+        clusters = kmeans.fit_predict(X_pca)
+        adata.obs["leiden"] = pd.Categorical([str(c) for c in clusters])
+
+    # ── Cell type annotation (marker scoring) ─────────────────────────
+    logger.info("Annotating CAR-T cell types...")
+    adata.obs["cell_type"] = _annotate_immune_celltypes(adata)
+
+    # Mark paired patients
+    patients = adata.obs["participant_id"].unique()
+    paired_patients = []
+    for p in patients:
+        tps = set(adata.obs.loc[adata.obs["participant_id"] == p, "timepoint"].unique())
+        if "Leukapheresis" in tps and len(tps) > 1:
+            paired_patients.append(p)
+    adata.obs["is_paired"] = adata.obs["participant_id"].isin(paired_patients)
+
+    adata.uns["paired_patients"] = paired_patients
+    adata.uns["dataset"] = "GSE290722"
+    adata.uns["trial"] = "ZUMA-1"
+    adata.uns["description"] = "CAR-T therapy longitudinal scRNA-seq"
+    return adata
+
+
+def load_cart(
+    data_dir: str = "data/cart",
+    processed_name: str = "gse290722_cart_processed.h5ad",
+    max_cells_per_sample: int = 500,
+    seed: int = 42,
+    allow_download: bool = False,
+    force_reprocess: bool = False,
+) -> ad.AnnData:
+    """Load the CAR-T cell therapy dataset (GSE290722).
+
+    This dataset contains pre/post-CAR-T infusion samples with cell-type
+    annotations and treatment-response metadata from the ZUMA-1 trial.
+
+    Parameters
+    ----------
+    data_dir : str
+        Directory containing (or to store) the data files.
+        Raw files go in ``<data_dir>/raw/`` and the processed cache in
+        ``<data_dir>/processed/``.
+    processed_name : str
+        Filename for the cached processed h5ad file.
+    max_cells_per_sample : int
+        Maximum cells to keep per sample after subsampling.
+    seed : int
+        Random seed for reproducibility.
+    allow_download : bool
+        If True, download raw data from GEO when not found locally.
+    force_reprocess : bool
+        If True, reprocess even when a cached file exists.
+
+    Returns
+    -------
+    AnnData
+        The processed AnnData object.
+
+    Notes
+    -----
+    The raw data is automatically downloaded from GEO when
+    ``allow_download=True``:
+    https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE290722
+
+    Reference: GSE290722 CAR-T therapy dataset (ZUMA-1 trial).
+
+    Examples
+    --------
+    >>> adata = sctrial.load_cart(allow_download=True)
+    """
+    data_dir_path = Path(data_dir)
+
+    processing_params = {
+        "version": "v1",
+        "max_cells_per_sample": max_cells_per_sample,
+        "seed": seed,
+    }
+
+    # ── Try to load cached processed file ─────────────────────────────
+    candidates = [
+        data_dir_path / "processed" / processed_name,
+        _resolve_file(str(data_dir_path / "processed" / processed_name)),
+    ]
+    for base in [Path.cwd(), *Path.cwd().parents]:
+        candidates.append(base / "data" / "processed" / processed_name)
+        candidates.append(base / "data" / "cart" / "processed" / processed_name)
+        candidates.append(base / "manuscript" / "datasets" / "GSE290722_CAR-T" / "processed" / processed_name)
+
+    if not force_reprocess:
+        for c in candidates:
+            if c.exists():
+                adata = ad.read_h5ad(c)
+                prev = adata.uns.get("processing_params", {})
+                if prev and _params_match(prev, processing_params):
+                    logger.info(f"Loaded CAR-T dataset (GSE290722): {adata.n_obs:,} cells, {adata.n_vars:,} genes")
+                    return adata
+                if prev:
+                    logger.info("Processed file parameters differ; reprocessing.")
+                else:
+                    logger.info(f"Loaded CAR-T dataset (GSE290722): {adata.n_obs:,} cells, {adata.n_vars:,} genes")
+                    return adata
+
+    # ── Locate or download raw files ──────────────────────────────────
+    try:
+        import scanpy  # noqa: F401
+    except ImportError:
+        raise ImportError(
+            "scanpy is required for CAR-T dataset processing. "
+            "Install with: pip install sctrial[plots]  or  pip install scanpy"
+        ) from None
+
+    raw_dir = data_dir_path / "raw"
+    raw_candidates = [raw_dir]
+    for base in [Path.cwd(), *Path.cwd().parents]:
+        raw_candidates.append(base / "manuscript" / "datasets" / "GSE290722_CAR-T" / "raw")
+        raw_candidates.append(base / "data" / "cart" / "raw")
+
+    found_raw = None
+    for rd in raw_candidates:
+        if rd.is_dir() and list(rd.glob("GSM*_*_rna.csv.gz")):
+            found_raw = rd
+            break
+
+    if found_raw is None:
+        if not allow_download:
+            raise FileNotFoundError(
+                f"CAR-T dataset not found. Searched for raw files and "
+                f"'{processed_name}' in several locations including {data_dir_path}. "
+                "Download from GEO: "
+                "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE290722 "
+                "or set allow_download=True to fetch automatically."
+            )
+        raw_dir.mkdir(parents=True, exist_ok=True)
+        tar_url = (
+            "https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE290722"
+            "&format=file"
+        )
+        tar_dest = raw_dir / "GSE290722_RAW.tar"
+        _download_file(tar_url, tar_dest, "GSE290722 supplementary tar")
+        logger.info("Extracting raw files...")
+        with tarfile.open(tar_dest, "r") as tf:
+            tf.extractall(path=raw_dir)
+        tar_dest.unlink(missing_ok=True)
+        found_raw = raw_dir
+
+    # ── Process raw data ──────────────────────────────────────────────
+    logger.info("Processing raw CAR-T data (this may take several minutes)...")
+    adata = _process_cart_raw(found_raw, max_cells_per_sample=max_cells_per_sample, seed=seed)
+    adata.uns["processing_params"] = processing_params
+
+    processed_dir = data_dir_path / "processed"
+    processed_dir.mkdir(parents=True, exist_ok=True)
+    out_path = processed_dir / processed_name
+    adata.write_h5ad(out_path)
+    logger.info(f"Saved processed CAR-T file: {out_path}")
+    logger.info(f"Loaded CAR-T dataset (GSE290722): {adata.n_obs:,} cells, {adata.n_vars:,} genes")
+    return adata
+
+
+def harmonize_response(adata: ad.AnnData, *, force: bool = False) -> ad.AnnData:
+    """Create a ``response_harmonized`` column with consistent labels.
+
+    Maps various responder/non-responder column names and label formats
+    (e.g. "R"/"NR", "Responder"/"Non-responder") to a standard vocabulary:
+    ``"Responder"`` and ``"Non-responder"``.
+
+    Parameters
+    ----------
+    adata : AnnData
+        Must contain one of: ``response``, ``Response``, or
+        ``clinical_response`` in ``.obs``.
+    force : bool
+        If True, recompute even when the column already exists.
+
+    Returns
+    -------
+    AnnData
+        The input AnnData with ``response_harmonized`` added to ``.obs``.
+    """
+    if force and "response_harmonized" in adata.obs.columns:
+        del adata.obs["response_harmonized"]
+
+    if "response_harmonized" in adata.obs.columns:
+        if "participant_id" in adata.obs.columns:
+            n_per = adata.obs.groupby("participant_id")["response_harmonized"].nunique()
+            if (n_per > 1).any():
+                pid_resp = adata.obs.groupby("participant_id")["response_harmonized"].agg(
+                    lambda x: x.mode().iloc[0] if len(x.mode()) > 0 else x.iloc[0]
+                )
+                adata.obs["response_harmonized"] = adata.obs["participant_id"].map(pid_resp)
+        return adata
+
+    mapping = {
+        "responder": "Responder", "Responder": "Responder", "R": "Responder",
+        "non-responder": "Non-responder", "Non-responder": "Non-responder",
+        "NR": "Non-responder", "nonresponder": "Non-responder",
+    }
+    for col in ("response", "Response", "clinical_response"):
+        if col in adata.obs.columns:
+            adata.obs["response_harmonized"] = (
+                adata.obs[col].astype(str).map(lambda x: mapping.get(x, x))
+            )
+            break
+
+    if "response_harmonized" in adata.obs.columns and "participant_id" in adata.obs.columns:
+        pid_resp = adata.obs.groupby("participant_id")["response_harmonized"].agg(
+            lambda x: x.mode().iloc[0] if len(x.mode()) > 0 else x.iloc[0]
+        )
+        adata.obs["response_harmonized"] = adata.obs["participant_id"].map(pid_resp)
+
+    return adata
 
 
 def ensure_fdr(df: pd.DataFrame, p_col: str = "p_time", fdr_col: str = "FDR_time") -> pd.DataFrame:

@@ -12,6 +12,9 @@ from .datasets import (
     categorize_celltype,
     count_paired,
     ensure_fdr,
+    harmonize_response,
+    load_aml,
+    load_cart,
     load_sade_feldman,
     load_stephenson_data,
     load_vaccine_gse171964,
@@ -36,7 +39,7 @@ from .plotting import (
     signed_logp,
 )
 from .preprocessing import add_log1p_cpm_layer
-from .scoring import score_gene_sets, score_gene_sets_aucell
+from .scoring import ScoreMethod, score_gene_sets, score_gene_sets_aucell
 from .stats._extract import extract_gene_vector
 from .stats.abundance import abundance_did
 from .stats.bayes import did_table_bayes, prior_predictive_check
@@ -108,10 +111,11 @@ __all__ = [
     "TrialDesign",
     "DiDAnalyzer",
     "DiDConfig",
-    # Preprocessing
+    # Preprocessing & Scoring
     "add_log1p_cpm_layer",
     "score_gene_sets",
     "score_gene_sets_aucell",
+    "ScoreMethod",
     # Data tools
     "subset_primary",
     "subset_cells",
@@ -121,6 +125,9 @@ __all__ = [
     "load_sade_feldman",
     "load_stephenson_data",
     "load_vaccine_gse171964",
+    "load_aml",
+    "load_cart",
+    "harmonize_response",
     "count_paired",
     "verify_paired_participants",
     "categorize_celltype",

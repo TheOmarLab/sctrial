@@ -30,7 +30,8 @@ from .._shared import (
     get_stephenson,
     get_vaccine,
     harmonize_response,
-    load_clinical_trial_dataset,
+    get_aml,
+    get_cart,
     score_clinical_signatures,
     score_signatures,
     sig_display,
@@ -287,9 +288,10 @@ def table4_clinical_results() -> pd.DataFrame:
 
     all_results = []
 
+    _loaders = {"aml": get_aml, "cart": get_cart}
     for name in ("aml", "cart"):
         try:
-            adata = load_clinical_trial_dataset(name)
+            adata = _loaders[name]()
             adata, sig_cols = score_clinical_signatures(adata)
 
             pid_col = (

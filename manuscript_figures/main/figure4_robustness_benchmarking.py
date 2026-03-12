@@ -2,21 +2,23 @@
 Figure 4 — Statistical Robustness & Method Benchmarking
 ========================================================
 
-Nine-panel figure combining bootstrap validation, leave-one-out
-sensitivity, runtime scaling, power analysis, cell-vs-participant
-method comparison, and cross-dataset effect sizes.
+Eight-panel figure combining bootstrap validation, leave-one-out
+sensitivity, power analysis, cell-vs-participant method comparison,
+and cross-dataset effect sizes.
 
 Panels
 ------
 A   Bootstrap distribution histograms for top signatures.
 B   Leave-one-out participant sensitivity analysis.
-C   Runtime scaling across datasets (log–log).
-D   Empirical power curves (participant subsampling).
-D2  Power heatmap (datasets × participant-count bins).
-E   Cell vs participant effect-size scatter (Pearson r).
-F   Cell vs participant −log₁₀(p) comparison.
-G   Standard-error comparison (cell vs participant level).
-H   Cross-dataset signed Cohen's d forest (pre-specified endpoints).
+C   Empirical power curves (participant subsampling).
+C2  Power heatmap (datasets × participant-count bins).
+D   Cell vs participant effect-size scatter (Pearson r).
+E   Cell vs participant −log₁₀(p) comparison.
+F   Standard-error comparison (cell vs participant level).
+G   Cross-dataset signed Cohen's d forest (pre-specified endpoints).
+
+Runtime scaling (Cleveland dot plot) moved to Supplementary Figure 3
+panel J.
 """
 
 from __future__ import annotations
@@ -48,7 +50,8 @@ from .._shared import (
     get_stephenson,
     get_vaccine,
     harmonize_response,
-    load_clinical_trial_dataset,
+    get_aml,
+    get_cart,
     save_panel,
     score_signatures,
     sig_display,
@@ -267,7 +270,7 @@ def _load_all_datasets() -> list[DatasetInfo]:
         print(f"    Vaccine: FAILED to load ({exc})")
 
     try:
-        aml = load_clinical_trial_dataset("aml")
+        aml = get_aml()
         aml, aml_sigs = score_signatures(aml, layer="counts")
         aml.obs["arm_dummy"] = "Treatment"
         pid_col = ("participant_id" if "participant_id" in aml.obs.columns
@@ -286,7 +289,7 @@ def _load_all_datasets() -> list[DatasetInfo]:
         print(f"    AML: FAILED to load ({exc})")
 
     try:
-        cart = load_clinical_trial_dataset("cart")
+        cart = get_cart()
         cart, cart_sigs = score_signatures(cart, layer="counts")
         cart.obs["arm_dummy"] = "CAR-T"
         pid_col = ("participant_id" if "participant_id" in cart.obs.columns
@@ -856,13 +859,25 @@ def _panel_b(ax, data: dict) -> None:
     ax.set_title("Leave-One-Out Sensitivity", fontsize=10)
 
     from matplotlib.lines import Line2D
-    handles = [
+    # Signature-color legend entries
+    handles = []
+    for idx, feat in enumerate(top_sigs):
+        color = palette[idx % len(palette)]
+        handles.append(
+            Line2D([0], [0], marker="D", color="w", markerfacecolor=color,
+                   markeredgecolor="black", markersize=6,
+                   label=sig_display(feat)),
+        )
+    # Marker-type legend entries
+    handles.append(
         Line2D([0], [0], marker="o", color="w", markerfacecolor=COLORS["gray"],
                markersize=5, label="LOO estimate"),
+    )
+    handles.append(
         Line2D([0], [0], marker="D", color="w", markerfacecolor=COLORS["gray"],
-               markeredgecolor="black", markersize=7, label="Full sample"),
-    ]
-    ax.legend(handles=handles, fontsize=7, loc="lower right",
+               markeredgecolor="black", markersize=6, label="Full sample"),
+    )
+    ax.legend(handles=handles, fontsize=6.5, loc="lower right",
               frameon=True, framealpha=0.9)
     despine(ax)
 
@@ -994,19 +1009,94 @@ def _scaling_scatter(
 
 
 def _panel_c(ax, data: dict) -> None:
-    """Panel C: Runtime scaling — log-log scatter with replicate IQR."""
+    """Panel C: Runtime scaling — Cleveland dot plot (lollipop)."""
     scale_data = data.get("scale_data")
     if scale_data is None:
         ax.text(0.5, 0.5, "Runtime data unavailable",
                 ha="center", va="center", transform=ax.transAxes, fontsize=10)
         despine(ax)
         return
-    _scaling_scatter(
-        ax, scale_data["timing_df"],
-        y_col="time_s",
-        y_label="Wall time (s, median)",
-        title="Runtime scaling",
-    )
+
+    df = scale_data["timing_df"]
+    dtype_colors = {
+        "two_arm_did": COLORS["control"],
+        "paired": COLORS["treated"],
+        "cross_sectional": COLORS["highlight"],
+    }
+
+    def _fmt_cells(n: float) -> str:
+        if n >= 1_000_000:
+            return f"{n / 1_000_000:.1f}M"
+        return f"{n / 1_000:.0f}K"
+
+    # Aggregate replicates
+    has_replicates = "replicate" in df.columns and df["replicate"].nunique() > 1
+    if has_replicates:
+        agg = df.groupby("dataset", sort=False).agg(
+            n_cells=("n_cells", "first"),
+            n_participants=("n_participants", "first"),
+            design_type=("design_type", "first"),
+            time_med=("time_s", "median"),
+            time_q25=("time_s", lambda x: x.quantile(0.25)),
+            time_q75=("time_s", lambda x: x.quantile(0.75)),
+        ).reset_index()
+    else:
+        agg = df.copy()
+        agg["time_med"] = agg["time_s"]
+        agg["time_q25"] = agg["time_s"]
+        agg["time_q75"] = agg["time_s"]
+
+    agg = agg.sort_values("time_med", ascending=True).reset_index(drop=True)
+
+    y_pos = np.arange(len(agg))
+    for i, row in agg.iterrows():
+        c = dtype_colors.get(row.get("design_type", "paired"), COLORS["treated"])
+        t = float(row["time_med"])
+        # Lollipop stem
+        ax.hlines(i, 0, t, colors=c, lw=1.5, alpha=0.6, zorder=1)
+        # Dot
+        ax.scatter(t, i, s=100, color=c, edgecolors="white", linewidths=1.0,
+                   zorder=3)
+        # IQR whisker if replicates
+        if has_replicates:
+            q25, q75 = float(row["time_q25"]), float(row["time_q75"])
+            ax.plot([q25, q75], [i, i], color=c, lw=3, alpha=0.3,
+                    solid_capstyle="round", zorder=2)
+
+    # Y-axis labels: dataset name + cell count
+    labels = []
+    for _, row in agg.iterrows():
+        tag = _DATASET_TAGS.get(row["dataset"], row["dataset"][:8])
+        labels.append(f"{tag} ({_fmt_cells(int(row['n_cells']))})")
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(labels, fontsize=9)
+
+    ax.set_xlabel("Wall time (seconds)", fontsize=10)
+    ax.set_title("Runtime Scaling", fontsize=11)
+    ax.set_xlim(left=0)
+
+    # Design-type legend
+    from matplotlib.lines import Line2D
+    dtype_labels_map = {
+        "two_arm_did": "Two-arm DiD",
+        "paired": "Paired pre/post",
+        "cross_sectional": "Cross-sectional",
+    }
+    seen = set()
+    leg_handles = []
+    for _, row in agg.iterrows():
+        dt = row.get("design_type", "paired")
+        if dt not in seen:
+            seen.add(dt)
+            leg_handles.append(
+                Line2D([0], [0], marker="o", color="w",
+                       markerfacecolor=dtype_colors.get(dt, COLORS["treated"]),
+                       markersize=8, label=dtype_labels_map.get(dt, dt)),
+            )
+    if leg_handles:
+        ax.legend(handles=leg_handles, fontsize=7, loc="lower right",
+                  frameon=True, framealpha=0.9)
+    despine(ax)
 
 
 # ======================================================================
@@ -1545,21 +1635,22 @@ def generate() -> None:
     Panel mapping:
       A  Bootstrap vs analytical SE
       B  Leave-one-out sensitivity
-      C  Runtime scaling (log-log)
-      D  Power curves (small-multiples)
-      D2 Power heatmap (datasets × participant bins)
-      E  Cell vs participant effect-size scatter
-      F  Cell vs participant p-value comparison
-      G  Standard-error comparison
-      H  Cross-dataset Cohen's d forest
+      C  Power curves (small-multiples)
+      C2 Power heatmap (datasets × participant bins)
+      D  Cell vs participant β scatter
+      E  Cell vs participant p-value bars
+      F  Cell vs participant SE bars
+      G  Cross-dataset Cohen's d forest
+
+    Runtime scaling moved to Supplementary Figure 3 panel J.
     """
     apply_style()
     print("Figure 4: Robustness & Benchmarking")
 
-    # Sade-Feldman data (panels A, B, E-G)
+    # Sade-Feldman data (panels A, B, D, E, F)
     data = _prepare_sf_data()
 
-    # Multi-dataset scalability / power / effect (panels C, D, H)
+    # Multi-dataset scalability / power / effect (panels C, G)
     try:
         data["scale_data"] = _prepare_scalability_data()
     except Exception as exc:
@@ -1570,10 +1661,6 @@ def generate() -> None:
     panel_funcs = [
         ("panel_A_bootstrap_validation", _panel_a, (6.5, 5)),
         ("panel_B_loo_sensitivity", _panel_b, (6.5, 5)),
-        ("panel_C_runtime_scaling", _panel_c, (8, 5.5)),
-        ("panel_E_effect_correlation", _panel_e, (6.5, 5)),
-        ("panel_F_pvalue_comparison", _panel_f, (6.5, 5)),
-        ("panel_G_se_comparison", _panel_g, (6.5, 5)),
     ]
     for panel_name, func, size in panel_funcs:
         fig, ax = plt.subplots(figsize=size)
@@ -1581,21 +1668,33 @@ def generate() -> None:
         fig.tight_layout()
         save_panel(fig, panel_name, FIGURE_NAME, MAIN_OUTPUT)
 
-    # Panel D (power curves — creates its own figure)
+    # Panel C (power curves — creates its own figure)
     cfig = _panel_d_power_curves(data)
     if cfig is not None:
-        save_panel(cfig, "panel_D_power_curves", FIGURE_NAME, MAIN_OUTPUT)
+        save_panel(cfig, "panel_C_power_curves", FIGURE_NAME, MAIN_OUTPUT)
 
-    # Panel D2 (power heatmap — creates its own figure)
+    # Panel C2 (power heatmap — creates its own figure)
     hfig = _panel_d2_power_heatmap(data)
     if hfig is not None:
-        save_panel(hfig, "panel_D2_power_heatmap", FIGURE_NAME, MAIN_OUTPUT)
+        save_panel(hfig, "panel_C2_power_heatmap", FIGURE_NAME, MAIN_OUTPUT)
 
-    # Panel H (cross-dataset effect sizes)
+    # Panels D/E/F (cell vs participant comparisons)
+    def_panels = [
+        ("panel_D_effect_correlation", _panel_e, (6.5, 5)),
+        ("panel_E_pvalue_comparison", _panel_f, (6.5, 5)),
+        ("panel_F_se_comparison", _panel_g, (6.5, 5)),
+    ]
+    for panel_name, func, size in def_panels:
+        fig, ax = plt.subplots(figsize=size)
+        func(ax, data)
+        fig.tight_layout()
+        save_panel(fig, panel_name, FIGURE_NAME, MAIN_OUTPUT)
+
+    # Panel G (cross-dataset effect sizes)
     fig, ax = plt.subplots(figsize=(10, 7))
     _panel_h(ax, data)
     fig.tight_layout()
-    save_panel(fig, "panel_H_cross_dataset_effects", FIGURE_NAME, MAIN_OUTPUT)
+    save_panel(fig, "panel_G_cross_dataset_effects", FIGURE_NAME, MAIN_OUTPUT)
 
     # Cleanup
     adata = data.get("adata")
