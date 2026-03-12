@@ -43,12 +43,12 @@ from .._shared import (
     apply_style,
     clear_cache,
     despine,
+    get_aml,
+    get_cart,
     get_sade_feldman,
     get_stephenson,
     get_vaccine,
     harmonize_response,
-    get_aml,
-    get_cart,
     save_panel,
 )
 
@@ -1317,6 +1317,8 @@ def generate():
     try:
         from ..main.figure4_robustness_benchmarking import (
             _panel_c as _fig4_panel_c,
+        )
+        from ..main.figure4_robustness_benchmarking import (
             _prepare_scalability_data,
         )
         scale_data = _prepare_scalability_data()
