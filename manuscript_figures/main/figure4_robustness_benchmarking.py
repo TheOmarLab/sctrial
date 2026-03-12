@@ -2,21 +2,23 @@
 Figure 4 — Statistical Robustness & Method Benchmarking
 ========================================================
 
-Nine-panel figure combining bootstrap validation, leave-one-out
-sensitivity, runtime scaling, power analysis, cell-vs-participant
-method comparison, and cross-dataset effect sizes.
+Eight-panel figure combining bootstrap validation, leave-one-out
+sensitivity, power analysis, cell-vs-participant method comparison,
+and cross-dataset effect sizes.
 
 Panels
 ------
 A   Bootstrap distribution histograms for top signatures.
 B   Leave-one-out participant sensitivity analysis.
-C   Runtime scaling across datasets (log–log).
-D   Empirical power curves (participant subsampling).
-D2  Power heatmap (datasets × participant-count bins).
-E   Cell vs participant effect-size scatter (Pearson r).
-F   Cell vs participant −log₁₀(p) comparison.
-G   Standard-error comparison (cell vs participant level).
-H   Cross-dataset signed Cohen's d forest (pre-specified endpoints).
+C   Empirical power curves (participant subsampling).
+C2  Power heatmap (datasets × participant-count bins).
+D   Cell vs participant effect-size scatter (Pearson r).
+E   Cell vs participant −log₁₀(p) comparison.
+F   Standard-error comparison (cell vs participant level).
+G   Cross-dataset signed Cohen's d forest (pre-specified endpoints).
+
+Runtime scaling (Cleveland dot plot) moved to Supplementary Figure 3
+panel J.
 """
 
 from __future__ import annotations
@@ -1633,21 +1635,22 @@ def generate() -> None:
     Panel mapping:
       A  Bootstrap vs analytical SE
       B  Leave-one-out sensitivity
-      C  Runtime scaling (Cleveland dot plot)
-      D  Power curves (small-multiples)
-      D2 Power heatmap (datasets × participant bins)
-      E  Cell vs participant β scatter
-      F  Cell vs participant p-value bars
-      G  Cell vs participant SE bars
-      H  Cross-dataset Cohen's d forest
+      C  Power curves (small-multiples)
+      C2 Power heatmap (datasets × participant bins)
+      D  Cell vs participant β scatter
+      E  Cell vs participant p-value bars
+      F  Cell vs participant SE bars
+      G  Cross-dataset Cohen's d forest
+
+    Runtime scaling moved to Supplementary Figure 3 panel J.
     """
     apply_style()
     print("Figure 4: Robustness & Benchmarking")
 
-    # Sade-Feldman data (panels A, B, E, F, G)
+    # Sade-Feldman data (panels A, B, D, E, F)
     data = _prepare_sf_data()
 
-    # Multi-dataset scalability / power / effect (panels C, D, H)
+    # Multi-dataset scalability / power / effect (panels C, G)
     try:
         data["scale_data"] = _prepare_scalability_data()
     except Exception as exc:
@@ -1658,7 +1661,6 @@ def generate() -> None:
     panel_funcs = [
         ("panel_A_bootstrap_validation", _panel_a, (6.5, 5)),
         ("panel_B_loo_sensitivity", _panel_b, (6.5, 5)),
-        ("panel_C_runtime_scaling", _panel_c, (8, 5.5)),
     ]
     for panel_name, func, size in panel_funcs:
         fig, ax = plt.subplots(figsize=size)
@@ -1666,33 +1668,33 @@ def generate() -> None:
         fig.tight_layout()
         save_panel(fig, panel_name, FIGURE_NAME, MAIN_OUTPUT)
 
-    # Panel D (power curves — creates its own figure)
+    # Panel C (power curves — creates its own figure)
     cfig = _panel_d_power_curves(data)
     if cfig is not None:
-        save_panel(cfig, "panel_D_power_curves", FIGURE_NAME, MAIN_OUTPUT)
+        save_panel(cfig, "panel_C_power_curves", FIGURE_NAME, MAIN_OUTPUT)
 
-    # Panel D2 (power heatmap — creates its own figure)
+    # Panel C2 (power heatmap — creates its own figure)
     hfig = _panel_d2_power_heatmap(data)
     if hfig is not None:
-        save_panel(hfig, "panel_D2_power_heatmap", FIGURE_NAME, MAIN_OUTPUT)
+        save_panel(hfig, "panel_C2_power_heatmap", FIGURE_NAME, MAIN_OUTPUT)
 
-    # Panels E/F/G (cell vs participant comparisons)
-    efg_panels = [
-        ("panel_E_effect_correlation", _panel_e, (6.5, 5)),
-        ("panel_F_pvalue_comparison", _panel_f, (6.5, 5)),
-        ("panel_G_se_comparison", _panel_g, (6.5, 5)),
+    # Panels D/E/F (cell vs participant comparisons)
+    def_panels = [
+        ("panel_D_effect_correlation", _panel_e, (6.5, 5)),
+        ("panel_E_pvalue_comparison", _panel_f, (6.5, 5)),
+        ("panel_F_se_comparison", _panel_g, (6.5, 5)),
     ]
-    for panel_name, func, size in efg_panels:
+    for panel_name, func, size in def_panels:
         fig, ax = plt.subplots(figsize=size)
         func(ax, data)
         fig.tight_layout()
         save_panel(fig, panel_name, FIGURE_NAME, MAIN_OUTPUT)
 
-    # Panel H (cross-dataset effect sizes)
+    # Panel G (cross-dataset effect sizes)
     fig, ax = plt.subplots(figsize=(10, 7))
     _panel_h(ax, data)
     fig.tight_layout()
-    save_panel(fig, "panel_H_cross_dataset_effects", FIGURE_NAME, MAIN_OUTPUT)
+    save_panel(fig, "panel_G_cross_dataset_effects", FIGURE_NAME, MAIN_OUTPUT)
 
     # Cleanup
     adata = data.get("adata")
