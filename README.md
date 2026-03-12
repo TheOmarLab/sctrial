@@ -61,60 +61,56 @@ cd sctrial
 pip install -e ".[dev]"
 ```
 
-## 30-Second Demo
+## Quick Start
 
-Try sctrial on a real dataset with zero setup:
+```bash
+pip install "sctrial[plots]"   # includes dataset loaders and visualization
+```
 
 ```python
 import sctrial as st
 
-# Load a real immunotherapy trial dataset (auto-downloads on first use)
+# 1. Load a real immunotherapy trial dataset (auto-downloads on first use)
 adata = st.load_sade_feldman()
-adata = st.harmonize_response(adata)  # creates 'response_harmonized' column
+adata = st.harmonize_response(adata)  # majority-vote response labels
 
-# One-line Difference-in-Differences analysis
-results = st.quick_did(
-    adata,
-    module_scores={"Cytotoxicity": ["GZMA", "GZMB", "PRF1", "GNLY", "NKG7"]},
-    visits=("Pre", "Post"),
+# 2. Define trial design
+design = st.TrialDesign(
+    participant_col="participant_id",
+    visit_col="visit",
     arm_col="response_harmonized",
     arm_treated="Responder",
     arm_control="Non-responder",
     celltype_col="cell_type",
 )
 
-print(results[["feature", "celltype", "beta_DiD", "pval_DiD", "qval_DiD"]])
+# 3. Score gene sets (dataset ships pre-normalized with log1p_tpm layer)
+gene_sets = {
+    "Cytotoxicity": ["GZMA", "GZMB", "PRF1", "GNLY", "NKG7"],
+    "Exhaustion":   ["PDCD1", "CTLA4", "HAVCR2", "LAG3", "TIGIT"],
+}
+adata = st.score_gene_sets(adata, gene_sets, layer="log1p_tpm", method="zmean", prefix="ms_")
+
+# 4. Run Difference-in-Differences on CD8 T cells
+features = [c for c in adata.obs.columns if c.startswith("ms_")]
+results = st.did_table(adata, features, design, visits=("Pre", "Post"), celltype="CD8 T cell")
+print(results[["feature", "beta_DiD", "se_DiD", "p_DiD", "FDR_DiD"]])
 ```
 
-> Requires `pip install "sctrial[plots]"` for built-in dataset loaders.
+<!-- TODO: add 30-second demo GIF here showing the above code executed end-to-end -->
 
-## Quick Start (Custom Data)
+Or use the one-liner convenience wrapper for a quick multi-cell-type scan:
 
 ```python
-import anndata as ad
-import sctrial as st
-
-# Load your AnnData (must have counts layer + obs columns for design)
-adata = ad.read_h5ad("my_trial.h5ad")
-
-# Define trial design
-design = st.TrialDesign(
-    participant_col="participant_id",
-    visit_col="visit",
-    arm_col="arm",
-    arm_treated="Treated",
-    arm_control="Control",
-    celltype_col="celltype",
+results = st.quick_did(
+    adata,
+    module_scores=gene_sets,
+    visits=("Pre", "Post"),
+    arm_col="response_harmonized",
+    arm_treated="Responder",
+    arm_control="Non-responder",
+    celltype_col="cell_type",
 )
-
-# Preprocess and score gene sets
-adata = st.add_log1p_cpm_layer(adata, counts_layer="counts")
-gene_sets = {"Cytotoxicity": ["GZMA", "GZMB", "PRF1", "GNLY", "NKG7"]}
-adata = st.score_gene_sets(adata, gene_sets, layer="log1p_cpm", method="zmean", prefix="ms_")
-
-# Run Difference-in-Differences analysis
-features = [c for c in adata.obs.columns if c.startswith("ms_")]
-results = st.did_table(adata, features, design, visits=("Baseline", "Week12"))
 ```
 
 ## Supported Study Designs & Datasets
