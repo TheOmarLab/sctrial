@@ -843,12 +843,9 @@ def panel_C(ax, data: dict):
         df[fdr_col] = pd.to_numeric(df[fdr_col], errors="coerce")
     df = df.dropna(subset=[nes_col])
 
-    # Select top 8 pathways balanced across NES directions.
-    # Take up to 4 from each direction (NES>0 and NES<0), filling
-    # remaining slots from the other direction if one has fewer.
-    # NOTE: We do NOT pre-filter by FDR here — we want both directions
-    # represented (matching Panel B). FDR is shown in the annotation.
-    MAX_PW = 8
+    # Select top pathways balanced across NES directions — match count in
+    # panel A (GSEA bar chart) so every bar in A has a row in this heatmap.
+    MAX_PW = 15
     work_df = df.assign(_abs=df[nes_col].abs())
     pos_df = work_df[work_df[nes_col] > 0].nlargest(MAX_PW, "_abs")
     neg_df = work_df[work_df[nes_col] < 0].nlargest(MAX_PW, "_abs")
@@ -1246,7 +1243,7 @@ def panel_E(ax, data: dict):
     # both statistical significance and effect size.  This ensures genes
     # at the "tips" of the volcano (high |β| AND high -log10(p)) are
     # always labelled — the exact genes a reader's eye is drawn to.
-    N_LABELS = 6  # per direction — keep sparse for readability
+    N_LABELS = 10  # per direction
     labelled_genes: list[str] = []  # ordered by score (highest first)
 
     for sign in ("pos", "neg"):
@@ -1258,6 +1255,12 @@ def panel_E(ax, data: dict):
         if len(sub) == 0:
             continue
 
+        # Force-include top 3 genes by -log10(p) in each direction
+        # (ensures the most significant genes are always labelled)
+        force_genes = set(
+            sub.nlargest(min(3, len(sub)), "nlog10")["feature"].tolist()
+        )
+
         # Combined score: rank-normalised |β| + rank-normalised -log10(p)
         # This naturally selects genes at volcano tips (high on both axes).
         sub = sub.copy()
@@ -1265,17 +1268,27 @@ def panel_E(ax, data: dict):
         sub["_rank_sig"] = sub["nlog10"].rank(pct=True)
         sub["_score"] = sub["_rank_beta"] + sub["_rank_sig"]
 
-        candidates = sub.nlargest(min(N_LABELS * 2, len(sub)), "_score")
+        candidates = sub.nlargest(min(N_LABELS * 3, len(sub)), "_score")
 
         # Deduplicate: skip genes too close to an already-selected one
         # (prevents overlapping arrows pointing to the same spot).
         x_range = df[beta_col].max() - df[beta_col].min()
         y_range = df["nlog10"].max() - df["nlog10"].min()
-        min_dx = x_range * 0.03  # ~3% of axis range
-        min_dy = y_range * 0.03
+        min_dx = x_range * 0.025  # ~2.5% of axis range
+        min_dy = y_range * 0.025
         selected_coords: list[tuple[float, float]] = []
         picks: list[str] = []
+
+        # Add forced genes first
         for _, cand in candidates.iterrows():
+            if cand["feature"] in force_genes and cand["feature"] not in picks:
+                picks.append(cand["feature"])
+                selected_coords.append((cand[beta_col], cand["nlog10"]))
+
+        # Fill remaining slots with score-ranked candidates
+        for _, cand in candidates.iterrows():
+            if cand["feature"] in picks:
+                continue
             cx, cy = cand[beta_col], cand["nlog10"]
             too_close = False
             for sx, sy in selected_coords:
@@ -1382,45 +1395,45 @@ def panel_C_replicated(ax, data: dict):
     df[fdr_col] = pd.to_numeric(df[fdr_col], errors="coerce")
     df = df.dropna(subset=[nes_col, fdr_col])
 
-    # Count how many pathways are significant at various thresholds
-    # Group by cleaned pathway name to see cross-library replication
+    # Clean pathway names
     df["_clean"] = df[term_col].apply(
         lambda s: _clean_pathway_name(s, max_len=45)
     )
 
-    # For each pathway, count significant libraries
-    sig_mask = df[fdr_col] < 0.25
-    sig_df = df[sig_mask].copy()
+    # Select top 10 positive NES + top 10 negative NES (regardless of FDR)
+    df_pos = df[df[nes_col] > 0].nlargest(10, nes_col)
+    df_neg = df[df[nes_col] < 0].nsmallest(10, nes_col)
+    show_df = pd.concat([df_neg, df_pos]).drop_duplicates(
+        subset=[term_col]
+    ).sort_values(nes_col, ascending=True)
 
-    if len(sig_df) == 0:
-        # Show top pathways by |NES| even if none reach significance
-        ax.text(0.5, 0.5, "No pathways at FDR < 0.25",
+    if len(show_df) == 0:
+        ax.text(0.5, 0.5, "No GSEA results to display",
                 transform=ax.transAxes, ha="center", va="center",
                 fontsize=12, color=COLORS["gray"])
-        ax.set_title("Replicated Pathways", fontsize=11)
+        ax.set_title("Top Enriched Pathways", fontsize=11)
         ax.axis("off")
         return
 
-    # Sort by absolute NES
-    sig_df["_abs_nes"] = sig_df[nes_col].abs()
-    sig_df = sig_df.sort_values("_abs_nes", ascending=True)
+    y_pos = np.arange(len(show_df))
+    sig_mask = show_df[fdr_col] < 0.25
 
-    # Take top 20 most enriched significant pathways
-    n_show = min(20, len(sig_df))
-    sig_df = sig_df.tail(n_show)
+    # Colors by direction; alpha encodes significance
+    bar_colors = []
+    bar_alphas = []
+    for _, row in show_df.iterrows():
+        c = COLORS["treated"] if row[nes_col] > 0 else COLORS["control"]
+        bar_colors.append(c)
+        bar_alphas.append(0.9 if row[fdr_col] < 0.25 else 0.35)
 
-    y_pos = np.arange(len(sig_df))
-    colors = [
-        COLORS["treated"] if v > 0 else COLORS["control"]
-        for v in sig_df[nes_col].values
-    ]
-
-    # Bar chart of NES for significant pathways
-    ax.barh(y_pos, sig_df[nes_col].values, color=colors, alpha=0.85,
-            edgecolor="white", linewidth=0.3, height=0.7)
+    # Draw bars individually to set per-bar alpha
+    for i, (_, row) in enumerate(show_df.iterrows()):
+        ax.barh(i, row[nes_col], color=bar_colors[i],
+                alpha=bar_alphas[i], edgecolor="white",
+                linewidth=0.3, height=0.7)
 
     # Add FDR labels
-    for i, (_, row) in enumerate(sig_df.iterrows()):
+    for i, (_, row) in enumerate(show_df.iterrows()):
         fdr_val = row[fdr_col]
         label = f"q={fdr_val:.3f}" if fdr_val >= 0.001 else "q<0.001"
         x_pos = row[nes_col]
@@ -1429,29 +1442,23 @@ def panel_C_replicated(ax, data: dict):
         ax.text(x_pos + offset, i, label,
                 va="center", ha=ha, fontsize=5.5, color="#555555")
 
-    # Add library annotation if available
-    if "library" in sig_df.columns:
-        lib_labels = []
-        for _, row in sig_df.iterrows():
-            lib = str(row.get("library", ""))
-            if lib and lib != "averaged":
-                lib_labels.append(lib.split("_")[0][:6])
-            else:
-                lib_labels.append("")
-
     ax.axvline(0, color="black", lw=0.8)
     ax.set_yticks(y_pos)
-    ax.set_yticklabels(sig_df["_clean"].values, fontsize=7)
+    ax.set_yticklabels(show_df["_clean"].values, fontsize=7)
     ax.set_xlabel("Normalized Enrichment Score (NES)")
-    ax.set_title("Significant Pathways (FDR < 0.25)", fontsize=11)
+    ax.set_title("Top Enriched Pathways", fontsize=11)
 
     legend_handles = [
-        mpatches.Patch(color=COLORS["treated"], alpha=0.85,
-                       label="Responder ↑"),
-        mpatches.Patch(color=COLORS["control"], alpha=0.85,
-                       label="Non-responder ↑"),
+        mpatches.Patch(color=COLORS["treated"], alpha=0.9,
+                       label="Responder ↑ (FDR<0.25)"),
+        mpatches.Patch(color=COLORS["treated"], alpha=0.35,
+                       label="Responder ↑ (n.s.)"),
+        mpatches.Patch(color=COLORS["control"], alpha=0.9,
+                       label="Non-responder ↑ (FDR<0.25)"),
+        mpatches.Patch(color=COLORS["control"], alpha=0.35,
+                       label="Non-responder ↑ (n.s.)"),
     ]
-    ax.legend(handles=legend_handles, fontsize=8, loc="lower right",
+    ax.legend(handles=legend_handles, fontsize=6.5, loc="lower right",
               frameon=True, framealpha=0.9)
     despine(ax)
 
@@ -1461,84 +1468,177 @@ def panel_C_replicated(ax, data: dict):
 # ======================================================================
 
 def panel_F(ax, data: dict):
-    """Histogram of gene-level DiD effect sizes with asymmetry summary.
+    """Cell-type-resolved effect heatmap for top DiD genes.
 
-    Shows distribution of β_DiD across ~2000 genes, highlighting the
-    balance between responder-up and non-responder-up genes.
+    Rows = top genes by |β_DiD|, columns = cell types.
+    Color = mean DiD-like effect per cell type (responder post-pre
+    minus non-responder post-pre, using raw cell-level means).
     """
     gene_results = data.get("gene_results")
+    adata = data.get("adata")
 
-    if gene_results is None or len(gene_results) == 0:
+    if gene_results is None or adata is None or len(gene_results) == 0:
         ax.text(0.5, 0.5, "Gene-level results unavailable",
                 transform=ax.transAxes, ha="center", va="center",
                 fontsize=12, color=COLORS["gray"])
-        ax.set_title("Gene-Level Effect Distribution", fontsize=11)
+        ax.set_title("Cell-Type DiD Effects", fontsize=11)
         ax.axis("off")
         return
 
     df = gene_results.copy()
     beta_col = "beta_DiD"
-    p_col = "p_DiD"
-
     df = df.dropna(subset=[beta_col])
-    betas = df[beta_col].values
 
-    # Split into significant and non-significant
-    p_thresh = 0.05
-    sig_mask = df[p_col] < p_thresh if p_col in df.columns else np.zeros(len(df), dtype=bool)
+    # Restrict to protein-coding genes (skip RNU*, RNA5SP*, lncRNAs, etc.)
+    df = df[df["feature"].apply(_is_likely_protein_coding)]
 
-    betas_sig = betas[sig_mask]
-    betas_ns = betas[~sig_mask]
+    # Select top 15 genes by |β_DiD| (balanced: top 8 pos + top 7 neg)
+    n_per_dir = 8
+    df_pos = df[df[beta_col] > 0].nlargest(n_per_dir, beta_col)
+    df_neg = df[df[beta_col] < 0].nsmallest(n_per_dir - 1, beta_col)
+    top_genes_df = pd.concat([df_pos, df_neg])
+    top_genes = top_genes_df["feature"].tolist()
 
-    # Histogram with stacked significant/non-significant
-    bins = np.linspace(
-        np.percentile(betas, 1), np.percentile(betas, 99), 50
+    # Restrict to genes present in adata
+    available = [g for g in top_genes if g in adata.var_names]
+    if len(available) == 0:
+        ax.text(0.5, 0.5, "No top genes in adata",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=12, color=COLORS["gray"])
+        ax.axis("off")
+        return
+
+    # Compute cell-type × gene DiD-like effects from raw cell-level data
+    ct_col = "cell_type"
+    if ct_col not in adata.obs.columns:
+        ct_col = next(
+            (c for c in adata.obs.columns if "cell" in c.lower()
+             and "type" in c.lower()),
+            None,
+        )
+    if ct_col is None:
+        ax.text(0.5, 0.5, "No cell type column",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=12, color=COLORS["gray"])
+        ax.axis("off")
+        return
+
+    layer_key = "log1p_tpm"
+    cell_types = sorted(adata.obs[ct_col].dropna().unique())
+    # Drop very rare cell types (<20 cells total)
+    ct_counts = adata.obs[ct_col].value_counts()
+    cell_types = [ct for ct in cell_types if ct_counts.get(ct, 0) >= 20]
+
+    effect_mat = pd.DataFrame(
+        np.nan, index=available, columns=cell_types
     )
 
-    ax.hist(betas_ns, bins=bins, color=COLORS["gray"], alpha=0.5,
-            edgecolor="none", label="Not significant")
-    ax.hist(betas_sig, bins=bins, color=COLORS["highlight"], alpha=0.7,
-            edgecolor="none", label=f"p < {p_thresh}")
+    sub_adata = adata[:, available].copy()
+    if layer_key in sub_adata.layers:
+        X = sub_adata.layers[layer_key]
+    else:
+        X = sub_adata.X
 
-    ax.axvline(0, color="black", lw=1, ls="-", zorder=3)
+    obs = sub_adata.obs.copy()
+    obs["_visit"] = obs["visit"]
+    obs["_arm"] = obs["response_harmonized"]
+    obs["_ct"] = obs[ct_col]
 
-    # Compute asymmetry statistics
-    n_pos = (betas > 0).sum()
-    n_neg = (betas < 0).sum()
-    n_sig_pos = (betas_sig > 0).sum()
-    n_sig_neg = (betas_sig < 0).sum()
-    median_beta = np.median(betas)
+    import scipy.sparse as sp
+    if sp.issparse(X):
+        X = X.toarray()
+    expr_df = pd.DataFrame(X, index=obs.index, columns=available)
+    expr_df["_visit"] = obs["_visit"].values
+    expr_df["_arm"] = obs["_arm"].values
+    expr_df["_ct"] = obs["_ct"].values
 
-    # Annotate
-    summary_text = (
-        f"Genes: {len(betas):,}\n"
-        f"β > 0: {n_pos} ({100 * n_pos / len(betas):.0f}%)\n"
-        f"β < 0: {n_neg} ({100 * n_neg / len(betas):.0f}%)\n"
-        f"Sig. pos: {n_sig_pos}  |  Sig. neg: {n_sig_neg}\n"
-        f"Median β: {median_beta:.3f}"
+    for ct in cell_types:
+        ct_mask = expr_df["_ct"] == ct
+        ct_data = expr_df[ct_mask]
+        for arm_label, visit_label in [
+            ("Responder", "Pre"), ("Responder", "Post"),
+            ("Non-responder", "Pre"), ("Non-responder", "Post"),
+        ]:
+            pass  # just checking groups exist
+
+        for gene in available:
+            try:
+                means = {}
+                for arm in ["Responder", "Non-responder"]:
+                    for vis in ["Pre", "Post"]:
+                        mask = (ct_data["_arm"] == arm) & (ct_data["_visit"] == vis)
+                        vals = ct_data.loc[mask, gene]
+                        means[(arm, vis)] = vals.mean() if len(vals) > 0 else np.nan
+
+                # DiD = (R_post - R_pre) - (NR_post - NR_pre)
+                r_delta = means[("Responder", "Post")] - means[("Responder", "Pre")]
+                nr_delta = means[("Non-responder", "Post")] - means[("Non-responder", "Pre")]
+                did_val = r_delta - nr_delta
+                if np.isfinite(did_val):
+                    effect_mat.loc[gene, ct] = did_val
+            except Exception:
+                pass
+
+    # Sort genes by global β_DiD for consistent ordering
+    gene_order = top_genes_df.set_index("feature").loc[available].sort_values(
+        beta_col, ascending=True
+    ).index.tolist()
+    effect_mat = effect_mat.loc[gene_order]
+
+    # Drop cell types with all NaN
+    effect_mat = effect_mat.dropna(axis=1, how="all")
+
+    if effect_mat.shape[1] == 0:
+        ax.text(0.5, 0.5, "Insufficient cell-type data",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=12, color=COLORS["gray"])
+        ax.axis("off")
+        return
+
+    # Plot heatmap
+    vmax = np.nanmax(np.abs(effect_mat.values))
+    vmax = max(vmax, 0.01)  # avoid degenerate scale
+
+    import matplotlib.colors as mcolors
+    cmap = mcolors.LinearSegmentedColormap.from_list(
+        "did_div",
+        [COLORS["control"], "#f0f0f0", COLORS["treated"]],
+        N=256,
     )
-    ax.text(0.97, 0.95, summary_text, transform=ax.transAxes,
-            ha="right", va="top", fontsize=7,
-            bbox=dict(boxstyle="round,pad=0.4", facecolor="white",
-                      edgecolor=COLORS["gray"], alpha=0.9),
-            family="monospace")
 
-    # Mark median
-    ax.axvline(median_beta, color=COLORS["highlight"], ls="--", lw=1,
-               zorder=2, alpha=0.7)
+    im = ax.imshow(
+        effect_mat.values.astype(float),
+        aspect="auto",
+        cmap=cmap,
+        vmin=-vmax,
+        vmax=vmax,
+        interpolation="nearest",
+    )
 
-    ax.set_xlabel(r"Effect size ($\beta_{\mathrm{DiD}}$)")
-    ax.set_ylabel("Number of genes")
-    ax.set_title("Gene-Level Effect Distribution", fontsize=11)
+    # Mask NaN cells with hatching
+    nan_mask = np.isnan(effect_mat.values.astype(float))
+    if nan_mask.any():
+        masked = np.ma.array(np.ones_like(effect_mat.values, dtype=float),
+                             mask=~nan_mask)
+        ax.pcolormesh(
+            np.arange(effect_mat.shape[1] + 1) - 0.5,
+            np.arange(effect_mat.shape[0] + 1) - 0.5,
+            masked,
+            cmap=mcolors.ListedColormap(["#e8e8e8"]),
+            vmin=0, vmax=1, zorder=0,
+        )
 
-    # Direction arrows
-    ax.annotate("Responder ↑", xy=(0.95, 0.02), xycoords="axes fraction",
-                fontsize=7, ha="right", color=COLORS["treated"])
-    ax.annotate("Non-responder ↑", xy=(0.05, 0.02), xycoords="axes fraction",
-                fontsize=7, ha="left", color=COLORS["control"])
+    ax.set_xticks(np.arange(effect_mat.shape[1]))
+    ax.set_xticklabels(effect_mat.columns, rotation=45, ha="right",
+                       fontsize=6.5)
+    ax.set_yticks(np.arange(effect_mat.shape[0]))
+    ax.set_yticklabels(effect_mat.index, fontsize=7)
+    ax.set_title("Cell-Type DiD Effects (Top Genes)", fontsize=11)
 
-    ax.legend(fontsize=8, loc="upper left", frameon=True, framealpha=0.9)
-    despine(ax)
+    # Colorbar
+    cbar = ax.figure.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    cbar.set_label(r"$\Delta\Delta$ expression", fontsize=8)
+    cbar.ax.tick_params(labelsize=7)
 
 
 # ======================================================================

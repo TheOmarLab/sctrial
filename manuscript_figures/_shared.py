@@ -250,8 +250,8 @@ def score_signatures(adata, *, layer=None, min_genes=3):
                     use_raw=False, layer=layer,
                 )
                 sig_cols.append(col)
-            except Exception:
-                pass
+            except Exception as exc:
+                warnings.warn(f"score_genes failed for {name}: {exc}", stacklevel=2)
     return adata, sig_cols
 
 
@@ -270,8 +270,8 @@ def score_clinical_signatures(adata, *, layer=None, min_genes=3):
                     use_raw=False, layer=layer,
                 )
                 sig_cols.append(col)
-            except Exception:
-                pass
+            except Exception as exc:
+                warnings.warn(f"score_genes failed for {name}: {exc}", stacklevel=2)
     return adata, sig_cols
 
 
@@ -319,12 +319,7 @@ def get_vaccine():
     if "vax" in _DATA_CACHE:
         return _DATA_CACHE["vax"]
     from sctrial.datasets import load_vaccine_gse171964
-    adata = load_vaccine_gse171964(
-        max_participants=None,
-        max_cells_per_group=None,
-        processed_name="vaccine_gse171964_day0_day7_full.h5ad",
-        force_reprocess=False,
-    )
+    adata = load_vaccine_gse171964()
     if "pt_id" in adata.obs.columns and "participant_id" not in adata.obs.columns:
         adata.obs["participant_id"] = adata.obs["pt_id"]
     if "day" in adata.obs.columns and "visit" not in adata.obs.columns:
