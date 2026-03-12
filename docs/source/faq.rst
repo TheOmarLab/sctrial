@@ -65,15 +65,23 @@ Yes! The built-in data loaders can download directly from GEO or EBI:
    # Vaccine PBMC time course (GSE171964)
    adata = st.load_vaccine_gse171964(allow_download=True)
 
+   # AML clinical trial (GSE116256)
+   # Requires scanpy: pip install sctrial[plots]
+   adata = st.load_aml(allow_download=True)
+
+   # CAR-T clinical trial (GSE290722)
+   # Requires scanpy: pip install sctrial[plots]
+   adata = st.load_cart(allow_download=True)
+
 Downloads are disabled by default (``allow_download=False``) so nothing is
 fetched without explicit consent. Only missing files are downloaded; files
 already on disk are reused.
 
 .. note::
 
-   The Sade-Feldman loader performs marker-based cell-type annotation using
-   scanpy (Leiden clustering + Wilcoxon marker scoring). Install the ``plots``
-   extra to enable this: ``pip install sctrial[plots]``.
+   The Sade-Feldman, AML, and CAR-T loaders perform marker-based cell-type
+   annotation using scanpy (Leiden clustering + Wilcoxon marker scoring).
+   Install the ``plots`` extra to enable this: ``pip install sctrial[plots]``.
 
 Data Requirements
 -----------------
@@ -567,6 +575,19 @@ How do I test for cell-type-specific effects?
 
    # Results stratified by cell type
    print(res.groupby("celltype")["FDR_DiD"].min())
+
+How do I harmonize response labels across datasets?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Use ``harmonize_response()`` to standardize different response label conventions:
+
+.. code-block:: python
+
+   import sctrial as st
+
+   adata = st.harmonize_response(adata)
+   # Maps R/NR, Responder/Non-responder, etc. → "Responder"/"Non-responder"
+   print(adata.obs["response_harmonized"].value_counts())
 
 Feature and Gene Set Questions
 -------------------------------

@@ -38,7 +38,8 @@ from .._shared import (
     get_stephenson,
     get_vaccine,
     harmonize_response,
-    load_clinical_trial_dataset,
+    get_aml,
+    get_cart,
     save_panel,
 )
 
@@ -743,7 +744,7 @@ _MDE_DATASET_CFG = {
     },
     "AML": {
         "design": "single_arm_paired",
-        "loader": lambda: load_clinical_trial_dataset("aml"),
+        "loader": lambda: get_aml(),
         "harmonize": False,
         "layer": "log1p_norm",
         "participant_col": "participant_id",
@@ -754,7 +755,7 @@ _MDE_DATASET_CFG = {
     },
     "CAR-T": {
         "design": "single_arm_paired",
-        "loader": lambda: load_clinical_trial_dataset("cart"),
+        "loader": lambda: get_cart(),
         "harmonize": False,
         "layer": "log1p_norm",
         "participant_col": "participant_id",

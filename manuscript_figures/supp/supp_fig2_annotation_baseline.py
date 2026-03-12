@@ -39,7 +39,8 @@ from .._shared import (
     get_vaccine,
     harmonize_celltype,
     harmonize_response,
-    load_clinical_trial_dataset,
+    get_aml,
+    get_cart,
     save_panel,
 )
 
@@ -56,8 +57,8 @@ DATASETS = [
     ("Sade-Feldman", get_sade_feldman),
     ("Stephenson", get_stephenson),
     ("Vaccine", get_vaccine),
-    ("AML", lambda: load_clinical_trial_dataset("aml")),
-    ("CAR-T", lambda: load_clinical_trial_dataset("cart")),
+    ("AML", lambda: get_aml()),
+    ("CAR-T", lambda: get_cart()),
 ]
 
 
