@@ -23,6 +23,23 @@ from .utils import get_counts_matrix
 
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# Dataset root: resolved relative to the *repository* (two levels up from
+# src/sctrial/), so loaders work regardless of the caller's cwd.
+# When installed as a proper package (no repo checkout), falls back to cwd.
+# ---------------------------------------------------------------------------
+_PACKAGE_DIR = Path(__file__).resolve().parent          # src/sctrial/
+_REPO_ROOT = _PACKAGE_DIR.parent.parent                 # sc_trial_inference/
+_DATASETS_ROOT = _REPO_ROOT / "datasets"
+if not _DATASETS_ROOT.is_dir():
+    # Installed package without repo structure — fall back to cwd
+    _DATASETS_ROOT = Path.cwd() / "datasets"
+
+
+def _default_data_dir(name: str) -> str:
+    """Return the absolute default data_dir for a given dataset name."""
+    return str(_DATASETS_ROOT / name)
+
 
 # ---------------------------------------------------------------------------
 # Marker-based cell-type annotation for immune cells
@@ -430,7 +447,7 @@ def _get_counts_matrix(adata: ad.AnnData) -> tuple[np.ndarray | None, str | None
 
 
 def load_sade_feldman(
-    data_dir: str = "datasets/sade_feldman",
+    data_dir: str | None = None,
     processed_name: str = "sade_feldman_processed_v6.h5ad",
     max_cells_per_participant_visit: int | None = None,
     seed: int = 42,
@@ -466,6 +483,7 @@ def load_sade_feldman(
         "assay": "TPM",
     }
 
+    data_dir = data_dir or _default_data_dir("sade_feldman")
     data_dir_path = Path(data_dir)
     processed_path = data_dir_path / "processed" / processed_name
 
@@ -641,7 +659,7 @@ def load_sade_feldman(
 
 
 def load_stephenson_data(
-    data_dir: str = "datasets/stephenson",
+    data_dir: str | None = None,
     processed_name: str = "stephenson_covid19_v3.h5ad",
     seed: int = 42,
     allow_download: bool = False,
@@ -673,11 +691,13 @@ def load_stephenson_data(
     AnnData
         The processed AnnData object.
     """
+    data_dir = data_dir or _default_data_dir("stephenson")
+
     # Backward compat: if someone passes an .h5ad file path positionally
     # as data_dir (old API had data_path as first param), treat it as data_path.
     if data_path is None and str(data_dir).endswith(".h5ad"):
         data_path = data_dir
-        data_dir = "datasets/stephenson"  # reset to default
+        data_dir = _default_data_dir("stephenson")  # reset to default
 
     if data_path is not None:
         warnings.warn(
@@ -767,7 +787,7 @@ def load_stephenson_data(
 
 
 def load_vaccine_gse171964(
-    data_dir: str = "datasets/vaccine_gse171964",
+    data_dir: str | None = None,
     processed_name: str = "vaccine_gse171964.h5ad",
     max_participants: int | None = None,
     max_cells_per_group: int | None = None,
@@ -807,6 +827,7 @@ def load_vaccine_gse171964(
         "days": [0, 7],
     }
 
+    data_dir = data_dir or _default_data_dir("vaccine_gse171964")
     data_dir_path = Path(data_dir)
     processed_path = data_dir_path / "processed" / processed_name
 
@@ -1256,7 +1277,7 @@ def _process_aml_raw(
 
 
 def load_aml(
-    data_dir: str = "datasets/aml",
+    data_dir: str | None = None,
     processed_name: str = "gse116256_aml_processed.h5ad",
     max_cells_per_sample: int | None = None,
     seed: int = 42,
@@ -1302,6 +1323,7 @@ def load_aml(
     --------
     >>> adata = sctrial.load_aml(allow_download=True)
     """
+    data_dir = data_dir or _default_data_dir("aml")
     data_dir_path = Path(data_dir)
 
     processing_params = {
@@ -1556,7 +1578,7 @@ def _process_cart_raw(
 
 
 def load_cart(
-    data_dir: str = "datasets/cart",
+    data_dir: str | None = None,
     processed_name: str = "gse290722_cart_processed.h5ad",
     max_cells_per_sample: int | None = None,
     seed: int = 42,
@@ -1602,6 +1624,7 @@ def load_cart(
     --------
     >>> adata = sctrial.load_cart(allow_download=True)
     """
+    data_dir = data_dir or _default_data_dir("cart")
     data_dir_path = Path(data_dir)
 
     processing_params = {
