@@ -541,11 +541,12 @@ def _panel_influence(ax, results: dict[str, dict]):
             )
             # Count participants flagged in ≥1 feature (not pooled obs)
             resid_df = results[name]["residuals"]
-            if "participant" in resid_df.columns:
+            pid_col = results[name]["cfg"]["participant_col"]
+            if pid_col in resid_df.columns:
                 flagged_pids = resid_df.loc[
-                    resid_df["cooks_d"] > thr, "participant"
+                    resid_df["cooks_d"] > thr, pid_col
                 ].nunique()
-                total_pids = resid_df["participant"].nunique()
+                total_pids = resid_df[pid_col].nunique()
                 rate = flagged_pids / total_pids if total_pids > 0 else 0
                 ax.text(
                     i, ax.get_ylim()[1] * 0.95,
@@ -698,26 +699,31 @@ def _panel_signal_enrichment(ax, results: dict[str, dict]):
 
 
 def _panel_normality_tests(ax, results: dict[str, dict]):
-    """F-left: Visual summary of residual normality diagnostics per dataset."""
+    """F-left: Per-feature Shapiro-Wilk, summarised as median W per dataset.
+
+    Tests are run on each feature's residuals separately (not pooled across
+    features), since pooling residuals from different models violates the
+    independence assumption of the Shapiro-Wilk test.
+    """
     rows = []
     for name, res in results.items():
         rdf = res["residuals"]
-        vals = rdf["residual"].dropna().values
-        if len(vals) < 8:
+        w_vals, sk_vals = [], []
+        for feat in res["features"]:
+            fvals = rdf.loc[rdf["feature"] == feat, "residual"].dropna().values
+            if len(fvals) < 8:
+                continue
+            sw_stat, _ = stats.shapiro(fvals)
+            w_vals.append(sw_stat)
+            sk_vals.append(stats.skew(fvals))
+        if not w_vals:
             continue
-
-        sk = stats.skew(vals)
-        ku = stats.kurtosis(vals)
-
-        # Shapiro-Wilk on all residuals (no subsampling)
-        sw_stat, sw_p = stats.shapiro(vals)
-
         rows.append({
             "Dataset": name,
-            "Shapiro W": sw_stat,
-            "Shapiro p": sw_p,
-            "Skewness": sk,
-            "Kurtosis": ku,
+            "Median W": float(np.median(w_vals)),
+            "Frac W>0.95": float(np.mean(np.array(w_vals) > 0.95)),
+            "Median skew": float(np.median(sk_vals)),
+            "n_features": len(w_vals),
         })
 
     if not rows:
@@ -731,20 +737,22 @@ def _panel_normality_tests(ax, results: dict[str, dict]):
     y = np.arange(len(df))
     colors = [_DS_PALETTE.get(n, "grey") for n in df["Dataset"]]
 
-    # Main: Shapiro W statistic bars
-    ax.barh(y, df["Shapiro W"], color=colors, edgecolor="white",
+    # Main: median Shapiro W statistic bars
+    ax.barh(y, df["Median W"], color=colors, edgecolor="white",
             height=0.6, alpha=0.85)
     for i, (_, row) in enumerate(df.iterrows()):
-        label = f"W={row['Shapiro W']:.3f}, skew={row['Skewness']:.2f}"
-        ax.text(row["Shapiro W"] + 0.002, i, label, va="center",
+        label = (f"med W={row['Median W']:.3f}, "
+                 f"{row['Frac W>0.95']:.0%} pass "
+                 f"({int(row['n_features'])} features)")
+        ax.text(row["Median W"] + 0.002, i, label, va="center",
                 fontsize=7, fontweight="bold")
 
     ax.set_yticks(y)
     ax.set_yticklabels(df["Dataset"], fontsize=9)
-    ax.set_xlabel("Shapiro-Wilk W statistic")
+    ax.set_xlabel("Median Shapiro-Wilk W (per-feature)")
     ax.set_title("Residual Normality Diagnostics", fontweight="bold")
     ax.axvline(0.95, color="red", ls="--", lw=0.8, alpha=0.7,
-               label="W=0.95 (indicative; power varies with n)")
+               label="W=0.95 reference")
     ax.legend(fontsize=6, frameon=True)
     despine(ax)
 
@@ -813,38 +821,48 @@ def _panel_rejection_vs_alpha(ax, results: dict[str, dict]):
 
 
 def _panel_heteroscedasticity(ax, results: dict[str, dict]):
-    """F-right: Breusch-Pagan test for residual homoscedasticity per dataset."""
+    """F-right: Per-feature Breusch-Pagan, summarised per dataset.
+
+    Tests are run on each feature's residuals separately (not pooled),
+    since pooling residuals from different models violates i.i.d. assumptions.
+    Reports median BP statistic and fraction with p < 0.05.
+    """
     rows = []
     for name, res in results.items():
         rdf = res["residuals"]
-        vals = rdf["residual"].dropna().values
-        fitted = rdf["fitted"].dropna().values
-        if len(vals) < 8 or len(fitted) < 8:
-            continue
-        # Align lengths
-        n = min(len(vals), len(fitted))
-        vals, fitted = vals[:n], fitted[:n]
-
-        # Manual Breusch-Pagan: regress squared residuals on fitted values
-        sq_resid = vals ** 2
-        X_bp = np.column_stack([np.ones(n), fitted])
-        try:
-            beta_bp = np.linalg.lstsq(X_bp, sq_resid, rcond=None)[0]
-            sq_resid_hat = X_bp @ beta_bp
-            ss_reg = np.sum((sq_resid_hat - sq_resid.mean()) ** 2)
-            ss_tot = np.sum((sq_resid - sq_resid.mean()) ** 2)
-            if ss_tot == 0:
+        bp_stats, bp_ps = [], []
+        for feat in res["features"]:
+            fmask = rdf["feature"] == feat
+            vals = rdf.loc[fmask, "residual"].dropna().values
+            fitted = rdf.loc[fmask, "fitted"].dropna().values
+            if len(vals) < 8 or len(fitted) < 8:
                 continue
-            r2_bp = ss_reg / ss_tot
-            bp_stat = n * r2_bp  # chi-squared(1) under H0
-            bp_p = 1.0 - stats.chi2.cdf(bp_stat, df=1)
-        except Exception:
-            continue
+            n = min(len(vals), len(fitted))
+            vals, fitted = vals[:n], fitted[:n]
+            sq_resid = vals ** 2
+            X_bp = np.column_stack([np.ones(n), fitted])
+            try:
+                beta_bp = np.linalg.lstsq(X_bp, sq_resid, rcond=None)[0]
+                sq_resid_hat = X_bp @ beta_bp
+                ss_reg = np.sum((sq_resid_hat - sq_resid.mean()) ** 2)
+                ss_tot = np.sum((sq_resid - sq_resid.mean()) ** 2)
+                if ss_tot == 0:
+                    continue
+                r2_bp = ss_reg / ss_tot
+                bp_stat = n * r2_bp
+                bp_p = 1.0 - stats.chi2.cdf(bp_stat, df=1)
+                bp_stats.append(bp_stat)
+                bp_ps.append(bp_p)
+            except Exception:
+                continue
 
+        if not bp_stats:
+            continue
         rows.append({
             "Dataset": name,
-            "BP stat": bp_stat,
-            "BP p": bp_p,
+            "Median BP": float(np.median(bp_stats)),
+            "Frac p<0.05": float(np.mean(np.array(bp_ps) < 0.05)),
+            "n_features": len(bp_stats),
         })
 
     if not rows:
@@ -856,20 +874,21 @@ def _panel_heteroscedasticity(ax, results: dict[str, dict]):
     y = np.arange(len(df))
     colors = [_DS_PALETTE.get(n, "grey") for n in df["Dataset"]]
 
-    ax.barh(y, df["BP stat"], color=colors, edgecolor="white",
+    ax.barh(y, df["Median BP"], color=colors, edgecolor="white",
             height=0.6, alpha=0.85)
     for i, (_, row) in enumerate(df.iterrows()):
-        pval_str = f"p={row['BP p']:.2e}" if row["BP p"] < 0.001 else f"p={row['BP p']:.3f}"
-        label = f"BP={row['BP stat']:.2f}, {pval_str}"
-        ax.text(row["BP stat"] + 0.05, i, label, va="center",
+        label = (f"med BP={row['Median BP']:.2f}, "
+                 f"{row['Frac p<0.05']:.0%} sig "
+                 f"({int(row['n_features'])} features)")
+        ax.text(row["Median BP"] + 0.05, i, label, va="center",
                 fontsize=7, fontweight="bold")
 
     ax.set_yticks(y)
     ax.set_yticklabels(df["Dataset"], fontsize=9)
-    ax.set_xlabel("Breusch-Pagan test statistic")
+    ax.set_xlabel("Median Breusch-Pagan statistic (per-feature)")
     ax.set_title("Heteroscedasticity Diagnostics", fontweight="bold")
     ax.axvline(3.84, color="red", ls="--", lw=0.8, alpha=0.7,
-               label="χ²(1) = 3.84 (indicative; depends on n)")
+               label=r"$\chi^2$(1) = 3.84 reference")
     ax.legend(fontsize=6, frameon=True)
     despine(ax)
 
@@ -899,11 +918,11 @@ def _naive_cell_prepost(expr_df, features, visit_col, visits):
                          "pval": np.nan, "se": np.nan})
             continue
         beta = x_post.mean() - x_pre.mean()
-        se = np.sqrt(x_post.var(ddof=1) / len(x_post)
-                     + x_pre.var(ddof=1) / len(x_pre))
-        t_stat = beta / se if se > 0 else 0.0
-        df_t = len(x_pre) + len(x_post) - 2
-        pval = 2 * (1 - stats.t.cdf(abs(t_stat), df=df_t))
+        # Welch's t-test (unequal variance) for consistency:
+        # SE uses separate variances, df uses Welch-Satterthwaite.
+        t_res = stats.ttest_ind(x_post, x_pre, equal_var=False)
+        se = abs(beta / t_res.statistic) if t_res.statistic != 0 else 0.0
+        pval = float(t_res.pvalue)
         rows.append({"feature": feat, "beta": beta, "pval": pval, "se": se})
     return pd.DataFrame(rows)
 
