@@ -341,8 +341,11 @@
   <h1>Source code for sctrial.datasets</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
+<span class="kn">import</span><span class="w"> </span><span class="nn">gc</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">gzip</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">tarfile</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">urllib.error</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">urllib.request</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sequence</span>
@@ -649,6 +652,9 @@
     <span class="s2">&quot;load_sade_feldman&quot;</span><span class="p">,</span>
     <span class="s2">&quot;load_stephenson_data&quot;</span><span class="p">,</span>
     <span class="s2">&quot;load_vaccine_gse171964&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;load_aml&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;load_cart&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;harmonize_response&quot;</span><span class="p">,</span>
     <span class="s2">&quot;count_paired&quot;</span><span class="p">,</span>
     <span class="s2">&quot;verify_paired_participants&quot;</span><span class="p">,</span>
     <span class="s2">&quot;categorize_celltype&quot;</span><span class="p">,</span>
@@ -795,6 +801,34 @@
 <span class="sd">    AnnData</span>
 <span class="sd">        The processed AnnData object.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">processing_params</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;version&quot;</span><span class="p">:</span> <span class="s2">&quot;v6&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;max_cells_per_participant_visit&quot;</span><span class="p">:</span> <span class="n">max_cells_per_participant_visit</span><span class="p">,</span>
+        <span class="s2">&quot;seed&quot;</span><span class="p">:</span> <span class="n">seed</span><span class="p">,</span>
+        <span class="s2">&quot;assay&quot;</span><span class="p">:</span> <span class="s2">&quot;TPM&quot;</span><span class="p">,</span>
+    <span class="p">}</span>
+
+    <span class="c1"># Search for cached processed file BEFORE resolving raw data directory.</span>
+    <span class="n">cache_candidates</span> <span class="o">=</span> <span class="p">[</span><span class="n">Path</span><span class="p">(</span><span class="n">data_dir</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">base</span> <span class="ow">in</span> <span class="p">[</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">(),</span> <span class="o">*</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">]:</span>
+        <span class="n">cache_candidates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">base</span> <span class="o">/</span> <span class="s2">&quot;data&quot;</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span><span class="p">)</span>
+        <span class="n">cache_candidates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">base</span> <span class="o">/</span> <span class="s2">&quot;data&quot;</span> <span class="o">/</span> <span class="s2">&quot;sade_feldman&quot;</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">force_reprocess</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cache_candidates</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+                <span class="n">adata</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+                <span class="n">prev</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">uns</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;processing_params&quot;</span><span class="p">,</span> <span class="p">{})</span>
+                <span class="k">if</span> <span class="n">_params_match</span><span class="p">(</span><span class="n">prev</span><span class="p">,</span> <span class="n">processing_params</span><span class="p">):</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Loaded processed Sade-Feldman dataset: </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> genes&quot;</span>
+                    <span class="p">)</span>
+                    <span class="k">return</span> <span class="n">adata</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Processed file parameters differ; reprocessing.&quot;</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Stored: </span><span class="si">{</span><span class="n">prev</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Current: </span><span class="si">{</span><span class="n">processing_params</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">break</span>
+
     <span class="n">data_dir_path</span> <span class="o">=</span> <span class="n">_resolve_dir_with_files</span><span class="p">(</span>
         <span class="n">data_dir</span><span class="p">,</span>
         <span class="p">[</span>
@@ -804,25 +838,15 @@
     <span class="p">)</span>
     <span class="n">processed_path</span> <span class="o">=</span> <span class="n">data_dir_path</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span>
 
-    <span class="n">processing_params</span> <span class="o">=</span> <span class="p">{</span>
-        <span class="s2">&quot;version&quot;</span><span class="p">:</span> <span class="s2">&quot;v6&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;max_cells_per_participant_visit&quot;</span><span class="p">:</span> <span class="n">max_cells_per_participant_visit</span><span class="p">,</span>
-        <span class="s2">&quot;seed&quot;</span><span class="p">:</span> <span class="n">seed</span><span class="p">,</span>
-        <span class="s2">&quot;assay&quot;</span><span class="p">:</span> <span class="s2">&quot;TPM&quot;</span><span class="p">,</span>
-    <span class="p">}</span>
-
-    <span class="k">if</span> <span class="n">processed_path</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">force_reprocess</span><span class="p">:</span>
-        <span class="n">adata</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="n">processed_path</span><span class="p">)</span>
-        <span class="n">prev</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">uns</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;processing_params&quot;</span><span class="p">,</span> <span class="p">{})</span>
-        <span class="k">if</span> <span class="n">_params_match</span><span class="p">(</span><span class="n">prev</span><span class="p">,</span> <span class="n">processing_params</span><span class="p">):</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Loaded processed Sade-Feldman dataset: </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> genes&quot;</span>
-            <span class="p">)</span>
-            <span class="k">return</span> <span class="n">adata</span>
-        <span class="c1"># Show what&#39;s different for debugging</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Processed file parameters differ; reprocessing.&quot;</span><span class="p">)</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Stored: </span><span class="si">{</span><span class="n">prev</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Current: </span><span class="si">{</span><span class="n">processing_params</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="c1"># Check scanpy availability BEFORE downloading to avoid wasted bandwidth.</span>
+    <span class="c1"># scanpy is required for cell-type annotation (Leiden + Wilcoxon scoring).</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">scanpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sc</span>  <span class="c1"># noqa: F401</span>
+    <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
+            <span class="s2">&quot;scanpy is required for Sade-Feldman cell type annotation. &quot;</span>
+            <span class="s2">&quot;Install with: pip install sctrial[plots]  or  pip install scanpy&quot;</span>
+        <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
 
     <span class="n">tpm_path</span> <span class="o">=</span> <span class="n">data_dir_path</span> <span class="o">/</span> <span class="s2">&quot;GSE120575_Sade_Feldman_melanoma_single_cells_TPM_GEO.txt.gz&quot;</span>
     <span class="n">meta_path</span> <span class="o">=</span> <span class="n">data_dir_path</span> <span class="o">/</span> <span class="s2">&quot;GSE120575_patient_ID_single_cells.txt.gz&quot;</span>
@@ -919,15 +943,6 @@
     <span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">&quot;tpm&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">X</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
     <span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">&quot;log1p_tpm&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">X</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> <span class="k">if</span> <span class="n">_looks_log1p</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">X</span><span class="p">)</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">log1p</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">X</span><span class="p">)</span>
 
-    <span class="c1"># Requires scanpy (optional dependency in [plots] extra).</span>
-    <span class="k">try</span><span class="p">:</span>
-        <span class="kn">import</span><span class="w"> </span><span class="nn">scanpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sc</span>  <span class="c1"># noqa: F401 — check availability before heavy work</span>
-    <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
-            <span class="s2">&quot;scanpy is required for Sade-Feldman cell type annotation. &quot;</span>
-            <span class="s2">&quot;Install with: pip install sctrial[plots]&quot;</span>
-        <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
-
     <span class="c1"># ── PCA → neighbors → UMAP → Leiden ────────────────────────────────</span>
     <span class="c1"># Compute BEFORE annotation so that cell-type labels are assigned to</span>
     <span class="c1"># the SAME Leiden clusters that the UMAP is built from.</span>
@@ -965,18 +980,20 @@
 <div class="viewcode-block" id="load_stephenson_data">
 <a class="viewcode-back" href="../../api.html#sctrial.datasets.load_stephenson_data">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">load_stephenson_data</span><span class="p">(</span>
-    <span class="n">data_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;data/stephenson/covid_portal_210320_with_raw.h5ad&quot;</span><span class="p">,</span>
+    <span class="n">data_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;data/stephenson&quot;</span><span class="p">,</span>
     <span class="n">processed_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;stephenson_covid19_v3.h5ad&quot;</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">42</span><span class="p">,</span>
     <span class="n">allow_download</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="n">force_reprocess</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">data_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ad</span><span class="o">.</span><span class="n">AnnData</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Load and preprocess Stephenson COVID-19 dataset (E-MTAB-10026).</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    data_path : str</span>
-<span class="sd">        Path to the raw h5ad data file.</span>
+<span class="sd">    data_dir : str</span>
+<span class="sd">        Directory containing (or to store) the raw data files.</span>
 <span class="sd">    processed_name : str</span>
 <span class="sd">        Filename for the cached processed h5ad file.</span>
 <span class="sd">    seed : int</span>
@@ -985,40 +1002,66 @@
 <span class="sd">        If True, download the data file automatically when missing.</span>
 <span class="sd">    force_reprocess : bool</span>
 <span class="sd">        If True, reprocess even when a cached file exists.</span>
+<span class="sd">    data_path : str or None</span>
+<span class="sd">        .. deprecated:: 0.2.2</span>
+<span class="sd">            Use *data_dir* instead.  When supplied, *data_dir* is ignored</span>
+<span class="sd">            and the parent directory of *data_path* is used.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    AnnData</span>
 <span class="sd">        The processed AnnData object.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">data_path_resolved</span> <span class="o">=</span> <span class="n">_resolve_file</span><span class="p">(</span><span class="n">data_path</span><span class="p">)</span>
-    <span class="c1"># Derive processed cache location from the user-provided path so it</span>
-    <span class="c1"># respects custom directory layouts even when the raw file is missing.</span>
-    <span class="n">data_root</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="n">Path</span><span class="p">(</span><span class="n">data_path</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">data_path_resolved</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span>
-        <span class="k">else</span> <span class="n">data_path_resolved</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span>
-    <span class="p">)</span>
+    <span class="c1"># Backward compat: if someone passes an .h5ad file path positionally</span>
+    <span class="c1"># as data_dir (old API had data_path as first param), treat it as data_path.</span>
+    <span class="k">if</span> <span class="n">data_path</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">data_dir</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.h5ad&quot;</span><span class="p">):</span>
+        <span class="n">data_path</span> <span class="o">=</span> <span class="n">data_dir</span>
+        <span class="n">data_dir</span> <span class="o">=</span> <span class="s2">&quot;data/stephenson&quot;</span>  <span class="c1"># reset to default</span>
+
+    <span class="k">if</span> <span class="n">data_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="s2">&quot;load_stephenson_data(data_path=...) is deprecated. &quot;</span>
+            <span class="s2">&quot;Use data_dir=... instead.&quot;</span><span class="p">,</span>
+            <span class="ne">FutureWarning</span><span class="p">,</span>
+            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">raw_file</span> <span class="o">=</span> <span class="n">_resolve_file</span><span class="p">(</span><span class="n">data_path</span><span class="p">)</span>
+        <span class="n">data_root</span> <span class="o">=</span> <span class="n">raw_file</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span> <span class="k">if</span> <span class="n">raw_file</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="k">else</span> <span class="n">Path</span><span class="p">(</span><span class="n">data_path</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">raw_file</span> <span class="o">=</span> <span class="n">_resolve_file</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">data_dir</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;covid_portal_210320_with_raw.h5ad&quot;</span><span class="p">))</span>
+        <span class="n">data_root</span> <span class="o">=</span> <span class="n">raw_file</span><span class="o">.</span><span class="n">parent</span>
+
     <span class="n">processed_path</span> <span class="o">=</span> <span class="n">data_root</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span>
 
-    <span class="k">if</span> <span class="n">processed_path</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">force_reprocess</span><span class="p">:</span>
-        <span class="n">adata</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="n">processed_path</span><span class="p">)</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded cached file: </span><span class="si">{</span><span class="n">processed_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> genes&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">adata</span>
+    <span class="c1"># Also search common alternative locations for the cached file.</span>
+    <span class="n">cache_candidates</span> <span class="o">=</span> <span class="p">[</span><span class="n">processed_path</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">base</span> <span class="ow">in</span> <span class="p">[</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">(),</span> <span class="o">*</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">]:</span>
+        <span class="n">cache_candidates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">base</span> <span class="o">/</span> <span class="s2">&quot;data&quot;</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span><span class="p">)</span>
+        <span class="n">cache_candidates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">base</span> <span class="o">/</span> <span class="s2">&quot;data&quot;</span> <span class="o">/</span> <span class="s2">&quot;stephenson&quot;</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span><span class="p">)</span>
 
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">data_path_resolved</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">force_reprocess</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cache_candidates</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+                <span class="n">adata</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded cached file: </span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> genes&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">adata</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">raw_file</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">allow_download</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Data not found at </span><span class="si">{</span><span class="n">data_path_resolved</span><span class="si">}</span><span class="s2">. Download from: https://www.ebi.ac.uk/biostudies/files/E-MTAB-10026/&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;Data not found at </span><span class="si">{</span><span class="n">raw_file</span><span class="si">}</span><span class="s2">. Download from: &quot;</span>
+                <span class="s2">&quot;https://www.ebi.ac.uk/biostudies/files/E-MTAB-10026/&quot;</span>
             <span class="p">)</span>
-        <span class="n">data_path_resolved</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">raw_file</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="n">url</span> <span class="o">=</span> <span class="p">(</span>
             <span class="s2">&quot;https://www.ebi.ac.uk/biostudies/files/E-MTAB-10026/covid_portal_210320_with_raw.h5ad&quot;</span>
         <span class="p">)</span>
-        <span class="n">_download_file</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">data_path_resolved</span><span class="p">,</span> <span class="s2">&quot;Stephenson COVID-19 data&quot;</span><span class="p">)</span>
+        <span class="n">_download_file</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">raw_file</span><span class="p">,</span> <span class="s2">&quot;Stephenson COVID-19 data&quot;</span><span class="p">)</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Processing raw data...&quot;</span><span class="p">)</span>
-    <span class="n">adata</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="n">data_path_resolved</span><span class="p">)</span>
+    <span class="n">adata</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="n">raw_file</span><span class="p">)</span>
 
     <span class="n">X_counts</span><span class="p">,</span> <span class="n">source</span> <span class="o">=</span> <span class="n">_get_counts_matrix</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">X_counts</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -1094,6 +1137,35 @@
 <span class="sd">    AnnData</span>
 <span class="sd">        The processed AnnData object.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">processing_params</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;version&quot;</span><span class="p">:</span> <span class="s2">&quot;v2&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;max_participants&quot;</span><span class="p">:</span> <span class="n">max_participants</span><span class="p">,</span>
+        <span class="s2">&quot;max_cells_per_group&quot;</span><span class="p">:</span> <span class="n">max_cells_per_group</span><span class="p">,</span>
+        <span class="s2">&quot;seed&quot;</span><span class="p">:</span> <span class="n">seed</span><span class="p">,</span>
+        <span class="s2">&quot;days&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">7</span><span class="p">],</span>
+    <span class="p">}</span>
+
+    <span class="c1"># Search for cached processed file BEFORE resolving raw data directory.</span>
+    <span class="n">cache_candidates</span> <span class="o">=</span> <span class="p">[</span><span class="n">Path</span><span class="p">(</span><span class="n">data_dir</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">base</span> <span class="ow">in</span> <span class="p">[</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">(),</span> <span class="o">*</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">]:</span>
+        <span class="n">cache_candidates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">base</span> <span class="o">/</span> <span class="s2">&quot;data&quot;</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span><span class="p">)</span>
+        <span class="n">cache_candidates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">base</span> <span class="o">/</span> <span class="s2">&quot;data&quot;</span> <span class="o">/</span> <span class="s2">&quot;vaccine_gse171964&quot;</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">force_reprocess</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cache_candidates</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+                <span class="n">adata</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+                <span class="n">prev</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">uns</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;processing_params&quot;</span><span class="p">,</span> <span class="p">{})</span>
+                <span class="k">if</span> <span class="n">_params_match</span><span class="p">(</span><span class="n">prev</span><span class="p">,</span> <span class="n">processing_params</span><span class="p">):</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Loaded processed vaccine dataset (GSE171964): </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">}</span><span class="s2"> genes&quot;</span>
+                    <span class="p">)</span>
+                    <span class="k">return</span> <span class="n">adata</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Processed file parameters differ; reprocessing.&quot;</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Stored: </span><span class="si">{</span><span class="n">prev</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Current: </span><span class="si">{</span><span class="n">processing_params</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">break</span>
+
     <span class="n">data_dir_path</span> <span class="o">=</span> <span class="n">_resolve_dir_with_files</span><span class="p">(</span>
         <span class="n">data_dir</span><span class="p">,</span>
         <span class="p">[</span>
@@ -1104,30 +1176,6 @@
         <span class="p">],</span>
     <span class="p">)</span>
     <span class="n">processed_path</span> <span class="o">=</span> <span class="n">data_dir_path</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span>
-
-    <span class="n">processing_params</span> <span class="o">=</span> <span class="p">{</span>
-        <span class="s2">&quot;version&quot;</span><span class="p">:</span> <span class="s2">&quot;v2&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;max_participants&quot;</span><span class="p">:</span> <span class="n">max_participants</span><span class="p">,</span>
-        <span class="s2">&quot;max_cells_per_group&quot;</span><span class="p">:</span> <span class="n">max_cells_per_group</span><span class="p">,</span>
-        <span class="s2">&quot;seed&quot;</span><span class="p">:</span> <span class="n">seed</span><span class="p">,</span>
-        <span class="s2">&quot;days&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">7</span><span class="p">],</span>
-    <span class="p">}</span>
-
-    <span class="k">if</span> <span class="n">processed_path</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">force_reprocess</span><span class="p">:</span>
-        <span class="n">adata</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="n">processed_path</span><span class="p">)</span>
-        <span class="n">prev</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">uns</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;processing_params&quot;</span><span class="p">,</span> <span class="p">{})</span>
-        <span class="k">if</span> <span class="n">_params_match</span><span class="p">(</span><span class="n">prev</span><span class="p">,</span> <span class="n">processing_params</span><span class="p">):</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Loaded processed vaccine dataset (GSE171964): </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">}</span><span class="s2"> genes&quot;</span>
-            <span class="p">)</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Processed file: </span><span class="si">{</span><span class="n">processed_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Days: </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s1">&#39;day&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Participants: </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s1">&#39;pt_id&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cell types: </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s1">&#39;clustnm&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="k">return</span> <span class="n">adata</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Processed file parameters differ; reprocessing.&quot;</span><span class="p">)</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Stored: </span><span class="si">{</span><span class="n">prev</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Current: </span><span class="si">{</span><span class="n">processing_params</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
     <span class="n">barcodes_path</span> <span class="o">=</span> <span class="n">data_dir_path</span> <span class="o">/</span> <span class="s2">&quot;GSE171964_barcodes_v2.tsv.gz&quot;</span>
     <span class="n">feats_path</span> <span class="o">=</span> <span class="n">data_dir_path</span> <span class="o">/</span> <span class="s2">&quot;GSE171964_feats_v2.tsv.gz&quot;</span>
@@ -1145,7 +1193,11 @@
     <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">allow_download</span><span class="p">:</span>
             <span class="n">names</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">missing</span><span class="p">)</span>
-            <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing file(s): </span><span class="si">{</span><span class="n">names</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Missing file(s): </span><span class="si">{</span><span class="n">names</span><span class="si">}</span><span class="s2">. Download from GEO: &quot;</span>
+                <span class="s2">&quot;https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE171964 &quot;</span>
+                <span class="s2">&quot;or set allow_download=True to fetch automatically.&quot;</span>
+            <span class="p">)</span>
         <span class="n">data_dir_path</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">dest</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">missing</span><span class="p">:</span>
             <span class="n">_download_file</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">dest</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
@@ -1310,7 +1362,7 @@
         <span class="c1"># don&#39;t raise TypeError.  For numeric columns the NaN-presence check</span>
         <span class="c1"># below is still correct because .first() returns NaN for empty groups.</span>
         <span class="n">df_pv</span> <span class="o">=</span> <span class="n">grouped</span><span class="o">.</span><span class="n">first</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
-        <span class="n">valid_ids</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">valid_ids</span><span class="p">:</span> <span class="nb">set</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="k">for</span> <span class="n">feat</span> <span class="ow">in</span> <span class="n">features</span><span class="p">:</span>
             <span class="n">wide_feat</span> <span class="o">=</span> <span class="n">df_pv</span><span class="o">.</span><span class="n">pivot</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="n">visit_col</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="n">feat</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">visits</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">wide_feat</span><span class="o">.</span><span class="n">columns</span> <span class="ow">or</span> <span class="n">visits</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">wide_feat</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
@@ -1363,6 +1415,700 @@
     <span class="k">if</span> <span class="s2">&quot;mono&quot;</span> <span class="ow">in</span> <span class="n">ct_lower</span> <span class="ow">or</span> <span class="s2">&quot;cd14&quot;</span> <span class="ow">in</span> <span class="n">ct_lower</span> <span class="ow">or</span> <span class="s2">&quot;cd16&quot;</span> <span class="ow">in</span> <span class="n">ct_lower</span><span class="p">:</span>
         <span class="k">return</span> <span class="s2">&quot;Monocytes&quot;</span>
     <span class="k">return</span> <span class="s2">&quot;Other&quot;</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_extract_aml_sample_name</span><span class="p">(</span><span class="n">filename</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract sample name from AML filename (ignoring GSM number).&quot;&quot;&quot;</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;GSM\d+_(.+)\.(dem|anno)\.txt\.gz&quot;</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="k">if</span> <span class="n">m</span> <span class="k">else</span> <span class="kc">None</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_parse_aml_sample_info</span><span class="p">(</span><span class="n">sample_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Parse patient ID and day from AML sample name.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="s2">&quot;-D&quot;</span> <span class="ow">in</span> <span class="n">sample_name</span><span class="p">:</span>
+        <span class="n">parts</span> <span class="o">=</span> <span class="n">sample_name</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s2">&quot;-D&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">patient</span> <span class="o">=</span> <span class="n">parts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">day</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="n">day</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">patient</span> <span class="o">=</span> <span class="n">sample_name</span>
+        <span class="n">day</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">return</span> <span class="n">sample_name</span><span class="p">,</span> <span class="n">patient</span><span class="p">,</span> <span class="n">day</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_process_aml_raw</span><span class="p">(</span>
+    <span class="n">raw_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">max_cells_per_sample</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">500</span><span class="p">,</span>
+    <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">42</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ad</span><span class="o">.</span><span class="n">AnnData</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Process raw GSE116256 AML files into an AnnData object.</span>
+
+<span class="sd">    Reads per-sample expression (.dem.txt.gz) and annotation (.anno.txt.gz)</span>
+<span class="sd">    files, combines them, applies QC, normalisation, and computes embeddings.</span>
+<span class="sd">    Cell-type labels come from the original van Galen et al. annotations.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">scanpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sc</span>
+
+    <span class="c1"># Build file mapping: match dem ↔ anno by sample name</span>
+    <span class="n">dem_files</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">anno_files</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">fp</span> <span class="ow">in</span> <span class="n">raw_dir</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;GSM*_*.dem.txt.gz&quot;</span><span class="p">):</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">_extract_aml_sample_name</span><span class="p">(</span><span class="n">fp</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">name</span><span class="p">:</span>
+            <span class="n">dem_files</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">fp</span>
+    <span class="k">for</span> <span class="n">fp</span> <span class="ow">in</span> <span class="n">raw_dir</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;GSM*_*.anno.txt.gz&quot;</span><span class="p">):</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">_extract_aml_sample_name</span><span class="p">(</span><span class="n">fp</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">name</span><span class="p">:</span>
+            <span class="n">anno_files</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">fp</span>
+
+    <span class="n">matched</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">dem_files</span><span class="p">)</span> <span class="o">&amp;</span> <span class="nb">set</span><span class="p">(</span><span class="n">anno_files</span><span class="p">))</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">matched</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;No matched sample pairs found in </span><span class="si">{</span><span class="n">raw_dir</span><span class="si">}</span><span class="s2">. &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">dem_files</span><span class="p">)</span><span class="si">}</span><span class="s2"> expression and </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">anno_files</span><span class="p">)</span><span class="si">}</span><span class="s2"> annotation files.&quot;</span>
+        <span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">matched</span><span class="p">)</span><span class="si">}</span><span class="s2"> matched AML sample pairs&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Pass 1: collect all gene names</span>
+    <span class="n">all_genes</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">sname</span> <span class="ow">in</span> <span class="n">matched</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">gzip</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">dem_files</span><span class="p">[</span><span class="n">sname</span><span class="p">],</span> <span class="s2">&quot;rt&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">usecols</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="n">all_genes</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
+    <span class="n">all_genes_sorted</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">all_genes</span><span class="p">)</span>
+    <span class="n">gene_to_idx</span> <span class="o">=</span> <span class="p">{</span><span class="n">g</span><span class="p">:</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">g</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">all_genes_sorted</span><span class="p">)}</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total unique genes across samples: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">all_genes_sorted</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Pass 2: load expression + annotations</span>
+    <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+    <span class="n">all_X</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">sp</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">all_obs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">n_genes_total</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">all_genes_sorted</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">sname</span> <span class="ow">in</span> <span class="n">matched</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">gzip</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">dem_files</span><span class="p">[</span><span class="n">sname</span><span class="p">],</span> <span class="s2">&quot;rt&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">expr_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">index_col</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">gzip</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">anno_files</span><span class="p">[</span><span class="n">sname</span><span class="p">],</span> <span class="s2">&quot;rt&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">anno_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">index_col</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="n">common_cells</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">expr_df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span> <span class="o">&amp;</span> <span class="nb">set</span><span class="p">(</span><span class="n">anno_df</span><span class="o">.</span><span class="n">index</span><span class="p">))</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">common_cells</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No common cells for </span><span class="si">{</span><span class="n">sname</span><span class="si">}</span><span class="s2">, skipping&quot;</span><span class="p">)</span>
+            <span class="k">continue</span>
+
+        <span class="k">if</span> <span class="n">max_cells_per_sample</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">common_cells</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">max_cells_per_sample</span><span class="p">:</span>
+            <span class="n">common_cells</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span>
+                <span class="n">rng</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">common_cells</span><span class="p">,</span> <span class="n">max_cells_per_sample</span><span class="p">,</span> <span class="n">replace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="p">)</span>
+
+        <span class="n">expr_df</span> <span class="o">=</span> <span class="n">expr_df</span><span class="p">[</span><span class="n">common_cells</span><span class="p">]</span>
+        <span class="n">anno_df</span> <span class="o">=</span> <span class="n">anno_df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">common_cells</span><span class="p">]</span>
+
+        <span class="n">X_raw</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">(</span><span class="n">expr_df</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">))</span>
+        <span class="n">genes</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">expr_df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+        <span class="c1"># Re-index genes to common set</span>
+        <span class="n">X_re</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">lil_matrix</span><span class="p">((</span><span class="n">X_raw</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">n_genes_total</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">gene</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">genes</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">gene</span> <span class="ow">in</span> <span class="n">gene_to_idx</span><span class="p">:</span>
+                <span class="n">X_re</span><span class="p">[:,</span> <span class="n">gene_to_idx</span><span class="p">[</span><span class="n">gene</span><span class="p">]]</span> <span class="o">=</span> <span class="n">X_raw</span><span class="p">[:,</span> <span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span>
+
+        <span class="n">_</span><span class="p">,</span> <span class="n">patient</span><span class="p">,</span> <span class="n">day</span> <span class="o">=</span> <span class="n">_parse_aml_sample_info</span><span class="p">(</span><span class="n">sname</span><span class="p">)</span>
+        <span class="n">unique_cells</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">sname</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">common_cells</span><span class="p">]</span>
+        <span class="n">obs_df</span> <span class="o">=</span> <span class="n">anno_df</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">obs_df</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">unique_cells</span>
+        <span class="n">obs_df</span><span class="p">[</span><span class="s2">&quot;sample_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sname</span>
+        <span class="n">obs_df</span><span class="p">[</span><span class="s2">&quot;patient_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">patient</span>
+        <span class="n">obs_df</span><span class="p">[</span><span class="s2">&quot;day&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">day</span>
+
+        <span class="n">all_X</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sp</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">(</span><span class="n">X_re</span><span class="p">))</span>
+        <span class="n">all_obs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">obs_df</span><span class="p">)</span>
+        <span class="k">del</span> <span class="n">X_raw</span><span class="p">,</span> <span class="n">X_re</span>
+        <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">all_X</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;No samples could be loaded from raw AML data.&quot;</span><span class="p">)</span>
+
+    <span class="n">X_combined</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">vstack</span><span class="p">(</span><span class="n">all_X</span><span class="p">)</span>
+    <span class="n">obs_combined</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">all_obs</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">adata</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">AnnData</span><span class="p">(</span><span class="n">X</span><span class="o">=</span><span class="n">X_combined</span><span class="p">,</span> <span class="n">obs</span><span class="o">=</span><span class="n">obs_combined</span><span class="p">,</span> <span class="n">var</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">all_genes_sorted</span><span class="p">))</span>
+    <span class="k">del</span> <span class="n">all_X</span>
+    <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+
+    <span class="c1"># ── QC and normalisation ──────────────────────────────────────────</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">&quot;counts&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">X</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">var</span><span class="p">[</span><span class="s2">&quot;mt&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;MT-&quot;</span><span class="p">)</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">calculate_qc_metrics</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">qc_vars</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;mt&quot;</span><span class="p">],</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">n_before</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">filter_cells</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">min_genes</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">filter_cells</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">max_genes</span><span class="o">=</span><span class="mi">6000</span><span class="p">)</span>
+    <span class="n">adata</span> <span class="o">=</span> <span class="n">adata</span><span class="p">[</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;pct_counts_mt&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">20</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">filter_genes</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">min_cells</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;QC: </span><span class="si">{</span><span class="n">n_before</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> → </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> genes&quot;</span><span class="p">)</span>
+
+    <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">normalize_total</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">target_sum</span><span class="o">=</span><span class="mf">1e4</span><span class="p">)</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">log1p</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">&quot;log1p_norm&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">X</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="c1"># ── Standardised sctrial obs columns ──────────────────────────────</span>
+    <span class="n">obs</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span>
+    <span class="n">obs</span><span class="p">[</span><span class="s2">&quot;participant_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">obs</span><span class="p">[</span><span class="s2">&quot;patient_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
+    <span class="n">obs</span><span class="p">[</span><span class="s2">&quot;visit&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">obs</span><span class="p">[</span><span class="s2">&quot;day&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">d</span><span class="p">:</span> <span class="s2">&quot;Pre&quot;</span> <span class="k">if</span> <span class="n">d</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;Post&quot;</span><span class="p">)</span>
+    <span class="n">obs</span><span class="p">[</span><span class="s2">&quot;sample_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">obs</span><span class="p">[</span><span class="s2">&quot;patient_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+        <span class="k">lambda</span> <span class="n">pid</span><span class="p">:</span> <span class="s2">&quot;AML&quot;</span> <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">pid</span><span class="p">)</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;AML&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="s2">&quot;Healthy&quot;</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="s2">&quot;CellType&quot;</span> <span class="ow">in</span> <span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">obs</span><span class="p">[</span><span class="s2">&quot;cell_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">obs</span><span class="p">[</span><span class="s2">&quot;CellType&quot;</span><span class="p">]</span>
+    <span class="k">elif</span> <span class="s2">&quot;PredictionRefined&quot;</span> <span class="ow">in</span> <span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">obs</span><span class="p">[</span><span class="s2">&quot;cell_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">obs</span><span class="p">[</span><span class="s2">&quot;PredictionRefined&quot;</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">obs</span><span class="p">[</span><span class="s2">&quot;cell_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Unknown&quot;</span>
+    <span class="k">if</span> <span class="s2">&quot;PredictionRefined&quot;</span> <span class="ow">in</span> <span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">obs</span><span class="p">[</span><span class="s2">&quot;is_malignant&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">obs</span><span class="p">[</span><span class="s2">&quot;PredictionRefined&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+            <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="s2">&quot;malignant&quot;</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="k">if</span> <span class="n">pd</span><span class="o">.</span><span class="n">notna</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">else</span> <span class="kc">False</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">obs</span><span class="p">[</span><span class="s2">&quot;is_malignant&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">obs</span><span class="p">[</span><span class="s2">&quot;response&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">obs</span><span class="p">[</span><span class="s2">&quot;sample_type&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">({</span><span class="s2">&quot;AML&quot;</span><span class="p">:</span> <span class="s2">&quot;Treatment&quot;</span><span class="p">,</span> <span class="s2">&quot;Healthy&quot;</span><span class="p">:</span> <span class="s2">&quot;Control&quot;</span><span class="p">})</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="s2">&quot;Unknown&quot;</span><span class="p">)</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">obs</span> <span class="o">=</span> <span class="n">obs</span>
+
+    <span class="c1"># ── Embeddings (HVG → PCA → neighbours → UMAP) ───────────────────</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">highly_variable_genes</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">n_top_genes</span><span class="o">=</span><span class="mi">2000</span><span class="p">,</span> <span class="n">flavor</span><span class="o">=</span><span class="s2">&quot;seurat&quot;</span><span class="p">,</span> <span class="n">subset</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">tl</span><span class="o">.</span><span class="n">pca</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">n_comps</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">use_highly_variable</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">neighbors</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">n_neighbors</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">n_pcs</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">tl</span><span class="o">.</span><span class="n">umap</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+
+    <span class="c1"># Store paired-patient list</span>
+    <span class="n">aml_obs</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;sample_type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;AML&quot;</span><span class="p">]</span>
+    <span class="n">paired</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">pid</span> <span class="ow">in</span> <span class="n">aml_obs</span><span class="p">[</span><span class="s2">&quot;participant_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">():</span>
+        <span class="n">days</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">aml_obs</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">aml_obs</span><span class="p">[</span><span class="s2">&quot;participant_id&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">pid</span><span class="p">,</span> <span class="s2">&quot;day&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">())</span>
+        <span class="k">if</span> <span class="mi">0</span> <span class="ow">in</span> <span class="n">days</span> <span class="ow">and</span> <span class="nb">any</span><span class="p">(</span><span class="n">d</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">days</span><span class="p">):</span>
+            <span class="n">paired</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pid</span><span class="p">)</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">uns</span><span class="p">[</span><span class="s2">&quot;paired_aml_patients&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">paired</span>
+
+    <span class="n">adata</span><span class="o">.</span><span class="n">uns</span><span class="p">[</span><span class="s2">&quot;dataset&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;GSE116256&quot;</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">uns</span><span class="p">[</span><span class="s2">&quot;paper&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;van Galen et al., Cell 2019&quot;</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">uns</span><span class="p">[</span><span class="s2">&quot;description&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;AML chemotherapy longitudinal scRNA-seq&quot;</span>
+    <span class="k">return</span> <span class="n">adata</span>
+
+
+<div class="viewcode-block" id="load_aml">
+<a class="viewcode-back" href="../../api.html#sctrial.datasets.load_aml">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_aml</span><span class="p">(</span>
+    <span class="n">data_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;data/aml&quot;</span><span class="p">,</span>
+    <span class="n">processed_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;gse116256_aml_processed.h5ad&quot;</span><span class="p">,</span>
+    <span class="n">max_cells_per_sample</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">500</span><span class="p">,</span>
+    <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">42</span><span class="p">,</span>
+    <span class="n">allow_download</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">force_reprocess</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ad</span><span class="o">.</span><span class="n">AnnData</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load the van Galen AML chemotherapy dataset (GSE116256).</span>
+
+<span class="sd">    This dataset contains pre/post-chemotherapy bone marrow samples from AML</span>
+<span class="sd">    patients with cell-type annotations and treatment-response metadata.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data_dir : str</span>
+<span class="sd">        Directory containing (or to store) the data files.</span>
+<span class="sd">        Raw files go in ``&lt;data_dir&gt;/raw/`` and the processed cache in</span>
+<span class="sd">        ``&lt;data_dir&gt;/processed/``.</span>
+<span class="sd">    processed_name : str</span>
+<span class="sd">        Filename for the cached processed h5ad file.</span>
+<span class="sd">    max_cells_per_sample : int</span>
+<span class="sd">        Maximum cells to keep per sample after subsampling.</span>
+<span class="sd">    seed : int</span>
+<span class="sd">        Random seed for reproducibility.</span>
+<span class="sd">    allow_download : bool</span>
+<span class="sd">        If True, download raw data from GEO when not found locally.</span>
+<span class="sd">    force_reprocess : bool</span>
+<span class="sd">        If True, reprocess even when a cached file exists.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    AnnData</span>
+<span class="sd">        The processed AnnData object.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    The raw data is automatically downloaded from GEO when</span>
+<span class="sd">    ``allow_download=True``:</span>
+<span class="sd">    https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE116256</span>
+
+<span class="sd">    Reference: van Galen et al., Cell 2019.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; adata = sctrial.load_aml(allow_download=True)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">data_dir_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">data_dir</span><span class="p">)</span>
+
+    <span class="n">processing_params</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;version&quot;</span><span class="p">:</span> <span class="s2">&quot;v1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;max_cells_per_sample&quot;</span><span class="p">:</span> <span class="n">max_cells_per_sample</span><span class="p">,</span>
+        <span class="s2">&quot;seed&quot;</span><span class="p">:</span> <span class="n">seed</span><span class="p">,</span>
+    <span class="p">}</span>
+
+    <span class="c1"># ── Try to load cached processed file ─────────────────────────────</span>
+    <span class="n">candidates</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">data_dir_path</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span><span class="p">,</span>
+        <span class="n">_resolve_file</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">data_dir_path</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span><span class="p">)),</span>
+    <span class="p">]</span>
+    <span class="k">for</span> <span class="n">base</span> <span class="ow">in</span> <span class="p">[</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">(),</span> <span class="o">*</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">]:</span>
+        <span class="n">candidates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">base</span> <span class="o">/</span> <span class="s2">&quot;data&quot;</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span><span class="p">)</span>
+        <span class="n">candidates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">base</span> <span class="o">/</span> <span class="s2">&quot;data&quot;</span> <span class="o">/</span> <span class="s2">&quot;aml&quot;</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span><span class="p">)</span>
+        <span class="n">candidates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">base</span> <span class="o">/</span> <span class="s2">&quot;manuscript&quot;</span> <span class="o">/</span> <span class="s2">&quot;datasets&quot;</span> <span class="o">/</span> <span class="s2">&quot;GSE116256_AML&quot;</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">force_reprocess</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">candidates</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+                <span class="n">adata</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+                <span class="n">prev</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">uns</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;processing_params&quot;</span><span class="p">,</span> <span class="p">{})</span>
+                <span class="k">if</span> <span class="n">prev</span> <span class="ow">and</span> <span class="n">_params_match</span><span class="p">(</span><span class="n">prev</span><span class="p">,</span> <span class="n">processing_params</span><span class="p">):</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded AML dataset (GSE116256): </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> genes&quot;</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="n">adata</span>
+                <span class="k">if</span> <span class="n">prev</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Processed file parameters differ; reprocessing.&quot;</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># No processing_params stored — accept older cached file</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded AML dataset (GSE116256): </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> genes&quot;</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="n">adata</span>
+
+    <span class="c1"># ── Locate or download raw files ──────────────────────────────────</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">scanpy</span>  <span class="c1"># noqa: F401</span>
+    <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
+            <span class="s2">&quot;scanpy is required for AML dataset processing. &quot;</span>
+            <span class="s2">&quot;Install with: pip install sctrial[plots]  or  pip install scanpy&quot;</span>
+        <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
+
+    <span class="c1"># Search for raw directory with dem/anno files</span>
+    <span class="n">raw_dir</span> <span class="o">=</span> <span class="n">data_dir_path</span> <span class="o">/</span> <span class="s2">&quot;raw&quot;</span>
+    <span class="n">raw_candidates</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">raw_dir</span><span class="p">,</span>
+    <span class="p">]</span>
+    <span class="k">for</span> <span class="n">base</span> <span class="ow">in</span> <span class="p">[</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">(),</span> <span class="o">*</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">]:</span>
+        <span class="n">raw_candidates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">base</span> <span class="o">/</span> <span class="s2">&quot;manuscript&quot;</span> <span class="o">/</span> <span class="s2">&quot;datasets&quot;</span> <span class="o">/</span> <span class="s2">&quot;GSE116256_AML&quot;</span> <span class="o">/</span> <span class="s2">&quot;raw&quot;</span><span class="p">)</span>
+        <span class="n">raw_candidates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">base</span> <span class="o">/</span> <span class="s2">&quot;data&quot;</span> <span class="o">/</span> <span class="s2">&quot;aml&quot;</span> <span class="o">/</span> <span class="s2">&quot;raw&quot;</span><span class="p">)</span>
+
+    <span class="n">found_raw</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">for</span> <span class="n">rd</span> <span class="ow">in</span> <span class="n">raw_candidates</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">rd</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span> <span class="ow">and</span> <span class="nb">list</span><span class="p">(</span><span class="n">rd</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;GSM*_*.dem.txt.gz&quot;</span><span class="p">)):</span>
+            <span class="n">found_raw</span> <span class="o">=</span> <span class="n">rd</span>
+            <span class="k">break</span>
+
+    <span class="k">if</span> <span class="n">found_raw</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">allow_download</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;AML dataset not found. Searched for raw files and &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;&#39;</span><span class="si">{</span><span class="n">processed_name</span><span class="si">}</span><span class="s2">&#39; in several locations including </span><span class="si">{</span><span class="n">data_dir_path</span><span class="si">}</span><span class="s2">. &quot;</span>
+                <span class="s2">&quot;Download from GEO: &quot;</span>
+                <span class="s2">&quot;https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE116256 &quot;</span>
+                <span class="s2">&quot;or set allow_download=True to fetch automatically.&quot;</span>
+            <span class="p">)</span>
+        <span class="c1"># Download tar from GEO and extract</span>
+        <span class="n">raw_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">tar_url</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s2">&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE116256&quot;</span>
+            <span class="s2">&quot;&amp;format=file&quot;</span>
+        <span class="p">)</span>
+        <span class="n">tar_dest</span> <span class="o">=</span> <span class="n">raw_dir</span> <span class="o">/</span> <span class="s2">&quot;GSE116256_RAW.tar&quot;</span>
+        <span class="n">_download_file</span><span class="p">(</span><span class="n">tar_url</span><span class="p">,</span> <span class="n">tar_dest</span><span class="p">,</span> <span class="s2">&quot;GSE116256 supplementary tar&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Extracting raw files...&quot;</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">tarfile</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">tar_dest</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">tf</span><span class="p">:</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">extractall</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="n">raw_dir</span><span class="p">)</span>
+        <span class="c1"># Clean up tar to save disk space</span>
+        <span class="n">tar_dest</span><span class="o">.</span><span class="n">unlink</span><span class="p">(</span><span class="n">missing_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">found_raw</span> <span class="o">=</span> <span class="n">raw_dir</span>
+
+    <span class="c1"># ── Process raw data ──────────────────────────────────────────────</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Processing raw AML data (this may take several minutes)...&quot;</span><span class="p">)</span>
+    <span class="n">adata</span> <span class="o">=</span> <span class="n">_process_aml_raw</span><span class="p">(</span><span class="n">found_raw</span><span class="p">,</span> <span class="n">max_cells_per_sample</span><span class="o">=</span><span class="n">max_cells_per_sample</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">)</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">uns</span><span class="p">[</span><span class="s2">&quot;processing_params&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">processing_params</span>
+
+    <span class="c1"># Save cache</span>
+    <span class="n">processed_dir</span> <span class="o">=</span> <span class="n">data_dir_path</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span>
+    <span class="n">processed_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">out_path</span> <span class="o">=</span> <span class="n">processed_dir</span> <span class="o">/</span> <span class="n">processed_name</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">write_h5ad</span><span class="p">(</span><span class="n">out_path</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Saved processed AML file: </span><span class="si">{</span><span class="n">out_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded AML dataset (GSE116256): </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> genes&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">adata</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_parse_cart_sample_info</span><span class="p">(</span><span class="n">filename</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Parse patient and timepoint from CAR-T filename.&quot;&quot;&quot;</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;GSM\d+_(P\d+)_(.+)_rna\.csv\.gz&quot;</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">m</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span>
+    <span class="n">patient</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">tp_raw</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s2">&quot;Leukapheresis&quot;</span> <span class="ow">in</span> <span class="n">tp_raw</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">patient</span><span class="p">,</span> <span class="s2">&quot;Leukapheresis&quot;</span><span class="p">,</span> <span class="mi">0</span>
+    <span class="k">if</span> <span class="s2">&quot;4wk&quot;</span> <span class="ow">in</span> <span class="n">tp_raw</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">patient</span><span class="p">,</span> <span class="s2">&quot;4wk_post&quot;</span><span class="p">,</span> <span class="mi">28</span>
+    <span class="k">if</span> <span class="s2">&quot;6mo&quot;</span> <span class="ow">in</span> <span class="n">tp_raw</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">patient</span><span class="p">,</span> <span class="s2">&quot;6mo_post&quot;</span><span class="p">,</span> <span class="mi">180</span>
+    <span class="k">if</span> <span class="s2">&quot;12mo&quot;</span> <span class="ow">in</span> <span class="n">tp_raw</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">patient</span><span class="p">,</span> <span class="s2">&quot;12mo_post&quot;</span><span class="p">,</span> <span class="mi">365</span>
+    <span class="k">return</span> <span class="n">patient</span><span class="p">,</span> <span class="n">tp_raw</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_process_cart_raw</span><span class="p">(</span>
+    <span class="n">raw_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">max_cells_per_sample</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">500</span><span class="p">,</span>
+    <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">42</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ad</span><span class="o">.</span><span class="n">AnnData</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Process raw GSE290722 CAR-T files into an AnnData object.</span>
+
+<span class="sd">    Reads per-sample expression CSV files, combines them, applies QC,</span>
+<span class="sd">    normalisation, computes embeddings, and annotates cell types via</span>
+<span class="sd">    Leiden clustering + Wilcoxon marker scoring.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">scanpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sc</span>
+
+    <span class="n">rna_files</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">raw_dir</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;GSM*_*_rna.csv.gz&quot;</span><span class="p">))</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">rna_files</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No RNA expression files found in </span><span class="si">{</span><span class="n">raw_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">samples</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">rna_files</span><span class="p">:</span>
+        <span class="n">patient</span><span class="p">,</span> <span class="n">timepoint</span><span class="p">,</span> <span class="n">days</span> <span class="o">=</span> <span class="n">_parse_cart_sample_info</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">patient</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">samples</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+            <span class="s2">&quot;file&quot;</span><span class="p">:</span> <span class="n">f</span><span class="p">,</span>
+            <span class="s2">&quot;patient&quot;</span><span class="p">:</span> <span class="n">patient</span><span class="p">,</span>
+            <span class="s2">&quot;timepoint&quot;</span><span class="p">:</span> <span class="n">timepoint</span><span class="p">,</span>
+            <span class="s2">&quot;days&quot;</span><span class="p">:</span> <span class="n">days</span><span class="p">,</span>
+            <span class="s2">&quot;sample_id&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">patient</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">timepoint</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="p">})</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">samples</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;No valid CAR-T samples found.&quot;</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">samples</span><span class="p">)</span><span class="si">}</span><span class="s2"> CAR-T RNA expression files&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Load first sample to get gene names</span>
+    <span class="n">first_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">samples</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;file&quot;</span><span class="p">])</span>
+    <span class="n">gene_col</span> <span class="o">=</span> <span class="n">first_df</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">gene_names</span> <span class="o">=</span> <span class="n">first_df</span><span class="p">[</span><span class="n">gene_col</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Detected </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">gene_names</span><span class="p">)</span><span class="si">}</span><span class="s2"> genes&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Load all samples</span>
+    <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+    <span class="n">all_X</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">all_obs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">sample</span> <span class="ow">in</span> <span class="n">samples</span><span class="p">:</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">sample</span><span class="p">[</span><span class="s2">&quot;file&quot;</span><span class="p">])</span>
+        <span class="n">gc_col</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">genes</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">gc_col</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="n">expr_df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="n">gc_col</span><span class="p">])</span>
+        <span class="n">cells</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">expr_df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>
+        <span class="n">X</span> <span class="o">=</span> <span class="n">expr_df</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>  <span class="c1"># cells × genes</span>
+
+        <span class="c1"># Re-order genes if needed</span>
+        <span class="k">if</span> <span class="n">genes</span> <span class="o">!=</span> <span class="n">gene_names</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">set</span><span class="p">(</span><span class="n">genes</span><span class="p">)</span> <span class="o">==</span> <span class="nb">set</span><span class="p">(</span><span class="n">gene_names</span><span class="p">):</span>
+                <span class="n">g2i</span> <span class="o">=</span> <span class="p">{</span><span class="n">g</span><span class="p">:</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">g</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">genes</span><span class="p">)}</span>
+                <span class="n">new_order</span> <span class="o">=</span> <span class="p">[</span><span class="n">g2i</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">gene_names</span><span class="p">]</span>
+                <span class="n">X</span> <span class="o">=</span> <span class="n">X</span><span class="p">[:,</span> <span class="n">new_order</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Gene mismatch for </span><span class="si">{</span><span class="n">sample</span><span class="p">[</span><span class="s1">&#39;sample_id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, skipping&quot;</span><span class="p">)</span>
+                <span class="k">continue</span>
+
+        <span class="c1"># Subsample</span>
+        <span class="k">if</span> <span class="n">max_cells_per_sample</span> <span class="ow">and</span> <span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">max_cells_per_sample</span><span class="p">:</span>
+            <span class="n">idx</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">max_cells_per_sample</span><span class="p">,</span> <span class="n">replace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="n">X</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+            <span class="n">cells</span> <span class="o">=</span> <span class="p">[</span><span class="n">cells</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">idx</span><span class="p">]</span>
+
+        <span class="n">obs_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+            <span class="s2">&quot;cell_id&quot;</span><span class="p">:</span> <span class="n">cells</span><span class="p">,</span>
+            <span class="s2">&quot;sample_id&quot;</span><span class="p">:</span> <span class="n">sample</span><span class="p">[</span><span class="s2">&quot;sample_id&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;patient_id&quot;</span><span class="p">:</span> <span class="n">sample</span><span class="p">[</span><span class="s2">&quot;patient&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;timepoint&quot;</span><span class="p">:</span> <span class="n">sample</span><span class="p">[</span><span class="s2">&quot;timepoint&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;days_post_treatment&quot;</span><span class="p">:</span> <span class="n">sample</span><span class="p">[</span><span class="s2">&quot;days&quot;</span><span class="p">],</span>
+        <span class="p">},</span> <span class="n">index</span><span class="o">=</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">sample</span><span class="p">[</span><span class="s1">&#39;sample_id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cells</span><span class="p">])</span>
+
+        <span class="n">all_X</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+        <span class="n">all_obs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">obs_df</span><span class="p">)</span>
+        <span class="k">del</span> <span class="n">df</span><span class="p">,</span> <span class="n">expr_df</span>
+        <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">all_X</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;No CAR-T samples could be loaded.&quot;</span><span class="p">)</span>
+
+    <span class="n">X_combined</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">(</span><span class="n">all_X</span><span class="p">))</span>
+    <span class="n">obs_combined</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">all_obs</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">adata</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">AnnData</span><span class="p">(</span><span class="n">X</span><span class="o">=</span><span class="n">X_combined</span><span class="p">,</span> <span class="n">obs</span><span class="o">=</span><span class="n">obs_combined</span><span class="p">,</span> <span class="n">var</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">gene_names</span><span class="p">))</span>
+    <span class="k">del</span> <span class="n">all_X</span>
+    <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+
+    <span class="c1"># ── QC and normalisation ──────────────────────────────────────────</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">&quot;counts&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">X</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">var</span><span class="p">[</span><span class="s2">&quot;mt&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;MT-&quot;</span><span class="p">)</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">calculate_qc_metrics</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">qc_vars</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;mt&quot;</span><span class="p">],</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">n_before</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">filter_cells</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">min_genes</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">filter_cells</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">max_genes</span><span class="o">=</span><span class="mi">6000</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s2">&quot;pct_counts_mt&quot;</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">adata</span> <span class="o">=</span> <span class="n">adata</span><span class="p">[</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;pct_counts_mt&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">20</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">filter_genes</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">min_cells</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;QC: </span><span class="si">{</span><span class="n">n_before</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> → </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> genes&quot;</span><span class="p">)</span>
+
+    <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">normalize_total</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">target_sum</span><span class="o">=</span><span class="mf">1e4</span><span class="p">)</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">log1p</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">&quot;log1p_norm&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">X</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="c1"># ── Standardised sctrial obs columns ──────────────────────────────</span>
+    <span class="n">obs</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span>
+    <span class="n">obs</span><span class="p">[</span><span class="s2">&quot;participant_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">obs</span><span class="p">[</span><span class="s2">&quot;patient_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
+    <span class="n">obs</span><span class="p">[</span><span class="s2">&quot;visit&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">obs</span><span class="p">[</span><span class="s2">&quot;timepoint&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+        <span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="s2">&quot;Pre&quot;</span> <span class="k">if</span> <span class="n">t</span> <span class="o">==</span> <span class="s2">&quot;Leukapheresis&quot;</span> <span class="k">else</span> <span class="s2">&quot;Post&quot;</span>
+    <span class="p">)</span>
+    <span class="n">obs</span><span class="p">[</span><span class="s2">&quot;is_paired&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># filled below</span>
+    <span class="n">obs</span><span class="p">[</span><span class="s2">&quot;response&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;CAR-T&quot;</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">obs</span> <span class="o">=</span> <span class="n">obs</span>
+
+    <span class="c1"># ── Embeddings + clustering ───────────────────────────────────────</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">highly_variable_genes</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">n_top_genes</span><span class="o">=</span><span class="mi">2000</span><span class="p">,</span> <span class="n">flavor</span><span class="o">=</span><span class="s2">&quot;seurat&quot;</span><span class="p">,</span> <span class="n">subset</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">tl</span><span class="o">.</span><span class="n">pca</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">n_comps</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">use_highly_variable</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">neighbors</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">n_neighbors</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">n_pcs</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">tl</span><span class="o">.</span><span class="n">umap</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+
+    <span class="c1"># Clustering — try Leiden, fallback to KMeans</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">sc</span><span class="o">.</span><span class="n">tl</span><span class="o">.</span><span class="n">leiden</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="mf">0.8</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.cluster</span><span class="w"> </span><span class="kn">import</span> <span class="n">MiniBatchKMeans</span>
+        <span class="n">X_pca</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obsm</span><span class="p">[</span><span class="s2">&quot;X_pca&quot;</span><span class="p">][:,</span> <span class="p">:</span><span class="mi">20</span><span class="p">]</span>
+        <span class="n">kmeans</span> <span class="o">=</span> <span class="n">MiniBatchKMeans</span><span class="p">(</span><span class="n">n_clusters</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span>
+        <span class="n">clusters</span> <span class="o">=</span> <span class="n">kmeans</span><span class="o">.</span><span class="n">fit_predict</span><span class="p">(</span><span class="n">X_pca</span><span class="p">)</span>
+        <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;leiden&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Categorical</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">clusters</span><span class="p">])</span>
+
+    <span class="c1"># ── Cell type annotation (marker scoring) ─────────────────────────</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Annotating CAR-T cell types...&quot;</span><span class="p">)</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;cell_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">_annotate_immune_celltypes</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+
+    <span class="c1"># Mark paired patients</span>
+    <span class="n">patients</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;participant_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span>
+    <span class="n">paired_patients</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">patients</span><span class="p">:</span>
+        <span class="n">tps</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;participant_id&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">p</span><span class="p">,</span> <span class="s2">&quot;timepoint&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">())</span>
+        <span class="k">if</span> <span class="s2">&quot;Leukapheresis&quot;</span> <span class="ow">in</span> <span class="n">tps</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">tps</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">paired_patients</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;is_paired&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;participant_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">paired_patients</span><span class="p">)</span>
+
+    <span class="n">adata</span><span class="o">.</span><span class="n">uns</span><span class="p">[</span><span class="s2">&quot;paired_patients&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">paired_patients</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">uns</span><span class="p">[</span><span class="s2">&quot;dataset&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;GSE290722&quot;</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">uns</span><span class="p">[</span><span class="s2">&quot;trial&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ZUMA-1&quot;</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">uns</span><span class="p">[</span><span class="s2">&quot;description&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;CAR-T therapy longitudinal scRNA-seq&quot;</span>
+    <span class="k">return</span> <span class="n">adata</span>
+
+
+<div class="viewcode-block" id="load_cart">
+<a class="viewcode-back" href="../../api.html#sctrial.datasets.load_cart">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_cart</span><span class="p">(</span>
+    <span class="n">data_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;data/cart&quot;</span><span class="p">,</span>
+    <span class="n">processed_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;gse290722_cart_processed.h5ad&quot;</span><span class="p">,</span>
+    <span class="n">max_cells_per_sample</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">500</span><span class="p">,</span>
+    <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">42</span><span class="p">,</span>
+    <span class="n">allow_download</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">force_reprocess</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ad</span><span class="o">.</span><span class="n">AnnData</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load the CAR-T cell therapy dataset (GSE290722).</span>
+
+<span class="sd">    This dataset contains pre/post-CAR-T infusion samples with cell-type</span>
+<span class="sd">    annotations and treatment-response metadata from the ZUMA-1 trial.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data_dir : str</span>
+<span class="sd">        Directory containing (or to store) the data files.</span>
+<span class="sd">        Raw files go in ``&lt;data_dir&gt;/raw/`` and the processed cache in</span>
+<span class="sd">        ``&lt;data_dir&gt;/processed/``.</span>
+<span class="sd">    processed_name : str</span>
+<span class="sd">        Filename for the cached processed h5ad file.</span>
+<span class="sd">    max_cells_per_sample : int</span>
+<span class="sd">        Maximum cells to keep per sample after subsampling.</span>
+<span class="sd">    seed : int</span>
+<span class="sd">        Random seed for reproducibility.</span>
+<span class="sd">    allow_download : bool</span>
+<span class="sd">        If True, download raw data from GEO when not found locally.</span>
+<span class="sd">    force_reprocess : bool</span>
+<span class="sd">        If True, reprocess even when a cached file exists.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    AnnData</span>
+<span class="sd">        The processed AnnData object.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    The raw data is automatically downloaded from GEO when</span>
+<span class="sd">    ``allow_download=True``:</span>
+<span class="sd">    https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE290722</span>
+
+<span class="sd">    Reference: GSE290722 CAR-T therapy dataset (ZUMA-1 trial).</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; adata = sctrial.load_cart(allow_download=True)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">data_dir_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">data_dir</span><span class="p">)</span>
+
+    <span class="n">processing_params</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;version&quot;</span><span class="p">:</span> <span class="s2">&quot;v1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;max_cells_per_sample&quot;</span><span class="p">:</span> <span class="n">max_cells_per_sample</span><span class="p">,</span>
+        <span class="s2">&quot;seed&quot;</span><span class="p">:</span> <span class="n">seed</span><span class="p">,</span>
+    <span class="p">}</span>
+
+    <span class="c1"># ── Try to load cached processed file ─────────────────────────────</span>
+    <span class="n">candidates</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">data_dir_path</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span><span class="p">,</span>
+        <span class="n">_resolve_file</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">data_dir_path</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span><span class="p">)),</span>
+    <span class="p">]</span>
+    <span class="k">for</span> <span class="n">base</span> <span class="ow">in</span> <span class="p">[</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">(),</span> <span class="o">*</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">]:</span>
+        <span class="n">candidates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">base</span> <span class="o">/</span> <span class="s2">&quot;data&quot;</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span><span class="p">)</span>
+        <span class="n">candidates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">base</span> <span class="o">/</span> <span class="s2">&quot;data&quot;</span> <span class="o">/</span> <span class="s2">&quot;cart&quot;</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span><span class="p">)</span>
+        <span class="n">candidates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">base</span> <span class="o">/</span> <span class="s2">&quot;manuscript&quot;</span> <span class="o">/</span> <span class="s2">&quot;datasets&quot;</span> <span class="o">/</span> <span class="s2">&quot;GSE290722_CAR-T&quot;</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span> <span class="o">/</span> <span class="n">processed_name</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">force_reprocess</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">candidates</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+                <span class="n">adata</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+                <span class="n">prev</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">uns</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;processing_params&quot;</span><span class="p">,</span> <span class="p">{})</span>
+                <span class="k">if</span> <span class="n">prev</span> <span class="ow">and</span> <span class="n">_params_match</span><span class="p">(</span><span class="n">prev</span><span class="p">,</span> <span class="n">processing_params</span><span class="p">):</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded CAR-T dataset (GSE290722): </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> genes&quot;</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="n">adata</span>
+                <span class="k">if</span> <span class="n">prev</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Processed file parameters differ; reprocessing.&quot;</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded CAR-T dataset (GSE290722): </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> genes&quot;</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="n">adata</span>
+
+    <span class="c1"># ── Locate or download raw files ──────────────────────────────────</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">scanpy</span>  <span class="c1"># noqa: F401</span>
+    <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
+            <span class="s2">&quot;scanpy is required for CAR-T dataset processing. &quot;</span>
+            <span class="s2">&quot;Install with: pip install sctrial[plots]  or  pip install scanpy&quot;</span>
+        <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
+
+    <span class="n">raw_dir</span> <span class="o">=</span> <span class="n">data_dir_path</span> <span class="o">/</span> <span class="s2">&quot;raw&quot;</span>
+    <span class="n">raw_candidates</span> <span class="o">=</span> <span class="p">[</span><span class="n">raw_dir</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">base</span> <span class="ow">in</span> <span class="p">[</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">(),</span> <span class="o">*</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">]:</span>
+        <span class="n">raw_candidates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">base</span> <span class="o">/</span> <span class="s2">&quot;manuscript&quot;</span> <span class="o">/</span> <span class="s2">&quot;datasets&quot;</span> <span class="o">/</span> <span class="s2">&quot;GSE290722_CAR-T&quot;</span> <span class="o">/</span> <span class="s2">&quot;raw&quot;</span><span class="p">)</span>
+        <span class="n">raw_candidates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">base</span> <span class="o">/</span> <span class="s2">&quot;data&quot;</span> <span class="o">/</span> <span class="s2">&quot;cart&quot;</span> <span class="o">/</span> <span class="s2">&quot;raw&quot;</span><span class="p">)</span>
+
+    <span class="n">found_raw</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">for</span> <span class="n">rd</span> <span class="ow">in</span> <span class="n">raw_candidates</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">rd</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span> <span class="ow">and</span> <span class="nb">list</span><span class="p">(</span><span class="n">rd</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;GSM*_*_rna.csv.gz&quot;</span><span class="p">)):</span>
+            <span class="n">found_raw</span> <span class="o">=</span> <span class="n">rd</span>
+            <span class="k">break</span>
+
+    <span class="k">if</span> <span class="n">found_raw</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">allow_download</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;CAR-T dataset not found. Searched for raw files and &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;&#39;</span><span class="si">{</span><span class="n">processed_name</span><span class="si">}</span><span class="s2">&#39; in several locations including </span><span class="si">{</span><span class="n">data_dir_path</span><span class="si">}</span><span class="s2">. &quot;</span>
+                <span class="s2">&quot;Download from GEO: &quot;</span>
+                <span class="s2">&quot;https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE290722 &quot;</span>
+                <span class="s2">&quot;or set allow_download=True to fetch automatically.&quot;</span>
+            <span class="p">)</span>
+        <span class="n">raw_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">tar_url</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s2">&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE290722&quot;</span>
+            <span class="s2">&quot;&amp;format=file&quot;</span>
+        <span class="p">)</span>
+        <span class="n">tar_dest</span> <span class="o">=</span> <span class="n">raw_dir</span> <span class="o">/</span> <span class="s2">&quot;GSE290722_RAW.tar&quot;</span>
+        <span class="n">_download_file</span><span class="p">(</span><span class="n">tar_url</span><span class="p">,</span> <span class="n">tar_dest</span><span class="p">,</span> <span class="s2">&quot;GSE290722 supplementary tar&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Extracting raw files...&quot;</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">tarfile</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">tar_dest</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">tf</span><span class="p">:</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">extractall</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="n">raw_dir</span><span class="p">)</span>
+        <span class="n">tar_dest</span><span class="o">.</span><span class="n">unlink</span><span class="p">(</span><span class="n">missing_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">found_raw</span> <span class="o">=</span> <span class="n">raw_dir</span>
+
+    <span class="c1"># ── Process raw data ──────────────────────────────────────────────</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Processing raw CAR-T data (this may take several minutes)...&quot;</span><span class="p">)</span>
+    <span class="n">adata</span> <span class="o">=</span> <span class="n">_process_cart_raw</span><span class="p">(</span><span class="n">found_raw</span><span class="p">,</span> <span class="n">max_cells_per_sample</span><span class="o">=</span><span class="n">max_cells_per_sample</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">)</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">uns</span><span class="p">[</span><span class="s2">&quot;processing_params&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">processing_params</span>
+
+    <span class="n">processed_dir</span> <span class="o">=</span> <span class="n">data_dir_path</span> <span class="o">/</span> <span class="s2">&quot;processed&quot;</span>
+    <span class="n">processed_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">out_path</span> <span class="o">=</span> <span class="n">processed_dir</span> <span class="o">/</span> <span class="n">processed_name</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">write_h5ad</span><span class="p">(</span><span class="n">out_path</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Saved processed CAR-T file: </span><span class="si">{</span><span class="n">out_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded CAR-T dataset (GSE290722): </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> cells, </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> genes&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">adata</span></div>
+
+
+
+<div class="viewcode-block" id="harmonize_response">
+<a class="viewcode-back" href="../../api.html#sctrial.datasets.harmonize_response">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">harmonize_response</span><span class="p">(</span><span class="n">adata</span><span class="p">:</span> <span class="n">ad</span><span class="o">.</span><span class="n">AnnData</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">force</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ad</span><span class="o">.</span><span class="n">AnnData</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a ``response_harmonized`` column with consistent labels.</span>
+
+<span class="sd">    Maps various responder/non-responder column names and label formats</span>
+<span class="sd">    (e.g. &quot;R&quot;/&quot;NR&quot;, &quot;Responder&quot;/&quot;Non-responder&quot;) to a standard vocabulary:</span>
+<span class="sd">    ``&quot;Responder&quot;`` and ``&quot;Non-responder&quot;``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    adata : AnnData</span>
+<span class="sd">        Must contain one of: ``response``, ``Response``, or</span>
+<span class="sd">        ``clinical_response`` in ``.obs``.</span>
+<span class="sd">    force : bool</span>
+<span class="sd">        If True, recompute even when the column already exists.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    AnnData</span>
+<span class="sd">        The input AnnData with ``response_harmonized`` added to ``.obs``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">force</span> <span class="ow">and</span> <span class="s2">&quot;response_harmonized&quot;</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="k">del</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;response_harmonized&quot;</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="s2">&quot;response_harmonized&quot;</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s2">&quot;participant_id&quot;</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">n_per</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;participant_id&quot;</span><span class="p">)[</span><span class="s2">&quot;response_harmonized&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">n_per</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+                <span class="n">pid_resp</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;participant_id&quot;</span><span class="p">)[</span><span class="s2">&quot;response_harmonized&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">agg</span><span class="p">(</span>
+                    <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">mode</span><span class="p">()</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">mode</span><span class="p">())</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">x</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="p">)</span>
+                <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;response_harmonized&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;participant_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">pid_resp</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">adata</span>
+
+    <span class="n">mapping</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;responder&quot;</span><span class="p">:</span> <span class="s2">&quot;Responder&quot;</span><span class="p">,</span> <span class="s2">&quot;Responder&quot;</span><span class="p">:</span> <span class="s2">&quot;Responder&quot;</span><span class="p">,</span> <span class="s2">&quot;R&quot;</span><span class="p">:</span> <span class="s2">&quot;Responder&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;non-responder&quot;</span><span class="p">:</span> <span class="s2">&quot;Non-responder&quot;</span><span class="p">,</span> <span class="s2">&quot;Non-responder&quot;</span><span class="p">:</span> <span class="s2">&quot;Non-responder&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;NR&quot;</span><span class="p">:</span> <span class="s2">&quot;Non-responder&quot;</span><span class="p">,</span> <span class="s2">&quot;nonresponder&quot;</span><span class="p">:</span> <span class="s2">&quot;Non-responder&quot;</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;response&quot;</span><span class="p">,</span> <span class="s2">&quot;Response&quot;</span><span class="p">,</span> <span class="s2">&quot;clinical_response&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;response_harmonized&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">mapping</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">x</span><span class="p">))</span>
+            <span class="p">)</span>
+            <span class="k">break</span>
+
+    <span class="k">if</span> <span class="s2">&quot;response_harmonized&quot;</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span> <span class="ow">and</span> <span class="s2">&quot;participant_id&quot;</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">pid_resp</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;participant_id&quot;</span><span class="p">)[</span><span class="s2">&quot;response_harmonized&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">agg</span><span class="p">(</span>
+            <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">mode</span><span class="p">()</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">mode</span><span class="p">())</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">x</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="p">)</span>
+        <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;response_harmonized&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;participant_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">pid_resp</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">adata</span></div>
 
 
 

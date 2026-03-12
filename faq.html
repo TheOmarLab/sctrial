@@ -399,6 +399,14 @@
 
 <span class="c1"># Vaccine PBMC time course (GSE171964)</span>
 <span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">load_vaccine_gse171964</span><span class="p">(</span><span class="n">allow_download</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># AML clinical trial (GSE116256)</span>
+<span class="c1"># Requires scanpy: pip install sctrial[plots]</span>
+<span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">load_aml</span><span class="p">(</span><span class="n">allow_download</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># CAR-T clinical trial (GSE290722)</span>
+<span class="c1"># Requires scanpy: pip install sctrial[plots]</span>
+<span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">load_cart</span><span class="p">(</span><span class="n">allow_download</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Downloads are disabled by default (<code class="docutils literal notranslate"><span class="pre">allow_download=False</span></code>) so nothing is
@@ -406,9 +414,9 @@ fetched without explicit consent. Only missing files are downloaded; files
 already on disk are reused.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>The Sade-Feldman loader performs marker-based cell-type annotation using
-scanpy (Leiden clustering + Wilcoxon marker scoring). Install the <code class="docutils literal notranslate"><span class="pre">plots</span></code>
-extra to enable this: <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">sctrial[plots]</span></code>.</p>
+<p>The Sade-Feldman, AML, and CAR-T loaders perform marker-based cell-type
+annotation using scanpy (Leiden clustering + Wilcoxon marker scoring).
+Install the <code class="docutils literal notranslate"><span class="pre">plots</span></code> extra to enable this: <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">sctrial[plots]</span></code>.</p>
 </div>
 </section>
 </section>
@@ -872,6 +880,17 @@ in linear models (Gelman &amp; Hill, 2006).</p>
 </pre></div>
 </div>
 </section>
+<section id="how-do-i-harmonize-response-labels-across-datasets">
+<h3>How do I harmonize response labels across datasets?<a class="headerlink" href="#how-do-i-harmonize-response-labels-across-datasets" title="Link to this heading">#</a></h3>
+<p>Use <code class="docutils literal notranslate"><span class="pre">harmonize_response()</span></code> to standardize different response label conventions:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">sctrial</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
+
+<span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">harmonize_response</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+<span class="c1"># Maps R/NR, Responder/Non-responder, etc. → &quot;Responder&quot;/&quot;Non-responder&quot;</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;response_harmonized&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">value_counts</span><span class="p">())</span>
+</pre></div>
+</div>
+</section>
 </section>
 <section id="feature-and-gene-set-questions">
 <h2>Feature and Gene Set Questions<a class="headerlink" href="#feature-and-gene-set-questions" title="Link to this heading">#</a></h2>
@@ -1147,6 +1166,7 @@ For proteomics: Use protein abundance as features</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#can-i-do-dose-response-analysis">Can I do dose-response analysis?</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#what-if-i-have-crossover-design">What if I have crossover design?</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#how-do-i-test-for-cell-type-specific-effects">How do I test for cell-type-specific effects?</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#how-do-i-harmonize-response-labels-across-datasets">How do I harmonize response labels across datasets?</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#feature-and-gene-set-questions">Feature and Gene Set Questions</a><ul class="visible nav section-nav flex-column">
