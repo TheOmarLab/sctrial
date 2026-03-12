@@ -1070,13 +1070,13 @@ def _panel_pseudoreplication_single(ds_name, res, design_type="two_arm"):
         beta_label = r"$\beta_{\mathrm{DiD}}$"
         method_tag = "DiD"
     else:
-        beta_label = r"$\Delta$ (pre\u2013post)"
-        method_tag = "Δ (within-arm change)"
+        beta_label = r"$\Delta$ (pre$-$post)"
+        method_tag = r"$\Delta$ (within-arm)"
 
     color = _DS_PALETTE.get(ds_name, "#555555")
-    fig, axes = plt.subplots(1, 3, figsize=(16, 4.5))
+    fig, axes = plt.subplots(1, 3, figsize=(16, 5.0))
 
-    # Col 0: β scatter (cell vs participant)
+    # Col 0: β scatter (cell vs participant) with adjustText
     ax = axes[0]
     x = merged["beta_cell"].values
     y = merged["beta_part"].values
@@ -1087,12 +1087,20 @@ def _panel_pseudoreplication_single(ds_name, res, design_type="two_arm"):
     ax.plot([lo, hi], [lo, hi], ls="--", color="#999999", lw=1, zorder=1)
     ax.scatter(x, y, s=50, color=color, edgecolor="white",
                linewidth=0.5, zorder=3)
+    texts = []
     for _, row in merged.iterrows():
-        ax.annotate(
-            row["feature"], (row["beta_cell"], row["beta_part"]),
-            fontsize=6, ha="left", va="bottom",
-            xytext=(3, 3), textcoords="offset points",
+        texts.append(
+            ax.text(
+                row["beta_cell"], row["beta_part"], row["feature"],
+                fontsize=5.5, ha="left", va="bottom",
+            )
         )
+    adjust_text(
+        texts, ax=ax,
+        arrowprops=dict(arrowstyle="-", color="#aaaaaa", lw=0.4),
+        expand=(1.3, 1.5),
+        force_text=(0.8, 0.8),
+    )
     if len(x) >= 3:
         r, p = stats.pearsonr(x, y)
         ax.text(
@@ -1106,7 +1114,7 @@ def _panel_pseudoreplication_single(ds_name, res, design_type="two_arm"):
     ax.set_title("Effect Size Correlation", fontsize=10, fontweight="bold")
     despine(ax)
 
-    # Col 1: −log10(p) bars
+    # Col 1: −log10(p) bars — use log scale so both levels are visible
     ax = axes[1]
     merged["nlog10_cell"] = -np.log10(
         merged["pval_cell"].clip(lower=1e-300))
@@ -1115,33 +1123,59 @@ def _panel_pseudoreplication_single(ds_name, res, design_type="two_arm"):
     m_sorted = merged.sort_values("nlog10_part", ascending=True)
     y_pos = np.arange(len(m_sorted))
     bar_h = 0.35
-    ax.barh(y_pos - bar_h / 2, m_sorted["nlog10_cell"].values,
+    # Use log1p transform: log10(1 + nlog10p) — compresses large values,
+    # keeps small values visible
+    nlog_cell_vals = m_sorted["nlog10_cell"].values
+    nlog_part_vals = m_sorted["nlog10_part"].values
+    # Check if scale ratio is extreme (>20x) — use log x-axis
+    max_cell = np.nanmax(nlog_cell_vals) if len(nlog_cell_vals) else 1
+    max_part = np.nanmax(nlog_part_vals) if len(nlog_part_vals) else 1
+    use_log_x = (max_cell / max(max_part, 0.01) > 20) or \
+                (max_part / max(max_cell, 0.01) > 20)
+
+    ax.barh(y_pos - bar_h / 2, nlog_cell_vals,
             height=bar_h, color=color, alpha=0.5,
             label="Cell-level", edgecolor="none")
-    ax.barh(y_pos + bar_h / 2, m_sorted["nlog10_part"].values,
+    ax.barh(y_pos + bar_h / 2, nlog_part_vals,
             height=bar_h, color=color, alpha=0.9,
             label="Participant-level", edgecolor="none")
-    ax.axvline(-np.log10(0.05), ls="--", color="#999999", lw=0.8)
+    # α = 0.05 threshold
+    thresh = -np.log10(0.05)
+    ax.axvline(thresh, ls="--", color="#999999", lw=0.8)
+    if use_log_x:
+        ax.set_xscale("symlog", linthresh=1.0)
+        # Nice tick placement for symlog
+        ax.set_xlim(left=0)
     ax.set_yticks(y_pos)
-    ax.set_yticklabels(m_sorted["feature"].values, fontsize=7)
+    ax.set_yticklabels(m_sorted["feature"].values, fontsize=6.5)
     ax.set_xlabel(r"$-\log_{10}(p)$", fontsize=9)
-    ax.set_title("Cell vs Participant Inference", fontsize=10,
+    ax.set_title("Cell vs Participant Significance", fontsize=10,
                  fontweight="bold")
     ax.legend(fontsize=7, loc="lower right", frameon=True, framealpha=0.9)
     despine(ax)
 
-    # Col 2: SE bars
+    # Col 2: SE bars — use log x-axis when scale ratio is extreme
     ax = axes[2]
     m_sorted2 = merged.sort_values("se_part", ascending=True)
     y_pos2 = np.arange(len(m_sorted2))
-    ax.barh(y_pos2 - bar_h / 2, m_sorted2["se_cell"].values,
+    se_cell_vals = m_sorted2["se_cell"].values
+    se_part_vals = m_sorted2["se_part"].values
+    max_se_cell = np.nanmax(se_cell_vals) if len(se_cell_vals) else 1
+    max_se_part = np.nanmax(se_part_vals) if len(se_part_vals) else 1
+    use_log_se = (max_se_part / max(max_se_cell, 1e-10) > 20) or \
+                 (max_se_cell / max(max_se_part, 1e-10) > 20)
+
+    ax.barh(y_pos2 - bar_h / 2, se_cell_vals,
             height=bar_h, color=color, alpha=0.5,
             label="Cell-level SE", edgecolor="none")
-    ax.barh(y_pos2 + bar_h / 2, m_sorted2["se_part"].values,
+    ax.barh(y_pos2 + bar_h / 2, se_part_vals,
             height=bar_h, color=color, alpha=0.9,
             label="Participant-level SE", edgecolor="none")
+    if use_log_se:
+        ax.set_xscale("symlog", linthresh=0.001)
+        ax.set_xlim(left=0)
     ax.set_yticks(y_pos2)
-    ax.set_yticklabels(m_sorted2["feature"].values, fontsize=7)
+    ax.set_yticklabels(m_sorted2["feature"].values, fontsize=6.5)
     ax.set_xlabel("Standard Error", fontsize=9)
     ax.set_title("Precision Comparison", fontsize=10, fontweight="bold")
     ax.legend(fontsize=7, loc="lower right", frameon=True, framealpha=0.9)
