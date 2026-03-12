@@ -29,6 +29,7 @@ ENV/
 *.gz
 *.txt.gz
 data/
+datasets/
 tutorials/data/
 **/__pycache__/
 .DS_Store
