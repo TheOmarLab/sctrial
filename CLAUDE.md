@@ -223,3 +223,7 @@ GitHub Actions (`test.yml`): runs pytest on Python 3.9–3.11 on ubuntu-latest.
 ## Code quality
 
 - Primary language is Python. When editing Python code, ensure imports are correct and test data fixtures are properly set up before claiming tests pass.
+
+## Future features to work on
+
+- **Single-arm power analysis** — `power_paired()` / `sample_size_paired()` for single-arm pre/post designs. Currently the vaccine tutorial defines a custom `power_paired()` because the package only has `power_did()` for two-arm DiD. This is a gap in the API.
