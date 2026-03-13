@@ -7,6 +7,7 @@ import re
 import tarfile
 import urllib.error
 import urllib.request
+import warnings
 from collections.abc import Sequence
 from io import StringIO
 from pathlib import Path
@@ -21,6 +22,23 @@ from statsmodels.stats.multitest import multipletests
 from .utils import get_counts_matrix
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Dataset root: resolved relative to the *repository* (two levels up from
+# src/sctrial/), so loaders work regardless of the caller's cwd.
+# When installed as a proper package (no repo checkout), falls back to cwd.
+# ---------------------------------------------------------------------------
+_PACKAGE_DIR = Path(__file__).resolve().parent          # src/sctrial/
+_REPO_ROOT = _PACKAGE_DIR.parent.parent                 # sc_trial_inference/
+_DATASETS_ROOT = _REPO_ROOT / "datasets"
+if not _DATASETS_ROOT.is_dir():
+    # Installed package without repo structure — fall back to cwd
+    _DATASETS_ROOT = Path.cwd() / "datasets"
+
+
+def _default_data_dir(name: str) -> str:
+    """Return the absolute default data_dir for a given dataset name."""
+    return str(_DATASETS_ROOT / name)
 
 
 # ---------------------------------------------------------------------------
@@ -429,7 +447,7 @@ def _get_counts_matrix(adata: ad.AnnData) -> tuple[np.ndarray | None, str | None
 
 
 def load_sade_feldman(
-    data_dir: str = "data/sade_feldman",
+    data_dir: str | None = None,
     processed_name: str = "sade_feldman_processed_v6.h5ad",
     max_cells_per_participant_visit: int | None = None,
     seed: int = 42,
@@ -465,35 +483,42 @@ def load_sade_feldman(
         "assay": "TPM",
     }
 
-    # Search for cached processed file BEFORE resolving raw data directory.
-    cache_candidates = [Path(data_dir).parent / "processed" / processed_name]
-    for base in [Path.cwd(), *Path.cwd().parents]:
-        cache_candidates.append(base / "data" / "processed" / processed_name)
-        cache_candidates.append(base / "data" / "sade_feldman" / "processed" / processed_name)
+    data_dir = data_dir or _default_data_dir("sade_feldman")
+    data_dir_path = Path(data_dir)
+    processed_path = data_dir_path / "processed" / processed_name
 
-    if not force_reprocess:
-        for c in cache_candidates:
-            if c.exists():
-                adata = ad.read_h5ad(c)
-                prev = adata.uns.get("processing_params", {})
-                if _params_match(prev, processing_params):
-                    logger.info(
-                        f"Loaded processed Sade-Feldman dataset: {adata.n_obs:,} cells, {adata.n_vars:,} genes"
-                    )
-                    return adata
-                logger.info("Processed file parameters differ; reprocessing.")
-                logger.debug(f"  Stored: {prev}")
-                logger.debug(f"  Current: {processing_params}")
-                break
+    if not force_reprocess and processed_path.exists():
+        adata = ad.read_h5ad(processed_path)
+        prev = adata.uns.get("processing_params", {})
+        if prev:
+            if _params_match(prev, processing_params):
+                logger.info(
+                    f"Loaded processed Sade-Feldman dataset: {adata.n_obs:,} cells, {adata.n_vars:,} genes"
+                )
+                return adata
+            logger.info("Processed file parameters differ; reprocessing.")
+            logger.debug(f"  Stored: {prev}")
+            logger.debug(f"  Current: {processing_params}")
+        else:
+            warnings.warn(
+                "Cached file lacks processing_params metadata; cannot verify it matches "
+                "current settings. Consider reprocessing with force_reprocess=True.",
+                UserWarning,
+                stacklevel=2,
+            )
+            logger.info(
+                f"Loaded processed Sade-Feldman dataset: {adata.n_obs:,} cells, {adata.n_vars:,} genes"
+            )
+            return adata
 
-    data_dir_path = _resolve_dir_with_files(
-        data_dir,
+    raw_dir = data_dir_path / "raw"
+    raw_dir_resolved = _resolve_dir_with_files(
+        str(raw_dir),
         [
             "GSE120575_Sade_Feldman_melanoma_single_cells_TPM_GEO.txt.gz",
             "GSE120575_patient_ID_single_cells.txt.gz",
         ],
     )
-    processed_path = data_dir_path.parent / "processed" / processed_name
 
     # Check scanpy availability BEFORE downloading to avoid wasted bandwidth.
     # scanpy is required for cell-type annotation (Leiden + Wilcoxon scoring).
@@ -505,8 +530,8 @@ def load_sade_feldman(
             "Install with: pip install sctrial[plots]  or  pip install scanpy"
         ) from None
 
-    tpm_path = data_dir_path / "GSE120575_Sade_Feldman_melanoma_single_cells_TPM_GEO.txt.gz"
-    meta_path = data_dir_path / "GSE120575_patient_ID_single_cells.txt.gz"
+    tpm_path = raw_dir_resolved / "GSE120575_Sade_Feldman_melanoma_single_cells_TPM_GEO.txt.gz"
+    meta_path = raw_dir_resolved / "GSE120575_patient_ID_single_cells.txt.gz"
 
     _GEO_BASE = "https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE120575&format=file&file="
     _sade_feldman_files = [
@@ -530,7 +555,7 @@ def load_sade_feldman(
                 f"Missing file(s): {names}. Download from GEO: "
                 "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE120575"
             )
-        data_dir_path.mkdir(parents=True, exist_ok=True)
+        raw_dir_resolved.mkdir(parents=True, exist_ok=True)
         for dest, url, label in missing:
             _download_file(url, dest, label)
     logger.info("Processing raw data (this may take a minute)...")
@@ -634,7 +659,7 @@ def load_sade_feldman(
 
 
 def load_stephenson_data(
-    data_dir: str = "data/stephenson",
+    data_dir: str | None = None,
     processed_name: str = "stephenson_covid19_v3.h5ad",
     seed: int = 42,
     allow_download: bool = False,
@@ -669,37 +694,60 @@ def load_stephenson_data(
     AnnData
         The processed AnnData object.
     """
-    data_dir_path = _resolve_dir_with_files(data_dir, ["covid_portal_210320_with_raw.h5ad"])
-    data_path_resolved = data_dir_path / "covid_portal_210320_with_raw.h5ad"
-    # Derive processed cache location from the user-provided path so it
-    # respects custom directory layouts even when the raw file is missing.
-    processed_path = data_dir_path.parent / "processed" / processed_name
+    data_dir = data_dir or _default_data_dir("stephenson")
 
-    # Also search common alternative locations for the cached file.
-    cache_candidates = [processed_path]
-    for base in [Path.cwd(), *Path.cwd().parents]:
-        cache_candidates.append(base / "data" / "processed" / processed_name)
-        cache_candidates.append(base / "data" / "stephenson" / "processed" / processed_name)
+    # Backward compat: if someone passes an .h5ad file path positionally
+    # as data_dir (old API had data_path as first param), treat it as data_path.
+    if data_path is None and str(data_dir).endswith(".h5ad"):
+        data_path = data_dir
+        data_dir = _default_data_dir("stephenson")  # reset to default
 
-    if not force_reprocess:
-        for c in cache_candidates:
-            if c.exists():
-                adata = ad.read_h5ad(c)
-                logger.info(f"Loaded cached file: {c}")
-                logger.info(f"  {adata.n_obs:,} cells, {adata.n_vars:,} genes")
-                return adata
+    if data_path is not None:
+        warnings.warn(
+            "load_stephenson_data(data_path=...) is deprecated. "
+            "Use data_dir=... instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        raw_file = _resolve_file(data_path)
+        data_dir_path = raw_file.parent.parent if raw_file.exists() else Path(data_path).parent.parent
+    else:
+        data_dir_path = Path(data_dir)
+        raw_file = data_dir_path / "raw" / "covid_portal_210320_with_raw.h5ad"
+
+    processed_path = data_dir_path / "processed" / processed_name
+
+    if not force_reprocess and processed_path.exists():
+        adata = ad.read_h5ad(processed_path)
+        prev = adata.uns.get("processing_params", {})
+        if not prev:
+            warnings.warn(
+                "Cached file lacks processing_params metadata; cannot verify it matches "
+                "current settings. Consider reprocessing with force_reprocess=True.",
+                UserWarning,
+                stacklevel=2,
+            )
+        logger.info(f"Loaded cached file: {processed_path}")
+        logger.info(f"  {adata.n_obs:,} cells, {adata.n_vars:,} genes")
+        return adata
 
     if not raw_file.exists():
-        if not allow_download:
+        # Also check old location (data_dir directly, not raw subdir)
+        legacy_raw = data_dir_path / "covid_portal_210320_with_raw.h5ad"
+        if legacy_raw.exists():
+            raw_file = legacy_raw
+        elif not allow_download:
             raise FileNotFoundError(
                 f"Data not found at {raw_file}. Download from: "
                 "https://www.ebi.ac.uk/biostudies/files/E-MTAB-10026/"
             )
-        raw_file.parent.mkdir(parents=True, exist_ok=True)
-        url = (
-            "https://www.ebi.ac.uk/biostudies/files/E-MTAB-10026/covid_portal_210320_with_raw.h5ad"
-        )
-        _download_file(url, raw_file, "Stephenson COVID-19 data")
+        else:
+            raw_file.parent.mkdir(parents=True, exist_ok=True)
+            url = (
+                "https://www.ebi.ac.uk/biostudies/files/E-MTAB-10026/"
+                "covid_portal_210320_with_raw.h5ad"
+            )
+            _download_file(url, raw_file, "Stephenson COVID-19 data")
     logger.info("Processing raw data...")
     adata = ad.read_h5ad(raw_file)
 
@@ -742,10 +790,10 @@ def load_stephenson_data(
 
 
 def load_vaccine_gse171964(
-    data_dir: str = "data/vaccine_gse171964",
-    processed_name: str = "vaccine_gse171964_day0_day7.h5ad",
-    max_participants: int | None = 30,
-    max_cells_per_group: int | None = 200,
+    data_dir: str | None = None,
+    processed_name: str = "vaccine_gse171964.h5ad",
+    max_participants: int | None = None,
+    max_cells_per_group: int | None = None,
     seed: int = 42,
     allow_download: bool = False,
     force_reprocess: bool = False,
@@ -782,29 +830,37 @@ def load_vaccine_gse171964(
         "days": [0, 7],
     }
 
-    # Search for cached processed file BEFORE resolving raw data directory.
-    cache_candidates = [Path(data_dir).parent / "processed" / processed_name]
-    for base in [Path.cwd(), *Path.cwd().parents]:
-        cache_candidates.append(base / "data" / "processed" / processed_name)
-        cache_candidates.append(base / "data" / "vaccine_gse171964" / "processed" / processed_name)
+    data_dir = data_dir or _default_data_dir("vaccine_gse171964")
+    data_dir_path = Path(data_dir)
+    processed_path = data_dir_path / "processed" / processed_name
 
-    if not force_reprocess:
-        for c in cache_candidates:
-            if c.exists():
-                adata = ad.read_h5ad(c)
-                prev = adata.uns.get("processing_params", {})
-                if _params_match(prev, processing_params):
-                    logger.info(
-                        f"Loaded processed vaccine dataset (GSE171964): {adata.n_obs} cells, {adata.n_vars} genes"
-                    )
-                    return adata
-                logger.info("Processed file parameters differ; reprocessing.")
-                logger.debug(f"  Stored: {prev}")
-                logger.debug(f"  Current: {processing_params}")
-                break
+    if not force_reprocess and processed_path.exists():
+        adata = ad.read_h5ad(processed_path)
+        prev = adata.uns.get("processing_params", {})
+        if prev:
+            if _params_match(prev, processing_params):
+                logger.info(
+                    f"Loaded processed vaccine dataset (GSE171964): {adata.n_obs} cells, {adata.n_vars} genes"
+                )
+                return adata
+            logger.info("Processed file parameters differ; reprocessing.")
+            logger.debug(f"  Stored: {prev}")
+            logger.debug(f"  Current: {processing_params}")
+        else:
+            warnings.warn(
+                "Cached file lacks processing_params metadata; cannot verify it matches "
+                "current settings. Consider reprocessing with force_reprocess=True.",
+                UserWarning,
+                stacklevel=2,
+            )
+            logger.info(
+                f"Loaded processed vaccine dataset (GSE171964): {adata.n_obs} cells, {adata.n_vars} genes"
+            )
+            return adata
 
-    data_dir_path = _resolve_dir_with_files(
-        data_dir,
+    raw_dir = data_dir_path / "raw"
+    raw_dir_resolved = _resolve_dir_with_files(
+        str(raw_dir),
         [
             "GSE171964_barcodes_v2.tsv.gz",
             "GSE171964_feats_v2.tsv.gz",
@@ -812,12 +868,11 @@ def load_vaccine_gse171964(
             "GSE171964_countsmatrix_v2.mtx.gz",
         ],
     )
-    processed_path = data_dir_path.parent / "processed" / processed_name
 
-    barcodes_path = data_dir_path / "GSE171964_barcodes_v2.tsv.gz"
-    feats_path = data_dir_path / "GSE171964_feats_v2.tsv.gz"
-    pheno_path = data_dir_path / "GSE171964_geo_pheno_v2.csv.gz"
-    mtx_path = data_dir_path / "GSE171964_countsmatrix_v2.mtx.gz"
+    barcodes_path = raw_dir_resolved / "GSE171964_barcodes_v2.tsv.gz"
+    feats_path = raw_dir_resolved / "GSE171964_feats_v2.tsv.gz"
+    pheno_path = raw_dir_resolved / "GSE171964_geo_pheno_v2.csv.gz"
+    mtx_path = raw_dir_resolved / "GSE171964_countsmatrix_v2.mtx.gz"
 
     _GEO_BASE_V = "https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE171964&format=file&file="
     _vaccine_files = [
@@ -835,7 +890,7 @@ def load_vaccine_gse171964(
                 "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE171964 "
                 "or set allow_download=True to fetch automatically."
             )
-        data_dir_path.mkdir(parents=True, exist_ok=True)
+        raw_dir_resolved.mkdir(parents=True, exist_ok=True)
         for dest, url, label in missing:
             _download_file(url, dest, label)
     barcodes = (
@@ -1068,7 +1123,7 @@ def _parse_aml_sample_info(sample_name: str) -> tuple[str, str, int]:
 
 def _process_aml_raw(
     raw_dir: Path,
-    max_cells_per_sample: int = 500,
+    max_cells_per_sample: int | None = None,
     seed: int = 42,
 ) -> ad.AnnData:
     """Process raw GSE116256 AML files into an AnnData object.
@@ -1225,9 +1280,9 @@ def _process_aml_raw(
 
 
 def load_aml(
-    data_dir: str = "data/aml",
+    data_dir: str | None = None,
     processed_name: str = "gse116256_aml_processed.h5ad",
-    max_cells_per_sample: int = 500,
+    max_cells_per_sample: int | None = None,
     seed: int = 42,
     allow_download: bool = False,
     force_reprocess: bool = False,
@@ -1271,6 +1326,7 @@ def load_aml(
     --------
     >>> adata = sctrial.load_aml(allow_download=True)
     """
+    data_dir = data_dir or _default_data_dir("aml")
     data_dir_path = Path(data_dir)
 
     processing_params = {
@@ -1280,29 +1336,25 @@ def load_aml(
     }
 
     # ── Try to load cached processed file ─────────────────────────────
-    candidates = [
-        data_dir_path / "processed" / processed_name,
-        _resolve_file(str(data_dir_path / "processed" / processed_name)),
-    ]
-    for base in [Path.cwd(), *Path.cwd().parents]:
-        candidates.append(base / "data" / "processed" / processed_name)
-        candidates.append(base / "data" / "aml" / "processed" / processed_name)
-        candidates.append(base / "manuscript" / "datasets" / "GSE116256_AML" / "processed" / processed_name)
+    processed_path = data_dir_path / "processed" / processed_name
 
-    if not force_reprocess:
-        for c in candidates:
-            if c.exists():
-                adata = ad.read_h5ad(c)
-                prev = adata.uns.get("processing_params", {})
-                if prev and _params_match(prev, processing_params):
-                    logger.info(f"Loaded AML dataset (GSE116256): {adata.n_obs:,} cells, {adata.n_vars:,} genes")
-                    return adata
-                if prev:
-                    logger.info("Processed file parameters differ; reprocessing.")
-                else:
-                    # No processing_params stored — accept older cached file
-                    logger.info(f"Loaded AML dataset (GSE116256): {adata.n_obs:,} cells, {adata.n_vars:,} genes")
-                    return adata
+    if not force_reprocess and processed_path.exists():
+        adata = ad.read_h5ad(processed_path)
+        prev = adata.uns.get("processing_params", {})
+        if prev:
+            if _params_match(prev, processing_params):
+                logger.info(f"Loaded AML dataset (GSE116256): {adata.n_obs:,} cells, {adata.n_vars:,} genes")
+                return adata
+            logger.info("Processed file parameters differ; reprocessing.")
+        else:
+            warnings.warn(
+                "Cached file lacks processing_params metadata; cannot verify it matches "
+                "current settings. Consider reprocessing with force_reprocess=True.",
+                UserWarning,
+                stacklevel=2,
+            )
+            logger.info(f"Loaded AML dataset (GSE116256): {adata.n_obs:,} cells, {adata.n_vars:,} genes")
+            return adata
 
     # ── Locate or download raw files ──────────────────────────────────
     try:
@@ -1313,20 +1365,8 @@ def load_aml(
             "Install with: pip install sctrial[plots]  or  pip install scanpy"
         ) from None
 
-    # Search for raw directory with dem/anno files
     raw_dir = data_dir_path / "raw"
-    raw_candidates = [
-        raw_dir,
-    ]
-    for base in [Path.cwd(), *Path.cwd().parents]:
-        raw_candidates.append(base / "manuscript" / "datasets" / "GSE116256_AML" / "raw")
-        raw_candidates.append(base / "data" / "aml" / "raw")
-
-    found_raw = None
-    for rd in raw_candidates:
-        if rd.is_dir() and list(rd.glob("GSM*_*.dem.txt.gz")):
-            found_raw = rd
-            break
+    found_raw = raw_dir if raw_dir.is_dir() and list(raw_dir.glob("GSM*_*.dem.txt.gz")) else None
 
     if found_raw is None:
         if not allow_download:
@@ -1387,7 +1427,7 @@ def _parse_cart_sample_info(filename: str) -> tuple[str | None, str | None, int]
 
 def _process_cart_raw(
     raw_dir: Path,
-    max_cells_per_sample: int = 500,
+    max_cells_per_sample: int | None = None,
     seed: int = 42,
 ) -> ad.AnnData:
     """Process raw GSE290722 CAR-T files into an AnnData object.
@@ -1541,9 +1581,9 @@ def _process_cart_raw(
 
 
 def load_cart(
-    data_dir: str = "data/cart",
+    data_dir: str | None = None,
     processed_name: str = "gse290722_cart_processed.h5ad",
-    max_cells_per_sample: int = 500,
+    max_cells_per_sample: int | None = None,
     seed: int = 42,
     allow_download: bool = False,
     force_reprocess: bool = False,
@@ -1587,6 +1627,7 @@ def load_cart(
     --------
     >>> adata = sctrial.load_cart(allow_download=True)
     """
+    data_dir = data_dir or _default_data_dir("cart")
     data_dir_path = Path(data_dir)
 
     processing_params = {
@@ -1596,28 +1637,25 @@ def load_cart(
     }
 
     # ── Try to load cached processed file ─────────────────────────────
-    candidates = [
-        data_dir_path / "processed" / processed_name,
-        _resolve_file(str(data_dir_path / "processed" / processed_name)),
-    ]
-    for base in [Path.cwd(), *Path.cwd().parents]:
-        candidates.append(base / "data" / "processed" / processed_name)
-        candidates.append(base / "data" / "cart" / "processed" / processed_name)
-        candidates.append(base / "manuscript" / "datasets" / "GSE290722_CAR-T" / "processed" / processed_name)
+    processed_path = data_dir_path / "processed" / processed_name
 
-    if not force_reprocess:
-        for c in candidates:
-            if c.exists():
-                adata = ad.read_h5ad(c)
-                prev = adata.uns.get("processing_params", {})
-                if prev and _params_match(prev, processing_params):
-                    logger.info(f"Loaded CAR-T dataset (GSE290722): {adata.n_obs:,} cells, {adata.n_vars:,} genes")
-                    return adata
-                if prev:
-                    logger.info("Processed file parameters differ; reprocessing.")
-                else:
-                    logger.info(f"Loaded CAR-T dataset (GSE290722): {adata.n_obs:,} cells, {adata.n_vars:,} genes")
-                    return adata
+    if not force_reprocess and processed_path.exists():
+        adata = ad.read_h5ad(processed_path)
+        prev = adata.uns.get("processing_params", {})
+        if prev:
+            if _params_match(prev, processing_params):
+                logger.info(f"Loaded CAR-T dataset (GSE290722): {adata.n_obs:,} cells, {adata.n_vars:,} genes")
+                return adata
+            logger.info("Processed file parameters differ; reprocessing.")
+        else:
+            warnings.warn(
+                "Cached file lacks processing_params metadata; cannot verify it matches "
+                "current settings. Consider reprocessing with force_reprocess=True.",
+                UserWarning,
+                stacklevel=2,
+            )
+            logger.info(f"Loaded CAR-T dataset (GSE290722): {adata.n_obs:,} cells, {adata.n_vars:,} genes")
+            return adata
 
     # ── Locate or download raw files ──────────────────────────────────
     try:
@@ -1629,16 +1667,7 @@ def load_cart(
         ) from None
 
     raw_dir = data_dir_path / "raw"
-    raw_candidates = [raw_dir]
-    for base in [Path.cwd(), *Path.cwd().parents]:
-        raw_candidates.append(base / "manuscript" / "datasets" / "GSE290722_CAR-T" / "raw")
-        raw_candidates.append(base / "data" / "cart" / "raw")
-
-    found_raw = None
-    for rd in raw_candidates:
-        if rd.is_dir() and list(rd.glob("GSM*_*_rna.csv.gz")):
-            found_raw = rd
-            break
+    found_raw = raw_dir if raw_dir.is_dir() and list(raw_dir.glob("GSM*_*_rna.csv.gz")) else None
 
     if found_raw is None:
         if not allow_download:
