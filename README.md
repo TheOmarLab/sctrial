@@ -97,11 +97,6 @@ results = st.did_table(adata, features, design, visits=("Pre", "Post"), celltype
 print(results[["feature", "beta_DiD", "se_DiD", "p_DiD", "FDR_DiD"]])
 ```
 
-<p align="center">
-  <img src="docs/source/_static/media/readme_quickstart.png" alt="Quick Start output — DiD results table and forest plot for CD8 T cells" width="720">
-  <br><em>Real-data output from the Quick Start code above (full dataset, no subsampling).</em>
-</p>
-
 Or use the one-liner convenience wrapper for a quick multi-cell-type scan:
 
 ```python
