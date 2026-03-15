@@ -115,7 +115,7 @@ try:
         TrialDesign,
         add_log1p_cpm_layer,
         between_arm_comparison,
-        did_table,
+        did_table,       
         harmonize_response,
         hedges_g,
         load_aml,
@@ -344,7 +344,11 @@ def get_aml():
     if "aml" in _DATA_CACHE:
         return _DATA_CACHE["aml"]
     from sctrial.datasets import load_aml
-    adata = load_aml()
+    adata = load_aml(
+        data_dir=DATA_DIR,
+        allow_download=True,
+        force_reprocess=False,
+    )
     print(f"  AML: {adata.n_obs:,} cells, {adata.n_vars:,} genes")
     _DATA_CACHE["aml"] = adata
     return adata
@@ -355,7 +359,11 @@ def get_cart():
     if "cart" in _DATA_CACHE:
         return _DATA_CACHE["cart"]
     from sctrial.datasets import load_cart
-    adata = load_cart()
+    adata = load_cart(
+        data_dir=DATA_DIR,
+        allow_download=True,
+        force_reprocess=False,
+    )
     print(f"  CAR-T: {adata.n_obs:,} cells, {adata.n_vars:,} genes")
     _DATA_CACHE["cart"] = adata
     return adata
