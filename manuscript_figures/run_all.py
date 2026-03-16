@@ -32,7 +32,7 @@ MAIN_FIGURES = {
 }
 
 SUPP_TABLES = {
-    "tables": ("Supplementary Tables 1–4", "supp.supp_tables"),
+    "tables": ("Supplementary Tables 1–3", "supp.supp_tables"),
 }
 
 SUPP_FIGURES = {
