@@ -1,5 +1,5 @@
 """
-Figure 5 — Biological Discovery: Pathways & Genes
+Figure 4 — Biological Discovery: Pathways & Genes
 ===================================================
 
 Six-panel figure combining GSEA pathway enrichment, leading-edge gene
@@ -49,7 +49,7 @@ from .._shared import (
 _CACHE_DIR = Path(__file__).resolve().parent.parent / "_cache"
 
 # ── Figure-level constants ────────────────────────────────────────────
-FIGURE_NAME = "Figure5_biological_discovery"
+FIGURE_NAME = "Figure4_biological_discovery"
 
 # Pseudogene / non-coding RNA / mitochondrial / ribosomal patterns to
 # EXCLUDE from volcano labels — only protein-coding genes get labelled.
@@ -144,7 +144,7 @@ def _prepare_data(*, use_cache: bool = True) -> dict:
     _code_hash = hashlib.md5(  # noqa: S324 — not security, just cache tag
         Path(__file__).read_bytes()
     ).hexdigest()[:8]
-    cache_key = f"figure5_sade_feldman_v4_{_code_hash}"
+    cache_key = f"figure4_sade_feldman_v4_{_code_hash}"
     cache_path = _CACHE_DIR / f"{cache_key}.pkl"
 
     if use_cache and cache_path.exists():

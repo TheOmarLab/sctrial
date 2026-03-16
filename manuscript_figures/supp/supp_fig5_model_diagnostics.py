@@ -1,5 +1,5 @@
 """
-Supplementary Figure 3 — Model Diagnostics and Assumption Checks.
+Supplementary Figure 5 — Model Diagnostics and Assumption Checks.
 =================================================================
 
 Validate that the OLS interaction (DiD) model assumptions hold across
@@ -18,10 +18,10 @@ Panels:
      inference comparison across all 5 datasets (β scatter, −log10(p),
      SE bars).
   J  Runtime scaling across datasets (Cleveland dot plot; moved from
-     Figure 4 panel C).
+     Figure 3 panel C).
 
-Non-overlap guardrail: no sensitivity analysis (→ SF4), no cross-dataset
-biological concordance (→ SF5), no heterogeneity (→ SF6).
+Non-overlap guardrail: no sensitivity analysis (→ SF3), no cross-dataset
+biological concordance (→ SF4), no heterogeneity (→ SF6).
 """
 
 from __future__ import annotations
@@ -52,7 +52,7 @@ from .._shared import (
     save_panel,
 )
 
-FIGURE_NAME = "SuppFig3_model_diagnostics"
+FIGURE_NAME = "SuppFig5_model_diagnostics"
 
 _TEST_FEATURES = [
     "CD8A", "CD4", "PDCD1", "HAVCR2", "LAG3", "CTLA4",
@@ -1211,8 +1211,8 @@ def _panel_pseudoreplication_single(ds_name, res, design_type="two_arm"):
 
 
 def generate():
-    """Create and save all Supplementary Figure 3 panels."""
-    print("Supplementary Figure 3: Model Diagnostics and Assumption Checks")
+    """Create and save all Supplementary Figure 5 panels."""
+    print("Supplementary Figure 5: Model Diagnostics and Assumption Checks")
     results = _load_results()
     if not results:
         print("  No valid datasets found; skipping.")
@@ -1313,12 +1313,12 @@ def generate():
     if pseudo_idx == 0:
         print("  Pseudoreplication: no datasets had valid cell+participant stats.")
 
-    # J: Runtime scaling (Cleveland dot plot, moved from Figure 4)
+    # J: Runtime scaling (Cleveland dot plot, moved from Figure 3)
     try:
-        from ..main.figure4_robustness_benchmarking import (
+        from ..main.figure3_robustness_benchmarking import (
             _panel_c as _fig4_panel_c,
         )
-        from ..main.figure4_robustness_benchmarking import (
+        from ..main.figure3_robustness_benchmarking import (
             _prepare_scalability_data,
         )
         scale_data = _prepare_scalability_data()

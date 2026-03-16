@@ -1,5 +1,5 @@
 """
-Figure 4 — Statistical Robustness & Method Benchmarking
+Figure 3 — Statistical Robustness & Method Benchmarking
 ========================================================
 
 Eight-panel figure combining bootstrap validation, leave-one-out
@@ -17,7 +17,7 @@ E   Cell vs participant −log₁₀(p) comparison.
 F   Standard-error comparison (cell vs participant level).
 G   Cross-dataset signed Cohen's d forest (pre-specified endpoints).
 
-Runtime scaling (Cleveland dot plot) moved to Supplementary Figure 3
+Runtime scaling (Cleveland dot plot) moved to Supplementary Figure 5
 panel J.
 """
 
@@ -59,7 +59,7 @@ from .._shared import (
 
 warnings.filterwarnings("ignore")
 
-FIGURE_NAME = "Figure4_robustness_benchmarking"
+FIGURE_NAME = "Figure3_robustness_benchmarking"
 VISITS: tuple[str, str] = ("Pre", "Post")
 N_BOOT = 999
 
