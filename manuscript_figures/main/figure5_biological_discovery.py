@@ -39,6 +39,7 @@ from .._shared import (
     despine,
     did_table,
     between_arm_comparison,
+    within_arm_comparison,
     get_sade_feldman,
     get_stephenson,
     get_vaccine,
@@ -564,6 +565,69 @@ def _run_gsea_cross_sectional(
     return pre_res
 
 
+def _run_gsea_within_arm(
+    adata,
+    arm: str,
+    visits: tuple[str, str],
+    gene_sets: str | dict[str, list[str]],
+    design: TrialDesign,
+    layer: str | None = None,
+    rank_by: str = "tstat",
+    min_units: int = 4,
+    **kwargs,
+) -> pd.DataFrame | None:
+    """Run GSEA on longitudinal data using within_arm_comparison.
+    
+    Similar to run_gsea_did but uses within-arm comparison instead of DiD.
+    """
+    try:
+        import gseapy as gp
+    except ImportError:
+        return None
+    
+    # Run within-arm comparison for all genes
+    genes = adata.var_names.tolist()
+    res = within_arm_comparison(
+        adata,
+        arm=arm,
+        features=genes,
+        design=design,
+        visits=visits,
+        layer=layer,
+        aggregate="participant_visit",
+        standardize=True,
+    )
+    
+    # Filter genes with insufficient data
+    valid = res[res["n_units"] >= min_units].copy()
+    if len(valid) == 0:
+        return None
+    
+    # Rank genes based on rank_by parameter
+    if rank_by == "signed_confidence":
+        valid["rank"] = np.sign(valid["beta_time"].fillna(0)) * -np.log10(
+            valid["p_time"].fillna(1) + 1e-12
+        )
+    elif rank_by == "beta":
+        valid["rank"] = valid["beta_time"].fillna(0)
+    elif rank_by == "tstat":
+        valid["rank"] = valid["beta_time"].fillna(0) / (valid["se_time"].fillna(1) + 1e-12)
+    else:
+        raise ValueError(f"Unknown rank_by: {rank_by}")
+    
+    ranking = valid[["feature", "rank"]].dropna().sort_values("rank", ascending=False)
+    
+    if len(ranking) == 0:
+        return None
+    
+    # Run GSEA Prerank
+    pre_res = gp.prerank(rnk=ranking, gene_sets=gene_sets, **kwargs)
+    
+    if hasattr(pre_res, "res2d"):
+        return pre_res.res2d
+    return pre_res
+
+
 def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict[str, pd.DataFrame]:
     """Run GSEA on all 5 datasets and return results per dataset.
     
@@ -645,7 +709,7 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
         except Exception as exc:
             print(f"    Sade-Feldman: FAILED ({exc})")
     
-    # 2. Vaccine
+    # 2. Vaccine (use within_arm_comparison)
     try:
         vax = get_vaccine()
         vax, _ = score_signatures(vax, layer="counts")
@@ -660,13 +724,15 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
         all_lib_results = []
         for lib in gsea_libraries:
             try:
-                res = run_gsea_did(
+                res = _run_gsea_within_arm(
                     vax,
+                    arm="Vaccinated",
+                    visits=("Pre", "Post"),
                     gene_sets=lib,
                     design=vax_design,
-                    visits=("Pre", "Post"),
                     layer="counts",
                     rank_by="tstat",
+                    min_units=4,
                     min_size=10,
                     max_size=500,
                     permutation_num=1000,
@@ -687,7 +753,7 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
     except Exception as exc:
         print(f"    Vaccine: FAILED ({exc})")
     
-    # 3. AML
+    # 3. AML (use within_arm_comparison)
     try:
         aml = get_aml()
         aml, _ = score_signatures(aml, layer="counts")
@@ -704,13 +770,15 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
         all_lib_results = []
         for lib in gsea_libraries:
             try:
-                res = run_gsea_did(
+                res = _run_gsea_within_arm(
                     aml,
+                    arm="Treatment",
+                    visits=("Pre", "Post"),
                     gene_sets=lib,
                     design=aml_design,
-                    visits=("Pre", "Post"),
                     layer="counts",
                     rank_by="tstat",
+                    min_units=4,
                     min_size=10,
                     max_size=500,
                     permutation_num=1000,
@@ -731,7 +799,7 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
     except Exception as exc:
         print(f"    AML: FAILED ({exc})")
     
-    # 4. CAR-T
+    # 4. CAR-T (use within_arm_comparison)
     try:
         cart = get_cart()
         cart, _ = score_signatures(cart, layer="counts")
@@ -748,13 +816,15 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
         all_lib_results = []
         for lib in gsea_libraries:
             try:
-                res = run_gsea_did(
+                res = _run_gsea_within_arm(
                     cart,
+                    arm="CAR-T",
+                    visits=("Pre", "Post"),
                     gene_sets=lib,
                     design=cart_design,
-                    visits=("Pre", "Post"),
                     layer="counts",
                     rank_by="tstat",
+                    min_units=4,
                     min_size=10,
                     max_size=500,
                     permutation_num=1000,
@@ -1739,10 +1809,8 @@ def panel_C_replicated(ax, data: dict):
         df = df.copy()
         df[nes_col_name] = pd.to_numeric(df[nes_col_name], errors="coerce")
         df[fdr_col_name] = pd.to_numeric(df[fdr_col_name], errors="coerce")
-        df = df.dropna(subset=[nes_col_name, fdr_col_name])
-        
-        # Filter to significant pathways only (FDR < 0.25)
-        df = df[df[fdr_col_name] < 0.25].copy()
+        # Keep all pathways with valid NES - FDR will be used for significance annotation (stars)
+        df = df.dropna(subset=[nes_col_name])
         
         if len(df) == 0:
             continue
@@ -1757,7 +1825,7 @@ def panel_C_replicated(ax, data: dict):
         all_results.append(df_clean)
     
     if not all_results:
-        ax.text(0.5, 0.5, "No significant pathways found across datasets",
+        ax.text(0.5, 0.5, "No pathways found across datasets",
                 transform=ax.transAxes, ha="center", va="center",
                 fontsize=12, color=COLORS["gray"])
         ax.set_title("Replicated Pathways", fontsize=11)
@@ -1784,7 +1852,7 @@ def panel_C_replicated(ax, data: dict):
                 nes_matrix[i, j] = row["NES"]
                 fdr_matrix[i, j] = row["FDR"]
     
-    # Filter pathways: prioritize ≥4 datasets, fallback to ≥3 if needed
+    # Filter pathways: prioritize ≥5 datasets, fallback to ≥4, then ≥3
     # Rank by absolute average NES across datasets
     pathway_counts = (~np.isnan(nes_matrix)).sum(axis=1)
     n_datasets = len(all_datasets)
@@ -1794,43 +1862,49 @@ def panel_C_replicated(ax, data: dict):
     avg_nes_all = np.nanmean(nes_matrix, axis=1)
     abs_avg_nes_all = np.abs(avg_nes_all)
     
-    # First try: pathways in ≥4 datasets, ranked by absolute NES
-    keep_4plus = pathway_counts >= min(4, n_datasets)
+    # First try: pathways in ≥5 datasets, ranked by absolute NES
+    keep_5plus = pathway_counts >= min(5, n_datasets)
     
-    if keep_4plus.sum() > 0:
-        indices_4plus = np.where(keep_4plus)[0]
-        # Rank by absolute average NES (highest first)
-        abs_nes_4plus = abs_avg_nes_all[indices_4plus]
-        order_4plus = indices_4plus[np.argsort(-abs_nes_4plus)]
-        selected_4plus = order_4plus[:top_n].tolist()
+    if keep_5plus.sum() > 0:
+        indices_5plus = np.where(keep_5plus)[0]
+        abs_nes_5plus = abs_avg_nes_all[indices_5plus]
+        order_5plus = indices_5plus[np.argsort(-abs_nes_5plus)]
+        selected_5plus = order_5plus[:top_n].tolist()
     else:
-        selected_4plus = []
+        selected_5plus = []
     
-    # If we need more pathways, get from ≥3 datasets
-    if len(selected_4plus) < top_n:
+    # Initialize all_selected with pathways from ≥5 datasets
+    all_selected = selected_5plus
+    
+    # If we need more pathways, get from ≥4 datasets
+    if len(all_selected) < top_n:
+        keep_4plus = pathway_counts >= min(4, n_datasets)
+        keep_4plus_only = keep_4plus & (~keep_5plus)
+        
+        if keep_4plus_only.sum() > 0:
+            indices_4plus = np.where(keep_4plus_only)[0]
+            abs_nes_4plus = abs_avg_nes_all[indices_4plus]
+            order_4plus = indices_4plus[np.argsort(-abs_nes_4plus)]
+            
+            remaining = top_n - len(all_selected)
+            selected_4plus = order_4plus[:remaining].tolist()
+            
+            all_selected = all_selected + selected_4plus
+    
+    # If we still need more pathways, get from ≥3 datasets
+    if len(all_selected) < top_n:
         keep_3plus = pathway_counts >= min(3, n_datasets)
-        # Exclude pathways already selected from ≥4
-        keep_3plus_only = keep_3plus & (~keep_4plus)
+        keep_3plus_only = keep_3plus & (~keep_5plus) & (~keep_4plus)
         
         if keep_3plus_only.sum() > 0:
-            # Get indices of pathways in exactly 3 datasets (not in ≥4)
             indices_3plus = np.where(keep_3plus_only)[0]
-            # Rank by absolute average NES (highest first)
             abs_nes_3plus = abs_avg_nes_all[indices_3plus]
             order_3plus = indices_3plus[np.argsort(-abs_nes_3plus)]
             
-            # Fill remaining slots
-            remaining = top_n - len(selected_4plus)
+            remaining = top_n - len(all_selected)
             selected_3plus = order_3plus[:remaining].tolist()
             
-            # Combine: first from 4plus, then from 3plus
-            all_selected = selected_4plus + selected_3plus
-        else:
-            # No additional pathways from ≥3, just use what we have from ≥4
-            all_selected = selected_4plus
-    else:
-        # We have enough from ≥4 datasets
-        all_selected = selected_4plus[:top_n]
+            all_selected = all_selected + selected_3plus
     
     if len(all_selected) == 0:
         ax.text(0.5, 0.5, "No pathways replicated across ≥3 datasets",
@@ -1847,7 +1921,7 @@ def panel_C_replicated(ax, data: dict):
     
     # Calculate average NES for final sorting
     avg_nes = np.nanmean(nes_matrix, axis=1)
-    final_order = np.argsort(avg_nes)  # Negative first, then positive
+    final_order = np.argsort(avg_nes)
     
     nes_matrix = nes_matrix[final_order]
     fdr_matrix = fdr_matrix[final_order]
@@ -1890,6 +1964,15 @@ def panel_C_replicated(ax, data: dict):
     for j in range(len(all_datasets) + 1):
         ax.axvline(j - 0.5, color="#E0E0E0", linewidth=0.8, zorder=1)
     
+    # Add stars for significant pathways (FDR < 0.25)
+    for i in range(len(all_pathways)):
+        for j in range(len(all_datasets)):
+            if not np.isnan(fdr_matrix[i, j]) and fdr_matrix[i, j] < 0.25:
+                # Add star in the center of the cell
+                ax.text(j, i, "*", ha="center", va="center", 
+                       fontsize=10, fontweight="bold", color="white",
+                       zorder=10)
+    
     # Labels
     ax.set_yticks(range(len(all_pathways)))
     ax.set_yticklabels(all_pathways, fontsize=7)
@@ -1898,25 +1981,7 @@ def panel_C_replicated(ax, data: dict):
     
     ax.set_xlabel("Dataset", fontsize=9)
     ax.set_ylabel("Pathway", fontsize=9)
-    ax.set_title("Replicated Pathways Across Datasets (FDR < 0.25)", fontsize=11)
-        
-    # Add text annotation with replication count
-    n_replicated = len(all_pathways)
-    pathway_counts_selected = (~np.isnan(nes_matrix)).sum(axis=1)
-    n_4plus = (pathway_counts_selected >= 4).sum()
-    n_3plus = (pathway_counts_selected == 3).sum()
-    n_pos = sum(1 for i in range(len(all_pathways)) if np.nanmean(nes_matrix[i, :]) > 0)
-    n_neg = n_replicated - n_pos
-    if n_4plus > 0 and n_3plus > 0:
-        annotation = f"Top {n_replicated} by |NES| ({n_4plus} in ≥4 datasets, {n_3plus} in 3 datasets: {n_pos} pos, {n_neg} neg)"
-    elif n_4plus > 0:
-        annotation = f"Top {n_replicated} by |NES| (≥4 datasets: {n_pos} pos, {n_neg} neg)"
-    else:
-        annotation = f"Top {n_replicated} by |NES| (≥3 datasets: {n_pos} pos, {n_neg} neg)"
-    ax.text(0.02, 0.98, annotation,
-            transform=ax.transAxes, ha="left", va="top",
-            fontsize=7, style="italic", color=COLORS["gray"],
-            bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8))
+    ax.set_title("Replicated Pathways Across Datasets (* FDR < 0.25)", fontsize=11)
     
     ax.tick_params(axis="both", length=0)
     despine(ax)
