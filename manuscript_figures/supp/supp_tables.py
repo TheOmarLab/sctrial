@@ -1,16 +1,16 @@
 """
-Supplementary Tables 1–4.
+Supplementary Tables 1–3.
 =========================
 
 Table 1  Gene signature definitions (name, gene count, genes).
-Table 2  Complete DiD results across all signatures and datasets.
-Table 3  GSEA results from cached gseapy prerank reports.
-Table 4  Clinical trial paired pre/post results (AML, CAR-T).
+Table 2  Complete effect-size results across all signatures and datasets.
+Table 3  GSEA pre-ranked results (one sheet per dataset).
 """
 
 from __future__ import annotations
 
 import gc
+import os
 
 import numpy as np
 import pandas as pd
@@ -41,6 +41,7 @@ from .._shared import (
 # ======================================================================
 # Table 1 — Gene signature definitions
 # ======================================================================
+
 
 def table1_gene_signatures() -> pd.DataFrame:
     """Gene signature definitions: name, gene count, gene list."""
@@ -75,300 +76,333 @@ def table1_gene_signatures() -> pd.DataFrame:
 
 
 # ======================================================================
-# Table 2 — Complete DiD results across datasets
+# Table 2 — Complete results across ALL datasets (unified)
 # ======================================================================
 
-def _build_design_sf():
-    """Sade-Feldman trial design."""
+_KEEP_COLS = [
+    "dataset", "estimand", "label", "feature",
+    "effect", "se", "pvalue", "FDR", "ci_lower", "ci_upper",
+    "n_units", "cov_type_used",
+]
+
+_COL_MAP = {
+    "beta_time": "effect",
+    "se_time": "se",
+    "p_time": "pvalue",
+    "FDR_time": "FDR",
+    "ci_lo_time": "ci_lower",
+    "ci_hi_time": "ci_upper",
+    "beta_DiD": "effect",
+    "se_DiD": "se",
+    "p_DiD": "pvalue",
+    "FDR_DiD": "FDR",
+}
+
+
+def _harmonise(df: pd.DataFrame, dataset: str, estimand: str) -> pd.DataFrame:
+    """Rename columns to a common schema and tag with dataset/estimand."""
+    out = df.rename(columns=_COL_MAP).copy()
+    # Drop any duplicate columns created by rename
+    out = out.loc[:, ~out.columns.duplicated()]
+    out["dataset"] = dataset
+    out["estimand"] = estimand
+    if "label" not in out.columns:
+        out["label"] = out["feature"].apply(sig_display)
+    avail = [c for c in _KEEP_COLS if c in out.columns]
+    return out[avail].reset_index(drop=True)
+
+
+def _single_arm_design(pid_col: str = "participant_id") -> TrialDesign:
+    """Design object for single-arm pre/post datasets."""
     return TrialDesign(
-        participant_col="participant_id",
+        participant_col=pid_col,
         visit_col="visit",
-        arm_col="response_harmonized",
-        arm_treated="Responder",
-        arm_control="Non-responder",
+        arm_col="arm",
+        arm_treated="Treated",
+        arm_control="Treated",
     )
 
 
-def _build_design_stephenson():
-    """Stephenson COVID-19 trial design."""
-    return TrialDesign(
-        participant_col="participant_id",
-        visit_col="visit",
-        arm_col="severity",
-        arm_treated="severe",
-        arm_control="mild",
-    )
+def _detect_visits(adata) -> tuple[str, str]:
+    """Auto-detect (pre, post) visit labels."""
+    visits_avail = list(adata.obs["visit"].unique())
+    if "Pre" in visits_avail and "Post" in visits_avail:
+        return ("Pre", "Post")
+    if "Diagnosis" in visits_avail:
+        others = [v for v in visits_avail if v != "Diagnosis"]
+        return ("Diagnosis", others[0] if others else visits_avail[-1])
+    return (visits_avail[0], visits_avail[-1])
 
 
-def table2_did_results() -> pd.DataFrame:
-    """Complete DiD results across all signatures and datasets."""
-    print("  Table 2: DiD results across datasets")
+def table2_all_results() -> pd.DataFrame:
+    """Complete results across all 5 datasets (immune + clinical sigs)."""
+    print("  Table 2: Complete results across datasets")
 
     if not SCTRIAL_AVAILABLE:
         print("    Skipped: sctrial not available")
         return pd.DataFrame()
 
-    all_results = []
+    all_results: list[pd.DataFrame] = []
 
-    # ── Sade-Feldman ─────────────────────────────────────────────────
+    # ── Sade-Feldman (two-arm DiD) ────────────────────────────────────
     try:
         adata_sf = get_sade_feldman()
         if "log1p_tpm" not in adata_sf.layers and "tpm" in adata_sf.layers:
             adata_sf.layers["log1p_tpm"] = np.log1p(adata_sf.layers["tpm"])
-        adata_sf, sig_cols_sf = score_signatures(adata_sf, layer="log1p_tpm")
+        adata_sf, sig_cols = score_signatures(adata_sf, layer="log1p_tpm")
         adata_sf = harmonize_response(adata_sf)
 
-        design_sf = _build_design_sf()
-        res_sf = did_table(
-            adata_sf,
-            features=sig_cols_sf,
-            design=design_sf,
-            visits=("Pre", "Post"),
-            layer="log1p_tpm",
-            standardize=True,
-            aggregate="participant_visit",
+        design = TrialDesign(
+            participant_col="participant_id",
+            visit_col="visit",
+            arm_col="response_harmonized",
+            arm_treated="Responder",
+            arm_control="Non-responder",
         )
-        res_sf["dataset"] = "Sade-Feldman"
-        res_sf["label"] = res_sf["feature"].apply(sig_display)
-        all_results.append(res_sf)
-        print(f"    Sade-Feldman: {len(res_sf)} features")
+        res = did_table(
+            adata_sf, features=sig_cols, design=design,
+            visits=("Pre", "Post"), layer="log1p_tpm",
+            standardize=True, aggregate="participant_visit",
+        )
+        res["label"] = res["feature"].apply(sig_display)
+        all_results.append(_harmonise(res, "Sade-Feldman", "DiD"))
+        print(f"    Sade-Feldman: {len(res)} features (DiD)")
+        del adata_sf
+        gc.collect()
     except Exception as exc:
         print(f"    Sade-Feldman failed: {exc}")
 
-    # ── Stephenson ───────────────────────────────────────────────────
+    # ── Stephenson (cross-sectional Hedges' g) ────────────────────────
     try:
+        from scipy import stats as sp_stats
+        from statsmodels.stats.multitest import multipletests
+
         adata_st = get_stephenson()
-        # Ensure visit column
-        if "visit" not in adata_st.obs.columns:
-            if "timepoint" in adata_st.obs.columns:
-                adata_st.obs["visit"] = adata_st.obs["timepoint"]
-            elif "days_from_onset" in adata_st.obs.columns:
-                adata_st.obs["visit"] = adata_st.obs["days_from_onset"].apply(
-                    lambda x: "Early" if x <= 7 else "Late"
-                )
-        # Ensure severity column
-        if "severity" not in adata_st.obs.columns:
-            for cand in ("Status", "status", "disease_severity", "severity_group"):
-                if cand in adata_st.obs.columns:
-                    adata_st.obs["severity"] = adata_st.obs[cand]
-                    break
+        adata_st, sig_cols = score_signatures(adata_st)
 
-        adata_st, sig_cols_st = score_signatures(adata_st)
+        pid_col, sev_col = "participant_id", "severity"
+        pb = adata_st.obs[[pid_col, sev_col]].copy()
+        for c in sig_cols:
+            if c in adata_st.obs.columns:
+                pb[c] = adata_st.obs[c].values
+        pb_mean = pb.groupby(pid_col).agg(
+            {sev_col: "first", **{c: "mean" for c in sig_cols}}
+        )
 
-        # Determine visits
-        visits_avail = sorted(adata_st.obs["visit"].unique())
-        if len(visits_avail) >= 2:
-            visits_st = (visits_avail[0], visits_avail[-1])
+        sev_vals = pb_mean[sev_col].unique()
+        severe = "severe" if "severe" in sev_vals else sev_vals[0]
+        mild = "mild" if "mild" in sev_vals else sev_vals[-1]
+        grp_s = pb_mean[pb_mean[sev_col] == severe]
+        grp_m = pb_mean[pb_mean[sev_col] == mild]
 
-            # Determine arm labels
-            sev_values = adata_st.obs["severity"].unique().tolist()
-            arm_treated = "severe" if "severe" in sev_values else sev_values[0]
-            arm_control = "mild" if "mild" in sev_values else sev_values[-1]
-
-            design_st = TrialDesign(
-                participant_col="participant_id",
-                visit_col="visit",
-                arm_col="severity",
-                arm_treated=arm_treated,
-                arm_control=arm_control,
+        rows_st: list[dict] = []
+        for feat in sig_cols:
+            x_s = grp_s[feat].dropna().values
+            x_m = grp_m[feat].dropna().values
+            if len(x_s) < 2 or len(x_m) < 2:
+                continue
+            n_s, n_m = len(x_s), len(x_m)
+            pooled_sd = np.sqrt(
+                ((n_s - 1) * x_s.var(ddof=1) + (n_m - 1) * x_m.var(ddof=1))
+                / (n_s + n_m - 2)
             )
-            res_st = did_table(
-                adata_st,
-                features=sig_cols_st,
-                design=design_st,
-                visits=visits_st,
-                standardize=True,
-                aggregate="participant_visit",
-            )
-            res_st["dataset"] = "Stephenson"
+            g = (x_s.mean() - x_m.mean()) / pooled_sd if pooled_sd > 0 else np.nan
+            g *= 1 - 3 / (4 * (n_s + n_m) - 9)
+            se_g = np.sqrt((n_s + n_m) / (n_s * n_m) + g**2 / (2 * (n_s + n_m)))
+            _, p = sp_stats.mannwhitneyu(x_s, x_m, alternative="two-sided")
+            rows_st.append({
+                "feature": feat, "effect": g, "se": se_g, "pvalue": p,
+                "ci_lower": g - 1.96 * se_g, "ci_upper": g + 1.96 * se_g,
+                "n_units": n_s + n_m, "cov_type_used": "hedges_g",
+            })
+        if rows_st:
+            res_st = pd.DataFrame(rows_st)
+            _, fdr, _, _ = multipletests(res_st["pvalue"], method="fdr_bh")
+            res_st["FDR"] = fdr
             res_st["label"] = res_st["feature"].apply(sig_display)
-            all_results.append(res_st)
-            print(f"    Stephenson: {len(res_st)} features")
-        else:
-            print("    Stephenson: insufficient visits for DiD")
+            all_results.append(_harmonise(res_st, "Stephenson", "Hedges' g"))
+            print(f"    Stephenson: {len(res_st)} features (Hedges' g)")
+        del adata_st
+        gc.collect()
     except Exception as exc:
         print(f"    Stephenson failed: {exc}")
 
-    # ── Vaccine ──────────────────────────────────────────────────────
-    try:
-        adata_vax = get_vaccine()
-        adata_vax, sig_cols_vax = score_signatures(adata_vax)
-
-        # Single-arm: use within_arm_comparison
-        adata_vax.obs["arm"] = "Vaccinated"
-        vax_design = TrialDesign(
-            participant_col="participant_id",
-            visit_col="visit",
-            arm_col="arm",
-            arm_treated="Vaccinated",
-            arm_control="Vaccinated",
-        )
-        res_vax = within_arm_comparison(
-            adata_vax,
-            arm="Vaccinated",
-            features=sig_cols_vax,
-            design=vax_design,
-            visits=("Pre", "Post"),
-            standardize=True,
-        )
-        res_vax["dataset"] = "Vaccine"
-        res_vax["label"] = res_vax["feature"].apply(sig_display)
-        all_results.append(res_vax)
-        print(f"    Vaccine: {len(res_vax)} features")
-    except Exception as exc:
-        print(f"    Vaccine failed: {exc}")
-
-    if not all_results:
-        print("    No DiD results generated")
-        return pd.DataFrame()
-
-    df = pd.concat(all_results, ignore_index=True)
-    path = SUPP_OUTPUT / "Supp_Table2_did_results.csv"
-    df.to_csv(path, index=False)
-    print(f"    Saved {path.name} ({len(df)} rows)")
-    return df
-
-
-# ======================================================================
-# Table 3 — GSEA results
-# ======================================================================
-
-def table3_gsea_results() -> pd.DataFrame:
-    """Collate GSEA results from cached gseapy CSV files."""
-    print("  Table 3: GSEA results")
-
-    # GSEA results live under manuscript/ at the repo root
-    gsea_root = SCRIPT_DIR.parent.parent / "manuscript"
-    db_dirs = {
-        "Hallmark": gsea_root / "gsea_hallmark",
-        "Reactome": gsea_root / "gsea_reactome",
-        "GO_BP": gsea_root / "gsea_go_bp",
-    }
-
-    frames = []
-    for db_name, db_dir in db_dirs.items():
-        csv_path = db_dir / "gseapy.gene_set.prerank.report.csv"
-        if not csv_path.exists():
-            print(f"    {db_name}: not found at {csv_path}")
-            continue
+    # ── Single-arm datasets: Vaccine, AML, CAR-T ─────────────────────
+    single_arm = [
+        ("Vaccine", get_vaccine, ("Pre", "Post")),
+        ("AML", get_aml, None),
+        ("CAR-T", get_cart, None),
+    ]
+    for ds_name, loader, visits_override in single_arm:
         try:
-            df = pd.read_csv(csv_path)
-            df.insert(0, "Database", db_name)
-            frames.append(df)
-            print(f"    {db_name}: {len(df)} pathways")
-        except Exception as exc:
-            print(f"    {db_name}: failed to read ({exc})")
-
-    if not frames:
-        print("    No GSEA results found")
-        return pd.DataFrame()
-
-    combined = pd.concat(frames, ignore_index=True)
-    # Sort by absolute NES descending
-    if "NES" in combined.columns:
-        combined = combined.sort_values("NES", key=abs, ascending=False)
-
-    path = SUPP_OUTPUT / "Supp_Table3_gsea_results.csv"
-    combined.to_csv(path, index=False)
-    print(f"    Saved {path.name} ({len(combined)} rows)")
-    return combined
-
-
-# ======================================================================
-# Table 4 — Clinical trial paired pre/post results
-# ======================================================================
-
-def table4_clinical_results() -> pd.DataFrame:
-    """Paired pre/post within-arm results for AML and CAR-T datasets."""
-    print("  Table 4: Clinical trial results (AML, CAR-T)")
-
-    if not SCTRIAL_AVAILABLE:
-        print("    Skipped: sctrial not available")
-        return pd.DataFrame()
-
-    all_results = []
-
-    _loaders = {"aml": get_aml, "cart": get_cart}
-    for name in ("aml", "cart"):
-        try:
-            adata = _loaders[name]()
-            adata, sig_cols = score_clinical_signatures(adata)
-
-            pid_col = (
-                "participant_id"
-                if "participant_id" in adata.obs.columns
-                else "patient_id"
-            )
-            if "visit" not in adata.obs.columns:
-                if "timepoint" in adata.obs.columns:
-                    adata.obs["visit"] = adata.obs["timepoint"]
-            visit_col = "visit"
-
-            # Determine Pre/Post visits
-            visits_avail = list(adata.obs[visit_col].unique())
-            if "Pre" in visits_avail and "Post" in visits_avail:
-                pre_v, post_v = "Pre", "Post"
-            elif "Diagnosis" in visits_avail:
-                pre_v = "Diagnosis"
-                others = [v for v in visits_avail if v != "Diagnosis"]
-                post_v = others[0] if others else visits_avail[-1]
-            else:
-                import re as _re
-
-                def _sort_key(v):
-                    nums = _re.findall(r"\d+", str(v))
-                    return int(nums[0]) if nums else 0
-
-                visits_sorted = sorted(visits_avail, key=_sort_key)
-                pre_v, post_v = visits_sorted[0], visits_sorted[-1]
+            adata = loader()
+            # Score both immune and clinical signatures
+            adata, sig_cols_imm = score_signatures(adata)
+            try:
+                adata, sig_cols_clin = score_clinical_signatures(adata)
+                all_sig_cols = list(dict.fromkeys(sig_cols_imm + sig_cols_clin))
+            except Exception:
+                all_sig_cols = sig_cols_imm
 
             if "arm" not in adata.obs.columns:
                 adata.obs["arm"] = "Treated"
-
-            design = TrialDesign(
-                participant_col=pid_col,
-                visit_col=visit_col,
-                arm_col="arm",
-                arm_treated="Treated",
-                arm_control="Treated",
-            )
+            arm_label = adata.obs["arm"].iloc[0]
+            visits = visits_override or _detect_visits(adata)
+            design = _single_arm_design()
 
             res = within_arm_comparison(
-                adata,
-                arm="Treated",
-                features=sig_cols,
-                design=design,
-                visits=(pre_v, post_v),
-                layer=None,
-                standardize=True,
+                adata, arm=arm_label, features=all_sig_cols,
+                design=design, visits=visits, standardize=True,
             )
-            res["dataset"] = name.upper()
             res["label"] = res["feature"].apply(sig_display)
-            res["pre_visit"] = pre_v
-            res["post_visit"] = post_v
-            all_results.append(res)
-            print(f"    {name.upper()}: {len(res)} features, "
-                  f"visits=({pre_v}, {post_v})")
-
+            all_results.append(_harmonise(res, ds_name, "within-arm Δ"))
+            print(f"    {ds_name}: {len(res)} features (within-arm Δ)")
             del adata
             gc.collect()
         except Exception as exc:
-            print(f"    {name.upper()} failed: {exc}")
+            print(f"    {ds_name} failed: {exc}")
 
     if not all_results:
-        print("    No clinical results generated")
+        print("    No results generated")
         return pd.DataFrame()
 
     df = pd.concat(all_results, ignore_index=True)
-    path = SUPP_OUTPUT / "Supp_Table4_clinical_results.csv"
+    path = SUPP_OUTPUT / "Supp_Table2_all_results.csv"
     df.to_csv(path, index=False)
     print(f"    Saved {path.name} ({len(df)} rows)")
     return df
+
+
+# ======================================================================
+# Table 3 — GSEA results (per-dataset sheets)
+# ======================================================================
+
+
+def _run_gsea_for_dataset(
+    adata,
+    design: TrialDesign,
+    visits: tuple[str, str],
+    layer: str | None,
+    dataset_name: str,
+    gsea_root: str,
+) -> pd.DataFrame | None:
+    """Run pre-ranked GSEA for a single dataset, save CSV, return results."""
+    try:
+        from sctrial import run_gsea_did
+    except ImportError:
+        print(f"    {dataset_name}: sctrial GSEA not available")
+        return None
+
+    libraries = [
+        ("MSigDB_Hallmark_2020", "Hallmark"),
+        ("KEGG_2021_Human", "KEGG"),
+        ("Reactome_2022", "Reactome"),
+        ("GO_Biological_Process_2023", "GO_BP"),
+        ("WikiPathways_2024_Human", "WikiPathways"),
+    ]
+
+    frames: list[pd.DataFrame] = []
+    for lib_name, short_name in libraries:
+        outdir = os.path.join(gsea_root, f"gsea_{dataset_name}_{short_name}")
+        os.makedirs(outdir, exist_ok=True)
+        try:
+            res = run_gsea_did(
+                adata, gene_sets=lib_name, design=design, visits=visits,
+                layer=layer, rank_by="tstat",
+                min_size=10, max_size=500, permutation_num=1000,
+                outdir=outdir, no_plot=True,
+            )
+            if isinstance(res, pd.DataFrame) and len(res) > 0:
+                res["Library"] = short_name
+                frames.append(res)
+                print(f"    {dataset_name}/{short_name}: {len(res)} pathways")
+            else:
+                print(f"    {dataset_name}/{short_name}: no results")
+        except Exception as exc:
+            print(f"    {dataset_name}/{short_name}: {exc}")
+
+    if not frames:
+        return None
+    combined = pd.concat(frames, ignore_index=True)
+    if "NES" in combined.columns:
+        combined = combined.sort_values("NES", key=abs, ascending=False)
+    return combined
+
+
+def table3_gsea_results() -> dict[str, pd.DataFrame]:
+    """Run GSEA pre-ranked analysis for all datasets, save as multi-sheet Excel."""
+    print("  Table 3: GSEA results (per-dataset)")
+
+    if not SCTRIAL_AVAILABLE:
+        print("    Skipped: sctrial not available")
+        return {}
+
+    gsea_root = str(SCRIPT_DIR.parent.parent.parent / "manuscript")
+    sheets: dict[str, pd.DataFrame] = {}
+
+    # ── Sade-Feldman (two-arm DiD) ────────────────────────────────────
+    try:
+        adata_sf = get_sade_feldman()
+        if "log1p_tpm" not in adata_sf.layers and "tpm" in adata_sf.layers:
+            adata_sf.layers["log1p_tpm"] = np.log1p(adata_sf.layers["tpm"])
+        adata_sf = harmonize_response(adata_sf)
+        design_sf = TrialDesign(
+            participant_col="participant_id", visit_col="visit",
+            arm_col="response_harmonized",
+            arm_treated="Responder", arm_control="Non-responder",
+        )
+        res = _run_gsea_for_dataset(
+            adata_sf, design_sf, ("Pre", "Post"), "log1p_tpm",
+            "Sade_Feldman", gsea_root,
+        )
+        if res is not None:
+            sheets["Sade-Feldman"] = res
+        del adata_sf
+        gc.collect()
+    except Exception as exc:
+        print(f"    Sade-Feldman GSEA failed: {exc}")
+
+    # ── Single-arm datasets ───────────────────────────────────────────
+    single_arm_gsea = [
+        ("Vaccine", get_vaccine, ("Pre", "Post"), None),
+        ("AML", get_aml, None, None),
+        ("CAR-T", get_cart, None, None),
+    ]
+    for ds_name, loader, visits_override, layer in single_arm_gsea:
+        try:
+            adata = loader()
+            if "arm" not in adata.obs.columns:
+                adata.obs["arm"] = "Treated"
+            visits = visits_override or _detect_visits(adata)
+            design = _single_arm_design()
+            res = _run_gsea_for_dataset(
+                adata, design, visits, layer, ds_name, gsea_root,
+            )
+            if res is not None:
+                sheets[ds_name] = res
+            del adata
+            gc.collect()
+        except Exception as exc:
+            print(f"    {ds_name} GSEA failed: {exc}")
+
+    # Save as multi-sheet Excel
+    if sheets:
+        xlsx_path = SUPP_OUTPUT / "Supp_Table3_GSEA_results.xlsx"
+        with pd.ExcelWriter(xlsx_path, engine="openpyxl") as writer:
+            for sheet_name, df in sheets.items():
+                # Excel sheet names max 31 chars
+                df.to_excel(writer, sheet_name=sheet_name[:31], index=False)
+        print(f"    Saved {xlsx_path.name} ({len(sheets)} sheets)")
+    else:
+        print("    No GSEA results generated")
+
+    return sheets
 
 
 # ======================================================================
 # Main entry point
 # ======================================================================
+
 
 def generate():
     """Generate all supplementary tables."""
@@ -377,9 +411,8 @@ def generate():
     print("=" * 60)
 
     table1_gene_signatures()
-    table2_did_results()
+    table2_all_results()
     table3_gsea_results()
-    table4_clinical_results()
 
     clear_cache()
     gc.collect()
