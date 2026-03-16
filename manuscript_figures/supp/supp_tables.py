@@ -303,7 +303,7 @@ def _run_gsea_for_dataset(
 
     frames: list[pd.DataFrame] = []
     for lib_name, short_name in libraries:
-        outdir = os.path.join(gsea_root, f"gsea_{dataset_name}_{short_name}")
+        outdir = os.path.join(gsea_root, dataset_name, short_name)
         os.makedirs(outdir, exist_ok=True)
         try:
             res = run_gsea_did(
@@ -337,7 +337,7 @@ def table3_gsea_results() -> dict[str, pd.DataFrame]:
         print("    Skipped: sctrial not available")
         return {}
 
-    gsea_root = str(SCRIPT_DIR.parent.parent.parent / "manuscript")
+    gsea_root = str(SCRIPT_DIR.parent.parent.parent / "manuscript" / "GSEA")
     sheets: dict[str, pd.DataFrame] = {}
 
     # ── Sade-Feldman (two-arm DiD) ────────────────────────────────────
@@ -361,6 +361,83 @@ def table3_gsea_results() -> dict[str, pd.DataFrame]:
         gc.collect()
     except Exception as exc:
         print(f"    Sade-Feldman GSEA failed: {exc}")
+
+    # ── Stephenson (cross-sectional: severe vs mild) ─────────────────
+    try:
+        import gseapy as gp
+        from scipy import stats as sp_stats
+
+        adata_st = get_stephenson()
+        pid_col, sev_col = "participant_id", "severity"
+
+        # Pseudobulk to participant level, compute per-gene t-stat ranking
+        layer_st = "log1p_cpm" if "log1p_cpm" in adata_st.layers else None
+        expr = adata_st.layers[layer_st] if layer_st else adata_st.X
+        if hasattr(expr, "toarray"):
+            expr = expr.toarray()
+        obs = adata_st.obs[[pid_col, sev_col]].copy()
+        obs.index = range(len(obs))
+
+        # Mean expression per participant
+        expr_df = pd.DataFrame(expr, columns=adata_st.var_names)
+        expr_df[pid_col] = obs[pid_col].values
+        expr_df[sev_col] = obs[sev_col].values
+        pb_st = expr_df.groupby(pid_col).agg(
+            {sev_col: "first", **{g: "mean" for g in adata_st.var_names}}
+        )
+
+        sev_vals = pb_st[sev_col].unique()
+        severe = "severe" if "severe" in sev_vals else sev_vals[0]
+        mild = "mild" if "mild" in sev_vals else sev_vals[-1]
+        grp_s = pb_st[pb_st[sev_col] == severe]
+        grp_m = pb_st[pb_st[sev_col] == mild]
+
+        # Per-gene t-statistic ranking
+        ranking = {}
+        for gene in adata_st.var_names:
+            xs = grp_s[gene].dropna().values
+            xm = grp_m[gene].dropna().values
+            if len(xs) < 3 or len(xm) < 3:
+                continue
+            t, _ = sp_stats.ttest_ind(xs, xm, equal_var=False)
+            if np.isfinite(t):
+                ranking[gene] = t
+
+        if ranking:
+            rnk = pd.Series(ranking).sort_values(ascending=False)
+            libraries = [
+                ("MSigDB_Hallmark_2020", "Hallmark"),
+                ("KEGG_2021_Human", "KEGG"),
+                ("Reactome_2022", "Reactome"),
+                ("GO_Biological_Process_2023", "GO_BP"),
+                ("WikiPathways_2024_Human", "WikiPathways"),
+            ]
+            frames_st: list[pd.DataFrame] = []
+            for lib_name, short_name in libraries:
+                outdir = os.path.join(gsea_root, "Stephenson", short_name)
+                os.makedirs(outdir, exist_ok=True)
+                try:
+                    pre_res = gp.prerank(
+                        rnk=rnk, gene_sets=lib_name,
+                        min_size=10, max_size=500, permutation_num=1000,
+                        outdir=outdir, no_plot=True,
+                    )
+                    res_df = pre_res.res2d if hasattr(pre_res, "res2d") else pre_res
+                    if isinstance(res_df, pd.DataFrame) and len(res_df) > 0:
+                        res_df["Library"] = short_name
+                        frames_st.append(res_df)
+                        print(f"    Stephenson/{short_name}: {len(res_df)} pathways")
+                except Exception as exc:
+                    print(f"    Stephenson/{short_name}: {exc}")
+            if frames_st:
+                combined_st = pd.concat(frames_st, ignore_index=True)
+                if "NES" in combined_st.columns:
+                    combined_st = combined_st.sort_values("NES", key=abs, ascending=False)
+                sheets["Stephenson"] = combined_st
+        del adata_st
+        gc.collect()
+    except Exception as exc:
+        print(f"    Stephenson GSEA failed: {exc}")
 
     # ── Single-arm datasets ───────────────────────────────────────────
     single_arm_gsea = [
