@@ -48,7 +48,7 @@ class TestSimulateDidData:
             control_post = pb[(pb["arm"] == "Control") & (pb["visit"] == "Post")][g].mean()
             control_pre = pb[(pb["arm"] == "Control") & (pb["visit"] == "Pre")][g].mean()
             did = (treated_post - treated_pre) - (control_post - control_pre)
-            assert abs(did) < 1.5, f"Null DiD too large for {g}: {did}"
+            assert abs(did) < 0.5, f"Null DiD too large for {g}: {did}"
 
     def test_signal_recoverable(self):
         """Embedded signal is recoverable in crude DiD."""

@@ -55,6 +55,11 @@ def simulate_did_data(
         "truth" : dict mapping gene_name -> true_beta_DiD
         "params" : dict of simulation parameters
     """
+    if n_participants % 2 != 0:
+        raise ValueError(
+            f"n_participants must be even (got {n_participants}); "
+            "participants are split equally between arms."
+        )
     rng = np.random.default_rng(seed)
     effect_sizes = effect_sizes or {}
 
@@ -183,6 +188,8 @@ def run_method_comparison(
 
 def _run_sctrial_did(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
     """Run sctrial did_table on pseudobulk DataFrame."""
+    import warnings
+
     import anndata as ad
 
     from ..design import TrialDesign
@@ -204,39 +211,34 @@ def _run_sctrial_did(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
         arm_control="Control",
     )
 
-    # did_table expects obs-level features
-    for g in gene_cols:
-        gi = list(adata.var_names).index(g)
-        adata.obs[g] = adata.X[:, gi].copy()
-
-    try:
-        import warnings
-
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            res = did_table(
-                adata,
-                gene_cols,
-                design,
-                visits=("Pre", "Post"),
-                aggregate="participant_visit",
-                standardize=False,
-            )
-        out = {}
-        for _, row in res.iterrows():
-            out[row["feature"]] = {
-                "beta": row["beta_DiD"],
-                "pvalue": row["p_DiD"],
-                "ci_lo": row.get("ci_lo_DiD", np.nan),
-                "ci_hi": row.get("ci_hi_DiD", np.nan),
-            }
-        return out
-    except Exception:
-        return {g: {} for g in gene_cols}
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        res = did_table(
+            adata,
+            gene_cols,
+            design,
+            visits=("Pre", "Post"),
+            aggregate="participant_visit",
+            standardize=False,
+        )
+    out = {}
+    for _, row in res.iterrows():
+        out[row["feature"]] = {
+            "beta": row["beta_DiD"],
+            "pvalue": row["p_DiD"],
+            "ci_lo": row.get("ci_lo_DiD", np.nan),
+            "ci_hi": row.get("ci_hi_DiD", np.nan),
+        }
+    return out
 
 
 def _run_wilcoxon(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
-    """Cell-level Wilcoxon rank-sum on post-treatment treated vs control."""
+    """Naive cross-sectional Wilcoxon on post-treatment treated vs control.
+
+    This deliberately ignores pre-treatment data to demonstrate the cost
+    of not accounting for baseline differences (participant random intercepts).
+    It serves as a negative control: inflated type I error is expected.
+    """
     from scipy.stats import mannwhitneyu
 
     post = pb[pb["visit"] == "Post"]
@@ -259,7 +261,13 @@ def _run_wilcoxon(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
 
 
 def _run_pseudobulk_ols(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
-    """OLS DiD on pseudobulk (no participant FE -- limma-voom analog)."""
+    """OLS DiD without participant fixed effects.
+
+    Intentionally omits participant FE to demonstrate the anti-conservative
+    bias of naive OLS when participant random intercepts are present.
+    CIs and p-values will be too narrow/small because residual correlation
+    within participants inflates effective sample size.
+    """
     import statsmodels.formula.api as smf
 
     pb = pb.copy()
