@@ -241,7 +241,7 @@ def _run_wilcoxon(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
 
     This deliberately ignores pre-treatment data to demonstrate the cost
     of not accounting for baseline differences (participant random intercepts).
-    It serves as a negative control: inflated type I error is expected.
+    It serves as a comparator that discards longitudinal information.
     """
     from scipy.stats import mannwhitneyu
 
@@ -272,10 +272,9 @@ def _run_wilcoxon(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
 def _run_pseudobulk_ols(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
     """OLS DiD without participant fixed effects.
 
-    Intentionally omits participant FE to demonstrate the anti-conservative
-    bias of naive OLS when participant random intercepts are present.
-    CIs and p-values will be too narrow/small because residual correlation
-    within participants inflates effective sample size.
+    Intentionally omits participant FE.  Without accounting for within-
+    participant correlation the resulting standard errors may be mis-sized
+    (conservative or anti-conservative depending on the variance structure).
     """
     import statsmodels.formula.api as smf
 

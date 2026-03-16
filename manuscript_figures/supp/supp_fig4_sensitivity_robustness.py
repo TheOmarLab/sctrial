@@ -16,7 +16,7 @@ Panels
   H  Simulation: power (TPR) across effect sizes.
   I  Simulation: type I error calibration across sample sizes.
   J  Simulation: effect-size bias (estimated vs true beta).
-  K  Simulation: 95% CI coverage.
+  K  Simulation: p-value calibration QQ plot.
 
 Non-overlap guardrail: methodological sensitivity only, not biological claims.
 """
@@ -1055,7 +1055,7 @@ def generate():
       H  Simulation: power (TPR) across effect sizes
       I  Simulation: type I error calibration across sample sizes
       J  Simulation: effect-size bias (estimated vs true beta)
-      K  Simulation: 95% CI coverage
+      K  Simulation: p-value calibration QQ plot
     """
     print("Supplementary Figure 4: Sensitivity to Modeling and Preprocessing")
     data = _run_sensitivity()
