@@ -851,22 +851,27 @@ def _panel_sim_tpr(ax, results):
     from statsmodels.stats.multitest import multipletests
 
     n_default = _SIM_SAMPLE_SIZES[1]  # middle sample size
-    signal = results[
-        results["is_signal"] & (results["target_beta"] > 0)
-        & (results["n_participants"] == n_default)
+    # Use all genes with target_beta > 0 for FDR correction scope
+    subset = results[
+        (results["target_beta"] > 0) & (results["n_participants"] == n_default)
     ].copy()
 
     rows = []
-    for (method, beta, it), grp in signal.groupby(
+    for (method, beta, it), grp in subset.groupby(
         ["method", "target_beta", "iteration"]
     ):
         pvals = grp["pvalue"].dropna().values
+        is_sig = grp.loc[grp["pvalue"].notna(), "is_signal"].values
         if len(pvals) == 0:
             continue
+        # FDR correction over ALL genes (null + signal) per iteration
         reject = multipletests(pvals, alpha=0.05, method="fdr_bh")[0]
-        rows.append(
-            {"method": method, "target_beta": beta, "tpr": reject.mean()}
-        )
+        # TPR = fraction of signal genes rejected
+        if is_sig.sum() > 0:
+            rows.append(
+                {"method": method, "target_beta": beta,
+                 "tpr": reject[is_sig].mean()}
+            )
     tpr_df = pd.DataFrame(rows)
     tpr_agg = (
         tpr_df.groupby(["method", "target_beta"])["tpr"]
@@ -891,27 +896,33 @@ def _panel_sim_tpr(ax, results):
         )
 
     ax.set_xticks(x + width)
-    ax.set_xticklabels([f"{b}" for b in betas])
-    ax.set_xlabel("True effect size (beta)")
-    ax.set_ylabel("True Positive Rate")
+    ax.set_xticklabels([fr"$\beta$={b}" for b in betas])
+    ax.set_xlabel(r"True effect size ($\beta$)")
+    ax.set_ylabel("True Positive Rate (FDR < 0.05)")
     ax.set_ylim(0, 1.05)
+    ax.set_title(f"Power (n={n_default})", fontweight="bold")
     ax.legend(fontsize=7, loc="upper left")
     despine(ax)
 
 
 def _panel_sim_fpr(ax, results):
-    """Panel I: False positive rate under null (beta=0)."""
-    null = results[~results["is_signal"]].copy()
+    """Panel I: False positive rate under pure null (target_beta=0)."""
+    from statsmodels.stats.multitest import multipletests
+
+    # Pure null: only iterations where target_beta=0 (all genes are null)
+    pure_null = results[results["target_beta"] == 0.0].copy()
 
     rows = []
-    for (method, n, it), grp in null.groupby(
+    for (method, n, it), grp in pure_null.groupby(
         ["method", "n_participants", "iteration"]
     ):
         pvals = grp["pvalue"].dropna().values
         if len(pvals) == 0:
             continue
+        # FDR-consistent: apply BH correction then count rejections
+        reject = multipletests(pvals, alpha=0.05, method="fdr_bh")[0]
         rows.append(
-            {"method": method, "n_participants": n, "fpr": (pvals < 0.05).mean()}
+            {"method": method, "n_participants": n, "fpr": reject.mean()}
         )
     fpr_df = pd.DataFrame(rows)
     fpr_agg = (
@@ -926,8 +937,8 @@ def _panel_sim_fpr(ax, results):
     for i, method in enumerate(_SIM_METHODS):
         sub = fpr_agg[fpr_agg["method"] == method]
         vals, errs = [], []
-        for n in ns:
-            s = sub[sub["n_participants"] == n]
+        for n_val in ns:
+            s = sub[sub["n_participants"] == n_val]
             vals.append(s["mean"].values[0] if len(s) else 0)
             errs.append(s["std"].values[0] if len(s) else 0)
         ax.bar(
@@ -939,8 +950,10 @@ def _panel_sim_fpr(ax, results):
     ax.axhline(0.05, color="red", linestyle="--", linewidth=0.8, alpha=0.7)
     ax.set_xticks(x + width)
     ax.set_xticklabels([f"n={n}" for n in ns])
-    ax.set_ylabel("False Positive Rate")
+    ax.set_xlabel("Sample size (participants)")
+    ax.set_ylabel("False Discovery Rate")
     ax.set_ylim(0, max(0.15, fpr_agg["mean"].max() * 1.3))
+    ax.set_title("Type I Error Calibration", fontweight="bold")
     ax.legend(fontsize=7)
     despine(ax)
 
@@ -948,8 +961,10 @@ def _panel_sim_fpr(ax, results):
 def _panel_sim_bias(ax, results):
     """Panel J: Effect-size bias (estimated vs true beta)."""
     n_default = _SIM_SAMPLE_SIZES[1]
+    # Only non-zero effects for bias assessment
     signal = results[
-        results["is_signal"] & (results["n_participants"] == n_default)
+        results["is_signal"] & (results["target_beta"] > 0)
+        & (results["n_participants"] == n_default)
     ].copy()
 
     for method in _SIM_METHODS:
@@ -966,10 +981,11 @@ def _panel_sim_bias(ax, results):
             color=_SIM_METHOD_COLORS[method], capsize=3, linewidth=1.5,
         )
 
-    lims = [-0.3, max(_SIM_EFFECT_SIZES) + 0.3]
+    lims = [0, max(_SIM_EFFECT_SIZES) + 0.3]
     ax.plot(lims, lims, "k--", linewidth=0.8, alpha=0.5)
     ax.set_xlabel(r"True $\beta_{\mathrm{DiD}}$")
     ax.set_ylabel(r"Estimated $\beta$")
+    ax.set_title(f"Effect-Size Bias (n={n_default})", fontweight="bold")
     ax.legend(fontsize=7)
     despine(ax)
 
@@ -983,7 +999,7 @@ def _panel_sim_coverage(ax, results):
     ].copy()
 
     rows = []
-    for (method, beta), grp in signal.groupby(["method", "true_beta"]):
+    for (method, beta), grp in signal.groupby(["method", "target_beta"]):
         covers = (
             (grp["ci_lo"] <= grp["true_beta"]) & (grp["true_beta"] <= grp["ci_hi"])
         ).mean()
@@ -1017,10 +1033,11 @@ def _panel_sim_coverage(ax, results):
 
     ax.axhline(0.95, color="red", linestyle="--", linewidth=0.8, alpha=0.7)
     ax.set_xticks(x + width)
-    ax.set_xticklabels([f"{b}" for b in betas])
-    ax.set_xlabel("True effect size (beta)")
+    ax.set_xticklabels([fr"$\beta$={b}" for b in betas])
+    ax.set_xlabel(r"True effect size ($\beta$)")
     ax.set_ylabel("Coverage Probability")
     ax.set_ylim(0, 1.05)
+    ax.set_title(f"95% CI Coverage (n={n_default})", fontweight="bold")
     ax.legend(fontsize=7)
     despine(ax)
 
