@@ -39,7 +39,7 @@ from .._shared import (
     did_table,
     get_sade_feldman,
     harmonize_response,
-    run_gsea_did,
+    load_or_run_gsea_did,
     save_panel,
     score_signatures,
     sig_display,
@@ -196,45 +196,12 @@ def _prepare_data(*, use_cache: bool = True) -> dict:
     )
 
     # GSEA on multiple gene-set libraries for comprehensive pathway analysis
-    # 5 libraries: Hallmark + KEGG + Reactome + GO BP + WikiPathways
-    gsea_libraries = [
-        "MSigDB_Hallmark_2020",
-        "KEGG_2021_Human",
-        "Reactome_2022",
-        "GO_Biological_Process_2023",
-        "WikiPathways_2024_Human",
-    ]
-    gsea_results = None
-    gsea_all = {}  # per-library results for Panel C
-    for lib in gsea_libraries:
-        try:
-            # Use tstat ranking to reduce ties in the preranked list.
-            # signed_confidence produces many ties when n_units is small
-            # because p-values cluster (23%+ duplicate rate).  The
-            # t-statistic (beta/SE) varies continuously and breaks ties.
-            res = run_gsea_did(
-                adata,
-                gene_sets=lib,
-                design=design,
-                visits=visits,
-                layer="log1p_tpm",
-                rank_by="tstat",
-                min_size=10,
-                max_size=500,
-                permutation_num=1000,
-                outdir=None,
-                no_plot=True,
-            )
-            if isinstance(res, pd.DataFrame) and len(res) > 0:
-                res["library"] = lib
-                gsea_all[lib] = res
-                print(f"  GSEA {lib}: {len(res)} pathways tested")
-        except Exception as exc:
-            print(f"  GSEA {lib} unavailable: {exc}")
+    # Uses shared helper that caches results under manuscript/GSEA/Sade_Feldman/
+    gsea_results = load_or_run_gsea_did(
+        adata, design, visits, "log1p_tpm", "Sade_Feldman",
+    )
 
-    if gsea_all:
-        gsea_results = pd.concat(gsea_all.values(), ignore_index=True)
-
+    if gsea_results is not None and len(gsea_results) > 0:
         # Detect term column for immune/metabolic filtering
         term_col = None
         for c in gsea_results.columns:

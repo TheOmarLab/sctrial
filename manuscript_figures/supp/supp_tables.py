@@ -10,7 +10,6 @@ Table 3  GSEA pre-ranked results (one sheet per dataset).
 from __future__ import annotations
 
 import gc
-import os
 
 import numpy as np
 import pandas as pd
@@ -18,7 +17,6 @@ import pandas as pd
 from .._shared import (
     CLINICAL_SIGNATURES,
     GENE_SIGNATURES,
-    SCRIPT_DIR,
     SCTRIAL_AVAILABLE,
     SIGNATURE_DISPLAY_NAMES,
     SUPP_OUTPUT,
@@ -32,6 +30,8 @@ from .._shared import (
     harmonize_response,
     get_aml,
     get_cart,
+    load_or_run_gsea_did,
+    load_or_run_gsea_prerank,
     score_clinical_signatures,
     score_signatures,
     sig_display,
@@ -278,66 +278,56 @@ def table2_all_results() -> pd.DataFrame:
 # ======================================================================
 
 
-def _run_gsea_for_dataset(
-    adata,
-    design: TrialDesign,
-    visits: tuple[str, str],
-    layer: str | None,
-    dataset_name: str,
-    gsea_root: str,
-) -> pd.DataFrame | None:
-    """Run pre-ranked GSEA for a single dataset, save CSV, return results."""
-    try:
-        from sctrial import run_gsea_did
-    except ImportError:
-        print(f"    {dataset_name}: sctrial GSEA not available")
-        return None
+def _stephenson_ranking() -> "pd.Series":
+    """Compute per-gene Welch t-stat ranking (severe vs mild) for Stephenson."""
+    from scipy import stats as sp_stats
 
-    libraries = [
-        ("MSigDB_Hallmark_2020", "Hallmark"),
-        ("KEGG_2021_Human", "KEGG"),
-        ("Reactome_2022", "Reactome"),
-        ("GO_Biological_Process_2023", "GO_BP"),
-        ("WikiPathways_2024_Human", "WikiPathways"),
-    ]
+    adata_st = get_stephenson()
+    pid_col, sev_col = "participant_id", "severity"
 
-    frames: list[pd.DataFrame] = []
-    for lib_name, short_name in libraries:
-        outdir = os.path.join(gsea_root, dataset_name, short_name)
-        os.makedirs(outdir, exist_ok=True)
-        try:
-            res = run_gsea_did(
-                adata, gene_sets=lib_name, design=design, visits=visits,
-                layer=layer, rank_by="tstat",
-                min_size=10, max_size=500, permutation_num=1000,
-                outdir=outdir, no_plot=True,
-            )
-            if isinstance(res, pd.DataFrame) and len(res) > 0:
-                res["Library"] = short_name
-                frames.append(res)
-                print(f"    {dataset_name}/{short_name}: {len(res)} pathways")
-            else:
-                print(f"    {dataset_name}/{short_name}: no results")
-        except Exception as exc:
-            print(f"    {dataset_name}/{short_name}: {exc}")
+    layer_st = "log1p_cpm" if "log1p_cpm" in adata_st.layers else None
+    expr = adata_st.layers[layer_st] if layer_st else adata_st.X
+    if hasattr(expr, "toarray"):
+        expr = expr.toarray()
 
-    if not frames:
-        return None
-    combined = pd.concat(frames, ignore_index=True)
-    if "NES" in combined.columns:
-        combined = combined.sort_values("NES", key=abs, ascending=False)
-    return combined
+    expr_df = pd.DataFrame(expr, columns=adata_st.var_names)
+    expr_df[pid_col] = adata_st.obs[pid_col].values
+    expr_df[sev_col] = adata_st.obs[sev_col].values
+    pb = expr_df.groupby(pid_col).agg(
+        {sev_col: "first", **{g: "mean" for g in adata_st.var_names}}
+    )
+
+    sev_vals = pb[sev_col].unique()
+    severe = "severe" if "severe" in sev_vals else sev_vals[0]
+    mild = "mild" if "mild" in sev_vals else sev_vals[-1]
+    grp_s = pb[pb[sev_col] == severe]
+    grp_m = pb[pb[sev_col] == mild]
+
+    ranking = {}
+    for gene in adata_st.var_names:
+        xs = grp_s[gene].dropna().values
+        xm = grp_m[gene].dropna().values
+        if len(xs) < 3 or len(xm) < 3:
+            continue
+        t, _ = sp_stats.ttest_ind(xs, xm, equal_var=False)
+        if np.isfinite(t):
+            ranking[gene] = t
+
+    del adata_st
+    gc.collect()
+    return pd.Series(ranking).sort_values(ascending=False)
 
 
 def table3_gsea_results() -> dict[str, pd.DataFrame]:
-    """Run GSEA pre-ranked analysis for all datasets, save as multi-sheet Excel."""
+    """Run GSEA pre-ranked analysis for all 5 datasets, save as multi-sheet Excel.
+
+    Uses shared ``load_or_run_gsea_did`` / ``load_or_run_gsea_prerank``
+    helpers that cache results under ``manuscript/GSEA/{dataset}/{library}/``.
+    If cached CSV files already exist they are loaded instantly; otherwise
+    GSEA is run fresh and results are saved for next time.
+    """
     print("  Table 3: GSEA results (per-dataset)")
 
-    if not SCTRIAL_AVAILABLE:
-        print("    Skipped: sctrial not available")
-        return {}
-
-    gsea_root = str(SCRIPT_DIR.parent.parent.parent / "manuscript" / "GSEA")
     sheets: dict[str, pd.DataFrame] = {}
 
     # ── Sade-Feldman (two-arm DiD) ────────────────────────────────────
@@ -351,9 +341,8 @@ def table3_gsea_results() -> dict[str, pd.DataFrame]:
             arm_col="response_harmonized",
             arm_treated="Responder", arm_control="Non-responder",
         )
-        res = _run_gsea_for_dataset(
-            adata_sf, design_sf, ("Pre", "Post"), "log1p_tpm",
-            "Sade_Feldman", gsea_root,
+        res = load_or_run_gsea_did(
+            adata_sf, design_sf, ("Pre", "Post"), "log1p_tpm", "Sade_Feldman",
         )
         if res is not None:
             sheets["Sade-Feldman"] = res
@@ -364,78 +353,11 @@ def table3_gsea_results() -> dict[str, pd.DataFrame]:
 
     # ── Stephenson (cross-sectional: severe vs mild) ─────────────────
     try:
-        import gseapy as gp
-        from scipy import stats as sp_stats
-
-        adata_st = get_stephenson()
-        pid_col, sev_col = "participant_id", "severity"
-
-        # Pseudobulk to participant level, compute per-gene t-stat ranking
-        layer_st = "log1p_cpm" if "log1p_cpm" in adata_st.layers else None
-        expr = adata_st.layers[layer_st] if layer_st else adata_st.X
-        if hasattr(expr, "toarray"):
-            expr = expr.toarray()
-        obs = adata_st.obs[[pid_col, sev_col]].copy()
-        obs.index = range(len(obs))
-
-        # Mean expression per participant
-        expr_df = pd.DataFrame(expr, columns=adata_st.var_names)
-        expr_df[pid_col] = obs[pid_col].values
-        expr_df[sev_col] = obs[sev_col].values
-        pb_st = expr_df.groupby(pid_col).agg(
-            {sev_col: "first", **{g: "mean" for g in adata_st.var_names}}
-        )
-
-        sev_vals = pb_st[sev_col].unique()
-        severe = "severe" if "severe" in sev_vals else sev_vals[0]
-        mild = "mild" if "mild" in sev_vals else sev_vals[-1]
-        grp_s = pb_st[pb_st[sev_col] == severe]
-        grp_m = pb_st[pb_st[sev_col] == mild]
-
-        # Per-gene t-statistic ranking
-        ranking = {}
-        for gene in adata_st.var_names:
-            xs = grp_s[gene].dropna().values
-            xm = grp_m[gene].dropna().values
-            if len(xs) < 3 or len(xm) < 3:
-                continue
-            t, _ = sp_stats.ttest_ind(xs, xm, equal_var=False)
-            if np.isfinite(t):
-                ranking[gene] = t
-
-        if ranking:
-            rnk = pd.Series(ranking).sort_values(ascending=False)
-            libraries = [
-                ("MSigDB_Hallmark_2020", "Hallmark"),
-                ("KEGG_2021_Human", "KEGG"),
-                ("Reactome_2022", "Reactome"),
-                ("GO_Biological_Process_2023", "GO_BP"),
-                ("WikiPathways_2024_Human", "WikiPathways"),
-            ]
-            frames_st: list[pd.DataFrame] = []
-            for lib_name, short_name in libraries:
-                outdir = os.path.join(gsea_root, "Stephenson", short_name)
-                os.makedirs(outdir, exist_ok=True)
-                try:
-                    pre_res = gp.prerank(
-                        rnk=rnk, gene_sets=lib_name,
-                        min_size=10, max_size=500, permutation_num=1000,
-                        outdir=outdir, no_plot=True,
-                    )
-                    res_df = pre_res.res2d if hasattr(pre_res, "res2d") else pre_res
-                    if isinstance(res_df, pd.DataFrame) and len(res_df) > 0:
-                        res_df["Library"] = short_name
-                        frames_st.append(res_df)
-                        print(f"    Stephenson/{short_name}: {len(res_df)} pathways")
-                except Exception as exc:
-                    print(f"    Stephenson/{short_name}: {exc}")
-            if frames_st:
-                combined_st = pd.concat(frames_st, ignore_index=True)
-                if "NES" in combined_st.columns:
-                    combined_st = combined_st.sort_values("NES", key=abs, ascending=False)
-                sheets["Stephenson"] = combined_st
-        del adata_st
-        gc.collect()
+        rnk = _stephenson_ranking()
+        if len(rnk) > 0:
+            res = load_or_run_gsea_prerank(rnk, "Stephenson")
+            if res is not None:
+                sheets["Stephenson"] = res
     except Exception as exc:
         print(f"    Stephenson GSEA failed: {exc}")
 
@@ -452,8 +374,8 @@ def table3_gsea_results() -> dict[str, pd.DataFrame]:
                 adata.obs["arm"] = "Treated"
             visits = visits_override or _detect_visits(adata)
             design = _single_arm_design()
-            res = _run_gsea_for_dataset(
-                adata, design, visits, layer, ds_name, gsea_root,
+            res = load_or_run_gsea_did(
+                adata, design, visits, layer, ds_name,
             )
             if res is not None:
                 sheets[ds_name] = res
@@ -467,7 +389,6 @@ def table3_gsea_results() -> dict[str, pd.DataFrame]:
         xlsx_path = SUPP_OUTPUT / "Supp_Table3_GSEA_results.xlsx"
         with pd.ExcelWriter(xlsx_path, engine="openpyxl") as writer:
             for sheet_name, df in sheets.items():
-                # Excel sheet names max 31 chars
                 df.to_excel(writer, sheet_name=sheet_name[:31], index=False)
         print(f"    Saved {xlsx_path.name} ({len(sheets)} sheets)")
     else:
