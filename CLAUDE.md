@@ -47,7 +47,7 @@ m.generate()
 ## Running Supplementary Figure Scripts
 
 Supp modules use `from .._shared import ...` (relative imports). Run individual modules with importlib bootstrap.
-**Note:** Some supp modules import from others (e.g. SF5→Figure3). When bootstrapping, pre-load dependency modules before the target.
+**Note:** Some supp modules import from others (e.g. SF3→Figure3). When bootstrapping, pre-load dependency modules before the target.
 ```bash
 cd /Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference
 /opt/anaconda3/bin/python -c "
