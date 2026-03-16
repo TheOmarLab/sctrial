@@ -5,8 +5,12 @@ DiD effects, enabling controlled comparison of statistical methods.
 """
 from __future__ import annotations
 
+import logging
+
 import numpy as np
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 
 def simulate_did_data(
@@ -246,6 +250,7 @@ def _run_wilcoxon(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
     control = post[post["arm"] == "Control"]
 
     out = {}
+    n_failures = 0
     for g in gene_cols:
         t_vals = treated[g].values
         c_vals = control[g].values
@@ -255,8 +260,12 @@ def _run_wilcoxon(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
                 "beta": t_vals.mean() - c_vals.mean(),
                 "pvalue": pval,
             }
-        except Exception:
+        except (ValueError, TypeError) as exc:
+            logger.debug("Wilcoxon failed for %s: %s", g, exc)
+            n_failures += 1
             out[g] = {}
+    if n_failures:
+        logger.warning("Wilcoxon: %d/%d genes failed", n_failures, len(gene_cols))
     return out
 
 
@@ -276,6 +285,7 @@ def _run_pseudobulk_ols(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
     pb["interaction"] = pb["arm_bin"] * pb["visit_bin"]
 
     out = {}
+    n_failures = 0
     for g in gene_cols:
         try:
             # Backtick-quote gene names for formula safety
@@ -290,6 +300,12 @@ def _run_pseudobulk_ols(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
                 "ci_lo": ci.iloc[0],
                 "ci_hi": ci.iloc[1],
             }
-        except Exception:
+        except (ValueError, np.linalg.LinAlgError, KeyError) as exc:
+            logger.debug("Pseudobulk OLS failed for %s: %s", g, exc)
+            n_failures += 1
             out[g] = {}
+    if n_failures:
+        logger.warning(
+            "Pseudobulk OLS: %d/%d genes failed", n_failures, len(gene_cols)
+        )
     return out

@@ -38,12 +38,12 @@ from .._shared import (
     apply_style,
     clear_cache,
     despine,
+    get_aml,
+    get_cart,
     get_sade_feldman,
     get_stephenson,
     get_vaccine,
     harmonize_response,
-    get_aml,
-    get_cart,
     save_panel,
 )
 
@@ -907,7 +907,12 @@ def _panel_sim_tpr(ax, results):
 
 
 def _panel_sim_fpr(ax, results):
-    """Panel I: False positive rate under pure null (target_beta=0)."""
+    """Panel I: Null rejection rate under pure null (target_beta=0).
+
+    Computes the average fraction of null hypotheses rejected per iteration
+    after BH correction (i.e., per-hypothesis rejection rate, not FDR
+    in the E[V/R] sense).
+    """
     from statsmodels.stats.multitest import multipletests
 
     # Pure null: only iterations where target_beta=0 (all genes are null)
@@ -920,7 +925,7 @@ def _panel_sim_fpr(ax, results):
         pvals = grp["pvalue"].dropna().values
         if len(pvals) == 0:
             continue
-        # FDR-consistent: apply BH correction then count rejections
+        # BH correction then count proportion of nulls rejected
         reject = multipletests(pvals, alpha=0.05, method="fdr_bh")[0]
         rows.append(
             {"method": method, "n_participants": n, "fpr": reject.mean()}
@@ -952,7 +957,7 @@ def _panel_sim_fpr(ax, results):
     ax.set_xticks(x + width)
     ax.set_xticklabels([f"n={n}" for n in ns])
     ax.set_xlabel("Sample size (participants)")
-    ax.set_ylabel("False Discovery Rate")
+    ax.set_ylabel("Null Rejection Rate (BH-adjusted)")
     ax.set_ylim(0, max(0.15, fpr_agg["mean"].max() * 1.3))
     ax.set_title("Type I Error Calibration", fontweight="bold")
     ax.legend(fontsize=7)
@@ -992,7 +997,12 @@ def _panel_sim_bias(ax, results):
 
 
 def _panel_sim_coverage(ax, results):
-    """Panel K: 95% CI coverage."""
+    """Panel K: 95% CI coverage for CI-capable methods only.
+
+    Only methods that emit confidence intervals (currently Pseudobulk OLS)
+    are shown. sctrial DiD and Wilcoxon do not produce CIs in the
+    simulation and are excluded.
+    """
     n_default = _SIM_SAMPLE_SIZES[1]
     signal = results[
         results["is_signal"] & results["ci_lo"].notna()
@@ -1009,31 +1019,31 @@ def _panel_sim_coverage(ax, results):
     cov_df = pd.DataFrame(rows)
     if cov_df.empty:
         ax.text(
-            0.5, 0.5, "CI data not available\nfor all methods",
+            0.5, 0.5, "CI data not available\n(no methods emit CIs)",
             transform=ax.transAxes, ha="center", va="center",
         )
         despine(ax)
         return
 
+    # Only plot methods that actually have CI data
+    ci_methods = sorted(cov_df["method"].unique())
     betas = sorted(cov_df["target_beta"].unique())
     x = np.arange(len(betas))
-    width = 0.25
-    for i, method in enumerate(_SIM_METHODS):
+    width = 0.8 / max(len(ci_methods), 1)
+    for i, method in enumerate(ci_methods):
         sub = cov_df[cov_df["method"] == method]
-        if sub.empty:
-            continue
         vals = []
         for b in betas:
             s = sub[sub["target_beta"] == b]
             vals.append(s["coverage"].values[0] if len(s) else np.nan)
         ax.bar(
             x + i * width, vals, width,
-            label=_SIM_METHOD_LABELS[method],
-            color=_SIM_METHOD_COLORS[method], alpha=0.85,
+            label=_SIM_METHOD_LABELS.get(method, method),
+            color=_SIM_METHOD_COLORS.get(method, "#888888"), alpha=0.85,
         )
 
     ax.axhline(0.95, color="red", linestyle="--", linewidth=0.8, alpha=0.7)
-    ax.set_xticks(x + width)
+    ax.set_xticks(x + width * len(ci_methods) / 2)
     ax.set_xticklabels([fr"$\beta$={b}" for b in betas])
     ax.set_xlabel(r"True effect size ($\beta$)")
     ax.set_ylabel("Coverage Probability")
