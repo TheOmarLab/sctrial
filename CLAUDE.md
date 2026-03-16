@@ -192,6 +192,13 @@ cd docs && make html
   - `figure4_biological_discovery.py` — Pathway & gene-level analysis
   - `figure5_multi_dataset.py` — Cross-cohort generalizability & cell-type analysis
   - `figure6_validation_dynamics.py` — Permutation validation, heterogeneity & temporal dynamics (8 panels A-H)
+- `supp/supp_fig{1-6}_*.py` — 6 supplementary figures:
+  - `supp_fig1_data_quality_cohort.py` — Data quality & cohort characterisation
+  - `supp_fig2_annotation_baseline.py` — Cell annotation & baseline comparability
+  - `supp_fig3_model_diagnostics.py` — Model diagnostics & assumption checks (imports Figure3 for runtime panel J)
+  - `supp_fig4_heterogeneity_temporal.py` — Participant heterogeneity & temporal dynamics
+  - `supp_fig5_cross_dataset_biology.py` — Cross-dataset biological consistency
+  - `supp_fig6_sensitivity_robustness.py` — Sensitivity & robustness (simulation QQ panels I/K)
 - Output goes to `/Users/omarm/Documents/Research/projects/sc-trialdiff/manuscript/main/` and `/Users/omarm/Documents/Research/projects/sc-trialdiff/manuscript/supp/`. **Note: `/Users/omarm/Documents/Research/projects/sc-trialdiff/manuscript/` is OUTSIDE the git repo** (repo root is `sctrial/sc_trial_inference/`). It contains datasets, GSEA results, and processed h5ad files that are not version-controlled.
 - h5ad files are gitignored. Processed datasets live in `datasets/[name]/processed/` (e.g. `datasets/sade_feldman/processed/sade_feldman_processed_v6.h5ad`). GSEA CSVs at `/Users/omarm/Documents/Research/projects/sc-trialdiff/manuscript/gsea_*/` — these exist only locally.
 - Scripts use a `_DATA_CACHE` dict and `_CODE_VERSION` tag for JSON cache invalidation. Bump `_CODE_VERSION` when changing analysis logic.
@@ -219,6 +226,7 @@ GitHub Actions (`test.yml`): runs pytest on Python 3.9–3.11 on ubuntu-latest.
 ## Bug fixing
 
 - When fixing bugs in notebooks or scripts, check for ALL instances of the same class of error (e.g., wrong layer names, wrong column references) across all files before reporting the fix as complete. Do not fix one instance and miss others.
+- **After renumbering figures**: Grep entire codebase for old figure numbers in comments, docstrings, variable names (e.g. `_fig4_panel_c`), CLAUDE.md cross-references, and run_all.py registry. Stale references survive renames.
 
 ## Code quality
 
