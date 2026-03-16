@@ -907,14 +907,12 @@ def _panel_sim_tpr(ax, results):
 
 
 def _panel_sim_fpr(ax, results):
-    """Panel I: Null rejection rate under pure null (target_beta=0).
+    """Panel I: Per-test type I error rate under pure null (target_beta=0).
 
-    Computes the average fraction of null hypotheses rejected per iteration
-    after BH correction (i.e., per-hypothesis rejection rate, not FDR
-    in the E[V/R] sense).
+    Uses uncorrected p < 0.05 rejection rate (not BH-adjusted) so that the
+    expected rate under a well-calibrated method is exactly 0.05, producing
+    visible bars near the nominal line.
     """
-    from statsmodels.stats.multitest import multipletests
-
     # Pure null: only iterations where target_beta=0 (all genes are null)
     pure_null = results[results["target_beta"] == 0.0].copy()
 
@@ -925,10 +923,10 @@ def _panel_sim_fpr(ax, results):
         pvals = grp["pvalue"].dropna().values
         if len(pvals) == 0:
             continue
-        # BH correction then count proportion of nulls rejected
-        reject = multipletests(pvals, alpha=0.05, method="fdr_bh")[0]
+        # Uncorrected: fraction of raw p < 0.05
         rows.append(
-            {"method": method, "n_participants": n, "fpr": reject.mean()}
+            {"method": method, "n_participants": n,
+             "fpr": (pvals < 0.05).mean()}
         )
     fpr_df = pd.DataFrame(rows)
     fpr_agg = (
@@ -957,7 +955,7 @@ def _panel_sim_fpr(ax, results):
     ax.set_xticks(x + width)
     ax.set_xticklabels([f"n={n}" for n in ns])
     ax.set_xlabel("Sample size (participants)")
-    ax.set_ylabel("Null Rejection Rate (BH-adjusted)")
+    ax.set_ylabel("Type I Error Rate (uncorrected)")
     ax.set_ylim(0, max(0.15, fpr_agg["mean"].max() * 1.3))
     ax.set_title("Type I Error Calibration", fontweight="bold")
     ax.legend(fontsize=7)
@@ -997,59 +995,42 @@ def _panel_sim_bias(ax, results):
 
 
 def _panel_sim_coverage(ax, results):
-    """Panel K: 95% CI coverage for CI-capable methods only.
+    """Panel K: P-value QQ plot under pure null (target_beta=0).
 
-    Only methods that emit confidence intervals (currently Pseudobulk OLS)
-    are shown. sctrial DiD and Wilcoxon do not produce CIs in the
-    simulation and are excluded.
+    Plots observed vs expected p-value quantiles for each method under
+    the null hypothesis. Well-calibrated methods follow the diagonal;
+    anti-conservative methods curve above it.
     """
     n_default = _SIM_SAMPLE_SIZES[1]
-    signal = results[
-        results["is_signal"] & results["ci_lo"].notna()
+    pure_null = results[
+        (results["target_beta"] == 0.0)
         & (results["n_participants"] == n_default)
     ].copy()
 
-    rows = []
-    for (method, beta), grp in signal.groupby(["method", "target_beta"]):
-        covers = (
-            (grp["ci_lo"] <= grp["true_beta"]) & (grp["true_beta"] <= grp["ci_hi"])
-        ).mean()
-        rows.append({"method": method, "target_beta": beta, "coverage": covers})
-
-    cov_df = pd.DataFrame(rows)
-    if cov_df.empty:
-        ax.text(
-            0.5, 0.5, "CI data not available\n(no methods emit CIs)",
-            transform=ax.transAxes, ha="center", va="center",
-        )
-        despine(ax)
-        return
-
-    # Only plot methods that actually have CI data
-    ci_methods = sorted(cov_df["method"].unique())
-    betas = sorted(cov_df["target_beta"].unique())
-    x = np.arange(len(betas))
-    width = 0.8 / max(len(ci_methods), 1)
-    for i, method in enumerate(ci_methods):
-        sub = cov_df[cov_df["method"] == method]
-        vals = []
-        for b in betas:
-            s = sub[sub["target_beta"] == b]
-            vals.append(s["coverage"].values[0] if len(s) else np.nan)
-        ax.bar(
-            x + i * width, vals, width,
-            label=_SIM_METHOD_LABELS.get(method, method),
-            color=_SIM_METHOD_COLORS.get(method, "#888888"), alpha=0.85,
+    for method in _SIM_METHODS:
+        pvals = pure_null.loc[
+            pure_null["method"] == method, "pvalue"
+        ].dropna().sort_values().values
+        if len(pvals) == 0:
+            continue
+        n = len(pvals)
+        expected = (np.arange(1, n + 1) - 0.5) / n
+        # Convert to -log10 for visual clarity
+        obs_log = -np.log10(pvals + 1e-300)
+        exp_log = -np.log10(expected + 1e-300)
+        ax.scatter(
+            exp_log, obs_log, s=3, alpha=0.3,
+            color=_SIM_METHOD_COLORS[method],
+            label=_SIM_METHOD_LABELS[method], rasterized=True,
         )
 
-    ax.axhline(0.95, color="red", linestyle="--", linewidth=0.8, alpha=0.7)
-    ax.set_xticks(x + width * len(ci_methods) / 2)
-    ax.set_xticklabels([fr"$\beta$={b}" for b in betas])
-    ax.set_xlabel(r"True effect size ($\beta$)")
-    ax.set_ylabel("Coverage Probability")
-    ax.set_ylim(0, 1.05)
-    ax.set_title(f"95% CI Coverage (n={n_default})", fontweight="bold")
-    ax.legend(fontsize=7)
+    # Diagonal reference
+    lim = max(ax.get_xlim()[1], ax.get_ylim()[1])
+    ax.plot([0, lim], [0, lim], "k--", linewidth=0.8, alpha=0.5)
+    ax.set_xlabel(r"Expected $-\log_{10}(p)$")
+    ax.set_ylabel(r"Observed $-\log_{10}(p)$")
+    ax.set_title(f"P-value Calibration QQ (n={n_default})", fontweight="bold")
+    ax.legend(fontsize=7, markerscale=3)
     despine(ax)
 
 
