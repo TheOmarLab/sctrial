@@ -709,8 +709,11 @@ def _panel_lorenz_gini(ax, loaded: dict):
         y_lorenz = np.concatenate([[0], cum])
 
         # Gini coefficient
-        gini = 1 - 2 * np.trapz(y_lorenz, x_lorenz)
-
+        try:  # for numpy < 1.25
+            gini = 1 - 2 * np.trapz(y_lorenz, x_lorenz)
+        except Exception:
+            gini = 1 - 2 * np.trapezoid(y_lorenz, x_lorenz)
+            
         ax.plot(x_lorenz, y_lorenz, linewidth=1.5,
                 color=_DS_PALETTE.get(name, "black"),
                 label=f"{name} (Gini={gini:.2f})")
