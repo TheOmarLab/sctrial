@@ -1020,9 +1020,12 @@ def _panel_sim_coverage(ax, results):
         exp_log = -np.log10(expected + 1e-300)
         ax.scatter(
             exp_log, obs_log, s=3, alpha=0.3,
-            color=_SIM_METHOD_COLORS[method],
-            label=_SIM_METHOD_LABELS[method], rasterized=True,
+            color=_SIM_METHOD_COLORS[method], rasterized=True,
         )
+        # Full-opacity handle for legend
+        ax.scatter([], [], s=25, alpha=1.0,
+                   color=_SIM_METHOD_COLORS[method],
+                   label=_SIM_METHOD_LABELS[method])
 
     # Diagonal reference
     lim = max(ax.get_xlim()[1], ax.get_ylim()[1])
@@ -1030,7 +1033,7 @@ def _panel_sim_coverage(ax, results):
     ax.set_xlabel(r"Expected $-\log_{10}(p)$")
     ax.set_ylabel(r"Observed $-\log_{10}(p)$")
     ax.set_title(f"P-value Calibration QQ (n={n_default})", fontweight="bold")
-    ax.legend(fontsize=7, markerscale=3)
+    ax.legend(fontsize=7)
     despine(ax)
 
 
