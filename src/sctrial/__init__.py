@@ -220,6 +220,9 @@ __all__ = [
     # Survival
     "hazard_regression_with_features",
     "TrialDataValidator",
+    # Simulation
+    "simulate_did_data",
+    "run_method_comparison",
     # Convenience
     "quick_did",
     "auto_detect_design",

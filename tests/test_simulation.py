@@ -1,7 +1,5 @@
 """Tests for Monte Carlo simulation engine."""
-import numpy as np
 import pandas as pd
-import pytest
 
 import sctrial as st
 

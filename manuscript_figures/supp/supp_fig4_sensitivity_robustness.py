@@ -851,7 +851,8 @@ def _panel_sim_tpr(ax, results):
     from statsmodels.stats.multitest import multipletests
 
     n_default = _SIM_SAMPLE_SIZES[1]  # middle sample size
-    # Use all genes with target_beta > 0 for FDR correction scope
+    # Include ALL genes (null + signal) for proper FDR correction scope,
+    # but only for iterations that have target_beta > 0
     subset = results[
         (results["target_beta"] > 0) & (results["n_participants"] == n_default)
     ].copy()
