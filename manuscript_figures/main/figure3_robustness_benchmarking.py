@@ -17,7 +17,7 @@ E   Cell vs participant −log₁₀(p) comparison.
 F   Standard-error comparison (cell vs participant level).
 G   Cross-dataset signed Cohen's d forest (pre-specified endpoints).
 
-Runtime scaling (Cleveland dot plot) moved to Supplementary Figure 5
+Runtime scaling (Cleveland dot plot) moved to Supplementary Figure 3
 panel J.
 """
 
@@ -1642,7 +1642,7 @@ def generate() -> None:
       F  Cell vs participant SE bars
       G  Cross-dataset Cohen's d forest
 
-    Runtime scaling moved to Supplementary Figure 5 panel J.
+    Runtime scaling moved to Supplementary Figure 3 panel J.
     """
     apply_style()
     print("Figure 3: Robustness & Benchmarking")
