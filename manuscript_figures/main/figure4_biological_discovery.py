@@ -1646,7 +1646,7 @@ def panel_F(ax, data: dict):
 # ======================================================================
 
 def generate():
-    """Create and save Figure 5 individual panels.
+    """Create and save Figure 4 individual panels.
 
     Panel mapping (new → old):
       A  GSEA enrichment bar chart         (was Panel B)
@@ -1656,7 +1656,7 @@ def generate():
       E  Top genes waterfall                (was Panel A)
       F  Gene-level effect distribution     (NEW)
     """
-    print("Figure 5: Biological Discovery — Pathways & Genes")
+    print("Figure 4: Biological Discovery — Pathways & Genes")
     data = _prepare_data()
 
     # ── Save individual panels ────────────────────────────────────────

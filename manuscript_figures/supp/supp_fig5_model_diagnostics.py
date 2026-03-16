@@ -18,7 +18,7 @@ Panels:
      inference comparison across all 5 datasets (β scatter, −log10(p),
      SE bars).
   J  Runtime scaling across datasets (Cleveland dot plot; moved from
-     Figure 3 panel C).
+     Figure 5 panel C).
 
 Non-overlap guardrail: no sensitivity analysis (→ SF3), no cross-dataset
 biological concordance (→ SF4), no heterogeneity (→ SF6).
@@ -1313,7 +1313,7 @@ def generate():
     if pseudo_idx == 0:
         print("  Pseudoreplication: no datasets had valid cell+participant stats.")
 
-    # J: Runtime scaling (Cleveland dot plot, moved from Figure 3)
+    # J: Runtime scaling (Cleveland dot plot, moved from Figure 5)
     try:
         from ..main.figure3_robustness_benchmarking import (
             _panel_c as _fig4_panel_c,

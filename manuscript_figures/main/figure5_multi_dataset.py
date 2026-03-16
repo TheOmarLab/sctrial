@@ -810,9 +810,9 @@ def panel_f_heatmap(ax, data: dict[str, Any]) -> None:
 # ── composite figure ──────────────────────────────────────────────────────
 
 def generate(*, save: bool = True) -> None:
-    """Create and save Figure 3 individual panels."""
+    """Create and save Figure 5 individual panels."""
     print("=" * 60)
-    print("Figure 3: Multi-Dataset Generalization")
+    print("Figure 5: Multi-Dataset Generalization")
     print("=" * 60)
 
     data = _prepare_data()

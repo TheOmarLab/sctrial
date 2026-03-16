@@ -7,7 +7,7 @@ Usage:
     python -m manuscript_figures.run_all --main       # main figures only
     python -m manuscript_figures.run_all --supp       # supplementary only
     python -m manuscript_figures.run_all --figure 2   # single main figure
-    python -m manuscript_figures.run_all --supp-fig 7 # single supp figure
+    python -m manuscript_figures.run_all --supp-fig 3 # single supp figure
 """
 
 from __future__ import annotations

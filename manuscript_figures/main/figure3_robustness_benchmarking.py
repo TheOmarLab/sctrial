@@ -1630,7 +1630,7 @@ def _panel_h(ax, data: dict) -> None:
 # ======================================================================
 
 def generate() -> None:
-    """Create and save all Figure 4 panels.
+    """Create and save all Figure 3 panels.
 
     Panel mapping:
       A  Bootstrap vs analytical SE
@@ -1642,10 +1642,10 @@ def generate() -> None:
       F  Cell vs participant SE bars
       G  Cross-dataset Cohen's d forest
 
-    Runtime scaling moved to Supplementary Figure 3 panel J.
+    Runtime scaling moved to Supplementary Figure 5 panel J.
     """
     apply_style()
-    print("Figure 4: Robustness & Benchmarking")
+    print("Figure 3: Robustness & Benchmarking")
 
     # Sade-Feldman data (panels A, B, D, E, F)
     data = _prepare_sf_data()
@@ -1704,7 +1704,7 @@ def generate() -> None:
     clear_cache()
     gc.collect()
 
-    print(f"  Figure 4 complete: {FIGURE_NAME}")
+    print(f"  Figure 3 complete: {FIGURE_NAME}")
 
 
 # ── CLI entry point ────────────────────────────────────────────────────
