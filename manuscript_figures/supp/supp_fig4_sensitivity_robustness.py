@@ -13,6 +13,10 @@ Panels
   E  Cell-type-stratified DiD heatmap (Sade-Feldman).
   F  Rank-order concordance across preprocessing choices (Sade-Feldman).
   G  Leave-one-out stability matrix (max influence, all datasets).
+  H  Simulation: power (TPR) across effect sizes.
+  I  Simulation: type I error calibration across sample sizes.
+  J  Simulation: effect-size bias (estimated vs true beta).
+  K  Simulation: 95% CI coverage.
 
 Non-overlap guardrail: methodological sensitivity only, not biological claims.
 """
@@ -792,11 +796,241 @@ _MDE_DATASET_CFG = {
 
 
 # ======================================================================
+# Simulation panels H–K
+# ======================================================================
+
+# Simulation grid parameters
+_SIM_ITERATIONS = 200
+_SIM_SAMPLE_SIZES = [20, 40, 60]
+_SIM_EFFECT_SIZES = [0.0, 0.2, 0.5, 1.0]
+_SIM_N_GENES = 50
+_SIM_N_SIGNAL = 10  # first 10 genes get the effect
+_SIM_NOISE_SD = 1.0
+_SIM_METHODS = ["sctrial_did", "pseudobulk_ols", "wilcoxon"]
+_SIM_METHOD_LABELS = {
+    "sctrial_did": "sctrial DiD",
+    "pseudobulk_ols": "Pseudobulk OLS",
+    "wilcoxon": "Wilcoxon",
+}
+_SIM_METHOD_COLORS = {
+    "sctrial_did": "#2c3e50",
+    "pseudobulk_ols": "#e67e22",
+    "wilcoxon": "#27ae60",
+}
+
+
+def _run_simulation_grid():
+    """Run full simulation grid. Returns combined results DataFrame."""
+    from sctrial.stats.simulation import run_method_comparison
+
+    all_dfs = []
+    for n in _SIM_SAMPLE_SIZES:
+        for beta in _SIM_EFFECT_SIZES:
+            print(f"    n={n}, beta={beta} ...")
+            effects = {f"gene_{i}": beta for i in range(_SIM_N_SIGNAL)}
+            df = run_method_comparison(
+                n_participants=n,
+                n_genes=_SIM_N_GENES,
+                effect_sizes=effects,
+                noise_sd=_SIM_NOISE_SD,
+                n_iterations=_SIM_ITERATIONS,
+                methods=_SIM_METHODS,
+                seed=42 + n * 100 + int(beta * 10),
+            )
+            df["n_participants"] = n
+            df["target_beta"] = beta
+            df["is_signal"] = df["gene"].isin(
+                [f"gene_{i}" for i in range(_SIM_N_SIGNAL)]
+            )
+            all_dfs.append(df)
+    return pd.concat(all_dfs, ignore_index=True)
+
+
+def _panel_sim_tpr(ax, results):
+    """Panel H: True positive rate at FDR < 0.05 across effect sizes."""
+    from statsmodels.stats.multitest import multipletests
+
+    n_default = _SIM_SAMPLE_SIZES[1]  # middle sample size
+    signal = results[
+        results["is_signal"] & (results["target_beta"] > 0)
+        & (results["n_participants"] == n_default)
+    ].copy()
+
+    rows = []
+    for (method, beta, it), grp in signal.groupby(
+        ["method", "target_beta", "iteration"]
+    ):
+        pvals = grp["pvalue"].dropna().values
+        if len(pvals) == 0:
+            continue
+        reject = multipletests(pvals, alpha=0.05, method="fdr_bh")[0]
+        rows.append(
+            {"method": method, "target_beta": beta, "tpr": reject.mean()}
+        )
+    tpr_df = pd.DataFrame(rows)
+    tpr_agg = (
+        tpr_df.groupby(["method", "target_beta"])["tpr"]
+        .agg(["mean", "std"])
+        .reset_index()
+    )
+
+    betas = sorted(tpr_agg["target_beta"].unique())
+    x = np.arange(len(betas))
+    width = 0.25
+    for i, method in enumerate(_SIM_METHODS):
+        sub = tpr_agg[tpr_agg["method"] == method]
+        vals, errs = [], []
+        for b in betas:
+            s = sub[sub["target_beta"] == b]
+            vals.append(s["mean"].values[0] if len(s) else 0)
+            errs.append(s["std"].values[0] if len(s) else 0)
+        ax.bar(
+            x + i * width, vals, width, yerr=errs,
+            label=_SIM_METHOD_LABELS[method],
+            color=_SIM_METHOD_COLORS[method], alpha=0.85, capsize=3,
+        )
+
+    ax.set_xticks(x + width)
+    ax.set_xticklabels([f"{b}" for b in betas])
+    ax.set_xlabel("True effect size (beta)")
+    ax.set_ylabel("True Positive Rate")
+    ax.set_ylim(0, 1.05)
+    ax.legend(fontsize=7, loc="upper left")
+    despine(ax)
+
+
+def _panel_sim_fpr(ax, results):
+    """Panel I: False positive rate under null (beta=0)."""
+    null = results[~results["is_signal"]].copy()
+
+    rows = []
+    for (method, n, it), grp in null.groupby(
+        ["method", "n_participants", "iteration"]
+    ):
+        pvals = grp["pvalue"].dropna().values
+        if len(pvals) == 0:
+            continue
+        rows.append(
+            {"method": method, "n_participants": n, "fpr": (pvals < 0.05).mean()}
+        )
+    fpr_df = pd.DataFrame(rows)
+    fpr_agg = (
+        fpr_df.groupby(["method", "n_participants"])["fpr"]
+        .agg(["mean", "std"])
+        .reset_index()
+    )
+
+    ns = sorted(fpr_agg["n_participants"].unique())
+    x = np.arange(len(ns))
+    width = 0.25
+    for i, method in enumerate(_SIM_METHODS):
+        sub = fpr_agg[fpr_agg["method"] == method]
+        vals, errs = [], []
+        for n in ns:
+            s = sub[sub["n_participants"] == n]
+            vals.append(s["mean"].values[0] if len(s) else 0)
+            errs.append(s["std"].values[0] if len(s) else 0)
+        ax.bar(
+            x + i * width, vals, width, yerr=errs,
+            label=_SIM_METHOD_LABELS[method],
+            color=_SIM_METHOD_COLORS[method], alpha=0.85, capsize=3,
+        )
+
+    ax.axhline(0.05, color="red", linestyle="--", linewidth=0.8, alpha=0.7)
+    ax.set_xticks(x + width)
+    ax.set_xticklabels([f"n={n}" for n in ns])
+    ax.set_ylabel("False Positive Rate")
+    ax.set_ylim(0, max(0.15, fpr_agg["mean"].max() * 1.3))
+    ax.legend(fontsize=7)
+    despine(ax)
+
+
+def _panel_sim_bias(ax, results):
+    """Panel J: Effect-size bias (estimated vs true beta)."""
+    n_default = _SIM_SAMPLE_SIZES[1]
+    signal = results[
+        results["is_signal"] & (results["n_participants"] == n_default)
+    ].copy()
+
+    for method in _SIM_METHODS:
+        sub = signal[signal["method"] == method]
+        agg = (
+            sub.groupby("true_beta")
+            .agg(est_mean=("estimated_beta", "mean"),
+                 est_se=("estimated_beta", "sem"))
+            .reset_index()
+        )
+        ax.errorbar(
+            agg["true_beta"], agg["est_mean"], yerr=1.96 * agg["est_se"],
+            marker="o", label=_SIM_METHOD_LABELS[method],
+            color=_SIM_METHOD_COLORS[method], capsize=3, linewidth=1.5,
+        )
+
+    lims = [-0.3, max(_SIM_EFFECT_SIZES) + 0.3]
+    ax.plot(lims, lims, "k--", linewidth=0.8, alpha=0.5)
+    ax.set_xlabel(r"True $\beta_{\mathrm{DiD}}$")
+    ax.set_ylabel(r"Estimated $\beta$")
+    ax.legend(fontsize=7)
+    despine(ax)
+
+
+def _panel_sim_coverage(ax, results):
+    """Panel K: 95% CI coverage."""
+    n_default = _SIM_SAMPLE_SIZES[1]
+    signal = results[
+        results["is_signal"] & results["ci_lo"].notna()
+        & (results["n_participants"] == n_default)
+    ].copy()
+
+    rows = []
+    for (method, beta), grp in signal.groupby(["method", "true_beta"]):
+        covers = (
+            (grp["ci_lo"] <= grp["true_beta"]) & (grp["true_beta"] <= grp["ci_hi"])
+        ).mean()
+        rows.append({"method": method, "target_beta": beta, "coverage": covers})
+
+    cov_df = pd.DataFrame(rows)
+    if cov_df.empty:
+        ax.text(
+            0.5, 0.5, "CI data not available\nfor all methods",
+            transform=ax.transAxes, ha="center", va="center",
+        )
+        despine(ax)
+        return
+
+    betas = sorted(cov_df["target_beta"].unique())
+    x = np.arange(len(betas))
+    width = 0.25
+    for i, method in enumerate(_SIM_METHODS):
+        sub = cov_df[cov_df["method"] == method]
+        if sub.empty:
+            continue
+        vals = []
+        for b in betas:
+            s = sub[sub["target_beta"] == b]
+            vals.append(s["coverage"].values[0] if len(s) else np.nan)
+        ax.bar(
+            x + i * width, vals, width,
+            label=_SIM_METHOD_LABELS[method],
+            color=_SIM_METHOD_COLORS[method], alpha=0.85,
+        )
+
+    ax.axhline(0.95, color="red", linestyle="--", linewidth=0.8, alpha=0.7)
+    ax.set_xticks(x + width)
+    ax.set_xticklabels([f"{b}" for b in betas])
+    ax.set_xlabel("True effect size (beta)")
+    ax.set_ylabel("Coverage Probability")
+    ax.set_ylim(0, 1.05)
+    ax.legend(fontsize=7)
+    despine(ax)
+
+
+# ======================================================================
 # Generate
 # ======================================================================
 
 def generate():
-    """Create and save Supplementary Figure 4 panels (A–G).
+    """Create and save Supplementary Figure 4 panels (A–K).
 
     Layout:
       A  Analytical vs bootstrap SE (all 5 datasets, faceted forest plot)
@@ -806,6 +1040,10 @@ def generate():
       E  Cell-type-stratified DiD heatmap (Sade-Feldman)
       F  Rank-order concordance across choices (Sade-Feldman)
       G  Leave-one-out stability matrix (all datasets)
+      H  Simulation: power (TPR) across effect sizes
+      I  Simulation: type I error calibration across sample sizes
+      J  Simulation: effect-size bias (estimated vs true beta)
+      K  Simulation: 95% CI coverage
     """
     print("Supplementary Figure 4: Sensitivity to Modeling and Preprocessing")
     data = _run_sensitivity()
@@ -848,6 +1086,29 @@ def generate():
     _panel_loo_stability(ax)
     fig.tight_layout()
     save_panel(fig, "panel_G", FIGURE_NAME, SUPP_OUTPUT)
+
+    # Panels H–K: Monte Carlo simulation study
+    print("  Running simulation grid (this may take several minutes) ...")
+    sim_results = _run_simulation_grid()
+
+    # Save raw simulation results for reproducibility
+    out_dir = SUPP_OUTPUT / f"{FIGURE_NAME}_panels"
+    out_dir.mkdir(exist_ok=True)
+    sim_results.to_csv(out_dir / "simulation_results.csv", index=False)
+    print(f"    Saved raw results → {out_dir / 'simulation_results.csv'}")
+
+    sim_panels = [
+        ("panel_H", _panel_sim_tpr, (7.0, 5.0)),
+        ("panel_I", _panel_sim_fpr, (7.0, 5.0)),
+        ("panel_J", _panel_sim_bias, (6.0, 5.0)),
+        ("panel_K", _panel_sim_coverage, (7.0, 5.0)),
+    ]
+    for panel_name, fn, size in sim_panels:
+        fig, ax = plt.subplots(figsize=size)
+        fn(ax, sim_results)
+        fig.tight_layout()
+        save_panel(fig, panel_name, FIGURE_NAME, SUPP_OUTPUT)
+    del sim_results
 
     clear_cache()
     gc.collect()

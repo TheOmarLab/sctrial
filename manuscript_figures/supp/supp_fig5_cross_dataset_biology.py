@@ -26,6 +26,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from scipy import stats as sp_stats
 
 from .._shared import (
     COLORS,
@@ -361,10 +362,15 @@ def _panel_pairwise_corr(ax, data: dict[str, dict]):
             if len(common) < 3:
                 corr.loc[a, b] = np.nan
             else:
-                corr.loc[a, b] = common.iloc[:, 0].corr(common.iloc[:, 1])
+                # Spearman rank correlation — more appropriate when comparing
+                # effect estimates from different statistical frameworks
+                # (DiD beta vs Hedges' g vs paired delta)
+                rho, _ = sp_stats.spearmanr(common.iloc[:, 0], common.iloc[:, 1])
+                corr.loc[a, b] = rho
 
     sns.heatmap(corr, annot=True, fmt=".2f", cmap="RdBu_r", vmin=-1, vmax=1,
-                linewidths=0.5, linecolor="white", cbar_kws={"label": "Pearson r"}, ax=ax)
+                linewidths=0.5, linecolor="white",
+                cbar_kws={"label": r"Spearman $\rho$"}, ax=ax)
     ax.set_title("All-pairs cross-dataset effect correlation", fontweight="bold")
 
 

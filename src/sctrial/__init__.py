@@ -88,6 +88,7 @@ from .stats.pseudobulk import (
     pseudobulk_within_arm,
 )
 from .stats.sensitivity import e_value_rr
+from .stats.simulation import run_method_comparison, simulate_did_data
 from .stats.summary import summarize_did_results
 from .stats.survival import hazard_regression_with_features
 from .stats.timeseries import (
