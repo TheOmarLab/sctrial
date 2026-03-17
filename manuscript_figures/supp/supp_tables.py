@@ -133,9 +133,7 @@ def _single_arm_design(pid_col: str = "participant_id") -> TrialDesign:
     return TrialDesign(
         participant_col=pid_col,
         visit_col="visit",
-        arm_col="arm",
-        arm_treated="Treated",
-        arm_control="Treated",
+        arm_col=None,
     )
 
 
@@ -260,14 +258,11 @@ def table2_all_results() -> pd.DataFrame:
             except Exception:
                 all_sig_cols = sig_cols_imm
 
-            if "arm" not in adata.obs.columns:
-                adata.obs["arm"] = "Treated"
-            arm_label = adata.obs["arm"].iloc[0]
             visits = visits_override or _detect_visits(adata)
             design = _single_arm_design()
 
             res = within_arm_comparison(
-                adata, arm=arm_label, features=all_sig_cols,
+                adata, arm="All", features=all_sig_cols,
                 design=design, visits=visits, standardize=True,
             )
             res["label"] = res["feature"].apply(sig_display)
@@ -386,12 +381,18 @@ def table3_gsea_results() -> dict[str, pd.DataFrame]:
     for ds_name, loader, visits_override, layer in single_arm_gsea:
         try:
             adata = loader()
+            # GSEA uses run_gsea_did which requires arm_col for DiD ranking.
+            # For single-arm datasets we create a dummy arm so the DiD
+            # ranking reduces to a within-arm pre→post contrast.
             if "arm" not in adata.obs.columns:
                 adata.obs["arm"] = "Treated"
             visits = visits_override or _detect_visits(adata)
-            design = _single_arm_design()
+            gsea_design = TrialDesign(
+                participant_col="participant_id", visit_col="visit",
+                arm_col="arm", arm_treated="Treated", arm_control="Treated",
+            )
             res = load_or_run_gsea_did(
-                adata, design, visits, layer, ds_name,
+                adata, gsea_design, visits, layer, ds_name,
             )
             if res is not None:
                 sheets[ds_name] = res
@@ -527,15 +528,12 @@ def table4_permutation_results(n_permutations: int = 1000) -> pd.DataFrame:
         try:
             adata = loader()
             adata, sig_cols_imm = score_signatures(adata)
-            if "arm" not in adata.obs.columns:
-                adata.obs["arm"] = "Treated"
-            arm_label = adata.obs["arm"].iloc[0]
             visits = visits_override or _detect_visits(adata)
             design = _single_arm_design()
 
             # Observed
             obs_res = within_arm_comparison(
-                adata, arm=arm_label, features=sig_cols_imm,
+                adata, arm="All", features=sig_cols_imm,
                 design=design, visits=visits, standardize=True,
             )
             obs_betas = dict(zip(obs_res["feature"], obs_res["beta_time"]))
@@ -556,7 +554,7 @@ def table4_permutation_results(n_permutations: int = 1000) -> pd.DataFrame:
                         )
                     try:
                         perm_res = within_arm_comparison(
-                            perm_adata, arm=arm_label, features=[feat],
+                            perm_adata, arm="All", features=[feat],
                             design=design, visits=visits, standardize=True,
                         )
                         if len(perm_res) > 0:
