@@ -13,7 +13,7 @@ B  Leading-edge gene overlap heatmap across top enriched pathways.
 C  Replicated pathways across cohorts (cross-dataset consistency).
 D  Gene-level volcano plot (Sade-Feldman DiD, protein-coding gene labels).
 E  Top genes ranked by effect size (waterfall plot, protein-coding only).
-F  Gene-level effect-size distribution (histogram with asymmetry summary).
+F  Cell-type-resolved DiD effect heatmap for top genes.
 """
 
 from __future__ import annotations

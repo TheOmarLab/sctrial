@@ -504,7 +504,7 @@ def _panel_exhaustion_by_celltype(ax, data: dict[str, dict]):
 
             rows.append({"Dataset": ds_name, "Cell type": ct,
                         "Effect": float(eff),
-                        "SE": float(se) if np.isfinite(se) else 0.0})
+                        "SE": float(se) if np.isfinite(se) else np.nan})
 
     if not rows:
         ax.text(0.5, 0.5, "No cell-type effects", ha="center", va="center",
