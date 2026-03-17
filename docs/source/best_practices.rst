@@ -29,7 +29,8 @@ Sample Size Recommendations
 
 **Minimum Requirements**:
 
-- At least **4 paired participants** per arm for DiD estimation
+- **Two-arm DiD**: At least **4 paired participants per arm** (8 total)
+- **Single-arm paired**: At least **4 paired participants**
 - Recommend **10-15 paired participants** for reliable inference
 - For **< 15 participants**: Always use bootstrap (``use_bootstrap=True``)
 

@@ -78,8 +78,11 @@ from .stats.power import (
     effective_sample_size,
     power_curve,
     power_did,
+    power_paired,
     sample_size_did,
+    sample_size_paired,
     sensitivity_analysis,
+    sensitivity_paired,
 )
 from .stats.pseudobulk import (
     pseudobulk_did,
@@ -167,7 +170,9 @@ __all__ = [
     "bootstrap_effect_size_ci",
     # Power analysis
     "power_did",
+    "power_paired",
     "sample_size_did",
+    "sample_size_paired",
     "power_curve",
     "design_effect",
     "effective_sample_size",
@@ -217,6 +222,7 @@ __all__ = [
     # Sensitivity
     "e_value_rr",
     "sensitivity_analysis",
+    "sensitivity_paired",
     # Survival
     "hazard_regression_with_features",
     "TrialDataValidator",

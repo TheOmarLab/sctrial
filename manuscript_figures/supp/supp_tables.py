@@ -616,7 +616,10 @@ def table5_power_analysis() -> pd.DataFrame:
         print("    Skipped: sctrial not available")
         return pd.DataFrame()
 
-    from sctrial.stats.power import power_did, sample_size_did, sensitivity_analysis
+    from sctrial.stats.power import (
+        power_did, sample_size_did, sensitivity_analysis,
+        power_paired, sample_size_paired, sensitivity_paired,
+    )
 
     # Read observed results from Table 2
     table2_path = SUPP_OUTPUT / "Supp_Table2_all_results.csv"
@@ -636,37 +639,53 @@ def table5_power_analysis() -> pd.DataFrame:
         dataset = row["dataset"]
         feature = row["feature"]
         label = row.get("label", sig_display(feature))
-
-        # For DiD: n_per_group = n_units / 2
-        # For single-arm: n_per_group = n_units (all same arm)
         estimand = row.get("estimand", "")
-        if estimand == "DiD":
-            n_per_group = max(int(n_units) // 2, 2)
-        else:
-            n_per_group = max(int(n_units), 2)
+        is_did = estimand == "DiD"
 
-        # Estimate sigma from SE: for DiD, SE ≈ sigma * sqrt(4/n),
-        # so sigma ≈ SE * sqrt(n/4); for single-arm, similar scaling
-        sigma_est = max(se * np.sqrt(n_units / 4), 0.01) if estimand == "DiD" else max(se * np.sqrt(n_units / 2), 0.01)
+        # Estimate sigma from SE.
+        # DiD:    SE ≈ σ√(4/n)  → σ ≈ SE√(n/4), n = 2×n_per_group
+        # Paired: SE ≈ σ√(2/n)  → σ ≈ SE√(n/2)
+        n = int(n_units)
+        if is_did:
+            n_per_group = max(n // 2, 2)
+            sigma_est = max(se * np.sqrt(n / 4), 0.01)
+        else:
+            n_per_group = max(n, 2)
+            sigma_est = max(se * np.sqrt(n / 2), 0.01)
 
         # Power at observed N and effect
         abs_effect = abs(effect)
         if abs_effect < 1e-10:
-            pwr = 0.05  # no effect
-            min_n = np.inf
+            pwr = 0.05  # no effect → power = α
+            min_n_val: float = np.inf
         else:
             try:
-                pwr = power_did(n_per_group=n_per_group, effect_size=abs_effect, sigma=sigma_est)
+                if is_did:
+                    pwr = power_did(n_per_group=n_per_group,
+                                    effect_size=abs_effect, sigma=sigma_est)
+                else:
+                    pwr = power_paired(n_participants=n_per_group,
+                                       effect_size=abs_effect, sigma=sigma_est)
             except Exception:
                 pwr = np.nan
             try:
-                min_n = sample_size_did(effect_size=abs_effect, sigma=sigma_est, power=0.80)
+                if is_did:
+                    min_n_val = float(sample_size_did(
+                        effect_size=abs_effect, sigma=sigma_est, power=0.80))
+                else:
+                    min_n_val = float(sample_size_paired(
+                        effect_size=abs_effect, sigma=sigma_est, power=0.80))
             except Exception:
-                min_n = np.nan
+                min_n_val = np.nan
 
         # Minimum detectable effect at current N
         try:
-            mde = sensitivity_analysis(n_per_group=n_per_group, sigma=sigma_est, power=0.80)
+            if is_did:
+                mde = sensitivity_analysis(n_per_group=n_per_group,
+                                           sigma=sigma_est, power=0.80)
+            else:
+                mde = sensitivity_paired(n_participants=n_per_group,
+                                         sigma=sigma_est, power=0.80)
         except Exception:
             mde = np.nan
 
@@ -677,10 +696,10 @@ def table5_power_analysis() -> pd.DataFrame:
             "estimand": estimand,
             "observed_effect": effect,
             "observed_se": se,
-            "n_participants": int(n_units),
+            "n_participants": n,
             "sigma_estimated": sigma_est,
             "power_at_observed_N": pwr,
-            "min_N_for_80pct_power": int(min_n) if np.isfinite(min_n) else None,
+            "min_N_for_80pct_power": int(min_n_val) if np.isfinite(min_n_val) else None,
             "min_detectable_effect_80pct": mde,
         })
 

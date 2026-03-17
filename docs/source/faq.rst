@@ -175,7 +175,7 @@ where :math:`\hat{\beta}^*` is the bootstrap estimate.
 What are the minimum sample size recommendations?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Statistical minimums**:
+**Statistical minimums (two-arm DiD)**:
 
 =========================  ==============  =======================
 Scenario                   Per Arm         Total Participants
@@ -185,6 +185,17 @@ Adequate for bootstrap     6-8 paired      12-16
 Recommended                10-15 paired    20-30
 Well-powered (d=0.5)       20+ paired      40+
 =========================  ==============  =======================
+
+**Single-arm paired designs** (e.g. vaccination, single-agent therapy):
+
+=========================  =======================
+Scenario                   Paired Participants
+=========================  =======================
+Absolute minimum           4
+Adequate for bootstrap     6-8
+Recommended                10-15
+Well-powered (d=0.5)       14+
+=========================  =======================
 
 **Power calculation example**:
 
@@ -202,6 +213,16 @@ Well-powered (d=0.5)       20+ paired      40+
 
    # Generate power curve
    ns, powers = st.power_curve(n_range=(5, 50), effect_size=0.5)
+
+   # For single-arm paired designs (e.g. vaccination studies):
+   n_paired = st.sample_size_paired(effect_size=0.5, power=0.80)
+   print(f"Need {n_paired} paired participants")
+
+   power = st.power_paired(n_participants=6, effect_size=0.8)
+   print(f"Power with 6 participants: {power:.1%}")
+
+   mde = st.sensitivity_paired(n_participants=6, power=0.80)
+   print(f"Min detectable effect: {mde:.2f} SD")
 
 **Practical considerations**:
 

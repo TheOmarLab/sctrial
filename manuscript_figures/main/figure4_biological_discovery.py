@@ -1431,7 +1431,7 @@ def panel_C_replicated(ax, data: dict):
 
 
 # ======================================================================
-# Panel F (new) -- Gene-level effect-size distribution
+# Panel F -- Cell-type-resolved effect heatmap for top DiD genes
 # ======================================================================
 
 def panel_F(ax, data: dict):
@@ -1621,7 +1621,7 @@ def generate():
       C  Replicated pathways                (NEW)
       D  Gene-level volcano                 (was Panel E)
       E  Top genes waterfall                (was Panel A)
-      F  Gene-level effect distribution     (NEW)
+      F  Cell-type-resolved effect heatmap  (NEW)
     """
     print("Figure 4: Biological Discovery — Pathways & Genes")
     data = _prepare_data()
