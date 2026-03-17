@@ -96,7 +96,7 @@ An ``AnnData`` object with:
 
   - Participant identifiers (e.g., "participant_id")
   - Visit labels (e.g., "visit")
-  - Treatment arm (e.g., "arm")
+  - Treatment arm (e.g., "arm") — set ``arm_col=None`` for single-arm studies
   - Cell-type annotations (optional, e.g., "celltype")
 
 How many participants do I need?
