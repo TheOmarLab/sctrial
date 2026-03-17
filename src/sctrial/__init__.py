@@ -61,10 +61,12 @@ from .stats.effect_size import (
     hedges_g,
 )
 from .stats.gsea import (
+    run_gsea_cross_sectional,
     run_gsea_did,
     run_gsea_did_by_celltype,
     run_gsea_did_multi,
     run_gsea_pseudobulk,
+    run_gsea_within_arm,
 )
 from .stats.heterogeneity import test_treatment_heterogeneity
 from .stats.mixed_effects import compare_fixed_vs_mixed, did_mixed, did_table_mixed
@@ -142,10 +144,12 @@ __all__ = [
     "did_table_bayes",
     "prior_predictive_check",
     "abundance_did",
+    "run_gsea_cross_sectional",
     "run_gsea_did",
     "run_gsea_did_multi",
     "run_gsea_did_by_celltype",
     "run_gsea_pseudobulk",
+    "run_gsea_within_arm",
     "within_arm_comparison",
     "between_arm_comparison",
     "summarize_did_results",

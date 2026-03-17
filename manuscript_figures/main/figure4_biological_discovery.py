@@ -35,9 +35,7 @@ from .._shared import (
     GSEA_LIBRARIES,
     MAIN_OUTPUT,
     TrialDesign,
-    _gsea_cache_path,
     apply_style,
-    between_arm_comparison,
     despine,
     did_table,
     get_aml,
@@ -46,12 +44,13 @@ from .._shared import (
     get_stephenson,
     get_vaccine,
     harmonize_response,
+    load_or_run_gsea_cross_sectional,
     load_or_run_gsea_did,
+    load_or_run_gsea_within_arm,
     run_gsea_did,
     save_panel,
     score_signatures,
     sig_display,
-    within_arm_comparison,
 )
 
 # ── Cache directory for expensive computations ─────────────────────────
@@ -472,191 +471,6 @@ def _prepare_data(*, use_cache: bool = True) -> dict:
 # Multi-dataset GSEA for pathway replication
 # ======================================================================
 
-def _run_gsea_cross_sectional(
-    adata,
-    visit: str,
-    gene_sets: str | dict[str, list[str]],
-    design: TrialDesign,
-    layer: str | None = None,
-    rank_by: str = "tstat",
-    min_units: int = 4,
-    dataset_name: str | None = None,
-    library_short: str | None = None,
-    force: bool = False,
-    **kwargs,
-) -> pd.DataFrame | None:
-    """Run GSEA on cross-sectional data using between_arm_comparison.
-    
-    Similar to run_gsea_did but for cross-sectional designs (single visit).
-    Supports caching if dataset_name and library_short are provided.
-    """
-    # Try loading from cache if dataset_name and library_short provided
-    if dataset_name and library_short:
-        cache_csv = _gsea_cache_path(dataset_name, library_short)
-        if not force and cache_csv.exists():
-            try:
-                df = pd.read_csv(cache_csv)
-                if len(df) > 0:
-                    return df
-            except Exception:
-                pass  # Fall through to compute
-    
-    try:
-        import gseapy as gp
-    except ImportError:
-        return None
-    
-    # Run between-arm comparison for all genes
-    genes = adata.var_names.tolist()
-    res = between_arm_comparison(
-        adata,
-        visit=visit,
-        features=genes,
-        design=design,
-        layer=layer,
-        aggregate="participant_visit",
-        standardize=True,
-        method="ols",
-    )
-    
-    # Filter genes with insufficient data
-    valid = res[res["n_units"] >= min_units].copy()
-    if len(valid) == 0:
-        return None
-    
-    # Rank genes based on rank_by parameter
-    if rank_by == "signed_confidence":
-        valid["rank"] = np.sign(valid["beta_arm"].fillna(0)) * -np.log10(
-            valid["p_arm"].fillna(1) + 1e-12
-        )
-    elif rank_by == "beta":
-        valid["rank"] = valid["beta_arm"].fillna(0)
-    elif rank_by == "tstat":
-        valid["rank"] = valid["beta_arm"].fillna(0) / (valid["se_arm"].fillna(1) + 1e-12)
-    else:
-        raise ValueError(f"Unknown rank_by: {rank_by}")
-    
-    ranking = valid[["feature", "rank"]].dropna().sort_values("rank", ascending=False)
-    
-    if len(ranking) == 0:
-        return None
-    
-    # Run GSEA Prerank
-    outdir = None
-    if dataset_name and library_short:
-        cache_csv = _gsea_cache_path(dataset_name, library_short)
-        outdir = str(cache_csv.parent)
-        import os
-        os.makedirs(outdir, exist_ok=True)
-        kwargs["outdir"] = outdir
-        kwargs["no_plot"] = True
-    
-    pre_res = gp.prerank(rnk=ranking, gene_sets=gene_sets, **kwargs)
-    
-    result = pre_res.res2d if hasattr(pre_res, "res2d") else pre_res
-    
-    # Save to cache if dataset_name and library_short provided
-    if result is not None and isinstance(result, pd.DataFrame) and len(result) > 0:
-        if dataset_name and library_short:
-            cache_csv = _gsea_cache_path(dataset_name, library_short)
-            result.to_csv(cache_csv, index=False)
-    
-    return result
-
-
-def _run_gsea_within_arm(
-    adata,
-    arm: str,
-    visits: tuple[str, str],
-    gene_sets: str | dict[str, list[str]],
-    design: TrialDesign,
-    layer: str | None = None,
-    rank_by: str = "tstat",
-    min_units: int = 4,
-    dataset_name: str | None = None,
-    library_short: str | None = None,
-    force: bool = False,
-    **kwargs,
-) -> pd.DataFrame | None:
-    """Run GSEA on longitudinal data using within_arm_comparison.
-    
-    Similar to run_gsea_did but uses within-arm comparison instead of DiD.
-    Supports caching if dataset_name and library_short are provided.
-    """
-    # Try loading from cache if dataset_name and library_short provided
-    if dataset_name and library_short:
-        cache_csv = _gsea_cache_path(dataset_name, library_short)
-        if not force and cache_csv.exists():
-            try:
-                df = pd.read_csv(cache_csv)
-                if len(df) > 0:
-                    return df
-            except Exception:
-                pass  # Fall through to compute
-    
-    try:
-        import gseapy as gp
-    except ImportError:
-        return None
-    
-    # Run within-arm comparison for all genes
-    genes = adata.var_names.tolist()
-    res = within_arm_comparison(
-        adata,
-        arm=arm,
-        features=genes,
-        design=design,
-        visits=visits,
-        layer=layer,
-        aggregate="participant_visit",
-        standardize=True,
-    )
-    
-    # Filter genes with insufficient data
-    valid = res[res["n_units"] >= min_units].copy()
-    if len(valid) == 0:
-        return None
-    
-    # Rank genes based on rank_by parameter
-    if rank_by == "signed_confidence":
-        valid["rank"] = np.sign(valid["beta_time"].fillna(0)) * -np.log10(
-            valid["p_time"].fillna(1) + 1e-12
-        )
-    elif rank_by == "beta":
-        valid["rank"] = valid["beta_time"].fillna(0)
-    elif rank_by == "tstat":
-        valid["rank"] = valid["beta_time"].fillna(0) / (valid["se_time"].fillna(1) + 1e-12)
-    else:
-        raise ValueError(f"Unknown rank_by: {rank_by}")
-    
-    ranking = valid[["feature", "rank"]].dropna().sort_values("rank", ascending=False)
-    
-    if len(ranking) == 0:
-        return None
-    
-    # Run GSEA Prerank
-    outdir = None
-    if dataset_name and library_short:
-        cache_csv = _gsea_cache_path(dataset_name, library_short)
-        outdir = str(cache_csv.parent)
-        import os
-        os.makedirs(outdir, exist_ok=True)
-        kwargs["outdir"] = outdir
-        kwargs["no_plot"] = True
-    
-    pre_res = gp.prerank(rnk=ranking, gene_sets=gene_sets, **kwargs)
-    
-    result = pre_res.res2d if hasattr(pre_res, "res2d") else pre_res
-    
-    # Save to cache if dataset_name and library_short provided
-    if result is not None and isinstance(result, pd.DataFrame) and len(result) > 0:
-        if dataset_name and library_short:
-            cache_csv = _gsea_cache_path(dataset_name, library_short)
-            result.to_csv(cache_csv, index=False)
-    
-    return result
-
-
 def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict[str, pd.DataFrame]:
     """Run GSEA on all 5 datasets and return results per dataset.
     
@@ -727,35 +541,16 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
             arm_treated="Vaccinated",
             arm_control="Vaccinated",
         )
-        all_lib_results = []
-        for lib_name, short_name in GSEA_LIBRARIES:
-            try:
-                res = _run_gsea_within_arm(
-                    vax,
-                    arm="Vaccinated",
-                    visits=("Pre", "Post"),
-                    gene_sets=lib_name,
-                    design=vax_design,
-                    layer="counts",
-                    rank_by="tstat",
-                    min_units=4,
-                    dataset_name="Vaccine",
-                    library_short=short_name,
-                    min_size=10,
-                    max_size=500,
-                    permutation_num=1000,
-                )
-                if isinstance(res, pd.DataFrame) and len(res) > 0:
-                    res["library"] = lib_name
-                    all_lib_results.append(res)
-            except Exception as exc:
-                print(f"      Vaccine {short_name}: unavailable ({exc})")
-        
-        if all_lib_results:
-            combined = pd.concat(all_lib_results, ignore_index=True)
-            combined["dataset"] = "Vaccine"
-            gsea_multi["Vaccine"] = combined
-            print(f"    Vaccine: {len(combined)} pathways from {len(all_lib_results)} libraries")
+        vax_results = load_or_run_gsea_within_arm(
+            vax, vax_design, arm="Vaccinated", visits=("Pre", "Post"),
+            layer="counts", dataset_name="Vaccine",
+        )
+        if vax_results is not None and len(vax_results) > 0:
+            vax_results["dataset"] = "Vaccine"
+            if "Library" in vax_results.columns and "library" not in vax_results.columns:
+                vax_results = vax_results.rename(columns={"Library": "library"})
+            gsea_multi["Vaccine"] = vax_results
+            print(f"    Vaccine: {len(vax_results)} pathways")
     except Exception as exc:
         print(f"    Vaccine: FAILED ({exc})")
     
@@ -773,35 +568,16 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
             arm_treated="Treatment",
             arm_control="Treatment",
         )
-        all_lib_results = []
-        for lib_name, short_name in GSEA_LIBRARIES:
-            try:
-                res = _run_gsea_within_arm(
-                    aml,
-                    arm="Treatment",
-                    visits=("Pre", "Post"),
-                    gene_sets=lib_name,
-                    design=aml_design,
-                    layer="counts",
-                    rank_by="tstat",
-                    min_units=4,
-                    dataset_name="AML",
-                    library_short=short_name,
-                    min_size=10,
-                    max_size=500,
-                    permutation_num=1000,
-                )
-                if isinstance(res, pd.DataFrame) and len(res) > 0:
-                    res["library"] = lib_name
-                    all_lib_results.append(res)
-            except Exception as exc:
-                print(f"      AML {short_name}: unavailable ({exc})")
-        
-        if all_lib_results:
-            combined = pd.concat(all_lib_results, ignore_index=True)
-            combined["dataset"] = "AML"
-            gsea_multi["AML"] = combined
-            print(f"    AML: {len(combined)} pathways from {len(all_lib_results)} libraries")
+        aml_results = load_or_run_gsea_within_arm(
+            aml, aml_design, arm="Treatment", visits=("Pre", "Post"),
+            layer="counts", dataset_name="AML",
+        )
+        if aml_results is not None and len(aml_results) > 0:
+            aml_results["dataset"] = "AML"
+            if "Library" in aml_results.columns and "library" not in aml_results.columns:
+                aml_results = aml_results.rename(columns={"Library": "library"})
+            gsea_multi["AML"] = aml_results
+            print(f"    AML: {len(aml_results)} pathways")
     except Exception as exc:
         print(f"    AML: FAILED ({exc})")
     
@@ -819,35 +595,16 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
             arm_treated="CAR-T",
             arm_control="CAR-T",
         )
-        all_lib_results = []
-        for lib_name, short_name in GSEA_LIBRARIES:
-            try:
-                res = _run_gsea_within_arm(
-                    cart,
-                    arm="CAR-T",
-                    visits=("Pre", "Post"),
-                    gene_sets=lib_name,
-                    design=cart_design,
-                    layer="counts",
-                    rank_by="tstat",
-                    min_units=4,
-                    dataset_name="CAR-T",
-                    library_short=short_name,
-                    min_size=10,
-                    max_size=500,
-                    permutation_num=1000,
-                )
-                if isinstance(res, pd.DataFrame) and len(res) > 0:
-                    res["library"] = lib_name
-                    all_lib_results.append(res)
-            except Exception as exc:
-                print(f"      CAR-T {short_name}: unavailable ({exc})")
-        
-        if all_lib_results:
-            combined = pd.concat(all_lib_results, ignore_index=True)
-            combined["dataset"] = "CAR-T"
-            gsea_multi["CAR-T"] = combined
-            print(f"    CAR-T: {len(combined)} pathways from {len(all_lib_results)} libraries")
+        cart_results = load_or_run_gsea_within_arm(
+            cart, cart_design, arm="CAR-T", visits=("Pre", "Post"),
+            layer="counts", dataset_name="CAR-T",
+        )
+        if cart_results is not None and len(cart_results) > 0:
+            cart_results["dataset"] = "CAR-T"
+            if "Library" in cart_results.columns and "library" not in cart_results.columns:
+                cart_results = cart_results.rename(columns={"Library": "library"})
+            gsea_multi["CAR-T"] = cart_results
+            print(f"    CAR-T: {len(cart_results)} pathways")
     except Exception as exc:
         print(f"    CAR-T: FAILED ({exc})")
     
@@ -866,34 +623,16 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
             arm_treated="Severe",
             arm_control="Mild",
         )
-        all_lib_results = []
-        for lib_name, short_name in GSEA_LIBRARIES:
-            try:
-                res = _run_gsea_cross_sectional(
-                    covid,
-                    visit=top_bin,
-                    gene_sets=lib_name,
-                    design=covid_design,
-                    layer="counts",
-                    rank_by="tstat",
-                    min_units=4,
-                    dataset_name="COVID-19",
-                    library_short=short_name,
-                    min_size=10,
-                    max_size=500,
-                    permutation_num=1000,
-                )
-                if isinstance(res, pd.DataFrame) and len(res) > 0:
-                    res["library"] = lib_name
-                    all_lib_results.append(res)
-            except Exception as exc:
-                print(f"      COVID-19 {short_name}: unavailable ({exc})")
-        
-        if all_lib_results:
-            combined = pd.concat(all_lib_results, ignore_index=True)
-            combined["dataset"] = "COVID-19"
-            gsea_multi["COVID-19"] = combined
-            print(f"    COVID-19: {len(combined)} pathways from {len(all_lib_results)} libraries")
+        covid_results = load_or_run_gsea_cross_sectional(
+            covid, covid_design, visit=top_bin,
+            layer="counts", dataset_name="COVID-19",
+        )
+        if covid_results is not None and len(covid_results) > 0:
+            covid_results["dataset"] = "COVID-19"
+            if "Library" in covid_results.columns and "library" not in covid_results.columns:
+                covid_results = covid_results.rename(columns={"Library": "library"})
+            gsea_multi["COVID-19"] = covid_results
+            print(f"    COVID-19: {len(covid_results)} pathways")
     except Exception as exc:
         print(f"    COVID-19: FAILED ({exc})")
     

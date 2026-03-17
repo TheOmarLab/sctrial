@@ -122,7 +122,9 @@ try:
         load_aml,
         load_cart,
         loo_cv_did,
+        run_gsea_cross_sectional,
         run_gsea_did,
+        run_gsea_within_arm,
         verify_paired_participants,
         within_arm_comparison,
     )
@@ -621,6 +623,136 @@ def load_or_run_gsea_did(
         try:
             res = _run_gsea(
                 adata, gene_sets=lib_name, design=design, visits=visits,
+                layer=layer, rank_by="tstat",
+                min_size=10, max_size=500, permutation_num=1000,
+                outdir=outdir, no_plot=True,
+            )
+            if isinstance(res, pd.DataFrame) and len(res) > 0:
+                res["Library"] = short_name
+                res.to_csv(cache_csv, index=False)
+                frames.append(res)
+                print(f"    {dataset_name}/{short_name}: {len(res)} pathways")
+            else:
+                print(f"    {dataset_name}/{short_name}: no results")
+        except Exception as exc:
+            print(f"    {dataset_name}/{short_name}: {exc}")
+
+    if not frames:
+        return None
+    combined = pd.concat(frames, ignore_index=True)
+    if "NES" in combined.columns:
+        combined = combined.sort_values("NES", key=abs, ascending=False)
+    return combined
+
+
+def load_or_run_gsea_cross_sectional(
+    adata,
+    design,
+    visit: str,
+    layer: str | None,
+    dataset_name: str,
+    *,
+    force: bool = False,
+) -> object:
+    """Load cached GSEA results for cross-sectional design or run fresh.
+
+    Uses run_gsea_cross_sectional (between_arm_comparison) for single-visit
+    designs. Results are saved per-library under manuscript/GSEA/{dataset}/{lib}/.
+
+    Returns a combined DataFrame (all libraries) sorted by |NES|, or None.
+    """
+    import pandas as pd
+
+    try:
+        import gseapy as gp  # noqa: F401
+        from sctrial import run_gsea_cross_sectional as _run_gsea
+    except ImportError:
+        print(f"    {dataset_name}: sctrial/gseapy not available — skipping GSEA")
+        return None
+
+    frames: list[pd.DataFrame] = []
+    for lib_name, short_name in GSEA_LIBRARIES:
+        cache_csv = _gsea_cache_path(dataset_name, short_name)
+
+        if not force and cache_csv.exists():
+            df = pd.read_csv(cache_csv)
+            if len(df) > 0:
+                df["Library"] = short_name
+                frames.append(df)
+                print(f"    {dataset_name}/{short_name}: {len(df)} pathways (cached)")
+                continue
+
+        outdir = str(cache_csv.parent)
+        os.makedirs(outdir, exist_ok=True)
+        try:
+            res = _run_gsea(
+                adata, gene_sets=lib_name, design=design, visit=visit,
+                layer=layer, rank_by="tstat",
+                min_size=10, max_size=500, permutation_num=1000,
+                outdir=outdir, no_plot=True,
+            )
+            if isinstance(res, pd.DataFrame) and len(res) > 0:
+                res["Library"] = short_name
+                res.to_csv(cache_csv, index=False)
+                frames.append(res)
+                print(f"    {dataset_name}/{short_name}: {len(res)} pathways")
+            else:
+                print(f"    {dataset_name}/{short_name}: no results")
+        except Exception as exc:
+            print(f"    {dataset_name}/{short_name}: {exc}")
+
+    if not frames:
+        return None
+    combined = pd.concat(frames, ignore_index=True)
+    if "NES" in combined.columns:
+        combined = combined.sort_values("NES", key=abs, ascending=False)
+    return combined
+
+
+def load_or_run_gsea_within_arm(
+    adata,
+    design,
+    arm: str,
+    visits: tuple[str, str],
+    layer: str | None,
+    dataset_name: str,
+    *,
+    force: bool = False,
+) -> object:
+    """Load cached GSEA results for within-arm design or run fresh.
+
+    Uses run_gsea_within_arm (within_arm_comparison) for longitudinal
+    single-arm designs. Results are saved per-library under
+    manuscript/GSEA/{dataset}/{lib}/.
+
+    Returns a combined DataFrame (all libraries) sorted by |NES|, or None.
+    """
+    import pandas as pd
+
+    try:
+        import gseapy as gp  # noqa: F401
+        from sctrial import run_gsea_within_arm as _run_gsea
+    except ImportError:
+        print(f"    {dataset_name}: sctrial/gseapy not available — skipping GSEA")
+        return None
+
+    frames: list[pd.DataFrame] = []
+    for lib_name, short_name in GSEA_LIBRARIES:
+        cache_csv = _gsea_cache_path(dataset_name, short_name)
+
+        if not force and cache_csv.exists():
+            df = pd.read_csv(cache_csv)
+            if len(df) > 0:
+                df["Library"] = short_name
+                frames.append(df)
+                print(f"    {dataset_name}/{short_name}: {len(df)} pathways (cached)")
+                continue
+
+        outdir = str(cache_csv.parent)
+        os.makedirs(outdir, exist_ok=True)
+        try:
+            res = _run_gsea(
+                adata, gene_sets=lib_name, design=design, arm=arm, visits=visits,
                 layer=layer, rank_by="tstat",
                 min_size=10, max_size=500, permutation_num=1000,
                 outdir=outdir, no_plot=True,
