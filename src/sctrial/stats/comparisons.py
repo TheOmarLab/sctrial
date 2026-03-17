@@ -180,6 +180,126 @@ def _ols_between_arm(
     }
 
 
+def get_within_arm_aggregated_df(
+    adata: AnnData,
+    arm: str,
+    features: Sequence[str],
+    design: TrialDesign,
+    visits: tuple[str, str],
+    *,
+    layer: str | None = None,
+    aggregate: AggregateMode = "participant_visit",
+    agg: AggregateFunc = "mean",
+    covariates: list[str] | None = None,
+) -> tuple[pd.DataFrame, str]:
+    """Build aggregated DataFrame for within-arm comparison, for permutation tests.
+
+    Returns (df_use, unit) where df_use has one row per participant-visit with
+    feature values and visit_num. Permute visit_num within each participant
+    and run OLS to get null betas.
+
+    Parameters
+    ----------
+    adata
+        AnnData object.
+    arm
+        The arm to analyze (e.g., design.arm_treated).
+    features
+        List of genes or module scores.
+    design
+        A `TrialDesign` object.
+    visits
+        Tuple of (pre, post) visit labels.
+    layer
+        Layer to use for gene expression.
+    aggregate
+        Aggregation mode (see `did_table`).
+    agg
+        Aggregation function.
+    covariates
+        Optional covariate columns to include as fixed effects. Non-numeric
+        covariates must be constant within participant-visit.
+
+    Returns
+    -------
+    tuple[pd.DataFrame, str]
+        Tuple containing the aggregated DataFrame and the unit column name.
+    """
+    ad = subset_cells(adata, design, arm=arm, exclude_crossovers=False)
+    ad = ad[ad.obs[design.visit_col].isin(visits)].copy()
+    obs = encode_visit(ad.obs.copy(), design.visit_col, visits)
+    cols = [design.participant_col, design.visit_col, "visit_num"]
+    if covariates:
+        cols.extend(covariates)
+    df = obs[cols].copy()
+    df = _add_feature_columns(df, ad, features, layer)
+    if aggregate == "participant_visit":
+        grp_cols = [design.participant_col, design.visit_col]
+        cov_agg: dict[str, str] = {}
+        if covariates:
+            for c in covariates:
+                if pd.api.types.is_numeric_dtype(df[c]):
+                    cov_agg[c] = str(agg)
+                else:
+                    cov_agg[c] = "first"
+        df_use = (
+            df.groupby(grp_cols, observed=True)
+            .agg({**{f: agg for f in features}, **cov_agg})
+            .reset_index()
+        )
+    else:
+        df_use = df.copy()
+    df_use = _ensure_paired(df_use, unit=design.participant_col, time=design.visit_col, visits=visits)
+    df_use = encode_visit(df_use, design.visit_col, visits)
+    df_use = df_use.reset_index(drop=True)
+    return df_use, design.participant_col
+
+
+def within_arm_fit_beta(
+    df: pd.DataFrame,
+    feat: str,
+    unit: str,
+    *,
+    standardize: bool = True,
+) -> float:
+    """Fit within-arm model and return beta_time. Used for permutation tests.
+
+    Parameters
+    ----------
+    df
+        DataFrame with feature values and visit_num.
+    feat
+        Name of the feature column to analyze.
+    unit
+        Name of the unit column.
+    standardize
+        Whether to z-score the outcome variable.
+
+    Returns
+    -------
+    float
+        The beta_time.
+    """
+    df_feat = df[[unit, "visit_num", feat]].dropna().copy()
+    if len(df_feat) < 4:
+        return np.nan
+    if standardize:
+        y_std, ok = standardize_series(df_feat, feat, min_std=1e-12)
+        if not ok:
+            return np.nan
+        df_feat["outcome_std"] = y_std
+    else:
+        df_feat["outcome_std"] = df_feat[feat].astype(float)
+    with warnings.catch_warnings(action="ignore"):
+        model = smf.ols(f"outcome_std ~ visit_num + C({unit})", data=df_feat)
+        clusters = np.asarray(df_feat[unit].to_numpy())
+        try:
+            fit = model.fit(cov_type="cluster", cov_kwds={"groups": clusters})
+        except Exception:
+            fit = model.fit()
+    return float(fit.params.get("visit_num", np.nan))
+
+
 def within_arm_comparison(
     adata: AnnData,
     arm: str,

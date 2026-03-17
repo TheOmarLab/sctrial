@@ -46,11 +46,20 @@ from .stats.bayes import did_table_bayes, prior_predictive_check
 from .stats.comparisons import (
     between_arm_comparison,
     compare_gene_in_celltype,
+    get_within_arm_aggregated_df,
     within_arm_comparison,
+    within_arm_fit_beta,
 )
 from .stats.cv import cv_summary, influence_diagnostics, kfold_cv_did, loo_cv_did
 from .stats.diagnostics import check_did_assumptions
-from .stats.did import DiDConfig, did_fit, did_table, did_table_by_celltype, did_table_parallel
+from .stats.did import (
+    DiDConfig,
+    did_fit,
+    did_table,
+    did_table_by_celltype,
+    did_table_parallel,
+    get_did_aggregated_df,
+)
 from .stats.effect_size import (
     add_effect_sizes_to_did,
     bootstrap_effect_size_ci,
@@ -151,6 +160,9 @@ __all__ = [
     "run_gsea_pseudobulk",
     "run_gsea_within_arm",
     "within_arm_comparison",
+    "within_arm_fit_beta",
+    "get_within_arm_aggregated_df",
+    "get_did_aggregated_df",
     "between_arm_comparison",
     "summarize_did_results",
     "pseudobulk_expression",

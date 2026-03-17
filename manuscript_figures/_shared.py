@@ -127,6 +127,10 @@ try:
         run_gsea_within_arm,
         verify_paired_participants,
         within_arm_comparison,
+        within_arm_fit_beta,
+        get_within_arm_aggregated_df,
+        did_fit,
+        get_did_aggregated_df,
     )
     SCTRIAL_AVAILABLE = True
 except ImportError:

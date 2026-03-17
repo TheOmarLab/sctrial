@@ -1,10 +1,14 @@
 """
-Supplementary Tables 1–3.
+Supplementary Tables 1–7.
 =========================
 
 Table 1  Gene signature definitions (name, gene count, genes).
 Table 2  Complete effect-size results across all signatures and datasets.
 Table 3  GSEA pre-ranked results (one sheet per dataset).
+Table 4  Permutation test results for all signatures across all datasets.
+Table 5  Power analysis results for all signatures across all datasets.
+Table 6  Gene-level results for all signatures across all datasets.
+Table 7  Dataset metadata.
 """
 
 from __future__ import annotations
@@ -13,6 +17,12 @@ import gc
 
 import numpy as np
 import pandas as pd
+import pickle as pkl
+import warnings
+
+from joblib import Parallel, delayed
+from statsmodels.stats.multitest import multipletests
+
 
 from .._shared import (
     CLINICAL_SIGNATURES,
@@ -24,6 +34,10 @@ from .._shared import (
     apply_style,
     clear_cache,
     did_table,
+    within_arm_fit_beta,
+    get_within_arm_aggregated_df,
+    did_fit,
+    get_did_aggregated_df,
     get_sade_feldman,
     get_stephenson,
     get_vaccine,
@@ -414,17 +428,62 @@ def table3_gsea_results() -> dict[str, pd.DataFrame]:
 # ======================================================================
 
 
-def table4_permutation_results(n_permutations: int = 1000) -> pd.DataFrame:
+def _run_one_did_permutation(args: tuple) -> float | None:
+    """Worker for parallel DiD permutation: returns beta_DiD or None."""
+    perm_idx, df_bytes, feat, unit, time, arm_bin, pid_arm_bytes, rng_seed = args
+
+    df = pkl.loads(df_bytes)
+    pid_arm = pkl.loads(pid_arm_bytes)
+    rng = np.random.default_rng(rng_seed + perm_idx)
+    shuffled = pid_arm.copy()
+    shuffled["response_harmonized"] = rng.permutation(shuffled["response_harmonized"].values)
+    pid_to_arm = dict(zip(shuffled["participant_id"], shuffled["response_harmonized"]))
+    df_perm = df.copy()
+    df_perm["arm_bin"] = df_perm["participant_id"].map(
+        lambda x: 1 if pid_to_arm.get(x) == "Responder" else 0
+    )
+    try:
+        out = did_fit(df_perm, y=feat, unit=unit, time=time, arm_bin=arm_bin, standardize=True)
+        b = out.get("beta_DiD", np.nan)
+        return float(b) if np.isfinite(b) else None
+    except Exception:
+        return None
+
+
+def _run_one_within_arm_permutation(args: tuple) -> float | None:
+    """Worker for parallel within-arm permutation: returns beta_time or None."""
+    perm_idx, df_bytes, feat, unit, rng_seed = args
+
+    df = pkl.loads(df_bytes)
+    rng = np.random.default_rng(rng_seed + perm_idx)
+    df_perm = df.copy()
+    for pid in df_perm[unit].unique():
+        mask = df_perm[unit] == pid
+        visit_num = df_perm.loc[mask, "visit_num"].values
+        df_perm.loc[mask, "visit_num"] = rng.permutation(visit_num)
+    try:
+        b = within_arm_fit_beta(df_perm, feat, unit, standardize=True)
+        return float(b) if np.isfinite(b) else None
+    except Exception:
+        return None
+
+
+def table4_permutation_results(
+    n_permutations: int = 1000,
+    n_jobs: int = -1,
+) -> pd.DataFrame:
     """Permutation test results for all signatures across all datasets.
 
-    For each dataset × signature, shuffles participant-level treatment labels
-    (or arm labels) and re-runs DiD/within-arm to build a null distribution,
-    then computes a permutation p-value.
+    Uses pre-aggregated data and parallelization for efficiency with 1000+
+    permutations. For each dataset × signature, shuffles labels and re-runs
+    DiD/within-arm on the small aggregated df (no full AnnData copies).
 
     Parameters
     ----------
     n_permutations : int
         Number of label shuffles (default 1000).
+    n_jobs : int
+        Parallel jobs for permutation loop (-1 = all cores).
     """
     print("  Table 4: Permutation test results")
 
@@ -432,9 +491,8 @@ def table4_permutation_results(n_permutations: int = 1000) -> pd.DataFrame:
         print("    Skipped: sctrial not available")
         return pd.DataFrame()
 
-    from statsmodels.stats.multitest import multipletests
-
     rng = np.random.default_rng(42)
+    rng_seed = rng.integers(0, 2**31)
     rows: list[dict] = []
 
     # ── Sade-Feldman (two-arm DiD: shuffle response labels) ──────────
@@ -452,7 +510,6 @@ def table4_permutation_results(n_permutations: int = 1000) -> pd.DataFrame:
             arm_treated="Responder",
             arm_control="Non-responder",
         )
-        # Observed betas
         obs_res = did_table(
             adata_sf, features=sig_cols, design=design,
             visits=("Pre", "Post"), layer="log1p_tpm",
@@ -460,39 +517,31 @@ def table4_permutation_results(n_permutations: int = 1000) -> pd.DataFrame:
         )
         obs_betas = dict(zip(obs_res["feature"], obs_res["beta_DiD"]))
 
-        # Permutation: shuffle response labels at participant level
+        with warnings.catch_warnings(action="ignore"):
+            df_use, unit, time, arm_bin = get_did_aggregated_df(
+                adata_sf, sig_cols, design, ("Pre", "Post"),
+                layer="log1p_tpm", aggregate="participant_visit",
+            )
         pid_arm = (
             adata_sf.obs[["participant_id", "response_harmonized"]]
             .drop_duplicates("participant_id")
         )
+        df_bytes = pkl.dumps(df_use)
+        pid_arm_bytes = pkl.dumps(pid_arm)
+
         for feat in sig_cols:
             obs_beta = obs_betas.get(feat, np.nan)
             if not np.isfinite(obs_beta):
                 continue
-            null_betas = []
-            for _ in range(n_permutations):
-                shuffled = pid_arm.copy()
-                shuffled["response_harmonized"] = rng.permutation(
-                    shuffled["response_harmonized"].values
+            tasks = [
+                (i, df_bytes, feat, unit, time, arm_bin, pid_arm_bytes, rng_seed)
+                for i in range(n_permutations)
+            ]
+            with warnings.catch_warnings(action="ignore"):
+                null_betas = Parallel(n_jobs=n_jobs, backend="loky")(
+                    delayed(_run_one_did_permutation)(t) for t in tasks
                 )
-                # Map shuffled labels back
-                perm_adata = adata_sf.copy()
-                pid_to_arm = dict(zip(shuffled["participant_id"], shuffled["response_harmonized"]))
-                perm_adata.obs["response_harmonized"] = (
-                    perm_adata.obs["participant_id"].map(pid_to_arm)
-                )
-                try:
-                    perm_res = did_table(
-                        perm_adata, features=[feat], design=design,
-                        visits=("Pre", "Post"), layer="log1p_tpm",
-                        standardize=True, aggregate="participant_visit",
-                    )
-                    if len(perm_res) > 0:
-                        null_betas.append(float(perm_res["beta_DiD"].iloc[0]))
-                except Exception:
-                    pass
-
-            null_arr = np.array(null_betas)
+            null_arr = np.array([b for b in null_betas if b is not None], dtype=float)
             if len(null_arr) > 0:
                 perm_p = (np.sum(np.abs(null_arr) >= np.abs(obs_beta)) + 1) / (len(null_arr) + 1)
                 rows.append({
@@ -508,7 +557,7 @@ def table4_permutation_results(n_permutations: int = 1000) -> pd.DataFrame:
                     "null_95_hi": float(np.percentile(null_arr, 97.5)),
                 })
         print(f"    Sade-Feldman: {len([r for r in rows if r['dataset'] == 'Sade-Feldman'])} features")
-        del adata_sf
+        del adata_sf, df_use, df_bytes, pid_arm_bytes
         gc.collect()
     except Exception as exc:
         print(f"    Sade-Feldman permutation failed: {exc}")
@@ -529,38 +578,29 @@ def table4_permutation_results(n_permutations: int = 1000) -> pd.DataFrame:
             visits = visits_override or _detect_visits(adata)
             design = _single_arm_design()
 
-            # Observed
             obs_res = within_arm_comparison(
                 adata, arm=arm_label, features=sig_cols_imm,
                 design=design, visits=visits, standardize=True,
             )
             obs_betas = dict(zip(obs_res["feature"], obs_res["beta_time"]))
 
-            # Permutation: shuffle visit labels within each participant
+            with warnings.catch_warnings(action="ignore"):
+                df_use, unit = get_within_arm_aggregated_df(
+                    adata, arm_label, sig_cols_imm, design, visits,
+                    layer=None, aggregate="participant_visit",
+                )
+            df_bytes = pkl.dumps(df_use)
+
             for feat in sig_cols_imm:
                 obs_beta = obs_betas.get(feat, np.nan)
                 if not np.isfinite(obs_beta):
                     continue
-                null_betas = []
-                for _ in range(n_permutations):
-                    perm_adata = adata.copy()
-                    # Shuffle visits within each participant
-                    for pid in perm_adata.obs["participant_id"].unique():
-                        mask = perm_adata.obs["participant_id"] == pid
-                        perm_adata.obs.loc[mask, "visit"] = rng.permutation(
-                            perm_adata.obs.loc[mask, "visit"].values
-                        )
-                    try:
-                        perm_res = within_arm_comparison(
-                            perm_adata, arm=arm_label, features=[feat],
-                            design=design, visits=visits, standardize=True,
-                        )
-                        if len(perm_res) > 0:
-                            null_betas.append(float(perm_res["beta_time"].iloc[0]))
-                    except Exception:
-                        pass
-
-                null_arr = np.array(null_betas)
+                tasks = [(i, df_bytes, feat, unit, rng_seed) for i in range(n_permutations)]
+                with warnings.catch_warnings(action="ignore"):
+                    null_betas = Parallel(n_jobs=n_jobs, backend="loky")(
+                        delayed(_run_one_within_arm_permutation)(t) for t in tasks
+                    )
+                null_arr = np.array([b for b in null_betas if b is not None], dtype=float)
                 if len(null_arr) > 0:
                     perm_p = (np.sum(np.abs(null_arr) >= np.abs(obs_beta)) + 1) / (len(null_arr) + 1)
                     rows.append({
@@ -576,7 +616,7 @@ def table4_permutation_results(n_permutations: int = 1000) -> pd.DataFrame:
                         "null_95_hi": float(np.percentile(null_arr, 97.5)),
                     })
             print(f"    {ds_name}: {len([r for r in rows if r['dataset'] == ds_name])} features")
-            del adata
+            del adata, df_use, df_bytes
             gc.collect()
         except Exception as exc:
             print(f"    {ds_name} permutation failed: {exc}")
