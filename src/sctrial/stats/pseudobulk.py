@@ -272,7 +272,8 @@ def pseudobulk_did(
     if not genes:
         return pd.DataFrame()
 
-    assert design.arm_col is not None, "pseudobulk_did requires a two-arm design (arm_col must not be None)"
+    if design.arm_col is None:
+        raise ValueError("pseudobulk_did requires a two-arm design (arm_col must not be None)")
     groupby: list[str] = [design.participant_col, design.visit_col, design.arm_col]
     if celltype_col is not None:
         groupby.append(celltype_col)

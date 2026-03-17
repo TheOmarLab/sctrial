@@ -349,7 +349,8 @@ def did_table_mixed(
     ad = subset_primary(adata, design, visits, exclude_crossovers=exclude_crossovers)
 
     # Build dataframe
-    assert design.arm_col is not None, "mixed-effects DiD requires a two-arm design (arm_col must not be None)"
+    if design.arm_col is None:
+        raise ValueError("mixed-effects DiD requires a two-arm design (arm_col must not be None)")
     obs = ad.obs.copy()
     cols = [design.participant_col, design.visit_col, design.arm_col]
     if design.celltype_col is not None:

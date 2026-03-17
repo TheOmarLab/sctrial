@@ -55,6 +55,7 @@ from .._shared import (
     save_panel,
     score_signatures,
     sig_display,
+    within_arm_comparison,
 )
 
 warnings.filterwarnings("ignore")
@@ -255,13 +256,10 @@ def _load_all_datasets() -> list[DatasetInfo]:
     try:
         vax = get_vaccine()
         vax, vax_sigs = score_signatures(vax, layer="counts")
-        vax.obs["arm_dummy"] = "Vaccinated"
         vax_design = TrialDesign(
             participant_col="participant_id",
             visit_col="visit",
-            arm_col="arm_dummy",
-            arm_treated="Vaccinated",
-            arm_control="Vaccinated",
+            arm_col=None,
         )
         datasets.append(
             ("Vaccine", vax, vax_design, ("Pre", "Post"), vax_sigs, "paired")
@@ -272,15 +270,12 @@ def _load_all_datasets() -> list[DatasetInfo]:
     try:
         aml = get_aml()
         aml, aml_sigs = score_signatures(aml, layer="counts")
-        aml.obs["arm_dummy"] = "Treatment"
         pid_col = ("participant_id" if "participant_id" in aml.obs.columns
                    else "patient_id")
         aml_design = TrialDesign(
             participant_col=pid_col,
             visit_col="visit",
-            arm_col="arm_dummy",
-            arm_treated="Treatment",
-            arm_control="Treatment",
+            arm_col=None,
         )
         datasets.append(
             ("AML", aml, aml_design, ("Pre", "Post"), aml_sigs, "paired")
@@ -291,15 +286,12 @@ def _load_all_datasets() -> list[DatasetInfo]:
     try:
         cart = get_cart()
         cart, cart_sigs = score_signatures(cart, layer="counts")
-        cart.obs["arm_dummy"] = "CAR-T"
         pid_col = ("participant_id" if "participant_id" in cart.obs.columns
                    else "patient_id")
         cart_design = TrialDesign(
             participant_col=pid_col,
             visit_col="visit",
-            arm_col="arm_dummy",
-            arm_treated="CAR-T",
-            arm_control="CAR-T",
+            arm_col=None,
         )
         datasets.append(
             ("CAR-T", cart, cart_design, ("Pre", "Post"), cart_sigs, "paired")
@@ -545,6 +537,16 @@ def _compute_subsampling_power(
                                 aggregate="participant_visit",
                                 standardize=True,
                             )
+                        elif dtype == "paired":
+                            res = within_arm_comparison(
+                                sub_adata,
+                                arm="All",
+                                features=[feat],
+                                design=design,
+                                visits=visits,
+                                aggregate="participant_visit",
+                                standardize=True,
+                            )
                         else:
                             res = did_table(
                                 sub_adata,
@@ -555,7 +557,7 @@ def _compute_subsampling_power(
                                 standardize=True,
                             )
                         p_col = next(
-                            (c for c in ("p_DiD", "p_arm", "p_value")
+                            (c for c in ("p_time", "p_DiD", "p_arm", "p_value")
                              if c in res.columns),
                             None,
                         )

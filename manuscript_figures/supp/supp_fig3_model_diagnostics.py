@@ -953,8 +953,15 @@ def _participant_paired_delta(expr_df, features, pid_col, visit_col, visits):
             continue
         mean_d = d.mean()
         se_d = d.std(ddof=1) / np.sqrt(len(d))
-        t_stat = mean_d / se_d if se_d > 0 else 0.0
-        pval = 2 * (1 - stats.t.cdf(abs(t_stat), df=len(d) - 1))
+        if se_d > 0:
+            t_stat = mean_d / se_d
+            pval = 2 * (1 - stats.t.cdf(abs(t_stat), df=len(d) - 1))
+        elif mean_d == 0:
+            # No variance, no effect — undefined test
+            pval = np.nan
+        else:
+            # No variance but nonzero mean — infinitely significant
+            pval = 0.0
         rows.append({"feature": feat, "beta": mean_d, "pval": pval,
                      "se": se_d})
     return pd.DataFrame(rows)

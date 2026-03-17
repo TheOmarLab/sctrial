@@ -5,10 +5,10 @@ Supplementary Tables 1–7.
 Table 1  Gene signature definitions (name, gene count, genes).
 Table 2  Complete effect-size results across all signatures and datasets.
 Table 3  GSEA pre-ranked results (one sheet per dataset).
-Table 4  Permutation test results for all signatures across all datasets.
-Table 5  Power analysis results for all signatures across all datasets.
-Table 6  Gene-level results for all signatures across all datasets.
-Table 7  Dataset metadata.
+Table 4  Permutation test results.
+Table 5  Power analysis results.
+Table 6  Gene-level DiD results (Sade-Feldman).
+Table 7  Dataset metadata summary.
 """
 
 from __future__ import annotations
