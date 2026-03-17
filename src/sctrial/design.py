@@ -98,7 +98,7 @@ class TrialDesign:
         list[str]
             List of required columns.
         """
-        cols = [self.participant_col, self.visit_col, self.arm_col]
+        cols = [c for c in [self.participant_col, self.visit_col, self.arm_col] if c is not None]
         if include_celltype and self.celltype_col is not None:
             cols.append(self.celltype_col)
         if include_crossover and self.crossover_col is not None:
@@ -150,7 +150,7 @@ class TrialDesign:
                 f"Missing required obs columns: {missing}. Available: {list(obs.columns)}"
             )
 
-        if check_arm_labels:
+        if check_arm_labels and self.arm_col is not None:
             if self.arm_treated == self.arm_control:
                 raise ValueError(
                     f"arm_treated and arm_control must be distinct for "

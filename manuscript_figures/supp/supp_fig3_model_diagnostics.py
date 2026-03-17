@@ -20,8 +20,8 @@ Panels:
   J  Runtime scaling across datasets (Cleveland dot plot; moved from
      Figure 3 panel C).
 
-Non-overlap guardrail: no sensitivity analysis (→ SF6), no cross-dataset
-biological concordance (→ SF5), no heterogeneity (→ SF4).
+Non-overlap guardrail: no sensitivity analysis (→ SF4), no cross-dataset
+biological concordance (→ SF5), no heterogeneity (→ SF6).
 """
 
 from __future__ import annotations

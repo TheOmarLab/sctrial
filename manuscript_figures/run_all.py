@@ -39,9 +39,9 @@ SUPP_FIGURES = {
     1: ("Supp Fig 1: Data Quality and Cohort Characterisation", "supp.supp_fig1_data_quality_cohort"),
     2: ("Supp Fig 2: Cell Annotation and Baseline Comparability", "supp.supp_fig2_annotation_baseline"),
     3: ("Supp Fig 3: Model Diagnostics and Assumption Checks", "supp.supp_fig3_model_diagnostics"),
-    4: ("Supp Fig 4: Participant Heterogeneity and Temporal Dynamics", "supp.supp_fig4_heterogeneity_temporal"),
+    4: ("Supp Fig 4: Sensitivity and Robustness", "supp.supp_fig4_sensitivity_robustness"),
     5: ("Supp Fig 5: Cross-Dataset Biological Consistency", "supp.supp_fig5_cross_dataset_biology"),
-    6: ("Supp Fig 6: Sensitivity and Robustness", "supp.supp_fig6_sensitivity_robustness"),
+    6: ("Supp Fig 6: Heterogeneity and Temporal Dynamics", "supp.supp_fig6_heterogeneity_temporal"),
 }
 
 

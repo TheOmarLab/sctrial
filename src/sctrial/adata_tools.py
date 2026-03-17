@@ -120,7 +120,7 @@ def subset_cells(
     obs = adata.obs
 
     required = []
-    if arm is not None:
+    if arm is not None and design.arm_col is not None:
         required.append(design.arm_col)
     if visit is not None:
         required.append(design.visit_col)
@@ -136,7 +136,7 @@ def subset_cells(
 
     mask = np.ones(obs.shape[0], dtype=bool)
 
-    if arm is not None:
+    if arm is not None and design.arm_col is not None:
         mask &= obs[design.arm_col].to_numpy() == arm
 
     if visit is not None:
