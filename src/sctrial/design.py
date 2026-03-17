@@ -27,8 +27,11 @@ class TrialDesign:
     visit_col: str = "visit"
     """Name of the column containing visit or timepoint labels."""
 
-    arm_col: str = "arm"
-    """Name of the column containing treatment arm assignments."""
+    arm_col: str | None = "arm"
+    """Name of the column containing treatment arm assignments.
+
+    Set to ``None`` for single-arm studies that lack an arm column.
+    """
 
     arm_treated: str = "Treated"
     """The label in `arm_col` representing the treatment/experimental group."""
@@ -98,7 +101,7 @@ class TrialDesign:
         list[str]
             List of required columns.
         """
-        cols = [self.participant_col, self.visit_col, self.arm_col]
+        cols = [c for c in [self.participant_col, self.visit_col, self.arm_col] if c is not None]
         if include_celltype and self.celltype_col is not None:
             cols.append(self.celltype_col)
         if include_crossover and self.crossover_col is not None:
@@ -150,7 +153,7 @@ class TrialDesign:
                 f"Missing required obs columns: {missing}. Available: {list(obs.columns)}"
             )
 
-        if check_arm_labels:
+        if check_arm_labels and self.arm_col is not None:
             if self.arm_treated == self.arm_control:
                 raise ValueError(
                     f"arm_treated and arm_control must be distinct for "
@@ -196,6 +199,11 @@ class TrialDesign:
         KeyError
             If arm_col is not in obs.columns.
         """
+        if self.arm_col is None:
+            raise ValueError(
+                "arm_bin() requires arm_col to be set. "
+                "Single-arm designs (arm_col=None) do not have arm indicators."
+            )
         if self.arm_treated == self.arm_control:
             raise ValueError(
                 f"arm_bin() requires distinct arm labels, but "

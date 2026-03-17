@@ -1,5 +1,5 @@
 """
-Supplementary Figure 4 - Participant heterogeneity and temporal dynamics.
+Supplementary Figure 6 - Participant heterogeneity and temporal dynamics.
 
 Panels:
   A  Sade-Feldman individual-effect raincloud (violin+strip+boxplot).
@@ -40,7 +40,7 @@ from .._shared import (
     save_panel,
 )
 
-FIGURE_NAME = "SuppFig4_heterogeneity_temporal"
+FIGURE_NAME = "SuppFig6_heterogeneity_temporal"
 
 FEATURES = [
     "CD8A", "CD4", "PDCD1", "HAVCR2", "LAG3", "CTLA4",
@@ -655,7 +655,7 @@ def _panel_treated_fc_concordance(ax, data: dict[str, dict]):
 
 
 def generate():
-    print("Supplementary Figure 4: Participant Heterogeneity and Temporal Dynamics")
+    print("Supplementary Figure 6: Participant Heterogeneity and Temporal Dynamics")
     data = _load_all()
     if not data:
         print("  No data loaded; skipping.")

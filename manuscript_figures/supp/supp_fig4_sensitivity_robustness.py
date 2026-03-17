@@ -1,5 +1,5 @@
 """
-Supplementary Figure 6 — Sensitivity and Robustness.
+Supplementary Figure 4 — Sensitivity and Robustness.
 =====================================================
 
 Show how DiD results change under different analytical decisions.
@@ -47,7 +47,7 @@ from .._shared import (
     save_panel,
 )
 
-FIGURE_NAME = "SuppFig6_sensitivity_robustness"
+FIGURE_NAME = "SuppFig4_sensitivity_robustness"
 
 # Features for sensitivity tests
 _FEATURES = [
@@ -1042,7 +1042,7 @@ def _panel_sim_coverage(ax, results):
 # ======================================================================
 
 def generate():
-    """Create and save Supplementary Figure 6 panels (A–K).
+    """Create and save Supplementary Figure 4 panels (A–K).
 
     Layout:
       A  Analytical vs bootstrap SE (all 5 datasets, faceted forest plot)
@@ -1057,7 +1057,7 @@ def generate():
       J  Simulation: effect-size bias (estimated vs true beta)
       K  Simulation: p-value calibration QQ plot
     """
-    print("Supplementary Figure 6: Sensitivity to Modeling and Preprocessing")
+    print("Supplementary Figure 4: Sensitivity to Modeling and Preprocessing")
     data = _run_sensitivity()
 
     # Panel A: Multi-dataset bootstrap SE (separate pipeline)
