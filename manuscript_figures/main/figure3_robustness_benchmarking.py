@@ -578,26 +578,37 @@ def _compute_subsampling_power(
         # Subset adata to analyzable participants only
         adata = adata[adata.obs[pid_col].isin(analyzable_pids)].copy()
 
-        feat = _select_best_powered_feature(
-            adata, design, visits, sigs, dtype, dataset_name=name,
-        )
+        # Use pre-declared primary endpoint per dataset (a priori, not
+        # data-adaptive) to avoid optimistic bias in power estimation.
+        feat = _DATASET_PRIMARY_ENDPOINT.get(name)
+        if feat and feat in sigs and feat in adata.obs.columns:
+            pass  # use pre-declared
+        else:
+            # Fallback: first available pre-specified endpoint
+            feat = next((ep for ep in _PRESPECIFIED_ENDPOINTS
+                         if ep in sigs and ep in adata.obs.columns), None)
         if feat is None:
             print(f"    {name}: no valid endpoint available, skipping")
             continue
+        print(f"      Primary endpoint: {feat}")
+
 
         # Features are module scores in .obs, not genes in .X.
         # Slim adata to 1 gene to free ~99.99% of .X memory.
         adata = adata[:, adata.var_names[:1]].copy()
         gc.collect()
 
-        # Start at 6 for two-arm (≥3 per arm), 4 for others
+        # Start at 6 for two-arm (≥3 per arm), 4 for others.
+        # Exclude n_total: full-cohort without-replacement is deterministic
+        # (always the same result), creating artificial 0/1 endpoints.
         min_sub = 6 if dtype in ("two_arm_did", "cross_sectional") else 4
+        max_sub = n_total - 1 if n_total > min_sub else n_total
         sub_sizes = sorted(set(
             [min_sub, min_sub + 2, min_sub + 4]
-            + list(range(5, min(n_total, 30) + 1, 5))
-            + [n_total]
+            + list(range(min_sub, min(max_sub, 30) + 1, 5))
+            + [max_sub]
         ))
-        sub_sizes = [s for s in sub_sizes if s <= n_total]
+        sub_sizes = [s for s in sub_sizes if min_sub <= s <= max_sub]
 
         if adata.n_obs > 100_000:
             n_iter = 100
@@ -1348,7 +1359,7 @@ def _panel_d_power_curves(data: dict) -> plt.Figure | None:
         ax.spines["bottom"].set_linewidth(1.0)
         ax.spines["left"].set_linewidth(1.0)
 
-    fig.suptitle("Empirical power — best pre-specified endpoint",
+    fig.suptitle("Empirical power — pre-declared primary endpoints",
                  fontsize=13, fontweight="bold", y=1.02)
     fig.tight_layout()
     return fig
