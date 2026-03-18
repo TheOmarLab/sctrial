@@ -563,6 +563,100 @@ def table4_permutation_results(
     except Exception as exc:
         print(f"    Sade-Feldman permutation failed: {exc}")
 
+    # ── Stephenson (cross-sectional: permute Severe/Mild labels) ────
+    try:
+        from sctrial import between_arm_comparison as _bac
+        adata_st = get_stephenson()
+        if "log1p_cpm" not in adata_st.layers:
+            from manuscript_figures._shared import add_log1p_cpm_layer
+            adata_st = add_log1p_cpm_layer(
+                adata_st, counts_layer="counts", out_layer="log1p_cpm",
+            )
+        adata_st, sig_cols_st = score_signatures(adata_st, layer="log1p_cpm")
+
+        design_st = TrialDesign(
+            participant_col="participant_id",
+            visit_col="Collection_Day",
+            arm_col="severity",
+            arm_treated="Severe",
+            arm_control="Mild",
+        )
+        obs_res_st = _bac(
+            adata_st, visit="D0", features=sig_cols_st,
+            design=design_st, aggregate="participant_visit",
+            standardize=True,
+        )
+        beta_col_st = "beta_arm" if "beta_arm" in obs_res_st.columns else "beta_DiD"
+        obs_betas_st = dict(zip(obs_res_st["feature"], obs_res_st[beta_col_st]))
+
+        # Build participant-arm map for permutation
+        pid_sev = (
+            adata_st.obs[["participant_id", "severity"]]
+            .drop_duplicates("participant_id")
+        )
+
+        with warnings.catch_warnings(action="ignore"):
+            df_use_st, unit_st, time_st, arm_bin_st = get_did_aggregated_df(
+                adata_st, sig_cols_st, design_st, ("D0", "D28"),
+                layer="log1p_cpm", aggregate="participant_visit",
+            )
+        df_bytes_st = pkl.dumps(df_use_st)
+        pid_sev_bytes = pkl.dumps(pid_sev)
+
+        for feat in sig_cols_st:
+            obs_beta = obs_betas_st.get(feat, np.nan)
+            if not np.isfinite(obs_beta):
+                continue
+            tasks = [
+                (i, df_bytes_st, feat, unit_st, time_st, arm_bin_st, pid_sev_bytes, rng_seed)
+                for i in range(n_permutations)
+            ]
+
+            # Reuse DiD permutation worker — it permutes the arm column
+            def _run_stephenson_perm(args: tuple) -> float | None:
+                perm_idx, db, ft, un, tm, ab, pa_bytes, rs = args
+                df = pkl.loads(db)
+                pa = pkl.loads(pa_bytes)
+                r = np.random.default_rng(rs + perm_idx)
+                shuf = pa.copy()
+                shuf["severity"] = r.permutation(shuf["severity"].values)
+                pid_to_arm = dict(zip(shuf["participant_id"], shuf["severity"]))
+                df_p = df.copy()
+                df_p["arm_bin"] = df_p["participant_id"].map(
+                    lambda x, m=pid_to_arm: 1 if m.get(x) == "Severe" else 0
+                )
+                try:
+                    out = did_fit(df_p, y=ft, unit=un, time=tm, arm_bin=ab, standardize=True)
+                    b = out.get("beta_DiD", np.nan)
+                    return float(b) if np.isfinite(b) else None
+                except Exception:
+                    return None
+
+            with warnings.catch_warnings(action="ignore"):
+                null_betas_st = Parallel(n_jobs=n_jobs, backend="loky")(
+                    delayed(_run_stephenson_perm)(t) for t in tasks
+                )
+            null_arr = np.array([b for b in null_betas_st if b is not None], dtype=float)
+            if len(null_arr) > 0:
+                perm_p = (np.sum(np.abs(null_arr) >= np.abs(obs_beta)) + 1) / (len(null_arr) + 1)
+                rows.append({
+                    "dataset": "Stephenson",
+                    "feature": feat,
+                    "label": sig_display(feat),
+                    "observed_beta": obs_beta,
+                    "permutation_p": perm_p,
+                    "n_permutations": len(null_arr),
+                    "null_mean": float(np.mean(null_arr)),
+                    "null_sd": float(np.std(null_arr)),
+                    "null_95_lo": float(np.percentile(null_arr, 2.5)),
+                    "null_95_hi": float(np.percentile(null_arr, 97.5)),
+                })
+        print(f"    Stephenson: {len([r for r in rows if r['dataset'] == 'Stephenson'])} features")
+        del adata_st, df_use_st, df_bytes_st, pid_sev_bytes
+        gc.collect()
+    except Exception as exc:
+        print(f"    Stephenson permutation failed: {exc}")
+
     # ── Single-arm datasets: permute visit labels ────────────────────
     single_arm = [
         ("Vaccine", get_vaccine, ("Pre", "Post")),
@@ -948,7 +1042,11 @@ def patch_table1_genes_present() -> pd.DataFrame:
             print(f"    {ds_name} genes present failed: {exc}")
 
     t1.to_csv(t1_path, index=False)
-    print(f"    Updated {t1_path.name}")
+    # Also save as xlsx to prevent Excel from auto-formatting
+    # fraction strings like "11/11" as dates
+    xlsx_path = t1_path.with_suffix(".xlsx")
+    t1.to_excel(xlsx_path, index=False, engine="openpyxl")
+    print(f"    Updated {t1_path.name} + {xlsx_path.name}")
     return t1
 
 
