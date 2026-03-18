@@ -741,12 +741,39 @@ def _compute_effect_sizes_across_datasets(
 
 
 def _prepare_scalability_data() -> dict:
-    """Run all multi-dataset preparation steps for panels C, D, H."""
+    """Run all multi-dataset preparation steps for panels C, D, H.
+
+    Processes datasets one at a time for power/effect to avoid OOM
+    when all 5 datasets (~750K cells total) are in memory simultaneously.
+    """
     print("  Loading all datasets for scalability / power / effect panels ...")
     datasets = _load_all_datasets()
+
+    # Scalability benchmarks (lightweight — just timing, not memory-intensive)
     timing_df, memory_df = _run_scalability_benchmark(datasets)
-    power_df = _compute_subsampling_power(datasets)
-    effect_df = _compute_effect_sizes_across_datasets(datasets)
+
+    # Power: process one dataset at a time to avoid OOM
+    power_frames = []
+    for ds in datasets:
+        pdf = _compute_subsampling_power([ds])
+        if pdf is not None and not pdf.empty:
+            power_frames.append(pdf)
+        gc.collect()
+    power_df = pd.concat(power_frames, ignore_index=True) if power_frames else pd.DataFrame()
+
+    # Effect sizes: also one at a time
+    effect_frames = []
+    for ds in datasets:
+        edf = _compute_effect_sizes_across_datasets([ds])
+        if edf is not None and not edf.empty:
+            effect_frames.append(edf)
+        gc.collect()
+    effect_df = pd.concat(effect_frames, ignore_index=True) if effect_frames else pd.DataFrame()
+
+    # Free all datasets
+    del datasets
+    gc.collect()
+
     return {
         "timing_df": timing_df,
         "memory_df": memory_df,
