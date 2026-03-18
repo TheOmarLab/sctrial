@@ -1371,6 +1371,8 @@ def _panel_d_power_curves(data: dict) -> plt.Figure | None:
                      color=color, pad=4, linespacing=1.4)
 
         ax.set_xlabel("Analyzable participants", fontsize=9.5)
+        from matplotlib.ticker import MaxNLocator
+        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
         if i == 0:
             ax.set_ylabel(r"Power (1 − $\beta$)", fontsize=10)
         # Show y-tick labels on all subplots (sharey hides them)
