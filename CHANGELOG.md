@@ -7,7 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-03-18
+
 ### Added
+
+#### Single-Arm Power Analysis (`sctrial.stats.power`)
+- `power_paired()`: Power for paired pre/post designs (vaccine, CAR-T, etc.)
+- `sample_size_paired()`: Required sample size for paired designs
+- `sensitivity_paired()`: Minimum detectable effect size for paired designs
+
+#### Single-Arm Design Support (`sctrial.design`)
+- `TrialDesign.arm_col` now accepts `None` for single-arm studies
+- `required_cols()`, `validate()`, `subset_cells()` handle `arm_col=None`
+- `arm_bin()` raises clear `ValueError` for single-arm designs
+
+#### Monte Carlo Simulation (`sctrial.stats.simulation`)
+- `simulate_did_data()`: Generate synthetic DiD datasets with known ground truth
+- `run_method_comparison()`: Compare sctrial DiD vs pseudobulk OLS vs Wilcoxon
+
+### Fixed
+- `n_boot` default: 1000 → 999 in `bootstrap_effect_size_ci()`
+- Zero-SE paired delta returns `NaN` instead of `t=0, p=1`
+- Non-finite SE coerced to `NaN` instead of `0.0`
+- `validate()` no longer crashes when `arm_col=None`
+- `check_covariate_balance()` raises clear error for single-arm designs
+- mypy: fixed `catch_warnings` type in `comparisons.py`
 
 #### Bayesian DiD (`sctrial.stats.bayes`)
 - `prior_predictive_check()`: Run prior predictive checks to calibrate Bayesian priors before fitting.
