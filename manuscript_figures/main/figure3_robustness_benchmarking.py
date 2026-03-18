@@ -497,6 +497,11 @@ def _compute_subsampling_power(
             print(f"    {name}: no pre-specified endpoint available, skipping")
             continue
 
+        # Features are module scores in .obs, not genes in .X.
+        # Slim adata to 1 gene to free ~99.99% of .X memory.
+        adata = adata[:, adata.var_names[:1]].copy()
+        gc.collect()
+
         sub_sizes = sorted(set(
             [4, 6, 8]
             + list(range(5, min(n_total, 30) + 1, 5))
@@ -571,7 +576,9 @@ def _compute_subsampling_power(
                         n_fail += 1
 
             gc.collect()
-            power = n_sig / n_valid if n_valid > 0 else np.nan
+            # Use n_iter (total attempts) as denominator so fit failures
+            # count as non-significant — avoids inflating power.
+            power = n_sig / n_iter
             records.append({
                 "n_participants": n_sub,
                 "dataset": name,
