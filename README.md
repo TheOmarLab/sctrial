@@ -44,7 +44,8 @@
 | **Trial-Aware Design** | Define participant, visit, arm, and cell type columns once |
 | **Robust Statistics** | Wild cluster bootstrap, participant-level aggregation |
 | **Multiple Comparisons** | Built-in FDR correction across features and cell types |
-| **Power Analysis** | Plan studies with power curves and sample size calculations |
+| **Power Analysis** | Two-arm DiD and single-arm paired power/sample size calculations |
+| **Single-Arm Support** | `arm_col=None` for studies without a control arm |
 | **Publication-Ready Plots** | Forest plots, interaction plots, GSEA heatmaps |
 | **Scalable** | Efficient processing of large single-cell datasets |
 
@@ -141,7 +142,7 @@ If you use **sctrial** in your research, please cite:
 @software{omar2024sctrial,
   author = {Omar, Mohamed},
   title = {sctrial: Trial-Aware Statistical Inference for Single-Cell Data},
-  year = {2024},
+  year = {2026},
   publisher = {GitHub},
   url = {https://github.com/TheOmarLab/sctrial}
 }
