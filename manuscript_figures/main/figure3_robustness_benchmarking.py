@@ -78,7 +78,7 @@ N_BENCHMARK_REPLICATES = 5
 N_POWER_ITERATIONS = 200
 POWER_ALPHA = 0.05
 RNG_SEED = 42
-_CODE_VERSION = "v12"
+_CODE_VERSION = "v13"
 
 DatasetInfo = tuple[str, object, object, tuple, list[str], str]
 
@@ -612,6 +612,7 @@ def _compute_subsampling_power(
                 "n_failures": n_fail,
                 "feature": feat,
                 "design_type": dtype,
+                "n_analyzable": n_total,
             })
 
         ds_records = [r for r in records if r["dataset"] == name]
@@ -1344,14 +1345,13 @@ def _panel_d_power_curves(data: dict) -> plt.Figure | None:
             feat = ""
         dtype = grp["design_type"].iloc[0] if "design_type" in grp.columns else ""
         design_label = _DESIGN_LABELS.get(dtype, dtype)
-        max_n = int(x.max())
+        # Use stored n_analyzable (true cohort size), not max subsampled
+        analyzable_n = int(grp["n_analyzable"].iloc[0]) if "n_analyzable" in grp.columns else int(x.max()) + 1
 
         display_name = _DATASET_DISPLAY_NAMES.get(ds_name, ds_name)
         title_lines = display_name
         if feat:
             title_lines += f"\n{feat}"
-        # max_n is max subsampled (n_total-1); show actual analyzable n
-        analyzable_n = max_n + 1
         title_lines += f"\n{design_label}, n={analyzable_n}"
 
         ax.set_title(title_lines, fontsize=9.5, fontweight="bold",
