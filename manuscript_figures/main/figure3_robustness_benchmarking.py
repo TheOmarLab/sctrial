@@ -78,7 +78,7 @@ N_BENCHMARK_REPLICATES = 5
 N_POWER_ITERATIONS = 200
 POWER_ALPHA = 0.05
 RNG_SEED = 42
-_CODE_VERSION = "v13"
+_CODE_VERSION = "v14"
 
 DatasetInfo = tuple[str, object, object, tuple, list[str], str]
 
