@@ -1,24 +1,25 @@
 """Power analysis utilities for trial planning.
 
-This module provides sample size and power calculations for Difference-in-Differences
-(DiD) analyses in single-cell studies.
+This module provides sample size and power calculations for both
+**two-arm DiD** and **single-arm paired** (pre/post) designs in
+single-cell studies.
 
 Mathematical Background
 -----------------------
-For a DiD design with equal group sizes n per arm×time cell:
+**Two-arm DiD** (treatment × time interaction):
 
-    Power = Φ(``|delta|``/SE - z_{1-α/2})
+    Power = Φ(|δ|/SE - z_{1-α/2}),   SE = σ × √(4/n)
 
-where:
-    - delta = expected DiD effect size
-    - SE = σ × √(4/n) for equal groups
-    - σ = within-group standard deviation
-    - Φ = standard normal CDF
-    - z_{1-α/2} = critical value (1.96 for α=0.05)
+    n = 4σ²(z_{1-α/2} + z_{1-β})² / δ²
 
-Solving for n given desired power (1-β):
+**Single-arm paired** (within-arm pre→post change):
 
-    n = 4σ²(z_{1-α/2} + z_{1-β})² / delta²
+    Power = Φ(|δ|/SE - z_{1-α/2}),   SE = σ × √(2/n)
+
+    n = 2σ²(z_{1-α/2} + z_{1-β})² / δ²
+
+The paired design has half the variance of DiD (factor 2 vs 4)
+because it involves one arm instead of two.
 
 For cluster-robust inference with ICC (intraclass correlation):
 
@@ -53,6 +54,9 @@ __all__ = [
     "power_did",
     "sample_size_did",
     "power_curve",
+    "power_paired",
+    "sample_size_paired",
+    "sensitivity_paired",
     "design_effect",
     "effective_sample_size",
 ]
@@ -439,3 +443,201 @@ def sensitivity_analysis(
     mde = se_unit * (z_alpha + z_beta)
 
     return mde
+
+
+# ======================================================================
+# Paired (single-arm pre/post) power functions
+# ======================================================================
+
+
+def power_paired(
+    n_participants: int,
+    effect_size: float,
+    sigma: float = 1.0,
+    alpha: float = 0.05,
+    two_sided: bool = True,
+) -> float:
+    """Calculate statistical power for a paired pre/post comparison.
+
+    This function computes the power to detect a given within-arm
+    longitudinal effect (post − pre) with the specified sample size.
+
+    Model:
+        Y_post - Y_pre = δ + ε   (paired differences)
+
+    H₀: δ = 0  (no change)
+    H₁: δ ≠ 0  (treatment causes change)
+
+    Parameters
+    ----------
+    n_participants
+        Number of participants with paired measurements.
+    effect_size
+        Expected pre-to-post effect size (δ) in original units.
+        Can also be Cohen's d if sigma=1.
+    sigma
+        Within-group standard deviation of the outcome (not the
+        paired difference SD; the paired difference variance is 2σ²).
+    alpha
+        Significance level (default 0.05).
+    two_sided
+        If True (default), use two-sided test.
+
+    Returns
+    -------
+    float
+        Statistical power (probability of rejecting H₀ when H₁ is true).
+
+    Examples
+    --------
+    >>> # 6 participants, effect = 0.8 SD
+    >>> pwr = power_paired(n_participants=6, effect_size=0.8, sigma=1.0)
+    >>> print(f"Power: {pwr:.1%}")
+
+    Notes
+    -----
+    For paired pre/post, the variance of the time coefficient is:
+
+        Var(β_time) = 2σ² / n
+
+    where n is the number of paired participants.  This is half the
+    variance of a DiD coefficient (4σ²/n) because there is only one
+    arm instead of two.
+    """
+    if not np.isfinite(n_participants) or n_participants < 1:
+        raise ValueError("n_participants must be a finite integer >= 1.")
+    if int(n_participants) != n_participants:
+        raise ValueError("n_participants must be an integer.")
+    if not np.isfinite(effect_size):
+        raise ValueError("effect_size must be finite.")
+    if not np.isfinite(sigma) or sigma <= 0:
+        raise ValueError("sigma must be a finite value > 0.")
+    if not (0 < alpha < 1):
+        raise ValueError("alpha must be between 0 and 1.")
+    if n_participants < 2:
+        return 0.0
+
+    # Standard error for paired comparison: SE = σ × √(2/n)
+    se = sigma * np.sqrt(2.0 / n_participants)
+
+    # Noncentrality parameter
+    ncp = abs(effect_size) / se
+
+    # Critical value
+    if two_sided:
+        z_crit = stats.norm.ppf(1 - alpha / 2)
+    else:
+        z_crit = stats.norm.ppf(1 - alpha)
+
+    # Power
+    if two_sided:
+        power = stats.norm.sf(z_crit - ncp) + stats.norm.cdf(-z_crit - ncp)
+    else:
+        power = stats.norm.sf(z_crit - ncp)
+
+    return float(power)
+
+
+def sample_size_paired(
+    effect_size: float,
+    sigma: float = 1.0,
+    power: float = 0.80,
+    alpha: float = 0.05,
+    two_sided: bool = True,
+) -> int:
+    """Calculate required sample size for a paired pre/post comparison.
+
+    Determines the number of participants with paired measurements
+    needed to achieve the desired power.
+
+    Parameters
+    ----------
+    effect_size
+        Minimum detectable effect size (must be > 0).
+    sigma
+        Expected within-group standard deviation.
+    power
+        Desired statistical power (default 0.80).
+    alpha
+        Significance level (default 0.05).
+    two_sided
+        If True (default), use two-sided test.
+
+    Returns
+    -------
+    int
+        Required number of paired participants.
+
+    Examples
+    --------
+    >>> n = sample_size_paired(effect_size=0.5, sigma=1.0, power=0.80)
+    >>> print(f"Need {n} paired participants")
+    """
+    if not np.isfinite(effect_size) or effect_size <= 0:
+        raise ValueError("effect_size must be a finite value > 0.")
+    if not np.isfinite(sigma) or sigma <= 0:
+        raise ValueError("sigma must be a finite value > 0.")
+    if not (0 < power < 1):
+        raise ValueError("power must be between 0 and 1.")
+    if not (0 < alpha < 1):
+        raise ValueError("alpha must be between 0 and 1.")
+
+    if two_sided:
+        z_alpha = stats.norm.ppf(1 - alpha / 2)
+    else:
+        z_alpha = stats.norm.ppf(1 - alpha)
+    z_beta = stats.norm.ppf(power)
+
+    # n = 2σ²(z_α + z_β)² / δ²
+    n = 2.0 * sigma**2 * (z_alpha + z_beta) ** 2 / effect_size**2
+
+    return max(int(np.ceil(n)), 2)
+
+
+def sensitivity_paired(
+    n_participants: int,
+    sigma: float = 1.0,
+    power: float = 0.80,
+    alpha: float = 0.05,
+    two_sided: bool = True,
+) -> float:
+    """Calculate the minimum detectable effect for a paired comparison.
+
+    Given a fixed sample size, what is the smallest effect that can
+    be detected with the desired power?
+
+    Parameters
+    ----------
+    n_participants
+        Number of paired participants.
+    sigma
+        Within-group standard deviation.
+    power
+        Desired power.
+    alpha
+        Significance level.
+    two_sided
+        Use two-sided test.
+
+    Returns
+    -------
+    float
+        Minimum detectable effect size.
+
+    Examples
+    --------
+    >>> mde = sensitivity_paired(n_participants=6, power=0.80)
+    >>> print(f"Minimum detectable effect: {mde:.2f} SD")
+    """
+    if n_participants < 2:
+        return np.inf
+
+    if two_sided:
+        z_alpha = stats.norm.ppf(1 - alpha / 2)
+    else:
+        z_alpha = stats.norm.ppf(1 - alpha)
+    z_beta = stats.norm.ppf(power)
+
+    # δ = σ × √(2/n) × (z_α + z_β)
+    se_unit = sigma * np.sqrt(2.0 / n_participants)
+    return float(se_unit * (z_alpha + z_beta))

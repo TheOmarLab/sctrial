@@ -187,7 +187,10 @@ def plot_trial_interaction(
         visits = design.primary_visits()
 
     # extract data
-    obs = adata.obs[[design.participant_col, design.arm_col, design.visit_col]].copy()
+    id_cols = [design.participant_col, design.visit_col]
+    if design.arm_col is not None:
+        id_cols.append(design.arm_col)
+    obs = adata.obs[id_cols].copy()
     if feature in adata.obs.columns:
         obs[feature] = adata.obs[feature].values
     elif feature in adata.var_names:
@@ -200,10 +203,11 @@ def plot_trial_interaction(
 
     # Aggregate to participant-level means to avoid pseudoreplication
     # (Zimmerman et al., 2021; Squair et al., 2021)
+    grp_cols = [design.participant_col, design.visit_col]
+    if design.arm_col is not None:
+        grp_cols.append(design.arm_col)
     obs = (
-        obs.groupby([design.participant_col, design.arm_col, design.visit_col], observed=True)[
-            feature
-        ]
+        obs.groupby(grp_cols, observed=True)[feature]
         .mean()
         .reset_index()
     )
@@ -218,7 +222,7 @@ def plot_trial_interaction(
         data=obs,
         x=design.visit_col,
         y=feature,
-        hue=design.arm_col,
+        hue=design.arm_col,  # None → no hue coloring
         palette=color_palette,
         dodge=True,
         capsize=0.1,
@@ -268,7 +272,10 @@ def plot_parallel_trends(
             "Install with: pip install sctrial[plots]"
         )
 
-    obs = adata.obs[[design.participant_col, design.arm_col, design.visit_col]].copy()
+    id_cols = [design.participant_col, design.visit_col]
+    if design.arm_col is not None:
+        id_cols.append(design.arm_col)
+    obs = adata.obs[id_cols].copy()
     if feature in adata.obs.columns:
         obs[feature] = adata.obs[feature].values
     elif feature in adata.var_names:
@@ -279,11 +286,11 @@ def plot_parallel_trends(
     obs = obs[obs[design.visit_col].isin(list(visits))].copy()
 
     # Aggregate to participant-level means to avoid pseudoreplication
-    # (Zimmerman et al., 2021; Squair et al., 2021)
+    grp_cols = [design.participant_col, design.visit_col]
+    if design.arm_col is not None:
+        grp_cols.append(design.arm_col)
     obs = (
-        obs.groupby([design.participant_col, design.arm_col, design.visit_col], observed=True)[
-            feature
-        ]
+        obs.groupby(grp_cols, observed=True)[feature]
         .mean()
         .reset_index()
     )
@@ -769,9 +776,12 @@ def plot_trial_dotplot(
         ad = ad[ad.obs[design.visit_col].isin(visits)].copy()
 
     # Create combined variable
-    ad.obs["_ct_arm"] = (
-        ad.obs[design.celltype_col].astype(str) + "_" + ad.obs[design.arm_col].astype(str)
-    )
+    if design.arm_col is not None:
+        ad.obs["_ct_arm"] = (
+            ad.obs[design.celltype_col].astype(str) + "_" + ad.obs[design.arm_col].astype(str)
+        )
+    else:
+        ad.obs["_ct_arm"] = ad.obs[design.celltype_col].astype(str)
 
     # Sorting
     cts = sorted(ad.obs[design.celltype_col].unique())
@@ -836,9 +846,10 @@ def plot_abundance_interaction(
     if visits is None:
         visits = design.primary_visits()
 
-    obs = adata.obs[
-        [design.participant_col, design.arm_col, design.visit_col, design.celltype_col]
-    ].copy()
+    id_cols = [design.participant_col, design.visit_col]
+    if design.arm_col is not None:
+        id_cols.append(design.arm_col)
+    obs = adata.obs[id_cols + [design.celltype_col]].copy()
     obs = obs[obs[design.visit_col].isin(list(visits))].copy()
 
     # Calculate proportions per participant-visit, ensuring true zeros are
@@ -846,7 +857,7 @@ def plot_abundance_interaction(
     # not a missing row).
     counts = (
         obs.groupby(
-            [design.participant_col, design.visit_col, design.arm_col, design.celltype_col],
+            id_cols + [design.celltype_col],
             observed=True,
         )
         .size()
@@ -862,17 +873,16 @@ def plot_abundance_interaction(
     counts["prop"] = counts["n"] / counts["total"]
 
     # Filter for specific celltype — use merge to keep participant-visits
-    # that have zero cells of this type (they won't appear in counts after
-    # groupby, so we need to fill them in).
-    pv_arm = (
-        obs.groupby([design.participant_col, design.visit_col, design.arm_col], observed=True)
+    # that have zero cells of this type.
+    pv_frame = (
+        obs.groupby(id_cols, observed=True)
         .size()
         .reset_index(name="_n")
         .drop(columns="_n")
     )
     ct_counts = counts[counts[design.celltype_col] == celltype].copy()
     df_plot = pd.merge(
-        pv_arm, ct_counts, on=[design.participant_col, design.visit_col, design.arm_col], how="left"
+        pv_frame, ct_counts, on=id_cols, how="left"
     )
     df_plot["prop"] = df_plot["prop"].fillna(0.0)
     df_plot[design.visit_col] = pd.Categorical(
@@ -886,7 +896,7 @@ def plot_abundance_interaction(
         data=df_plot,
         x=design.visit_col,
         y="prop",
-        hue=design.arm_col,
+        hue=design.arm_col,  # None → no hue coloring
         dodge=True,
         capsize=0.1,
         ax=ax,
@@ -1002,16 +1012,26 @@ def plot_trial_umap_panel(
     vmin = np.nanpercentile(vals, 1)
     vmax = np.nanpercentile(vals, 99)
 
-    positions = {
-        (design.arm_treated, visits[0]): (0, 1),
-        (design.arm_treated, visits[1]): (0, 2),
-        (design.arm_control, visits[0]): (1, 1),
-        (design.arm_control, visits[1]): (1, 2),
-    }
+    if design.arm_col is not None:
+        positions = {
+            (design.arm_treated, visits[0]): (0, 1),
+            (design.arm_treated, visits[1]): (0, 2),
+            (design.arm_control, visits[0]): (1, 1),
+            (design.arm_control, visits[1]): (1, 2),
+        }
+    else:
+        # Single-arm: one row, two columns (pre/post)
+        positions = {
+            ("All", visits[0]): (0, 1),
+            ("All", visits[1]): (0, 2),
+        }
 
     for (arm, visit), (r, c) in positions.items():
         ax = fig.add_subplot(gs[r, c])
-        sub = ad[(ad.obs[design.arm_col] == arm) & (ad.obs[design.visit_col] == visit)].copy()
+        mask = ad.obs[design.visit_col] == visit
+        if design.arm_col is not None:
+            mask = mask & (ad.obs[design.arm_col] == arm)
+        sub = ad[mask].copy()
 
         if sub.n_obs > 0:
             if sc is not None:

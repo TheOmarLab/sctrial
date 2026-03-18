@@ -7,6 +7,7 @@ import pandas as pd
 from anndata import AnnData
 
 from ..design import TrialDesign
+from .comparisons import between_arm_comparison, within_arm_comparison
 from .did import did_table
 from .pseudobulk import pseudobulk_did
 
@@ -19,10 +20,12 @@ except ImportError:
     gp = None
 
 __all__ = [
+    "run_gsea_cross_sectional",
     "run_gsea_did",
-    "run_gsea_did_multi",
     "run_gsea_did_by_celltype",
+    "run_gsea_did_multi",
     "run_gsea_pseudobulk",
+    "run_gsea_within_arm",
 ]
 
 
@@ -59,6 +62,202 @@ def _rank_did_results(
         raise ValueError(f"Unknown rank_by: {rank_by}")
 
     return valid[["feature", "rank"]].dropna().sort_values("rank", ascending=False)
+
+
+def _rank_between_arm_results(
+    res: pd.DataFrame,
+    rank_by: str,
+    min_units: int,
+) -> pd.DataFrame:
+    """Rank the between-arm comparison results."""
+    valid = res[res["n_units"] >= min_units].copy()
+    if len(valid) == 0:
+        raise ValueError(
+            f"No genes have sufficient data (min_units={min_units}). "
+            f"Try reducing min_units or checking your data."
+        )
+
+    if rank_by == "signed_confidence":
+        valid["rank"] = np.sign(valid["beta_arm"].fillna(0)) * -np.log10(
+            valid["p_arm"].fillna(1) + 1e-12
+        )
+    elif rank_by == "beta":
+        valid["rank"] = valid["beta_arm"].fillna(0)
+    elif rank_by == "tstat":
+        valid["rank"] = valid["beta_arm"].fillna(0) / (
+            valid["se_arm"].fillna(1) + 1e-12
+        )
+    else:
+        raise ValueError(f"Unknown rank_by: {rank_by}")
+
+    return valid[["feature", "rank"]].dropna().sort_values("rank", ascending=False)
+
+
+def _rank_within_arm_results(
+    res: pd.DataFrame,
+    rank_by: str,
+    min_units: int,
+) -> pd.DataFrame:
+    """Rank the within-arm comparison results."""
+    valid = res[res["n_units"] >= min_units].copy()
+    if len(valid) == 0:
+        raise ValueError(
+            f"No genes have sufficient data (min_units={min_units}). "
+            f"Try reducing min_units or checking your data."
+        )
+
+    if rank_by == "signed_confidence":
+        valid["rank"] = np.sign(valid["beta_time"].fillna(0)) * -np.log10(
+            valid["p_time"].fillna(1) + 1e-12
+        )
+    elif rank_by == "beta":
+        valid["rank"] = valid["beta_time"].fillna(0)
+    elif rank_by == "tstat":
+        valid["rank"] = valid["beta_time"].fillna(0) / (
+            valid["se_time"].fillna(1) + 1e-12
+        )
+    else:
+        raise ValueError(f"Unknown rank_by: {rank_by}")
+
+    return valid[["feature", "rank"]].dropna().sort_values("rank", ascending=False)
+
+
+def run_gsea_cross_sectional(
+    adata: AnnData,
+    gene_sets: str | dict[str, list[str]],
+    design: TrialDesign,
+    visit: str,
+    layer: str | None = None,
+    rank_by: str = "tstat",
+    min_units: int = 4,
+    return_obj: bool = False,
+    **kwargs,
+) -> pd.DataFrame | gp.Prerank:
+    """Perform GSEA on cross-sectional data using between-arm comparison.
+
+    Similar to run_gsea_did but for cross-sectional designs (single visit).
+    Uses between_arm_comparison to rank genes by treatment vs control
+    difference at a fixed visit, then runs gseapy.prerank.
+
+    Parameters
+    ----------
+    adata
+        AnnData object containing expression data.
+    gene_sets
+        A library name (e.g. 'KEGG_2021_Human') or a dictionary mapping
+        pathway names to gene lists.
+    design
+        A `TrialDesign` object.
+    visit
+        The visit label to analyze (single timepoint).
+    layer
+        Layer to extract gene expression from.
+    rank_by
+        Metric for ranking genes: 'signed_confidence', 'beta', or 'tstat'.
+    min_units
+        Minimum number of participants required per gene.
+    return_obj
+        Whether to return the full gseapy object.
+    **kwargs
+        Additional parameters passed to gseapy.prerank.
+
+    Returns
+    -------
+    pd.DataFrame or gseapy.Prerank
+        Enrichment results or the gseapy result object.
+    """
+    _ensure_gseapy()
+
+    genes = adata.var_names.tolist()
+    res = between_arm_comparison(
+        adata,
+        visit=visit,
+        features=genes,
+        design=design,
+        layer=layer,
+        aggregate="participant_visit",
+        standardize=True,
+        method="ols",
+    )
+
+    ranking = _rank_between_arm_results(res, rank_by=rank_by, min_units=min_units)
+    pre_res = gp.prerank(rnk=ranking, gene_sets=gene_sets, **kwargs)
+
+    if return_obj:
+        return pre_res
+    if hasattr(pre_res, "res2d"):
+        return pre_res.res2d
+    return pre_res
+
+
+def run_gsea_within_arm(
+    adata: AnnData,
+    gene_sets: str | dict[str, list[str]],
+    design: TrialDesign,
+    arm: str,
+    visits: tuple[str, str],
+    layer: str | None = None,
+    rank_by: str = "tstat",
+    min_units: int = 4,
+    return_obj: bool = False,
+    **kwargs,
+) -> pd.DataFrame | gp.Prerank:
+    """Perform GSEA on longitudinal data using within-arm comparison.
+
+    Similar to run_gsea_did but uses within_arm_comparison instead of DiD.
+    Ranks genes by pre→post change within a single arm, then runs gseapy.prerank.
+
+    Parameters
+    ----------
+    adata
+        AnnData object containing expression data.
+    gene_sets
+        A library name (e.g. 'KEGG_2021_Human') or a dictionary mapping
+        pathway names to gene lists.
+    design
+        A `TrialDesign` object.
+    arm
+        The arm to analyze (e.g., design.arm_treated).
+    visits
+        Tuple of (baseline, followup) visit labels.
+    layer
+        Layer to extract gene expression from.
+    rank_by
+        Metric for ranking genes: 'signed_confidence', 'beta', or 'tstat'.
+    min_units
+        Minimum number of participants required per gene.
+    return_obj
+        Whether to return the full gseapy object.
+    **kwargs
+        Additional parameters passed to gseapy.prerank.
+
+    Returns
+    -------
+    pd.DataFrame or gseapy.Prerank
+        Enrichment results or the gseapy result object.
+    """
+    _ensure_gseapy()
+
+    genes = adata.var_names.tolist()
+    res = within_arm_comparison(
+        adata,
+        arm=arm,
+        features=genes,
+        design=design,
+        visits=visits,
+        layer=layer,
+        aggregate="participant_visit",
+        standardize=True,
+    )
+
+    ranking = _rank_within_arm_results(res, rank_by=rank_by, min_units=min_units)
+    pre_res = gp.prerank(rnk=ranking, gene_sets=gene_sets, **kwargs)
+
+    if return_obj:
+        return pre_res
+    if hasattr(pre_res, "res2d"):
+        return pre_res.res2d
+    return pre_res
 
 
 def run_gsea_did(

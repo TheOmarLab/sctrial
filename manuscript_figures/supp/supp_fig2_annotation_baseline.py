@@ -600,8 +600,13 @@ def _panel_arm_mixing(ax, loaded: dict):
             mix_score = float(obs_sub["_mix"].mean())
 
         # Expected mixing under random assignment: 2*p*(1-p)
-        # Use cell-level arm proportions (reliable, no mapping overhead).
-        arm_counts = pd.Series(arms).value_counts(normalize=True)
+        # Use participant-level arm proportions to match the observed
+        # score which is also participant-weighted.
+        if pid and pid in obs_sub.columns:
+            pid_arms = obs_sub.groupby(pid)[arm].first()
+            arm_counts = pid_arms.value_counts(normalize=True)
+        else:
+            arm_counts = pd.Series(arms).value_counts(normalize=True)
         p = float(arm_counts.iloc[0])
         expected_null = 2.0 * p * (1.0 - p)
 

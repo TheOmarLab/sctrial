@@ -13,6 +13,10 @@ Panels
   E  Cell-type-stratified DiD heatmap (Sade-Feldman).
   F  Rank-order concordance across preprocessing choices (Sade-Feldman).
   G  Leave-one-out stability matrix (max influence, all datasets).
+  H  Simulation: power (TPR) across effect sizes.
+  I  Simulation: type I error calibration across sample sizes.
+  J  Simulation: effect-size bias (estimated vs true beta).
+  K  Simulation: p-value calibration QQ plot.
 
 Non-overlap guardrail: methodological sensitivity only, not biological claims.
 """
@@ -34,12 +38,12 @@ from .._shared import (
     apply_style,
     clear_cache,
     despine,
+    get_aml,
+    get_cart,
     get_sade_feldman,
     get_stephenson,
     get_vaccine,
     harmonize_response,
-    get_aml,
-    get_cart,
     save_panel,
 )
 
@@ -792,11 +796,253 @@ _MDE_DATASET_CFG = {
 
 
 # ======================================================================
+# Simulation panels H–K
+# ======================================================================
+
+# Simulation grid parameters
+_SIM_ITERATIONS = 200
+_SIM_SAMPLE_SIZES = [20, 40, 60]
+_SIM_EFFECT_SIZES = [0.0, 0.2, 0.5, 1.0]
+_SIM_N_GENES = 50
+_SIM_N_SIGNAL = 10  # first 10 genes get the effect
+_SIM_NOISE_SD = 1.0
+_SIM_METHODS = ["sctrial_did", "pseudobulk_ols", "wilcoxon"]
+_SIM_METHOD_LABELS = {
+    "sctrial_did": "sctrial DiD",
+    "pseudobulk_ols": "Pseudobulk OLS",
+    "wilcoxon": "Wilcoxon",
+}
+_SIM_METHOD_COLORS = {
+    "sctrial_did": "#2c3e50",
+    "pseudobulk_ols": "#e67e22",
+    "wilcoxon": "#27ae60",
+}
+
+
+def _run_simulation_grid():
+    """Run full simulation grid. Returns combined results DataFrame."""
+    from sctrial.stats.simulation import run_method_comparison
+
+    all_dfs = []
+    for n in _SIM_SAMPLE_SIZES:
+        for beta in _SIM_EFFECT_SIZES:
+            print(f"    n={n}, beta={beta} ...")
+            effects = {f"gene_{i}": beta for i in range(_SIM_N_SIGNAL)}
+            df = run_method_comparison(
+                n_participants=n,
+                n_genes=_SIM_N_GENES,
+                effect_sizes=effects,
+                noise_sd=_SIM_NOISE_SD,
+                n_iterations=_SIM_ITERATIONS,
+                methods=_SIM_METHODS,
+                seed=42 + n * 100 + int(beta * 10),
+            )
+            df["n_participants"] = n
+            df["target_beta"] = beta
+            df["is_signal"] = df["gene"].isin(
+                [f"gene_{i}" for i in range(_SIM_N_SIGNAL)]
+            )
+            all_dfs.append(df)
+    return pd.concat(all_dfs, ignore_index=True)
+
+
+def _panel_sim_tpr(ax, results):
+    """Panel H: True positive rate at FDR < 0.05 across effect sizes."""
+    from statsmodels.stats.multitest import multipletests
+
+    n_default = _SIM_SAMPLE_SIZES[1]  # middle sample size
+    # Include ALL genes (null + signal) for proper FDR correction scope,
+    # but only for iterations that have target_beta > 0
+    subset = results[
+        (results["target_beta"] > 0) & (results["n_participants"] == n_default)
+    ].copy()
+
+    rows = []
+    for (method, beta, it), grp in subset.groupby(
+        ["method", "target_beta", "iteration"]
+    ):
+        pvals = grp["pvalue"].dropna().values
+        is_sig = grp.loc[grp["pvalue"].notna(), "is_signal"].values
+        if len(pvals) == 0:
+            continue
+        # FDR correction over ALL genes (null + signal) per iteration
+        reject = multipletests(pvals, alpha=0.05, method="fdr_bh")[0]
+        # TPR = fraction of signal genes rejected
+        if is_sig.sum() > 0:
+            rows.append(
+                {"method": method, "target_beta": beta,
+                 "tpr": reject[is_sig].mean()}
+            )
+    tpr_df = pd.DataFrame(rows)
+    tpr_agg = (
+        tpr_df.groupby(["method", "target_beta"])["tpr"]
+        .agg(["mean", "std"])
+        .reset_index()
+    )
+
+    betas = sorted(tpr_agg["target_beta"].unique())
+    x = np.arange(len(betas))
+    width = 0.25
+    for i, method in enumerate(_SIM_METHODS):
+        sub = tpr_agg[tpr_agg["method"] == method]
+        vals, errs = [], []
+        for b in betas:
+            s = sub[sub["target_beta"] == b]
+            vals.append(s["mean"].values[0] if len(s) else 0)
+            errs.append(s["std"].values[0] if len(s) else 0)
+        ax.bar(
+            x + i * width, vals, width, yerr=errs,
+            label=_SIM_METHOD_LABELS[method],
+            color=_SIM_METHOD_COLORS[method], alpha=0.85, capsize=3,
+        )
+
+    ax.set_xticks(x + width)
+    ax.set_xticklabels([fr"$\beta$={b}" for b in betas])
+    ax.set_xlabel(r"True effect size ($\beta$)")
+    ax.set_ylabel("True Positive Rate (FDR < 0.05)")
+    ax.set_ylim(0, 1.05)
+    ax.set_title(f"Power (n={n_default})", fontweight="bold")
+    ax.legend(fontsize=7, loc="upper left")
+    despine(ax)
+
+
+def _panel_sim_fpr(ax, results):
+    """Panel I: Per-test type I error rate under pure null (target_beta=0).
+
+    Uses uncorrected p < 0.05 rejection rate (not BH-adjusted) so that the
+    expected rate under a well-calibrated method is exactly 0.05, producing
+    visible bars near the nominal line.
+    """
+    # Pure null: only iterations where target_beta=0 (all genes are null)
+    pure_null = results[results["target_beta"] == 0.0].copy()
+
+    rows = []
+    for (method, n, it), grp in pure_null.groupby(
+        ["method", "n_participants", "iteration"]
+    ):
+        pvals = grp["pvalue"].dropna().values
+        if len(pvals) == 0:
+            continue
+        # Uncorrected: fraction of raw p < 0.05
+        rows.append(
+            {"method": method, "n_participants": n,
+             "fpr": (pvals < 0.05).mean()}
+        )
+    fpr_df = pd.DataFrame(rows)
+    fpr_agg = (
+        fpr_df.groupby(["method", "n_participants"])["fpr"]
+        .agg(["mean", "std"])
+        .reset_index()
+    )
+
+    ns = sorted(fpr_agg["n_participants"].unique())
+    x = np.arange(len(ns))
+    width = 0.25
+    for i, method in enumerate(_SIM_METHODS):
+        sub = fpr_agg[fpr_agg["method"] == method]
+        vals, errs = [], []
+        for n_val in ns:
+            s = sub[sub["n_participants"] == n_val]
+            vals.append(s["mean"].values[0] if len(s) else 0)
+            errs.append(s["std"].values[0] if len(s) else 0)
+        ax.bar(
+            x + i * width, vals, width, yerr=errs,
+            label=_SIM_METHOD_LABELS[method],
+            color=_SIM_METHOD_COLORS[method], alpha=0.85, capsize=3,
+        )
+
+    ax.axhline(0.05, color="red", linestyle="--", linewidth=0.8, alpha=0.7)
+    ax.set_xticks(x + width)
+    ax.set_xticklabels([f"n={n}" for n in ns])
+    ax.set_xlabel("Sample size (participants)")
+    ax.set_ylabel("Type I Error Rate (uncorrected)")
+    ax.set_ylim(0, max(0.15, fpr_agg["mean"].max() * 1.3))
+    ax.set_title("Type I Error Calibration", fontweight="bold")
+    ax.legend(fontsize=7)
+    despine(ax)
+
+
+def _panel_sim_bias(ax, results):
+    """Panel J: Effect-size bias (estimated vs true beta)."""
+    n_default = _SIM_SAMPLE_SIZES[1]
+    # Only non-zero effects for bias assessment
+    signal = results[
+        results["is_signal"] & (results["target_beta"] > 0)
+        & (results["n_participants"] == n_default)
+    ].copy()
+
+    for method in _SIM_METHODS:
+        sub = signal[signal["method"] == method]
+        agg = (
+            sub.groupby("true_beta")
+            .agg(est_mean=("estimated_beta", "mean"),
+                 est_se=("estimated_beta", "sem"))
+            .reset_index()
+        )
+        ax.errorbar(
+            agg["true_beta"], agg["est_mean"], yerr=1.96 * agg["est_se"],
+            marker="o", label=_SIM_METHOD_LABELS[method],
+            color=_SIM_METHOD_COLORS[method], capsize=3, linewidth=1.5,
+        )
+
+    lims = [0, max(_SIM_EFFECT_SIZES) + 0.3]
+    ax.plot(lims, lims, "k--", linewidth=0.8, alpha=0.5)
+    ax.set_xlabel(r"True $\beta_{\mathrm{DiD}}$")
+    ax.set_ylabel(r"Estimated $\beta$")
+    ax.set_title(f"Effect-Size Bias (n={n_default})", fontweight="bold")
+    ax.legend(fontsize=7)
+    despine(ax)
+
+
+def _panel_sim_coverage(ax, results):
+    """Panel K: P-value QQ plot under pure null (target_beta=0).
+
+    Plots observed vs expected p-value quantiles for each method under
+    the null hypothesis. Well-calibrated methods follow the diagonal;
+    anti-conservative methods curve above it.
+    """
+    n_default = _SIM_SAMPLE_SIZES[1]
+    pure_null = results[
+        (results["target_beta"] == 0.0)
+        & (results["n_participants"] == n_default)
+    ].copy()
+
+    for method in _SIM_METHODS:
+        pvals = pure_null.loc[
+            pure_null["method"] == method, "pvalue"
+        ].dropna().sort_values().values
+        if len(pvals) == 0:
+            continue
+        n = len(pvals)
+        expected = (np.arange(1, n + 1) - 0.5) / n
+        # Convert to -log10 for visual clarity
+        obs_log = -np.log10(pvals + 1e-300)
+        exp_log = -np.log10(expected + 1e-300)
+        ax.scatter(
+            exp_log, obs_log, s=3, alpha=0.3,
+            color=_SIM_METHOD_COLORS[method], rasterized=True,
+        )
+        # Full-opacity handle for legend
+        ax.scatter([], [], s=25, alpha=1.0,
+                   color=_SIM_METHOD_COLORS[method],
+                   label=_SIM_METHOD_LABELS[method])
+
+    # Diagonal reference
+    lim = max(ax.get_xlim()[1], ax.get_ylim()[1])
+    ax.plot([0, lim], [0, lim], "k--", linewidth=0.8, alpha=0.5)
+    ax.set_xlabel(r"Expected $-\log_{10}(p)$")
+    ax.set_ylabel(r"Observed $-\log_{10}(p)$")
+    ax.set_title(f"P-value Calibration QQ (n={n_default})", fontweight="bold")
+    ax.legend(fontsize=7)
+    despine(ax)
+
+
+# ======================================================================
 # Generate
 # ======================================================================
 
 def generate():
-    """Create and save Supplementary Figure 4 panels (A–G).
+    """Create and save Supplementary Figure 4 panels (A–K).
 
     Layout:
       A  Analytical vs bootstrap SE (all 5 datasets, faceted forest plot)
@@ -806,6 +1052,10 @@ def generate():
       E  Cell-type-stratified DiD heatmap (Sade-Feldman)
       F  Rank-order concordance across choices (Sade-Feldman)
       G  Leave-one-out stability matrix (all datasets)
+      H  Simulation: power (TPR) across effect sizes
+      I  Simulation: type I error calibration across sample sizes
+      J  Simulation: effect-size bias (estimated vs true beta)
+      K  Simulation: p-value calibration QQ plot
     """
     print("Supplementary Figure 4: Sensitivity to Modeling and Preprocessing")
     data = _run_sensitivity()
@@ -848,6 +1098,29 @@ def generate():
     _panel_loo_stability(ax)
     fig.tight_layout()
     save_panel(fig, "panel_G", FIGURE_NAME, SUPP_OUTPUT)
+
+    # Panels H–K: Monte Carlo simulation study
+    print("  Running simulation grid (this may take several minutes) ...")
+    sim_results = _run_simulation_grid()
+
+    # Save raw simulation results for reproducibility
+    out_dir = SUPP_OUTPUT / f"{FIGURE_NAME}_panels"
+    out_dir.mkdir(exist_ok=True)
+    sim_results.to_csv(out_dir / "simulation_results.csv", index=False)
+    print(f"    Saved raw results → {out_dir / 'simulation_results.csv'}")
+
+    sim_panels = [
+        ("panel_H", _panel_sim_tpr, (7.0, 5.0)),
+        ("panel_I", _panel_sim_fpr, (7.0, 5.0)),
+        ("panel_J", _panel_sim_bias, (6.0, 5.0)),
+        ("panel_K", _panel_sim_coverage, (7.0, 5.0)),
+    ]
+    for panel_name, fn, size in sim_panels:
+        fig, ax = plt.subplots(figsize=size)
+        fn(ax, sim_results)
+        fig.tight_layout()
+        save_panel(fig, panel_name, FIGURE_NAME, SUPP_OUTPUT)
+    del sim_results
 
     clear_cache()
     gc.collect()

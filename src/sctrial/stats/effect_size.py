@@ -505,7 +505,7 @@ def bootstrap_effect_size_ci(
     group1: np.ndarray,
     group2: np.ndarray,
     method: EffectSizeMethod = "hedges_g",
-    n_boot: int = 1000,
+    n_boot: int = 999,
     alpha: float = 0.05,
     seed: int = 42,
     *,

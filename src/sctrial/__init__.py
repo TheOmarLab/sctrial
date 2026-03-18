@@ -46,11 +46,20 @@ from .stats.bayes import did_table_bayes, prior_predictive_check
 from .stats.comparisons import (
     between_arm_comparison,
     compare_gene_in_celltype,
+    get_within_arm_aggregated_df,
     within_arm_comparison,
+    within_arm_fit_beta,
 )
 from .stats.cv import cv_summary, influence_diagnostics, kfold_cv_did, loo_cv_did
 from .stats.diagnostics import check_did_assumptions
-from .stats.did import DiDConfig, did_fit, did_table, did_table_by_celltype, did_table_parallel
+from .stats.did import (
+    DiDConfig,
+    did_fit,
+    did_table,
+    did_table_by_celltype,
+    did_table_parallel,
+    get_did_aggregated_df,
+)
 from .stats.effect_size import (
     add_effect_sizes_to_did,
     bootstrap_effect_size_ci,
@@ -61,10 +70,12 @@ from .stats.effect_size import (
     hedges_g,
 )
 from .stats.gsea import (
+    run_gsea_cross_sectional,
     run_gsea_did,
     run_gsea_did_by_celltype,
     run_gsea_did_multi,
     run_gsea_pseudobulk,
+    run_gsea_within_arm,
 )
 from .stats.heterogeneity import test_treatment_heterogeneity
 from .stats.mixed_effects import compare_fixed_vs_mixed, did_mixed, did_table_mixed
@@ -78,8 +89,11 @@ from .stats.power import (
     effective_sample_size,
     power_curve,
     power_did,
+    power_paired,
     sample_size_did,
+    sample_size_paired,
     sensitivity_analysis,
+    sensitivity_paired,
 )
 from .stats.pseudobulk import (
     pseudobulk_did,
@@ -88,6 +102,7 @@ from .stats.pseudobulk import (
     pseudobulk_within_arm,
 )
 from .stats.sensitivity import e_value_rr
+from .stats.simulation import run_method_comparison, simulate_did_data
 from .stats.summary import summarize_did_results
 from .stats.survival import hazard_regression_with_features
 from .stats.timeseries import (
@@ -141,11 +156,16 @@ __all__ = [
     "did_table_bayes",
     "prior_predictive_check",
     "abundance_did",
+    "run_gsea_cross_sectional",
     "run_gsea_did",
     "run_gsea_did_multi",
     "run_gsea_did_by_celltype",
     "run_gsea_pseudobulk",
+    "run_gsea_within_arm",
     "within_arm_comparison",
+    "within_arm_fit_beta",
+    "get_within_arm_aggregated_df",
+    "get_did_aggregated_df",
     "between_arm_comparison",
     "summarize_did_results",
     "pseudobulk_expression",
@@ -166,7 +186,9 @@ __all__ = [
     "bootstrap_effect_size_ci",
     # Power analysis
     "power_did",
+    "power_paired",
     "sample_size_did",
+    "sample_size_paired",
     "power_curve",
     "design_effect",
     "effective_sample_size",
@@ -216,9 +238,13 @@ __all__ = [
     # Sensitivity
     "e_value_rr",
     "sensitivity_analysis",
+    "sensitivity_paired",
     # Survival
     "hazard_regression_with_features",
     "TrialDataValidator",
+    # Simulation
+    "simulate_did_data",
+    "run_method_comparison",
     # Convenience
     "quick_did",
     "auto_detect_design",
@@ -227,4 +253,4 @@ __all__ = [
 try:
     __version__ = _pkg_version("sctrial")
 except (PackageNotFoundError, ValueError):  # pragma: no cover
-    __version__ = "0.2.1.dev1"
+    __version__ = "0.3.0"

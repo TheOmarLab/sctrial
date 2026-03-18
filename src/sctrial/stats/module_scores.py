@@ -93,14 +93,18 @@ def module_score_pseudobulk(
 
     df = df.dropna(subset=["pool"])
 
-    # Normalize arm labels to avoid whitespace/case mismatches downstream
-    df[design.arm_col] = df[design.arm_col].astype(str).str.strip()
+    # Build column lists conditionally — arm_col may be None for single-arm
+    id_cols = [design.participant_col, design.visit_col]
+    if design.arm_col is not None:
+        df[design.arm_col] = df[design.arm_col].astype(str).str.strip()
+        id_cols.append(design.arm_col)
 
-    # Long format: participant × visit × pool × module
+    # Long format: participant × visit × [arm] × pool × module
+    melt_id = id_cols + ["pool"]
     long_df = df[
-        [design.participant_col, design.visit_col, design.arm_col, "pool"] + list(module_cols)
+        melt_id + list(module_cols)
     ].melt(
-        id_vars=[design.participant_col, design.visit_col, design.arm_col, "pool"],
+        id_vars=melt_id,
         value_vars=list(module_cols),
         var_name="module",
         value_name="module_score",
@@ -110,7 +114,7 @@ def module_score_pseudobulk(
     # Pseudobulk aggregation
     pb = (
         long_df.groupby(
-            [design.participant_col, design.visit_col, design.arm_col, "pool", "module"],
+            melt_id + ["module"],
             observed=True,
         )["module_score"]
         .mean()
@@ -120,7 +124,7 @@ def module_score_pseudobulk(
 
     counts = (
         df.groupby(
-            [design.participant_col, design.visit_col, design.arm_col, "pool"], observed=True
+            id_cols + ["pool"], observed=True
         )
         .size()
         .reset_index(name="n_cells")
@@ -128,7 +132,7 @@ def module_score_pseudobulk(
 
     pb = pb.merge(
         counts,
-        on=[design.participant_col, design.visit_col, design.arm_col, "pool"],
+        on=id_cols + ["pool"],
         how="left",
     )
     pb = pb[pb["n_cells"] >= min_cells_per_group].copy()

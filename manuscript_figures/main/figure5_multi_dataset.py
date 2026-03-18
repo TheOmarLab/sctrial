@@ -1,5 +1,5 @@
 """
-Figure 3 — Multi-Dataset Generalization.
+Figure 5 — Multi-Dataset Generalization.
 
 Six panels demonstrating that sctrial analyses generalise across
 heterogeneous study designs and disease contexts.
@@ -64,7 +64,7 @@ def effect_size_ci(g: float, n1: int, n2: int, alpha: float = 0.05):
 # Constants
 # ---------------------------------------------------------------------------
 
-FIG_NAME = "Figure3_multi_dataset"
+FIG_NAME = "Figure5_multi_dataset"
 
 _DATASET_COLORS = {
     "COVID-19":  "#3498DB",
@@ -810,9 +810,9 @@ def panel_f_heatmap(ax, data: dict[str, Any]) -> None:
 # ── composite figure ──────────────────────────────────────────────────────
 
 def generate(*, save: bool = True) -> None:
-    """Create and save Figure 3 individual panels."""
+    """Create and save Figure 5 individual panels."""
     print("=" * 60)
-    print("Figure 3: Multi-Dataset Generalization")
+    print("Figure 5: Multi-Dataset Generalization")
     print("=" * 60)
 
     data = _prepare_data()

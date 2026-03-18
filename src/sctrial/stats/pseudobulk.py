@@ -181,8 +181,8 @@ def pseudobulk_export(
     AnnData
         AnnData with pseudobulk expression in .X and group metadata in .obs.
     """
-    groupby = [design.participant_col, design.visit_col]
-    if design.arm_col in adata.obs.columns:
+    groupby: list[str] = [design.participant_col, design.visit_col]
+    if design.arm_col is not None and design.arm_col in adata.obs.columns:
         groupby.append(design.arm_col)
     if celltype_col is not None:
         groupby.append(celltype_col)
@@ -272,7 +272,9 @@ def pseudobulk_did(
     if not genes:
         return pd.DataFrame()
 
-    groupby = [design.participant_col, design.visit_col, design.arm_col]
+    if design.arm_col is None:
+        raise ValueError("pseudobulk_did requires a two-arm design (arm_col must not be None)")
+    groupby: list[str] = [design.participant_col, design.visit_col, design.arm_col]
     if celltype_col is not None:
         groupby.append(celltype_col)
 

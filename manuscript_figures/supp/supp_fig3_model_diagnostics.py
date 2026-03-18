@@ -18,7 +18,7 @@ Panels:
      inference comparison across all 5 datasets (β scatter, −log10(p),
      SE bars).
   J  Runtime scaling across datasets (Cleveland dot plot; moved from
-     Figure 4 panel C).
+     Figure 3 panel C).
 
 Non-overlap guardrail: no sensitivity analysis (→ SF4), no cross-dataset
 biological concordance (→ SF5), no heterogeneity (→ SF6).
@@ -953,8 +953,15 @@ def _participant_paired_delta(expr_df, features, pid_col, visit_col, visits):
             continue
         mean_d = d.mean()
         se_d = d.std(ddof=1) / np.sqrt(len(d))
-        t_stat = mean_d / se_d if se_d > 0 else 0.0
-        pval = 2 * (1 - stats.t.cdf(abs(t_stat), df=len(d) - 1))
+        if se_d > 0:
+            t_stat = mean_d / se_d
+            pval = 2 * (1 - stats.t.cdf(abs(t_stat), df=len(d) - 1))
+        elif mean_d == 0:
+            # No variance, no effect — undefined test
+            pval = np.nan
+        else:
+            # No variance but nonzero mean — infinitely significant
+            pval = 0.0
         rows.append({"feature": feat, "beta": mean_d, "pval": pval,
                      "se": se_d})
     return pd.DataFrame(rows)
@@ -1313,17 +1320,17 @@ def generate():
     if pseudo_idx == 0:
         print("  Pseudoreplication: no datasets had valid cell+participant stats.")
 
-    # J: Runtime scaling (Cleveland dot plot, moved from Figure 4)
+    # J: Runtime scaling (Cleveland dot plot, moved from Figure 3)
     try:
-        from ..main.figure4_robustness_benchmarking import (
-            _panel_c as _fig4_panel_c,
+        from ..main.figure3_robustness_benchmarking import (
+            _panel_c as _fig3_panel_c,
         )
-        from ..main.figure4_robustness_benchmarking import (
+        from ..main.figure3_robustness_benchmarking import (
             _prepare_scalability_data,
         )
         scale_data = _prepare_scalability_data()
         fig_rt, ax_rt = plt.subplots(figsize=(8, 5.5))
-        _fig4_panel_c(ax_rt, {"scale_data": scale_data})
+        _fig3_panel_c(ax_rt, {"scale_data": scale_data})
         fig_rt.tight_layout()
         save_panel(fig_rt, "panel_J_runtime_scaling", FIGURE_NAME, SUPP_OUTPUT)
     except Exception as exc:

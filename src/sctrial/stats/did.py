@@ -660,6 +660,65 @@ def did_table(
     return res.reset_index(drop=True)
 
 
+def get_did_aggregated_df(
+    adata: AnnData,
+    features: Sequence[str],
+    design: TrialDesign,
+    visits: tuple[str, str],
+    *,
+    layer: str | None = None,
+    exclude_crossovers: bool = True,
+    celltype: str | None = None,
+    aggregate: AggregateMode = "participant_visit",
+    agg: AggregateFunc = "mean",
+    covariates: list[str] | None = None,
+) -> tuple[pd.DataFrame, str, str, str]:
+    """Build aggregated DataFrame for DiD, for use in permutation tests.
+
+    Returns (df_use, unit, time, arm_bin) where df_use has one row per
+    participant-visit with feature values and arm_bin. Permute arm_bin
+    at participant level and call did_fit for each permutation.
+    Parameters
+    ----------
+    adata
+        AnnData object.
+    features
+        List of genes or module scores.
+    design
+        A `TrialDesign` object.
+    visits
+        Tuple of (pre, post) visit labels.
+    layer
+        Layer to use for gene expression.
+    exclude_crossovers
+        Whether to drop crossover cells if crossover_col is set.
+    celltype
+        The cell type to analyze.
+    aggregate
+        Aggregation mode (see `did_table`).
+    agg
+        Aggregation function.
+    covariates
+        Optional covariate columns to include as fixed effects. Non-numeric
+        covariates must be constant within participant-visit.
+
+    Returns
+    -------
+    tuple[pd.DataFrame, str, str, str]
+        Tuple containing the aggregated DataFrame, the unit column name, the time column name, and the arm_bin column name.
+    """
+    ad, obs = _prepare_did_obs(adata, design, visits, celltype, exclude_crossovers)
+    cols = [design.participant_col, design.visit_col, design.arm_col, "visit_num", "arm_bin"]
+    if covariates:
+        cols.extend(covariates)
+    df = obs[cols].copy()
+    df, final_features = _add_feature_columns(df, ad, features, layer)
+    df_use, unit, time, arm_bin = _aggregate_for_did(
+        df, final_features, design, visits, aggregate, agg, covariates
+    )
+    return df_use, unit, time, arm_bin
+
+
 def did_table_parallel(
     adata: AnnData,
     features: Sequence[str],

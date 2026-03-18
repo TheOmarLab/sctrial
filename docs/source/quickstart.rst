@@ -10,7 +10,7 @@ Minimal end‑to‑end example
 
    import sctrial as st
 
-   # 1. Define Design
+   # 1. Define Design (two-arm trial)
    design = st.TrialDesign(
        participant_col="pid",
        visit_col="visit",
@@ -19,6 +19,14 @@ Minimal end‑to‑end example
        arm_control="Control",
        celltype_col="cell_type",
    )
+
+   # For single-arm studies (e.g. vaccination, single-agent therapy):
+   # design = st.TrialDesign(
+   #     participant_col="pid",
+   #     visit_col="visit",
+   #     arm_col=None,  # No arm column needed
+   #     celltype_col="cell_type",
+   # )
 
    # 2. Preprocess (add log1p‑CPM layer)
    adata = st.add_log1p_cpm_layer(adata, counts_layer="counts")

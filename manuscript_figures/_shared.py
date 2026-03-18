@@ -30,11 +30,13 @@ PROJECT_DIR = SCRIPT_DIR.parent.resolve()               # sc_trial_inference/
 REPO_ROOT = PROJECT_DIR.parent.parent.resolve()         # sc-trialdiff/  (up from sctrial/)
 
 # Figures are saved to sc-trialdiff/manuscript/{main,supp}/
+# GSEA results cached at sc-trialdiff/manuscript/GSEA/{dataset}/{library}/
 MANUSCRIPT_DIR = REPO_ROOT / "manuscript"
 MAIN_OUTPUT = MANUSCRIPT_DIR / "main"
 SUPP_OUTPUT = MANUSCRIPT_DIR / "supp"
+GSEA_OUTPUT = MANUSCRIPT_DIR / "GSEA"
 
-for _d in (MAIN_OUTPUT, SUPP_OUTPUT):
+for _d in (MAIN_OUTPUT, SUPP_OUTPUT, GSEA_OUTPUT):
     _d.mkdir(parents=True, exist_ok=True)
 
 # ---------------------------------------------------------------------------
@@ -120,9 +122,15 @@ try:
         load_aml,
         load_cart,
         loo_cv_did,
+        run_gsea_cross_sectional,
         run_gsea_did,
+        run_gsea_within_arm,
         verify_paired_participants,
         within_arm_comparison,
+        within_arm_fit_beta,
+        get_within_arm_aggregated_df,
+        did_fit,
+        get_did_aggregated_df,
     )
     SCTRIAL_AVAILABLE = True
 except ImportError:
@@ -554,3 +562,277 @@ def dfo_sort_key(label: str) -> tuple[int, int]:
     if m:
         return (int(m.group(1)), int(m.group(1)) + 1000)
     return (10_000, 10_000)
+
+
+# ---------------------------------------------------------------------------
+# GSEA helpers — load cached results or run fresh
+# ---------------------------------------------------------------------------
+
+GSEA_LIBRARIES: list[tuple[str, str]] = [
+    ("MSigDB_Hallmark_2020", "Hallmark"),
+    ("KEGG_2021_Human", "KEGG"),
+    ("Reactome_2022", "Reactome"),
+    ("GO_Biological_Process_2023", "GO_BP"),
+    ("WikiPathways_2024_Human", "WikiPathways"),
+]
+
+
+def _gsea_cache_path(dataset: str, library_short: str) -> Path:
+    """Return ``manuscript/GSEA/{dataset}/{library}/results.csv``."""
+    return GSEA_OUTPUT / dataset / library_short / "results.csv"
+
+
+def load_or_run_gsea_did(
+    adata,
+    design,
+    visits: tuple[str, str],
+    layer: str | None,
+    dataset_name: str,
+    *,
+    force: bool = False,
+) -> object:
+    """Load cached GSEA results for *dataset_name* or run fresh.
+
+    Results are saved per-library under ``manuscript/GSEA/{dataset}/{lib}/``.
+    If cached CSV files exist and *force* is False, they are loaded directly.
+    Otherwise ``run_gsea_did`` is called for each library and results are saved.
+
+    Returns a combined DataFrame (all libraries) sorted by |NES|, or None.
+    """
+    import pandas as pd
+
+    try:
+        import gseapy as gp  # noqa: F401
+        from sctrial import run_gsea_did as _run_gsea
+    except ImportError:
+        print(f"    {dataset_name}: sctrial/gseapy not available — skipping GSEA")
+        return None
+
+    frames: list[pd.DataFrame] = []
+    for lib_name, short_name in GSEA_LIBRARIES:
+        cache_csv = _gsea_cache_path(dataset_name, short_name)
+
+        # Try loading from cache
+        if not force and cache_csv.exists():
+            df = pd.read_csv(cache_csv)
+            if len(df) > 0:
+                df["Library"] = short_name
+                frames.append(df)
+                print(f"    {dataset_name}/{short_name}: {len(df)} pathways (cached)")
+                continue
+
+        # Run fresh
+        outdir = str(cache_csv.parent)
+        os.makedirs(outdir, exist_ok=True)
+        try:
+            res = _run_gsea(
+                adata, gene_sets=lib_name, design=design, visits=visits,
+                layer=layer, rank_by="tstat",
+                min_size=10, max_size=500, permutation_num=1000,
+                outdir=outdir, no_plot=True,
+            )
+            if isinstance(res, pd.DataFrame) and len(res) > 0:
+                res["Library"] = short_name
+                res.to_csv(cache_csv, index=False)
+                frames.append(res)
+                print(f"    {dataset_name}/{short_name}: {len(res)} pathways")
+            else:
+                print(f"    {dataset_name}/{short_name}: no results")
+        except Exception as exc:
+            print(f"    {dataset_name}/{short_name}: {exc}")
+
+    if not frames:
+        return None
+    combined = pd.concat(frames, ignore_index=True)
+    if "NES" in combined.columns:
+        combined = combined.sort_values("NES", key=abs, ascending=False)
+    return combined
+
+
+def load_or_run_gsea_cross_sectional(
+    adata,
+    design,
+    visit: str,
+    layer: str | None,
+    dataset_name: str,
+    *,
+    force: bool = False,
+) -> object:
+    """Load cached GSEA results for cross-sectional design or run fresh.
+
+    Uses run_gsea_cross_sectional (between_arm_comparison) for single-visit
+    designs. Results are saved per-library under manuscript/GSEA/{dataset}/{lib}/.
+
+    Returns a combined DataFrame (all libraries) sorted by |NES|, or None.
+    """
+    import pandas as pd
+
+    try:
+        import gseapy as gp  # noqa: F401
+        from sctrial import run_gsea_cross_sectional as _run_gsea
+    except ImportError:
+        print(f"    {dataset_name}: sctrial/gseapy not available — skipping GSEA")
+        return None
+
+    frames: list[pd.DataFrame] = []
+    for lib_name, short_name in GSEA_LIBRARIES:
+        cache_csv = _gsea_cache_path(dataset_name, short_name)
+
+        if not force and cache_csv.exists():
+            df = pd.read_csv(cache_csv)
+            if len(df) > 0:
+                df["Library"] = short_name
+                frames.append(df)
+                print(f"    {dataset_name}/{short_name}: {len(df)} pathways (cached)")
+                continue
+
+        outdir = str(cache_csv.parent)
+        os.makedirs(outdir, exist_ok=True)
+        try:
+            res = _run_gsea(
+                adata, gene_sets=lib_name, design=design, visit=visit,
+                layer=layer, rank_by="tstat",
+                min_size=10, max_size=500, permutation_num=1000,
+                outdir=outdir, no_plot=True,
+            )
+            if isinstance(res, pd.DataFrame) and len(res) > 0:
+                res["Library"] = short_name
+                res.to_csv(cache_csv, index=False)
+                frames.append(res)
+                print(f"    {dataset_name}/{short_name}: {len(res)} pathways")
+            else:
+                print(f"    {dataset_name}/{short_name}: no results")
+        except Exception as exc:
+            print(f"    {dataset_name}/{short_name}: {exc}")
+
+    if not frames:
+        return None
+    combined = pd.concat(frames, ignore_index=True)
+    if "NES" in combined.columns:
+        combined = combined.sort_values("NES", key=abs, ascending=False)
+    return combined
+
+
+def load_or_run_gsea_within_arm(
+    adata,
+    design,
+    arm: str,
+    visits: tuple[str, str],
+    layer: str | None,
+    dataset_name: str,
+    *,
+    force: bool = False,
+) -> object:
+    """Load cached GSEA results for within-arm design or run fresh.
+
+    Uses run_gsea_within_arm (within_arm_comparison) for longitudinal
+    single-arm designs. Results are saved per-library under
+    manuscript/GSEA/{dataset}/{lib}/.
+
+    Returns a combined DataFrame (all libraries) sorted by |NES|, or None.
+    """
+    import pandas as pd
+
+    try:
+        import gseapy as gp  # noqa: F401
+        from sctrial import run_gsea_within_arm as _run_gsea
+    except ImportError:
+        print(f"    {dataset_name}: sctrial/gseapy not available — skipping GSEA")
+        return None
+
+    frames: list[pd.DataFrame] = []
+    for lib_name, short_name in GSEA_LIBRARIES:
+        cache_csv = _gsea_cache_path(dataset_name, short_name)
+
+        if not force and cache_csv.exists():
+            df = pd.read_csv(cache_csv)
+            if len(df) > 0:
+                df["Library"] = short_name
+                frames.append(df)
+                print(f"    {dataset_name}/{short_name}: {len(df)} pathways (cached)")
+                continue
+
+        outdir = str(cache_csv.parent)
+        os.makedirs(outdir, exist_ok=True)
+        try:
+            res = _run_gsea(
+                adata, gene_sets=lib_name, design=design, arm=arm, visits=visits,
+                layer=layer, rank_by="tstat",
+                min_size=10, max_size=500, permutation_num=1000,
+                outdir=outdir, no_plot=True,
+            )
+            if isinstance(res, pd.DataFrame) and len(res) > 0:
+                res["Library"] = short_name
+                res.to_csv(cache_csv, index=False)
+                frames.append(res)
+                print(f"    {dataset_name}/{short_name}: {len(res)} pathways")
+            else:
+                print(f"    {dataset_name}/{short_name}: no results")
+        except Exception as exc:
+            print(f"    {dataset_name}/{short_name}: {exc}")
+
+    if not frames:
+        return None
+    combined = pd.concat(frames, ignore_index=True)
+    if "NES" in combined.columns:
+        combined = combined.sort_values("NES", key=abs, ascending=False)
+    return combined
+
+
+def load_or_run_gsea_prerank(
+    ranking,
+    dataset_name: str,
+    *,
+    force: bool = False,
+) -> object:
+    """Load cached GSEA results or run ``gseapy.prerank`` from a ranking.
+
+    Used for cross-sectional designs (e.g. Stephenson) where ``run_gsea_did``
+    is not applicable.  *ranking* is a pre-computed gene-level statistic
+    (e.g. Welch t-stat) indexed by gene name.
+    """
+    import pandas as pd
+
+    try:
+        import gseapy as gp
+    except ImportError:
+        print(f"    {dataset_name}: gseapy not available — skipping GSEA")
+        return None
+
+    frames: list[pd.DataFrame] = []
+    for lib_name, short_name in GSEA_LIBRARIES:
+        cache_csv = _gsea_cache_path(dataset_name, short_name)
+
+        if not force and cache_csv.exists():
+            df = pd.read_csv(cache_csv)
+            if len(df) > 0:
+                df["Library"] = short_name
+                frames.append(df)
+                print(f"    {dataset_name}/{short_name}: {len(df)} pathways (cached)")
+                continue
+
+        outdir = str(cache_csv.parent)
+        os.makedirs(outdir, exist_ok=True)
+        try:
+            pre_res = gp.prerank(
+                rnk=ranking, gene_sets=lib_name,
+                min_size=10, max_size=500, permutation_num=1000,
+                outdir=outdir, no_plot=True,
+            )
+            res_df = pre_res.res2d if hasattr(pre_res, "res2d") else pre_res
+            if isinstance(res_df, pd.DataFrame) and len(res_df) > 0:
+                res_df["Library"] = short_name
+                res_df.to_csv(cache_csv, index=False)
+                frames.append(res_df)
+                print(f"    {dataset_name}/{short_name}: {len(res_df)} pathways")
+            else:
+                print(f"    {dataset_name}/{short_name}: no results")
+        except Exception as exc:
+            print(f"    {dataset_name}/{short_name}: {exc}")
+
+    if not frames:
+        return None
+    combined = pd.concat(frames, ignore_index=True)
+    if "NES" in combined.columns:
+        combined = combined.sort_values("NES", key=abs, ascending=False)
+    return combined

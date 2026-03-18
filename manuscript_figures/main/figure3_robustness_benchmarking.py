@@ -1,5 +1,5 @@
 """
-Figure 4 — Statistical Robustness & Method Benchmarking
+Figure 3 — Statistical Robustness & Method Benchmarking
 ========================================================
 
 Eight-panel figure combining bootstrap validation, leave-one-out
@@ -55,11 +55,12 @@ from .._shared import (
     save_panel,
     score_signatures,
     sig_display,
+    within_arm_comparison,
 )
 
 warnings.filterwarnings("ignore")
 
-FIGURE_NAME = "Figure4_robustness_benchmarking"
+FIGURE_NAME = "Figure3_robustness_benchmarking"
 VISITS: tuple[str, str] = ("Pre", "Post")
 N_BOOT = 999
 
@@ -77,7 +78,7 @@ N_BENCHMARK_REPLICATES = 5
 N_POWER_ITERATIONS = 200
 POWER_ALPHA = 0.05
 RNG_SEED = 42
-_CODE_VERSION = "v12"
+_CODE_VERSION = "v14"
 
 DatasetInfo = tuple[str, object, object, tuple, list[str], str]
 
@@ -117,6 +118,11 @@ DATASET_COLORS = {
     "AML":          COLORS["success"],
     "CAR-T":        COLORS["neutral"],
     "COVID-19":     COLORS["highlight"],
+}
+
+# Display names for figure panels (internal keys unchanged)
+_DATASET_DISPLAY_NAMES: dict[str, str] = {
+    "Sade-Feldman": "Melanoma",
 }
 
 
@@ -255,13 +261,10 @@ def _load_all_datasets() -> list[DatasetInfo]:
     try:
         vax = get_vaccine()
         vax, vax_sigs = score_signatures(vax, layer="counts")
-        vax.obs["arm_dummy"] = "Vaccinated"
         vax_design = TrialDesign(
             participant_col="participant_id",
             visit_col="visit",
-            arm_col="arm_dummy",
-            arm_treated="Vaccinated",
-            arm_control="Vaccinated",
+            arm_col=None,
         )
         datasets.append(
             ("Vaccine", vax, vax_design, ("Pre", "Post"), vax_sigs, "paired")
@@ -272,15 +275,12 @@ def _load_all_datasets() -> list[DatasetInfo]:
     try:
         aml = get_aml()
         aml, aml_sigs = score_signatures(aml, layer="counts")
-        aml.obs["arm_dummy"] = "Treatment"
         pid_col = ("participant_id" if "participant_id" in aml.obs.columns
                    else "patient_id")
         aml_design = TrialDesign(
             participant_col=pid_col,
             visit_col="visit",
-            arm_col="arm_dummy",
-            arm_treated="Treatment",
-            arm_control="Treatment",
+            arm_col=None,
         )
         datasets.append(
             ("AML", aml, aml_design, ("Pre", "Post"), aml_sigs, "paired")
@@ -291,15 +291,12 @@ def _load_all_datasets() -> list[DatasetInfo]:
     try:
         cart = get_cart()
         cart, cart_sigs = score_signatures(cart, layer="counts")
-        cart.obs["arm_dummy"] = "CAR-T"
         pid_col = ("participant_id" if "participant_id" in cart.obs.columns
                    else "patient_id")
         cart_design = TrialDesign(
             participant_col=pid_col,
             visit_col="visit",
-            arm_col="arm_dummy",
-            arm_treated="CAR-T",
-            arm_control="CAR-T",
+            arm_col=None,
         )
         datasets.append(
             ("CAR-T", cart, cart_design, ("Pre", "Post"), cart_sigs, "paired")
@@ -382,6 +379,16 @@ def _run_scalability_benchmark(
                         aggregate="participant_visit",
                         standardize=True,
                     )
+                elif dtype == "paired":
+                    within_arm_comparison(
+                        adata,
+                        arm="All",
+                        features=sigs,
+                        design=design,
+                        visits=visits,
+                        aggregate="participant_visit",
+                        standardize=True,
+                    )
                 else:
                     did_table(
                         adata,
@@ -425,19 +432,6 @@ def _run_scalability_benchmark(
 # Power analysis
 # ======================================================================
 
-def _select_prespecified_feature(
-    sigs: list[str],
-    dataset_name: str = "",
-) -> str | None:
-    """Return the biologically motivated primary endpoint for *dataset_name*."""
-    primary = _DATASET_PRIMARY_ENDPOINT.get(dataset_name)
-    if primary and primary in sigs:
-        return primary
-    for ep in _PRESPECIFIED_ENDPOINTS:
-        if ep in sigs:
-            return ep
-    return None
-
 
 def _stratified_subsample_pids(
     adata,
@@ -445,12 +439,12 @@ def _stratified_subsample_pids(
     dtype: str,
     n_sub: int,
     rng: np.random.Generator,
-) -> np.ndarray:
+) -> np.ndarray | None:
     """Subsample participants preserving arm/visit balance where possible."""
     pid_col = design.participant_col
     all_pids = adata.obs[pid_col].unique()
 
-    if dtype in ("two_arm_did", "cross_sectional") and n_sub >= 4:
+    if dtype in ("two_arm_did", "cross_sectional") and n_sub >= 6:
         arm_pids: dict[str, np.ndarray] = {}
         for arm in [design.arm_treated, design.arm_control]:
             arm_pids[arm] = adata.obs.loc[
@@ -459,13 +453,17 @@ def _stratified_subsample_pids(
         n_t = len(arm_pids[design.arm_treated])
         n_c = len(arm_pids[design.arm_control])
         frac_t = n_t / (n_t + n_c)
-        n_sub_t = max(2, round(n_sub * frac_t))
+        # Require ≥3 per arm to avoid unstable 2-vs-2 estimates
+        n_sub_t = max(3, round(n_sub * frac_t))
         n_sub_c = n_sub - n_sub_t
-        if n_sub_c < 2:
-            n_sub_c = 2
+        if n_sub_c < 3:
+            n_sub_c = 3
             n_sub_t = n_sub - n_sub_c
         n_sub_t = min(n_sub_t, n_t)
         n_sub_c = min(n_sub_c, n_c)
+        # Strictly enforce ≥3 per arm; return None if impossible
+        if n_sub_t < 3 or n_sub_c < 3:
+            return None
         sampled = np.concatenate([
             rng.choice(arm_pids[design.arm_treated], n_sub_t, replace=False),
             rng.choice(arm_pids[design.arm_control], n_sub_c, replace=False),
@@ -494,23 +492,57 @@ def _compute_subsampling_power(
 
     for name, adata, design, visits, sigs, dtype in datasets:
         pid_col = design.participant_col
-        all_pids = adata.obs[pid_col].unique()
-        n_total = len(all_pids)
-        if n_total < 6:
-            print(f"    {name}: too few participants ({n_total}), skipping")
+        vis_col = design.visit_col
+
+        # Restrict to participants who have BOTH visits (paired/analyzable).
+        # For cross-sectional, keep all participants with at least one visit.
+        if dtype in ("paired", "two_arm_did"):
+            pid_visits = adata.obs.groupby(pid_col, observed=True)[vis_col].apply(set)
+            analyzable_pids = pid_visits[
+                pid_visits.apply(lambda s: set(visits).issubset(s))
+            ].index.tolist()
+        else:
+            analyzable_pids = adata.obs[pid_col].unique().tolist()
+
+        n_total = len(analyzable_pids)
+        if n_total < 4:
+            print(f"    {name}: too few analyzable participants ({n_total}), skipping")
             continue
 
-        feat = _select_prespecified_feature(sigs, dataset_name=name)
+        # Subset adata to analyzable participants only
+        adata = adata[adata.obs[pid_col].isin(analyzable_pids)].copy()
+
+        # Use pre-declared primary endpoint per dataset (a priori, not
+        # data-adaptive) to avoid optimistic bias in power estimation.
+        feat = _DATASET_PRIMARY_ENDPOINT.get(name)
+        if feat and feat in sigs and feat in adata.obs.columns:
+            pass  # use pre-declared
+        else:
+            # Fallback: first available pre-specified endpoint
+            feat = next((ep for ep in _PRESPECIFIED_ENDPOINTS
+                         if ep in sigs and ep in adata.obs.columns), None)
         if feat is None:
-            print(f"    {name}: no pre-specified endpoint available, skipping")
+            print(f"    {name}: no valid endpoint available, skipping")
             continue
+        print(f"      Primary endpoint: {feat}")
 
+
+        # Features are module scores in .obs, not genes in .X.
+        # Slim adata to 1 gene to free ~99.99% of .X memory.
+        adata = adata[:, adata.var_names[:1]].copy()
+        gc.collect()
+
+        # Start at 6 for two-arm (≥3 per arm), 4 for others.
+        # Exclude n_total: full-cohort without-replacement is deterministic
+        # (always the same result), creating artificial 0/1 endpoints.
+        min_sub = 6 if dtype in ("two_arm_did", "cross_sectional") else 4
+        max_sub = n_total - 1 if n_total > min_sub else n_total
         sub_sizes = sorted(set(
-            [4, 6, 8]
-            + list(range(5, min(n_total, 30) + 1, 5))
-            + [n_total]
+            [min_sub, min_sub + 2, min_sub + 4]
+            + list(range(min_sub, min(max_sub, 30) + 1, 5))
+            + [max_sub]
         ))
-        sub_sizes = [s for s in sub_sizes if s <= n_total]
+        sub_sizes = [s for s in sub_sizes if min_sub <= s <= max_sub]
 
         if adata.n_obs > 100_000:
             n_iter = 100
@@ -530,6 +562,9 @@ def _compute_subsampling_power(
                 sampled_pids = _stratified_subsample_pids(
                     adata, design, dtype, n_sub, rng,
                 )
+                if sampled_pids is None:
+                    n_fail += 1
+                    continue
                 mask = adata.obs[pid_col].isin(sampled_pids)
                 sub_adata = adata[mask]
 
@@ -545,6 +580,16 @@ def _compute_subsampling_power(
                                 aggregate="participant_visit",
                                 standardize=True,
                             )
+                        elif dtype == "paired":
+                            res = within_arm_comparison(
+                                sub_adata,
+                                arm="All",
+                                features=[feat],
+                                design=design,
+                                visits=visits,
+                                aggregate="participant_visit",
+                                standardize=True,
+                            )
                         else:
                             res = did_table(
                                 sub_adata,
@@ -555,7 +600,7 @@ def _compute_subsampling_power(
                                 standardize=True,
                             )
                         p_col = next(
-                            (c for c in ("p_DiD", "p_arm", "p_value")
+                            (c for c in ("p_time", "p_DiD", "p_arm", "p_value")
                              if c in res.columns),
                             None,
                         )
@@ -569,7 +614,9 @@ def _compute_subsampling_power(
                         n_fail += 1
 
             gc.collect()
-            power = n_sig / n_valid if n_valid > 0 else np.nan
+            # Use n_iter (total attempts) as denominator so fit failures
+            # count as non-significant — avoids inflating power.
+            power = n_sig / n_iter
             records.append({
                 "n_participants": n_sub,
                 "dataset": name,
@@ -578,6 +625,7 @@ def _compute_subsampling_power(
                 "n_failures": n_fail,
                 "feature": feat,
                 "design_type": dtype,
+                "n_analyzable": n_total,
             })
 
         ds_records = [r for r in records if r["dataset"] == name]
@@ -738,18 +786,129 @@ def _compute_effect_sizes_across_datasets(
     return effect_df
 
 
+def _load_dataset_by_index(idx: int) -> DatasetInfo | None:
+    """Load a single dataset by index (0-4), returning None on failure.
+
+    Keeps only one dataset in memory at a time.
+    """
+    loaders = [
+        lambda: _load_sf(),
+        lambda: _load_vaccine(),
+        lambda: _load_aml(),
+        lambda: _load_cart(),
+        lambda: _load_covid(),
+    ]
+    if idx >= len(loaders):
+        return None
+    try:
+        return loaders[idx]()
+    except Exception as exc:
+        print(f"    Dataset {idx}: FAILED to load ({exc})")
+        return None
+
+
+def _load_sf() -> DatasetInfo:
+    sf = get_sade_feldman()
+    sf = harmonize_response(sf)
+    sf, sf_sigs = score_signatures(sf, layer="log1p_tpm")
+    return ("Sade-Feldman", sf, SF_DESIGN, SF_VISITS, sf_sigs, "two_arm_did")
+
+
+def _load_vaccine() -> DatasetInfo:
+    vacc = get_vaccine()
+    vacc, vacc_sigs = score_signatures(vacc, layer="counts")
+    vacc_design = TrialDesign(
+        participant_col="participant_id", visit_col="visit", arm_col=None,
+    )
+    return ("Vaccine", vacc, vacc_design, ("Pre", "Post"), vacc_sigs, "paired")
+
+
+def _load_aml() -> DatasetInfo:
+    aml = get_aml()
+    aml, aml_sigs = score_signatures(aml, layer="counts")
+    pid_col = "participant_id" if "participant_id" in aml.obs.columns else "patient_id"
+    aml_design = TrialDesign(
+        participant_col=pid_col, visit_col="visit", arm_col=None,
+    )
+    return ("AML", aml, aml_design, ("Pre", "Post"), aml_sigs, "paired")
+
+
+def _load_cart() -> DatasetInfo:
+    cart = get_cart()
+    cart, cart_sigs = score_signatures(cart, layer="counts")
+    pid_col = "participant_id" if "participant_id" in cart.obs.columns else "patient_id"
+    cart_design = TrialDesign(
+        participant_col=pid_col, visit_col="visit", arm_col=None,
+    )
+    return ("CAR-T", cart, cart_design, ("Pre", "Post"), cart_sigs, "paired")
+
+
+def _load_covid() -> DatasetInfo:
+    covid = get_stephenson()
+    covid, covid_sigs = score_signatures(covid, layer="counts")
+    if "dfo_bin" in covid.obs.columns:
+        top_bin = covid.obs["dfo_bin"].value_counts().idxmax()
+    else:
+        top_bin = "Pre"
+    covid_design = TrialDesign(
+        participant_col="participant_id",
+        visit_col="dfo_bin",
+        arm_col="severity",
+        arm_treated="Severe",
+        arm_control="Mild",
+    )
+    return ("COVID-19", covid, covid_design, (top_bin,), covid_sigs, "cross_sectional")
+
+
 def _prepare_scalability_data() -> dict:
-    """Run all multi-dataset preparation steps for panels C, D, H."""
-    print("  Loading all datasets for scalability / power / effect panels ...")
-    datasets = _load_all_datasets()
-    timing_df, memory_df = _run_scalability_benchmark(datasets)
-    power_df = _compute_subsampling_power(datasets)
-    effect_df = _compute_effect_sizes_across_datasets(datasets)
+    """Run all multi-dataset preparation steps for panels C, D, H.
+
+    Loads, processes, and frees ONE dataset at a time to keep peak memory
+    at ~1 dataset instead of all 5 (~750K cells total).
+    """
+    print("  Loading and processing datasets one at a time ...")
+
+    timing_frames: list[pd.DataFrame] = []
+    memory_frames: list[pd.DataFrame] = []
+    power_frames: list[pd.DataFrame] = []
+    effect_frames: list[pd.DataFrame] = []
+
+    for idx in range(5):
+        ds = _load_dataset_by_index(idx)
+        if ds is None:
+            continue
+        name = ds[0]
+        print(f"  {name}: {ds[1].n_obs:,} cells, {ds[1].n_vars:,} genes")
+
+        # Scalability benchmark (single dataset)
+        try:
+            t_df, m_df = _run_scalability_benchmark([ds])
+            if t_df is not None and not t_df.empty:
+                timing_frames.append(t_df)
+            if m_df is not None and not m_df.empty:
+                memory_frames.append(m_df)
+        except Exception as exc:
+            print(f"    Benchmark failed for {name}: {exc}")
+
+        # Power (single dataset)
+        pdf = _compute_subsampling_power([ds])
+        if pdf is not None and not pdf.empty:
+            power_frames.append(pdf)
+
+        # Effect sizes (single dataset)
+        edf = _compute_effect_sizes_across_datasets([ds])
+        if edf is not None and not edf.empty:
+            effect_frames.append(edf)
+
+        # Free this dataset before loading next
+        del ds
+        gc.collect()
+
     return {
-        "timing_df": timing_df,
-        "memory_df": memory_df,
-        "power_df": power_df,
-        "effect_df": effect_df,
+        "timing_df": pd.concat(timing_frames, ignore_index=True) if timing_frames else pd.DataFrame(),
+        "memory_df": pd.concat(memory_frames, ignore_index=True) if memory_frames else pd.DataFrame(),
+        "power_df": pd.concat(power_frames, ignore_index=True) if power_frames else pd.DataFrame(),
+        "effect_df": pd.concat(effect_frames, ignore_index=True) if effect_frames else pd.DataFrame(),
     }
 
 
@@ -1117,7 +1276,11 @@ def _wilson_ci(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
 
 
 def _panel_d_power_curves(data: dict) -> plt.Figure | None:
-    """Panel D: Isotonic power curves with Wilson CI ribbon per dataset."""
+    """Panel D: Empirical power curves with Wilson CI ribbon per dataset.
+
+    Raw empirical points are the primary layer; isotonic smoothing is
+    shown as a dashed overlay for trend guidance only.
+    """
     from sklearn.isotonic import IsotonicRegression
 
     scale_data = data.get("scale_data")
@@ -1126,6 +1289,13 @@ def _panel_d_power_curves(data: dict) -> plt.Figure | None:
     power_df = scale_data["power_df"]
     if power_df.empty:
         return None
+
+    # Design type labels for subtitle
+    _DESIGN_LABELS = {
+        "two_arm_did": "Two-arm DiD",
+        "paired": "Paired pre/post",
+        "cross_sectional": "Cross-sectional",
+    }
 
     ds_names = list(dict.fromkeys(power_df["dataset"]))
     n_ds = len(ds_names)
@@ -1146,33 +1316,33 @@ def _panel_d_power_curves(data: dict) -> plt.Figure | None:
 
         ci_lo, ci_hi = [], []
         for _, row in grp.iterrows():
-            n_v = int(row.get("n_valid", N_POWER_ITERATIONS))
-            k = round(row["power"] * n_v) if not np.isnan(row["power"]) else 0
-            lo, hi = _wilson_ci(k, n_v)
+            n_total_iter = int(row.get("n_valid", 0)) + int(row.get("n_failures", 0))
+            if n_total_iter == 0:
+                n_total_iter = N_POWER_ITERATIONS
+            k = round(row["power"] * n_total_iter) if not np.isnan(row["power"]) else 0
+            lo, hi = _wilson_ci(k, n_total_iter)
             ci_lo.append(lo)
             ci_hi.append(hi)
-        ci_lo = np.asarray(ci_lo)
-        ci_hi = np.asarray(ci_hi)
-
-        iso = IsotonicRegression(increasing=True, y_min=0.0, y_max=1.0,
-                                 out_of_bounds="clip")
-        y_iso = iso.fit_transform(x, y)
-
-        ci_lo_iso = IsotonicRegression(
-            increasing=True, y_min=0.0, y_max=1.0, out_of_bounds="clip"
-        ).fit_transform(x, ci_lo)
-        ci_hi_iso = IsotonicRegression(
-            increasing=True, y_min=0.0, y_max=1.0, out_of_bounds="clip"
-        ).fit_transform(x, ci_hi)
+        ci_lo_arr = np.asarray(ci_lo)
+        ci_hi_arr = np.asarray(ci_hi)
 
         ax.grid(True, which="major", axis="y", color="#f0f0f0",
                 linewidth=0.3, zorder=0)
         ax.set_axisbelow(True)
 
-        ax.fill_between(x, ci_lo_iso, ci_hi_iso,
+        # Primary: raw empirical points + Wilson CI ribbon
+        ax.fill_between(x, ci_lo_arr, ci_hi_arr,
                         color=color, alpha=0.15, zorder=1, linewidth=0)
-        ax.plot(x, y_iso, color=color, linewidth=2.5, zorder=3,
-                solid_capstyle="round")
+        ax.plot(x, y, color=color, linewidth=2.0, zorder=3,
+                solid_capstyle="round", marker="o", markersize=3.5)
+
+        # Secondary: isotonic trend overlay (dashed)
+        if len(x) >= 3:
+            iso = IsotonicRegression(increasing=True, y_min=0.0, y_max=1.0,
+                                     out_of_bounds="clip")
+            y_iso = iso.fit_transform(x, y)
+            ax.plot(x, y_iso, color=color, linewidth=1.2, linestyle="--",
+                    alpha=0.5, zorder=2)
 
         ax.axhline(0.80, color="#bbb", linewidth=0.7,
                    linestyle="--", zorder=1, alpha=0.5)
@@ -1180,27 +1350,40 @@ def _panel_d_power_curves(data: dict) -> plt.Figure | None:
         ax.set_xlim(x.min() - 0.5, x.max() + 0.5)
         ax.set_ylim(-0.02, 1.05)
 
+        # Build multi-line title: dataset name + endpoint + design info
+        # All above the axes to avoid overlapping high-power curves.
         if "feature" in grp.columns and not grp.empty:
             feat = grp["feature"].iloc[0].replace("sig_", "").replace("_", " ")
         else:
             feat = ""
-        ax.set_title(ds_name, fontsize=10.5, fontweight="bold",
-                     color=color, pad=6)
-        if feat:
-            ax.text(0.5, 0.96, feat, transform=ax.transAxes,
-                    ha="center", va="top", fontsize=7.5, color="#666",
-                    fontstyle="italic")
+        dtype = grp["design_type"].iloc[0] if "design_type" in grp.columns else ""
+        design_label = _DESIGN_LABELS.get(dtype, dtype)
+        # Use stored n_analyzable (true cohort size), not max subsampled
+        analyzable_n = int(grp["n_analyzable"].iloc[0]) if "n_analyzable" in grp.columns else int(x.max()) + 1
 
-        ax.set_xlabel("Participants", fontsize=9.5)
+        display_name = _DATASET_DISPLAY_NAMES.get(ds_name, ds_name)
+        title_lines = display_name
+        if feat:
+            title_lines += f"\n{feat}"
+        title_lines += f"\n{design_label}, n={analyzable_n}"
+
+        ax.set_title(title_lines, fontsize=9.5, fontweight="bold",
+                     color=color, pad=4, linespacing=1.4)
+
+        ax.set_xlabel("Analyzable participants", fontsize=9.5)
+        from matplotlib.ticker import MaxNLocator
+        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
         if i == 0:
             ax.set_ylabel(r"Power (1 − $\beta$)", fontsize=10)
-        ax.tick_params(axis="both", which="major", labelsize=8.5)
+        # Show y-tick labels on all subplots (sharey hides them)
+        ax.tick_params(axis="both", which="major", labelsize=8.5,
+                       labelleft=True)
 
         despine(ax)
         ax.spines["bottom"].set_linewidth(1.0)
         ax.spines["left"].set_linewidth(1.0)
 
-    fig.suptitle("Empirical power — pre-specified endpoints",
+    fig.suptitle("Empirical power — pre-declared primary endpoints",
                  fontsize=13, fontweight="bold", y=1.02)
     fig.tight_layout()
     return fig
@@ -1209,164 +1392,6 @@ def _panel_d_power_curves(data: dict) -> plt.Figure | None:
 # ======================================================================
 # Panel D2: Power heatmap — datasets × participant-count bins
 # ======================================================================
-
-def _panel_d2_power_heatmap(data: dict) -> plt.Figure | None:
-    """Power heatmap — datasets × participant-count bins.
-
-    Rows = datasets, columns = participant count (uniform width), fill = power.
-    Cells ≥ 0.80 get a bold border.  N/A cells are light gray with "—".
-    Returns a new Figure.
-    """
-    sd = data.get("scale_data")
-    if sd is None:
-        return None
-    power_df = sd["power_df"]
-    if power_df.empty:
-        return None
-
-    dataset_colors = {
-        "Sade-Feldman": COLORS["control"],
-        "Vaccine":      COLORS["treated"],
-        "AML":          COLORS["success"],
-        "CAR-T":        COLORS["neutral"],
-        "COVID-19":     COLORS["highlight"],
-    }
-
-    ds_names = list(dict.fromkeys(power_df["dataset"]))
-    all_n = sorted(power_df["n_participants"].unique())
-    n_cols = len(all_n)
-    n_rows = len(ds_names)
-
-    # Build power + reliability matrices
-    power_matrix = np.full((n_rows, n_cols), np.nan)
-    nvalid_matrix = np.full((n_rows, n_cols), np.nan)
-    niter_matrix = np.full((n_rows, n_cols), np.nan)
-    for i, ds in enumerate(ds_names):
-        grp = power_df[power_df["dataset"] == ds]
-        for _, row in grp.iterrows():
-            j = all_n.index(int(row["n_participants"]))
-            power_matrix[i, j] = row["power"]
-            n_v = int(row.get("n_valid", 0))
-            n_f = int(row.get("n_failures", 0))
-            nvalid_matrix[i, j] = n_v
-            niter_matrix[i, j] = n_v + n_f
-
-    # Build feature labels for y-axis
-    y_labels = []
-    for ds in ds_names:
-        grp = power_df[power_df["dataset"] == ds]
-        if "feature" in grp.columns and not grp.empty:
-            feat = grp["feature"].iloc[0].replace("sig_", "").replace("_", " ")
-            y_labels.append(f"{ds}\n({feat})")
-        else:
-            y_labels.append(ds)
-
-    # ── Figure with uniform-width columns via imshow ──
-    fig, ax = plt.subplots(
-        figsize=(max(8, 0.7 * n_cols + 3), max(3.5, 0.7 * n_rows + 1)),
-    )
-
-    cmap = plt.cm.YlOrRd.copy()
-    cmap.set_bad(color="#EDEDED")
-
-    im = ax.imshow(
-        np.ma.masked_invalid(power_matrix),
-        cmap=cmap, vmin=0, vmax=1, aspect="auto",
-        interpolation="nearest",
-    )
-
-    # Grid lines
-    for x in np.arange(-0.5, n_cols, 1):
-        ax.axvline(x, color="white", linewidth=1.2, zorder=2)
-    for y in np.arange(-0.5, n_rows, 1):
-        ax.axhline(y, color="white", linewidth=1.2, zorder=2)
-
-    # Text annotations
-    for i in range(n_rows):
-        for j in range(n_cols):
-            val = power_matrix[i, j]
-            if np.isnan(val):
-                ax.text(j, i, "—", ha="center", va="center",
-                        fontsize=7, color="#AAA")
-                continue
-            text_color = "white" if val > 0.65 else "#333"
-            pwr_str = "<.01" if 0 < val < 0.01 else f"{val:.2f}"
-            n_v = int(nvalid_matrix[i, j])
-            n_i = int(niter_matrix[i, j])
-            has_failures = n_v < n_i
-            if has_failures:
-                ax.text(j, i - 0.12, pwr_str,
-                        ha="center", va="center", fontsize=8,
-                        color=text_color,
-                        fontweight="bold" if val >= 0.80 else "medium")
-                ax.text(j, i + 0.24, f"{n_v}/{n_i}",
-                        ha="center", va="center", fontsize=5,
-                        color="#CC4444" if n_v / n_i < 0.85 else text_color,
-                        alpha=0.7)
-            else:
-                ax.text(j, i, pwr_str,
-                        ha="center", va="center", fontsize=8,
-                        color=text_color,
-                        fontweight="bold" if val >= 0.80 else "medium")
-
-    # Hatch tiles where < 85% of iterations produced valid fits
-    for i in range(n_rows):
-        for j in range(n_cols):
-            n_v = nvalid_matrix[i, j]
-            n_i = niter_matrix[i, j]
-            if np.isnan(n_v) or np.isnan(n_i):
-                continue
-            if n_v / n_i < 0.85:
-                rect = plt.Rectangle(
-                    (j - 0.5, i - 0.5), 1, 1,
-                    linewidth=0, edgecolor="none",
-                    facecolor="none", hatch="//", zorder=3, alpha=0.3,
-                )
-                ax.add_patch(rect)
-
-    # Bold border on cells ≥ 0.80
-    for i in range(n_rows):
-        for j in range(n_cols):
-            val = power_matrix[i, j]
-            if not np.isnan(val) and val >= 0.80:
-                rect = plt.Rectangle(
-                    (j - 0.5, i - 0.5), 1, 1,
-                    linewidth=2.0, edgecolor="#222", facecolor="none",
-                    zorder=5,
-                )
-                ax.add_patch(rect)
-
-    # Axes
-    ax.set_xticks(range(n_cols))
-    ax.set_xticklabels([str(int(n)) for n in all_n], fontsize=9)
-    ax.set_yticks(range(n_rows))
-    ax.set_yticklabels(y_labels, fontsize=9)
-    for i, lbl_text in enumerate(ds_names):
-        ax.get_yticklabels()[i].set_color(
-            dataset_colors.get(lbl_text, COLORS["gray"])
-        )
-        ax.get_yticklabels()[i].set_fontweight("bold")
-
-    ax.set_xlabel("Number of participants", fontsize=11, labelpad=6)
-    ax.set_title("Power heatmap — pre-specified endpoints",
-                 fontsize=13, fontweight="bold", pad=10)
-    ax.tick_params(axis="both", which="both", length=0)
-
-    # Colorbar
-    cbar = fig.colorbar(im, ax=ax, pad=0.02, shrink=0.85, aspect=25)
-    cbar.set_label(r"Power (1 − $\beta$)", fontsize=10)
-    cbar.set_ticks([0, 0.2, 0.4, 0.6, 1.0])
-    cbar.set_ticklabels(["0", ".2", ".4", ".6", "1"])
-    cbar.ax.axhline(0.80, color="#222", linewidth=2, linestyle="-")
-    cbar.ax.annotate(
-        "0.80", xy=(1, 0.80), xycoords=("axes fraction", "data"),
-        xytext=(6, 0), textcoords="offset points",
-        fontsize=7.5, fontweight="bold", color="#222",
-        va="center", ha="left",
-    )
-
-    fig.tight_layout()
-    return fig
 
 
 # ======================================================================
@@ -1630,7 +1655,7 @@ def _panel_h(ax, data: dict) -> None:
 # ======================================================================
 
 def generate() -> None:
-    """Create and save all Figure 4 panels.
+    """Create and save all Figure 3 panels.
 
     Panel mapping:
       A  Bootstrap vs analytical SE
@@ -1645,7 +1670,7 @@ def generate() -> None:
     Runtime scaling moved to Supplementary Figure 3 panel J.
     """
     apply_style()
-    print("Figure 4: Robustness & Benchmarking")
+    print("Figure 3: Robustness & Benchmarking")
 
     # Sade-Feldman data (panels A, B, D, E, F)
     data = _prepare_sf_data()
@@ -1673,11 +1698,6 @@ def generate() -> None:
     if cfig is not None:
         save_panel(cfig, "panel_C_power_curves", FIGURE_NAME, MAIN_OUTPUT)
 
-    # Panel C2 (power heatmap — creates its own figure)
-    hfig = _panel_d2_power_heatmap(data)
-    if hfig is not None:
-        save_panel(hfig, "panel_C2_power_heatmap", FIGURE_NAME, MAIN_OUTPUT)
-
     # Panels D/E/F (cell vs participant comparisons)
     def_panels = [
         ("panel_D_effect_correlation", _panel_e, (6.5, 5)),
@@ -1704,7 +1724,7 @@ def generate() -> None:
     clear_cache()
     gc.collect()
 
-    print(f"  Figure 4 complete: {FIGURE_NAME}")
+    print(f"  Figure 3 complete: {FIGURE_NAME}")
 
 
 # ── CLI entry point ────────────────────────────────────────────────────
