@@ -31,8 +31,8 @@ from .comparisons import (
     between_arm_comparison,
     compare_gene_in_celltype,
     get_within_arm_aggregated_df,
-    within_arm_fit_beta,
     within_arm_comparison,
+    within_arm_fit_beta,
 )
 from .cv import cv_summary, influence_diagnostics, kfold_cv_did, loo_cv_did
 from .diagnostics import check_did_assumptions
