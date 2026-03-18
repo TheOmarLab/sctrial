@@ -853,50 +853,129 @@ def _compute_effect_sizes_across_datasets(
     return effect_df
 
 
+def _load_dataset_by_index(idx: int) -> DatasetInfo | None:
+    """Load a single dataset by index (0-4), returning None on failure.
+
+    Keeps only one dataset in memory at a time.
+    """
+    loaders = [
+        lambda: _load_sf(),
+        lambda: _load_vaccine(),
+        lambda: _load_aml(),
+        lambda: _load_cart(),
+        lambda: _load_covid(),
+    ]
+    if idx >= len(loaders):
+        return None
+    try:
+        return loaders[idx]()
+    except Exception as exc:
+        print(f"    Dataset {idx}: FAILED to load ({exc})")
+        return None
+
+
+def _load_sf() -> DatasetInfo:
+    sf = get_sade_feldman()
+    sf = harmonize_response(sf)
+    sf, sf_sigs = score_signatures(sf, layer="log1p_tpm")
+    return ("Sade-Feldman", sf, SF_DESIGN, SF_VISITS, sf_sigs, "two_arm_did")
+
+
+def _load_vaccine() -> DatasetInfo:
+    vacc = get_vaccine()
+    vacc, vacc_sigs = score_signatures(vacc, layer="counts")
+    vacc_design = TrialDesign(
+        participant_col="participant_id", visit_col="visit", arm_col=None,
+    )
+    return ("Vaccine", vacc, vacc_design, ("Pre", "Post"), vacc_sigs, "paired")
+
+
+def _load_aml() -> DatasetInfo:
+    aml = get_aml()
+    aml, aml_sigs = score_signatures(aml, layer="counts")
+    pid_col = "participant_id" if "participant_id" in aml.obs.columns else "patient_id"
+    aml_design = TrialDesign(
+        participant_col=pid_col, visit_col="visit", arm_col=None,
+    )
+    return ("AML", aml, aml_design, ("Pre", "Post"), aml_sigs, "paired")
+
+
+def _load_cart() -> DatasetInfo:
+    cart = get_cart()
+    cart, cart_sigs = score_signatures(cart, layer="counts")
+    pid_col = "participant_id" if "participant_id" in cart.obs.columns else "patient_id"
+    cart_design = TrialDesign(
+        participant_col=pid_col, visit_col="visit", arm_col=None,
+    )
+    return ("CAR-T", cart, cart_design, ("Pre", "Post"), cart_sigs, "paired")
+
+
+def _load_covid() -> DatasetInfo:
+    covid = get_stephenson()
+    covid, covid_sigs = score_signatures(covid, layer="counts")
+    if "dfo_bin" in covid.obs.columns:
+        top_bin = covid.obs["dfo_bin"].value_counts().idxmax()
+    else:
+        top_bin = "Pre"
+    covid_design = TrialDesign(
+        participant_col="participant_id",
+        visit_col="dfo_bin",
+        arm_col="severity",
+        arm_treated="Severe",
+        arm_control="Mild",
+    )
+    return ("COVID-19", covid, covid_design, (top_bin,), covid_sigs, "cross_sectional")
+
+
 def _prepare_scalability_data() -> dict:
     """Run all multi-dataset preparation steps for panels C, D, H.
 
-    Processes datasets one at a time for power/effect to avoid OOM
-    when all 5 datasets (~750K cells total) are in memory simultaneously.
+    Loads, processes, and frees ONE dataset at a time to keep peak memory
+    at ~1 dataset instead of all 5 (~750K cells total).
     """
-    print("  Loading all datasets for scalability / power / effect panels ...")
-    datasets = _load_all_datasets()
+    print("  Loading and processing datasets one at a time ...")
 
-    # Scalability benchmarks — non-fatal so power/effect panels still generate
-    try:
-        timing_df, memory_df = _run_scalability_benchmark(datasets)
-    except Exception as exc:
-        print(f"  Warning: Scalability benchmark failed ({exc}), skipping")
-        timing_df = pd.DataFrame()
-        memory_df = pd.DataFrame()
+    timing_frames: list[pd.DataFrame] = []
+    memory_frames: list[pd.DataFrame] = []
+    power_frames: list[pd.DataFrame] = []
+    effect_frames: list[pd.DataFrame] = []
 
-    # Power: process one dataset at a time to avoid OOM
-    power_frames = []
-    for ds in datasets:
+    for idx in range(5):
+        ds = _load_dataset_by_index(idx)
+        if ds is None:
+            continue
+        name = ds[0]
+        print(f"  {name}: {ds[1].n_obs:,} cells, {ds[1].n_vars:,} genes")
+
+        # Scalability benchmark (single dataset)
+        try:
+            t_df, m_df = _run_scalability_benchmark([ds])
+            if t_df is not None and not t_df.empty:
+                timing_frames.append(t_df)
+            if m_df is not None and not m_df.empty:
+                memory_frames.append(m_df)
+        except Exception as exc:
+            print(f"    Benchmark failed for {name}: {exc}")
+
+        # Power (single dataset)
         pdf = _compute_subsampling_power([ds])
         if pdf is not None and not pdf.empty:
             power_frames.append(pdf)
-        gc.collect()
-    power_df = pd.concat(power_frames, ignore_index=True) if power_frames else pd.DataFrame()
 
-    # Effect sizes: also one at a time
-    effect_frames = []
-    for ds in datasets:
+        # Effect sizes (single dataset)
         edf = _compute_effect_sizes_across_datasets([ds])
         if edf is not None and not edf.empty:
             effect_frames.append(edf)
-        gc.collect()
-    effect_df = pd.concat(effect_frames, ignore_index=True) if effect_frames else pd.DataFrame()
 
-    # Free all datasets
-    del datasets
-    gc.collect()
+        # Free this dataset before loading next
+        del ds
+        gc.collect()
 
     return {
-        "timing_df": timing_df,
-        "memory_df": memory_df,
-        "power_df": power_df,
-        "effect_df": effect_df,
+        "timing_df": pd.concat(timing_frames, ignore_index=True) if timing_frames else pd.DataFrame(),
+        "memory_df": pd.concat(memory_frames, ignore_index=True) if memory_frames else pd.DataFrame(),
+        "power_df": pd.concat(power_frames, ignore_index=True) if power_frames else pd.DataFrame(),
+        "effect_df": pd.concat(effect_frames, ignore_index=True) if effect_frames else pd.DataFrame(),
     }
 
 
