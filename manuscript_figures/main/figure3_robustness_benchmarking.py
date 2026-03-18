@@ -379,6 +379,16 @@ def _run_scalability_benchmark(
                         aggregate="participant_visit",
                         standardize=True,
                     )
+                elif dtype == "paired":
+                    within_arm_comparison(
+                        adata,
+                        arm="All",
+                        features=sigs,
+                        design=design,
+                        visits=visits,
+                        aggregate="participant_visit",
+                        standardize=True,
+                    )
                 else:
                     did_table(
                         adata,
@@ -429,7 +439,7 @@ def _stratified_subsample_pids(
     dtype: str,
     n_sub: int,
     rng: np.random.Generator,
-) -> np.ndarray:
+) -> np.ndarray | None:
     """Subsample participants preserving arm/visit balance where possible."""
     pid_col = design.participant_col
     all_pids = adata.obs[pid_col].unique()
@@ -451,9 +461,9 @@ def _stratified_subsample_pids(
             n_sub_t = n_sub - n_sub_c
         n_sub_t = min(n_sub_t, n_t)
         n_sub_c = min(n_sub_c, n_c)
-        # Strictly enforce ≥3 per arm; fall back to unstratified if impossible
+        # Strictly enforce ≥3 per arm; return None if impossible
         if n_sub_t < 3 or n_sub_c < 3:
-            return rng.choice(all_pids, size=min(n_sub, len(all_pids)), replace=False)
+            return None
         sampled = np.concatenate([
             rng.choice(arm_pids[design.arm_treated], n_sub_t, replace=False),
             rng.choice(arm_pids[design.arm_control], n_sub_c, replace=False),
@@ -552,6 +562,9 @@ def _compute_subsampling_power(
                 sampled_pids = _stratified_subsample_pids(
                     adata, design, dtype, n_sub, rng,
                 )
+                if sampled_pids is None:
+                    n_fail += 1
+                    continue
                 mask = adata.obs[pid_col].isin(sampled_pids)
                 sub_adata = adata[mask]
 
