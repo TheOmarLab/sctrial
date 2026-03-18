@@ -21,8 +21,9 @@ Advanced Methods
 Effect Sizes & Power
 --------------------
 - **add_effect_sizes_to_did**: Cohen's d / Hedge's g for DiD
-- **power_did**: Power calculations
-- **sample_size_did**: Sample size determination
+- **power_did** / **power_paired**: Power calculations (two-arm DiD / single-arm paired)
+- **sample_size_did** / **sample_size_paired**: Sample size determination
+- **sensitivity_paired**: Minimum detectable effect size for paired designs
 """
 
 from .abundance import abundance_did
@@ -61,7 +62,16 @@ from .module_scores import (
     module_score_pseudobulk,
     module_score_within_arm_by_pool,
 )
-from .power import design_effect, effective_sample_size, power_curve, power_did, sample_size_did
+from .power import (
+    design_effect,
+    effective_sample_size,
+    power_curve,
+    power_did,
+    power_paired,
+    sample_size_did,
+    sample_size_paired,
+    sensitivity_paired,
+)
 from .pseudobulk import (
     pseudobulk_did,
     pseudobulk_export,
@@ -111,7 +121,10 @@ __all__ = [
     "bootstrap_effect_size_ci",
     # Power analysis
     "power_did",
+    "power_paired",
     "sample_size_did",
+    "sample_size_paired",
+    "sensitivity_paired",
     "power_curve",
     "design_effect",
     "effective_sample_size",
