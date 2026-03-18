@@ -513,7 +513,7 @@ def _stratified_subsample_pids(
     pid_col = design.participant_col
     all_pids = adata.obs[pid_col].unique()
 
-    if dtype in ("two_arm_did", "cross_sectional") and n_sub >= 4:
+    if dtype in ("two_arm_did", "cross_sectional") and n_sub >= 6:
         arm_pids: dict[str, np.ndarray] = {}
         for arm in [design.arm_treated, design.arm_control]:
             arm_pids[arm] = adata.obs.loc[
@@ -522,10 +522,11 @@ def _stratified_subsample_pids(
         n_t = len(arm_pids[design.arm_treated])
         n_c = len(arm_pids[design.arm_control])
         frac_t = n_t / (n_t + n_c)
-        n_sub_t = max(2, round(n_sub * frac_t))
+        # Require ≥3 per arm to avoid unstable 2-vs-2 estimates
+        n_sub_t = max(3, round(n_sub * frac_t))
         n_sub_c = n_sub - n_sub_t
-        if n_sub_c < 2:
-            n_sub_c = 2
+        if n_sub_c < 3:
+            n_sub_c = 3
             n_sub_t = n_sub - n_sub_c
         n_sub_t = min(n_sub_t, n_t)
         n_sub_c = min(n_sub_c, n_c)
@@ -589,8 +590,10 @@ def _compute_subsampling_power(
         adata = adata[:, adata.var_names[:1]].copy()
         gc.collect()
 
+        # Start at 6 for two-arm (≥3 per arm), 4 for others
+        min_sub = 6 if dtype in ("two_arm_did", "cross_sectional") else 4
         sub_sizes = sorted(set(
-            [4, 6, 8]
+            [min_sub, min_sub + 2, min_sub + 4]
             + list(range(5, min(n_total, 30) + 1, 5))
             + [n_total]
         ))
@@ -1240,7 +1243,11 @@ def _wilson_ci(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
 
 
 def _panel_d_power_curves(data: dict) -> plt.Figure | None:
-    """Panel D: Isotonic power curves with Wilson CI ribbon per dataset."""
+    """Panel D: Empirical power curves with Wilson CI ribbon per dataset.
+
+    Raw empirical points are the primary layer; isotonic smoothing is
+    shown as a dashed overlay for trend guidance only.
+    """
     from sklearn.isotonic import IsotonicRegression
 
     scale_data = data.get("scale_data")
@@ -1249,6 +1256,13 @@ def _panel_d_power_curves(data: dict) -> plt.Figure | None:
     power_df = scale_data["power_df"]
     if power_df.empty:
         return None
+
+    # Design type labels for subtitle
+    _DESIGN_LABELS = {
+        "two_arm_did": "Two-arm DiD",
+        "paired": "Paired pre/post",
+        "cross_sectional": "Cross-sectional",
+    }
 
     ds_names = list(dict.fromkeys(power_df["dataset"]))
     n_ds = len(ds_names)
@@ -1269,8 +1283,6 @@ def _panel_d_power_curves(data: dict) -> plt.Figure | None:
 
         ci_lo, ci_hi = [], []
         for _, row in grp.iterrows():
-            # Use n_iter (total attempts) as denominator, consistent with
-            # power = n_sig / n_iter. n_total = n_valid + n_failures.
             n_total_iter = int(row.get("n_valid", 0)) + int(row.get("n_failures", 0))
             if n_total_iter == 0:
                 n_total_iter = N_POWER_ITERATIONS
@@ -1278,28 +1290,26 @@ def _panel_d_power_curves(data: dict) -> plt.Figure | None:
             lo, hi = _wilson_ci(k, n_total_iter)
             ci_lo.append(lo)
             ci_hi.append(hi)
-        ci_lo = np.asarray(ci_lo)
-        ci_hi = np.asarray(ci_hi)
-
-        iso = IsotonicRegression(increasing=True, y_min=0.0, y_max=1.0,
-                                 out_of_bounds="clip")
-        y_iso = iso.fit_transform(x, y)
-
-        ci_lo_iso = IsotonicRegression(
-            increasing=True, y_min=0.0, y_max=1.0, out_of_bounds="clip"
-        ).fit_transform(x, ci_lo)
-        ci_hi_iso = IsotonicRegression(
-            increasing=True, y_min=0.0, y_max=1.0, out_of_bounds="clip"
-        ).fit_transform(x, ci_hi)
+        ci_lo_arr = np.asarray(ci_lo)
+        ci_hi_arr = np.asarray(ci_hi)
 
         ax.grid(True, which="major", axis="y", color="#f0f0f0",
                 linewidth=0.3, zorder=0)
         ax.set_axisbelow(True)
 
-        ax.fill_between(x, ci_lo_iso, ci_hi_iso,
+        # Primary: raw empirical points + Wilson CI ribbon
+        ax.fill_between(x, ci_lo_arr, ci_hi_arr,
                         color=color, alpha=0.15, zorder=1, linewidth=0)
-        ax.plot(x, y_iso, color=color, linewidth=2.5, zorder=3,
-                solid_capstyle="round")
+        ax.plot(x, y, color=color, linewidth=2.0, zorder=3,
+                solid_capstyle="round", marker="o", markersize=3.5)
+
+        # Secondary: isotonic trend overlay (dashed)
+        if len(x) >= 3:
+            iso = IsotonicRegression(increasing=True, y_min=0.0, y_max=1.0,
+                                     out_of_bounds="clip")
+            y_iso = iso.fit_transform(x, y)
+            ax.plot(x, y_iso, color=color, linewidth=1.2, linestyle="--",
+                    alpha=0.5, zorder=2)
 
         ax.axhline(0.80, color="#bbb", linewidth=0.7,
                    linestyle="--", zorder=1, alpha=0.5)
@@ -1307,18 +1317,29 @@ def _panel_d_power_curves(data: dict) -> plt.Figure | None:
         ax.set_xlim(x.min() - 0.5, x.max() + 0.5)
         ax.set_ylim(-0.02, 1.05)
 
+        # Title with dataset name
+        ax.set_title(ds_name, fontsize=10.5, fontweight="bold",
+                     color=color, pad=14)
+
+        # Subtitle: endpoint name
         if "feature" in grp.columns and not grp.empty:
             feat = grp["feature"].iloc[0].replace("sig_", "").replace("_", " ")
         else:
             feat = ""
-        ax.set_title(ds_name, fontsize=10.5, fontweight="bold",
-                     color=color, pad=6)
         if feat:
             ax.text(0.5, 0.96, feat, transform=ax.transAxes,
                     ha="center", va="top", fontsize=7.5, color="#666",
                     fontstyle="italic")
 
-        ax.set_xlabel("Participants", fontsize=9.5)
+        # Sub-subtitle: design type and analyzable n
+        dtype = grp["design_type"].iloc[0] if "design_type" in grp.columns else ""
+        design_label = _DESIGN_LABELS.get(dtype, dtype)
+        max_n = int(x.max())
+        info_text = f"{design_label}, n={max_n}"
+        ax.text(0.5, 0.90, info_text, transform=ax.transAxes,
+                ha="center", va="top", fontsize=6.5, color="#999")
+
+        ax.set_xlabel("Analyzable participants", fontsize=9.5)
         if i == 0:
             ax.set_ylabel(r"Power (1 − $\beta$)", fontsize=10)
         ax.tick_params(axis="both", which="major", labelsize=8.5)
@@ -1327,7 +1348,7 @@ def _panel_d_power_curves(data: dict) -> plt.Figure | None:
         ax.spines["bottom"].set_linewidth(1.0)
         ax.spines["left"].set_linewidth(1.0)
 
-    fig.suptitle("Empirical power — pre-specified endpoints",
+    fig.suptitle("Empirical power — best pre-specified endpoint",
                  fontsize=13, fontweight="bold", y=1.02)
     fig.tight_layout()
     return fig
