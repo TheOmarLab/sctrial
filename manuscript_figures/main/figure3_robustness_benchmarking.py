@@ -120,6 +120,11 @@ DATASET_COLORS = {
     "COVID-19":     COLORS["highlight"],
 }
 
+# Display names for figure panels (internal keys unchanged)
+_DATASET_DISPLAY_NAMES: dict[str, str] = {
+    "Sade-Feldman": "Melanoma",
+}
+
 
 # ======================================================================
 # Disk cache helpers
@@ -1328,32 +1333,31 @@ def _panel_d_power_curves(data: dict) -> plt.Figure | None:
         ax.set_xlim(x.min() - 0.5, x.max() + 0.5)
         ax.set_ylim(-0.02, 1.05)
 
-        # Title with dataset name
-        ax.set_title(ds_name, fontsize=10.5, fontweight="bold",
-                     color=color, pad=14)
-
-        # Subtitle: endpoint name
+        # Build multi-line title: dataset name + endpoint + design info
+        # All above the axes to avoid overlapping high-power curves.
         if "feature" in grp.columns and not grp.empty:
             feat = grp["feature"].iloc[0].replace("sig_", "").replace("_", " ")
         else:
             feat = ""
-        if feat:
-            ax.text(0.5, 0.96, feat, transform=ax.transAxes,
-                    ha="center", va="top", fontsize=7.5, color="#666",
-                    fontstyle="italic")
-
-        # Sub-subtitle: design type and analyzable n
         dtype = grp["design_type"].iloc[0] if "design_type" in grp.columns else ""
         design_label = _DESIGN_LABELS.get(dtype, dtype)
         max_n = int(x.max())
-        info_text = f"{design_label}, n={max_n}"
-        ax.text(0.5, 0.90, info_text, transform=ax.transAxes,
-                ha="center", va="top", fontsize=6.5, color="#999")
+
+        display_name = _DATASET_DISPLAY_NAMES.get(ds_name, ds_name)
+        title_lines = display_name
+        if feat:
+            title_lines += f"\n{feat}"
+        title_lines += f"\n{design_label}, n≤{max_n}"
+
+        ax.set_title(title_lines, fontsize=9.5, fontweight="bold",
+                     color=color, pad=4, linespacing=1.4)
 
         ax.set_xlabel("Analyzable participants", fontsize=9.5)
         if i == 0:
             ax.set_ylabel(r"Power (1 − $\beta$)", fontsize=10)
-        ax.tick_params(axis="both", which="major", labelsize=8.5)
+        # Show y-tick labels on all subplots (sharey hides them)
+        ax.tick_params(axis="both", which="major", labelsize=8.5,
+                       labelleft=True)
 
         despine(ax)
         ax.spines["bottom"].set_linewidth(1.0)
