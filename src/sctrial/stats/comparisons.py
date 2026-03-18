@@ -290,7 +290,8 @@ def within_arm_fit_beta(
         df_feat["outcome_std"] = y_std
     else:
         df_feat["outcome_std"] = df_feat[feat].astype(float)
-    with warnings.catch_warnings(action="ignore"):
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
         model = smf.ols(f"outcome_std ~ visit_num + C({unit})", data=df_feat)
         clusters = np.asarray(df_feat[unit].to_numpy())
         try:
