@@ -557,11 +557,25 @@ def _compute_subsampling_power(
 
     for name, adata, design, visits, sigs, dtype in datasets:
         pid_col = design.participant_col
-        all_pids = adata.obs[pid_col].unique()
-        n_total = len(all_pids)
-        if n_total < 6:
-            print(f"    {name}: too few participants ({n_total}), skipping")
+        vis_col = design.visit_col
+
+        # Restrict to participants who have BOTH visits (paired/analyzable).
+        # For cross-sectional, keep all participants with at least one visit.
+        if dtype in ("paired", "two_arm_did"):
+            pid_visits = adata.obs.groupby(pid_col, observed=True)[vis_col].apply(set)
+            analyzable_pids = pid_visits[
+                pid_visits.apply(lambda s: set(visits).issubset(s))
+            ].index.tolist()
+        else:
+            analyzable_pids = adata.obs[pid_col].unique().tolist()
+
+        n_total = len(analyzable_pids)
+        if n_total < 4:
+            print(f"    {name}: too few analyzable participants ({n_total}), skipping")
             continue
+
+        # Subset adata to analyzable participants only
+        adata = adata[adata.obs[pid_col].isin(analyzable_pids)].copy()
 
         feat = _select_best_powered_feature(
             adata, design, visits, sigs, dtype, dataset_name=name,
@@ -1255,9 +1269,13 @@ def _panel_d_power_curves(data: dict) -> plt.Figure | None:
 
         ci_lo, ci_hi = [], []
         for _, row in grp.iterrows():
-            n_v = int(row.get("n_valid", N_POWER_ITERATIONS))
-            k = round(row["power"] * n_v) if not np.isnan(row["power"]) else 0
-            lo, hi = _wilson_ci(k, n_v)
+            # Use n_iter (total attempts) as denominator, consistent with
+            # power = n_sig / n_iter. n_total = n_valid + n_failures.
+            n_total_iter = int(row.get("n_valid", 0)) + int(row.get("n_failures", 0))
+            if n_total_iter == 0:
+                n_total_iter = N_POWER_ITERATIONS
+            k = round(row["power"] * n_total_iter) if not np.isnan(row["power"]) else 0
+            lo, hi = _wilson_ci(k, n_total_iter)
             ci_lo.append(lo)
             ci_hi.append(hi)
         ci_lo = np.asarray(ci_lo)
