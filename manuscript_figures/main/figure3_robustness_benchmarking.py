@@ -35,7 +35,7 @@ import pandas as pd
 from matplotlib.ticker import LogLocator, NullLocator
 from scipy import stats
 
-from sctrial import cohens_d, cohens_d_from_did, effect_size_ci
+from sctrial import cohens_d_from_did, effect_size_ci
 
 from .._shared import (
     COLORS,
@@ -422,90 +422,6 @@ def _run_scalability_benchmark(
 # Power analysis
 # ======================================================================
 
-def _select_best_powered_feature(
-    adata,
-    design: "TrialDesign",
-    visits: tuple[str, str],
-    sigs: list[str],
-    dtype: str,
-    dataset_name: str = "",
-) -> str | None:
-    """Select the signature with the largest absolute effect size.
-
-    Computes Cohen's d for each candidate signature on the full dataset
-    and returns the one with the greatest |d|, which gives the most
-    informative (best-case) power curve.
-    """
-    candidates = [s for s in _PRESPECIFIED_ENDPOINTS
-                  if s in sigs and s in adata.obs.columns]
-    if not candidates:
-        return None
-
-    pid_col = design.participant_col
-    best_feat: str | None = None
-    best_d = -1.0
-
-    for sig in candidates:
-        try:
-            if dtype == "two_arm_did":
-                pb = adata.obs.groupby(
-                    [pid_col, design.visit_col, design.arm_col],
-                    observed=True,
-                )[sig].mean().reset_index()
-                deltas: dict[str, list[float]] = {}
-                for arm in [design.arm_treated, design.arm_control]:
-                    arm_pb = pb[pb[design.arm_col] == arm]
-                    arm_d: list[float] = []
-                    for _, pdf in arm_pb.groupby(pid_col):
-                        if set(visits).issubset(set(pdf[design.visit_col])):
-                            pre = pdf.loc[pdf[design.visit_col] == visits[0], sig].values[0]
-                            post = pdf.loc[pdf[design.visit_col] == visits[1], sig].values[0]
-                            arm_d.append(post - pre)
-                    deltas[arm] = arm_d
-                n1, n2 = len(deltas[design.arm_treated]), len(deltas[design.arm_control])
-                if n1 < 2 or n2 < 2:
-                    continue
-                d_val = abs(cohens_d_from_did(
-                    np.array(deltas[design.arm_treated]),
-                    np.array(deltas[design.arm_control]),
-                ))
-
-            elif dtype == "paired":
-                pb = adata.obs.groupby(
-                    [pid_col, design.visit_col], observed=True,
-                )[sig].mean().reset_index()
-                ds: list[float] = []
-                for _, pdf in pb.groupby(pid_col):
-                    if set(visits).issubset(set(pdf[design.visit_col])):
-                        pre = pdf.loc[pdf[design.visit_col] == visits[0], sig].values[0]
-                        post = pdf.loc[pdf[design.visit_col] == visits[1], sig].values[0]
-                        ds.append(post - pre)
-                if len(ds) < 3:
-                    continue
-                d_val = abs(_paired_cohens_d(np.array(ds))[0])
-
-            elif dtype == "cross_sectional":
-                pb = adata.obs.groupby(
-                    [pid_col, design.arm_col], observed=True,
-                )[sig].mean().reset_index()
-                g1 = pb.loc[pb[design.arm_col] == design.arm_treated, sig].values
-                g2 = pb.loc[pb[design.arm_col] == design.arm_control, sig].values
-                if len(g1) < 2 or len(g2) < 2:
-                    continue
-                d_val = abs(cohens_d(g1, g2))
-            else:
-                continue
-
-            if d_val > best_d:
-                best_d = d_val
-                best_feat = sig
-        except Exception:
-            continue
-
-    if best_feat:
-        print(f"      Best-powered endpoint: {best_feat} (|d|={best_d:.2f})")
-    return best_feat
-
 
 def _stratified_subsample_pids(
     adata,
@@ -535,6 +451,9 @@ def _stratified_subsample_pids(
             n_sub_t = n_sub - n_sub_c
         n_sub_t = min(n_sub_t, n_t)
         n_sub_c = min(n_sub_c, n_c)
+        # Strictly enforce ≥3 per arm; fall back to unstratified if impossible
+        if n_sub_t < 3 or n_sub_c < 3:
+            return rng.choice(all_pids, size=min(n_sub, len(all_pids)), replace=False)
         sampled = np.concatenate([
             rng.choice(arm_pids[design.arm_treated], n_sub_t, replace=False),
             rng.choice(arm_pids[design.arm_control], n_sub_c, replace=False),
@@ -1431,7 +1350,9 @@ def _panel_d_power_curves(data: dict) -> plt.Figure | None:
         title_lines = display_name
         if feat:
             title_lines += f"\n{feat}"
-        title_lines += f"\n{design_label}, n≤{max_n}"
+        # max_n is max subsampled (n_total-1); show actual analyzable n
+        analyzable_n = max_n + 1
+        title_lines += f"\n{design_label}, n={analyzable_n}"
 
         ax.set_title(title_lines, fontsize=9.5, fontweight="bold",
                      color=color, pad=4, linespacing=1.4)
