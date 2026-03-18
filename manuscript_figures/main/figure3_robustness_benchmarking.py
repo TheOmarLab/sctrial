@@ -862,8 +862,13 @@ def _prepare_scalability_data() -> dict:
     print("  Loading all datasets for scalability / power / effect panels ...")
     datasets = _load_all_datasets()
 
-    # Scalability benchmarks (lightweight — just timing, not memory-intensive)
-    timing_df, memory_df = _run_scalability_benchmark(datasets)
+    # Scalability benchmarks — non-fatal so power/effect panels still generate
+    try:
+        timing_df, memory_df = _run_scalability_benchmark(datasets)
+    except Exception as exc:
+        print(f"  Warning: Scalability benchmark failed ({exc}), skipping")
+        timing_df = pd.DataFrame()
+        memory_df = pd.DataFrame()
 
     # Power: process one dataset at a time to avoid OOM
     power_frames = []
