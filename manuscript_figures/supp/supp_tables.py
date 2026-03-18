@@ -584,7 +584,7 @@ def table4_permutation_results(
 
             with warnings.catch_warnings(action="ignore"):
                 df_use, unit = get_within_arm_aggregated_df(
-                    adata, arm_label, sig_cols_imm, design, visits,
+                    adata, "All", sig_cols_imm, design, visits,
                     layer=None, aggregate="participant_visit",
                 )
             df_bytes = pkl.dumps(df_use)
