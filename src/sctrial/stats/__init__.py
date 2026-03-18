@@ -27,10 +27,23 @@ Effect Sizes & Power
 
 from .abundance import abundance_did
 from .bayes import did_table_bayes, prior_predictive_check
-from .comparisons import between_arm_comparison, compare_gene_in_celltype, within_arm_comparison
+from .comparisons import (
+    between_arm_comparison,
+    compare_gene_in_celltype,
+    get_within_arm_aggregated_df,
+    within_arm_fit_beta,
+    within_arm_comparison,
+)
 from .cv import cv_summary, influence_diagnostics, kfold_cv_did, loo_cv_did
 from .diagnostics import check_did_assumptions
-from .did import DiDConfig, did_fit, did_table, did_table_by_celltype, did_table_parallel
+from .did import (
+    DiDConfig,
+    did_fit,
+    did_table,
+    did_table_by_celltype,
+    did_table_parallel,
+    get_did_aggregated_df,
+)
 from .effect_size import (
     add_effect_sizes_to_did,
     bootstrap_effect_size_ci,
@@ -76,6 +89,9 @@ __all__ = [
     "run_gsea_pseudobulk",
     "within_arm_comparison",
     "between_arm_comparison",
+    "get_did_aggregated_df",
+    "get_within_arm_aggregated_df",
+    "within_arm_fit_beta",
     "summarize_did_results",
     "pseudobulk_expression",
     "pseudobulk_within_arm",

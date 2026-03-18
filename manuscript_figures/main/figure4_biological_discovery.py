@@ -32,14 +32,22 @@ import pandas as pd
 
 from .._shared import (
     COLORS,
+    GSEA_LIBRARIES,
     MAIN_OUTPUT,
     TrialDesign,
     apply_style,
     despine,
     did_table,
+    get_aml,
+    get_cart,
     get_sade_feldman,
+    get_stephenson,
+    get_vaccine,
     harmonize_response,
+    load_or_run_gsea_cross_sectional,
     load_or_run_gsea_did,
+    load_or_run_gsea_within_arm,
+    run_gsea_did,
     save_panel,
     score_signatures,
     sig_display,
@@ -430,6 +438,12 @@ def _prepare_data(*, use_cache: bool = True) -> dict:
         traceback.print_exc()
         gene_results = None
 
+    # ------------------------------------------------------------------
+    # 3. Multi-dataset GSEA for pathway replication analysis
+    # ------------------------------------------------------------------
+    # Reuse Sade-Feldman GSEA results from above to avoid recomputation
+    gsea_multi_dataset = _run_multi_dataset_gsea(sf_gsea_results=gsea_results)
+
     result = dict(
         adata=adata,
         sig_cols=sig_cols,
@@ -438,6 +452,7 @@ def _prepare_data(*, use_cache: bool = True) -> dict:
         did_sig=did_sig,
         gsea_results=gsea_results,
         gene_results=gene_results,
+        gsea_multi_dataset=gsea_multi_dataset,
     )
 
     # Cache everything except adata (too large) and sig_cols (recomputed)
@@ -450,6 +465,179 @@ def _prepare_data(*, use_cache: bool = True) -> dict:
         print(f"  Cached results to {cache_path.name}")
 
     return result
+
+
+# ======================================================================
+# Multi-dataset GSEA for pathway replication
+# ======================================================================
+
+def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict[str, pd.DataFrame]:
+    """Run GSEA on all 5 datasets and return results per dataset.
+    
+    Uses all 5 gene set libraries (Hallmark, KEGG, Reactome, GO BP, WikiPathways)
+    for comprehensive pathway coverage, matching the single-dataset analysis.
+    
+    Parameters
+    ----------
+    sf_gsea_results : pd.DataFrame, optional
+        Pre-computed GSEA results for Sade-Feldman from _prepare_data().
+        If provided, these will be reused to avoid recomputation.
+    
+    Returns
+    -------
+    dict[str, pd.DataFrame]
+        Dictionary mapping dataset name to GSEA results DataFrame.
+    """
+    print("  Running GSEA on all datasets for pathway replication...")
+    gsea_multi = {}
+    
+    # 1. Sade-Feldman - reuse results from _prepare_data() if available
+    if sf_gsea_results is not None and len(sf_gsea_results) > 0:
+        # Add dataset column if not present
+        sf_results = sf_gsea_results.copy()
+        if "dataset" not in sf_results.columns:
+            sf_results["dataset"] = "Sade-Feldman"
+        # Ensure library column name is consistent
+        if "Library" in sf_results.columns and "library" not in sf_results.columns:
+            sf_results = sf_results.rename(columns={"Library": "library"})
+        gsea_multi["Sade-Feldman"] = sf_results
+        print(f"    Sade-Feldman: {len(sf_results)} pathways (reused from _prepare_data)")
+    else:
+        # Fallback: use load_or_run_gsea_did for caching
+        try:
+            sf = get_sade_feldman()
+            sf = harmonize_response(sf)
+            if "log1p_tpm" not in sf.layers and "tpm" in sf.layers:
+                sf.layers["log1p_tpm"] = np.log1p(sf.layers["tpm"])
+            sf_design = TrialDesign(
+                participant_col="participant_id",
+                visit_col="visit",
+                arm_col="response_harmonized",
+                arm_treated="Responder",
+                arm_control="Non-responder",
+            )
+            sf_results = load_or_run_gsea_did(
+                sf, sf_design, ("Pre", "Post"), "log1p_tpm", "Sade_Feldman",
+            )
+            if sf_results is not None and len(sf_results) > 0:
+                sf_results["dataset"] = "Sade-Feldman"
+                # Rename Library column to library for consistency
+                if "Library" in sf_results.columns:
+                    sf_results = sf_results.rename(columns={"Library": "library"})
+                gsea_multi["Sade-Feldman"] = sf_results
+                print(f"    Sade-Feldman: {len(sf_results)} pathways (cached or computed)")
+        except Exception as exc:
+            print(f"    Sade-Feldman: FAILED ({exc})")
+    
+    # 2. Vaccine (use within_arm_comparison)
+    try:
+        vax = get_vaccine()
+        vax, _ = score_signatures(vax, layer="counts")
+        vax.obs["arm_dummy"] = "Vaccinated"
+        vax_design = TrialDesign(
+            participant_col="participant_id",
+            visit_col="visit",
+            arm_col="arm_dummy",
+            arm_treated="Vaccinated",
+            arm_control="Vaccinated",
+        )
+        vax_results = load_or_run_gsea_within_arm(
+            vax, vax_design, arm="Vaccinated", visits=("Pre", "Post"),
+            layer="counts", dataset_name="Vaccine",
+        )
+        if vax_results is not None and len(vax_results) > 0:
+            vax_results["dataset"] = "Vaccine"
+            if "Library" in vax_results.columns and "library" not in vax_results.columns:
+                vax_results = vax_results.rename(columns={"Library": "library"})
+            gsea_multi["Vaccine"] = vax_results
+            print(f"    Vaccine: {len(vax_results)} pathways")
+    except Exception as exc:
+        print(f"    Vaccine: FAILED ({exc})")
+    
+    # 3. AML (use within_arm_comparison)
+    try:
+        aml = get_aml()
+        aml, _ = score_signatures(aml, layer="counts")
+        aml.obs["arm_dummy"] = "Treatment"
+        pid_col = ("participant_id" if "participant_id" in aml.obs.columns
+                   else "patient_id")
+        aml_design = TrialDesign(
+            participant_col=pid_col,
+            visit_col="visit",
+            arm_col="arm_dummy",
+            arm_treated="Treatment",
+            arm_control="Treatment",
+        )
+        aml_results = load_or_run_gsea_within_arm(
+            aml, aml_design, arm="Treatment", visits=("Pre", "Post"),
+            layer="counts", dataset_name="AML",
+        )
+        if aml_results is not None and len(aml_results) > 0:
+            aml_results["dataset"] = "AML"
+            if "Library" in aml_results.columns and "library" not in aml_results.columns:
+                aml_results = aml_results.rename(columns={"Library": "library"})
+            gsea_multi["AML"] = aml_results
+            print(f"    AML: {len(aml_results)} pathways")
+    except Exception as exc:
+        print(f"    AML: FAILED ({exc})")
+    
+    # 4. CAR-T (use within_arm_comparison)
+    try:
+        cart = get_cart()
+        cart, _ = score_signatures(cart, layer="counts")
+        cart.obs["arm_dummy"] = "CAR-T"
+        pid_col = ("participant_id" if "participant_id" in cart.obs.columns
+                   else "patient_id")
+        cart_design = TrialDesign(
+            participant_col=pid_col,
+            visit_col="visit",
+            arm_col="arm_dummy",
+            arm_treated="CAR-T",
+            arm_control="CAR-T",
+        )
+        cart_results = load_or_run_gsea_within_arm(
+            cart, cart_design, arm="CAR-T", visits=("Pre", "Post"),
+            layer="counts", dataset_name="CAR-T",
+        )
+        if cart_results is not None and len(cart_results) > 0:
+            cart_results["dataset"] = "CAR-T"
+            if "Library" in cart_results.columns and "library" not in cart_results.columns:
+                cart_results = cart_results.rename(columns={"Library": "library"})
+            gsea_multi["CAR-T"] = cart_results
+            print(f"    CAR-T: {len(cart_results)} pathways")
+    except Exception as exc:
+        print(f"    CAR-T: FAILED ({exc})")
+    
+    # 5. COVID-19 (cross-sectional - use between_arm_comparison)
+    try:
+        covid = get_stephenson()
+        covid, _ = score_signatures(covid, layer="counts")
+        if "dfo_bin" in covid.obs.columns:
+            top_bin = covid.obs["dfo_bin"].value_counts().idxmax()
+        else:
+            top_bin = "Pre"
+        covid_design = TrialDesign(
+            participant_col="participant_id",
+            visit_col="dfo_bin",
+            arm_col="severity",
+            arm_treated="Severe",
+            arm_control="Mild",
+        )
+        covid_results = load_or_run_gsea_cross_sectional(
+            covid, covid_design, visit=top_bin,
+            layer="counts", dataset_name="COVID-19",
+        )
+        if covid_results is not None and len(covid_results) > 0:
+            covid_results["dataset"] = "COVID-19"
+            if "Library" in covid_results.columns and "library" not in covid_results.columns:
+                covid_results = covid_results.rename(columns={"Library": "library"})
+            gsea_multi["COVID-19"] = covid_results
+            print(f"    COVID-19: {len(covid_results)} pathways")
+    except Exception as exc:
+        print(f"    COVID-19: FAILED ({exc})")
+    
+    print(f"  Multi-dataset GSEA: {len(gsea_multi)} datasets completed")
+    return gsea_multi
 
 
 # ======================================================================
@@ -1331,102 +1519,217 @@ def panel_E(ax, data: dict):
 # ======================================================================
 
 def panel_C_replicated(ax, data: dict):
-    """Replicated pathways: count GSEA hits across multiple datasets.
-
-    For the initial Sade-Feldman-only implementation, shows pathway
-    significance breakdown by library as a proxy for cross-validation.
-    Displays FDR<0.25 hits per library for top pathways.
+    """Replicated pathways: heatmap showing top pathways enriched across datasets.
+    
+    Creates a heatmap with pathways as rows and datasets as columns.
+    Shows the top 15 pathways with a balanced mix of high positive and high negative
+    enrichment, prioritizing pathways that are highly enriched across datasets.
+    Pathways must appear in at least 3 out of 5 datasets.
+    
+    Color intensity represents NES magnitude, with blue for positive NES
+    (responder-enriched) and orange for negative NES (non-responder-enriched).
+    Only shows pathways that are significant (FDR < 0.25) in at least one dataset.
     """
-    gsea_results = data.get("gsea_results")
-
-    if gsea_results is None or len(gsea_results) == 0:
-        ax.text(0.5, 0.5, "GSEA results unavailable",
+    gsea_multi = data.get("gsea_multi_dataset", {})
+    
+    if not gsea_multi:
+        ax.text(0.5, 0.5, "Multi-dataset GSEA results unavailable",
                 transform=ax.transAxes, ha="center", va="center",
                 fontsize=12, color=COLORS["gray"])
         ax.set_title("Replicated Pathways", fontsize=11)
         ax.axis("off")
         return
 
-    df = gsea_results.copy()
-    cols = _detect_gsea_columns(df)
-    nes_col, fdr_col, term_col = cols["nes"], cols["fdr"], cols["term"]
-
-    if nes_col is None or fdr_col is None:
-        ax.text(0.5, 0.5, "Missing NES/FDR columns",
+    # Combine all datasets into one DataFrame
+    all_results = []
+    for ds_name, df in gsea_multi.items():
+        if df is None or len(df) == 0:
+            continue
+        cols = _detect_gsea_columns(df)
+        nes_col_name, fdr_col_name, term_col_name = cols["nes"], cols["fdr"], cols["term"]
+        
+        if nes_col_name is None or fdr_col_name is None or term_col_name is None:
+            continue
+        
+        df = df.copy()
+        df[nes_col_name] = pd.to_numeric(df[nes_col_name], errors="coerce")
+        df[fdr_col_name] = pd.to_numeric(df[fdr_col_name], errors="coerce")
+        # Keep all pathways with valid NES - FDR will be used for significance annotation (stars)
+        df = df.dropna(subset=[nes_col_name])
+        
+        if len(df) == 0:
+            continue
+        
+        df["dataset"] = ds_name
+        df["pathway"] = df[term_col_name].apply(
+            lambda s: _clean_pathway_name(s, max_len=50)
+        )
+        # Rename columns to standard names for concatenation
+        df_clean = df[[nes_col_name, fdr_col_name, "pathway", "dataset"]].copy()
+        df_clean.columns = ["NES", "FDR", "pathway", "dataset"]
+        all_results.append(df_clean)
+    
+    if not all_results:
+        ax.text(0.5, 0.5, "No pathways found across datasets",
                 transform=ax.transAxes, ha="center", va="center",
                 fontsize=12, color=COLORS["gray"])
+        ax.set_title("Replicated Pathways", fontsize=11)
         ax.axis("off")
         return
 
-    df[nes_col] = pd.to_numeric(df[nes_col], errors="coerce")
-    df[fdr_col] = pd.to_numeric(df[fdr_col], errors="coerce")
-    df = df.dropna(subset=[nes_col, fdr_col])
-
-    # Clean pathway names
-    df["_clean"] = df[term_col].apply(
-        lambda s: _clean_pathway_name(s, max_len=45)
-    )
-
-    # Select top 10 positive NES + top 10 negative NES (regardless of FDR)
-    df_pos = df[df[nes_col] > 0].nlargest(10, nes_col)
-    df_neg = df[df[nes_col] < 0].nsmallest(10, nes_col)
-    show_df = pd.concat([df_neg, df_pos]).drop_duplicates(
-        subset=[term_col]
-    ).sort_values(nes_col, ascending=True)
-
-    if len(show_df) == 0:
-        ax.text(0.5, 0.5, "No GSEA results to display",
+    combined = pd.concat(all_results, ignore_index=True)
+    
+    # Get all unique pathways and datasets
+    all_pathways = sorted(combined["pathway"].unique())
+    all_datasets = sorted(combined["dataset"].unique())
+    
+    # Build NES matrix: pathways × datasets
+    nes_matrix = np.full((len(all_pathways), len(all_datasets)), np.nan)
+    fdr_matrix = np.full((len(all_pathways), len(all_datasets)), np.nan)
+    
+    for i, pathway in enumerate(all_pathways):
+        for j, dataset in enumerate(all_datasets):
+            subset = combined[(combined["pathway"] == pathway) & 
+                             (combined["dataset"] == dataset)]
+            if len(subset) > 0:
+                # If multiple entries, take the one with highest |NES|
+                row = subset.loc[subset["NES"].abs().idxmax()]
+                nes_matrix[i, j] = row["NES"]
+                fdr_matrix[i, j] = row["FDR"]
+    
+    # Filter pathways: prioritize ≥5 datasets, fallback to ≥4, then ≥3
+    # Rank by absolute average NES across datasets
+    pathway_counts = (~np.isnan(nes_matrix)).sum(axis=1)
+    n_datasets = len(all_datasets)
+    top_n = 15
+    
+    # Calculate average NES for all pathways
+    avg_nes_all = np.nanmean(nes_matrix, axis=1)
+    abs_avg_nes_all = np.abs(avg_nes_all)
+    
+    # First try: pathways in ≥5 datasets, ranked by absolute NES
+    keep_5plus = pathway_counts >= min(5, n_datasets)
+    
+    if keep_5plus.sum() > 0:
+        indices_5plus = np.where(keep_5plus)[0]
+        abs_nes_5plus = abs_avg_nes_all[indices_5plus]
+        order_5plus = indices_5plus[np.argsort(-abs_nes_5plus)]
+        selected_5plus = order_5plus[:top_n].tolist()
+    else:
+        selected_5plus = []
+    
+    # Initialize all_selected with pathways from ≥5 datasets
+    all_selected = selected_5plus
+    
+    # If we need more pathways, get from ≥4 datasets
+    if len(all_selected) < top_n:
+        keep_4plus = pathway_counts >= min(4, n_datasets)
+        keep_4plus_only = keep_4plus & (~keep_5plus)
+        
+        if keep_4plus_only.sum() > 0:
+            indices_4plus = np.where(keep_4plus_only)[0]
+            abs_nes_4plus = abs_avg_nes_all[indices_4plus]
+            order_4plus = indices_4plus[np.argsort(-abs_nes_4plus)]
+            
+            remaining = top_n - len(all_selected)
+            selected_4plus = order_4plus[:remaining].tolist()
+            
+            all_selected = all_selected + selected_4plus
+    
+    # If we still need more pathways, get from ≥3 datasets
+    if len(all_selected) < top_n:
+        keep_3plus = pathway_counts >= min(3, n_datasets)
+        keep_3plus_only = keep_3plus & (~keep_5plus) & (~keep_4plus)
+        
+        if keep_3plus_only.sum() > 0:
+            indices_3plus = np.where(keep_3plus_only)[0]
+            abs_nes_3plus = abs_avg_nes_all[indices_3plus]
+            order_3plus = indices_3plus[np.argsort(-abs_nes_3plus)]
+            
+            remaining = top_n - len(all_selected)
+            selected_3plus = order_3plus[:remaining].tolist()
+            
+            all_selected = all_selected + selected_3plus
+    
+    if len(all_selected) == 0:
+        ax.text(0.5, 0.5, "No pathways replicated across ≥3 datasets",
                 transform=ax.transAxes, ha="center", va="center",
                 fontsize=12, color=COLORS["gray"])
-        ax.set_title("Top Enriched Pathways", fontsize=11)
+        ax.set_title("Replicated Pathways", fontsize=11)
         ax.axis("off")
         return
-
-    y_pos = np.arange(len(show_df))
-    sig_mask = show_df[fdr_col] < 0.25
-
-    # Colors by direction; alpha encodes significance
-    bar_colors = []
-    bar_alphas = []
-    for _, row in show_df.iterrows():
-        c = COLORS["treated"] if row[nes_col] > 0 else COLORS["control"]
-        bar_colors.append(c)
-        bar_alphas.append(0.9 if row[fdr_col] < 0.25 else 0.35)
-
-    # Draw bars individually to set per-bar alpha
-    for i, (_, row) in enumerate(show_df.iterrows()):
-        ax.barh(i, row[nes_col], color=bar_colors[i],
-                alpha=bar_alphas[i], edgecolor="white",
-                linewidth=0.3, height=0.7)
-
-    # Add FDR labels
-    for i, (_, row) in enumerate(show_df.iterrows()):
-        fdr_val = row[fdr_col]
-        label = f"q={fdr_val:.3f}" if fdr_val >= 0.001 else "q<0.001"
-        x_pos = row[nes_col]
-        ha = "left" if x_pos > 0 else "right"
-        offset = 0.02 if x_pos > 0 else -0.02
-        ax.text(x_pos + offset, i, label,
-                va="center", ha=ha, fontsize=5.5, color="#555555")
-
-    ax.axvline(0, color="black", lw=0.8)
-    ax.set_yticks(y_pos)
-    ax.set_yticklabels(show_df["_clean"].values, fontsize=7)
-    ax.set_xlabel("Normalized Enrichment Score (NES)")
-    ax.set_title("Top Enriched Pathways", fontsize=11)
-
-    legend_handles = [
-        mpatches.Patch(color=COLORS["treated"], alpha=0.9,
-                       label="Responder ↑ (FDR<0.25)"),
-        mpatches.Patch(color=COLORS["treated"], alpha=0.35,
-                       label="Responder ↑ (n.s.)"),
-        mpatches.Patch(color=COLORS["control"], alpha=0.9,
-                       label="Non-responder ↑ (FDR<0.25)"),
-        mpatches.Patch(color=COLORS["control"], alpha=0.35,
-                       label="Non-responder ↑ (n.s.)"),
-    ]
-    ax.legend(handles=legend_handles, fontsize=6.5, loc="lower right",
-              frameon=True, framealpha=0.9)
+    
+    # Extract selected pathways
+    nes_matrix = nes_matrix[all_selected]
+    fdr_matrix = fdr_matrix[all_selected]
+    all_pathways = [all_pathways[i] for i in all_selected]
+    
+    # Calculate average NES for final sorting
+    avg_nes = np.nanmean(nes_matrix, axis=1)
+    final_order = np.argsort(avg_nes)
+    
+    nes_matrix = nes_matrix[final_order]
+    fdr_matrix = fdr_matrix[final_order]
+    all_pathways = [all_pathways[i] for i in final_order]
+    
+    # Custom colormap: blue (negative) to white/gray (zero) to red (positive)
+    import matplotlib.colors as mcolors
+    colors_neg = [(0.122, 0.471, 0.706), (0.95, 0.95, 0.95)]  # blue to light gray
+    colors_pos = [(0.95, 0.95, 0.95), (0.839, 0.188, 0.192)]  # light gray to red
+    n_bins = 100
+    cmap_neg = mcolors.LinearSegmentedColormap.from_list('neg', colors_neg, N=n_bins//2)
+    cmap_pos = mcolors.LinearSegmentedColormap.from_list('pos', colors_pos, N=n_bins//2)
+    # Combine colormaps
+    colors = np.vstack((cmap_neg(np.linspace(0, 1, n_bins//2)),
+                       cmap_pos(np.linspace(0, 1, n_bins//2))))
+    cmap = mcolors.LinearSegmentedColormap.from_list('diverging', colors, N=n_bins)
+    
+    # Set colorbar range to actual data min/max
+    valid_nes = nes_matrix[~np.isnan(nes_matrix)]
+    if len(valid_nes) > 0:
+        vmin, vmax = float(np.nanmin(valid_nes)), float(np.nanmax(valid_nes))
+        vrange = vmax - vmin
+        vmin -= vrange * 0.05
+        vmax += vrange * 0.05
+    else:
+        vmin, vmax = -2.0, 2.0
+    
+    # For NaN values set to white
+    masked_nes = np.ma.masked_invalid(nes_matrix)
+    
+    # Plot heatmap 
+    im = ax.imshow(masked_nes, aspect="auto", interpolation="nearest", origin="lower",
+                   cmap=cmap, vmin=vmin, vmax=vmax)
+    ax.set_facecolor((0.95, 0.95, 0.95))
+    cbar = ax.figure.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    cbar.set_label("NES", fontsize=9, rotation=0, labelpad=10)
+    cbar.ax.tick_params(labelsize=8)
+    
+    for i in range(len(all_pathways) + 1):
+        ax.axhline(i - 0.5, color="#E0E0E0", linewidth=0.8, zorder=1)
+    for j in range(len(all_datasets) + 1):
+        ax.axvline(j - 0.5, color="#E0E0E0", linewidth=0.8, zorder=1)
+    
+    # Add stars for significant pathways (FDR < 0.25)
+    for i in range(len(all_pathways)):
+        for j in range(len(all_datasets)):
+            if not np.isnan(fdr_matrix[i, j]) and fdr_matrix[i, j] < 0.25:
+                # Add star in the center of the cell
+                ax.text(j, i, "*", ha="center", va="center", 
+                       fontsize=10, fontweight="bold", color="white",
+                       zorder=10)
+    
+    # Labels
+    ax.set_yticks(range(len(all_pathways)))
+    ax.set_yticklabels(all_pathways, fontsize=7)
+    ax.set_xticks(range(len(all_datasets)))
+    ax.set_xticklabels(all_datasets, fontsize=8, rotation=45, ha="right")
+    
+    ax.set_xlabel("Dataset", fontsize=9)
+    ax.set_ylabel("Pathway", fontsize=9)
+    ax.set_title("Replicated Pathways Across Datasets (* FDR < 0.25)", fontsize=11)
+    
+    ax.tick_params(axis="both", length=0)
     despine(ax)
 
 
