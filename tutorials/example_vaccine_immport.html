@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Vaccine Response Analysis &#8212; sctrial 0.2.1.dev1 documentation</title>
+    <title>Vaccine Response Analysis &#8212; sctrial 0.3.0 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=227ef001"></script>
+    <script src="../_static/documentation_options.js?v=f129cdf0"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -123,8 +123,8 @@
       
     
     
-    <img src="../_static/logo.svg" class="logo__image only-light" alt="sctrial 0.2.1.dev1 documentation - Home"/>
-    <img src="../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.2.1.dev1 documentation - Home"/>
+    <img src="../_static/logo.svg" class="logo__image only-light" alt="sctrial 0.3.0 documentation - Home"/>
+    <img src="../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.3.0 documentation - Home"/>
   
   
 </a></div>
@@ -512,7 +512,6 @@ Name: pt_id, dtype: int64
 <span class="c1"># Standardize metadata</span>
 <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;visit&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;day&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
 <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;participant_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;pt_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
-<span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;arm&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Vaccinated&quot;</span>
 <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;cell_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;clustnm&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
 <span class="n">visit_col</span> <span class="o">=</span> <span class="s2">&quot;visit&quot;</span>
 <span class="n">visits</span> <span class="o">=</span> <span class="p">[</span><span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;0&quot;</span><span class="p">,</span> <span class="s2">&quot;7&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()]</span>
@@ -535,16 +534,14 @@ Name: pt_id, dtype: int64
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Covariates available (not modeled here):&quot;</span><span class="p">,</span> <span class="n">covariates</span><span class="p">)</span>
 
 <span class="c1"># Design object for a SINGLE-ARM longitudinal study.</span>
-<span class="c1"># IMPORTANT: This is NOT a two-arm trial. All participants received vaccine.</span>
-<span class="c1"># arm_treated == arm_control is intentional — sctrial&#39;s TrialDesign requires</span>
-<span class="c1"># an arm column, but analyses in this notebook use WITHIN-ARM paired tests</span>
-<span class="c1"># (e.g. within_arm_comparison, wilcoxon), not between-arm DiD.</span>
+<span class="c1"># All participants received vaccine — there is no control arm.</span>
+<span class="c1"># arm_col=None tells sctrial this is a single-arm design.</span>
+<span class="c1"># Analyses use within_arm_comparison() for paired pre→post inference,</span>
+<span class="c1"># NOT between-arm DiD.</span>
 <span class="n">design</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">TrialDesign</span><span class="p">(</span>
     <span class="n">participant_col</span><span class="o">=</span><span class="s2">&quot;participant_id&quot;</span><span class="p">,</span>
     <span class="n">visit_col</span><span class="o">=</span><span class="n">visit_col</span><span class="p">,</span>
-    <span class="n">arm_col</span><span class="o">=</span><span class="s2">&quot;arm&quot;</span><span class="p">,</span>
-    <span class="n">arm_treated</span><span class="o">=</span><span class="s2">&quot;Vaccinated&quot;</span><span class="p">,</span>
-    <span class="n">arm_control</span><span class="o">=</span><span class="s2">&quot;Vaccinated&quot;</span><span class="p">,</span>   <span class="c1"># Same arm — single-arm study</span>
+    <span class="n">arm_col</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>           <span class="c1"># Single-arm study — no arm column</span>
     <span class="n">celltype_col</span><span class="o">=</span><span class="s2">&quot;cell_type&quot;</span><span class="p">,</span>
 <span class="p">)</span>
 
@@ -578,8 +575,6 @@ Covariates available (not modeled here): []
  &#39;n_visits&#39;: 2,
  &#39;visits&#39;: [&#39;0&#39;, &#39;7&#39;],
  &#39;paired_participants&#39;: {(&#39;0&#39;, &#39;7&#39;): 6},
- &#39;n_arms&#39;: 1,
- &#39;arms&#39;: [&#39;Vaccinated&#39;],
  &#39;cells_per_participant_visit_mean&#39;: 6540.666666666667,
  &#39;cells_per_participant_visit_median&#39;: 5350.5,
  &#39;cells_per_participant_visit_min&#39;: 3464,
@@ -831,7 +826,7 @@ Using 6 validated paired participants for analyses.
     <span class="n">ad_sub</span> <span class="o">=</span> <span class="n">adata_analysis</span><span class="p">[</span><span class="n">adata_analysis</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;participant_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">VALID_PAIRED_IDS</span><span class="p">)]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
     <span class="n">res_within</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">within_arm_comparison</span><span class="p">(</span>
         <span class="n">ad_sub</span><span class="p">,</span>
-        <span class="n">arm</span><span class="o">=</span><span class="s2">&quot;Vaccinated&quot;</span><span class="p">,</span>
+        <span class="n">arm</span><span class="o">=</span><span class="s2">&quot;All&quot;</span><span class="p">,</span>
         <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span>
         <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
         <span class="n">visits</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">visits</span><span class="p">),</span>
@@ -931,17 +926,17 @@ WITHIN-ARM COMPARISONS: MODULE SCORES (Day 0 vs Day 7)
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/1601061899.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/491674085.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/1601061899.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/491674085.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/1601061899.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/491674085.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/1601061899.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/491674085.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/1601061899.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/491674085.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/1601061899.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/491674085.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
 </pre></div></div>
 </div>
@@ -1359,7 +1354,7 @@ Boxplots show participant-level distributions by day; points indicate individual
     <span class="n">ad_sub</span> <span class="o">=</span> <span class="n">adata_analysis</span><span class="p">[</span><span class="n">adata_analysis</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;participant_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">VALID_PAIRED_IDS</span><span class="p">)]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
     <span class="n">res_genes</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">within_arm_comparison</span><span class="p">(</span>
         <span class="n">ad_sub</span><span class="p">,</span>
-        <span class="n">arm</span><span class="o">=</span><span class="s2">&quot;Vaccinated&quot;</span><span class="p">,</span>
+        <span class="n">arm</span><span class="o">=</span><span class="s2">&quot;All&quot;</span><span class="p">,</span>
         <span class="n">features</span><span class="o">=</span><span class="n">panel_genes</span><span class="p">,</span>
         <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
         <span class="n">visits</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">visits</span><span class="p">),</span>
@@ -1463,43 +1458,43 @@ WITHIN-ARM COMPARISONS: PANEL GENES (Day 0 vs Day 7)
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_33094/2531043274.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
 </pre></div></div>
 </div>
@@ -2274,7 +2269,7 @@ Pseudobulk paired deltas with Wilcoxon signed-rank test (panel genes × cell typ
     <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
     <span class="n">st</span><span class="o">.</span><span class="n">plot_within_arm_comparison</span><span class="p">(</span>
         <span class="n">adata_analysis</span><span class="p">,</span>
-        <span class="n">arm</span><span class="o">=</span><span class="s2">&quot;Vaccinated&quot;</span><span class="p">,</span>
+        <span class="n">arm</span><span class="o">=</span><span class="s2">&quot;All&quot;</span><span class="p">,</span>
         <span class="n">feature</span><span class="o">=</span><span class="n">features</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
         <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
         <span class="n">visits</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">visits</span><span class="p">),</span>
@@ -2591,28 +2586,13 @@ Effect sizes for Day 0 → Day 7 changes:
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">scipy.stats</span><span class="w"> </span><span class="kn">import</span> <span class="n">norm</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;POWER ANALYSIS (Within-Arm Paired Design)&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
 
-<span class="c1"># NOTE: power_did() assumes a TWO-ARM DiD design and is NOT appropriate here.</span>
-<span class="c1"># For a single-arm paired study, power is based on a one-sample or paired t-test.</span>
-<span class="c1"># We use the standard formula: power = P(Z &gt; z_alpha - d*sqrt(n))</span>
-
-<span class="k">def</span><span class="w"> </span><span class="nf">power_paired</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">effect_size</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span> <span class="n">two_sided</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Power for a paired t-test (one-sample test on differences).&quot;&quot;&quot;</span>
-    <span class="n">z_alpha</span> <span class="o">=</span> <span class="n">norm</span><span class="o">.</span><span class="n">ppf</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">alpha</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="k">if</span> <span class="n">two_sided</span> <span class="k">else</span> <span class="mi">1</span><span class="p">))</span>
-    <span class="n">ncp</span> <span class="o">=</span> <span class="n">effect_size</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
-    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">norm</span><span class="o">.</span><span class="n">cdf</span><span class="p">(</span><span class="n">z_alpha</span> <span class="o">-</span> <span class="n">ncp</span><span class="p">))</span>
-
-<span class="k">def</span><span class="w"> </span><span class="nf">sample_size_paired</span><span class="p">(</span><span class="n">effect_size</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="mf">0.80</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span> <span class="n">two_sided</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Sample size for a paired t-test to achieve target power.&quot;&quot;&quot;</span>
-    <span class="n">z_alpha</span> <span class="o">=</span> <span class="n">norm</span><span class="o">.</span><span class="n">ppf</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">alpha</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="k">if</span> <span class="n">two_sided</span> <span class="k">else</span> <span class="mi">1</span><span class="p">))</span>
-    <span class="n">z_beta</span> <span class="o">=</span> <span class="n">norm</span><span class="o">.</span><span class="n">ppf</span><span class="p">(</span><span class="n">power</span><span class="p">)</span>
-    <span class="n">n</span> <span class="o">=</span> <span class="p">((</span><span class="n">z_alpha</span> <span class="o">+</span> <span class="n">z_beta</span><span class="p">)</span> <span class="o">/</span> <span class="n">effect_size</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
-    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">n</span><span class="p">))</span>
+<span class="c1"># Use sctrial&#39;s paired power functions (single-arm pre/post design).</span>
+<span class="c1"># These are the correct functions for a paired study — do NOT use</span>
+<span class="c1"># power_did() which assumes a two-arm DiD design.</span>
 
 <span class="c1"># Current sample size</span>
 <span class="n">n_paired</span> <span class="o">=</span> <span class="n">N_VALID_PAIRED</span>
@@ -2621,13 +2601,13 @@ Effect sizes for Day 0 → Day 7 changes:
 <span class="c1"># Power for different effect sizes</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Power with n=</span><span class="si">{</span><span class="n">n_paired</span><span class="si">}</span><span class="s2"> paired participants (paired t-test):&quot;</span><span class="p">)</span>
 <span class="k">for</span> <span class="n">effect_size</span> <span class="ow">in</span> <span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">]:</span>
-    <span class="n">pwr</span> <span class="o">=</span> <span class="n">power_paired</span><span class="p">(</span><span class="n">n_paired</span><span class="p">,</span> <span class="n">effect_size</span><span class="p">)</span>
+    <span class="n">pwr</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">power_paired</span><span class="p">(</span><span class="n">n_participants</span><span class="o">=</span><span class="n">n_paired</span><span class="p">,</span> <span class="n">effect_size</span><span class="o">=</span><span class="n">effect_size</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Effect size d=</span><span class="si">{</span><span class="n">effect_size</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">pwr</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2"> power&quot;</span><span class="p">)</span>
 
 <span class="c1"># Sample sizes needed for 80% power</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Sample size needed for 80% power (paired design):&quot;</span><span class="p">)</span>
 <span class="k">for</span> <span class="n">effect_size</span> <span class="ow">in</span> <span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">]:</span>
-    <span class="n">n_needed</span> <span class="o">=</span> <span class="n">sample_size_paired</span><span class="p">(</span><span class="n">effect_size</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="mf">0.80</span><span class="p">)</span>
+    <span class="n">n_needed</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">sample_size_paired</span><span class="p">(</span><span class="n">effect_size</span><span class="o">=</span><span class="n">effect_size</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="mf">0.80</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Effect size d=</span><span class="si">{</span><span class="n">effect_size</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">n_needed</span><span class="si">}</span><span class="s2"> participants&quot;</span><span class="p">)</span>
 
 <span class="c1"># Power curve visualization</span>
@@ -2636,7 +2616,7 @@ Effect sizes for Day 0 → Day 7 changes:
 <span class="c1"># Power curve across sample sizes</span>
 <span class="n">n_range</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">31</span><span class="p">)</span>
 <span class="k">for</span> <span class="n">effect_size</span><span class="p">,</span> <span class="n">color</span> <span class="ow">in</span> <span class="p">[(</span><span class="mf">0.5</span><span class="p">,</span> <span class="s2">&quot;blue&quot;</span><span class="p">),</span> <span class="p">(</span><span class="mf">0.8</span><span class="p">,</span> <span class="s2">&quot;green&quot;</span><span class="p">),</span> <span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;orange&quot;</span><span class="p">),</span> <span class="p">(</span><span class="mf">1.5</span><span class="p">,</span> <span class="s2">&quot;red&quot;</span><span class="p">)]:</span>
-    <span class="n">powers</span> <span class="o">=</span> <span class="p">[</span><span class="n">power_paired</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">effect_size</span><span class="p">)</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">n_range</span><span class="p">]</span>
+    <span class="n">powers</span> <span class="o">=</span> <span class="p">[</span><span class="n">st</span><span class="o">.</span><span class="n">power_paired</span><span class="p">(</span><span class="n">n_participants</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">effect_size</span><span class="o">=</span><span class="n">effect_size</span><span class="p">)</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">n_range</span><span class="p">]</span>
     <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">n_range</span><span class="p">,</span> <span class="n">powers</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;d=</span><span class="si">{</span><span class="n">effect_size</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
 <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="mf">0.8</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s2">&quot;--&quot;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;80% power&quot;</span><span class="p">)</span>
 <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">n_paired</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;gray&quot;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s2">&quot;:&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Current n=</span><span class="si">{</span><span class="n">n_paired</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -2649,7 +2629,7 @@ Effect sizes for Day 0 → Day 7 changes:
 
 <span class="c1"># Power with current sample across effect sizes</span>
 <span class="n">effect_range</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="mi">50</span><span class="p">)</span>
-<span class="n">power_current</span> <span class="o">=</span> <span class="p">[</span><span class="n">power_paired</span><span class="p">(</span><span class="n">n_paired</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">effect_range</span><span class="p">]</span>
+<span class="n">power_current</span> <span class="o">=</span> <span class="p">[</span><span class="n">st</span><span class="o">.</span><span class="n">power_paired</span><span class="p">(</span><span class="n">n_participants</span><span class="o">=</span><span class="n">n_paired</span><span class="p">,</span> <span class="n">effect_size</span><span class="o">=</span><span class="n">e</span><span class="p">)</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">effect_range</span><span class="p">]</span>
 <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">effect_range</span><span class="p">,</span> <span class="n">power_current</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;steelblue&quot;</span><span class="p">)</span>
 <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="mf">0.8</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s2">&quot;--&quot;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
 <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">fill_between</span><span class="p">(</span><span class="n">effect_range</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">power_current</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.2</span><span class="p">)</span>
@@ -2660,12 +2640,10 @@ Effect sizes for Day 0 → Day 7 changes:
 <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
 
 <span class="c1"># Mark minimum detectable effect</span>
-<span class="n">idx_80</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">power_current</span><span class="p">)</span> <span class="o">-</span> <span class="mf">0.8</span><span class="p">))</span>
-<span class="k">if</span> <span class="n">idx_80</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-    <span class="n">detectable</span> <span class="o">=</span> <span class="n">effect_range</span><span class="p">[</span><span class="n">idx_80</span><span class="p">]</span>
-    <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">detectable</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;coral&quot;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s2">&quot;:&quot;</span><span class="p">,</span>
-                    <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Min detectable d=</span><span class="si">{</span><span class="n">detectable</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">mde</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">sensitivity_paired</span><span class="p">(</span><span class="n">n_participants</span><span class="o">=</span><span class="n">n_paired</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="mf">0.80</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">mde</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;coral&quot;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s2">&quot;:&quot;</span><span class="p">,</span>
+                <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Min detectable d=</span><span class="si">{</span><span class="n">mde</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 
@@ -2702,18 +2680,18 @@ POWER ANALYSIS (Within-Arm Paired Design)
 Current paired sample size: 6 participants
 
 Power with n=6 paired participants (paired t-test):
-  Effect size d=0.5: 23.1% power
-  Effect size d=0.8: 50.0% power
-  Effect size d=1.0: 68.8% power
-  Effect size d=1.5: 95.7% power
-  Effect size d=2.0: 99.8% power
+  Effect size d=0.5: 13.9% power
+  Effect size d=0.8: 28.3% power
+  Effect size d=1.0: 41.0% power
+  Effect size d=1.5: 73.8% power
+  Effect size d=2.0: 93.4% power
 
 Sample size needed for 80% power (paired design):
-  Effect size d=0.5: 32 participants
-  Effect size d=0.8: 13 participants
-  Effect size d=1.0: 8 participants
-  Effect size d=1.5: 4 participants
-  Effect size d=2.0: 2 participants
+  Effect size d=0.5: 63 participants
+  Effect size d=0.8: 25 participants
+  Effect size d=1.0: 16 participants
+  Effect size d=1.5: 7 participants
+  Effect size d=2.0: 4 participants
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -2773,7 +2751,7 @@ Note: Participant-level aggregation accounts for clustering automatically.
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 AnnData object with n_obs × n_vars = 202 × 5
-    obs: &#39;participant_id&#39;, &#39;visit&#39;, &#39;arm&#39;, &#39;cell_type&#39;
+    obs: &#39;participant_id&#39;, &#39;visit&#39;, &#39;cell_type&#39;
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -2809,7 +2787,6 @@ AnnData object with n_obs × n_vars = 202 × 5
       <th></th>
       <th>participant_id</th>
       <th>visit</th>
-      <th>arm</th>
       <th>cell_type</th>
     </tr>
   </thead>
@@ -2818,35 +2795,30 @@ AnnData object with n_obs × n_vars = 202 × 5
       <th>0</th>
       <td>2047</td>
       <td>0</td>
-      <td>Vaccinated</td>
       <td>C0_CD4 T</td>
     </tr>
     <tr>
       <th>1</th>
       <td>2047</td>
       <td>0</td>
-      <td>Vaccinated</td>
       <td>C3_CD14+ monocytes</td>
     </tr>
     <tr>
       <th>2</th>
       <td>2047</td>
       <td>0</td>
-      <td>Vaccinated</td>
       <td>C10_Naive CD8 T</td>
     </tr>
     <tr>
       <th>3</th>
       <td>2047</td>
       <td>0</td>
-      <td>Vaccinated</td>
       <td>C6_CD8 T</td>
     </tr>
     <tr>
       <th>4</th>
       <td>2047</td>
       <td>0</td>
-      <td>Vaccinated</td>
       <td>C4_CD16+ monocytes</td>
     </tr>
   </tbody>

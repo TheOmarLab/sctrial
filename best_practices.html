@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Best Practices Guide &#8212; sctrial 0.2.1.dev1 documentation</title>
+    <title>Best Practices Guide &#8212; sctrial 0.3.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=227ef001"></script>
+    <script src="_static/documentation_options.js?v=f129cdf0"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -120,8 +120,8 @@
       
     
     
-    <img src="_static/logo.svg" class="logo__image only-light" alt="sctrial 0.2.1.dev1 documentation - Home"/>
-    <img src="_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.2.1.dev1 documentation - Home"/>
+    <img src="_static/logo.svg" class="logo__image only-light" alt="sctrial 0.3.0 documentation - Home"/>
+    <img src="_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.3.0 documentation - Home"/>
   
   
 </a></div>
@@ -420,20 +420,27 @@
 <h3><a class="toc-backref" href="#id3" role="doc-backlink">Sample Size Recommendations</a><a class="headerlink" href="#sample-size-recommendations" title="Link to this heading">#</a></h3>
 <p><strong>Minimum Requirements</strong>:</p>
 <ul class="simple">
-<li><p>At least <strong>4 paired participants</strong> per arm for DiD estimation</p></li>
+<li><p><strong>Two-arm DiD</strong>: At least <strong>4 paired participants per arm</strong> (8 total)</p></li>
+<li><p><strong>Single-arm paired</strong>: At least <strong>4 paired participants</strong></p></li>
 <li><p>Recommend <strong>10-15 paired participants</strong> for reliable inference</p></li>
 <li><p>For <strong>&lt; 15 participants</strong>: Always use bootstrap (<code class="docutils literal notranslate"><span class="pre">use_bootstrap=True</span></code>)</p></li>
 </ul>
 <p><strong>Power Considerations</strong>:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># For adequate power to detect moderate effects (d=0.5)</span>
-<span class="c1"># Recommend n=20-30 paired participants per arm</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Two-arm DiD power</span>
+<span class="n">power</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">power_did</span><span class="p">(</span><span class="n">n_treated</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">n_control</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">effect_size</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+<span class="n">n_needed</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">sample_size_did</span><span class="p">(</span><span class="n">effect_size</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="mf">0.80</span><span class="p">)</span>
+
+<span class="c1"># Single-arm paired power (e.g. vaccine, CAR-T)</span>
+<span class="n">power</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">power_paired</span><span class="p">(</span><span class="n">n_participants</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">effect_size</span><span class="o">=</span><span class="mf">0.8</span><span class="p">)</span>
+<span class="n">n_needed</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">sample_size_paired</span><span class="p">(</span><span class="n">effect_size</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="mf">0.80</span><span class="p">)</span>
+<span class="n">mde</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">sensitivity_paired</span><span class="p">(</span><span class="n">n_participants</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="mf">0.80</span><span class="p">)</span>
 
 <span class="c1"># Check your sample size</span>
 <span class="n">n_paired</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">count_paired</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">,</span> <span class="s2">&quot;visit&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;baseline&quot;</span><span class="p">,</span> <span class="s2">&quot;followup&quot;</span><span class="p">])</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Paired participants: </span><span class="si">{</span><span class="n">n_paired</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
 <span class="k">if</span> <span class="n">n_paired</span> <span class="o">&lt;</span> <span class="mi">15</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;⚠️  Consider using bootstrap inference&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Consider using bootstrap inference (use_bootstrap=True)&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>

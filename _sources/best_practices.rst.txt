@@ -29,7 +29,8 @@ Sample Size Recommendations
 
 **Minimum Requirements**:
 
-- At least **4 paired participants** per arm for DiD estimation
+- **Two-arm DiD**: At least **4 paired participants per arm** (8 total)
+- **Single-arm paired**: At least **4 paired participants**
 - Recommend **10-15 paired participants** for reliable inference
 - For **< 15 participants**: Always use bootstrap (``use_bootstrap=True``)
 
@@ -37,15 +38,21 @@ Sample Size Recommendations
 
 .. code-block:: python
 
-   # For adequate power to detect moderate effects (d=0.5)
-   # Recommend n=20-30 paired participants per arm
+   # Two-arm DiD power
+   power = st.power_did(n_treated=15, n_control=15, effect_size=0.5)
+   n_needed = st.sample_size_did(effect_size=0.5, power=0.80)
+
+   # Single-arm paired power (e.g. vaccine, CAR-T)
+   power = st.power_paired(n_participants=10, effect_size=0.8)
+   n_needed = st.sample_size_paired(effect_size=0.8, power=0.80)
+   mde = st.sensitivity_paired(n_participants=10, power=0.80)
 
    # Check your sample size
    n_paired = st.count_paired(adata.obs, "visit", ["baseline", "followup"])
    print(f"Paired participants: {n_paired}")
 
    if n_paired < 15:
-       print("⚠️  Consider using bootstrap inference")
+       print("Consider using bootstrap inference (use_bootstrap=True)")
 
 Visit Selection
 ~~~~~~~~~~~~~~~

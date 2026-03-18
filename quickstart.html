@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Quickstart &#8212; sctrial 0.2.1.dev1 documentation</title>
+    <title>Quickstart &#8212; sctrial 0.3.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=227ef001"></script>
+    <script src="_static/documentation_options.js?v=f129cdf0"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -120,8 +120,8 @@
       
     
     
-    <img src="_static/logo.svg" class="logo__image only-light" alt="sctrial 0.2.1.dev1 documentation - Home"/>
-    <img src="_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.2.1.dev1 documentation - Home"/>
+    <img src="_static/logo.svg" class="logo__image only-light" alt="sctrial 0.3.0 documentation - Home"/>
+    <img src="_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.3.0 documentation - Home"/>
   
   
 </a></div>
@@ -349,7 +349,7 @@
 <h2>Minimal end‑to‑end example<a class="headerlink" href="#minimal-endtoend-example" title="Link to this heading">#</a></h2>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">sctrial</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
 
-<span class="c1"># 1. Define Design</span>
+<span class="c1"># 1. Define Design (two-arm trial)</span>
 <span class="n">design</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">TrialDesign</span><span class="p">(</span>
     <span class="n">participant_col</span><span class="o">=</span><span class="s2">&quot;pid&quot;</span><span class="p">,</span>
     <span class="n">visit_col</span><span class="o">=</span><span class="s2">&quot;visit&quot;</span><span class="p">,</span>
@@ -358,6 +358,14 @@
     <span class="n">arm_control</span><span class="o">=</span><span class="s2">&quot;Control&quot;</span><span class="p">,</span>
     <span class="n">celltype_col</span><span class="o">=</span><span class="s2">&quot;cell_type&quot;</span><span class="p">,</span>
 <span class="p">)</span>
+
+<span class="c1"># For single-arm studies (e.g. vaccination, single-agent therapy):</span>
+<span class="c1"># design = st.TrialDesign(</span>
+<span class="c1">#     participant_col=&quot;pid&quot;,</span>
+<span class="c1">#     visit_col=&quot;visit&quot;,</span>
+<span class="c1">#     arm_col=None,  # No arm column needed</span>
+<span class="c1">#     celltype_col=&quot;cell_type&quot;,</span>
+<span class="c1"># )</span>
 
 <span class="c1"># 2. Preprocess (add log1p‑CPM layer)</span>
 <span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">add_log1p_cpm_layer</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">counts_layer</span><span class="o">=</span><span class="s2">&quot;counts&quot;</span><span class="p">)</span>

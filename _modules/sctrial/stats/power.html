@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>sctrial.stats.power &#8212; sctrial 0.2.1.dev1 documentation</title>
+    <title>sctrial.stats.power &#8212; sctrial 0.3.0 documentation</title>
   
   
   
@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=227ef001"></script>
+    <script src="../../../_static/documentation_options.js?v=f129cdf0"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -117,8 +117,8 @@
       
     
     
-    <img src="../../../_static/logo.svg" class="logo__image only-light" alt="sctrial 0.2.1.dev1 documentation - Home"/>
-    <img src="../../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.2.1.dev1 documentation - Home"/>
+    <img src="../../../_static/logo.svg" class="logo__image only-light" alt="sctrial 0.3.0 documentation - Home"/>
+    <img src="../../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.3.0 documentation - Home"/>
   
   
 </a></div>
@@ -341,25 +341,26 @@
   <h1>Source code for sctrial.stats.power</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Power analysis utilities for trial planning.</span>
 
-<span class="sd">This module provides sample size and power calculations for Difference-in-Differences</span>
-<span class="sd">(DiD) analyses in single-cell studies.</span>
+<span class="sd">This module provides sample size and power calculations for both</span>
+<span class="sd">**two-arm DiD** and **single-arm paired** (pre/post) designs in</span>
+<span class="sd">single-cell studies.</span>
 
 <span class="sd">Mathematical Background</span>
 <span class="sd">-----------------------</span>
-<span class="sd">For a DiD design with equal group sizes n per arm×time cell:</span>
+<span class="sd">**Two-arm DiD** (treatment × time interaction):</span>
 
-<span class="sd">    Power = Φ(``|delta|``/SE - z_{1-α/2})</span>
+<span class="sd">    Power = Φ(|δ|/SE - z_{1-α/2}),   SE = σ × √(4/n)</span>
 
-<span class="sd">where:</span>
-<span class="sd">    - delta = expected DiD effect size</span>
-<span class="sd">    - SE = σ × √(4/n) for equal groups</span>
-<span class="sd">    - σ = within-group standard deviation</span>
-<span class="sd">    - Φ = standard normal CDF</span>
-<span class="sd">    - z_{1-α/2} = critical value (1.96 for α=0.05)</span>
+<span class="sd">    n = 4σ²(z_{1-α/2} + z_{1-β})² / δ²</span>
 
-<span class="sd">Solving for n given desired power (1-β):</span>
+<span class="sd">**Single-arm paired** (within-arm pre→post change):</span>
 
-<span class="sd">    n = 4σ²(z_{1-α/2} + z_{1-β})² / delta²</span>
+<span class="sd">    Power = Φ(|δ|/SE - z_{1-α/2}),   SE = σ × √(2/n)</span>
+
+<span class="sd">    n = 2σ²(z_{1-α/2} + z_{1-β})² / δ²</span>
+
+<span class="sd">The paired design has half the variance of DiD (factor 2 vs 4)</span>
+<span class="sd">because it involves one arm instead of two.</span>
 
 <span class="sd">For cluster-robust inference with ICC (intraclass correlation):</span>
 
@@ -394,6 +395,9 @@
     <span class="s2">&quot;power_did&quot;</span><span class="p">,</span>
     <span class="s2">&quot;sample_size_did&quot;</span><span class="p">,</span>
     <span class="s2">&quot;power_curve&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;power_paired&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;sample_size_paired&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;sensitivity_paired&quot;</span><span class="p">,</span>
     <span class="s2">&quot;design_effect&quot;</span><span class="p">,</span>
     <span class="s2">&quot;effective_sample_size&quot;</span><span class="p">,</span>
 <span class="p">]</span>
@@ -795,6 +799,213 @@
     <span class="n">mde</span> <span class="o">=</span> <span class="n">se_unit</span> <span class="o">*</span> <span class="p">(</span><span class="n">z_alpha</span> <span class="o">+</span> <span class="n">z_beta</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">mde</span>
+
+
+<span class="c1"># ======================================================================</span>
+<span class="c1"># Paired (single-arm pre/post) power functions</span>
+<span class="c1"># ======================================================================</span>
+
+
+<div class="viewcode-block" id="power_paired">
+<a class="viewcode-back" href="../../../api.html#sctrial.stats.power.power_paired">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">power_paired</span><span class="p">(</span>
+    <span class="n">n_participants</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">effect_size</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">sigma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+    <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
+    <span class="n">two_sided</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate statistical power for a paired pre/post comparison.</span>
+
+<span class="sd">    This function computes the power to detect a given within-arm</span>
+<span class="sd">    longitudinal effect (post − pre) with the specified sample size.</span>
+
+<span class="sd">    Model:</span>
+<span class="sd">        Y_post - Y_pre = δ + ε   (paired differences)</span>
+
+<span class="sd">    H₀: δ = 0  (no change)</span>
+<span class="sd">    H₁: δ ≠ 0  (treatment causes change)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    n_participants</span>
+<span class="sd">        Number of participants with paired measurements.</span>
+<span class="sd">    effect_size</span>
+<span class="sd">        Expected pre-to-post effect size (δ) in original units.</span>
+<span class="sd">        Can also be Cohen&#39;s d if sigma=1.</span>
+<span class="sd">    sigma</span>
+<span class="sd">        Within-group standard deviation of the outcome (not the</span>
+<span class="sd">        paired difference SD; the paired difference variance is 2σ²).</span>
+<span class="sd">    alpha</span>
+<span class="sd">        Significance level (default 0.05).</span>
+<span class="sd">    two_sided</span>
+<span class="sd">        If True (default), use two-sided test.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    float</span>
+<span class="sd">        Statistical power (probability of rejecting H₀ when H₁ is true).</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; # 6 participants, effect = 0.8 SD</span>
+<span class="sd">    &gt;&gt;&gt; pwr = power_paired(n_participants=6, effect_size=0.8, sigma=1.0)</span>
+<span class="sd">    &gt;&gt;&gt; print(f&quot;Power: {pwr:.1%}&quot;)</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    For paired pre/post, the variance of the time coefficient is:</span>
+
+<span class="sd">        Var(β_time) = 2σ² / n</span>
+
+<span class="sd">    where n is the number of paired participants.  This is half the</span>
+<span class="sd">    variance of a DiD coefficient (4σ²/n) because there is only one</span>
+<span class="sd">    arm instead of two.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">n_participants</span><span class="p">)</span> <span class="ow">or</span> <span class="n">n_participants</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;n_participants must be a finite integer &gt;= 1.&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="n">n_participants</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n_participants</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;n_participants must be an integer.&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">effect_size</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;effect_size must be finite.&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">sigma</span><span class="p">)</span> <span class="ow">or</span> <span class="n">sigma</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;sigma must be a finite value &gt; 0.&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&lt;</span> <span class="n">alpha</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;alpha must be between 0 and 1.&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">n_participants</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mf">0.0</span>
+
+    <span class="c1"># Standard error for paired comparison: SE = σ × √(2/n)</span>
+    <span class="n">se</span> <span class="o">=</span> <span class="n">sigma</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">2.0</span> <span class="o">/</span> <span class="n">n_participants</span><span class="p">)</span>
+
+    <span class="c1"># Noncentrality parameter</span>
+    <span class="n">ncp</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">effect_size</span><span class="p">)</span> <span class="o">/</span> <span class="n">se</span>
+
+    <span class="c1"># Critical value</span>
+    <span class="k">if</span> <span class="n">two_sided</span><span class="p">:</span>
+        <span class="n">z_crit</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">norm</span><span class="o">.</span><span class="n">ppf</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">alpha</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">z_crit</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">norm</span><span class="o">.</span><span class="n">ppf</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">alpha</span><span class="p">)</span>
+
+    <span class="c1"># Power</span>
+    <span class="k">if</span> <span class="n">two_sided</span><span class="p">:</span>
+        <span class="n">power</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">norm</span><span class="o">.</span><span class="n">sf</span><span class="p">(</span><span class="n">z_crit</span> <span class="o">-</span> <span class="n">ncp</span><span class="p">)</span> <span class="o">+</span> <span class="n">stats</span><span class="o">.</span><span class="n">norm</span><span class="o">.</span><span class="n">cdf</span><span class="p">(</span><span class="o">-</span><span class="n">z_crit</span> <span class="o">-</span> <span class="n">ncp</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">power</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">norm</span><span class="o">.</span><span class="n">sf</span><span class="p">(</span><span class="n">z_crit</span> <span class="o">-</span> <span class="n">ncp</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">power</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="sample_size_paired">
+<a class="viewcode-back" href="../../../api.html#sctrial.stats.power.sample_size_paired">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">sample_size_paired</span><span class="p">(</span>
+    <span class="n">effect_size</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">sigma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+    <span class="n">power</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.80</span><span class="p">,</span>
+    <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
+    <span class="n">two_sided</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate required sample size for a paired pre/post comparison.</span>
+
+<span class="sd">    Determines the number of participants with paired measurements</span>
+<span class="sd">    needed to achieve the desired power.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    effect_size</span>
+<span class="sd">        Minimum detectable effect size (must be &gt; 0).</span>
+<span class="sd">    sigma</span>
+<span class="sd">        Expected within-group standard deviation.</span>
+<span class="sd">    power</span>
+<span class="sd">        Desired statistical power (default 0.80).</span>
+<span class="sd">    alpha</span>
+<span class="sd">        Significance level (default 0.05).</span>
+<span class="sd">    two_sided</span>
+<span class="sd">        If True (default), use two-sided test.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    int</span>
+<span class="sd">        Required number of paired participants.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; n = sample_size_paired(effect_size=0.5, sigma=1.0, power=0.80)</span>
+<span class="sd">    &gt;&gt;&gt; print(f&quot;Need {n} paired participants&quot;)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">effect_size</span><span class="p">)</span> <span class="ow">or</span> <span class="n">effect_size</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;effect_size must be a finite value &gt; 0.&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">sigma</span><span class="p">)</span> <span class="ow">or</span> <span class="n">sigma</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;sigma must be a finite value &gt; 0.&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&lt;</span> <span class="n">power</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;power must be between 0 and 1.&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&lt;</span> <span class="n">alpha</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;alpha must be between 0 and 1.&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">two_sided</span><span class="p">:</span>
+        <span class="n">z_alpha</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">norm</span><span class="o">.</span><span class="n">ppf</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">alpha</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">z_alpha</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">norm</span><span class="o">.</span><span class="n">ppf</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">alpha</span><span class="p">)</span>
+    <span class="n">z_beta</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">norm</span><span class="o">.</span><span class="n">ppf</span><span class="p">(</span><span class="n">power</span><span class="p">)</span>
+
+    <span class="c1"># n = 2σ²(z_α + z_β)² / δ²</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">sigma</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">z_alpha</span> <span class="o">+</span> <span class="n">z_beta</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">/</span> <span class="n">effect_size</span><span class="o">**</span><span class="mi">2</span>
+
+    <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">n</span><span class="p">)),</span> <span class="mi">2</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="sensitivity_paired">
+<a class="viewcode-back" href="../../../api.html#sctrial.stats.power.sensitivity_paired">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">sensitivity_paired</span><span class="p">(</span>
+    <span class="n">n_participants</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">sigma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+    <span class="n">power</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.80</span><span class="p">,</span>
+    <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
+    <span class="n">two_sided</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate the minimum detectable effect for a paired comparison.</span>
+
+<span class="sd">    Given a fixed sample size, what is the smallest effect that can</span>
+<span class="sd">    be detected with the desired power?</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    n_participants</span>
+<span class="sd">        Number of paired participants.</span>
+<span class="sd">    sigma</span>
+<span class="sd">        Within-group standard deviation.</span>
+<span class="sd">    power</span>
+<span class="sd">        Desired power.</span>
+<span class="sd">    alpha</span>
+<span class="sd">        Significance level.</span>
+<span class="sd">    two_sided</span>
+<span class="sd">        Use two-sided test.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    float</span>
+<span class="sd">        Minimum detectable effect size.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; mde = sensitivity_paired(n_participants=6, power=0.80)</span>
+<span class="sd">    &gt;&gt;&gt; print(f&quot;Minimum detectable effect: {mde:.2f} SD&quot;)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">n_participants</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+
+    <span class="k">if</span> <span class="n">two_sided</span><span class="p">:</span>
+        <span class="n">z_alpha</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">norm</span><span class="o">.</span><span class="n">ppf</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">alpha</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">z_alpha</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">norm</span><span class="o">.</span><span class="n">ppf</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">alpha</span><span class="p">)</span>
+    <span class="n">z_beta</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">norm</span><span class="o">.</span><span class="n">ppf</span><span class="p">(</span><span class="n">power</span><span class="p">)</span>
+
+    <span class="c1"># δ = σ × √(2/n) × (z_α + z_β)</span>
+    <span class="n">se_unit</span> <span class="o">=</span> <span class="n">sigma</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">2.0</span> <span class="o">/</span> <span class="n">n_participants</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">se_unit</span> <span class="o">*</span> <span class="p">(</span><span class="n">z_alpha</span> <span class="o">+</span> <span class="n">z_beta</span><span class="p">))</span></div>
+
 </pre></div>
 
                 </article>

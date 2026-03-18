@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Index &#8212; sctrial 0.2.1.dev1 documentation</title>
+    <title>Index &#8212; sctrial 0.3.0 documentation</title>
   
   
   
@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=227ef001"></script>
+    <script src="_static/documentation_options.js?v=f129cdf0"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -117,8 +117,8 @@
       
     
     
-    <img src="_static/logo.svg" class="logo__image only-light" alt="sctrial 0.2.1.dev1 documentation - Home"/>
-    <img src="_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.2.1.dev1 documentation - Home"/>
+    <img src="_static/logo.svg" class="logo__image only-light" alt="sctrial 0.3.0 documentation - Home"/>
+    <img src="_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.3.0 documentation - Home"/>
   
   
 </a></div>
@@ -498,6 +498,12 @@
       <li><a href="api.html#sctrial.utils.get_counts_matrix">get_counts_matrix() (in module sctrial.utils)</a>
 </li>
   </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api.html#sctrial.stats.did.get_did_aggregated_df">get_did_aggregated_df() (in module sctrial.stats.did)</a>
+</li>
+      <li><a href="api.html#sctrial.stats.comparisons.get_within_arm_aggregated_df">get_within_arm_aggregated_df() (in module sctrial.stats.comparisons)</a>
+</li>
+  </ul></td>
 </tr></table>
 
 <h2 id="H">H</h2>
@@ -668,10 +674,10 @@
 </li>
       <li><a href="api.html#sctrial.plotting.plot_trial_dotplot">plot_trial_dotplot() (in module sctrial.plotting)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api.html#sctrial.plotting.plot_trial_interaction">plot_trial_interaction() (in module sctrial.plotting)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api.html#sctrial.plotting.plot_trial_umap">plot_trial_umap() (in module sctrial.plotting)</a>
 </li>
       <li><a href="api.html#sctrial.plotting.plot_trial_umap_panel">plot_trial_umap_panel() (in module sctrial.plotting)</a>
@@ -683,6 +689,8 @@
       <li><a href="api.html#sctrial.stats.power.power_curve">power_curve() (in module sctrial.stats.power)</a>
 </li>
       <li><a href="api.html#sctrial.stats.power.power_did">power_did() (in module sctrial.stats.power)</a>
+</li>
+      <li><a href="api.html#sctrial.stats.power.power_paired">power_paired() (in module sctrial.stats.power)</a>
 </li>
       <li><a href="api.html#sctrial.design.TrialDesign.primary_visits">primary_visits() (sctrial.design.TrialDesign method)</a>
 </li>
@@ -720,6 +728,8 @@
 </li>
       <li><a href="api.html#sctrial.workflow.TrialWorkflow.result">result() (sctrial.workflow.TrialWorkflow method)</a>
 </li>
+      <li><a href="api.html#sctrial.stats.gsea.run_gsea_cross_sectional">run_gsea_cross_sectional() (in module sctrial.stats.gsea)</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api.html#sctrial.stats.gsea.run_gsea_did">run_gsea_did() (in module sctrial.stats.gsea)</a>
@@ -730,6 +740,8 @@
 </li>
       <li><a href="api.html#sctrial.stats.gsea.run_gsea_pseudobulk">run_gsea_pseudobulk() (in module sctrial.stats.gsea)</a>
 </li>
+      <li><a href="api.html#sctrial.stats.gsea.run_gsea_within_arm">run_gsea_within_arm() (in module sctrial.stats.gsea)</a>
+</li>
   </ul></td>
 </tr></table>
 
@@ -739,6 +751,8 @@
       <li><a href="api.html#sctrial.utils.safe_filename">safe_filename() (in module sctrial.utils)</a>
 </li>
       <li><a href="api.html#sctrial.stats.power.sample_size_did">sample_size_did() (in module sctrial.stats.power)</a>
+</li>
+      <li><a href="api.html#sctrial.stats.power.sample_size_paired">sample_size_paired() (in module sctrial.stats.power)</a>
 </li>
       <li><a href="api.html#sctrial.scoring.score_gene_sets">score_gene_sets() (in module sctrial.scoring)</a>
 
@@ -941,6 +955,8 @@
       </ul></li>
       <li><a href="api.html#sctrial.stats.did.DiDConfig.seed">seed (sctrial.stats.did.DiDConfig attribute)</a>
 </li>
+      <li><a href="api.html#sctrial.stats.power.sensitivity_paired">sensitivity_paired() (in module sctrial.stats.power)</a>
+</li>
       <li><a href="api.html#sctrial.plotting.signed_logp">signed_logp() (in module sctrial.plotting)</a>
 </li>
       <li><a href="api.html#sctrial.stats.did.DiDConfig.standardize">standardize (sctrial.stats.did.DiDConfig attribute)</a>
@@ -1015,9 +1031,11 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api.html#sctrial.utils.wild_cluster_bootstrap_t">wild_cluster_bootstrap_t() (in module sctrial.utils)</a>
 </li>
+      <li><a href="api.html#sctrial.stats.comparisons.within_arm_comparison">within_arm_comparison() (in module sctrial.stats.comparisons)</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api.html#sctrial.stats.comparisons.within_arm_comparison">within_arm_comparison() (in module sctrial.stats.comparisons)</a>
+      <li><a href="api.html#sctrial.stats.comparisons.within_arm_fit_beta">within_arm_fit_beta() (in module sctrial.stats.comparisons)</a>
 </li>
       <li><a href="api.html#sctrial.workflow.workflow">workflow() (in module sctrial.workflow)</a>
 </li>

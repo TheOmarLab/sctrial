@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>sctrial.design &#8212; sctrial 0.2.1.dev1 documentation</title>
+    <title>sctrial.design &#8212; sctrial 0.3.0 documentation</title>
   
   
   
@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=227ef001"></script>
+    <script src="../../_static/documentation_options.js?v=f129cdf0"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -117,8 +117,8 @@
       
     
     
-    <img src="../../_static/logo.svg" class="logo__image only-light" alt="sctrial 0.2.1.dev1 documentation - Home"/>
-    <img src="../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.2.1.dev1 documentation - Home"/>
+    <img src="../../_static/logo.svg" class="logo__image only-light" alt="sctrial 0.3.0 documentation - Home"/>
+    <img src="../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.3.0 documentation - Home"/>
   
   
 </a></div>
@@ -370,8 +370,11 @@
     <span class="n">visit_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;visit&quot;</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Name of the column containing visit or timepoint labels.&quot;&quot;&quot;</span>
 
-    <span class="n">arm_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;arm&quot;</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Name of the column containing treatment arm assignments.&quot;&quot;&quot;</span>
+    <span class="n">arm_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="s2">&quot;arm&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Name of the column containing treatment arm assignments.</span>
+
+<span class="sd">    Set to ``None`` for single-arm studies that lack an arm column.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">arm_treated</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Treated&quot;</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;The label in `arm_col` representing the treatment/experimental group.&quot;&quot;&quot;</span>
@@ -446,7 +449,7 @@
 <span class="sd">        list[str]</span>
 <span class="sd">            List of required columns.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span>
+        <span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span> <span class="k">if</span> <span class="n">c</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">include_celltype</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">celltype_col</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">cols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">include_crossover</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">crossover_col</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -501,7 +504,7 @@
                 <span class="sa">f</span><span class="s2">&quot;Missing required obs columns: </span><span class="si">{</span><span class="n">missing</span><span class="si">}</span><span class="s2">. Available: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
             <span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">check_arm_labels</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">check_arm_labels</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">arm_col</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">arm_treated</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">arm_control</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                     <span class="sa">f</span><span class="s2">&quot;arm_treated and arm_control must be distinct for &quot;</span>
@@ -550,6 +553,11 @@
 <span class="sd">        KeyError</span>
 <span class="sd">            If arm_col is not in obs.columns.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">arm_col</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;arm_bin() requires arm_col to be set. &quot;</span>
+                <span class="s2">&quot;Single-arm designs (arm_col=None) do not have arm indicators.&quot;</span>
+            <span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">arm_treated</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">arm_control</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                 <span class="sa">f</span><span class="s2">&quot;arm_bin() requires distinct arm labels, but &quot;</span>
