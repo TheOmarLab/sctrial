@@ -35,7 +35,7 @@ import pandas as pd
 from matplotlib.ticker import LogLocator, NullLocator
 from scipy import stats
 
-from sctrial import cohens_d_from_did, effect_size_ci
+from sctrial import cohens_d, cohens_d_from_did, effect_size_ci
 
 from .._shared import (
     COLORS,
@@ -417,18 +417,89 @@ def _run_scalability_benchmark(
 # Power analysis
 # ======================================================================
 
-def _select_prespecified_feature(
+def _select_best_powered_feature(
+    adata,
+    design: "TrialDesign",
+    visits: tuple[str, str],
     sigs: list[str],
+    dtype: str,
     dataset_name: str = "",
 ) -> str | None:
-    """Return the biologically motivated primary endpoint for *dataset_name*."""
-    primary = _DATASET_PRIMARY_ENDPOINT.get(dataset_name)
-    if primary and primary in sigs:
-        return primary
-    for ep in _PRESPECIFIED_ENDPOINTS:
-        if ep in sigs:
-            return ep
-    return None
+    """Select the signature with the largest absolute effect size.
+
+    Computes Cohen's d for each candidate signature on the full dataset
+    and returns the one with the greatest |d|, which gives the most
+    informative (best-case) power curve.
+    """
+    candidates = [s for s in _PRESPECIFIED_ENDPOINTS
+                  if s in sigs and s in adata.obs.columns]
+    if not candidates:
+        return None
+
+    pid_col = design.participant_col
+    best_feat: str | None = None
+    best_d = -1.0
+
+    for sig in candidates:
+        try:
+            if dtype == "two_arm_did":
+                pb = adata.obs.groupby(
+                    [pid_col, design.visit_col, design.arm_col],
+                    observed=True,
+                )[sig].mean().reset_index()
+                deltas: dict[str, list[float]] = {}
+                for arm in [design.arm_treated, design.arm_control]:
+                    arm_pb = pb[pb[design.arm_col] == arm]
+                    arm_d: list[float] = []
+                    for _, pdf in arm_pb.groupby(pid_col):
+                        if set(visits).issubset(set(pdf[design.visit_col])):
+                            pre = pdf.loc[pdf[design.visit_col] == visits[0], sig].values[0]
+                            post = pdf.loc[pdf[design.visit_col] == visits[1], sig].values[0]
+                            arm_d.append(post - pre)
+                    deltas[arm] = arm_d
+                n1, n2 = len(deltas[design.arm_treated]), len(deltas[design.arm_control])
+                if n1 < 2 or n2 < 2:
+                    continue
+                d_val = abs(cohens_d_from_did(
+                    np.array(deltas[design.arm_treated]),
+                    np.array(deltas[design.arm_control]),
+                ))
+
+            elif dtype == "paired":
+                pb = adata.obs.groupby(
+                    [pid_col, design.visit_col], observed=True,
+                )[sig].mean().reset_index()
+                ds: list[float] = []
+                for _, pdf in pb.groupby(pid_col):
+                    if set(visits).issubset(set(pdf[design.visit_col])):
+                        pre = pdf.loc[pdf[design.visit_col] == visits[0], sig].values[0]
+                        post = pdf.loc[pdf[design.visit_col] == visits[1], sig].values[0]
+                        ds.append(post - pre)
+                if len(ds) < 3:
+                    continue
+                d_val = abs(_paired_cohens_d(np.array(ds))[0])
+
+            elif dtype == "cross_sectional":
+                pb = adata.obs.groupby(
+                    [pid_col, design.arm_col], observed=True,
+                )[sig].mean().reset_index()
+                g1 = pb.loc[pb[design.arm_col] == design.arm_treated, sig].values
+                g2 = pb.loc[pb[design.arm_col] == design.arm_control, sig].values
+                if len(g1) < 2 or len(g2) < 2:
+                    continue
+                d_val = abs(cohens_d(g1, g2))
+            else:
+                continue
+
+            if d_val > best_d:
+                best_d = d_val
+                best_feat = sig
+        except Exception:
+            continue
+
+    if best_feat:
+        print(f"      Best-powered endpoint: {best_feat} (|d|={best_d:.2f})")
+    return best_feat
 
 
 def _stratified_subsample_pids(
@@ -492,9 +563,11 @@ def _compute_subsampling_power(
             print(f"    {name}: too few participants ({n_total}), skipping")
             continue
 
-        feat = _select_prespecified_feature(sigs, dataset_name=name)
+        feat = _select_best_powered_feature(
+            adata, design, visits, sigs, dtype, dataset_name=name,
+        )
         if feat is None:
-            print(f"    {name}: no pre-specified endpoint available, skipping")
+            print(f"    {name}: no valid endpoint available, skipping")
             continue
 
         # Features are module scores in .obs, not genes in .X.
