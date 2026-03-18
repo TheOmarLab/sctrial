@@ -963,8 +963,8 @@ def generate(tables: str = "all"):
     Parameters
     ----------
     tables : str
-        Which tables to generate: "all", "1-3" (original), "4-7" (new),
-        or a comma-separated list like "4,5,7".
+        Which tables to generate: "all", "1-3" (original), "4-6" (new),
+        or a comma-separated list like "4,5,6".
     """
     print("=" * 60)
     print("Supplementary Tables")
@@ -972,11 +972,11 @@ def generate(tables: str = "all"):
 
     to_run = set()
     if tables == "all":
-        to_run = {1, 2, 3, 4, 5, 6, 7}
+        to_run = {1, 2, 3, 4, 5, 6}
     elif tables == "1-3":
         to_run = {1, 2, 3}
-    elif tables == "4-7":
-        to_run = {4, 5, 6, 7}
+    elif tables == "4-6":
+        to_run = {4, 5, 6}
     else:
         to_run = {int(x.strip()) for x in tables.split(",")}
 
@@ -992,8 +992,6 @@ def generate(tables: str = "all"):
         table5_power_analysis()
     if 6 in to_run:
         table6_gene_level_results()
-    if 7 in to_run:
-        table7_dataset_metadata()
 
     # Patches
     if 1 in to_run:
