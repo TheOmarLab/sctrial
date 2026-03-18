@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.abspath("../../src"))
 project = "sctrial"
 copyright = f"{datetime.now().year}, Contributors"
 author = "Contributors"
-release = "0.2.1.dev1"
+release = "0.3.0"
 
 # -- Extensions ---------------------------------------------------------------
 
