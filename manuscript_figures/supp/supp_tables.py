@@ -374,13 +374,26 @@ def table3_gsea_results() -> dict[str, pd.DataFrame]:
         print(f"    Melanoma GSEA failed: {exc}")
 
     # ── COVID-19 (cross-sectional: severe vs mild) ───────────────────
+    # Must match Figure 5: DFO_8-14 bin, log1p_cpm layer
     try:
         adata_st = get_stephenson()
-        adata_st, _ = score_signatures(adata_st, layer="counts")
+        if "log1p_cpm" not in adata_st.layers:
+            from .._shared import add_log1p_cpm_layer
+            adata_st = add_log1p_cpm_layer(
+                adata_st, counts_layer="counts", out_layer="log1p_cpm",
+            )
+        adata_st, _ = score_signatures(adata_st, layer="log1p_cpm")
+        # Fixed DFO bin to match Figure 5 COVID analysis
+        target_visit = "DFO_8-14"
         if "dfo_bin" in adata_st.obs.columns:
-            top_bin = adata_st.obs["dfo_bin"].value_counts().idxmax()
-        else:
-            top_bin = "Pre"
+            available_bins = adata_st.obs["dfo_bin"].unique()
+            if target_visit not in available_bins:
+                # Fallback: pick first bin with both severity groups
+                for _bin in available_bins:
+                    _sub = adata_st[adata_st.obs["dfo_bin"] == _bin]
+                    if set(_sub.obs["severity"].unique()) >= {"Mild", "Severe"}:
+                        target_visit = _bin
+                        break
         covid_design = TrialDesign(
             participant_col="participant_id",
             visit_col="dfo_bin",
@@ -389,8 +402,8 @@ def table3_gsea_results() -> dict[str, pd.DataFrame]:
             arm_control="Mild",
         )
         res = load_or_run_gsea_cross_sectional(
-            adata_st, covid_design, visit=top_bin,
-            layer="counts", dataset_name="COVID-19",
+            adata_st, covid_design, visit=target_visit,
+            layer="log1p_cpm", dataset_name="COVID-19",
         )
         if res is not None:
             sheets["COVID-19"] = res
