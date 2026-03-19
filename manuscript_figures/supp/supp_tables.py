@@ -874,12 +874,12 @@ def table5_power_analysis() -> pd.DataFrame:
 
 
 def table6_gene_level_results() -> pd.DataFrame:
-    """Gene-level DiD results for the Sade-Feldman melanoma cohort.
+    """Gene-level DiD results for the melanoma cohort.
 
     Runs DiD on every expressed gene (not just signatures) to provide
     the full genome-wide results for reproducibility.
     """
-    print("  Table 6: Gene-level DiD results (Sade-Feldman)")
+    print("  Table 6: Gene-level DiD results (Melanoma)")
 
     if not SCTRIAL_AVAILABLE:
         print("    Skipped: sctrial not available")
@@ -917,7 +917,12 @@ def table6_gene_level_results() -> pd.DataFrame:
         if "p_DiD" in res.columns:
             res = res.sort_values("p_DiD").reset_index(drop=True)
 
-        path = SUPP_OUTPUT / "Supp_Table6_gene_level_DiD_Sade_Feldman.csv"
+        # Put feature (gene name) as first column for readability
+        if "feature" in res.columns:
+            cols = ["feature"] + [c for c in res.columns if c != "feature"]
+            res = res[cols]
+
+        path = SUPP_OUTPUT / "Supp_Table6_gene_level_DiD_Melanoma.csv"
         res.to_csv(path, index=False)
         n_sig = (res["FDR_DiD"] < 0.05).sum() if "FDR_DiD" in res.columns else 0
         n_nom = (res["p_DiD"] < 0.05).sum() if "p_DiD" in res.columns else 0
