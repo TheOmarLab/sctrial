@@ -253,7 +253,7 @@ def table2_all_results() -> pd.DataFrame:
         for feat in sig_cols:
             x_mild = df_agg.loc[df_agg["severity"] == "Mild", feat].dropna().values
             x_sev = df_agg.loc[df_agg["severity"] == "Severe", feat].dropna().values
-            if len(x_mild) < 2 or len(x_sev) < 2:
+            if len(x_mild) < 3 or len(x_sev) < 3:
                 continue
             g = hedges_g(x_sev, x_mild)
             n1, n2 = len(x_sev), len(x_mild)
