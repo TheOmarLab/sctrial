@@ -1,13 +1,14 @@
 """
 Figure 5 — Multi-Dataset Generalization.
 
-Six panels demonstrating that sctrial analyses generalise across
+Seven panels demonstrating that sctrial analyses generalise across
 heterogeneous study designs and disease contexts.
 
 Layout
 ------
 Top row : A (COVID-19 cross-sectional), B (Vaccine paired), C (AML within-arm)
-Bottom row : D (CAR-T), E (Melanoma DiD), F (Cross-dataset effect-size heatmap)
+Mid row : D (CAR-T), E (Melanoma DiD), F (Cross-dataset effect-size heatmap)
+Bottom  : G (Cross-dataset GSEA heatmap — replicated pathways)
 """
 
 from __future__ import annotations
@@ -823,6 +824,17 @@ def generate(*, save: bool = True) -> None:
             df = data.get(key)
             return len(df) if df is not None else 6
 
+        # Import cross-dataset GSEA panel from figure4 (where the GSEA
+        # infrastructure lives) — we display it here in the multi-dataset figure.
+        from .figure4_biological_discovery import (
+            panel_C_replicated as _panel_gsea_cross,
+            _run_multi_dataset_gsea,
+        )
+
+        # Run multi-dataset GSEA (uses cache from figure4 if available)
+        gsea_multi = _run_multi_dataset_gsea()
+        data["gsea_multi_dataset"] = gsea_multi
+
         panel_specs = [
             (panel_a_covid, "A_covid_severity", _n_features("covid_effects")),
             (panel_b_vaccine, "B_vaccine_paired", _n_features("vax_effects")),
@@ -830,6 +842,7 @@ def generate(*, save: bool = True) -> None:
             (panel_d_cart, "D_cart_clinical", _n_features("cart_effects")),
             (panel_e_melanoma, "E_melanoma_did", _n_features("mel_effects")),
             (panel_f_heatmap, "F_heatmap", 8),  # heatmap uses fixed size
+            (_panel_gsea_cross, "G_cross_dataset_gsea", 10),  # cross-dataset GSEA heatmap
         ]
 
         for panel_fn, panel_name, n_feat in panel_specs:

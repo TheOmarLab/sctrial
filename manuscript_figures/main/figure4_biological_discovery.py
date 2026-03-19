@@ -1937,10 +1937,9 @@ def generate():
     for panel_label, panel_func in [
         ("A", panel_B),              # GSEA bar chart
         ("B", panel_C),              # Leading-edge heatmap
-        ("C", panel_C_replicated),   # Replicated pathways (NEW)
-        ("D", panel_E),              # Volcano
-        ("E", panel_A),              # Waterfall
-        ("F", panel_F),              # Effect distribution (NEW)
+        ("C", panel_E),              # Volcano
+        ("D", panel_A),              # Waterfall
+        ("E", panel_F),              # Effect distribution
     ]:
         fsize = panel_sizes.get(panel_label, (8, 6))
         fig_p, ax_p = plt.subplots(figsize=fsize)
