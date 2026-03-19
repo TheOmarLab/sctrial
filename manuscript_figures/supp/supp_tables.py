@@ -266,8 +266,14 @@ def table2_all_results() -> pd.DataFrame:
             })
         if g_rows:
             res_covid = pd.DataFrame(g_rows)
-            _, fdr, _, _ = multipletests(res_covid["pvalue"], method="fdr_bh")
-            res_covid["FDR"] = fdr
+            # Drop NaN p-values before BH correction (degenerate signatures
+            # with zero variance cause NaN from ttest_ind; a single NaN
+            # propagates to all FDR values in multipletests).
+            valid_p = res_covid["pvalue"].dropna()
+            res_covid["FDR"] = np.nan
+            if len(valid_p) > 0:
+                _, fdr, _, _ = multipletests(valid_p, method="fdr_bh")
+                res_covid.loc[valid_p.index, "FDR"] = fdr
             res_covid["label"] = res_covid["feature"].apply(sig_display)
             all_results.append(
                 _harmonise(res_covid, "COVID-19", f"Hedges' g ({target_visit})")
