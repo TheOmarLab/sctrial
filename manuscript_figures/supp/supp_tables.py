@@ -44,8 +44,9 @@ from .._shared import (
     harmonize_response,
     get_aml,
     get_cart,
+    load_or_run_gsea_cross_sectional,
     load_or_run_gsea_did,
-    load_or_run_gsea_prerank,
+    load_or_run_gsea_within_arm,
     score_clinical_signatures,
     score_signatures,
     sig_display,
@@ -189,12 +190,12 @@ def table2_all_results() -> pd.DataFrame:
             standardize=True, aggregate="participant_visit",
         )
         res["label"] = res["feature"].apply(sig_display)
-        all_results.append(_harmonise(res, "Sade-Feldman", "DiD"))
-        print(f"    Sade-Feldman: {len(res)} features (DiD)")
+        all_results.append(_harmonise(res, "Melanoma", "DiD"))
+        print(f"    Melanoma: {len(res)} features (DiD)")
         del adata_sf
         gc.collect()
     except Exception as exc:
-        print(f"    Sade-Feldman failed: {exc}")
+        print(f"    Melanoma failed: {exc}")
 
     # ── Stephenson (cross-sectional Hedges' g) ────────────────────────
     try:
@@ -244,12 +245,12 @@ def table2_all_results() -> pd.DataFrame:
             _, fdr, _, _ = multipletests(res_st["pvalue"], method="fdr_bh")
             res_st["FDR"] = fdr
             res_st["label"] = res_st["feature"].apply(sig_display)
-            all_results.append(_harmonise(res_st, "Stephenson", "Hedges' g"))
-            print(f"    Stephenson: {len(res_st)} features (Hedges' g)")
+            all_results.append(_harmonise(res_st, "COVID-19", "Hedges' g"))
+            print(f"    COVID-19: {len(res_st)} features (Hedges' g)")
         del adata_st
         gc.collect()
     except Exception as exc:
-        print(f"    Stephenson failed: {exc}")
+        print(f"    COVID-19 failed: {exc}")
 
     # ── Single-arm datasets: Vaccine, AML, CAR-T ─────────────────────
     single_arm = [
@@ -342,7 +343,7 @@ def _stephenson_ranking() -> "pd.Series":
 def table3_gsea_results() -> dict[str, pd.DataFrame]:
     """Run GSEA pre-ranked analysis for all 5 datasets, save as multi-sheet Excel.
 
-    Uses shared ``load_or_run_gsea_did`` / ``load_or_run_gsea_prerank``
+    Uses shared ``load_or_run_gsea_did`` / ``load_or_run_gsea_within_arm``
     helpers that cache results under ``manuscript/GSEA/{dataset}/{library}/``.
     If cached CSV files already exist they are loaded instantly; otherwise
     GSEA is run fresh and results are saved for next time.
@@ -363,46 +364,86 @@ def table3_gsea_results() -> dict[str, pd.DataFrame]:
             arm_treated="Responder", arm_control="Non-responder",
         )
         res = load_or_run_gsea_did(
-            adata_sf, design_sf, ("Pre", "Post"), "log1p_tpm", "Sade_Feldman",
+            adata_sf, design_sf, ("Pre", "Post"), "log1p_tpm", "Melanoma",
         )
         if res is not None:
-            sheets["Sade-Feldman"] = res
+            sheets["Melanoma"] = res
         del adata_sf
         gc.collect()
     except Exception as exc:
-        print(f"    Sade-Feldman GSEA failed: {exc}")
+        print(f"    Melanoma GSEA failed: {exc}")
 
-    # ── Stephenson (cross-sectional: severe vs mild) ─────────────────
+    # ── COVID-19 (cross-sectional: severe vs mild) ───────────────────
+    # Must match Figure 5: DFO_8-14 bin, log1p_cpm layer
     try:
-        rnk = _stephenson_ranking()
-        if len(rnk) > 0:
-            res = load_or_run_gsea_prerank(rnk, "Stephenson")
-            if res is not None:
-                sheets["Stephenson"] = res
+        adata_st = get_stephenson()
+        if "log1p_cpm" not in adata_st.layers:
+            from .._shared import add_log1p_cpm_layer
+            adata_st = add_log1p_cpm_layer(
+                adata_st, counts_layer="counts", out_layer="log1p_cpm",
+            )
+        adata_st, _ = score_signatures(adata_st, layer="log1p_cpm")
+        # Fixed DFO bin to match Figure 5 COVID analysis
+        target_visit = "DFO_8-14"
+        if "dfo_bin" in adata_st.obs.columns:
+            available_bins = sorted(adata_st.obs["dfo_bin"].dropna().unique())
+            if target_visit not in available_bins:
+                # Fallback: pick first bin (sorted) with both severity groups
+                for _bin in available_bins:
+                    _sub = adata_st[adata_st.obs["dfo_bin"] == _bin]
+                    if set(_sub.obs["severity"].unique()) >= {"Mild", "Severe"}:
+                        target_visit = _bin
+                        break
+        covid_design = TrialDesign(
+            participant_col="participant_id",
+            visit_col="dfo_bin",
+            arm_col="severity",
+            arm_treated="Severe",
+            arm_control="Mild",
+        )
+        res = load_or_run_gsea_cross_sectional(
+            adata_st, covid_design, visit=target_visit,
+            layer="log1p_cpm", dataset_name="COVID-19",
+        )
+        if res is not None:
+            sheets["COVID-19"] = res
+        del adata_st
+        gc.collect()
     except Exception as exc:
-        print(f"    Stephenson GSEA failed: {exc}")
+        print(f"    COVID-19 GSEA failed: {exc}")
 
-    # ── Single-arm datasets ───────────────────────────────────────────
+    # ── Single-arm datasets (within-arm Pre→Post) ──────────────────
     single_arm_gsea = [
-        ("Vaccine", get_vaccine, ("Pre", "Post"), None),
-        ("AML", get_aml, None, None),
-        ("CAR-T", get_cart, None, None),
+        ("Vaccine", get_vaccine, ("Pre", "Post"), None, "Treated"),
+        ("AML", get_aml, None, None, "Treatment"),
+        ("CAR-T", get_cart, None, None, "CAR-T"),
     ]
-    for ds_name, loader, visits_override, layer in single_arm_gsea:
+    for ds_name, loader, visits_override, _layer_hint, arm_label in single_arm_gsea:
         try:
             adata = loader()
-            # GSEA uses run_gsea_did which requires arm_col for DiD ranking.
-            # For single-arm datasets we create a dummy arm so the DiD
-            # ranking reduces to a within-arm pre→post contrast.
+            # Pick best available normalized layer
+            layer = _layer_hint
+            if layer is None:
+                for _cand in ("log1p_tpm", "log1p_cpm", "log1p_norm"):
+                    if _cand in adata.layers:
+                        layer = _cand
+                        break
+            # layer=None means use .X (already normalized for Vaccine)
             if "arm" not in adata.obs.columns:
-                adata.obs["arm"] = "Treated"
+                adata.obs["arm"] = arm_label
             visits = visits_override or _detect_visits(adata)
-            gsea_design = TrialDesign(
-                participant_col="participant_id", visit_col="visit",
-                arm_col="arm", arm_treated="Treated", arm_control="Treated",
+            pid_col = (
+                "participant_id"
+                if "participant_id" in adata.obs.columns
+                else "patient_id"
             )
-            res = load_or_run_gsea_did(
-                adata, gsea_design, visits, layer, ds_name,
+            gsea_design = TrialDesign(
+                participant_col=pid_col, visit_col="visit",
+                arm_col="arm", arm_treated=arm_label, arm_control=arm_label,
+            )
+            res = load_or_run_gsea_within_arm(
+                adata, gsea_design, arm=arm_label, visits=visits,
+                layer=layer, dataset_name=ds_name,
             )
             if res is not None:
                 sheets[ds_name] = res
@@ -546,7 +587,7 @@ def table4_permutation_results(
             if len(null_arr) > 0:
                 perm_p = (np.sum(np.abs(null_arr) >= np.abs(obs_beta)) + 1) / (len(null_arr) + 1)
                 rows.append({
-                    "dataset": "Sade-Feldman",
+                    "dataset": "Melanoma",
                     "feature": feat,
                     "label": sig_display(feat),
                     "observed_beta": obs_beta,
@@ -557,11 +598,11 @@ def table4_permutation_results(
                     "null_95_lo": float(np.percentile(null_arr, 2.5)),
                     "null_95_hi": float(np.percentile(null_arr, 97.5)),
                 })
-        print(f"    Sade-Feldman: {len([r for r in rows if r['dataset'] == 'Sade-Feldman'])} features")
+        print(f"    Melanoma: {len([r for r in rows if r['dataset'] == 'Melanoma'])} features")
         del adata_sf, df_use, df_bytes, pid_arm_bytes
         gc.collect()
     except Exception as exc:
-        print(f"    Sade-Feldman permutation failed: {exc}")
+        print(f"    Melanoma permutation failed: {exc}")
 
     # ── Stephenson (cross-sectional: permute Severe/Mild labels) ────
     try:
@@ -640,7 +681,7 @@ def table4_permutation_results(
             if len(null_arr) > 0:
                 perm_p = (np.sum(np.abs(null_arr) >= np.abs(obs_beta)) + 1) / (len(null_arr) + 1)
                 rows.append({
-                    "dataset": "Stephenson",
+                    "dataset": "COVID-19",
                     "feature": feat,
                     "label": sig_display(feat),
                     "observed_beta": obs_beta,
@@ -651,11 +692,11 @@ def table4_permutation_results(
                     "null_95_lo": float(np.percentile(null_arr, 2.5)),
                     "null_95_hi": float(np.percentile(null_arr, 97.5)),
                 })
-        print(f"    Stephenson: {len([r for r in rows if r['dataset'] == 'Stephenson'])} features")
+        print(f"    COVID-19: {len([r for r in rows if r['dataset'] == 'COVID-19'])} features")
         del adata_st, df_use_st, df_bytes_st, pid_sev_bytes
         gc.collect()
     except Exception as exc:
-        print(f"    Stephenson permutation failed: {exc}")
+        print(f"    COVID-19 permutation failed: {exc}")
 
     # ── Single-arm datasets: permute visit labels ────────────────────
     single_arm = [
@@ -844,12 +885,12 @@ def table5_power_analysis() -> pd.DataFrame:
 
 
 def table6_gene_level_results() -> pd.DataFrame:
-    """Gene-level DiD results for the Sade-Feldman melanoma cohort.
+    """Gene-level DiD results for the melanoma cohort.
 
     Runs DiD on every expressed gene (not just signatures) to provide
     the full genome-wide results for reproducibility.
     """
-    print("  Table 6: Gene-level DiD results (Sade-Feldman)")
+    print("  Table 6: Gene-level DiD results (Melanoma)")
 
     if not SCTRIAL_AVAILABLE:
         print("    Skipped: sctrial not available")
@@ -887,7 +928,12 @@ def table6_gene_level_results() -> pd.DataFrame:
         if "p_DiD" in res.columns:
             res = res.sort_values("p_DiD").reset_index(drop=True)
 
-        path = SUPP_OUTPUT / "Supp_Table6_gene_level_DiD_Sade_Feldman.csv"
+        # Put feature (gene name) as first column for readability
+        if "feature" in res.columns:
+            cols = ["feature"] + [c for c in res.columns if c != "feature"]
+            res = res[cols]
+
+        path = SUPP_OUTPUT / "Supp_Table6_gene_level_DiD_Melanoma.csv"
         res.to_csv(path, index=False)
         n_sig = (res["FDR_DiD"] < 0.05).sum() if "FDR_DiD" in res.columns else 0
         n_nom = (res["p_DiD"] < 0.05).sum() if "p_DiD" in res.columns else 0
@@ -917,8 +963,8 @@ def table7_dataset_metadata() -> pd.DataFrame:
     rows: list[dict] = []
 
     datasets_info = [
-        ("Sade-Feldman", get_sade_feldman, "participant_id", "visit", "response_harmonized"),
-        ("Stephenson", get_stephenson, "participant_id", None, "severity"),
+        ("Melanoma", get_sade_feldman, "participant_id", "visit", "response_harmonized"),
+        ("COVID-19", get_stephenson, "participant_id", None, "severity"),
         ("Vaccine", get_vaccine, "participant_id", "visit", None),
         ("AML", get_aml, "participant_id", "visit", None),
         ("CAR-T", get_cart, "participant_id", "visit", None),
@@ -928,8 +974,8 @@ def table7_dataset_metadata() -> pd.DataFrame:
         try:
             adata = loader()
 
-            # Harmonize response for Sade-Feldman
-            if ds_name == "Sade-Feldman" and condition_col == "response_harmonized":
+            # Harmonize response for Melanoma (Sade-Feldman)
+            if ds_name == "Melanoma" and condition_col == "response_harmonized":
                 adata = harmonize_response(adata)
 
             obs = adata.obs.copy()
@@ -1017,8 +1063,8 @@ def patch_table1_genes_present() -> pd.DataFrame:
     t1 = pd.read_csv(t1_path)
 
     datasets_loaders = [
-        ("Sade-Feldman", get_sade_feldman),
-        ("Stephenson", get_stephenson),
+        ("Melanoma", get_sade_feldman),
+        ("COVID-19", get_stephenson),
         ("Vaccine", get_vaccine),
         ("AML", get_aml),
         ("CAR-T", get_cart),

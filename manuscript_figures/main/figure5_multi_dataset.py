@@ -1,13 +1,14 @@
 """
 Figure 5 — Multi-Dataset Generalization.
 
-Six panels demonstrating that sctrial analyses generalise across
+Seven panels demonstrating that sctrial analyses generalise across
 heterogeneous study designs and disease contexts.
 
 Layout
 ------
 Top row : A (COVID-19 cross-sectional), B (Vaccine paired), C (AML within-arm)
-Bottom row : D (CAR-T), E (Melanoma DiD), F (Cross-dataset effect-size heatmap)
+Mid row : D (CAR-T), E (Melanoma DiD), F (Cross-dataset effect-size heatmap)
+Bottom  : G (Cross-dataset GSEA heatmap — replicated pathways)
 """
 
 from __future__ import annotations
@@ -25,28 +26,23 @@ from statsmodels.stats.multitest import multipletests
 from .._shared import (
     COLORS,
     MAIN_OUTPUT,
-    SCTRIAL_AVAILABLE,
+    TrialDesign,
+    add_log1p_cpm_layer,
     apply_style,
+    between_arm_comparison,
     despine,
-    save_panel,
-    # data loading
+    did_table,
+    get_aml,
+    get_cart,
     get_sade_feldman,
     get_stephenson,
     get_vaccine,
-    get_aml,
-    get_cart,
     harmonize_response,
-    # scoring
-    score_signatures,
-    score_clinical_signatures,
-    sig_display,
-    # sctrial API
-    TrialDesign,
-    did_table,
     hedges_g,
+    save_panel,
+    score_signatures,
+    sig_display,
     within_arm_comparison,
-    between_arm_comparison,
-    add_log1p_cpm_layer,
 )
 
 # ---------------------------------------------------------------------------
@@ -188,9 +184,9 @@ def _prepare_data() -> dict[str, Any]:
 
         # Pick a DFO bin where both Mild & Severe have patients
         target_visit = "DFO_8-14"
-        available_bins = adata_covid.obs["dfo_bin"].unique()
+        available_bins = sorted(adata_covid.obs["dfo_bin"].dropna().unique())
         if target_visit not in available_bins:
-            # Fallback: pick the first bin that has both severity groups
+            # Fallback: pick the first bin (sorted) with both severity groups
             for _bin in available_bins:
                 _sub = adata_covid[adata_covid.obs["dfo_bin"] == _bin]
                 if set(_sub.obs["severity"].unique()) >= {"Mild", "Severe"}:
@@ -271,7 +267,8 @@ def _prepare_data() -> dict[str, Any]:
               f"{adata_covid.obs['participant_id'].nunique()} participants")
     except Exception as exc:
         print(f"  [A] COVID-19 error: {exc}")
-        import traceback; traceback.print_exc()
+        import traceback
+        traceback.print_exc()
         data["covid_effects"] = None
 
     # ── Panel B: Vaccine within-arm paired ────────────────────────────────
@@ -456,7 +453,8 @@ def _prepare_data() -> dict[str, Any]:
                   f"(analysing '{treated_arm}' arm)")
         except Exception as exc:
             print(f"  [{panel_label}] {name.upper()} error: {exc}")
-            import traceback; traceback.print_exc()
+            import traceback
+            traceback.print_exc()
             data[f"{tag}_effects"] = None
 
     # ── Melanoma (Sade-Feldman): DiD responder vs non-responder ──────────
@@ -493,7 +491,8 @@ def _prepare_data() -> dict[str, Any]:
               f"{adata_mel.obs['participant_id'].nunique()} participants")
     except Exception as exc:
         print(f"  [E] Melanoma error: {exc}")
-        import traceback; traceback.print_exc()
+        import traceback
+        traceback.print_exc()
         data["mel_effects"] = None
 
     # ── Compute CIs for melanoma DiD results ────────────────────────────
@@ -613,7 +612,7 @@ def _build_heatmap_data(
 
 def panel_a_covid(ax, data: dict[str, Any]) -> None:
     """Panel A: COVID-19 Stephenson cross-sectional (Severe vs Mild)."""
-    ax.set_title("COVID-19 (Stephenson)", fontsize=10, loc="left", pad=8)
+    ax.set_title("COVID-19", fontsize=10, loc="left", pad=8)
     ax.text(-0.12, 1.05, "A", transform=ax.transAxes, fontsize=14,
             fontweight="bold", va="bottom")
 
@@ -721,7 +720,7 @@ def panel_d_cart(ax, data: dict[str, Any]) -> None:
 
 def panel_e_melanoma(ax, data: dict[str, Any]) -> None:
     """Panel E: Melanoma (Sade-Feldman) DiD — Responder vs Non-responder."""
-    ax.set_title("Melanoma (Sade-Feldman)", fontsize=10, loc="left", pad=8)
+    ax.set_title("Melanoma", fontsize=10, loc="left", pad=8)
     ax.text(-0.12, 1.05, "E", transform=ax.transAxes, fontsize=14,
             fontweight="bold", va="bottom")
 
@@ -798,14 +797,6 @@ def panel_f_heatmap(ax, data: dict[str, Any]) -> None:
                        fontsize=7.5)
     ax.set_yticklabels(ax.get_yticklabels(), rotation=0, fontsize=8.5)
 
-    # Footnote: metrics differ across datasets
-    ax.text(
-        0.5, -0.32,
-        "Hedges' g (COVID-19); within-arm β (Vaccine, AML, CAR-T); DiD β (Melanoma)",
-        transform=ax.transAxes, fontsize=6, ha="center", va="top",
-        fontstyle="italic", color="0.4",
-    )
-
 
 # ── composite figure ──────────────────────────────────────────────────────
 
@@ -823,6 +814,17 @@ def generate(*, save: bool = True) -> None:
             df = data.get(key)
             return len(df) if df is not None else 6
 
+        # Import cross-dataset GSEA panel from figure4 (where the GSEA
+        # infrastructure lives) — we display it here in the multi-dataset figure.
+        from .figure4_biological_discovery import (
+            panel_C_replicated as _panel_gsea_cross,
+            _run_multi_dataset_gsea,
+        )
+
+        # Run multi-dataset GSEA (uses cache from figure4 if available)
+        gsea_multi = _run_multi_dataset_gsea()
+        data["gsea_multi_dataset"] = gsea_multi
+
         panel_specs = [
             (panel_a_covid, "A_covid_severity", _n_features("covid_effects")),
             (panel_b_vaccine, "B_vaccine_paired", _n_features("vax_effects")),
@@ -830,12 +832,15 @@ def generate(*, save: bool = True) -> None:
             (panel_d_cart, "D_cart_clinical", _n_features("cart_effects")),
             (panel_e_melanoma, "E_melanoma_did", _n_features("mel_effects")),
             (panel_f_heatmap, "F_heatmap", 8),  # heatmap uses fixed size
+            (_panel_gsea_cross, "G_cross_dataset_gsea", 10),  # cross-dataset GSEA heatmap
         ]
 
         for panel_fn, panel_name, n_feat in panel_specs:
             # Adaptive height: ~0.38 inches per feature row, min 2.8
             h = max(2.8, 0.38 * n_feat + 1.1)
-            fig_p, ax_p = plt.subplots(figsize=(6.5, h))
+            # Wider figure for GSEA heatmap to avoid pathway name truncation
+            w = 9.5 if "gsea" in panel_name.lower() else 6.5
+            fig_p, ax_p = plt.subplots(figsize=(w, h))
             panel_fn(ax_p, data)
             fig_p.tight_layout(pad=0.6)
             save_panel(fig_p, panel_name, FIG_NAME, MAIN_OUTPUT)

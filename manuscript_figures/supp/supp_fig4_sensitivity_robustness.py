@@ -7,11 +7,11 @@ Show how DiD results change under different analytical decisions.
 Panels
 ------
   A  Analytical vs bootstrap SE (all 5 datasets, forest plot).
-  B  Standardised vs unstandardised effect sizes (Sade-Feldman).
-  C  Mean vs median aggregation comparison (Sade-Feldman).
-  D  Log-transform sensitivity (Sade-Feldman).
-  E  Cell-type-stratified DiD heatmap (Sade-Feldman).
-  F  Rank-order concordance across preprocessing choices (Sade-Feldman).
+  B  Standardised vs unstandardised effect sizes (Melanoma).
+  C  Mean vs median aggregation comparison (Melanoma).
+  D  Log-transform sensitivity (Melanoma).
+  E  Cell-type-stratified DiD heatmap (Melanoma).
+  F  Rank-order concordance across preprocessing choices (Melanoma).
   G  Leave-one-out stability matrix (max influence, all datasets).
   H  Simulation: power (TPR) across effect sizes.
   I  Simulation: type I error calibration across sample sizes.
@@ -373,7 +373,7 @@ def _panel_std_vs_unstd(ax, data: dict):
                                 edgecolor="#ccc", alpha=0.8))
     ax.set_xlabel("β (standardised)")
     ax.set_ylabel("β (unstandardised)")
-    ax.set_title("Standardised vs Unstandardised (Sade-Feldman)",
+    ax.set_title("Standardised vs Unstandardised (Melanoma)",
                  fontweight="bold")
     despine(ax)
 
@@ -389,7 +389,7 @@ def _panel_mean_vs_median(ax, data: dict):
     if med_res is None or med_res.empty:
         ax.text(0.5, 0.5, "No median-aggregation results", ha="center",
                 va="center", transform=ax.transAxes, fontsize=9, color="#888")
-        ax.set_title("Mean vs Median Aggregation (Sade-Feldman)",
+        ax.set_title("Mean vs Median Aggregation (Melanoma)",
                  fontweight="bold")
         despine(ax)
         return
@@ -402,7 +402,7 @@ def _panel_mean_vs_median(ax, data: dict):
     if len(common) < 2:
         ax.text(0.5, 0.5, "Insufficient data", ha="center", va="center",
                 transform=ax.transAxes)
-        ax.set_title("Mean vs Median Aggregation (Sade-Feldman)",
+        ax.set_title("Mean vs Median Aggregation (Melanoma)",
                  fontweight="bold")
         despine(ax)
         return
@@ -421,7 +421,7 @@ def _panel_mean_vs_median(ax, data: dict):
                                 edgecolor="#ccc", alpha=0.8))
     ax.set_xlabel("β (mean aggregation)")
     ax.set_ylabel("β (median aggregation)")
-    ax.set_title("Mean vs Median Aggregation (Sade-Feldman)",
+    ax.set_title("Mean vs Median Aggregation (Melanoma)",
                  fontweight="bold")
     despine(ax)
 
@@ -435,7 +435,7 @@ def _panel_log_sensitivity(ax, data: dict):
     if raw_res is None or raw_res.empty:
         ax.text(0.5, 0.5, "No raw-TPM results", ha="center", va="center",
                 transform=ax.transAxes, fontsize=9, color="#888")
-        ax.set_title("Log-Transform Sensitivity (Sade-Feldman)",
+        ax.set_title("Log-Transform Sensitivity (Melanoma)",
                  fontweight="bold")
         despine(ax)
         return
@@ -459,7 +459,7 @@ def _panel_log_sensitivity(ax, data: dict):
                                 edgecolor="#ccc", alpha=0.8))
     ax.set_xlabel("β (log1p TPM)")
     ax.set_ylabel("β (raw TPM)")
-    ax.set_title("Log-Transform Sensitivity (Sade-Feldman)",
+    ax.set_title("Log-Transform Sensitivity (Melanoma)",
                  fontweight="bold")
     despine(ax)
 
@@ -472,7 +472,7 @@ def _panel_ct_heatmap(ax, data: dict):
     if not ct_results:
         ax.text(0.5, 0.5, "No cell-type-stratified results", ha="center",
                 va="center", transform=ax.transAxes, fontsize=9, color="#888")
-        ax.set_title("Cell-Type Stratified DiD (Sade-Feldman)",
+        ax.set_title("Cell-Type Stratified DiD (Melanoma)",
                  fontweight="bold")
         despine(ax)
         return
@@ -497,7 +497,7 @@ def _panel_ct_heatmap(ax, data: dict):
                 annot=True, fmt=".2f", annot_kws={"fontsize": 6})
     ax.set_xlabel("Cell type")
     ax.set_ylabel("Feature")
-    ax.set_title("Cell-Type Stratified DiD (Sade-Feldman)",
+    ax.set_title("Cell-Type Stratified DiD (Melanoma)",
                  fontweight="bold")
     ax.tick_params(axis="x", labelsize=7, rotation=45)
     ax.tick_params(axis="y", labelsize=7)
@@ -573,7 +573,7 @@ def _panel_rank_concordance(ax, data: dict):
     ax.set_yticklabels(labels, fontsize=8)
     ax.set_xlabel(f"Spearman ρ (vs {ref_key})")
     ax.set_xlim(0, 1.05)
-    ax.set_title("Rank Concordance Across Choices (Sade-Feldman)",
+    ax.set_title("Rank Concordance Across Choices (Melanoma)",
                  fontweight="bold")
 
     for i, rho in enumerate(rhos):
@@ -734,7 +734,7 @@ def _panel_loo_stability(ax):
 # ======================================================================
 
 _MDE_DATASET_CFG = {
-    "Sade-Feldman": {
+    "Melanoma": {
         "design": "two_arm",
         "loader": get_sade_feldman,
         "harmonize": True,
@@ -768,7 +768,7 @@ _MDE_DATASET_CFG = {
         "arm_filter": "CAR-T",
         "visits": ("Pre", "Post"),
     },
-    "Stephenson": {
+    "COVID-19": {
         "design": "two_arm",
         "loader": get_stephenson,
         "harmonize": False,
@@ -1046,11 +1046,11 @@ def generate():
 
     Layout:
       A  Analytical vs bootstrap SE (all 5 datasets, faceted forest plot)
-      B  Standardised vs unstandardised effect sizes (Sade-Feldman)
-      C  Mean vs median aggregation comparison (Sade-Feldman)
-      D  Log-transform sensitivity (Sade-Feldman)
-      E  Cell-type-stratified DiD heatmap (Sade-Feldman)
-      F  Rank-order concordance across choices (Sade-Feldman)
+      B  Standardised vs unstandardised effect sizes (Melanoma)
+      C  Mean vs median aggregation comparison (Melanoma)
+      D  Log-transform sensitivity (Melanoma)
+      E  Cell-type-stratified DiD heatmap (Melanoma)
+      F  Rank-order concordance across choices (Melanoma)
       G  Leave-one-out stability matrix (all datasets)
       H  Simulation: power (TPR) across effect sizes
       I  Simulation: type I error calibration across sample sizes

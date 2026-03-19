@@ -237,6 +237,18 @@ def sig_display(name: str) -> str:
     return SIGNATURE_DISPLAY_NAMES.get(clean, clean)
 
 
+# Canonical display names for datasets in figures/tables
+DATASET_DISPLAY_NAMES: dict[str, str] = {
+    "Sade-Feldman": "Melanoma",
+    "Stephenson": "COVID-19",
+}
+
+
+def dataset_display(name: str) -> str:
+    """Return the manuscript display name for a dataset."""
+    return DATASET_DISPLAY_NAMES.get(name, name)
+
+
 def score_signatures(adata, *, layer=None, min_genes=3):
     """Score all 12 GENE_SIGNATURES using scanpy.tl.score_genes."""
     import scanpy as sc
@@ -577,9 +589,15 @@ GSEA_LIBRARIES: list[tuple[str, str]] = [
 ]
 
 
-def _gsea_cache_path(dataset: str, library_short: str) -> Path:
-    """Return ``manuscript/GSEA/{dataset}/{library}/results.csv``."""
-    return GSEA_OUTPUT / dataset / library_short / "results.csv"
+def _gsea_cache_path(
+    dataset: str, library_short: str, method: str = "did",
+) -> Path:
+    """Return ``manuscript/GSEA/{dataset}/{method}/{library}/results.csv``.
+
+    Including *method* (``"did"``, ``"within_arm"``, ``"cross_sectional"``)
+    prevents silently serving cached results from a different analysis type.
+    """
+    return GSEA_OUTPUT / dataset / method / library_short / "results.csv"
 
 
 def load_or_run_gsea_did(
@@ -610,7 +628,7 @@ def load_or_run_gsea_did(
 
     frames: list[pd.DataFrame] = []
     for lib_name, short_name in GSEA_LIBRARIES:
-        cache_csv = _gsea_cache_path(dataset_name, short_name)
+        cache_csv = _gsea_cache_path(dataset_name, short_name, method="did")
 
         # Try loading from cache
         if not force and cache_csv.exists():
@@ -676,7 +694,7 @@ def load_or_run_gsea_cross_sectional(
 
     frames: list[pd.DataFrame] = []
     for lib_name, short_name in GSEA_LIBRARIES:
-        cache_csv = _gsea_cache_path(dataset_name, short_name)
+        cache_csv = _gsea_cache_path(dataset_name, short_name, method="cross_sectional")
 
         if not force and cache_csv.exists():
             df = pd.read_csv(cache_csv)
@@ -742,7 +760,7 @@ def load_or_run_gsea_within_arm(
 
     frames: list[pd.DataFrame] = []
     for lib_name, short_name in GSEA_LIBRARIES:
-        cache_csv = _gsea_cache_path(dataset_name, short_name)
+        cache_csv = _gsea_cache_path(dataset_name, short_name, method="within_arm")
 
         if not force and cache_csv.exists():
             df = pd.read_csv(cache_csv)
@@ -801,7 +819,7 @@ def load_or_run_gsea_prerank(
 
     frames: list[pd.DataFrame] = []
     for lib_name, short_name in GSEA_LIBRARIES:
-        cache_csv = _gsea_cache_path(dataset_name, short_name)
+        cache_csv = _gsea_cache_path(dataset_name, short_name, method="prerank")
 
         if not force and cache_csv.exists():
             df = pd.read_csv(cache_csv)

@@ -1,19 +1,18 @@
 """
-Figure 4 — Biological Discovery: Pathways & Genes
-===================================================
+Figure 4 — Biological Discovery: Pathways & Genes (Melanoma)
+==============================================================
 
-Six-panel figure combining GSEA pathway enrichment, leading-edge gene
-analysis, cross-dataset pathway replication, gene-level volcano and
-waterfall plots, and effect-size distribution.
+Five-panel figure combining gene-level results, GSEA pathway enrichment,
+leading-edge analysis, and cell-type-resolved effects, all based on the
+melanoma immunotherapy cohort (Sade-Feldman et al.).
 
 Panels
 ------
-A  GSEA enrichment bar chart (immune + metabolic pathways, 5 libraries).
-B  Leading-edge gene overlap heatmap across top enriched pathways.
-C  Replicated pathways across cohorts (cross-dataset consistency).
-D  Gene-level volcano plot (Sade-Feldman DiD, protein-coding gene labels).
-E  Top genes ranked by effect size (waterfall plot, protein-coding only).
-F  Cell-type-resolved DiD effect heatmap for top genes.
+A  Gene-level volcano plot (melanoma DiD, protein-coding gene labels).
+B  Top genes ranked by effect size (waterfall plot, protein-coding only).
+C  GSEA enrichment bar chart (immune + metabolic pathways, 5 libraries).
+D  Leading-edge gene overlap heatmap across top enriched pathways.
+E  Cell-type-resolved DiD effect heatmap for top genes.
 """
 
 from __future__ import annotations
@@ -32,7 +31,6 @@ import pandas as pd
 
 from .._shared import (
     COLORS,
-    GSEA_LIBRARIES,
     MAIN_OUTPUT,
     TrialDesign,
     apply_style,
@@ -47,7 +45,6 @@ from .._shared import (
     load_or_run_gsea_cross_sectional,
     load_or_run_gsea_did,
     load_or_run_gsea_within_arm,
-    run_gsea_did,
     save_panel,
     score_signatures,
     sig_display,
@@ -204,9 +201,9 @@ def _prepare_data(*, use_cache: bool = True) -> dict:
     )
 
     # GSEA on multiple gene-set libraries for comprehensive pathway analysis
-    # Uses shared helper that caches results under manuscript/GSEA/Sade_Feldman/
+    # Uses shared helper that caches results under manuscript/GSEA/Melanoma/
     gsea_results = load_or_run_gsea_did(
-        adata, design, visits, "log1p_tpm", "Sade_Feldman",
+        adata, design, visits, "log1p_tpm", "Melanoma",
     )
 
     if gsea_results is not None and len(gsea_results) > 0:
@@ -491,17 +488,17 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
     print("  Running GSEA on all datasets for pathway replication...")
     gsea_multi = {}
     
-    # 1. Sade-Feldman - reuse results from _prepare_data() if available
+    # 1. Melanoma - reuse results from _prepare_data() if available
     if sf_gsea_results is not None and len(sf_gsea_results) > 0:
-        # Add dataset column if not present
         sf_results = sf_gsea_results.copy()
         if "dataset" not in sf_results.columns:
-            sf_results["dataset"] = "Sade-Feldman"
-        # Ensure library column name is consistent
+            sf_results["dataset"] = "Melanoma"
+        else:
+            sf_results["dataset"] = "Melanoma"
         if "Library" in sf_results.columns and "library" not in sf_results.columns:
             sf_results = sf_results.rename(columns={"Library": "library"})
-        gsea_multi["Sade-Feldman"] = sf_results
-        print(f"    Sade-Feldman: {len(sf_results)} pathways (reused from _prepare_data)")
+        gsea_multi["Melanoma"] = sf_results
+        print(f"    Melanoma: {len(sf_results)} pathways (reused from _prepare_data)")
     else:
         # Fallback: use load_or_run_gsea_did for caching
         try:
@@ -517,22 +514,22 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
                 arm_control="Non-responder",
             )
             sf_results = load_or_run_gsea_did(
-                sf, sf_design, ("Pre", "Post"), "log1p_tpm", "Sade_Feldman",
+                sf, sf_design, ("Pre", "Post"), "log1p_tpm", "Melanoma",
             )
             if sf_results is not None and len(sf_results) > 0:
-                sf_results["dataset"] = "Sade-Feldman"
+                sf_results["dataset"] = "Melanoma"
                 # Rename Library column to library for consistency
                 if "Library" in sf_results.columns:
                     sf_results = sf_results.rename(columns={"Library": "library"})
-                gsea_multi["Sade-Feldman"] = sf_results
-                print(f"    Sade-Feldman: {len(sf_results)} pathways (cached or computed)")
+                gsea_multi["Melanoma"] = sf_results
+                print(f"    Melanoma: {len(sf_results)} pathways (cached or computed)")
         except Exception as exc:
-            print(f"    Sade-Feldman: FAILED ({exc})")
+            print(f"    Melanoma: FAILED ({exc})")
     
-    # 2. Vaccine (use within_arm_comparison)
+    # 2. Vaccine (use within_arm_comparison; .X is already normalized)
     try:
         vax = get_vaccine()
-        vax, _ = score_signatures(vax, layer="counts")
+        vax, _ = score_signatures(vax, layer=None)
         vax.obs["arm_dummy"] = "Vaccinated"
         vax_design = TrialDesign(
             participant_col="participant_id",
@@ -543,7 +540,7 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
         )
         vax_results = load_or_run_gsea_within_arm(
             vax, vax_design, arm="Vaccinated", visits=("Pre", "Post"),
-            layer="counts", dataset_name="Vaccine",
+            layer=None, dataset_name="Vaccine",
         )
         if vax_results is not None and len(vax_results) > 0:
             vax_results["dataset"] = "Vaccine"
@@ -554,10 +551,11 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
     except Exception as exc:
         print(f"    Vaccine: FAILED ({exc})")
     
-    # 3. AML (use within_arm_comparison)
+    # 3. AML (use within_arm_comparison; log1p_norm available)
     try:
         aml = get_aml()
-        aml, _ = score_signatures(aml, layer="counts")
+        _aml_layer = "log1p_norm" if "log1p_norm" in aml.layers else None
+        aml, _ = score_signatures(aml, layer=_aml_layer)
         aml.obs["arm_dummy"] = "Treatment"
         pid_col = ("participant_id" if "participant_id" in aml.obs.columns
                    else "patient_id")
@@ -570,7 +568,7 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
         )
         aml_results = load_or_run_gsea_within_arm(
             aml, aml_design, arm="Treatment", visits=("Pre", "Post"),
-            layer="counts", dataset_name="AML",
+            layer=_aml_layer, dataset_name="AML",
         )
         if aml_results is not None and len(aml_results) > 0:
             aml_results["dataset"] = "AML"
@@ -581,10 +579,11 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
     except Exception as exc:
         print(f"    AML: FAILED ({exc})")
     
-    # 4. CAR-T (use within_arm_comparison)
+    # 4. CAR-T (use within_arm_comparison; log1p_norm available)
     try:
         cart = get_cart()
-        cart, _ = score_signatures(cart, layer="counts")
+        _cart_layer = "log1p_norm" if "log1p_norm" in cart.layers else None
+        cart, _ = score_signatures(cart, layer=_cart_layer)
         cart.obs["arm_dummy"] = "CAR-T"
         pid_col = ("participant_id" if "participant_id" in cart.obs.columns
                    else "patient_id")
@@ -597,7 +596,7 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
         )
         cart_results = load_or_run_gsea_within_arm(
             cart, cart_design, arm="CAR-T", visits=("Pre", "Post"),
-            layer="counts", dataset_name="CAR-T",
+            layer=_cart_layer, dataset_name="CAR-T",
         )
         if cart_results is not None and len(cart_results) > 0:
             cart_results["dataset"] = "CAR-T"
@@ -611,11 +610,26 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
     # 5. COVID-19 (cross-sectional - use between_arm_comparison)
     try:
         covid = get_stephenson()
-        covid, _ = score_signatures(covid, layer="counts")
+        # Add log1p_cpm layer if not present (consistent with Figure 5A / Supp Table 3)
+        if "log1p_cpm" not in covid.layers and "counts" in covid.layers:
+            from .._shared import add_log1p_cpm_layer
+            covid = add_log1p_cpm_layer(
+                covid, counts_layer="counts", out_layer="log1p_cpm",
+            )
+        covid, _ = score_signatures(covid, layer="log1p_cpm")
+        # Fixed DFO bin to match Figure 5A and Supp Table 3
+        target_bin = "DFO_8-14"
         if "dfo_bin" in covid.obs.columns:
-            top_bin = covid.obs["dfo_bin"].value_counts().idxmax()
+            available_bins = sorted(covid.obs["dfo_bin"].dropna().unique())
+            if target_bin not in available_bins:
+                # Fallback: first bin (sorted) with both severity groups
+                for _bin in available_bins:
+                    _sub = covid[covid.obs["dfo_bin"] == _bin]
+                    if set(_sub.obs["severity"].unique()) >= {"Mild", "Severe"}:
+                        target_bin = _bin
+                        break
         else:
-            top_bin = "Pre"
+            target_bin = "Pre"
         covid_design = TrialDesign(
             participant_col="participant_id",
             visit_col="dfo_bin",
@@ -624,8 +638,8 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
             arm_control="Mild",
         )
         covid_results = load_or_run_gsea_cross_sectional(
-            covid, covid_design, visit=top_bin,
-            layer="counts", dataset_name="COVID-19",
+            covid, covid_design, visit=target_bin,
+            layer="log1p_cpm", dataset_name="COVID-19",
         )
         if covid_results is not None and len(covid_results) > 0:
             covid_results["dataset"] = "COVID-19"
@@ -761,7 +775,7 @@ def panel_A(ax, data: dict):
     ax.set_yticklabels(selected["feature"].values, fontsize=7)
 
     ax.set_xlabel(r"Effect size ($\beta_{\mathrm{DiD}}$)")
-    ax.set_title("Top Genes by Effect Size — Sade-Feldman DiD", fontsize=11)
+    ax.set_title("Top Genes by Effect Size — Melanoma DiD", fontsize=11)
 
     legend_handles = [
         mpatches.Patch(color=COLORS["treated"], alpha=0.9,
@@ -794,7 +808,7 @@ def _panel_A_signature_waterfall(ax, data: dict):
     ax.set_yticks(y_pos)
     ax.set_yticklabels(df["display"].values, fontsize=8)
     ax.set_xlabel(r"DiD coefficient ($\beta_{\mathrm{DiD}}$)")
-    ax.set_title("Signature DiD Effects (Sade-Feldman)", fontsize=11)
+    ax.set_title("Signature DiD Effects (Melanoma)", fontsize=11)
     ax.invert_yaxis()
     despine(ax)
 
@@ -1498,7 +1512,7 @@ def panel_E(ax, data: dict):
 
     ax.set_xlabel(r"Effect size ($\beta_{\mathrm{DiD}}$)")
     ax.set_ylabel(r"$-\log_{10}$(p)")
-    ax.set_title("Gene-Level Volcano (Sade-Feldman DiD)", fontsize=11)
+    ax.set_title("Gene-Level Volcano (Melanoma DiD)", fontsize=11)
 
     # Legend — no footnotes, no summary boxes
     legend_handles = [
@@ -1562,7 +1576,7 @@ def panel_C_replicated(ax, data: dict):
         
         df["dataset"] = ds_name
         df["pathway"] = df[term_col_name].apply(
-            lambda s: _clean_pathway_name(s, max_len=50)
+            lambda s: _clean_pathway_name(s, max_len=70)
         )
         # Rename columns to standard names for concatenation
         df_clean = df[[nes_col_name, fdr_col_name, "pathway", "dataset"]].copy()
@@ -1721,7 +1735,7 @@ def panel_C_replicated(ax, data: dict):
     
     # Labels
     ax.set_yticks(range(len(all_pathways)))
-    ax.set_yticklabels(all_pathways, fontsize=7)
+    ax.set_yticklabels(all_pathways, fontsize=7.5)
     ax.set_xticks(range(len(all_datasets)))
     ax.set_xticklabels(all_datasets, fontsize=8, rotation=45, ha="right")
     
@@ -1930,24 +1944,23 @@ def generate():
     data = _prepare_data()
 
     # ── Save individual panels ────────────────────────────────────────
-    # Panel B (heatmap + marginal bar) needs more space for pathway labels
+    # Panel D (leading-edge heatmap) needs more space for pathway labels
     panel_sizes = {
-        "B": (10, 7),
+        "D": (10, 7),
     }
     for panel_label, panel_func in [
-        ("A", panel_B),              # GSEA bar chart
-        ("B", panel_C),              # Leading-edge heatmap
-        ("C", panel_C_replicated),   # Replicated pathways (NEW)
-        ("D", panel_E),              # Volcano
-        ("E", panel_A),              # Waterfall
-        ("F", panel_F),              # Effect distribution (NEW)
+        ("A", panel_E),              # Volcano (gene-level significance)
+        ("B", panel_A),              # Waterfall (ranked gene-level effects)
+        ("C", panel_B),              # GSEA bar chart (pathway enrichment)
+        ("D", panel_C),              # Leading-edge heatmap (driving genes)
+        ("E", panel_F),              # Cell-type DiD heatmap
     ]:
         fsize = panel_sizes.get(panel_label, (8, 6))
         fig_p, ax_p = plt.subplots(figsize=fsize)
         panel_func(ax_p, data)
-        # For Panel B (leading-edge heatmap), tight_layout must run
+        # For Panel D (leading-edge heatmap), tight_layout must run
         # BEFORE the marginal bar is positioned (handled internally).
-        if panel_label != "B":
+        if panel_label != "D":
             fig_p.tight_layout()
         save_panel(fig_p, f"panel_{panel_label}", FIGURE_NAME, MAIN_OUTPUT)
 
