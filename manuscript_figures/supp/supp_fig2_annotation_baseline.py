@@ -49,13 +49,13 @@ FIGURE_NAME = "SuppFig2_annotation_baseline"
 DOT_SIZE = 1.8
 
 _DS_PALETTE = dict(zip(
-    ["Sade-Feldman", "Stephenson", "Vaccine", "AML", "CAR-T"],
+    ["Melanoma", "COVID-19", "Vaccine", "AML", "CAR-T"],
     ["#1b9e77", "#d95f02", "#7570b3", "#e7298a", "#66a61e"],
 ))
 
 DATASETS = [
-    ("Sade-Feldman", get_sade_feldman),
-    ("Stephenson", get_stephenson),
+    ("Melanoma", get_sade_feldman),
+    ("COVID-19", get_stephenson),
     ("Vaccine", get_vaccine),
     ("AML", lambda: get_aml()),
     ("CAR-T", lambda: get_cart()),
@@ -823,7 +823,7 @@ def generate():
     for name, loader in DATASETS:
         try:
             adata = loader()
-            if name == "Sade-Feldman":
+            if name == "Melanoma":
                 adata = harmonize_response(adata)
             adata = _ensure_umap_and_clusters(adata)
             ct_col = _find_celltype_col(adata.obs)

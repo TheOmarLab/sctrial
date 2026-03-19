@@ -614,7 +614,7 @@ def _build_heatmap_data(
 
 def panel_a_covid(ax, data: dict[str, Any]) -> None:
     """Panel A: COVID-19 Stephenson cross-sectional (Severe vs Mild)."""
-    ax.set_title("COVID-19 (Stephenson)", fontsize=10, loc="left", pad=8)
+    ax.set_title("COVID-19", fontsize=10, loc="left", pad=8)
     ax.text(-0.12, 1.05, "A", transform=ax.transAxes, fontsize=14,
             fontweight="bold", va="bottom")
 
@@ -722,7 +722,7 @@ def panel_d_cart(ax, data: dict[str, Any]) -> None:
 
 def panel_e_melanoma(ax, data: dict[str, Any]) -> None:
     """Panel E: Melanoma (Sade-Feldman) DiD — Responder vs Non-responder."""
-    ax.set_title("Melanoma (Sade-Feldman)", fontsize=10, loc="left", pad=8)
+    ax.set_title("Melanoma", fontsize=10, loc="left", pad=8)
     ax.text(-0.12, 1.05, "E", transform=ax.transAxes, fontsize=14,
             fontweight="bold", va="bottom")
 

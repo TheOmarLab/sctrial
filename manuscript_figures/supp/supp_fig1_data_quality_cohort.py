@@ -49,13 +49,13 @@ FIGURE_NAME = "SuppFig1_data_quality_cohort"
 # ── dataset registry ─────────────────────────────────────────────────
 
 _DS_PALETTE = dict(zip(
-    ["Sade-Feldman", "Stephenson", "Vaccine", "AML", "CAR-T"],
+    ["Melanoma", "COVID-19", "Vaccine", "AML", "CAR-T"],
     ["#1b9e77", "#d95f02", "#7570b3", "#e7298a", "#66a61e"],
 ))
 
 DATASETS = [
-    ("Sade-Feldman", get_sade_feldman),
-    ("Stephenson", get_stephenson),
+    ("Melanoma", get_sade_feldman),
+    ("COVID-19", get_stephenson),
     ("Vaccine", get_vaccine),
     ("AML", lambda: get_aml()),
     ("CAR-T", lambda: get_cart()),
@@ -64,7 +64,7 @@ DATASETS = [
 # ── dataset metadata ──────────────────────────────────────────────────
 
 _DESIGN_META = {
-    "Sade-Feldman": {
+    "Melanoma": {
         "design": "Pre/post anti-PD-1",
         "pairing": "Partially paired",
         "arms": "Responder vs Non-responder",
@@ -72,7 +72,7 @@ _DESIGN_META = {
         "visits": "Pre, Post",
         "estimand": "DiD (two-arm)",
     },
-    "Stephenson": {
+    "COVID-19": {
         "design": "COVID-19 severity comparison",
         "pairing": "Multi-visit (grouped by severity)",
         "arms": "Severity groups",
@@ -214,7 +214,7 @@ def _load_all() -> dict:
     for name, loader in DATASETS:
         try:
             adata = loader()
-            if name == "Sade-Feldman":
+            if name == "Melanoma":
                 adata = harmonize_response(adata)
             obs = adata.obs
             pid = _pid_col(obs)

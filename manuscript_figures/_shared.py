@@ -237,6 +237,18 @@ def sig_display(name: str) -> str:
     return SIGNATURE_DISPLAY_NAMES.get(clean, clean)
 
 
+# Canonical display names for datasets in figures/tables
+DATASET_DISPLAY_NAMES: dict[str, str] = {
+    "Sade-Feldman": "Melanoma",
+    "Stephenson": "COVID-19",
+}
+
+
+def dataset_display(name: str) -> str:
+    """Return the manuscript display name for a dataset."""
+    return DATASET_DISPLAY_NAMES.get(name, name)
+
+
 def score_signatures(adata, *, layer=None, min_genes=3):
     """Score all 12 GENE_SIGNATURES using scanpy.tl.score_genes."""
     import scanpy as sc

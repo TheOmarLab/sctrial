@@ -48,7 +48,7 @@ FEATURES = [
 ]
 
 _DATASET_CFG = {
-    "Sade-Feldman": {
+    "Melanoma": {
         "design": "two_arm",
         "loader": get_sade_feldman,
         "harmonize": True,
@@ -84,7 +84,7 @@ _DATASET_CFG = {
         "arm_treated": "CAR-T",
         "visits": ("Pre", "Post"),
     },
-    "Stephenson": {
+    "COVID-19": {
         "design": "two_arm",
         "loader": get_stephenson,
         "harmonize": False,
@@ -111,8 +111,8 @@ _DATASET_CFG = {
 
 # Design-type label for legend annotations
 _DESIGN_LABEL: dict[str, str] = {
-    "Sade-Feldman": "DiD",
-    "Stephenson": "DiD",
+    "Melanoma": "DiD",
+    "COVID-19": "DiD",
     "AML": "Δ",
     "CAR-T": "Δ",
     "Vaccine": "Δ",
@@ -127,10 +127,10 @@ def _ds_label(name: str) -> str:
 _DS_COLORS = dict(zip(_DATASET_CFG.keys(),
     ["#1b9e77", "#d95f02", "#7570b3", "#e7298a", "#66a61e"]))
 _DS_MARKERS = {
-    "Sade-Feldman": "o",
+    "Melanoma": "o",
     "AML": "s",
     "CAR-T": "D",
-    "Stephenson": "P",
+    "COVID-19": "P",
     "Vaccine": "X",
 }
 
@@ -503,7 +503,7 @@ def _panel_sd_scatter(ax, data: dict[str, dict]):
         ax.text(0.5, 0.5, "Need >=2 datasets", ha="center", va="center", transform=ax.transAxes)
         return
 
-    ref = "Sade-Feldman" if "Sade-Feldman" in sd_map else list(sd_map.keys())[0]
+    ref = "Melanoma" if "Melanoma" in sd_map else list(sd_map.keys())[0]
     ref_sd = sd_map[ref]
     max_lim = 0.0
 
@@ -561,7 +561,7 @@ def _panel_within_arm_profile(ax, effects: pd.DataFrame, features: list[str], ti
 
 def _panel_aml_cart_profile(ax, data: dict[str, dict]):
     # Include all single-arm datasets (AML, CAR-T, Vaccine, etc.)
-    datasets = [d for d in data if d != "Sade-Feldman" and d != "Stephenson"]
+    datasets = [d for d in data if d != "Melanoma" and d != "COVID-19"]
     if not datasets:
         datasets = [d for d in ["AML", "CAR-T"] if d in data]
     if not datasets:
@@ -663,7 +663,7 @@ def generate():
 
     # Explicit dataset selection for reproducibility (CODEX #1).
     # Sade-Feldman is the flagship two-arm dataset (melanoma immunotherapy).
-    best_name = "Sade-Feldman"
+    best_name = "Melanoma"
     if best_name not in data or data[best_name].get("delta") is None:
         # Fallback: pick first dataset with paired data
         best_name = next(

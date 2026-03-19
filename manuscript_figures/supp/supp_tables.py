@@ -190,12 +190,12 @@ def table2_all_results() -> pd.DataFrame:
             standardize=True, aggregate="participant_visit",
         )
         res["label"] = res["feature"].apply(sig_display)
-        all_results.append(_harmonise(res, "Sade-Feldman", "DiD"))
-        print(f"    Sade-Feldman: {len(res)} features (DiD)")
+        all_results.append(_harmonise(res, "Melanoma", "DiD"))
+        print(f"    Melanoma: {len(res)} features (DiD)")
         del adata_sf
         gc.collect()
     except Exception as exc:
-        print(f"    Sade-Feldman failed: {exc}")
+        print(f"    Melanoma failed: {exc}")
 
     # ── Stephenson (cross-sectional Hedges' g) ────────────────────────
     try:
@@ -245,12 +245,12 @@ def table2_all_results() -> pd.DataFrame:
             _, fdr, _, _ = multipletests(res_st["pvalue"], method="fdr_bh")
             res_st["FDR"] = fdr
             res_st["label"] = res_st["feature"].apply(sig_display)
-            all_results.append(_harmonise(res_st, "Stephenson", "Hedges' g"))
-            print(f"    Stephenson: {len(res_st)} features (Hedges' g)")
+            all_results.append(_harmonise(res_st, "COVID-19", "Hedges' g"))
+            print(f"    COVID-19: {len(res_st)} features (Hedges' g)")
         del adata_st
         gc.collect()
     except Exception as exc:
-        print(f"    Stephenson failed: {exc}")
+        print(f"    COVID-19 failed: {exc}")
 
     # ── Single-arm datasets: Vaccine, AML, CAR-T ─────────────────────
     single_arm = [
@@ -563,7 +563,7 @@ def table4_permutation_results(
             if len(null_arr) > 0:
                 perm_p = (np.sum(np.abs(null_arr) >= np.abs(obs_beta)) + 1) / (len(null_arr) + 1)
                 rows.append({
-                    "dataset": "Sade-Feldman",
+                    "dataset": "Melanoma",
                     "feature": feat,
                     "label": sig_display(feat),
                     "observed_beta": obs_beta,
@@ -574,11 +574,11 @@ def table4_permutation_results(
                     "null_95_lo": float(np.percentile(null_arr, 2.5)),
                     "null_95_hi": float(np.percentile(null_arr, 97.5)),
                 })
-        print(f"    Sade-Feldman: {len([r for r in rows if r['dataset'] == 'Sade-Feldman'])} features")
+        print(f"    Melanoma: {len([r for r in rows if r['dataset'] == 'Melanoma'])} features")
         del adata_sf, df_use, df_bytes, pid_arm_bytes
         gc.collect()
     except Exception as exc:
-        print(f"    Sade-Feldman permutation failed: {exc}")
+        print(f"    Melanoma permutation failed: {exc}")
 
     # ── Stephenson (cross-sectional: permute Severe/Mild labels) ────
     try:
@@ -657,7 +657,7 @@ def table4_permutation_results(
             if len(null_arr) > 0:
                 perm_p = (np.sum(np.abs(null_arr) >= np.abs(obs_beta)) + 1) / (len(null_arr) + 1)
                 rows.append({
-                    "dataset": "Stephenson",
+                    "dataset": "COVID-19",
                     "feature": feat,
                     "label": sig_display(feat),
                     "observed_beta": obs_beta,
@@ -668,11 +668,11 @@ def table4_permutation_results(
                     "null_95_lo": float(np.percentile(null_arr, 2.5)),
                     "null_95_hi": float(np.percentile(null_arr, 97.5)),
                 })
-        print(f"    Stephenson: {len([r for r in rows if r['dataset'] == 'Stephenson'])} features")
+        print(f"    COVID-19: {len([r for r in rows if r['dataset'] == 'COVID-19'])} features")
         del adata_st, df_use_st, df_bytes_st, pid_sev_bytes
         gc.collect()
     except Exception as exc:
-        print(f"    Stephenson permutation failed: {exc}")
+        print(f"    COVID-19 permutation failed: {exc}")
 
     # ── Single-arm datasets: permute visit labels ────────────────────
     single_arm = [
@@ -934,8 +934,8 @@ def table7_dataset_metadata() -> pd.DataFrame:
     rows: list[dict] = []
 
     datasets_info = [
-        ("Sade-Feldman", get_sade_feldman, "participant_id", "visit", "response_harmonized"),
-        ("Stephenson", get_stephenson, "participant_id", None, "severity"),
+        ("Melanoma", get_sade_feldman, "participant_id", "visit", "response_harmonized"),
+        ("COVID-19", get_stephenson, "participant_id", None, "severity"),
         ("Vaccine", get_vaccine, "participant_id", "visit", None),
         ("AML", get_aml, "participant_id", "visit", None),
         ("CAR-T", get_cart, "participant_id", "visit", None),
@@ -945,8 +945,8 @@ def table7_dataset_metadata() -> pd.DataFrame:
         try:
             adata = loader()
 
-            # Harmonize response for Sade-Feldman
-            if ds_name == "Sade-Feldman" and condition_col == "response_harmonized":
+            # Harmonize response for Melanoma (Sade-Feldman)
+            if ds_name == "Melanoma" and condition_col == "response_harmonized":
                 adata = harmonize_response(adata)
 
             obs = adata.obs.copy()
@@ -1034,8 +1034,8 @@ def patch_table1_genes_present() -> pd.DataFrame:
     t1 = pd.read_csv(t1_path)
 
     datasets_loaders = [
-        ("Sade-Feldman", get_sade_feldman),
-        ("Stephenson", get_stephenson),
+        ("Melanoma", get_sade_feldman),
+        ("COVID-19", get_stephenson),
         ("Vaccine", get_vaccine),
         ("AML", get_aml),
         ("CAR-T", get_cart),

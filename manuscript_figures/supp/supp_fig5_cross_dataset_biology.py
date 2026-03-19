@@ -60,7 +60,7 @@ _GENE_SETS = {
 }
 
 _DATASET_CFG = {
-    "Sade-Feldman": {
+    "Melanoma": {
         "design": "two_arm",
         "loader": get_sade_feldman,
         "harmonize": True,
@@ -94,7 +94,7 @@ _DATASET_CFG = {
         "arm_filter": "CAR-T",
         "visits": ("Pre", "Post"),
     },
-    "Stephenson": {
+    "COVID-19": {
         "design": "two_arm",
         "loader": get_stephenson,
         "harmonize": False,
@@ -124,8 +124,8 @@ _DS_PALETTE = dict(zip(_DATASET_CFG.keys(),
 # Design-type label for legend annotations: DiD = two-arm difference-in-differences,
 # Δ = single-arm pre/post change.
 _DESIGN_LABEL: dict[str, str] = {
-    "Sade-Feldman": "DiD",
-    "Stephenson": "DiD",
+    "Melanoma": "DiD",
+    "COVID-19": "DiD",
     "AML": "Δ",
     "CAR-T": "Δ",
     "Vaccine": "Δ",

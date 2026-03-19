@@ -61,7 +61,7 @@ _TEST_FEATURES = [
 ]
 
 _DATASET_CFG = {
-    "Sade-Feldman": {
+    "Melanoma": {
         # Two-arm DiD: Responder vs Non-responder, Pre vs Post (paired).
         "design": "two_arm",
         "loader": get_sade_feldman,
@@ -99,7 +99,7 @@ _DATASET_CFG = {
         "arm_filter": "CAR-T",
         "visits": ("Pre", "Post"),
     },
-    "Stephenson": {
+    "COVID-19": {
         # Two-arm DiD: Mild vs Severe COVID patients, D0 vs D28 (5 paired).
         "design": "two_arm",
         "loader": get_stephenson,
