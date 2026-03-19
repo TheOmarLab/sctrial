@@ -31,7 +31,6 @@ import pandas as pd
 
 from .._shared import (
     COLORS,
-    GSEA_LIBRARIES,
     MAIN_OUTPUT,
     TrialDesign,
     apply_style,
@@ -46,7 +45,6 @@ from .._shared import (
     load_or_run_gsea_cross_sectional,
     load_or_run_gsea_did,
     load_or_run_gsea_within_arm,
-    run_gsea_did,
     save_panel,
     score_signatures,
     sig_display,
@@ -528,10 +526,10 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
         except Exception as exc:
             print(f"    Melanoma: FAILED ({exc})")
     
-    # 2. Vaccine (use within_arm_comparison)
+    # 2. Vaccine (use within_arm_comparison; .X is already normalized)
     try:
         vax = get_vaccine()
-        vax, _ = score_signatures(vax, layer="counts")
+        vax, _ = score_signatures(vax, layer=None)
         vax.obs["arm_dummy"] = "Vaccinated"
         vax_design = TrialDesign(
             participant_col="participant_id",
@@ -542,7 +540,7 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
         )
         vax_results = load_or_run_gsea_within_arm(
             vax, vax_design, arm="Vaccinated", visits=("Pre", "Post"),
-            layer="counts", dataset_name="Vaccine",
+            layer=None, dataset_name="Vaccine",
         )
         if vax_results is not None and len(vax_results) > 0:
             vax_results["dataset"] = "Vaccine"
@@ -553,10 +551,11 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
     except Exception as exc:
         print(f"    Vaccine: FAILED ({exc})")
     
-    # 3. AML (use within_arm_comparison)
+    # 3. AML (use within_arm_comparison; log1p_norm available)
     try:
         aml = get_aml()
-        aml, _ = score_signatures(aml, layer="counts")
+        _aml_layer = "log1p_norm" if "log1p_norm" in aml.layers else None
+        aml, _ = score_signatures(aml, layer=_aml_layer)
         aml.obs["arm_dummy"] = "Treatment"
         pid_col = ("participant_id" if "participant_id" in aml.obs.columns
                    else "patient_id")
@@ -569,7 +568,7 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
         )
         aml_results = load_or_run_gsea_within_arm(
             aml, aml_design, arm="Treatment", visits=("Pre", "Post"),
-            layer="counts", dataset_name="AML",
+            layer=_aml_layer, dataset_name="AML",
         )
         if aml_results is not None and len(aml_results) > 0:
             aml_results["dataset"] = "AML"
@@ -580,10 +579,11 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
     except Exception as exc:
         print(f"    AML: FAILED ({exc})")
     
-    # 4. CAR-T (use within_arm_comparison)
+    # 4. CAR-T (use within_arm_comparison; log1p_norm available)
     try:
         cart = get_cart()
-        cart, _ = score_signatures(cart, layer="counts")
+        _cart_layer = "log1p_norm" if "log1p_norm" in cart.layers else None
+        cart, _ = score_signatures(cart, layer=_cart_layer)
         cart.obs["arm_dummy"] = "CAR-T"
         pid_col = ("participant_id" if "participant_id" in cart.obs.columns
                    else "patient_id")
@@ -596,7 +596,7 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
         )
         cart_results = load_or_run_gsea_within_arm(
             cart, cart_design, arm="CAR-T", visits=("Pre", "Post"),
-            layer="counts", dataset_name="CAR-T",
+            layer=_cart_layer, dataset_name="CAR-T",
         )
         if cart_results is not None and len(cart_results) > 0:
             cart_results["dataset"] = "CAR-T"
@@ -610,11 +610,26 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
     # 5. COVID-19 (cross-sectional - use between_arm_comparison)
     try:
         covid = get_stephenson()
-        covid, _ = score_signatures(covid, layer="counts")
+        # Add log1p_cpm layer if not present (consistent with Figure 5A / Supp Table 3)
+        if "log1p_cpm" not in covid.layers and "counts" in covid.layers:
+            from .._shared import add_log1p_cpm_layer
+            covid = add_log1p_cpm_layer(
+                covid, counts_layer="counts", out_layer="log1p_cpm",
+            )
+        covid, _ = score_signatures(covid, layer="log1p_cpm")
+        # Fixed DFO bin to match Figure 5A and Supp Table 3
+        target_bin = "DFO_8-14"
         if "dfo_bin" in covid.obs.columns:
-            top_bin = covid.obs["dfo_bin"].value_counts().idxmax()
+            available_bins = sorted(covid.obs["dfo_bin"].dropna().unique())
+            if target_bin not in available_bins:
+                # Fallback: first bin (sorted) with both severity groups
+                for _bin in available_bins:
+                    _sub = covid[covid.obs["dfo_bin"] == _bin]
+                    if set(_sub.obs["severity"].unique()) >= {"Mild", "Severe"}:
+                        target_bin = _bin
+                        break
         else:
-            top_bin = "Pre"
+            target_bin = "Pre"
         covid_design = TrialDesign(
             participant_col="participant_id",
             visit_col="dfo_bin",
@@ -623,8 +638,8 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
             arm_control="Mild",
         )
         covid_results = load_or_run_gsea_cross_sectional(
-            covid, covid_design, visit=top_bin,
-            layer="counts", dataset_name="COVID-19",
+            covid, covid_design, visit=target_bin,
+            layer="log1p_cpm", dataset_name="COVID-19",
         )
         if covid_results is not None and len(covid_results) > 0:
             covid_results["dataset"] = "COVID-19"
@@ -1561,7 +1576,7 @@ def panel_C_replicated(ax, data: dict):
         
         df["dataset"] = ds_name
         df["pathway"] = df[term_col_name].apply(
-            lambda s: _clean_pathway_name(s, max_len=50)
+            lambda s: _clean_pathway_name(s, max_len=70)
         )
         # Rename columns to standard names for concatenation
         df_clean = df[[nes_col_name, fdr_col_name, "pathway", "dataset"]].copy()
@@ -1720,7 +1735,7 @@ def panel_C_replicated(ax, data: dict):
     
     # Labels
     ax.set_yticks(range(len(all_pathways)))
-    ax.set_yticklabels(all_pathways, fontsize=7)
+    ax.set_yticklabels(all_pathways, fontsize=7.5)
     ax.set_xticks(range(len(all_datasets)))
     ax.set_xticklabels(all_datasets, fontsize=8, rotation=45, ha="right")
     

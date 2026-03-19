@@ -44,9 +44,9 @@ from .._shared import (
     harmonize_response,
     get_aml,
     get_cart,
-    load_or_run_gsea_did,
     load_or_run_gsea_cross_sectional,
-    load_or_run_gsea_prerank,
+    load_or_run_gsea_did,
+    load_or_run_gsea_within_arm,
     score_clinical_signatures,
     score_signatures,
     sig_display,
@@ -343,7 +343,7 @@ def _stephenson_ranking() -> "pd.Series":
 def table3_gsea_results() -> dict[str, pd.DataFrame]:
     """Run GSEA pre-ranked analysis for all 5 datasets, save as multi-sheet Excel.
 
-    Uses shared ``load_or_run_gsea_did`` / ``load_or_run_gsea_prerank``
+    Uses shared ``load_or_run_gsea_did`` / ``load_or_run_gsea_within_arm``
     helpers that cache results under ``manuscript/GSEA/{dataset}/{library}/``.
     If cached CSV files already exist they are loaded instantly; otherwise
     GSEA is run fresh and results are saved for next time.
@@ -386,9 +386,9 @@ def table3_gsea_results() -> dict[str, pd.DataFrame]:
         # Fixed DFO bin to match Figure 5 COVID analysis
         target_visit = "DFO_8-14"
         if "dfo_bin" in adata_st.obs.columns:
-            available_bins = adata_st.obs["dfo_bin"].unique()
+            available_bins = sorted(adata_st.obs["dfo_bin"].dropna().unique())
             if target_visit not in available_bins:
-                # Fallback: pick first bin with both severity groups
+                # Fallback: pick first bin (sorted) with both severity groups
                 for _bin in available_bins:
                     _sub = adata_st[adata_st.obs["dfo_bin"] == _bin]
                     if set(_sub.obs["severity"].unique()) >= {"Mild", "Severe"}:
@@ -412,27 +412,38 @@ def table3_gsea_results() -> dict[str, pd.DataFrame]:
     except Exception as exc:
         print(f"    COVID-19 GSEA failed: {exc}")
 
-    # ── Single-arm datasets ───────────────────────────────────────────
+    # ── Single-arm datasets (within-arm Pre→Post) ──────────────────
     single_arm_gsea = [
-        ("Vaccine", get_vaccine, ("Pre", "Post"), None),
-        ("AML", get_aml, None, None),
-        ("CAR-T", get_cart, None, None),
+        ("Vaccine", get_vaccine, ("Pre", "Post"), None, "Treated"),
+        ("AML", get_aml, None, None, "Treatment"),
+        ("CAR-T", get_cart, None, None, "CAR-T"),
     ]
-    for ds_name, loader, visits_override, layer in single_arm_gsea:
+    for ds_name, loader, visits_override, _layer_hint, arm_label in single_arm_gsea:
         try:
             adata = loader()
-            # GSEA uses run_gsea_did which requires arm_col for DiD ranking.
-            # For single-arm datasets we create a dummy arm so the DiD
-            # ranking reduces to a within-arm pre→post contrast.
+            # Pick best available normalized layer
+            layer = _layer_hint
+            if layer is None:
+                for _cand in ("log1p_tpm", "log1p_cpm", "log1p_norm"):
+                    if _cand in adata.layers:
+                        layer = _cand
+                        break
+            # layer=None means use .X (already normalized for Vaccine)
             if "arm" not in adata.obs.columns:
-                adata.obs["arm"] = "Treated"
+                adata.obs["arm"] = arm_label
             visits = visits_override or _detect_visits(adata)
-            gsea_design = TrialDesign(
-                participant_col="participant_id", visit_col="visit",
-                arm_col="arm", arm_treated="Treated", arm_control="Treated",
+            pid_col = (
+                "participant_id"
+                if "participant_id" in adata.obs.columns
+                else "patient_id"
             )
-            res = load_or_run_gsea_did(
-                adata, gsea_design, visits, layer, ds_name,
+            gsea_design = TrialDesign(
+                participant_col=pid_col, visit_col="visit",
+                arm_col="arm", arm_treated=arm_label, arm_control=arm_label,
+            )
+            res = load_or_run_gsea_within_arm(
+                adata, gsea_design, arm=arm_label, visits=visits,
+                layer=layer, dataset_name=ds_name,
             )
             if res is not None:
                 sheets[ds_name] = res

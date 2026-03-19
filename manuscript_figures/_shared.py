@@ -589,9 +589,15 @@ GSEA_LIBRARIES: list[tuple[str, str]] = [
 ]
 
 
-def _gsea_cache_path(dataset: str, library_short: str) -> Path:
-    """Return ``manuscript/GSEA/{dataset}/{library}/results.csv``."""
-    return GSEA_OUTPUT / dataset / library_short / "results.csv"
+def _gsea_cache_path(
+    dataset: str, library_short: str, method: str = "did",
+) -> Path:
+    """Return ``manuscript/GSEA/{dataset}/{method}/{library}/results.csv``.
+
+    Including *method* (``"did"``, ``"within_arm"``, ``"cross_sectional"``)
+    prevents silently serving cached results from a different analysis type.
+    """
+    return GSEA_OUTPUT / dataset / method / library_short / "results.csv"
 
 
 def load_or_run_gsea_did(
@@ -622,7 +628,7 @@ def load_or_run_gsea_did(
 
     frames: list[pd.DataFrame] = []
     for lib_name, short_name in GSEA_LIBRARIES:
-        cache_csv = _gsea_cache_path(dataset_name, short_name)
+        cache_csv = _gsea_cache_path(dataset_name, short_name, method="did")
 
         # Try loading from cache
         if not force and cache_csv.exists():
@@ -688,7 +694,7 @@ def load_or_run_gsea_cross_sectional(
 
     frames: list[pd.DataFrame] = []
     for lib_name, short_name in GSEA_LIBRARIES:
-        cache_csv = _gsea_cache_path(dataset_name, short_name)
+        cache_csv = _gsea_cache_path(dataset_name, short_name, method="cross_sectional")
 
         if not force and cache_csv.exists():
             df = pd.read_csv(cache_csv)
@@ -754,7 +760,7 @@ def load_or_run_gsea_within_arm(
 
     frames: list[pd.DataFrame] = []
     for lib_name, short_name in GSEA_LIBRARIES:
-        cache_csv = _gsea_cache_path(dataset_name, short_name)
+        cache_csv = _gsea_cache_path(dataset_name, short_name, method="within_arm")
 
         if not force and cache_csv.exists():
             df = pd.read_csv(cache_csv)
@@ -813,7 +819,7 @@ def load_or_run_gsea_prerank(
 
     frames: list[pd.DataFrame] = []
     for lib_name, short_name in GSEA_LIBRARIES:
-        cache_csv = _gsea_cache_path(dataset_name, short_name)
+        cache_csv = _gsea_cache_path(dataset_name, short_name, method="prerank")
 
         if not force and cache_csv.exists():
             df = pd.read_csv(cache_csv)

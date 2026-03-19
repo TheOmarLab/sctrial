@@ -26,28 +26,23 @@ from statsmodels.stats.multitest import multipletests
 from .._shared import (
     COLORS,
     MAIN_OUTPUT,
-    SCTRIAL_AVAILABLE,
+    TrialDesign,
+    add_log1p_cpm_layer,
     apply_style,
+    between_arm_comparison,
     despine,
-    save_panel,
-    # data loading
+    did_table,
+    get_aml,
+    get_cart,
     get_sade_feldman,
     get_stephenson,
     get_vaccine,
-    get_aml,
-    get_cart,
     harmonize_response,
-    # scoring
-    score_signatures,
-    score_clinical_signatures,
-    sig_display,
-    # sctrial API
-    TrialDesign,
-    did_table,
     hedges_g,
+    save_panel,
+    score_signatures,
+    sig_display,
     within_arm_comparison,
-    between_arm_comparison,
-    add_log1p_cpm_layer,
 )
 
 # ---------------------------------------------------------------------------
@@ -189,9 +184,9 @@ def _prepare_data() -> dict[str, Any]:
 
         # Pick a DFO bin where both Mild & Severe have patients
         target_visit = "DFO_8-14"
-        available_bins = adata_covid.obs["dfo_bin"].unique()
+        available_bins = sorted(adata_covid.obs["dfo_bin"].dropna().unique())
         if target_visit not in available_bins:
-            # Fallback: pick the first bin that has both severity groups
+            # Fallback: pick the first bin (sorted) with both severity groups
             for _bin in available_bins:
                 _sub = adata_covid[adata_covid.obs["dfo_bin"] == _bin]
                 if set(_sub.obs["severity"].unique()) >= {"Mild", "Severe"}:
@@ -272,7 +267,8 @@ def _prepare_data() -> dict[str, Any]:
               f"{adata_covid.obs['participant_id'].nunique()} participants")
     except Exception as exc:
         print(f"  [A] COVID-19 error: {exc}")
-        import traceback; traceback.print_exc()
+        import traceback
+        traceback.print_exc()
         data["covid_effects"] = None
 
     # ── Panel B: Vaccine within-arm paired ────────────────────────────────
@@ -457,7 +453,8 @@ def _prepare_data() -> dict[str, Any]:
                   f"(analysing '{treated_arm}' arm)")
         except Exception as exc:
             print(f"  [{panel_label}] {name.upper()} error: {exc}")
-            import traceback; traceback.print_exc()
+            import traceback
+            traceback.print_exc()
             data[f"{tag}_effects"] = None
 
     # ── Melanoma (Sade-Feldman): DiD responder vs non-responder ──────────
@@ -494,7 +491,8 @@ def _prepare_data() -> dict[str, Any]:
               f"{adata_mel.obs['participant_id'].nunique()} participants")
     except Exception as exc:
         print(f"  [E] Melanoma error: {exc}")
-        import traceback; traceback.print_exc()
+        import traceback
+        traceback.print_exc()
         data["mel_effects"] = None
 
     # ── Compute CIs for melanoma DiD results ────────────────────────────
@@ -799,14 +797,6 @@ def panel_f_heatmap(ax, data: dict[str, Any]) -> None:
                        fontsize=7.5)
     ax.set_yticklabels(ax.get_yticklabels(), rotation=0, fontsize=8.5)
 
-    # Footnote: metrics differ across datasets
-    ax.text(
-        0.5, -0.32,
-        "Hedges' g (COVID-19); within-arm β (Vaccine, AML, CAR-T); DiD β (Melanoma)",
-        transform=ax.transAxes, fontsize=6, ha="center", va="top",
-        fontstyle="italic", color="0.4",
-    )
-
 
 # ── composite figure ──────────────────────────────────────────────────────
 
@@ -848,7 +838,9 @@ def generate(*, save: bool = True) -> None:
         for panel_fn, panel_name, n_feat in panel_specs:
             # Adaptive height: ~0.38 inches per feature row, min 2.8
             h = max(2.8, 0.38 * n_feat + 1.1)
-            fig_p, ax_p = plt.subplots(figsize=(6.5, h))
+            # Wider figure for GSEA heatmap to avoid pathway name truncation
+            w = 9.5 if "gsea" in panel_name.lower() else 6.5
+            fig_p, ax_p = plt.subplots(figsize=(w, h))
             panel_fn(ax_p, data)
             fig_p.tight_layout(pad=0.6)
             save_panel(fig_p, panel_name, FIG_NAME, MAIN_OUTPUT)
