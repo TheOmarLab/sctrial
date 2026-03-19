@@ -45,6 +45,7 @@ from .._shared import (
     get_aml,
     get_cart,
     load_or_run_gsea_did,
+    load_or_run_gsea_cross_sectional,
     load_or_run_gsea_prerank,
     score_clinical_signatures,
     score_signatures,
@@ -374,11 +375,27 @@ def table3_gsea_results() -> dict[str, pd.DataFrame]:
 
     # ── COVID-19 (cross-sectional: severe vs mild) ───────────────────
     try:
-        rnk = _stephenson_ranking()
-        if len(rnk) > 0:
-            res = load_or_run_gsea_prerank(rnk, "COVID-19")
-            if res is not None:
-                sheets["COVID-19"] = res
+        adata_st = get_stephenson()
+        adata_st, _ = score_signatures(adata_st, layer="counts")
+        if "dfo_bin" in adata_st.obs.columns:
+            top_bin = adata_st.obs["dfo_bin"].value_counts().idxmax()
+        else:
+            top_bin = "Pre"
+        covid_design = TrialDesign(
+            participant_col="participant_id",
+            visit_col="dfo_bin",
+            arm_col="severity",
+            arm_treated="Severe",
+            arm_control="Mild",
+        )
+        res = load_or_run_gsea_cross_sectional(
+            adata_st, covid_design, visit=top_bin,
+            layer="counts", dataset_name="COVID-19",
+        )
+        if res is not None:
+            sheets["COVID-19"] = res
+        del adata_st
+        gc.collect()
     except Exception as exc:
         print(f"    COVID-19 GSEA failed: {exc}")
 
