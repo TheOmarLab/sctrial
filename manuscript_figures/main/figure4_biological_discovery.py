@@ -203,9 +203,9 @@ def _prepare_data(*, use_cache: bool = True) -> dict:
     )
 
     # GSEA on multiple gene-set libraries for comprehensive pathway analysis
-    # Uses shared helper that caches results under manuscript/GSEA/Sade_Feldman/
+    # Uses shared helper that caches results under manuscript/GSEA/Melanoma/
     gsea_results = load_or_run_gsea_did(
-        adata, design, visits, "log1p_tpm", "Sade_Feldman",
+        adata, design, visits, "log1p_tpm", "Melanoma",
     )
 
     if gsea_results is not None and len(gsea_results) > 0:
@@ -490,17 +490,17 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
     print("  Running GSEA on all datasets for pathway replication...")
     gsea_multi = {}
     
-    # 1. Sade-Feldman - reuse results from _prepare_data() if available
+    # 1. Melanoma - reuse results from _prepare_data() if available
     if sf_gsea_results is not None and len(sf_gsea_results) > 0:
-        # Add dataset column if not present
         sf_results = sf_gsea_results.copy()
         if "dataset" not in sf_results.columns:
-            sf_results["dataset"] = "Sade-Feldman"
-        # Ensure library column name is consistent
+            sf_results["dataset"] = "Melanoma"
+        else:
+            sf_results["dataset"] = "Melanoma"
         if "Library" in sf_results.columns and "library" not in sf_results.columns:
             sf_results = sf_results.rename(columns={"Library": "library"})
-        gsea_multi["Sade-Feldman"] = sf_results
-        print(f"    Sade-Feldman: {len(sf_results)} pathways (reused from _prepare_data)")
+        gsea_multi["Melanoma"] = sf_results
+        print(f"    Melanoma: {len(sf_results)} pathways (reused from _prepare_data)")
     else:
         # Fallback: use load_or_run_gsea_did for caching
         try:
@@ -516,17 +516,17 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
                 arm_control="Non-responder",
             )
             sf_results = load_or_run_gsea_did(
-                sf, sf_design, ("Pre", "Post"), "log1p_tpm", "Sade_Feldman",
+                sf, sf_design, ("Pre", "Post"), "log1p_tpm", "Melanoma",
             )
             if sf_results is not None and len(sf_results) > 0:
-                sf_results["dataset"] = "Sade-Feldman"
+                sf_results["dataset"] = "Melanoma"
                 # Rename Library column to library for consistency
                 if "Library" in sf_results.columns:
                     sf_results = sf_results.rename(columns={"Library": "library"})
-                gsea_multi["Sade-Feldman"] = sf_results
-                print(f"    Sade-Feldman: {len(sf_results)} pathways (cached or computed)")
+                gsea_multi["Melanoma"] = sf_results
+                print(f"    Melanoma: {len(sf_results)} pathways (cached or computed)")
         except Exception as exc:
-            print(f"    Sade-Feldman: FAILED ({exc})")
+            print(f"    Melanoma: FAILED ({exc})")
     
     # 2. Vaccine (use within_arm_comparison)
     try:

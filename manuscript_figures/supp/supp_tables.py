@@ -363,24 +363,24 @@ def table3_gsea_results() -> dict[str, pd.DataFrame]:
             arm_treated="Responder", arm_control="Non-responder",
         )
         res = load_or_run_gsea_did(
-            adata_sf, design_sf, ("Pre", "Post"), "log1p_tpm", "Sade_Feldman",
+            adata_sf, design_sf, ("Pre", "Post"), "log1p_tpm", "Melanoma",
         )
         if res is not None:
-            sheets["Sade-Feldman"] = res
+            sheets["Melanoma"] = res
         del adata_sf
         gc.collect()
     except Exception as exc:
-        print(f"    Sade-Feldman GSEA failed: {exc}")
+        print(f"    Melanoma GSEA failed: {exc}")
 
-    # ── Stephenson (cross-sectional: severe vs mild) ─────────────────
+    # ── COVID-19 (cross-sectional: severe vs mild) ───────────────────
     try:
         rnk = _stephenson_ranking()
         if len(rnk) > 0:
-            res = load_or_run_gsea_prerank(rnk, "Stephenson")
+            res = load_or_run_gsea_prerank(rnk, "COVID-19")
             if res is not None:
-                sheets["Stephenson"] = res
+                sheets["COVID-19"] = res
     except Exception as exc:
-        print(f"    Stephenson GSEA failed: {exc}")
+        print(f"    COVID-19 GSEA failed: {exc}")
 
     # ── Single-arm datasets ───────────────────────────────────────────
     single_arm_gsea = [
