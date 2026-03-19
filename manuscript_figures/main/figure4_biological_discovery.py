@@ -1,19 +1,18 @@
 """
-Figure 4 — Biological Discovery: Pathways & Genes
-===================================================
+Figure 4 — Biological Discovery: Pathways & Genes (Melanoma)
+==============================================================
 
-Six-panel figure combining GSEA pathway enrichment, leading-edge gene
-analysis, cross-dataset pathway replication, gene-level volcano and
-waterfall plots, and effect-size distribution.
+Five-panel figure combining gene-level results, GSEA pathway enrichment,
+leading-edge analysis, and cell-type-resolved effects, all based on the
+melanoma immunotherapy cohort (Sade-Feldman et al.).
 
 Panels
 ------
-A  GSEA enrichment bar chart (immune + metabolic pathways, 5 libraries).
-B  Leading-edge gene overlap heatmap across top enriched pathways.
-C  Replicated pathways across cohorts (cross-dataset consistency).
-D  Gene-level volcano plot (Sade-Feldman DiD, protein-coding gene labels).
-E  Top genes ranked by effect size (waterfall plot, protein-coding only).
-F  Cell-type-resolved DiD effect heatmap for top genes.
+A  Gene-level volcano plot (melanoma DiD, protein-coding gene labels).
+B  Top genes ranked by effect size (waterfall plot, protein-coding only).
+C  GSEA enrichment bar chart (immune + metabolic pathways, 5 libraries).
+D  Leading-edge gene overlap heatmap across top enriched pathways.
+E  Cell-type-resolved DiD effect heatmap for top genes.
 """
 
 from __future__ import annotations
@@ -761,7 +760,7 @@ def panel_A(ax, data: dict):
     ax.set_yticklabels(selected["feature"].values, fontsize=7)
 
     ax.set_xlabel(r"Effect size ($\beta_{\mathrm{DiD}}$)")
-    ax.set_title("Top Genes by Effect Size — Sade-Feldman DiD", fontsize=11)
+    ax.set_title("Top Genes by Effect Size — Melanoma DiD", fontsize=11)
 
     legend_handles = [
         mpatches.Patch(color=COLORS["treated"], alpha=0.9,
@@ -794,7 +793,7 @@ def _panel_A_signature_waterfall(ax, data: dict):
     ax.set_yticks(y_pos)
     ax.set_yticklabels(df["display"].values, fontsize=8)
     ax.set_xlabel(r"DiD coefficient ($\beta_{\mathrm{DiD}}$)")
-    ax.set_title("Signature DiD Effects (Sade-Feldman)", fontsize=11)
+    ax.set_title("Signature DiD Effects (Melanoma)", fontsize=11)
     ax.invert_yaxis()
     despine(ax)
 
@@ -1498,7 +1497,7 @@ def panel_E(ax, data: dict):
 
     ax.set_xlabel(r"Effect size ($\beta_{\mathrm{DiD}}$)")
     ax.set_ylabel(r"$-\log_{10}$(p)")
-    ax.set_title("Gene-Level Volcano (Sade-Feldman DiD)", fontsize=11)
+    ax.set_title("Gene-Level Volcano (Melanoma DiD)", fontsize=11)
 
     # Legend — no footnotes, no summary boxes
     legend_handles = [
@@ -1930,23 +1929,23 @@ def generate():
     data = _prepare_data()
 
     # ── Save individual panels ────────────────────────────────────────
-    # Panel B (heatmap + marginal bar) needs more space for pathway labels
+    # Panel D (leading-edge heatmap) needs more space for pathway labels
     panel_sizes = {
-        "B": (10, 7),
+        "D": (10, 7),
     }
     for panel_label, panel_func in [
-        ("A", panel_B),              # GSEA bar chart
-        ("B", panel_C),              # Leading-edge heatmap
-        ("C", panel_E),              # Volcano
-        ("D", panel_A),              # Waterfall
-        ("E", panel_F),              # Effect distribution
+        ("A", panel_E),              # Volcano (gene-level significance)
+        ("B", panel_A),              # Waterfall (ranked gene-level effects)
+        ("C", panel_B),              # GSEA bar chart (pathway enrichment)
+        ("D", panel_C),              # Leading-edge heatmap (driving genes)
+        ("E", panel_F),              # Cell-type DiD heatmap
     ]:
         fsize = panel_sizes.get(panel_label, (8, 6))
         fig_p, ax_p = plt.subplots(figsize=fsize)
         panel_func(ax_p, data)
-        # For Panel B (leading-edge heatmap), tight_layout must run
+        # For Panel D (leading-edge heatmap), tight_layout must run
         # BEFORE the marginal bar is positioned (handled internally).
-        if panel_label != "B":
+        if panel_label != "D":
             fig_p.tight_layout()
         save_panel(fig_p, f"panel_{panel_label}", FIGURE_NAME, MAIN_OUTPUT)
 
