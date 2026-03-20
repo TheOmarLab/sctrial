@@ -23,8 +23,7 @@ from ._shared import MAIN_OUTPUT, SUPP_OUTPUT, apply_style
 # ---------------------------------------------------------------------------
 
 MAIN_FIGURES = {
-    1: ("Figure 1: Problem & Framework", "main.figure1_problem_framework"),
-    2: ("Figure 2: Melanoma Analysis", "main.figure2_melanoma_analysis"),
+    2: ("Figure 2: Pseudoreplication Bias & Melanoma Analysis", "main.figure2_melanoma_analysis"),
     3: ("Figure 3: Robustness & Benchmarking", "main.figure3_robustness_benchmarking"),
     4: ("Figure 4: Biological Discovery", "main.figure4_biological_discovery"),
     5: ("Figure 5: Multi-Dataset Generalization", "main.figure5_multi_dataset"),

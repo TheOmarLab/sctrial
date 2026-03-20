@@ -31,19 +31,21 @@ from .._shared import (
     SIGNATURE_DISPLAY_NAMES,
     SUPP_OUTPUT,
     TrialDesign,
+    add_log1p_cpm_layer,
     apply_style,
+    between_arm_comparison,
     clear_cache,
-    did_table,
-    within_arm_fit_beta,
-    get_within_arm_aggregated_df,
     did_fit,
+    did_table,
+    get_aml,
+    get_cart,
     get_did_aggregated_df,
     get_sade_feldman,
     get_stephenson,
     get_vaccine,
+    get_within_arm_aggregated_df,
     harmonize_response,
-    get_aml,
-    get_cart,
+    hedges_g,
     load_or_run_gsea_cross_sectional,
     load_or_run_gsea_did,
     load_or_run_gsea_within_arm,
@@ -51,6 +53,7 @@ from .._shared import (
     score_signatures,
     sig_display,
     within_arm_comparison,
+    within_arm_fit_beta,
 )
 
 # ======================================================================
@@ -197,57 +200,87 @@ def table2_all_results() -> pd.DataFrame:
     except Exception as exc:
         print(f"    Melanoma failed: {exc}")
 
-    # ── Stephenson (cross-sectional Hedges' g) ────────────────────────
+    # ── Stephenson / COVID-19 (cross-sectional Hedges' g at DFO_8-14)
+    # Must match Figure 5 exactly: DFO_8-14 bin, log1p_cpm layer,
+    # between_arm_comparison + hedges_g on participant-level means.
     try:
         from scipy import stats as sp_stats
-        from statsmodels.stats.multitest import multipletests
 
         adata_st = get_stephenson()
-        adata_st, sig_cols = score_signatures(adata_st)
+        # Add log1p_cpm layer (matching Figure 5 and Supp Table 3)
+        if "log1p_cpm" not in adata_st.layers:
+            adata_st = add_log1p_cpm_layer(
+                adata_st, counts_layer="counts", out_layer="log1p_cpm",
+            )
+        adata_st, sig_cols = score_signatures(adata_st, layer="log1p_cpm")
 
-        pid_col, sev_col = "participant_id", "severity"
-        pb = adata_st.obs[[pid_col, sev_col]].copy()
-        for c in sig_cols:
-            if c in adata_st.obs.columns:
-                pb[c] = adata_st.obs[c].values
-        pb_mean = pb.groupby(pid_col).agg(
-            {sev_col: "first", **{c: "mean" for c in sig_cols}}
+        # Filter to DFO_8-14 bin (matching Figure 5)
+        target_visit = "DFO_8-14"
+        if "dfo_bin" in adata_st.obs.columns:
+            available_bins = sorted(adata_st.obs["dfo_bin"].dropna().unique())
+            if target_visit not in available_bins:
+                for _bin in available_bins:
+                    _sub = adata_st[adata_st.obs["dfo_bin"] == _bin]
+                    if set(_sub.obs["severity"].unique()) >= {"Mild", "Severe"}:
+                        target_visit = _bin
+                        break
+        ad_visit = adata_st[adata_st.obs["dfo_bin"] == target_visit].copy()
+
+        covid_design = TrialDesign(
+            participant_col="participant_id",
+            visit_col="dfo_bin",
+            arm_col="severity",
+            arm_treated="Severe",
+            arm_control="Mild",
+        )
+        res_st = between_arm_comparison(
+            ad_visit,
+            visit=target_visit,
+            features=sig_cols,
+            design=covid_design,
+            layer="log1p_cpm",
+            standardize=True,
         )
 
-        sev_vals = pb_mean[sev_col].unique()
-        severe = "severe" if "severe" in sev_vals else sev_vals[0]
-        mild = "mild" if "mild" in sev_vals else sev_vals[-1]
-        grp_s = pb_mean[pb_mean[sev_col] == severe]
-        grp_m = pb_mean[pb_mean[sev_col] == mild]
-
-        rows_st: list[dict] = []
+        # Compute Hedges' g on participant-level means (matching Figure 5)
+        df_agg = (
+            ad_visit.obs
+            .groupby(["participant_id", "severity"], observed=True)[sig_cols]
+            .mean()
+            .reset_index()
+        )
+        g_rows: list[dict] = []
         for feat in sig_cols:
-            x_s = grp_s[feat].dropna().values
-            x_m = grp_m[feat].dropna().values
-            if len(x_s) < 2 or len(x_m) < 2:
+            x_mild = df_agg.loc[df_agg["severity"] == "Mild", feat].dropna().values
+            x_sev = df_agg.loc[df_agg["severity"] == "Severe", feat].dropna().values
+            if len(x_mild) < 3 or len(x_sev) < 3:
                 continue
-            n_s, n_m = len(x_s), len(x_m)
-            pooled_sd = np.sqrt(
-                ((n_s - 1) * x_s.var(ddof=1) + (n_m - 1) * x_m.var(ddof=1))
-                / (n_s + n_m - 2)
-            )
-            g = (x_s.mean() - x_m.mean()) / pooled_sd if pooled_sd > 0 else np.nan
-            g *= 1 - 3 / (4 * (n_s + n_m) - 9)
-            se_g = np.sqrt((n_s + n_m) / (n_s * n_m) + g**2 / (2 * (n_s + n_m)))
-            _, p = sp_stats.mannwhitneyu(x_s, x_m, alternative="two-sided")
-            rows_st.append({
+            g = hedges_g(x_sev, x_mild)
+            n1, n2 = len(x_sev), len(x_mild)
+            se_g = np.sqrt((n1 + n2) / (n1 * n2) + g**2 / (2 * (n1 + n2)))
+            _, p = sp_stats.ttest_ind(x_sev, x_mild, equal_var=False)
+            g_rows.append({
                 "feature": feat, "effect": g, "se": se_g, "pvalue": p,
                 "ci_lower": g - 1.96 * se_g, "ci_upper": g + 1.96 * se_g,
-                "n_units": n_s + n_m, "cov_type_used": "hedges_g",
+                "n_units": n1 + n2, "cov_type_used": "hedges_g",
             })
-        if rows_st:
-            res_st = pd.DataFrame(rows_st)
-            _, fdr, _, _ = multipletests(res_st["pvalue"], method="fdr_bh")
-            res_st["FDR"] = fdr
-            res_st["label"] = res_st["feature"].apply(sig_display)
-            all_results.append(_harmonise(res_st, "COVID-19", "Hedges' g"))
-            print(f"    COVID-19: {len(res_st)} features (Hedges' g)")
-        del adata_st
+        if g_rows:
+            res_covid = pd.DataFrame(g_rows)
+            # Drop NaN p-values before BH correction (degenerate signatures
+            # with zero variance cause NaN from ttest_ind; a single NaN
+            # propagates to all FDR values in multipletests).
+            valid_p = res_covid["pvalue"].dropna()
+            res_covid["FDR"] = np.nan
+            if len(valid_p) > 0:
+                _, fdr, _, _ = multipletests(valid_p, method="fdr_bh")
+                res_covid.loc[valid_p.index, "FDR"] = fdr
+            res_covid["label"] = res_covid["feature"].apply(sig_display)
+            all_results.append(
+                _harmonise(res_covid, "COVID-19", f"Hedges' g ({target_visit})")
+            )
+            print(f"    COVID-19: {len(res_covid)} features "
+                  f"(Hedges' g, {target_visit})")
+        del adata_st, ad_visit
         gc.collect()
     except Exception as exc:
         print(f"    COVID-19 failed: {exc}")

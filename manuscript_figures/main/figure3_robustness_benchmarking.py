@@ -2,23 +2,20 @@
 Figure 3 — Statistical Robustness & Method Benchmarking
 ========================================================
 
-Eight-panel figure combining bootstrap validation, leave-one-out
-sensitivity, power analysis, cell-vs-participant method comparison,
-and cross-dataset effect sizes.
+Five-panel figure combining bootstrap validation, leave-one-out
+sensitivity, power analysis, standard-error comparison, and
+cross-dataset effect sizes.
 
 Panels
 ------
 A   Bootstrap distribution histograms for top signatures.
 B   Leave-one-out participant sensitivity analysis.
 C   Empirical power curves (participant subsampling).
-C2  Power heatmap (datasets × participant-count bins).
-D   Cell vs participant effect-size scatter (Pearson r).
-E   Cell vs participant −log₁₀(p) comparison.
-F   Standard-error comparison (cell vs participant level).
-G   Cross-dataset signed Cohen's d forest (pre-specified endpoints).
+D   Standard-error comparison (cell vs participant level).
+E   Cross-dataset signed Cohen's d forest (pre-specified endpoints).
 
-Runtime scaling (Cleveland dot plot) moved to Supplementary Figure 3
-panel J.
+Cell-vs-participant effect-size scatter and p-value comparison moved
+to Figure 2 panels B–C.
 """
 
 from __future__ import annotations
@@ -1395,101 +1392,10 @@ def _panel_d_power_curves(data: dict) -> plt.Figure | None:
 
 
 # ======================================================================
-# Panel E: Cell vs participant effect-size scatter
+# Panel D: Standard-error comparison
 # ======================================================================
 
-def _panel_e(ax, data: dict) -> None:
-    """Scatter of cell-level vs participant-level β_DiD with Pearson r."""
-    df_cell = data["df_cell"]
-    df_part = data["df_part"]
-
-    merged = df_cell[["feature", "beta_DiD"]].merge(
-        df_part[["feature", "beta_DiD"]],
-        on="feature", suffixes=("_cell", "_part"),
-    )
-    merged["display"] = merged["feature"].apply(sig_display)
-
-    x = merged["beta_DiD_cell"].values
-    y = merged["beta_DiD_part"].values
-
-    span = max(x.max(), y.max()) - min(x.min(), y.min())
-    margin = span * 0.15 if span > 0 else 0.5
-    lo = min(x.min(), y.min()) - margin
-    hi = max(x.max(), y.max()) + margin
-    ax.plot([lo, hi], [lo, hi], ls="--", color=COLORS["gray"], lw=1, zorder=1)
-
-    ax.scatter(x, y, s=55, color=COLORS["treated"],
-               edgecolor="white", linewidth=0.5, zorder=3)
-
-    for _, row in merged.iterrows():
-        ax.annotate(
-            row["display"],
-            (row["beta_DiD_cell"], row["beta_DiD_part"]),
-            fontsize=6, ha="left", va="bottom",
-            xytext=(4, 4), textcoords="offset points",
-        )
-
-    r, p = stats.pearsonr(x, y)
-    ax.text(
-        0.05, 0.95, f"r = {r:.3f}\np = {p:.2e}",
-        transform=ax.transAxes, fontsize=8, va="top", ha="left",
-        bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="none", alpha=0.8),
-    )
-
-    ax.set_xlabel(r"Cell-level $\beta_{\mathrm{DiD}}$")
-    ax.set_ylabel(r"Participant-level $\beta_{\mathrm{DiD}}$")
-    ax.set_title("Effect Size Correlation", fontsize=10)
-    despine(ax)
-
-
-# ======================================================================
-# Panel F: P-value comparison
-# ======================================================================
-
-def _panel_f(ax, data: dict) -> None:
-    """Horizontal grouped bars of −log10(p) at cell vs participant level."""
-    df_cell = data["df_cell"].copy()
-    df_part = data["df_part"].copy()
-
-    merged = df_cell[["feature", "p_DiD"]].merge(
-        df_part[["feature", "p_DiD"]],
-        on="feature", suffixes=("_cell", "_part"),
-    )
-    merged["display"] = merged["feature"].apply(sig_display)
-    merged["nlog10_cell"] = -np.log10(merged["p_DiD_cell"].clip(lower=1e-300))
-    merged["nlog10_part"] = -np.log10(merged["p_DiD_part"].clip(lower=1e-300))
-    merged = merged.sort_values("nlog10_part", ascending=True)
-
-    y_pos = np.arange(len(merged))
-    bar_h = 0.35
-
-    ax.barh(
-        y_pos - bar_h / 2, merged["nlog10_cell"].values,
-        height=bar_h, color=COLORS["highlight"], alpha=0.8,
-        label="Cell-level", edgecolor="none",
-    )
-    ax.barh(
-        y_pos + bar_h / 2, merged["nlog10_part"].values,
-        height=bar_h, color=COLORS["treated"], alpha=0.8,
-        label="Participant-level", edgecolor="none",
-    )
-
-    ax.axvline(-np.log10(0.05), ls="--", color=COLORS["gray"], lw=0.8,
-               label="p = 0.05")
-
-    ax.set_yticks(y_pos)
-    ax.set_yticklabels(merged["display"].values, fontsize=8)
-    ax.set_xlabel(r"$-\log_{10}(p)$")
-    ax.set_title("Cell vs Participant Inference", fontsize=10)
-    ax.legend(fontsize=7, loc="lower right", frameon=True, framealpha=0.9)
-    despine(ax)
-
-
-# ======================================================================
-# Panel G: Standard-error comparison
-# ======================================================================
-
-def _panel_g(ax, data: dict) -> None:
+def _panel_d_se_comparison(ax, data: dict) -> None:
     """Paired horizontal bars of SE at cell vs participant level."""
     df_cell = data["df_cell"]
     df_boot = data["df_boot"]
@@ -1527,10 +1433,10 @@ def _panel_g(ax, data: dict) -> None:
 
 
 # ======================================================================
-# Panel H: Cross-dataset Cohen's d forest
+# Panel E: Cross-dataset Cohen's d forest
 # ======================================================================
 
-def _panel_h(ax, data: dict) -> None:
+def _panel_e_cross_dataset(ax, data: dict) -> None:
     """Forest plot of signed Cohen's d for pre-specified endpoints."""
     scale_data = data.get("scale_data")
     if scale_data is None:
@@ -1661,28 +1567,23 @@ def generate() -> None:
       A  Bootstrap vs analytical SE
       B  Leave-one-out sensitivity
       C  Power curves (small-multiples)
-      C2 Power heatmap (datasets × participant bins)
-      D  Cell vs participant β scatter
-      E  Cell vs participant p-value bars
-      F  Cell vs participant SE bars
-      G  Cross-dataset Cohen's d forest
-
-    Runtime scaling moved to Supplementary Figure 3 panel J.
+      D  Cell vs participant SE bars
+      E  Cross-dataset Cohen's d forest
     """
     apply_style()
     print("Figure 3: Robustness & Benchmarking")
 
-    # Sade-Feldman data (panels A, B, D, E, F)
+    # Sade-Feldman data (panels A, B, D)
     data = _prepare_sf_data()
 
-    # Multi-dataset scalability / power / effect (panels C, G)
+    # Multi-dataset scalability / power / effect (panels C, E)
     try:
         data["scale_data"] = _prepare_scalability_data()
     except Exception as exc:
         print(f"  Warning: Could not load scalability data: {exc}")
         data["scale_data"] = None
 
-    # Single-axes panels
+    # Panels A-B: Single-axes panels
     panel_funcs = [
         ("panel_A_bootstrap_validation", _panel_a, (6.5, 5)),
         ("panel_B_loo_sensitivity", _panel_b, (6.5, 5)),
@@ -1693,28 +1594,22 @@ def generate() -> None:
         fig.tight_layout()
         save_panel(fig, panel_name, FIGURE_NAME, MAIN_OUTPUT)
 
-    # Panel C (power curves — creates its own figure)
+    # Panel C: Power curves (creates its own figure)
     cfig = _panel_d_power_curves(data)
     if cfig is not None:
         save_panel(cfig, "panel_C_power_curves", FIGURE_NAME, MAIN_OUTPUT)
 
-    # Panels D/E/F (cell vs participant comparisons)
-    def_panels = [
-        ("panel_D_effect_correlation", _panel_e, (6.5, 5)),
-        ("panel_E_pvalue_comparison", _panel_f, (6.5, 5)),
-        ("panel_F_se_comparison", _panel_g, (6.5, 5)),
-    ]
-    for panel_name, func, size in def_panels:
-        fig, ax = plt.subplots(figsize=size)
-        func(ax, data)
-        fig.tight_layout()
-        save_panel(fig, panel_name, FIGURE_NAME, MAIN_OUTPUT)
-
-    # Panel G (cross-dataset effect sizes)
-    fig, ax = plt.subplots(figsize=(10, 7))
-    _panel_h(ax, data)
+    # Panel D: SE comparison
+    fig, ax = plt.subplots(figsize=(6.5, 5))
+    _panel_d_se_comparison(ax, data)
     fig.tight_layout()
-    save_panel(fig, "panel_G_cross_dataset_effects", FIGURE_NAME, MAIN_OUTPUT)
+    save_panel(fig, "panel_D_se_comparison", FIGURE_NAME, MAIN_OUTPUT)
+
+    # Panel E: Cross-dataset effect sizes
+    fig, ax = plt.subplots(figsize=(10, 7))
+    _panel_e_cross_dataset(ax, data)
+    fig.tight_layout()
+    save_panel(fig, "panel_E_cross_dataset_effects", FIGURE_NAME, MAIN_OUTPUT)
 
     # Cleanup
     adata = data.get("adata")
@@ -1724,7 +1619,7 @@ def generate() -> None:
     clear_cache()
     gc.collect()
 
-    print(f"  Figure 3 complete: {FIGURE_NAME}")
+    print(f"  Figure 3 complete: 5 panels (A–E)")
 
 
 # ── CLI entry point ────────────────────────────────────────────────────
