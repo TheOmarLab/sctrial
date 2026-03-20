@@ -1,20 +1,23 @@
 """
-Figure 2 — Melanoma Primary Analysis & Clinical Outcome
-=========================================================
+Figure 2 — Pseudoreplication Bias & Melanoma Primary Analysis
+==============================================================
 
-Seven-panel figure combining the primary DiD analysis on the
-Sade-Feldman melanoma immunotherapy dataset with clinical outcome
-correlation.
+Ten-panel figure: empirical demonstration of pseudoreplication (A-C),
+primary DiD analysis (D-E), per-participant effects (F-G), clinical
+outcome correlation (H-J).
 
 Panels
 ------
-A : Forest plot of DiD effects across all 12 gene signatures.
-B : Small-multiple interaction plots for the top 6 signatures.
-C : Per-participant change heatmap across signatures.
-D : Bar plot of mean Δ score (post − pre) by response group.
-E : Cohen's d effect sizes (responder − non-responder) on Δ scores.
-F : Individual participant trajectories for memory T cell signature.
-G : ROC AUC for response prediction from each signature's Δ score.
+A : Paired-participant verification (cells per participant × visit).
+B : Coefficient comparison: cell-level vs participant-level aggregation.
+C : P-value comparison: −log₁₀ scale, illustrating inflation at cell level.
+D : Forest plot of DiD effects across all 12 gene signatures.
+E : Small-multiple interaction plots for the top 6 signatures.
+F : Per-participant change heatmap across signatures.
+G : Bar plot of mean Δ score (post − pre) by response group.
+H : Cohen's d effect sizes (responder − non-responder) on Δ scores.
+I : Individual participant trajectories for memory T cell signature.
+J : ROC AUC for response prediction from each signature's Δ score.
 """
 
 from __future__ import annotations
@@ -29,6 +32,9 @@ import pandas as pd
 from matplotlib.lines import Line2D
 from sklearn.metrics import roc_auc_score
 
+import matplotlib.patches as mpatches
+from scipy import stats
+
 from .._shared import (
     COLORS,
     MAIN_OUTPUT,
@@ -41,6 +47,7 @@ from .._shared import (
     save_panel,
     score_signatures,
     sig_display,
+    verify_paired_participants,
 )
 
 warnings.filterwarnings("ignore")
@@ -72,6 +79,25 @@ def _prepare_data() -> dict:
         raise RuntimeError("log1p_tpm layer missing from Sade-Feldman dataset.")
     adata = harmonize_response(adata)
     adata, sig_cols = score_signatures(adata, layer="log1p_tpm")
+
+    # DiD at cell level (for pseudoreplication panels A-C)
+    res_cell = did_table(
+        adata,
+        features=sig_cols,
+        design=DESIGN,
+        visits=VISITS,
+        layer="log1p_tpm",
+        standardize=True,
+        aggregate="cell",
+    )
+
+    # Paired-participant verification
+    pair_info = verify_paired_participants(
+        adata.obs,
+        visit_col="visit",
+        visits=VISITS,
+        participant_col="participant_id",
+    )
 
     # DiD with bootstrap CIs
     did_res = did_table(
@@ -115,6 +141,8 @@ def _prepare_data() -> dict:
     return {
         "adata": adata,
         "sig_cols": sig_cols,
+        "res_cell": res_cell,
+        "pair_info": pair_info,
         "did_res": did_res,
         "pb": pb,
         "delta": delta,
@@ -167,9 +195,171 @@ def _cohens_d(x: np.ndarray, y: np.ndarray) -> float:
     return d * correction
 
 
-# ── Panel A: Forest plot ─────────────────────────────────────────────────
+# ── Panel A: Paired-participant verification (from Figure 1B) ────────────
 
-def _panel_a(ax: plt.Axes, data: dict) -> None:
+def _panel_a_paired_verification(ax: plt.Axes, data: dict) -> None:
+    """Grouped bar chart of cells per participant × visit, colored by response."""
+    adata = data["adata"]
+    obs = adata.obs.copy()
+
+    counts = (
+        obs.groupby(["participant_id", "visit", "response"], observed=True)
+        .size()
+        .reset_index(name="n_cells")
+    )
+    counts["visit"] = pd.Categorical(
+        counts["visit"], categories=["Pre", "Post"], ordered=True,
+    )
+    counts = counts.sort_values(["response", "participant_id", "visit"])
+
+    participants = counts["participant_id"].unique()
+    pid_order = {pid: i for i, pid in enumerate(participants)}
+    bar_width = 0.35
+
+    for _, row in counts.iterrows():
+        x_base = pid_order[row["participant_id"]]
+        offset = -bar_width / 2 if row["visit"] == "Pre" else bar_width / 2
+        color = COLORS["treated"] if row["response"] == "Responder" else COLORS["control"]
+        alpha = 1.0 if row["visit"] == "Post" else 0.6
+        ax.bar(x_base + offset, row["n_cells"], width=bar_width,
+               color=color, alpha=alpha, edgecolor="white", linewidth=0.5)
+
+    ax.set_xticks(range(len(participants)))
+    ax.set_xticklabels(
+        [str(p)[:6] for p in participants],
+        rotation=45, ha="right", fontsize=7,
+    )
+    ax.set_xlabel("Participant")
+    ax.set_ylabel("Number of cells")
+    ax.set_title("Paired Participants: Cells per Visit", fontsize=11)
+
+    legend_handles = [
+        mpatches.Patch(facecolor=COLORS["treated"], label="Responder"),
+        mpatches.Patch(facecolor=COLORS["control"], label="Non-responder"),
+        mpatches.Patch(facecolor=COLORS["gray"], alpha=0.6, label="Pre"),
+        mpatches.Patch(facecolor=COLORS["gray"], alpha=1.0, label="Post"),
+    ]
+    ax.legend(handles=legend_handles, fontsize=8, loc="upper right",
+              frameon=True, framealpha=0.9)
+
+    pair_info = data["pair_info"]
+    ax.text(
+        0.02, 0.95,
+        f"{pair_info['n_paired']}/{pair_info['n_total']} participants paired",
+        transform=ax.transAxes, fontsize=9, va="top",
+        bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
+                  edgecolor=COLORS["gray"], alpha=0.8),
+    )
+    despine(ax)
+
+
+# ── Panel B: Coefficient comparison (from Figure 1C) ────────────────────
+
+def _panel_b_beta_comparison(ax: plt.Axes, data: dict) -> None:
+    """Scatter of cell-level vs participant-level beta_DiD with identity line."""
+    res_cell = data["res_cell"].set_index("feature")
+    res_part = data["did_res"].set_index("feature")
+    common = res_cell.index.intersection(res_part.index)
+
+    beta_cell = res_cell.loc[common, "beta_DiD"].values
+    beta_part = res_part.loc[common, "beta_DiD"].values
+
+    colors = [COLORS["treated"] if b > 0 else COLORS["control"] for b in beta_part]
+
+    ax.scatter(beta_cell, beta_part, c=colors, s=60, edgecolors="white",
+               linewidths=0.5, zorder=3)
+
+    lim_lo = min(beta_cell.min(), beta_part.min()) * 1.15
+    lim_hi = max(beta_cell.max(), beta_part.max()) * 1.15
+    ax.plot([lim_lo, lim_hi], [lim_lo, lim_hi], "--", color=COLORS["gray"],
+            lw=1, zorder=1, label="Identity")
+    ax.axhline(0, color=COLORS["gray"], lw=0.5, ls=":", zorder=0)
+    ax.axvline(0, color=COLORS["gray"], lw=0.5, ls=":", zorder=0)
+
+    texts = []
+    for feat, xv, yv in zip(common, beta_cell, beta_part):
+        t = ax.text(xv, yv, sig_display(feat), fontsize=7, alpha=0.85)
+        texts.append(t)
+
+    try:
+        from adjustText import adjust_text
+        adjust_text(
+            texts, ax=ax,
+            arrowprops=dict(arrowstyle="-", color=COLORS["gray"], lw=0.4,
+                            shrinkA=5, shrinkB=3),
+            force_points=(0.6, 0.6),
+            force_text=(1.0, 1.0),
+            expand_points=(2.0, 2.0),
+            expand_text=(1.3, 1.3),
+        )
+    except ImportError:
+        pass
+
+    r, p = stats.pearsonr(beta_cell, beta_part)
+    ax.text(
+        0.05, 0.95,
+        f"r = {r:.2f}, p = {p:.1e}",
+        transform=ax.transAxes, fontsize=9, va="top",
+        bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
+                  edgecolor=COLORS["gray"], alpha=0.8),
+    )
+
+    ax.set_xlabel(r"$\beta_{\mathrm{DiD}}$ (cell-level)")
+    ax.set_ylabel(r"$\beta_{\mathrm{DiD}}$ (participant-level)")
+    ax.set_title("Effect Size: Cell vs Participant Aggregation", fontsize=11)
+
+    legend_handles = [
+        mpatches.Patch(facecolor=COLORS["treated"], label="Positive effect"),
+        mpatches.Patch(facecolor=COLORS["control"], label="Negative effect"),
+    ]
+    ax.legend(handles=legend_handles, fontsize=8, loc="lower right",
+              frameon=True, framealpha=0.9)
+    despine(ax)
+
+
+# ── Panel C: P-value inflation (from Figure 1D) ─────────────────────────
+
+def _panel_c_pvalue_inflation(ax: plt.Axes, data: dict) -> None:
+    """Horizontal bar chart of -log10(p) at cell vs participant level."""
+    res_cell = data["res_cell"].set_index("feature")
+    res_part = data["did_res"].set_index("feature")
+    common = res_cell.index.intersection(res_part.index)
+
+    df = pd.DataFrame({
+        "feature": common,
+        "p_cell": res_cell.loc[common, "p_DiD"].values,
+        "p_part": res_part.loc[common, "p_DiD"].values,
+    })
+    df["nlog10_cell"] = -np.log10(df["p_cell"].clip(lower=1e-300))
+    df["nlog10_part"] = -np.log10(df["p_part"].clip(lower=1e-300))
+    df["display"] = df["feature"].map(sig_display)
+    df = df.sort_values("nlog10_cell", ascending=True).reset_index(drop=True)
+
+    y_pos = np.arange(len(df))
+    bar_h = 0.35
+
+    ax.barh(y_pos - bar_h / 2, df["nlog10_cell"], height=bar_h,
+            color=COLORS["highlight"], alpha=0.8, label="Cell-level", zorder=2)
+    ax.barh(y_pos + bar_h / 2, df["nlog10_part"], height=bar_h,
+            color=COLORS["treated"], alpha=0.8, label="Participant-level", zorder=2)
+
+    thresh = -np.log10(0.05)
+    ax.axvline(thresh, color=COLORS["gray"], ls="--", lw=1, zorder=1)
+    ax.text(thresh + 0.1, len(df) - 0.5, "p = 0.05", fontsize=8,
+            va="bottom", color=COLORS["gray"])
+
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(df["display"], fontsize=8)
+    ax.set_xlabel(r"$-\log_{10}(p)$")
+    ax.set_title("P-value Inflation: Cell vs Participant Level", fontsize=11)
+
+    ax.legend(fontsize=8, loc="upper right", frameon=True, framealpha=0.9)
+    despine(ax)
+
+
+# ── Panel D: Forest plot ─────────────────────────────────────────────────
+
+def _panel_d_forest(ax: plt.Axes, data: dict) -> None:
     """Horizontal forest plot of DiD effects across all signatures."""
     did_res = data["did_res"]
     df = did_res.sort_values("beta_DiD").reset_index(drop=True)
@@ -221,9 +411,9 @@ def _panel_a(ax: plt.Axes, data: dict) -> None:
     despine(ax)
 
 
-# ── Panel B: Small-multiple interaction plots ────────────────────────────
+# ── Panel E: Small-multiple interaction plots ────────────────────────────
 
-def _panel_b(
+def _panel_e_interaction_grid(
     fig: plt.Figure,
     gs_parent: gridspec.SubplotSpec,
     data: dict,
@@ -318,9 +508,9 @@ def _panel_b(
     return axes
 
 
-# ── Panel C: Per-participant change heatmap ──────────────────────────────
+# ── Panel F: Per-participant change heatmap ──────────────────────────────
 
-def _panel_c(ax: plt.Axes, data: dict) -> None:
+def _panel_f_heatmap(ax: plt.Axes, data: dict) -> None:
     """Heatmap of per-participant pre→post Δ across all signatures."""
     adata = data["adata"]
     sig_cols = data["sig_cols"]
@@ -432,9 +622,9 @@ def _panel_c(ax: plt.Axes, data: dict) -> None:
     )
 
 
-# ── Panel D: Mean Δ score by response group ─────────────────────────────
+# ── Panel G: Mean Δ score by response group ─────────────────────────────
 
-def _panel_d(ax: plt.Axes, data: dict) -> None:
+def _panel_g_delta_by_response(ax: plt.Axes, data: dict) -> None:
     """Grouped bar plot of mean Δ scores for responders vs non-responders."""
     delta = data["delta"]
     sig_cols = data["sig_cols"]
@@ -475,9 +665,9 @@ def _panel_d(ax: plt.Axes, data: dict) -> None:
     despine(ax)
 
 
-# ── Panel E: Cohen's d ──────────────────────────────────────────────────
+# ── Panel H: Cohen's d ──────────────────────────────────────────────────
 
-def _panel_e(ax: plt.Axes, data: dict) -> None:
+def _panel_h_cohens_d(ax: plt.Axes, data: dict) -> None:
     """Horizontal lollipop of Cohen's d (responder − non-responder) on Δ."""
     delta = data["delta"]
     sig_cols = data["sig_cols"]
@@ -507,9 +697,9 @@ def _panel_e(ax: plt.Axes, data: dict) -> None:
     despine(ax)
 
 
-# ── Panel F: Individual trajectories for top signature ──────────────────
+# ── Panel I: Individual trajectories for top signature ──────────────────
 
-def _panel_f(ax: plt.Axes, data: dict) -> None:
+def _panel_i_individual_trajectories(ax: plt.Axes, data: dict) -> None:
     """Pre→Post spaghetti plot for the memory T cell signature."""
     pb = data["pb"]
     sig_cols = data["sig_cols"]
@@ -573,9 +763,9 @@ def _panel_f(ax: plt.Axes, data: dict) -> None:
     despine(ax)
 
 
-# ── Panel G: ROC AUC per signature ──────────────────────────────────────
+# ── Panel J: ROC AUC per signature ──────────────────────────────────────
 
-def _panel_g(ax: plt.Axes, data: dict) -> None:
+def _panel_j_roc_auc(ax: plt.Axes, data: dict) -> None:
     """Horizontal bar chart of ROC AUC for predicting response from Δ score."""
     delta = data["delta"]
     sig_cols = data["sig_cols"]
@@ -645,32 +835,44 @@ def _panel_g(ax: plt.Axes, data: dict) -> None:
 # ── Composite generation ────────────────────────────────────────────────
 
 def generate() -> None:
-    """Create and save all Figure 2 panels."""
-    print("Figure 2: Melanoma Primary Analysis & Clinical Outcome")
+    """Create and save all Figure 2 panels (A–J)."""
+    print("Figure 2: Pseudoreplication Bias & Melanoma Primary Analysis")
     data = _prepare_data()
 
-    # Panel A: Forest plot
-    fig_a, ax_a = plt.subplots(figsize=(12, 5))
-    _panel_a(ax_a, data)
-    save_panel(fig_a, "panel_A_forest", FIGURE_NAME, MAIN_OUTPUT)
+    # Panels A-C: Pseudoreplication demonstration (migrated from Figure 1)
+    pseudo_panels = [
+        ("panel_A_paired_verification", _panel_a_paired_verification, (8, 6)),
+        ("panel_B_beta_comparison", _panel_b_beta_comparison, (8, 6)),
+        ("panel_C_pvalue_inflation", _panel_c_pvalue_inflation, (10, 6)),
+    ]
+    for panel_name, func, size in pseudo_panels:
+        fig, ax = plt.subplots(figsize=size)
+        func(ax, data)
+        fig.tight_layout()
+        save_panel(fig, panel_name, FIGURE_NAME, MAIN_OUTPUT)
 
-    # Panel B: Interaction grid (needs figure + gridspec)
-    fig_b = plt.figure(figsize=(14, 8))
-    gs_b = fig_b.add_gridspec(1, 1)[0, 0]
-    _panel_b(fig_b, gs_b, data, n_sigs=6)
-    save_panel(fig_b, "panel_B_interaction_grid", FIGURE_NAME, MAIN_OUTPUT)
+    # Panel D: Forest plot
+    fig_d, ax_d = plt.subplots(figsize=(12, 5))
+    _panel_d_forest(ax_d, data)
+    save_panel(fig_d, "panel_D_forest", FIGURE_NAME, MAIN_OUTPUT)
 
-    # Panel C: Heatmap
-    fig_c, ax_c = plt.subplots(figsize=(11, 7))
-    _panel_c(ax_c, data)
-    save_panel(fig_c, "panel_C_heatmap", FIGURE_NAME, MAIN_OUTPUT)
+    # Panel E: Interaction grid (needs figure + gridspec)
+    fig_e = plt.figure(figsize=(14, 8))
+    gs_e = fig_e.add_gridspec(1, 1)[0, 0]
+    _panel_e_interaction_grid(fig_e, gs_e, data, n_sigs=6)
+    save_panel(fig_e, "panel_E_interaction_grid", FIGURE_NAME, MAIN_OUTPUT)
 
-    # Panels D-G: Simple single-axis panels
+    # Panel F: Heatmap
+    fig_f, ax_f = plt.subplots(figsize=(11, 7))
+    _panel_f_heatmap(ax_f, data)
+    save_panel(fig_f, "panel_F_heatmap", FIGURE_NAME, MAIN_OUTPUT)
+
+    # Panels G-J: Simple single-axis panels
     simple_panels = [
-        ("panel_D_delta_by_response", _panel_d),
-        ("panel_E_cohens_d", _panel_e),
-        ("panel_F_individual_trajectories", _panel_f),
-        ("panel_G_roc_auc", _panel_g),
+        ("panel_G_delta_by_response", _panel_g_delta_by_response),
+        ("panel_H_cohens_d", _panel_h_cohens_d),
+        ("panel_I_individual_trajectories", _panel_i_individual_trajectories),
+        ("panel_J_roc_auc", _panel_j_roc_auc),
     ]
     for panel_name, func in simple_panels:
         fig, ax = plt.subplots(figsize=(6.5, 5))
@@ -681,7 +883,7 @@ def generate() -> None:
     del data["adata"]
     del data
     gc.collect()
-    print("  Done.\n")
+    print("  Figure 2 complete: 10 panels (A–J)\n")
 
 
 # ── CLI entry point ─────────────────────────────────────────────────────
