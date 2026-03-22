@@ -963,7 +963,11 @@ def _panel_sim_fpr(ax, results):
 
 
 def _panel_sim_bias(ax, results):
-    """Panel J: Effect-size bias (estimated vs true beta)."""
+    """Panel J: Effect-size bias (estimated vs true beta).
+
+    Uses horizontal jitter to separate overlapping methods that would
+    otherwise be hidden behind each other (all three are nearly unbiased).
+    """
     n_default = _SIM_SAMPLE_SIZES[1]
     # Only non-zero effects for bias assessment
     signal = results[
@@ -971,7 +975,17 @@ def _panel_sim_bias(ax, results):
         & (results["n_participants"] == n_default)
     ].copy()
 
-    for method in _SIM_METHODS:
+    # Horizontal jitter so overlapping methods are distinguishable
+    n_methods = len(_SIM_METHODS)
+    jitter_width = 0.03  # offset per method
+    offsets = np.linspace(
+        -jitter_width * (n_methods - 1) / 2,
+        jitter_width * (n_methods - 1) / 2,
+        n_methods,
+    )
+    markers = ["o", "s", "^"]
+
+    for idx, method in enumerate(_SIM_METHODS):
         sub = signal[signal["method"] == method]
         agg = (
             sub.groupby("true_beta")
@@ -980,13 +994,20 @@ def _panel_sim_bias(ax, results):
             .reset_index()
         )
         ax.errorbar(
-            agg["true_beta"], agg["est_mean"], yerr=1.96 * agg["est_se"],
-            marker="o", label=_SIM_METHOD_LABELS[method],
-            color=_SIM_METHOD_COLORS[method], capsize=3, linewidth=1.5,
+            agg["true_beta"] + offsets[idx],
+            agg["est_mean"],
+            yerr=1.96 * agg["est_se"],
+            marker=markers[idx % len(markers)],
+            markersize=7,
+            label=_SIM_METHOD_LABELS[method],
+            color=_SIM_METHOD_COLORS[method],
+            capsize=4,
+            linewidth=1.5,
+            zorder=3 + idx,
         )
 
     lims = [0, max(_SIM_EFFECT_SIZES) + 0.3]
-    ax.plot(lims, lims, "k--", linewidth=0.8, alpha=0.5)
+    ax.plot(lims, lims, "k--", linewidth=0.8, alpha=0.5, zorder=1)
     ax.set_xlabel(r"True $\beta_{\mathrm{DiD}}$")
     ax.set_ylabel(r"Estimated $\beta$")
     ax.set_title(f"Effect-Size Bias (n={n_default})", fontweight="bold")
