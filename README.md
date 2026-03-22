@@ -19,13 +19,13 @@
   </a>
 </p>
 
-<p align="center">
-  <img src="docs/source/_static/overview_figure.png" alt="sctrial overview — from scRNA-seq input through trial-aware analysis to statistical outputs" width="100%">
-</p>
-
 ---
 
 ## Overview
+
+<p align="center">
+  <img src="docs/source/_static/overview_figure.png" alt="sctrial overview — from scRNA-seq input through trial-aware analysis to statistical outputs" width="100%">
+</p>
 
 **sctrial** is a Python package for performing rigorous statistical inference on single-cell RNA-seq data from clinical trials and longitudinal studies. Built on top of [AnnData](https://anndata.readthedocs.io/) and [Scanpy](https://scanpy.readthedocs.io/), it provides specialized tools for:
 
