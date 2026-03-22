@@ -2,9 +2,9 @@
 Figure 2 — Pseudoreplication Bias & Melanoma Primary Analysis
 ==============================================================
 
-Ten-panel figure: empirical demonstration of pseudoreplication (A-C),
+Nine-panel figure: empirical demonstration of pseudoreplication (A-C),
 primary DiD analysis (D-E), per-participant effects (F-G), clinical
-outcome correlation (H-J).
+outcome correlation (H-I).
 
 Panels
 ------
@@ -17,7 +17,6 @@ F : Per-participant change heatmap across signatures.
 G : Bar plot of mean Δ score (post − pre) by response group.
 H : Cohen's d effect sizes (responder − non-responder) on Δ scores.
 I : Individual participant trajectories for memory T cell signature.
-J : ROC AUC for response prediction from each signature's Δ score.
 """
 
 from __future__ import annotations
@@ -30,8 +29,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.lines import Line2D
-from sklearn.metrics import roc_auc_score
-
 import matplotlib.patches as mpatches
 from scipy import stats
 
@@ -763,79 +760,10 @@ def _panel_i_individual_trajectories(ax: plt.Axes, data: dict) -> None:
     despine(ax)
 
 
-# ── Panel J: ROC AUC per signature ──────────────────────────────────────
-
-def _panel_j_roc_auc(ax: plt.Axes, data: dict) -> None:
-    """Horizontal bar chart of ROC AUC for predicting response from Δ score."""
-    delta = data["delta"]
-    sig_cols = data["sig_cols"]
-    arm = DESIGN.arm_col
-
-    y_true = (delta[arm] == "Responder").astype(int).values
-
-    if len(np.unique(y_true)) < 2:
-        ax.text(0.5, 0.5, "Insufficient class balance",
-                ha="center", va="center", transform=ax.transAxes)
-        despine(ax)
-        return
-
-    records = []
-    for col in sig_cols:
-        scores = delta[col].values
-        if np.isnan(scores).all():
-            continue
-        try:
-            auc = roc_auc_score(y_true, scores)
-        except ValueError:
-            continue
-        auc_disp = max(auc, 1 - auc)
-        records.append({
-            "feature": col,
-            "display": sig_display(col),
-            "auc": auc_disp,
-        })
-
-    df = pd.DataFrame(records).sort_values("auc", ascending=True)
-    y_pos = np.arange(len(df))
-
-    colors = []
-    for a in df["auc"].values:
-        if a >= 0.8:
-            colors.append(COLORS["highlight"])
-        elif a >= 0.7:
-            colors.append(COLORS["treated"])
-        else:
-            colors.append(COLORS["gray"])
-
-    ax.barh(y_pos, df["auc"].values, color=colors, alpha=0.85,
-            edgecolor="none", height=0.6)
-
-    for i, (_, row) in enumerate(df.iterrows()):
-        ax.text(row["auc"] + 0.01, i, f"{row['auc']:.2f}",
-                va="center", fontsize=7, color="#333333")
-
-    ax.axvline(0.5, ls="--", color=COLORS["gray"], lw=0.8, label="Chance")
-    ax.set_xlim(0.35, 1.02)
-    ax.set_yticks(y_pos)
-    ax.set_yticklabels(df["display"].values, fontsize=8)
-    ax.set_xlabel("ROC AUC")
-    ax.set_title("Predictive Power of Signature Changes", fontsize=10)
-
-    handles = [
-        plt.Rectangle((0, 0), 1, 1, fc=COLORS["highlight"], label="AUC ≥ 0.80"),
-        plt.Rectangle((0, 0), 1, 1, fc=COLORS["treated"], label="AUC ≥ 0.70"),
-        plt.Rectangle((0, 0), 1, 1, fc=COLORS["gray"], label="AUC < 0.70"),
-        Line2D([0], [0], ls="--", color=COLORS["gray"], label="Chance"),
-    ]
-    ax.legend(handles=handles, fontsize=7, loc="lower right",
-              frameon=True, framealpha=0.9)
-    despine(ax)
-
-
 # ── Composite generation ────────────────────────────────────────────────
 
 def generate() -> None:
-    """Create and save all Figure 2 panels (A–J)."""
+    """Create and save all Figure 2 panels (A–I)."""
     print("Figure 2: Pseudoreplication Bias & Melanoma Primary Analysis")
     data = _prepare_data()
 
@@ -867,12 +795,11 @@ def generate() -> None:
     _panel_f_heatmap(ax_f, data)
     save_panel(fig_f, "panel_F_heatmap", FIGURE_NAME, MAIN_OUTPUT)
 
-    # Panels G-J: Simple single-axis panels
+    # Panels G-I: Simple single-axis panels
     simple_panels = [
         ("panel_G_delta_by_response", _panel_g_delta_by_response),
         ("panel_H_cohens_d", _panel_h_cohens_d),
         ("panel_I_individual_trajectories", _panel_i_individual_trajectories),
-        ("panel_J_roc_auc", _panel_j_roc_auc),
     ]
     for panel_name, func in simple_panels:
         fig, ax = plt.subplots(figsize=(6.5, 5))
@@ -883,7 +810,7 @@ def generate() -> None:
     del data["adata"]
     del data
     gc.collect()
-    print("  Figure 2 complete: 10 panels (A–J)\n")
+    print("  Figure 2 complete: 9 panels (A–I)\n")
 
 
 # ── CLI entry point ─────────────────────────────────────────────────────

@@ -963,7 +963,13 @@ def _panel_sim_fpr(ax, results):
 
 
 def _panel_sim_bias(ax, results):
-    """Panel J: Effect-size bias (estimated vs true beta)."""
+    """Panel J: Effect-size bias (estimated vs true beta).
+
+    All three methods are nearly unbiased, so points overlap on the y=x
+    line.  We use distinct marker shapes and decreasing sizes so every
+    method is visible without shifting x (which would create false
+    apparent bias against the identity line).
+    """
     n_default = _SIM_SAMPLE_SIZES[1]
     # Only non-zero effects for bias assessment
     signal = results[
@@ -971,7 +977,12 @@ def _panel_sim_bias(ax, results):
         & (results["n_participants"] == n_default)
     ].copy()
 
-    for method in _SIM_METHODS:
+    # Distinct markers + decreasing size so later-drawn methods don't
+    # fully occlude earlier ones.  Draw order: largest first.
+    markers = ["o", "s", "^"]
+    sizes = [9, 7, 5]
+
+    for idx, method in enumerate(_SIM_METHODS):
         sub = signal[signal["method"] == method]
         agg = (
             sub.groupby("true_beta")
@@ -980,13 +991,20 @@ def _panel_sim_bias(ax, results):
             .reset_index()
         )
         ax.errorbar(
-            agg["true_beta"], agg["est_mean"], yerr=1.96 * agg["est_se"],
-            marker="o", label=_SIM_METHOD_LABELS[method],
-            color=_SIM_METHOD_COLORS[method], capsize=3, linewidth=1.5,
+            agg["true_beta"],
+            agg["est_mean"],
+            yerr=1.96 * agg["est_se"],
+            marker=markers[idx],
+            markersize=sizes[idx],
+            label=_SIM_METHOD_LABELS[method],
+            color=_SIM_METHOD_COLORS[method],
+            capsize=4,
+            linewidth=1.5,
+            zorder=3 + idx,
         )
 
     lims = [0, max(_SIM_EFFECT_SIZES) + 0.3]
-    ax.plot(lims, lims, "k--", linewidth=0.8, alpha=0.5)
+    ax.plot(lims, lims, "k--", linewidth=0.8, alpha=0.5, zorder=1)
     ax.set_xlabel(r"True $\beta_{\mathrm{DiD}}$")
     ax.set_ylabel(r"Estimated $\beta$")
     ax.set_title(f"Effect-Size Bias (n={n_default})", fontweight="bold")
