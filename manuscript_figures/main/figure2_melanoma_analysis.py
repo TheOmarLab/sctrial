@@ -2,9 +2,9 @@
 Figure 2 — Pseudoreplication Bias & Melanoma Primary Analysis
 ==============================================================
 
-Ten-panel figure: empirical demonstration of pseudoreplication (A-C),
+Nine-panel figure: empirical demonstration of pseudoreplication (A-C),
 primary DiD analysis (D-E), per-participant effects (F-G), clinical
-outcome correlation (H-J).
+outcome correlation (H-I).
 
 Panels
 ------
@@ -17,7 +17,6 @@ F : Per-participant change heatmap across signatures.
 G : Bar plot of mean Δ score (post − pre) by response group.
 H : Cohen's d effect sizes (responder − non-responder) on Δ scores.
 I : Individual participant trajectories for memory T cell signature.
-J : ROC AUC for response prediction from each signature's Δ score.
 """
 
 from __future__ import annotations
@@ -30,8 +29,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.lines import Line2D
-from sklearn.metrics import roc_auc_score
-
 import matplotlib.patches as mpatches
 from scipy import stats
 
@@ -763,117 +760,10 @@ def _panel_i_individual_trajectories(ax: plt.Axes, data: dict) -> None:
     despine(ax)
 
 
-# ── Panel J: ROC AUC per signature ──────────────────────────────────────
-
-def _panel_j_roc_auc(ax: plt.Axes, data: dict) -> None:
-    """Horizontal bar chart of ROC AUC for predicting response from Δ score."""
-    delta = data["delta"]
-    sig_cols = data["sig_cols"]
-    arm = DESIGN.arm_col
-
-    y_true = (delta[arm] == "Responder").astype(int).values
-
-    if len(np.unique(y_true)) < 2:
-        ax.text(0.5, 0.5, "Insufficient class balance",
-                ha="center", va="center", transform=ax.transAxes)
-        despine(ax)
-        return
-
-    n_boot = 1000
-    rng = np.random.default_rng(42)
-
-    records = []
-    for col in sig_cols:
-        scores = delta[col].values
-        if np.isnan(scores).all():
-            continue
-        try:
-            auc = roc_auc_score(y_true, scores)
-        except ValueError:
-            continue
-        auc_disp = max(auc, 1 - auc)
-        # Flip scores if raw AUC < 0.5 so bootstrap is on the same scale
-        s_oriented = scores if auc >= 0.5 else -scores
-
-        # Bootstrap 95% CI
-        boot_aucs = []
-        for _ in range(n_boot):
-            idx = rng.choice(len(y_true), size=len(y_true), replace=True)
-            if len(set(y_true[idx])) < 2:
-                continue
-            boot_aucs.append(roc_auc_score(y_true[idx], s_oriented[idx]))
-        if boot_aucs:
-            ci_lo, ci_hi = np.percentile(boot_aucs, [2.5, 97.5])
-        else:
-            ci_lo, ci_hi = np.nan, np.nan
-
-        records.append({
-            "feature": col,
-            "display": sig_display(col),
-            "auc": auc_disp,
-            "ci_lo": ci_lo,
-            "ci_hi": ci_hi,
-        })
-
-    df = pd.DataFrame(records).sort_values("auc", ascending=True)
-    y_pos = np.arange(len(df))
-
-    colors = []
-    for a in df["auc"].values:
-        if a >= 0.8:
-            colors.append(COLORS["highlight"])
-        elif a >= 0.7:
-            colors.append(COLORS["treated"])
-        else:
-            colors.append(COLORS["gray"])
-
-    # Draw bars without built-in error bars (cleaner look)
-    ax.barh(y_pos, df["auc"].values, color=colors, alpha=0.85,
-            edgecolor="none", height=0.6)
-
-    # Overlay CI as thin horizontal lines extending from bar end
-    for i, (_, row) in enumerate(df.iterrows()):
-        ci_lo = row["ci_lo"]
-        ci_hi = row["ci_hi"]
-        if np.isfinite(ci_lo) and np.isfinite(ci_hi):
-            ax.plot([ci_lo, ci_hi], [i, i], color="#444444",
-                    linewidth=1.0, solid_capstyle="round", zorder=4)
-            # Small caps at ends
-            cap_h = 0.12
-            ax.plot([ci_lo, ci_lo], [i - cap_h, i + cap_h],
-                    color="#444444", linewidth=0.8, zorder=4)
-            ax.plot([ci_hi, ci_hi], [i - cap_h, i + cap_h],
-                    color="#444444", linewidth=0.8, zorder=4)
-
-    # AUC labels with CI — placed to the right of the plot area
-    for i, (_, row) in enumerate(df.iterrows()):
-        label = f"{row['auc']:.2f}  [{row['ci_lo']:.2f}\u2013{row['ci_hi']:.2f}]"
-        ax.annotate(label, xy=(1.01, i), xycoords=("axes fraction", "data"),
-                    va="center", ha="left", fontsize=6.5, color="#333333",
-                    annotation_clip=False)
-
-    ax.axvline(0.5, ls="--", color=COLORS["gray"], lw=0.8, label="Chance")
-    ax.set_xlim(0.35, 1.0)
-    ax.set_yticks(y_pos)
-    ax.set_yticklabels(df["display"].values, fontsize=8)
-    ax.set_xlabel("ROC AUC")
-    ax.set_title("Predictive Power of Signature Changes", fontsize=10)
-
-    handles = [
-        plt.Rectangle((0, 0), 1, 1, fc=COLORS["highlight"], label="AUC ≥ 0.80"),
-        plt.Rectangle((0, 0), 1, 1, fc=COLORS["treated"], label="AUC ≥ 0.70"),
-        plt.Rectangle((0, 0), 1, 1, fc=COLORS["gray"], label="AUC < 0.70"),
-        Line2D([0], [0], ls="--", color=COLORS["gray"], label="Chance"),
-    ]
-    ax.legend(handles=handles, fontsize=7, loc="lower right",
-              frameon=True, framealpha=0.9)
-    despine(ax)
-
-
 # ── Composite generation ────────────────────────────────────────────────
 
 def generate() -> None:
-    """Create and save all Figure 2 panels (A–J)."""
+    """Create and save all Figure 2 panels (A–I)."""
     print("Figure 2: Pseudoreplication Bias & Melanoma Primary Analysis")
     data = _prepare_data()
 
@@ -916,17 +806,11 @@ def generate() -> None:
         func(ax, data)
         save_panel(fig, panel_name, FIGURE_NAME, MAIN_OUTPUT)
 
-    # Panel J: ROC AUC — wider with right margin for CI labels
-    fig_j, ax_j = plt.subplots(figsize=(9, 6))
-    _panel_j_roc_auc(ax_j, data)
-    fig_j.tight_layout(rect=[0, 0, 0.82, 1])
-    save_panel(fig_j, "panel_J_roc_auc", FIGURE_NAME, MAIN_OUTPUT)
-
     # Cleanup
     del data["adata"]
     del data
     gc.collect()
-    print("  Figure 2 complete: 10 panels (A–J)\n")
+    print("  Figure 2 complete: 9 panels (A–I)\n")
 
 
 # ── CLI entry point ─────────────────────────────────────────────────────
