@@ -779,6 +779,9 @@ def _panel_j_roc_auc(ax: plt.Axes, data: dict) -> None:
         despine(ax)
         return
 
+    n_boot = 1000
+    rng = np.random.default_rng(42)
+
     records = []
     for col in sig_cols:
         scores = delta[col].values
@@ -789,10 +792,27 @@ def _panel_j_roc_auc(ax: plt.Axes, data: dict) -> None:
         except ValueError:
             continue
         auc_disp = max(auc, 1 - auc)
+        # Flip scores if raw AUC < 0.5 so bootstrap is on the same scale
+        s_oriented = scores if auc >= 0.5 else -scores
+
+        # Bootstrap 95% CI
+        boot_aucs = []
+        for _ in range(n_boot):
+            idx = rng.choice(len(y_true), size=len(y_true), replace=True)
+            if len(set(y_true[idx])) < 2:
+                continue
+            boot_aucs.append(roc_auc_score(y_true[idx], s_oriented[idx]))
+        if boot_aucs:
+            ci_lo, ci_hi = np.percentile(boot_aucs, [2.5, 97.5])
+        else:
+            ci_lo, ci_hi = np.nan, np.nan
+
         records.append({
             "feature": col,
             "display": sig_display(col),
             "auc": auc_disp,
+            "ci_lo": ci_lo,
+            "ci_hi": ci_hi,
         })
 
     df = pd.DataFrame(records).sort_values("auc", ascending=True)
@@ -807,12 +827,19 @@ def _panel_j_roc_auc(ax: plt.Axes, data: dict) -> None:
         else:
             colors.append(COLORS["gray"])
 
+    # Error bars: asymmetric CIs around point estimate
+    xerr_lo = (df["auc"] - df["ci_lo"]).clip(lower=0).values
+    xerr_hi = (df["ci_hi"] - df["auc"]).clip(lower=0).values
+
     ax.barh(y_pos, df["auc"].values, color=colors, alpha=0.85,
-            edgecolor="none", height=0.6)
+            edgecolor="none", height=0.6,
+            xerr=[xerr_lo, xerr_hi], ecolor="#555555",
+            capsize=3, error_kw={"linewidth": 0.8})
 
     for i, (_, row) in enumerate(df.iterrows()):
-        ax.text(row["auc"] + 0.01, i, f"{row['auc']:.2f}",
-                va="center", fontsize=7, color="#333333")
+        ci_str = f"{row['auc']:.2f} [{row['ci_lo']:.2f}–{row['ci_hi']:.2f}]"
+        ax.text(min(row["ci_hi"] + 0.01, 0.98), i, ci_str,
+                va="center", fontsize=6.5, color="#333333")
 
     ax.axvline(0.5, ls="--", color=COLORS["gray"], lw=0.8, label="Chance")
     ax.set_xlim(0.35, 1.02)
