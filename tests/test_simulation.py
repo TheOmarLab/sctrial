@@ -16,16 +16,30 @@ class TestSimulateDidData:
             seed=42,
         )
         assert isinstance(result, dict)
+        assert "adata" in result
         assert "pseudobulk" in result
         assert "truth" in result
+
+        # Cell-level AnnData
+        adata = result["adata"]
+        assert adata.n_vars == 50
+        assert "participant" in adata.obs.columns
+        assert "visit" in adata.obs.columns
+        assert "arm" in adata.obs.columns
+        assert adata.obs["participant"].nunique() == 20
+        assert set(adata.obs["visit"].unique()) == {"Pre", "Post"}
+        assert set(adata.obs["arm"].unique()) == {"Treated", "Control"}
+        # Should have many cells (not pseudobulk)
+        assert adata.n_obs > 20 * 2  # much more than n_participants * 2
+
+        # Pseudobulk summary
         pb = result["pseudobulk"]
         assert "participant" in pb.columns
         assert "visit" in pb.columns
         assert "arm" in pb.columns
+        assert "n_cells" in pb.columns
         assert pb["participant"].nunique() == 20
-        assert set(pb["visit"].unique()) == {"Pre", "Post"}
-        assert set(pb["arm"].unique()) == {"Treated", "Control"}
-        # 20 participants x 2 visits = 40 rows
+        # 20 participants x 2 visits = 40 pseudobulk rows
         assert len(pb) == 40
 
     def test_null_effects_unbiased(self):
@@ -80,6 +94,16 @@ class TestSimulateDidData:
         r2 = st.simulate_did_data(seed=123)
         pd.testing.assert_frame_equal(r1["pseudobulk"], r2["pseudobulk"])
 
+    def test_variable_cell_counts(self):
+        """Cell counts vary across participant-visits (Poisson)."""
+        result = st.simulate_did_data(
+            n_participants=20, n_genes=5,
+            n_cells_per_participant=100, seed=42,
+        )
+        pb = result["pseudobulk"]
+        # Not all n_cells should be identical
+        assert pb["n_cells"].nunique() > 1
+
 
 class TestRunMethodComparison:
     """Tests for run_method_comparison()."""
@@ -105,20 +129,20 @@ class TestRunMethodComparison:
         assert len(result) == 3 * 10  # 3 iterations x 10 genes
 
     def test_all_methods_run(self):
-        """All three methods produce results."""
+        """All four methods produce results."""
         result = st.run_method_comparison(
             n_participants=20,
             n_genes=5,
             effect_sizes={"gene_0": 1.0},
             noise_sd=1.0,
             n_iterations=2,
-            methods=["sctrial_did", "wilcoxon", "pseudobulk_ols"],
+            methods=["sctrial_did", "mixed_did", "wilcoxon", "pseudobulk_ols"],
             seed=42,
         )
         assert set(result["method"].unique()) == {
-            "sctrial_did", "wilcoxon", "pseudobulk_ols"
+            "sctrial_did", "mixed_did", "wilcoxon", "pseudobulk_ols"
         }
-        assert len(result) == 2 * 5 * 3  # 2 iter x 5 genes x 3 methods
+        assert len(result) == 2 * 5 * 4  # 2 iter x 5 genes x 4 methods
 
     def test_true_beta_populated(self):
         """true_beta reflects the specified effect sizes."""
