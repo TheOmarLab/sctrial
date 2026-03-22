@@ -965,8 +965,10 @@ def _panel_sim_fpr(ax, results):
 def _panel_sim_bias(ax, results):
     """Panel J: Effect-size bias (estimated vs true beta).
 
-    Uses horizontal jitter to separate overlapping methods that would
-    otherwise be hidden behind each other (all three are nearly unbiased).
+    All three methods are nearly unbiased, so points overlap on the y=x
+    line.  We use distinct marker shapes and decreasing sizes so every
+    method is visible without shifting x (which would create false
+    apparent bias against the identity line).
     """
     n_default = _SIM_SAMPLE_SIZES[1]
     # Only non-zero effects for bias assessment
@@ -975,15 +977,10 @@ def _panel_sim_bias(ax, results):
         & (results["n_participants"] == n_default)
     ].copy()
 
-    # Horizontal jitter so overlapping methods are distinguishable
-    n_methods = len(_SIM_METHODS)
-    jitter_width = 0.03  # offset per method
-    offsets = np.linspace(
-        -jitter_width * (n_methods - 1) / 2,
-        jitter_width * (n_methods - 1) / 2,
-        n_methods,
-    )
+    # Distinct markers + decreasing size so later-drawn methods don't
+    # fully occlude earlier ones.  Draw order: largest first.
     markers = ["o", "s", "^"]
+    sizes = [9, 7, 5]
 
     for idx, method in enumerate(_SIM_METHODS):
         sub = signal[signal["method"] == method]
@@ -994,11 +991,11 @@ def _panel_sim_bias(ax, results):
             .reset_index()
         )
         ax.errorbar(
-            agg["true_beta"] + offsets[idx],
+            agg["true_beta"],
             agg["est_mean"],
             yerr=1.96 * agg["est_se"],
-            marker=markers[idx % len(markers)],
-            markersize=7,
+            marker=markers[idx],
+            markersize=sizes[idx],
             label=_SIM_METHOD_LABELS[method],
             color=_SIM_METHOD_COLORS[method],
             capsize=4,
