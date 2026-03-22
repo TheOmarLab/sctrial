@@ -827,22 +827,33 @@ def _panel_j_roc_auc(ax: plt.Axes, data: dict) -> None:
         else:
             colors.append(COLORS["gray"])
 
-    # Error bars: asymmetric CIs around point estimate
-    xerr_lo = (df["auc"] - df["ci_lo"]).clip(lower=0).values
-    xerr_hi = (df["ci_hi"] - df["auc"]).clip(lower=0).values
-
+    # Draw bars without built-in error bars (cleaner look)
     ax.barh(y_pos, df["auc"].values, color=colors, alpha=0.85,
-            edgecolor="none", height=0.6,
-            xerr=[xerr_lo, xerr_hi], ecolor="#555555",
-            capsize=3, error_kw={"linewidth": 0.8})
+            edgecolor="none", height=0.6)
 
+    # Overlay CI as thin horizontal lines extending from bar end
     for i, (_, row) in enumerate(df.iterrows()):
-        ci_str = f"{row['auc']:.2f} [{row['ci_lo']:.2f}–{row['ci_hi']:.2f}]"
-        ax.text(min(row["ci_hi"] + 0.01, 0.98), i, ci_str,
-                va="center", fontsize=6.5, color="#333333")
+        ci_lo = row["ci_lo"]
+        ci_hi = row["ci_hi"]
+        if np.isfinite(ci_lo) and np.isfinite(ci_hi):
+            ax.plot([ci_lo, ci_hi], [i, i], color="#444444",
+                    linewidth=1.0, solid_capstyle="round", zorder=4)
+            # Small caps at ends
+            cap_h = 0.12
+            ax.plot([ci_lo, ci_lo], [i - cap_h, i + cap_h],
+                    color="#444444", linewidth=0.8, zorder=4)
+            ax.plot([ci_hi, ci_hi], [i - cap_h, i + cap_h],
+                    color="#444444", linewidth=0.8, zorder=4)
+
+    # AUC labels with CI — placed to the right of the plot area
+    for i, (_, row) in enumerate(df.iterrows()):
+        label = f"{row['auc']:.2f}  [{row['ci_lo']:.2f}\u2013{row['ci_hi']:.2f}]"
+        ax.annotate(label, xy=(1.01, i), xycoords=("axes fraction", "data"),
+                    va="center", ha="left", fontsize=6.5, color="#333333",
+                    annotation_clip=False)
 
     ax.axvline(0.5, ls="--", color=COLORS["gray"], lw=0.8, label="Chance")
-    ax.set_xlim(0.35, 1.02)
+    ax.set_xlim(0.35, 1.0)
     ax.set_yticks(y_pos)
     ax.set_yticklabels(df["display"].values, fontsize=8)
     ax.set_xlabel("ROC AUC")
@@ -894,17 +905,22 @@ def generate() -> None:
     _panel_f_heatmap(ax_f, data)
     save_panel(fig_f, "panel_F_heatmap", FIGURE_NAME, MAIN_OUTPUT)
 
-    # Panels G-J: Simple single-axis panels
+    # Panels G-I: Simple single-axis panels
     simple_panels = [
         ("panel_G_delta_by_response", _panel_g_delta_by_response),
         ("panel_H_cohens_d", _panel_h_cohens_d),
         ("panel_I_individual_trajectories", _panel_i_individual_trajectories),
-        ("panel_J_roc_auc", _panel_j_roc_auc),
     ]
     for panel_name, func in simple_panels:
         fig, ax = plt.subplots(figsize=(6.5, 5))
         func(ax, data)
         save_panel(fig, panel_name, FIGURE_NAME, MAIN_OUTPUT)
+
+    # Panel J: ROC AUC — wider with right margin for CI labels
+    fig_j, ax_j = plt.subplots(figsize=(9, 6))
+    _panel_j_roc_auc(ax_j, data)
+    fig_j.tight_layout(rect=[0, 0, 0.82, 1])
+    save_panel(fig_j, "panel_J_roc_auc", FIGURE_NAME, MAIN_OUTPUT)
 
     # Cleanup
     del data["adata"]
