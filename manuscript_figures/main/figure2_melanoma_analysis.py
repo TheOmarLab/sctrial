@@ -223,27 +223,34 @@ def _panel_a_paired_verification(ax: plt.Axes, data: dict) -> None:
 
     ax.set_xticks(range(len(participants)))
     ax.set_xticklabels(
-        [str(p)[:6] for p in participants],
-        rotation=45, ha="right", fontsize=7,
+        [f"P{i+1}" for i in range(len(participants))],
+        rotation=90, ha="center", fontsize=7,
     )
-    ax.set_xlabel("Participant")
-    ax.set_ylabel("Number of cells")
-    ax.set_title("Paired Participants: Cells per Visit", fontsize=11)
+    ax.set_xlabel("Participant", fontsize=9)
+    ax.set_ylabel("Number of cells", fontsize=12)
+    ax.set_title("Paired Participants: Cells per Visit", fontsize=11,
+                 fontweight="bold")
 
     legend_handles = [
-        mpatches.Patch(facecolor=COLORS["treated"], label="Responder"),
-        mpatches.Patch(facecolor=COLORS["control"], label="Non-responder"),
-        mpatches.Patch(facecolor=COLORS["gray"], alpha=0.6, label="Pre"),
-        mpatches.Patch(facecolor=COLORS["gray"], alpha=1.0, label="Post"),
+        Line2D([0], [0], marker="s", color="w", markerfacecolor=COLORS["treated"],
+               markersize=5, markeredgewidth=0, label="Responder"),
+        Line2D([0], [0], marker="s", color="w", markerfacecolor=COLORS["control"],
+               markersize=5, markeredgewidth=0, label="Non-responder"),
+        Line2D([0], [0], marker="s", color="w", markerfacecolor=COLORS["gray"],
+               markersize=5, markeredgewidth=0, alpha=0.6, label="Pre"),
+        Line2D([0], [0], marker="s", color="w", markerfacecolor=COLORS["gray"],
+               markersize=5, markeredgewidth=0, label="Post"),
     ]
-    ax.legend(handles=legend_handles, fontsize=8, loc="upper right",
-              frameon=True, framealpha=0.9)
+    ax.legend(handles=legend_handles, fontsize=8,
+              loc="upper center", bbox_to_anchor=(0.5, -0.38),
+              ncol=4, frameon=True, framealpha=0.9,
+              handletextpad=0.3, columnspacing=0.8)
 
     pair_info = data["pair_info"]
     ax.text(
-        0.02, 0.95,
+        0.02, 0.98,
         f"{pair_info['n_paired']}/{pair_info['n_total']} participants paired",
-        transform=ax.transAxes, fontsize=9, va="top",
+        transform=ax.transAxes, fontsize=5.5, va="top",
         bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
                   edgecolor=COLORS["gray"], alpha=0.8),
     )
@@ -263,34 +270,36 @@ def _panel_b_beta_comparison(ax: plt.Axes, data: dict) -> None:
 
     colors = [COLORS["treated"] if b > 0 else COLORS["control"] for b in beta_part]
 
-    ax.scatter(beta_cell, beta_part, c=colors, s=60, edgecolors="white",
+    ax.scatter(beta_cell, beta_part, c=colors, s=20, edgecolors="white",
                linewidths=0.5, zorder=3)
 
-    lim_lo = min(beta_cell.min(), beta_part.min()) * 1.15
+    lim_lo = min(beta_cell.min(), beta_part.min(), -1.0) * 1.15
     lim_hi = max(beta_cell.max(), beta_part.max()) * 1.15
     ax.plot([lim_lo, lim_hi], [lim_lo, lim_hi], "--", color=COLORS["gray"],
             lw=1, zorder=1, label="Identity")
+    ax.set_xlim(left=-1.1)
     ax.axhline(0, color=COLORS["gray"], lw=0.5, ls=":", zorder=0)
     ax.axvline(0, color=COLORS["gray"], lw=0.5, ls=":", zorder=0)
 
-    texts = []
-    for feat, xv, yv in zip(common, beta_cell, beta_part):
-        t = ax.text(xv, yv, sig_display(feat), fontsize=7, alpha=0.85)
-        texts.append(t)
-
-    try:
-        from adjustText import adjust_text
-        adjust_text(
-            texts, ax=ax,
-            arrowprops=dict(arrowstyle="-", color=COLORS["gray"], lw=0.4,
-                            shrinkA=5, shrinkB=3),
-            force_points=(0.6, 0.6),
-            force_text=(1.0, 1.0),
-            expand_points=(2.0, 2.0),
-            expand_text=(1.3, 1.3),
+    x_range = max(beta_cell) - min(beta_cell)
+    offset = x_range * 0.04
+    _force_right = {"memory"}
+    _force_left = {"ifn"}
+    for i, (feat, xv, yv) in enumerate(zip(common, beta_cell, beta_part)):
+        label = sig_display(feat)
+        ll = label.lower()
+        if any(k in ll for k in _force_right):
+            ha, dx = "left", offset
+        elif any(k in ll for k in _force_left):
+            ha, dx = "right", -offset
+        else:
+            ha = "left" if i % 2 == 0 else "right"
+            dx = offset if i % 2 == 0 else -offset
+        ax.annotate(
+            label, (xv, yv),
+            xytext=(xv + dx, yv), fontsize=7, alpha=0.85,
+            ha=ha, va="center",
         )
-    except ImportError:
-        pass
 
     r, p = stats.pearsonr(beta_cell, beta_part)
     ax.text(
@@ -301,15 +310,17 @@ def _panel_b_beta_comparison(ax: plt.Axes, data: dict) -> None:
                   edgecolor=COLORS["gray"], alpha=0.8),
     )
 
-    ax.set_xlabel(r"$\beta_{\mathrm{DiD}}$ (cell-level)")
-    ax.set_ylabel(r"$\beta_{\mathrm{DiD}}$ (participant-level)")
-    ax.set_title("Effect Size: Cell vs Participant Aggregation", fontsize=11)
+    ax.set_xlabel(r"$\beta_{\mathrm{DiD}}$ (cell-level)", fontsize=12)
+    ax.set_ylabel(r"$\beta_{\mathrm{DiD}}$ (participant-level)", fontsize=12)
+    ax.set_title("Effect Size: Cell vs Participant Aggregation", fontsize=11,
+                 fontweight="bold")
 
     legend_handles = [
         mpatches.Patch(facecolor=COLORS["treated"], label="Positive effect"),
         mpatches.Patch(facecolor=COLORS["control"], label="Negative effect"),
     ]
-    ax.legend(handles=legend_handles, fontsize=8, loc="lower right",
+    ax.legend(handles=legend_handles, fontsize=8,
+              loc="lower right",
               frameon=True, framealpha=0.9)
     despine(ax)
 
@@ -348,9 +359,11 @@ def _panel_c_pvalue_inflation(ax: plt.Axes, data: dict) -> None:
     ax.set_yticks(y_pos)
     ax.set_yticklabels(df["display"], fontsize=8)
     ax.set_xlabel(r"$-\log_{10}(p)$")
-    ax.set_title("P-value Inflation: Cell vs Participant Level", fontsize=11)
+    ax.set_title("P-value Inflation: Cell vs Participant Level", fontsize=11,
+                 fontweight="bold")
 
-    ax.legend(fontsize=8, loc="upper right", frameon=True, framealpha=0.9)
+    ax.legend(fontsize=8, loc="upper center", bbox_to_anchor=(0.5, -0.28),
+              ncol=2, frameon=True, framealpha=0.9)
     despine(ax)
 
 
@@ -379,7 +392,7 @@ def _panel_d_forest(ax: plt.Axes, data: dict) -> None:
             color=color, linewidth=2.0, alpha=1.0, zorder=1,
         )
         ax.scatter(
-            row["beta_DiD"], y_pos[i], color=color, s=55,
+            row["beta_DiD"], y_pos[i], color=color, s=25,
             edgecolors="white", linewidths=0.8, alpha=1.0, zorder=2,
         )
 
@@ -394,15 +407,16 @@ def _panel_d_forest(ax: plt.Axes, data: dict) -> None:
 
     legend_handles = [
         Line2D([0], [0], marker="o", color="w",
-               markerfacecolor=COL_RESP, markersize=8,
+               markerfacecolor=COL_RESP, markersize=5,
                label=r"Responder $\uparrow$"),
         Line2D([0], [0], marker="o", color="w",
-               markerfacecolor=COL_NRESP, markersize=8,
+               markerfacecolor=COL_NRESP, markersize=5,
                label=r"Non-responder $\uparrow$"),
     ]
     ax.legend(
-        handles=legend_handles, fontsize=9, loc="lower right",
-        frameon=True, framealpha=0.95, edgecolor="#CCCCCC",
+        handles=legend_handles, fontsize=8,
+        loc="upper center", bbox_to_anchor=(0.5, -0.28),
+        ncol=2, frameon=True, framealpha=0.95, edgecolor="#CCCCCC",
         handletextpad=0.4, borderpad=0.5,
     )
     despine(ax)
@@ -415,6 +429,9 @@ def _panel_e_interaction_grid(
     gs_parent: gridspec.SubplotSpec,
     data: dict,
     n_sigs: int = 6,
+    *,
+    inner_hspace: float = 0.55,
+    inner_wspace: float = 0.35,
 ) -> list[plt.Axes]:
     """2×3 grid of interaction plots for the top *n_sigs* signatures."""
     adata = data["adata"]
@@ -427,7 +444,8 @@ def _panel_e_interaction_grid(
     top = did_res.assign(_rank_p=rank_p).sort_values("_rank_p").head(n_sigs).drop(columns="_rank_p")
 
     nrows, ncols = 2, 3
-    gs_inner = gs_parent.subgridspec(nrows, ncols, hspace=0.55, wspace=0.35)
+    gs_inner = gs_parent.subgridspec(nrows, ncols, hspace=inner_hspace,
+                                     wspace=inner_wspace)
     axes = []
 
     arm_colors = {
@@ -470,8 +488,8 @@ def _panel_e_interaction_grid(
                                   key=lambda s: s.map(x_map))
             ax.plot(
                 gdf[DESIGN.visit_col].map(x_map), gdf[sig_col],
-                color=color, linewidth=2.8, marker="o", markersize=8,
-                markeredgecolor="white", markeredgewidth=1.2, zorder=3,
+                color=color, linewidth=2.0, marker="o", markersize=5,
+                markeredgecolor="white", markeredgewidth=0.8, zorder=3,
             )
 
         ax.set_xticks([0, 1])
@@ -499,8 +517,9 @@ def _panel_e_interaction_grid(
                label="Individual"),
     ]
     axes[-1].legend(
-        handles=legend_handles, fontsize=7.5, loc="best",
-        frameon=True, framealpha=0.95, edgecolor="#CCCCCC",
+        handles=legend_handles, fontsize=8,
+        loc="upper center", bbox_to_anchor=(0.5, -0.22),
+        ncol=3, frameon=True, framealpha=0.95, edgecolor="#CCCCCC",
     )
     return axes
 
@@ -576,12 +595,12 @@ def _panel_f_heatmap(ax: plt.Axes, data: dict) -> None:
     )
 
     # Row annotations — arm colour sidebar
-    sidebar_w = 0.4
+    sidebar_w = 0.35
     for i, pid in enumerate(ordered_pids):
         arm = arms.loc[pid]
         color = COL_RESP if arm == "Responder" else COL_NRESP
         ax.add_patch(plt.Rectangle(
-            (-sidebar_w - 0.55, i - 0.5), sidebar_w, 1.0,
+            (-sidebar_w - 0.35, i - 0.5), sidebar_w, 1.0,
             color=color, clip_on=False,
         ))
 
@@ -602,9 +621,9 @@ def _panel_f_heatmap(ax: plt.Axes, data: dict) -> None:
     ax.set_title("Per-participant score change (Post − Pre)", fontsize=12,
                  fontweight="bold")
 
-    cbar = ax.figure.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-    cbar.set_label("Score change", fontsize=9)
-    cbar.ax.tick_params(labelsize=7.5)
+    cbar = ax.figure.colorbar(im, ax=ax, fraction=0.03, pad=0.02)
+    cbar.set_label("Score Δ", fontsize=8)
+    cbar.ax.tick_params(labelsize=7)
 
     legend_handles = [
         Line2D([0], [0], marker="s", color="w", markerfacecolor=COL_RESP,
@@ -614,7 +633,7 @@ def _panel_f_heatmap(ax: plt.Axes, data: dict) -> None:
     ]
     ax.legend(
         handles=legend_handles, fontsize=10,
-        loc="lower center", bbox_to_anchor=(0.45, -0.22),
+        loc="upper center", bbox_to_anchor=(0.5, -0.15),
         ncol=2, frameon=False, handletextpad=0.3, columnspacing=1.5,
     )
 
@@ -644,12 +663,14 @@ def _panel_g_delta_by_response(ax: plt.Axes, data: dict) -> None:
         y_pos + bar_h / 2, means_r[order].values,
         height=bar_h, color=COL_RESP, alpha=0.85,
         xerr=sems_r[order].values, capsize=2, ecolor=COLORS["gray"],
+        error_kw={"linewidth": 0.8},
         label="Responder", edgecolor="none",
     )
     ax.barh(
         y_pos - bar_h / 2, means_nr[order].values,
         height=bar_h, color=COL_NRESP, alpha=0.85,
         xerr=sems_nr[order].values, capsize=2, ecolor=COLORS["gray"],
+        error_kw={"linewidth": 0.8},
         label="Non-responder", edgecolor="none",
     )
 
@@ -657,8 +678,10 @@ def _panel_g_delta_by_response(ax: plt.Axes, data: dict) -> None:
     ax.set_yticks(y_pos)
     ax.set_yticklabels(display_names, fontsize=8)
     ax.set_xlabel("Mean Δ score (Post − Pre)")
-    ax.set_title("Signature Changes by Response", fontsize=10)
-    ax.legend(fontsize=8, loc="lower right", frameon=True, framealpha=0.9)
+    ax.set_title("Signature Changes by Response", fontsize=10,
+                 fontweight="bold")
+    ax.legend(fontsize=8, loc="upper center", bbox_to_anchor=(0.5, -0.22),
+              ncol=2, frameon=True, framealpha=0.9)
     despine(ax)
 
 
@@ -683,14 +706,15 @@ def _panel_h_cohens_d(ax: plt.Axes, data: dict) -> None:
     colors = [COL_RESP if v > 0 else COL_NRESP for v in df["d"].values]
 
     ax.hlines(y_pos, 0, df["d"].values, colors=colors, lw=2, zorder=2)
-    ax.scatter(df["d"].values, y_pos, c=colors, s=50,
+    ax.scatter(df["d"].values, y_pos, c=colors, s=30,
                edgecolor="white", linewidth=0.5, zorder=3)
 
     ax.axvline(0, ls=":", color=COLORS["gray"], lw=0.8, zorder=0)
     ax.set_yticks(y_pos)
     ax.set_yticklabels(df["display"].values, fontsize=8)
     ax.set_xlabel("Cohen's d (Responder − Non-responder)")
-    ax.set_title("Effect Size of Response Separation", fontsize=10)
+    ax.set_title("Effect Size of Response Separation", fontsize=10,
+                 fontweight="bold")
     despine(ax)
 
 
@@ -749,68 +773,317 @@ def _panel_i_individual_trajectories(ax: plt.Axes, data: dict) -> None:
     ax.set_xticks([0, 1])
     ax.set_xticklabels(["Pre", "Post"])
     ax.set_ylabel(f"{sig_display(target)} Score")
-    ax.set_title(f"Individual Trajectories — {sig_display(target)}", fontsize=10)
+    ax.set_title(f"Individual Trajectories — {sig_display(target)}", fontsize=10,
+                 fontweight="bold")
 
     handles = [
         Line2D([0], [0], color=COL_RESP, lw=2, label="Responder"),
         Line2D([0], [0], color=COL_NRESP, lw=2, label="Non-responder"),
     ]
-    ax.legend(handles=handles, fontsize=8, loc="best", frameon=True,
-              framealpha=0.9)
+    ax.legend(handles=handles, fontsize=8,
+              loc="upper center", bbox_to_anchor=(0.5, -0.15),
+              ncol=2, frameon=True, framealpha=0.9)
     despine(ax)
 
 
 # ── Composite generation ────────────────────────────────────────────────
+
+_BIG_FONT_RC = {
+    "font.size": 18,
+    "axes.titlesize": 20,
+    "axes.titleweight": "bold",
+    "axes.labelsize": 18,
+    "xtick.labelsize": 14,
+    "ytick.labelsize": 14,
+    "legend.fontsize": 14,
+    "legend.title_fontsize": 14,
+}
+
+_MIN_FONT = 14  # floor: every text element will be at least this big
+
+
+from contextlib import contextmanager          # noqa: E402
+
+
+@contextmanager
+def _big_fonts():
+    """Temporarily raise all font sizes so standalone panels are readable."""
+    prev = {k: plt.rcParams[k] for k in _BIG_FONT_RC}
+    plt.rcParams.update(_BIG_FONT_RC)
+    try:
+        yield
+    finally:
+        plt.rcParams.update(prev)
+
+
+def _enforce_min_fontsize(fig, minimum: float = _MIN_FONT) -> None:
+    """Walk every text element in *fig* and raise any font size below *minimum*."""
+    for ax in fig.get_axes():
+        for txt in ([ax.title, ax.xaxis.label, ax.yaxis.label]
+                    + ax.get_xticklabels() + ax.get_yticklabels()
+                    + ax.texts):
+            if txt.get_fontsize() < minimum:
+                txt.set_fontsize(minimum)
+        if ax.get_legend():
+            for txt in ax.get_legend().get_texts():
+                if txt.get_fontsize() < minimum:
+                    txt.set_fontsize(minimum)
+    for txt in fig.texts:
+        if txt.get_fontsize() < minimum:
+            txt.set_fontsize(minimum)
+
 
 def generate() -> None:
     """Create and save all Figure 2 panels (A–I)."""
     print("Figure 2: Pseudoreplication Bias & Melanoma Primary Analysis")
     data = _prepare_data()
 
-    # Panels A-C: Pseudoreplication demonstration (migrated from Figure 1)
-    pseudo_panels = [
-        ("panel_A_paired_verification", _panel_a_paired_verification, (8, 6)),
-        ("panel_B_beta_comparison", _panel_b_beta_comparison, (8, 6)),
-        ("panel_C_pvalue_inflation", _panel_c_pvalue_inflation, (10, 6)),
-    ]
-    for panel_name, func, size in pseudo_panels:
-        fig, ax = plt.subplots(figsize=size)
-        func(ax, data)
-        fig.tight_layout()
-        save_panel(fig, panel_name, FIGURE_NAME, MAIN_OUTPUT)
+    with _big_fonts():
+        # Panels A-C: Pseudoreplication demonstration
+        pseudo_panels = [
+            ("panel_A_paired_verification", _panel_a_paired_verification, (11, 6)),
+            ("panel_B_beta_comparison", _panel_b_beta_comparison, (11, 6)),
+            ("panel_C_pvalue_inflation", _panel_c_pvalue_inflation, (10, 6)),
+        ]
+        for panel_name, func, size in pseudo_panels:
+            fig, ax = plt.subplots(figsize=size)
+            func(ax, data)
+            _enforce_min_fontsize(fig)
+            fig.tight_layout()
+            save_panel(fig, panel_name, FIGURE_NAME, MAIN_OUTPUT)
 
-    # Panel D: Forest plot
-    fig_d, ax_d = plt.subplots(figsize=(12, 5))
+        # Panel D: Forest plot
+        fig_d, ax_d = plt.subplots(figsize=(12, 6))
+        _panel_d_forest(ax_d, data)
+        _enforce_min_fontsize(fig_d)
+        fig_d.tight_layout()
+        save_panel(fig_d, "panel_D_forest", FIGURE_NAME, MAIN_OUTPUT)
+
+        # Panel E: Interaction grid (needs figure + gridspec)
+        fig_e = plt.figure(figsize=(14, 9))
+        gs_e = fig_e.add_gridspec(1, 1)[0, 0]
+        _panel_e_interaction_grid(fig_e, gs_e, data, n_sigs=6)
+        _enforce_min_fontsize(fig_e)
+        fig_e.tight_layout()
+        save_panel(fig_e, "panel_E_interaction_grid", FIGURE_NAME, MAIN_OUTPUT)
+
+        # Panel F: Heatmap
+        fig_f, ax_f = plt.subplots(figsize=(12, 8))
+        _panel_f_heatmap(ax_f, data)
+        _enforce_min_fontsize(fig_f)
+        fig_f.tight_layout()
+        save_panel(fig_f, "panel_F_heatmap", FIGURE_NAME, MAIN_OUTPUT)
+
+        # Panels G-I: Simple single-axis panels
+        simple_panels = [
+            ("panel_G_delta_by_response", _panel_g_delta_by_response),
+            ("panel_H_cohens_d", _panel_h_cohens_d),
+            ("panel_I_individual_trajectories", _panel_i_individual_trajectories),
+        ]
+        for panel_name, func in simple_panels:
+            fig, ax = plt.subplots(figsize=(7, 5.5))
+            func(ax, data)
+            _enforce_min_fontsize(fig)
+            fig.tight_layout()
+            save_panel(fig, panel_name, FIGURE_NAME, MAIN_OUTPUT)
+
+    # ── Combined artboard (180 × 215 mm) ──
+    _SMALL_RC = {
+        "font.size": 5,
+        "axes.titlesize": 5.5,
+        "axes.labelsize": 5,
+        "xtick.labelsize": 4.5,
+        "ytick.labelsize": 4.5,
+        "legend.fontsize": 4,
+        "legend.title_fontsize": 4,
+    }
+    _MAX_FONT_COMPOSITE = 6
+
+    def _cap_fontsize(fig, maximum):
+        """Shrink every text element in *fig* that exceeds *maximum*."""
+        for ax in fig.get_axes():
+            for txt in ([ax.title, ax.xaxis.label, ax.yaxis.label]
+                        + ax.get_xticklabels() + ax.get_yticklabels()
+                        + ax.texts):
+                if txt.get_fontsize() > maximum:
+                    txt.set_fontsize(maximum)
+            if ax.get_legend():
+                for txt in ax.get_legend().get_texts():
+                    if txt.get_fontsize() > maximum:
+                        txt.set_fontsize(maximum)
+        for txt in fig.texts:
+            if txt.get_fontsize() > maximum:
+                txt.set_fontsize(maximum)
+
+    _prev_rc = {k: plt.rcParams[k] for k in _SMALL_RC}
+    plt.rcParams.update(_SMALL_RC)
+
+    _mm = 1.0 / 25.4
+    fig_c = plt.figure(figsize=(180 * _mm, 215 * _mm))
+
+    #   Row 0: A | B
+    #   Row 1: C (top-left) + D (bottom-left) | E (right, spans both)
+    #   Row 2: F | G
+    #   Row 3: H | I
+    outer = fig_c.add_gridspec(
+        4, 1,
+        height_ratios=[1, 2.2, 1.3, 1],
+        hspace=0.55,
+        left=0.10, right=0.95, top=0.97, bottom=0.05,
+    )
+
+    # Row 0: A | B  (B wider, less spacing)
+    gs0 = outer[0].subgridspec(1, 2, wspace=0.28, width_ratios=[1, 1.4])
+    ax_a = fig_c.add_subplot(gs0[0])
+    ax_b = fig_c.add_subplot(gs0[1])
+
+    # Row 1: C/D stacked on left | E spanning right
+    gs1 = outer[1].subgridspec(
+        2, 2, width_ratios=[1, 1.6],
+        hspace=0.50, wspace=0.40,
+    )
+    ax_c = fig_c.add_subplot(gs1[0, 0])
+    ax_d = fig_c.add_subplot(gs1[1, 0])
+
+    # Row 2: F | G
+    gs2 = outer[2].subgridspec(1, 2, wspace=0.55)
+    ax_f = fig_c.add_subplot(gs2[0])
+    ax_g = fig_c.add_subplot(gs2[1])
+
+    # Row 3: H | I
+    gs3 = outer[3].subgridspec(1, 2, wspace=0.40)
+    ax_h = fig_c.add_subplot(gs3[0])
+    ax_i = fig_c.add_subplot(gs3[1])
+
+    _panel_a_paired_verification(ax_a, data)
+    _panel_b_beta_comparison(ax_b, data)
+    _panel_c_pvalue_inflation(ax_c, data)
     _panel_d_forest(ax_d, data)
-    save_panel(fig_d, "panel_D_forest", FIGURE_NAME, MAIN_OUTPUT)
-
-    # Panel E: Interaction grid (needs figure + gridspec)
-    fig_e = plt.figure(figsize=(14, 8))
-    gs_e = fig_e.add_gridspec(1, 1)[0, 0]
-    _panel_e_interaction_grid(fig_e, gs_e, data, n_sigs=6)
-    save_panel(fig_e, "panel_E_interaction_grid", FIGURE_NAME, MAIN_OUTPUT)
-
-    # Panel F: Heatmap
-    fig_f, ax_f = plt.subplots(figsize=(11, 7))
+    axes_e = _panel_e_interaction_grid(
+        fig_c, gs1[:, 1], data, n_sigs=6,
+        inner_hspace=0.45, inner_wspace=0.30,
+    )
     _panel_f_heatmap(ax_f, data)
-    save_panel(fig_f, "panel_F_heatmap", FIGURE_NAME, MAIN_OUTPUT)
+    _panel_g_delta_by_response(ax_g, data)
+    _panel_h_cohens_d(ax_h, data)
+    _panel_i_individual_trajectories(ax_i, data)
 
-    # Panels G-I: Simple single-axis panels
-    simple_panels = [
-        ("panel_G_delta_by_response", _panel_g_delta_by_response),
-        ("panel_H_cohens_d", _panel_h_cohens_d),
-        ("panel_I_individual_trajectories", _panel_i_individual_trajectories),
-    ]
-    for panel_name, func in simple_panels:
-        fig, ax = plt.subplots(figsize=(6.5, 5))
-        func(ax, data)
-        save_panel(fig, panel_name, FIGURE_NAME, MAIN_OUTPUT)
+    # ── Combined-panel-only adjustments ──
+
+    # Move below-figure legends to inside the plot for space
+    _inside = {
+        ax_a: "upper right", ax_b: "lower right", ax_c: "lower right",
+        ax_d: "lower right", ax_g: "lower right", ax_i: "upper right",
+    }
+    for ax_target, loc in _inside.items():
+        leg = ax_target.get_legend()
+        if leg:
+            handles = leg.legend_handles
+            labels = [t.get_text() for t in leg.get_texts()]
+            leg.remove()
+            ax_target.legend(
+                handles=handles, labels=labels,
+                fontsize=3.5, loc=loc,
+                frameon=True, framealpha=0.85,
+                handlelength=1, handletextpad=0.3,
+                borderpad=0.3, labelspacing=0.2,
+            )
+
+    # Panel E: move legend from last subplot to centre-bottom
+    if axes_e:
+        leg_e = axes_e[-1].get_legend()
+        if leg_e:
+            leg_e.remove()
+        mid_ax = axes_e[4]
+        _eh = [
+            Line2D([0], [0], color=COL_RESP, linewidth=1.5, marker="o",
+                   markersize=3, markeredgecolor="white", label="Responder"),
+            Line2D([0], [0], color=COL_NRESP, linewidth=1.5, marker="o",
+                   markersize=3, markeredgecolor="white",
+                   label="Non-responder"),
+            Line2D([0], [0], color=COL_GRAY, linewidth=0.6, alpha=0.4,
+                   label="Individual"),
+        ]
+        mid_ax.legend(
+            handles=_eh, fontsize=3.5,
+            loc="upper center", bbox_to_anchor=(0.5, -0.25),
+            ncol=3, frameon=True, framealpha=0.95, edgecolor="#CCCCCC",
+        )
+
+    # Panel B: shrink annotation text in composite
+    for txt in ax_b.texts:
+        txt.set_fontsize(max(txt.get_fontsize() * 0.55, 3.0))
+
+    # Panel C: move "p = 0.05" annotation lower
+    for txt in ax_c.texts:
+        if "0.05" in txt.get_text():
+            x, y = txt.get_position()
+            txt.set_position((x, y - 2))
+
+    # Panel F: replace below-legend with y-axis group labels
+    from matplotlib.transforms import blended_transform_factory
+    from matplotlib.colors import to_rgba
+    leg_f = ax_f.get_legend()
+    if leg_f:
+        leg_f.remove()
+    _trans_f = blended_transform_factory(ax_f.transAxes, ax_f.transData)
+    _resp_rgba = to_rgba(COL_RESP)
+    fig_c.canvas.draw_idle()
+    _n_resp_f = sum(
+        1 for t in ax_f.get_yticklabels()
+        if np.allclose(to_rgba(t.get_color()), _resp_rgba, atol=0.02)
+    )
+    _n_total_f = len(ax_f.get_yticklabels())
+    _n_nresp_f = _n_total_f - _n_resp_f
+    if _n_resp_f > 0:
+        ax_f.text(-0.16, (_n_resp_f - 1) / 2, "Resp.",
+                  transform=_trans_f, color=COL_RESP,
+                  fontsize=4, fontweight="bold",
+                  ha="right", va="center", rotation=90, clip_on=False)
+    if _n_nresp_f > 0:
+        ax_f.text(-0.16, _n_resp_f + (_n_nresp_f - 1) / 2, "Non-resp.",
+                  transform=_trans_f, color=COL_NRESP,
+                  fontsize=4, fontweight="bold",
+                  ha="right", va="center", rotation=90, clip_on=False)
+
+    # Panel F colorbar: shrink to prevent overlap
+    for _child_ax in fig_c.get_axes():
+        if _child_ax.get_ylabel() == "Score Δ":
+            _child_ax.set_ylabel("Score Δ", fontsize=3.5, labelpad=1)
+            _child_ax.tick_params(labelsize=3, pad=1)
+            break
+
+    # Cap hard-coded font sizes to composite maximum
+    _cap_fontsize(fig_c, _MAX_FONT_COMPOSITE)
+
+    # Bold panel labels (after cap so they stay prominent)
+    _lbl_fs = 7
+    for ax, lbl in [
+        (ax_a, "A"), (ax_b, "B"), (ax_c, "C"),
+        (ax_d, "D"), (ax_f, "F"),
+        (ax_g, "G"), (ax_h, "H"), (ax_i, "I"),
+    ]:
+        ax.text(-0.15, 1.12, lbl, transform=ax.transAxes,
+                fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    if axes_e:
+        axes_e[0].text(-0.10, 1.15, "E", transform=axes_e[0].transAxes,
+                       fontsize=_lbl_fs, fontweight="bold", va="top",
+                       ha="left")
+
+    plt.rcParams.update(_prev_rc)
+
+    save_panel(fig_c, FIGURE_NAME, FIGURE_NAME, MAIN_OUTPUT, close=False)
+    pdf_path = MAIN_OUTPUT / f"{FIGURE_NAME}_panels" / f"{FIGURE_NAME}.pdf"
+    fig_c.savefig(str(pdf_path), format="pdf", bbox_inches="tight",
+                  facecolor="white")
+    plt.close(fig_c)
+    print(f"    Saved combined artboard (PNG + PDF)")
 
     # Cleanup
     del data["adata"]
     del data
     gc.collect()
-    print("  Figure 2 complete: 9 panels (A–I)\n")
+    print("  Figure 2 complete: 9 individual panels + combined (A–I)\n")
 
 
 # ── CLI entry point ─────────────────────────────────────────────────────
