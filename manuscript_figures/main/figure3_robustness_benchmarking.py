@@ -939,26 +939,42 @@ def _panel_a(ax, data: dict) -> None:
     hi = max(analytical.max(), bootstrap.max()) * 1.15
     ax.plot([lo, hi], [lo, hi], ls="--", color=COLORS["gray"], lw=1, zorder=1)
 
-    ax.scatter(analytical, bootstrap, s=50, color=COLORS["treated"],
+    ax.scatter(analytical, bootstrap, s=30, color=COLORS["treated"],
                edgecolor="white", linewidth=0.5, zorder=3)
 
-    for feat, x, y in zip(feats, analytical, bootstrap):
+    _force_left = {"t cell activation", "cytotoxic t cells",
+                    "t cell exhaustion"}
+    _force_right = {"oxidative stress", "regulatory t cells",
+                    "cell proliferation"}
+
+    for i, (feat, x, y) in enumerate(zip(feats, analytical, bootstrap)):
+        label = sig_display(feat)
+        ll = label.lower()
+        if ll in _force_left:
+            side = "left"
+        elif ll in _force_right:
+            side = "right"
+        else:
+            side = "right" if i % 2 == 0 else "left"
+        ha = "left" if side == "right" else "right"
+        x_off = 3 if side == "right" else -3
         ax.annotate(
-            sig_display(feat), (x, y),
-            fontsize=6, ha="left", va="bottom",
-            xytext=(4, 4), textcoords="offset points",
+            label, (x, y),
+            fontsize=8, ha=ha, va="center",
+            xytext=(x_off, 0), textcoords="offset points",
         )
 
     r, p = stats.pearsonr(analytical, bootstrap)
     ax.text(
         0.05, 0.95, f"r = {r:.2f}\np = {p:.1e}",
-        transform=ax.transAxes, fontsize=8, va="top", ha="left",
+        transform=ax.transAxes, fontsize=11, va="top", ha="left",
         bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="none", alpha=0.8),
     )
 
-    ax.set_xlabel("Analytical SE (cluster-robust)")
-    ax.set_ylabel("Bootstrap SE (wild cluster)")
-    ax.set_title("Bootstrap vs Analytical SE", fontsize=10)
+    ax.set_xlabel("Analytical SE (cluster-robust)", fontsize=12)
+    ax.set_ylabel("Bootstrap SE (wild cluster)", fontsize=12)
+    ax.set_xlim(right=1.75)
+    ax.set_title("Bootstrap vs Analytical SE", fontsize=10, fontweight="bold")
     despine(ax)
 
 
@@ -1011,30 +1027,28 @@ def _panel_b(ax, data: dict) -> None:
     ax.set_yticks(range(len(top_sigs)))
     ax.set_yticklabels([sig_display(s) for s in top_sigs], fontsize=8)
     ax.axvline(0, ls=":", color=COLORS["gray"], lw=0.8, zorder=0)
-    ax.set_xlabel(r"$\beta_{\mathrm{DiD}}$ (standardized)")
-    ax.set_title("Leave-One-Out Sensitivity", fontsize=10)
+    ax.set_xlabel(r"$\beta_{\mathrm{DiD}}$ (standardized)", fontsize=12)
+    ax.set_title("Leave-One-Out Sensitivity", fontsize=10, fontweight="bold")
 
     from matplotlib.lines import Line2D
-    # Signature-color legend entries
     handles = []
     for idx, feat in enumerate(top_sigs):
         color = palette[idx % len(palette)]
         handles.append(
-            Line2D([0], [0], marker="D", color="w", markerfacecolor=color,
-                   markeredgecolor="black", markersize=6,
+            Line2D([0], [0], color=color, linewidth=2.5,
                    label=sig_display(feat)),
         )
-    # Marker-type legend entries
     handles.append(
         Line2D([0], [0], marker="o", color="w", markerfacecolor=COLORS["gray"],
-               markersize=5, label="LOO estimate"),
+               markersize=2.5, label="LOO estimate"),
     )
     handles.append(
         Line2D([0], [0], marker="D", color="w", markerfacecolor=COLORS["gray"],
-               markeredgecolor="black", markersize=6, label="Full sample"),
+               markeredgecolor="black", markersize=3, label="Full sample"),
     )
-    ax.legend(handles=handles, fontsize=6.5, loc="lower right",
-              frameon=True, framealpha=0.9)
+    ax.legend(handles=handles, fontsize=14, loc="upper left",
+              bbox_to_anchor=(0.0, 3.5),
+              frameon=True, framealpha=0.95)
     despine(ax)
 
 
@@ -1228,7 +1242,7 @@ def _panel_c(ax, data: dict) -> None:
     ax.set_yticklabels(labels, fontsize=9)
 
     ax.set_xlabel("Wall time (seconds)", fontsize=10)
-    ax.set_title("Runtime Scaling", fontsize=11)
+    ax.set_title("Runtime Scaling", fontsize=11, fontweight="bold")
     ax.set_xlim(left=0)
 
     # Design-type legend
@@ -1270,6 +1284,116 @@ def _wilson_ci(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
         z * np.sqrt(p_hat * (1 - p_hat) / n + z**2 / (4 * n**2)) / denom
     )
     return (max(0.0, centre - half_width), min(1.0, centre + half_width))
+
+
+def _panel_c_power_grid(
+    fig: plt.Figure,
+    gs_parent,
+    data: dict,
+    *,
+    inner_wspace: float = 0.30,
+) -> list[plt.Axes]:
+    """Draw power curves into a gridspec area, returning created axes."""
+    from sklearn.isotonic import IsotonicRegression
+
+    scale_data = data.get("scale_data")
+    if scale_data is None:
+        ax = fig.add_subplot(gs_parent)
+        ax.text(0.5, 0.5, "Power data unavailable",
+                ha="center", va="center", transform=ax.transAxes)
+        despine(ax)
+        return [ax]
+    power_df = scale_data["power_df"]
+    if power_df.empty:
+        ax = fig.add_subplot(gs_parent)
+        ax.text(0.5, 0.5, "No power data",
+                ha="center", va="center", transform=ax.transAxes)
+        despine(ax)
+        return [ax]
+
+    _DESIGN_LABELS = {
+        "two_arm_did": "Two-arm DiD",
+        "paired": "Paired pre/post",
+        "cross_sectional": "Cross-sectional",
+    }
+
+    ds_names = list(dict.fromkeys(power_df["dataset"]))
+    n_ds = len(ds_names)
+    gs_inner = gs_parent.subgridspec(1, n_ds, wspace=inner_wspace)
+    axes: list[plt.Axes] = []
+
+    for i, ds_name in enumerate(ds_names):
+        ax = fig.add_subplot(gs_inner[0, i])
+        axes.append(ax)
+        grp = power_df[power_df["dataset"] == ds_name].sort_values(
+            "n_participants")
+        color = DATASET_COLORS.get(ds_name, COLORS["gray"])
+
+        x = grp["n_participants"].values.astype(float)
+        y = grp["power"].values.astype(float)
+
+        ci_lo, ci_hi = [], []
+        for _, row in grp.iterrows():
+            n_total_iter = (int(row.get("n_valid", 0))
+                           + int(row.get("n_failures", 0)))
+            if n_total_iter == 0:
+                n_total_iter = N_POWER_ITERATIONS
+            k = (round(row["power"] * n_total_iter)
+                 if not np.isnan(row["power"]) else 0)
+            lo, hi = _wilson_ci(k, n_total_iter)
+            ci_lo.append(lo)
+            ci_hi.append(hi)
+
+        ax.fill_between(x, ci_lo, ci_hi,
+                        color=color, alpha=0.15, zorder=1, linewidth=0)
+        ax.plot(x, y, color=color, linewidth=2.0, zorder=3,
+                solid_capstyle="round", marker="o", markersize=3.5)
+
+        if len(x) >= 3:
+            iso = IsotonicRegression(increasing=True, y_min=0.0, y_max=1.0,
+                                     out_of_bounds="clip")
+            y_iso = iso.fit_transform(x, y)
+            ax.plot(x, y_iso, color=color, linewidth=1.2, linestyle="--",
+                    alpha=0.5, zorder=2)
+
+        ax.axhline(0.80, color="#bbb", linewidth=0.7,
+                   linestyle="--", zorder=1, alpha=0.5)
+        ax.set_xlim(x.min() - 0.5, x.max() + 0.5)
+        ax.set_ylim(-0.02, 1.05)
+
+        if "feature" in grp.columns and not grp.empty:
+            feat = grp["feature"].iloc[0].replace("sig_", "").replace("_", " ")
+        else:
+            feat = ""
+        dtype = (grp["design_type"].iloc[0]
+                 if "design_type" in grp.columns else "")
+        design_label = _DESIGN_LABELS.get(dtype, dtype)
+        analyzable_n = (int(grp["n_analyzable"].iloc[0])
+                        if "n_analyzable" in grp.columns
+                        else int(x.max()) + 1)
+
+        display_name = _DATASET_DISPLAY_NAMES.get(ds_name, ds_name)
+        title_lines = display_name
+        if feat:
+            title_lines += f"\n{feat}"
+        title_lines += f"\n{design_label}, n={analyzable_n}"
+
+        ax.set_title(title_lines, fontsize=9.5, fontweight="bold",
+                     color=color, pad=4, linespacing=1.4)
+        ax.set_xlabel("Analyzable participants", fontsize=9.5)
+        from matplotlib.ticker import MaxNLocator
+        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+        if i == 0:
+            ax.set_ylabel(r"Power (1 − $\beta$)", fontsize=10)
+        ax.tick_params(axis="both", which="major", labelsize=8.5,
+                       labelleft=True)
+
+        ax.grid(True, which="major", axis="y", color="#f0f0f0",
+                linewidth=0.3, zorder=0)
+        ax.set_axisbelow(True)
+        despine(ax)
+
+    return axes
 
 
 def _panel_d_power_curves(data: dict) -> plt.Figure | None:
@@ -1426,9 +1550,10 @@ def _panel_d_se_comparison(ax, data: dict) -> None:
 
     ax.set_yticks(y_pos)
     ax.set_yticklabels(merged["display"].values, fontsize=8)
-    ax.set_xlabel("Standard Error")
-    ax.set_title("Precision: Cell vs Participant Level", fontsize=10)
-    ax.legend(fontsize=7, loc="lower right", frameon=True, framealpha=0.9)
+    ax.set_xlabel("Standard Error", fontsize=12)
+    ax.set_title("Precision: Cell vs Participant Level", fontsize=10,
+                 fontweight="bold")
+    ax.legend(fontsize=14, loc="lower right", frameon=True, framealpha=0.9)
     despine(ax)
 
 
@@ -1513,13 +1638,13 @@ def _panel_e_cross_dataset(ax, data: dict) -> None:
 
         ax.hlines(yp, row["d_lower"], row["d_upper"],
                   color=color, linewidth=2.2, zorder=2, alpha=0.7)
-        ax.scatter(row["d"], yp, color=color, s=80, zorder=3,
-                   edgecolors="white", linewidths=1.0)
+        ax.scatter(row["d"], yp, color=color, s=45, zorder=3,
+                   edgecolors="white", linewidths=0.8)
 
         x_annot = row["d_upper"] + 0.08
         ax.text(x_annot, yp,
                 f"{row['d']:+.2f}  (n\u2090={row['n_participants']})",
-                fontsize=7, va="center", ha="left", color="#444")
+                fontsize=6, va="center", ha="left", color="#444")
 
     for i, lbl in enumerate(y_labels):
         is_group = lbl in ds_order
@@ -1529,12 +1654,12 @@ def _panel_e_cross_dataset(ax, data: dict) -> None:
                        linestyle="-", alpha=0.3, xmin=0.0, xmax=1.0)
 
     ax.set_yticks(y_positions)
-    ax.set_yticklabels(y_labels, fontsize=8.5)
+    ax.set_yticklabels(y_labels, fontsize=7.5)
     for tick_label in ax.get_yticklabels():
         text = tick_label.get_text()
         if text in ds_order:
             tick_label.set_fontweight("bold")
-            tick_label.set_fontsize(9.5)
+            tick_label.set_fontsize(8.5)
             color = DATASET_COLORS.get(text, COLORS["gray"])
             tick_label.set_color(color)
 
@@ -1542,10 +1667,10 @@ def _panel_e_cross_dataset(ax, data: dict) -> None:
         ax.axvline(ref_d, color=COLORS["gray"], linewidth=0.4,
                    linestyle=":", zorder=0, alpha=0.25)
 
-    ax.set_xlabel("Cohen's d  (signed effect size)", fontsize=11)
+    ax.set_xlabel("Cohen's d  (signed effect size)", fontsize=12)
     ax.set_title("Effect sizes — pre-specified endpoints",
-                 fontsize=13, fontweight="bold", pad=12)
-    ax.tick_params(axis="x", which="major", labelsize=9.5)
+                 fontsize=12, fontweight="bold", pad=10)
+    ax.tick_params(axis="x", which="major", labelsize=8.5)
 
     all_vals = effect_df[["d_lower", "d_upper", "d"]].values.flatten()
     x_margin = max(abs(all_vals.min()), abs(all_vals.max())) + 0.5
@@ -1611,6 +1736,128 @@ def generate() -> None:
     fig.tight_layout()
     save_panel(fig, "panel_E_cross_dataset_effects", FIGURE_NAME, MAIN_OUTPUT)
 
+    # ── Combined artboard (180 × ≤215 mm) ──
+    _SMALL_RC = {
+        "font.size": 5,
+        "axes.titlesize": 5.5,
+        "axes.labelsize": 5,
+        "xtick.labelsize": 4.5,
+        "ytick.labelsize": 4.5,
+        "legend.fontsize": 4,
+        "legend.title_fontsize": 4,
+    }
+    _MAX_FONT_COMPOSITE = 6
+
+    def _cap_fontsize(fig, maximum):
+        """Shrink every text element in *fig* that exceeds *maximum*."""
+        for ax in fig.get_axes():
+            for txt in ([ax.title, ax.xaxis.label, ax.yaxis.label]
+                        + ax.get_xticklabels() + ax.get_yticklabels()
+                        + ax.texts):
+                if txt.get_fontsize() > maximum:
+                    txt.set_fontsize(maximum)
+            if ax.get_legend():
+                for txt in ax.get_legend().get_texts():
+                    if txt.get_fontsize() > maximum:
+                        txt.set_fontsize(maximum)
+        for txt in fig.texts:
+            if txt.get_fontsize() > maximum:
+                txt.set_fontsize(maximum)
+
+    _prev_rc = {k: plt.rcParams[k] for k in _SMALL_RC}
+    plt.rcParams.update(_SMALL_RC)
+
+    _mm = 1.0 / 25.4
+    fig_c = plt.figure(figsize=(180 * _mm, 215 * _mm))
+
+    #   Row 0: A | B
+    #   Row 1: C (power curves, full width)
+    #   Row 2: D | E
+    outer = fig_c.add_gridspec(
+        3, 1,
+        height_ratios=[1, 1.2, 1.5],
+        hspace=0.55,
+        left=0.08, right=0.96, top=0.97, bottom=0.05,
+    )
+
+    # Row 0: A | B
+    gs0 = outer[0].subgridspec(1, 2, wspace=0.35)
+    ax_a = fig_c.add_subplot(gs0[0])
+    ax_b = fig_c.add_subplot(gs0[1])
+
+    # Row 1: C — power curves spanning full width
+    axes_c = _panel_c_power_grid(
+        fig_c, outer[1], data, inner_wspace=0.35,
+    )
+
+    # Row 2: D | E  (E wider for forest plot)
+    gs2 = outer[2].subgridspec(1, 2, wspace=0.40, width_ratios=[1, 1.5])
+    ax_d = fig_c.add_subplot(gs2[0])
+    ax_e = fig_c.add_subplot(gs2[1])
+
+    # Draw panels onto composite axes
+    _panel_a(ax_a, data)
+    _panel_b(ax_b, data)
+    _panel_d_se_comparison(ax_d, data)
+    _panel_e_cross_dataset(ax_e, data)
+
+    # ── Combined-panel-only adjustments ──
+
+    # Move legends inside plots for space efficiency
+    _inside = {
+        ax_a: "upper right",
+        ax_b: "lower right",
+        ax_d: "lower right",
+        ax_e: "lower right",
+    }
+    for ax_target, loc in _inside.items():
+        leg = ax_target.get_legend()
+        if leg:
+            handles = leg.legend_handles
+            labels = [t.get_text() for t in leg.get_texts()]
+            leg.remove()
+            ax_target.legend(
+                handles=handles, labels=labels,
+                fontsize=3.5, loc=loc,
+                frameon=True, framealpha=0.85,
+                handlelength=1, handletextpad=0.3,
+                borderpad=0.3, labelspacing=0.2,
+            )
+
+    # Shrink annotation text in composite
+    for txt in ax_a.texts:
+        if txt.get_fontsize() > 5:
+            txt.set_fontsize(max(txt.get_fontsize() * 0.55, 3.0))
+    for txt in ax_b.texts:
+        if txt.get_fontsize() > 5:
+            txt.set_fontsize(max(txt.get_fontsize() * 0.55, 3.0))
+
+    # Cap hard-coded font sizes to composite maximum
+    _cap_fontsize(fig_c, _MAX_FONT_COMPOSITE)
+
+    # Bold panel labels (after cap so they stay prominent)
+    _lbl_fs = 7
+    for ax, lbl in [
+        (ax_a, "A"), (ax_b, "B"),
+        (ax_d, "D"), (ax_e, "E"),
+    ]:
+        ax.text(-0.15, 1.12, lbl, transform=ax.transAxes,
+                fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    if axes_c:
+        axes_c[0].text(
+            -0.10, 1.20, "C", transform=axes_c[0].transAxes,
+            fontsize=_lbl_fs, fontweight="bold", va="top", ha="left",
+        )
+
+    plt.rcParams.update(_prev_rc)
+
+    save_panel(fig_c, FIGURE_NAME, FIGURE_NAME, MAIN_OUTPUT, close=False)
+    pdf_path = MAIN_OUTPUT / f"{FIGURE_NAME}_panels" / f"{FIGURE_NAME}.pdf"
+    fig_c.savefig(str(pdf_path), format="pdf", bbox_inches="tight",
+                  facecolor="white")
+    plt.close(fig_c)
+    print(f"    Saved combined artboard (PNG + PDF)")
+
     # Cleanup
     adata = data.get("adata")
     if adata is not None:
@@ -1619,7 +1866,7 @@ def generate() -> None:
     clear_cache()
     gc.collect()
 
-    print(f"  Figure 3 complete: 5 panels (A–E)")
+    print(f"  Figure 3 complete: 5 individual panels + combined (A–E)")
 
 
 # ── CLI entry point ────────────────────────────────────────────────────
