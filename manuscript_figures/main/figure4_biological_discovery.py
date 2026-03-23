@@ -772,10 +772,11 @@ def panel_A(ax, data: dict):
             edgecolor="white", linewidth=0.3, height=0.7)
     ax.axvline(0, color="black", lw=0.8)
     ax.set_yticks(y_pos)
-    ax.set_yticklabels(selected["feature"].values, fontsize=7)
+    ax.set_yticklabels(selected["feature"].values, fontsize=4)
 
     ax.set_xlabel(r"Effect size ($\beta_{\mathrm{DiD}}$)")
-    ax.set_title("Top Genes by Effect Size — Melanoma DiD", fontsize=11)
+    ax.set_title("Top Genes by Effect Size — Melanoma DiD", fontsize=11,
+                 fontweight="bold")
 
     legend_handles = [
         mpatches.Patch(color=COLORS["treated"], alpha=0.9,
@@ -787,7 +788,7 @@ def panel_A(ax, data: dict):
         mpatches.Patch(color=COLORS["control"], alpha=0.35,
                        label="Non-responder ↑ (n.s.)"),
     ]
-    ax.legend(handles=legend_handles, fontsize=7, loc="lower right",
+    ax.legend(handles=legend_handles, fontsize=9, loc="lower right",
               frameon=True, framealpha=0.9)
     despine(ax)
 
@@ -808,7 +809,8 @@ def _panel_A_signature_waterfall(ax, data: dict):
     ax.set_yticks(y_pos)
     ax.set_yticklabels(df["display"].values, fontsize=8)
     ax.set_xlabel(r"DiD coefficient ($\beta_{\mathrm{DiD}}$)")
-    ax.set_title("Signature DiD Effects (Melanoma)", fontsize=11)
+    ax.set_title("Signature DiD Effects (Melanoma)", fontsize=11,
+                 fontweight="bold")
     ax.invert_yaxis()
     despine(ax)
 
@@ -904,7 +906,7 @@ def panel_B(ax, data: dict):
     ax.set_yticks(y_pos)
     ax.set_yticklabels(df_selected["pathway"].values, fontsize=8)
     ax.set_xlabel("Normalized Enrichment Score (NES)")
-    ax.set_title("Pathway Enrichment", fontsize=11)
+    ax.set_title("Pathway Enrichment", fontsize=11, fontweight="bold")
 
     # Build legend only for categories present
     def _is_sig(row):
@@ -949,7 +951,7 @@ def panel_B(ax, data: dict):
             label="Non-responder ↑ (n.s.)",
         ))
     if legend_handles:
-        ax.legend(handles=legend_handles, fontsize=7, loc="lower right",
+        ax.legend(handles=legend_handles, fontsize=9, loc="lower right",
                   frameon=True, framealpha=0.9)
     despine(ax)
 
@@ -970,7 +972,7 @@ def _panel_B_signature_waterfall(ax, data: dict):
     ax.set_yticks(y_pos)
     ax.set_yticklabels(df["display"].values, fontsize=8)
     ax.set_xlabel(r"DiD coefficient ($\beta_{\mathrm{DiD}}$)")
-    ax.set_title("DiD Signature Effects", fontsize=11)
+    ax.set_title("DiD Signature Effects", fontsize=11, fontweight="bold")
     despine(ax)
 
 
@@ -978,7 +980,7 @@ def _panel_B_signature_waterfall(ax, data: dict):
 # Panel C -- Leading-edge gene overlap heatmap
 # ======================================================================
 
-def panel_C(ax, data: dict):
+def panel_C(ax, data: dict, *, composite: bool = False):
     """Leading-edge gene overlap heatmap across top enriched pathways.
 
     Information-dense design:
@@ -987,6 +989,9 @@ def panel_C(ax, data: dict):
     - Top marginal bar showing gene recurrence count
     - Hierarchical column clustering for gene co-occurrence
     - Capped to 8 pathways × 20 genes for readability
+
+    When *composite* is True, the marginal bar and tight_layout are
+    skipped so the panel can be embedded in a composite GridSpec figure.
     """
     from scipy.cluster.hierarchy import leaves_list, linkage
     from scipy.spatial.distance import pdist
@@ -1187,62 +1192,67 @@ def panel_C(ax, data: dict):
             if matrix[i, j] == 1:
                 rgb[i, j] = fill
 
-    # ── Plot with imshow (tight, no whitespace) ──
+    # ── Transpose: genes on Y-axis, pathways on X-axis ──
+    rgb = np.transpose(rgb, (1, 0, 2))  # (n_genes, n_pw, 3)
+
     ax.imshow(rgb, aspect="auto", interpolation="nearest", origin="lower")
 
     # Thin white grid lines
-    for i in range(n_pw + 1):
+    for i in range(n_genes + 1):
         ax.axhline(i - 0.5, color="white", linewidth=0.8, zorder=2)
-    for j in range(n_genes + 1):
+    for j in range(n_pw + 1):
         ax.axvline(j - 0.5, color="white", linewidth=0.8, zorder=2)
 
-    # Separator line between NES<0 and NES>0 blocks
+    # Separator line between NES<0 and NES>0 blocks (now vertical)
     if n_sep > 0 and n_sep < n_pw:
-        ax.axhline(n_sep - 0.5, color="black", linewidth=1.5, zorder=3)
+        ax.axvline(n_sep - 0.5, color="black", linewidth=1.5, zorder=3)
 
-    # X-axis: gene labels
-    ax.set_xticks(range(n_genes))
-    ax.set_xticklabels(shared_genes, rotation=55, ha="right", fontsize=6,
-                       style="italic")
-
-    # Y-axis: pathway labels (no FDR annotation), coloured by NES direction
-    ax.set_yticks(range(n_pw))
-    ax.set_yticklabels(pathways, fontsize=6.5)
-    for i, (pw, label) in enumerate(zip(pathways, ax.get_yticklabels())):
+    # X-axis: pathway labels, coloured by NES direction
+    ax.set_xticks(range(n_pw))
+    ax.set_xticklabels(pathways, rotation=35, ha="right", fontsize=5)
+    for i, (pw, label) in enumerate(zip(pathways, ax.get_xticklabels())):
         label.set_color(BLUE if pathway_nes.get(pw, 0) > 0 else ORANGE)
         label.set_fontweight("bold")
-    ax.tick_params(axis="both", length=0)
 
-    # ── Top marginal bar: gene recurrence count ──
-    # Run tight_layout FIRST so ax position accounts for tick labels,
-    # then position the marginal bar relative to the adjusted axes.
-    fig = ax.get_figure()
-    fig.tight_layout(rect=[0, 0, 1, 0.90])  # leave top 10% for bar+title
-    ax_pos = ax.get_position()
-    bar_height = 0.04  # fraction of figure height
-    bar_ax = fig.add_axes([
-        ax_pos.x0, ax_pos.y1 + 0.02,
-        ax_pos.width, bar_height,
-    ])
-    bar_colors = ["#555555"] * n_genes
-    bar_ax.bar(range(n_genes), col_counts, width=0.7, color=bar_colors,
-               edgecolor="none")
-    bar_ax.set_xlim(-0.5, n_genes - 0.5)
-    bar_ax.set_ylim(0, max(col_counts) + 0.5)
-    bar_ax.set_xticks([])
-    bar_ax.set_ylabel("# paths", fontsize=5.5, rotation=0, labelpad=25,
-                      va="center")
-    bar_ax.tick_params(axis="y", labelsize=5.5, length=2)
-    bar_ax.yaxis.set_major_locator(plt.MaxNLocator(integer=True, nbins=3))
-    for spine in ["top", "right", "bottom"]:
-        bar_ax.spines[spine].set_visible(False)
-    bar_ax.spines["left"].set_linewidth(0.5)
+    # Y-axis: gene labels
+    ax.set_yticks(range(n_genes))
+    ax.set_yticklabels(shared_genes, fontsize=6, style="italic")
+    ax.tick_params(axis="both", length=0)
 
     ax.set_xlabel("")
     ax.set_ylabel("")
 
-    # Title on the bar axes — sits above bars, won't overlap heatmap
-    bar_ax.set_title("Leading-Edge Gene Overlap", fontsize=11, pad=8)
+    # Gene recurrence: how many pathways each gene appears in
+    # col_counts was computed from original (n_pw × n_genes) matrix
+    gene_counts = col_counts
+
+    if not composite:
+        # ── Right marginal bar: gene recurrence count ──
+        fig = ax.get_figure()
+        fig.tight_layout(rect=[0, 0, 0.90, 1])
+        ax_pos = ax.get_position()
+        bar_width = 0.04
+        bar_ax = fig.add_axes([
+            ax_pos.x1 + 0.02, ax_pos.y0,
+            bar_width, ax_pos.height,
+        ])
+        bar_colors = ["#555555"] * n_genes
+        bar_ax.barh(range(n_genes), gene_counts, height=0.7,
+                    color=bar_colors, edgecolor="none")
+        bar_ax.set_ylim(-0.5, n_genes - 0.5)
+        bar_ax.set_xlim(0, max(gene_counts) + 0.5)
+        bar_ax.set_yticks([])
+        bar_ax.set_xlabel("# paths", fontsize=5.5, labelpad=5)
+        bar_ax.tick_params(axis="x", labelsize=5.5, length=2)
+        bar_ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True, nbins=3))
+        for spine in ["top", "right", "left"]:
+            bar_ax.spines[spine].set_visible(False)
+        bar_ax.spines["bottom"].set_linewidth(0.5)
+        ax.set_title("Leading-Edge Gene Overlap", fontsize=11,
+                     fontweight="bold", pad=8)
+    else:
+        ax.set_title("Leading-Edge Gene Overlap", fontsize=11,
+                     fontweight="bold")
 
     # Legend — inside the heatmap lower-right (gray empty region)
     legend_handles = [
@@ -1252,7 +1262,7 @@ def panel_C(ax, data: dict):
                        label="Not in leading edge"),
     ]
     ax.legend(
-        handles=legend_handles, fontsize=5.5, loc="lower right",
+        handles=legend_handles, fontsize=7, loc="lower right",
         frameon=True, framealpha=0.9, edgecolor="#CCCCCC",
         handlelength=1.0, handleheight=0.7,
     )
@@ -1276,7 +1286,7 @@ def _panel_C_did_summary(ax, data: dict):
     ax.set_yticks(y_pos)
     ax.set_yticklabels(df["display"].values, fontsize=8)
     ax.set_xlabel(r"DiD coefficient ($\beta_{\mathrm{DiD}}$)")
-    ax.set_title("DiD Signature Effects", fontsize=11)
+    ax.set_title("DiD Signature Effects", fontsize=11, fontweight="bold")
     despine(ax)
 
 
@@ -1328,7 +1338,8 @@ def panel_D(ax, data: dict):
     ax.set_yticks(y)
     ax.set_yticklabels(df["display"].values, fontsize=9)
     ax.set_xlabel(r"DiD coefficient ($\beta$, standardised)")
-    ax.set_title(f"Signature DiD Effects ({ci_label})", fontsize=11)
+    ax.set_title(f"Signature DiD Effects ({ci_label})", fontsize=11,
+                 fontweight="bold")
 
     # Legend matching Figure 2 style
     legend_handles = [
@@ -1337,7 +1348,7 @@ def panel_D(ax, data: dict):
         plt.Line2D([0], [0], marker="o", color=COLORS["control"], lw=1.5,
                    markersize=6, label="Non-responder ↑"),
     ]
-    ax.legend(handles=legend_handles, fontsize=8, loc="lower right",
+    ax.legend(handles=legend_handles, fontsize=10, loc="lower right",
               frameon=True, framealpha=0.9)
 
     n_sig = sig_mask.sum()
@@ -1351,10 +1362,12 @@ def panel_D(ax, data: dict):
 # Panel E -- Gene-level volcano plot
 # ======================================================================
 
-def panel_E(ax, data: dict):
+def panel_E(ax, data: dict, *, composite: bool = False):
     """Volcano plot of gene-level DiD effects (Sade-Feldman).
 
     Labels prioritize protein-coding genes over pseudogenes/lncRNAs.
+    When *composite* is True, fewer labels are drawn and adjustText
+    is skipped to avoid cluttering the small composite axes.
     """
     gene_results = data["gene_results"]
 
@@ -1367,7 +1380,8 @@ def panel_E(ax, data: dict):
             bbox=dict(boxstyle="round,pad=0.5", facecolor="#f0f0f0",
                       edgecolor=COLORS["gray"]),
         )
-        ax.set_title("Gene-Level Volcano Plot", fontsize=11)
+        ax.set_title("Gene-Level Volcano Plot", fontsize=11,
+                     fontweight="bold")
         ax.axis("off")
         return
 
@@ -1395,9 +1409,11 @@ def panel_E(ax, data: dict):
         "down": COLORS["control"],
     }
     alpha_map = {"ns": 0.3, "up": 0.8, "down": 0.8}
-    size_map = {"ns": 8, "up": 20, "down": 20}
+    if composite:
+        size_map = {"ns": 2, "up": 6, "down": 6}
+    else:
+        size_map = {"ns": 8, "up": 20, "down": 20}
 
-    # Plot non-significant first, then significant on top
     for cat in ["ns", "up", "down"]:
         sub = df[df["category"] == cat]
         if len(sub) == 0:
@@ -1408,11 +1424,7 @@ def panel_E(ax, data: dict):
             s=size_map[cat], edgecolors="none", rasterized=True,
         )
 
-    # Label top PROTEIN-CODING genes using a combined score that weights
-    # both statistical significance and effect size.  This ensures genes
-    # at the "tips" of the volcano (high |β| AND high -log10(p)) are
-    # always labelled — the exact genes a reader's eye is drawn to.
-    N_LABELS = 10  # per direction
+    N_LABELS = 10
     labelled_genes: list[str] = []  # ordered by score (highest first)
 
     for sign in ("pos", "neg"):
@@ -1473,35 +1485,33 @@ def panel_E(ax, data: dict):
         labelled_genes.extend(picks)
 
     labelled_set = set(labelled_genes)
+    labelled_rows = df[df["feature"].isin(labelled_set)].copy()
 
-    # --- Render labels using adjustText for professional placement ---
     from adjustText import adjust_text as _adjust_text
 
-    labelled_rows = df[df["feature"].isin(labelled_set)].copy()
+    _lbl_fs = 3.5 if composite else 6.5
+    _arrow_lw = 0.25 if composite else 0.4
 
     texts = []
     for _, row in labelled_rows.iterrows():
-        dir_clr = (COLORS["treated"] if row[beta_col] > 0
-                   else COLORS["control"])
         t = ax.text(
             row[beta_col], row["nlog10"], row["feature"],
-            fontsize=6.5, fontweight="bold", color=dir_clr,
+            fontsize=_lbl_fs, fontweight="bold", color="#444444",
             ha="center", va="center", zorder=5,
         )
         texts.append(t)
 
-    # Constrain label movement so arrows stay short and professional.
     x_span = df[beta_col].max() - df[beta_col].min()
     y_span = df["nlog10"].max() - df["nlog10"].min()
     _adjust_text(
         texts, ax=ax,
-        arrowprops=dict(arrowstyle="-", color="#888888", lw=0.4,
+        arrowprops=dict(arrowstyle="-", color="#888888", lw=_arrow_lw,
                         shrinkA=5, shrinkB=3),
-        force_text=(1.5, 1.5),
-        force_points=(3.0, 3.0),
-        expand=(1.5, 1.8),
+        force_text=(2.0, 2.0),
+        force_points=(3.5, 3.5),
+        expand=(1.8, 2.0),
         ensure_inside_axes=True,
-        max_move=(x_span * 0.15, y_span * 0.15),
+        max_move=(x_span * 0.25, y_span * 0.25),
         only_move="xy",
     )
 
@@ -1512,7 +1522,8 @@ def panel_E(ax, data: dict):
 
     ax.set_xlabel(r"Effect size ($\beta_{\mathrm{DiD}}$)")
     ax.set_ylabel(r"$-\log_{10}$(p)")
-    ax.set_title("Gene-Level Volcano (Melanoma DiD)", fontsize=11)
+    ax.set_title("Gene-Level Volcano (Melanoma DiD)", fontsize=11,
+                 fontweight="bold")
 
     # Legend — no footnotes, no summary boxes
     legend_handles = [
@@ -1523,7 +1534,7 @@ def panel_E(ax, data: dict):
         mpatches.Patch(color=COLORS["gray"], alpha=0.3,
                        label="Not significant"),
     ]
-    ax.legend(handles=legend_handles, fontsize=8, loc="lower left",
+    ax.legend(handles=legend_handles, fontsize=10, loc="lower left",
               frameon=True, framealpha=0.9)
     despine(ax)
 
@@ -1550,7 +1561,7 @@ def panel_C_replicated(ax, data: dict):
         ax.text(0.5, 0.5, "Multi-dataset GSEA results unavailable",
                 transform=ax.transAxes, ha="center", va="center",
                 fontsize=12, color=COLORS["gray"])
-        ax.set_title("Replicated Pathways", fontsize=11)
+        ax.set_title("Replicated Pathways", fontsize=11, fontweight="bold")
         ax.axis("off")
         return
 
@@ -1587,7 +1598,7 @@ def panel_C_replicated(ax, data: dict):
         ax.text(0.5, 0.5, "No pathways found across datasets",
                 transform=ax.transAxes, ha="center", va="center",
                 fontsize=12, color=COLORS["gray"])
-        ax.set_title("Replicated Pathways", fontsize=11)
+        ax.set_title("Replicated Pathways", fontsize=11, fontweight="bold")
         ax.axis("off")
         return
 
@@ -1669,7 +1680,7 @@ def panel_C_replicated(ax, data: dict):
         ax.text(0.5, 0.5, "No pathways replicated across ≥3 datasets",
                 transform=ax.transAxes, ha="center", va="center",
                 fontsize=12, color=COLORS["gray"])
-        ax.set_title("Replicated Pathways", fontsize=11)
+        ax.set_title("Replicated Pathways", fontsize=11, fontweight="bold")
         ax.axis("off")
         return
     
@@ -1741,7 +1752,8 @@ def panel_C_replicated(ax, data: dict):
     
     ax.set_xlabel("Dataset", fontsize=9)
     ax.set_ylabel("Pathway", fontsize=9)
-    ax.set_title("Replicated Pathways Across Datasets (* FDR < 0.25)", fontsize=11)
+    ax.set_title("Replicated Pathways Across Datasets (* FDR < 0.25)",
+                 fontsize=11, fontweight="bold")
     
     ax.tick_params(axis="both", length=0)
     despine(ax)
@@ -1765,7 +1777,8 @@ def panel_F(ax, data: dict):
         ax.text(0.5, 0.5, "Gene-level results unavailable",
                 transform=ax.transAxes, ha="center", va="center",
                 fontsize=12, color=COLORS["gray"])
-        ax.set_title("Cell-Type DiD Effects", fontsize=11)
+        ax.set_title("Cell-Type DiD Effects", fontsize=11,
+                     fontweight="bold")
         ax.axis("off")
         return
 
@@ -1913,11 +1926,12 @@ def panel_F(ax, data: dict):
         )
 
     ax.set_xticks(np.arange(effect_mat.shape[1]))
-    ax.set_xticklabels(effect_mat.columns, rotation=45, ha="right",
+    ax.set_xticklabels(effect_mat.columns, rotation=30, ha="right",
                        fontsize=6.5)
     ax.set_yticks(np.arange(effect_mat.shape[0]))
     ax.set_yticklabels(effect_mat.index, fontsize=7)
-    ax.set_title("Cell-Type DiD Effects (Top Genes)", fontsize=11)
+    ax.set_title("Cell-Type DiD Effects (Top Genes)", fontsize=11,
+                 fontweight="bold")
 
     # Colorbar
     cbar = ax.figure.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
@@ -1963,6 +1977,121 @@ def generate():
         if panel_label != "D":
             fig_p.tight_layout()
         save_panel(fig_p, f"panel_{panel_label}", FIGURE_NAME, MAIN_OUTPUT)
+
+    # ── Combined artboard (180 × ≤215 mm) ──
+    _SMALL_RC = {
+        "font.size": 5,
+        "axes.titlesize": 5.5,
+        "axes.labelsize": 5,
+        "xtick.labelsize": 4.5,
+        "ytick.labelsize": 4.5,
+        "legend.fontsize": 4,
+        "legend.title_fontsize": 4,
+    }
+    _MAX_FONT_COMPOSITE = 6
+
+    def _cap_fontsize(fig, maximum):
+        """Shrink every text element in *fig* that exceeds *maximum*."""
+        for _ax in fig.get_axes():
+            for txt in ([_ax.title, _ax.xaxis.label, _ax.yaxis.label]
+                        + _ax.get_xticklabels() + _ax.get_yticklabels()
+                        + _ax.texts):
+                if txt.get_fontsize() > maximum:
+                    txt.set_fontsize(maximum)
+            if _ax.get_legend():
+                for txt in _ax.get_legend().get_texts():
+                    if txt.get_fontsize() > maximum:
+                        txt.set_fontsize(maximum)
+        for txt in fig.texts:
+            if txt.get_fontsize() > maximum:
+                txt.set_fontsize(maximum)
+
+    _prev_rc = {k: plt.rcParams[k] for k in _SMALL_RC}
+    plt.rcParams.update(_SMALL_RC)
+
+    _mm = 1.0 / 25.4
+    fig_c = plt.figure(figsize=(180 * _mm, 190 * _mm))
+
+    #   Row 0: A (volcano) | B (waterfall)
+    #   Row 1: C (GSEA bars) | D (leading-edge heatmap)
+    #   Row 2: E (cell-type heatmap, full width)
+    outer = fig_c.add_gridspec(
+        4, 1,
+        height_ratios=[1, 1.5, 0.02, 1.0],
+        hspace=0.45,
+        left=0.08, right=0.96, top=0.97, bottom=0.05,
+    )
+
+    # Row 0: A | B
+    gs0 = outer[0].subgridspec(1, 2, wspace=0.35)
+    ax_a = fig_c.add_subplot(gs0[0])
+    ax_b = fig_c.add_subplot(gs0[1])
+
+    # Row 1: C | D  (D wider for gene labels)
+    gs1 = outer[1].subgridspec(1, 2, wspace=0.25, width_ratios=[1, 1.4])
+    ax_c = fig_c.add_subplot(gs1[0])
+    ax_d = fig_c.add_subplot(gs1[1])
+
+    # Row 2: spacer (empty)
+    # Row 3: E (full width)
+    ax_e = fig_c.add_subplot(outer[3])
+
+    # Draw panels onto composite axes
+    panel_E(ax_a, data, composite=True)  # A = volcano
+    panel_A(ax_b, data)       # B = waterfall
+    panel_B(ax_c, data)       # C = GSEA bars
+    panel_C(ax_d, data, composite=True)  # D = leading-edge (no marginal bar)
+    panel_F(ax_e, data)       # E = cell-type heatmap
+
+    # ── Combined-panel-only adjustments ──
+
+    # Move legends inside plots for space efficiency
+    _inside = {
+        ax_a: "upper right",
+        ax_b: "lower right",
+        ax_c: "lower right",
+        ax_d: "lower right",
+    }
+    for ax_target, loc in _inside.items():
+        leg = ax_target.get_legend()
+        if leg:
+            handles = leg.legend_handles
+            labels = [t.get_text() for t in leg.get_texts()]
+            leg.remove()
+            ax_target.legend(
+                handles=handles, labels=labels,
+                fontsize=3.5, loc=loc,
+                frameon=True, framealpha=0.85,
+                handlelength=1, handletextpad=0.3,
+                borderpad=0.3, labelspacing=0.2,
+            )
+
+    # Shrink annotation text in composite
+    for _ax in [ax_a, ax_b]:
+        for txt in _ax.texts:
+            if txt.get_fontsize() > 5:
+                txt.set_fontsize(max(txt.get_fontsize() * 0.55, 3.0))
+
+    # Cap hard-coded font sizes to composite maximum
+    _cap_fontsize(fig_c, _MAX_FONT_COMPOSITE)
+
+    # Bold panel labels (after cap so they stay prominent)
+    _lbl_fs = 7
+    for _ax, lbl in [
+        (ax_a, "A"), (ax_b, "B"), (ax_c, "C"),
+        (ax_d, "D"), (ax_e, "E"),
+    ]:
+        _ax.text(-0.12, 1.12, lbl, transform=_ax.transAxes,
+                 fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+
+    plt.rcParams.update(_prev_rc)
+
+    save_panel(fig_c, FIGURE_NAME, FIGURE_NAME, MAIN_OUTPUT, close=False)
+    pdf_path = MAIN_OUTPUT / f"{FIGURE_NAME}_panels" / f"{FIGURE_NAME}.pdf"
+    fig_c.savefig(str(pdf_path), format="pdf", bbox_inches="tight",
+                  facecolor="white")
+    plt.close(fig_c)
+    print(f"    Saved combined artboard (PNG + PDF)")
 
     # ── Cleanup ───────────────────────────────────────────────────────
     del data["adata"]
