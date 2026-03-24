@@ -173,8 +173,20 @@ def _run_single_iteration(args: tuple) -> list[dict]:
      effect_sizes, noise_sd, methods, sim_kwargs) = args
 
     import warnings
-    warnings.filterwarnings("ignore")
 
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        return _run_single_iteration_inner(
+            it, it_seed, n_participants, n_genes, n_cells_per_participant,
+            effect_sizes, noise_sd, methods, sim_kwargs,
+        )
+
+
+def _run_single_iteration_inner(
+    it, it_seed, n_participants, n_genes, n_cells_per_participant,
+    effect_sizes, noise_sd, methods, sim_kwargs,
+) -> list[dict]:
+    """Inner implementation — called inside a ``catch_warnings`` context."""
     sim = simulate_did_data(
         n_participants=n_participants,
         n_genes=n_genes,
@@ -281,7 +293,7 @@ def run_method_comparison(
     else:
         all_rows = []
         with mp.Pool(n_jobs) as pool:
-            for batch in pool.imap_unordered(_run_single_iteration, task_args):
+            for batch in pool.imap(_run_single_iteration, task_args):
                 all_rows.extend(batch)
                 # Progress callback (if caller wraps with tqdm etc.)
                 done = len(all_rows) // (len(methods) * n_genes)
@@ -366,6 +378,10 @@ def _run_mixed_did(adata, gene_cols: list[str]) -> dict:
         )
     out = {}
     for _, row in res.iterrows():
+        # Skip non-converged fits — their coefficients are unreliable
+        if not row.get("converged", True):
+            logger.debug("Mixed DiD did not converge for %s", row["feature"])
+            continue
         out[row["feature"]] = {
             "beta": row["beta_DiD"],
             "pvalue": row["p_DiD"],
