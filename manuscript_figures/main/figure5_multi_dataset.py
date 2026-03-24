@@ -116,8 +116,8 @@ def _forest_plot(
         lo, hi = row[ci_lo_col], row[ci_hi_col]
         color = color_pos if es > 0 else color_neg
 
-        lw = 1.8
-        ms = 6.5
+        lw = 1.2
+        ms = 4.5
 
         ax.plot([lo, hi], [i, i], color=color, lw=lw, solid_capstyle="round")
         ax.plot(
@@ -612,7 +612,7 @@ def _build_heatmap_data(
 
 def panel_a_covid(ax, data: dict[str, Any]) -> None:
     """Panel A: COVID-19 Stephenson cross-sectional (Severe vs Mild)."""
-    ax.set_title("COVID-19", fontsize=10, loc="left", pad=8)
+    ax.set_title("COVID-19", fontsize=6, fontweight="bold", loc="left", pad=8)
     ax.text(-0.12, 1.05, "A", transform=ax.transAxes, fontsize=14,
             fontweight="bold", va="bottom")
 
@@ -639,7 +639,7 @@ def panel_a_covid(ax, data: dict[str, Any]) -> None:
 
 def panel_b_vaccine(ax, data: dict[str, Any]) -> None:
     """Panel B: Vaccine within-arm paired Pre->Post."""
-    ax.set_title("Vaccine (GSE171964)", fontsize=10, loc="left", pad=8)
+    ax.set_title("Vaccine (GSE171964)", fontsize=6, fontweight="bold", loc="left", pad=8)
     ax.text(-0.12, 1.05, "B", transform=ax.transAxes, fontsize=14,
             fontweight="bold", va="bottom")
 
@@ -666,7 +666,7 @@ def panel_b_vaccine(ax, data: dict[str, Any]) -> None:
 
 def panel_c_aml(ax, data: dict[str, Any]) -> None:
     """Panel C: AML clinical dataset (within-arm Pre→Post)."""
-    ax.set_title("AML (GSE116256)", fontsize=10, loc="left", pad=8)
+    ax.set_title("AML (GSE116256)", fontsize=6, fontweight="bold", loc="left", pad=8)
     ax.text(-0.12, 1.05, "C", transform=ax.transAxes, fontsize=14,
             fontweight="bold", va="bottom")
 
@@ -693,7 +693,7 @@ def panel_c_aml(ax, data: dict[str, Any]) -> None:
 
 def panel_d_cart(ax, data: dict[str, Any]) -> None:
     """Panel D: CAR-T clinical dataset (within-arm)."""
-    ax.set_title("CAR-T (GSE290722)", fontsize=10, loc="left", pad=8)
+    ax.set_title("CAR-T (GSE290722)", fontsize=6, fontweight="bold", loc="left", pad=8)
     ax.text(-0.12, 1.05, "D", transform=ax.transAxes, fontsize=14,
             fontweight="bold", va="bottom")
 
@@ -720,7 +720,7 @@ def panel_d_cart(ax, data: dict[str, Any]) -> None:
 
 def panel_e_melanoma(ax, data: dict[str, Any]) -> None:
     """Panel E: Melanoma (Sade-Feldman) DiD — Responder vs Non-responder."""
-    ax.set_title("Melanoma", fontsize=10, loc="left", pad=8)
+    ax.set_title("Melanoma", fontsize=6, fontweight="bold", loc="left", pad=8)
     ax.text(-0.12, 1.05, "E", transform=ax.transAxes, fontsize=14,
             fontweight="bold", va="bottom")
 
@@ -749,7 +749,7 @@ def panel_f_heatmap(ax, data: dict[str, Any]) -> None:
     """Panel F: Cross-dataset standardised effect-size heatmap."""
     import seaborn as sns
 
-    ax.set_title("Cross-Dataset Effect Sizes", fontsize=10, loc="left", pad=8)
+    ax.set_title("Cross-Dataset Effect Sizes", fontsize=6, fontweight="bold", loc="left", pad=8)
     ax.text(-0.12, 1.05, "F", transform=ax.transAxes, fontsize=14,
             fontweight="bold", va="bottom")
 
@@ -793,7 +793,7 @@ def panel_f_heatmap(ax, data: dict[str, Any]) -> None:
 
     ax.set_xlabel("")
     ax.set_ylabel("")
-    ax.set_xticklabels(ax.get_xticklabels(), rotation=40, ha="right",
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=25, ha="right",
                        fontsize=7.5)
     ax.set_yticklabels(ax.get_yticklabels(), rotation=0, fontsize=8.5)
 
@@ -844,6 +844,138 @@ def generate(*, save: bool = True) -> None:
             panel_fn(ax_p, data)
             fig_p.tight_layout(pad=0.6)
             save_panel(fig_p, panel_name, FIG_NAME, MAIN_OUTPUT)
+
+    # ── Combined artboard (180 × ≤215 mm) ────────────────────────────────
+    _SMALL_RC = {
+        "font.size": 5,
+        "axes.titlesize": 5.5,
+        "axes.labelsize": 5,
+        "xtick.labelsize": 4.5,
+        "ytick.labelsize": 4.5,
+        "legend.fontsize": 4,
+        "legend.title_fontsize": 4,
+    }
+    _MAX_FONT_COMPOSITE = 6
+
+    def _cap_fontsize(fig, maximum):
+        """Shrink every text element in *fig* that exceeds *maximum*."""
+        for ax in fig.get_axes():
+            for txt in ([ax.title, ax.xaxis.label, ax.yaxis.label]
+                        + ax.get_xticklabels() + ax.get_yticklabels()
+                        + ax.texts):
+                if txt.get_fontsize() > maximum:
+                    txt.set_fontsize(maximum)
+            if ax.get_legend():
+                for txt in ax.get_legend().get_texts():
+                    if txt.get_fontsize() > maximum:
+                        txt.set_fontsize(maximum)
+        for txt in fig.texts:
+            if txt.get_fontsize() > maximum:
+                txt.set_fontsize(maximum)
+
+    _prev_rc = {k: plt.rcParams[k] for k in _SMALL_RC}
+    plt.rcParams.update(_SMALL_RC)
+
+    _mm = 1.0 / 25.4
+    fig_c = plt.figure(figsize=(180 * _mm, 210 * _mm))
+
+    #   Row 0: A | B | C    (forest plots)
+    #   Row 1: D | E | F    (forest plots + heatmap)
+    #   Row 2: G             (full-width GSEA heatmap)
+    outer = fig_c.add_gridspec(
+        3, 1,
+        height_ratios=[1, 1, 1.3],
+        hspace=0.55,
+        left=0.10, right=0.95, top=0.97, bottom=0.06,
+    )
+
+    gs0 = outer[0].subgridspec(1, 3, wspace=1.05)
+    ax_a = fig_c.add_subplot(gs0[0])
+    ax_b = fig_c.add_subplot(gs0[1])
+    ax_cc = fig_c.add_subplot(gs0[2])
+
+    gs1 = outer[1].subgridspec(1, 3, wspace=0.65, width_ratios=[1, 1.3, 2.8])
+    ax_d = fig_c.add_subplot(gs1[0])
+    ax_e = fig_c.add_subplot(gs1[1])
+    ax_f = fig_c.add_subplot(gs1[2])
+
+    gs2 = outer[2].subgridspec(1, 2, width_ratios=[0.5, 1])
+    ax_g = fig_c.add_subplot(gs2[1])
+
+    panel_a_covid(ax_a, data)
+    panel_b_vaccine(ax_b, data)
+    panel_c_aml(ax_cc, data)
+    panel_d_cart(ax_d, data)
+    panel_e_melanoma(ax_e, data)
+    panel_f_heatmap(ax_f, data)
+    _panel_gsea_cross(ax_g, data)
+
+    # Remove panel labels embedded by panel functions — will re-add below
+    for ax in [ax_a, ax_b, ax_cc, ax_d, ax_e, ax_f, ax_g]:
+        to_remove = [
+            t for t in ax.texts
+            if len(t.get_text()) == 1 and t.get_text().isupper()
+        ]
+        for t in to_remove:
+            t.remove()
+
+    # Move legends inside plots for the composite
+    _inside = {
+        ax_a: "lower right", ax_b: "lower right", ax_cc: "lower right",
+        ax_d: "lower right", ax_e: "lower right",
+    }
+    for ax_target, loc in _inside.items():
+        leg = ax_target.get_legend()
+        if leg:
+            handles = leg.legend_handles
+            labels = [t.get_text() for t in leg.get_texts()]
+            leg.remove()
+            ax_target.legend(
+                handles=handles, labels=labels,
+                fontsize=4.5, loc=loc,
+                frameon=True, framealpha=0.85,
+                edgecolor="#CCCCCC", borderpad=0.3,
+                handlelength=1, handletextpad=0.3,
+                labelspacing=0.2,
+            )
+
+    # Move G ylabel slightly away from figure
+    ax_g.yaxis.set_label_coords(-0.18, 0.5)
+
+    # Reduce heatmap annotation font size in F
+    for txt in ax_f.texts:
+        txt.set_fontsize(max(txt.get_fontsize() * 0.65, 3.0))
+
+    _cap_fontsize(fig_c, _MAX_FONT_COMPOSITE)
+
+    # Uniform title font size across all panels
+    for ax in [ax_a, ax_b, ax_cc, ax_d, ax_e]:
+        ax.title.set_fontsize(2)
+        ax.title.set_fontweight("bold")
+    ax_f.title.set_fontsize(4.5)
+    ax_f.title.set_fontweight("bold")
+    ax_g.title.set_fontsize(7)
+    ax_g.title.set_fontweight("bold")
+
+    # Bold panel labels (after cap so they stay prominent)
+    _lbl_fs = 9
+    for ax, lbl in [
+        (ax_a, "A"), (ax_b, "B"), (ax_cc, "C"),
+        (ax_d, "D"), (ax_e, "E"), (ax_f, "F"),
+        (ax_g, "G"),
+    ]:
+        ax.text(-0.25, 1.12, lbl, transform=ax.transAxes,
+                fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+
+    plt.rcParams.update(_prev_rc)
+
+    save_panel(fig_c, FIG_NAME, FIG_NAME, MAIN_OUTPUT, close=False)
+    pdf_path = MAIN_OUTPUT / f"{FIG_NAME}_panels" / f"{FIG_NAME}.pdf"
+    fig_c.savefig(str(pdf_path), format="pdf", bbox_inches="tight",
+                  facecolor="white")
+    plt.close(fig_c)
+    print(f"    Saved combined artboard (PNG + PDF)")
+    print("  Figure 5 complete: 7 individual panels + combined (A–G)\n")
 
 
 # ── entry point ───────────────────────────────────────────────────────────
