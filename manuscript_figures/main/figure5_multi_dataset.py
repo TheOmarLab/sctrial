@@ -152,9 +152,9 @@ def _forest_plot(
 
     # Compact legend
     legend_elements = [
-        Line2D([0], [0], marker="o", color=color_pos, lw=1.8, markersize=6,
+        Line2D([0], [0], marker="o", color=color_pos, lw=1.2, markersize=3,
                markeredgecolor="white", label=legend_pos_label),
-        Line2D([0], [0], marker="o", color=color_neg, lw=1.8, markersize=6,
+        Line2D([0], [0], marker="o", color=color_neg, lw=1.2, markersize=3,
                markeredgecolor="white", label=legend_neg_label),
     ]
     ax.legend(handles=legend_elements, loc="lower right", frameon=True,
@@ -749,7 +749,7 @@ def panel_f_heatmap(ax, data: dict[str, Any]) -> None:
     """Panel F: Cross-dataset standardised effect-size heatmap."""
     import seaborn as sns
 
-    ax.set_title("Cross-Dataset Effect Sizes", fontsize=6, fontweight="bold", loc="left", pad=8)
+    ax.set_title("Cross-Dataset Effect Sizes", fontsize=8, fontweight="bold", loc="center", pad=8)
     ax.text(-0.12, 1.05, "F", transform=ax.transAxes, fontsize=14,
             fontweight="bold", va="bottom")
 
@@ -940,11 +940,11 @@ def generate(*, save: bool = True) -> None:
             )
 
     # Move G ylabel slightly away from figure
-    ax_g.yaxis.set_label_coords(-0.18, 0.5)
+    ax_g.yaxis.set_label_coords(-0.75, 0.5)
 
     # Reduce heatmap annotation font size in F
     for txt in ax_f.texts:
-        txt.set_fontsize(max(txt.get_fontsize() * 0.65, 3.0))
+        txt.set_fontsize(max(txt.get_fontsize() * 0.75, 3.0))
 
     _cap_fontsize(fig_c, _MAX_FONT_COMPOSITE)
 
