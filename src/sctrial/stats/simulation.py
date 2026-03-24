@@ -1,7 +1,9 @@
 """Monte Carlo simulation engine for DiD method comparison.
 
-Generates synthetic pseudobulk-style data with known ground-truth
-DiD effects, enabling controlled comparison of statistical methods.
+Generates synthetic **cell-level** scRNA-seq-like data with known ground-truth
+DiD effects, enabling controlled comparison of statistical methods under
+realistic conditions (variable cell counts, participant heterogeneity,
+cell-level noise).
 """
 from __future__ import annotations
 
@@ -24,11 +26,23 @@ def simulate_did_data(
     time_effect: float = 0.1,
     seed: int = 42,
 ) -> dict:
-    """Generate synthetic DiD data with known ground-truth effects.
+    """Generate synthetic cell-level DiD data with known ground-truth effects.
 
-    Creates pseudobulk-level expression data for a two-arm (Treated vs
-    Control), two-timepoint (Pre vs Post) design with participant random
-    intercepts and optional DiD interaction effects.
+    Creates cell-level expression data for a two-arm (Treated vs Control),
+    two-timepoint (Pre vs Post) design with participant random intercepts,
+    variable cell counts per participant-visit, and cell-level noise.
+
+    The data-generating process mirrors real scRNA-seq clinical trial data:
+
+    .. math::
+
+        Y_{ijk} = \\mu + \\alpha_i + \\beta_1 \\text{Post}_j
+                  + \\beta_2 (\\text{Treat}_i \\times \\text{Post}_j)
+                  + \\epsilon_{ijk}
+
+    where *i* indexes participants, *j* indexes visits, *k* indexes cells,
+    :math:`\\alpha_i \\sim N(0, \\sigma_{\\text{participant}}^2)`, and
+    :math:`\\epsilon_{ijk} \\sim N(0, \\sigma_{\\text{noise}}^2)`.
 
     Parameters
     ----------
@@ -37,12 +51,13 @@ def simulate_did_data(
     n_genes : int
         Number of genes to simulate.
     n_cells_per_participant : int
-        Cells per participant-visit (used to calibrate noise via sqrt(n)).
+        Mean cells per participant-visit.  Actual counts are drawn from
+        Poisson(n_cells_per_participant) with a floor of 20.
     effect_sizes : dict
         Mapping of gene_name -> true DiD effect (beta_DiD).
         Genes not in this dict have effect = 0 (null).
     noise_sd : float
-        Residual standard deviation at pseudobulk level.
+        Cell-level residual standard deviation.
     baseline_mean : float
         Grand mean expression level.
     participant_sd : float
@@ -55,10 +70,14 @@ def simulate_did_data(
     Returns
     -------
     dict with keys:
-        "pseudobulk" : DataFrame [participant, visit, arm, gene_0, ...]
+        "adata" : AnnData  — cell-level expression matrix with obs columns
+            ``participant``, ``visit``, ``arm``
+        "pseudobulk" : DataFrame  — participant-visit means with ``n_cells``
         "truth" : dict mapping gene_name -> true_beta_DiD
         "params" : dict of simulation parameters
     """
+    import anndata as ad
+
     if n_participants % 2 != 0:
         raise ValueError(
             f"n_participants must be even (got {n_participants}); "
@@ -73,7 +92,10 @@ def simulate_did_data(
     # Build truth vector
     truth = {g: effect_sizes.get(g, 0.0) for g in gene_names}
 
-    rows = []
+    obs_rows: list[dict] = []
+    X_rows: list[np.ndarray] = []
+    pb_rows: list[dict] = []  # pseudobulk aggregation
+
     for arm in ["Control", "Treated"]:
         for p in range(n_per_arm):
             pid = f"{arm[0]}{p}"
@@ -81,29 +103,55 @@ def simulate_did_data(
             participant_effect = rng.normal(0, participant_sd, size=n_genes)
 
             for visit_idx, visit in enumerate(["Pre", "Post"]):
-                # Y_ij = baseline + participant_i + time_j + DiD_ij + noise
-                y = np.full(n_genes, baseline_mean, dtype=np.float64)
-                y += participant_effect
-                y += time_effect * visit_idx  # time main effect
+                # Variable cell count (Poisson with floor)
+                n_cells = max(20, rng.poisson(n_cells_per_participant))
 
-                # DiD interaction: only Treated x Post
-                if arm == "Treated" and visit == "Post":
-                    for gi, g in enumerate(gene_names):
-                        y[gi] += truth[g]
+                # Per-cell expression
+                cell_X = np.empty((n_cells, n_genes), dtype=np.float64)
+                for c in range(n_cells):
+                    y = np.full(n_genes, baseline_mean, dtype=np.float64)
+                    y += participant_effect
+                    y += time_effect * visit_idx
 
-                # Residual noise (scaled by sqrt(n_cells) to mimic
-                # pseudobulk averaging)
-                se = noise_sd / np.sqrt(n_cells_per_participant)
-                y += rng.normal(0, se, size=n_genes)
+                    # DiD interaction: only Treated x Post
+                    if arm == "Treated" and visit == "Post":
+                        for gi, g in enumerate(gene_names):
+                            y[gi] += truth[g]
 
-                row = {"participant": pid, "visit": visit, "arm": arm}
+                    # Cell-level noise
+                    y += rng.normal(0, noise_sd, size=n_genes)
+                    cell_X[c] = y
+
+                # Store cell-level data
+                for c in range(n_cells):
+                    obs_rows.append({
+                        "participant": pid, "visit": visit, "arm": arm,
+                    })
+                X_rows.append(cell_X)
+
+                # Pre-compute pseudobulk (mean per participant-visit)
+                pb_mean = cell_X.mean(axis=0)
+                pb_row = {
+                    "participant": pid, "visit": visit, "arm": arm,
+                    "n_cells": n_cells,
+                }
                 for gi, g in enumerate(gene_names):
-                    row[g] = y[gi]
-                rows.append(row)
+                    pb_row[g] = pb_mean[gi]
+                pb_rows.append(pb_row)
 
-    pb = pd.DataFrame(rows)
+    # Build AnnData
+    obs = pd.DataFrame(obs_rows)
+    X = np.vstack(X_rows).astype(np.float32)
+    adata = ad.AnnData(
+        X=X,
+        obs=obs.reset_index(drop=True),
+        var=pd.DataFrame(index=gene_names),
+    )
+
+    pb = pd.DataFrame(pb_rows)
 
     return {
+        "adata": adata,
         "pseudobulk": pb,
         "truth": truth,
         "params": {
@@ -119,6 +167,68 @@ def simulate_did_data(
     }
 
 
+def _run_single_iteration(args: tuple) -> list[dict]:
+    """Run all methods on a single simulated dataset (for parallel dispatch)."""
+    (it, it_seed, n_participants, n_genes, n_cells_per_participant,
+     effect_sizes, noise_sd, methods, sim_kwargs) = args
+
+    import warnings
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        return _run_single_iteration_inner(
+            it, it_seed, n_participants, n_genes, n_cells_per_participant,
+            effect_sizes, noise_sd, methods, sim_kwargs,
+        )
+
+
+def _run_single_iteration_inner(
+    it, it_seed, n_participants, n_genes, n_cells_per_participant,
+    effect_sizes, noise_sd, methods, sim_kwargs,
+) -> list[dict]:
+    """Inner implementation — called inside a ``catch_warnings`` context."""
+    sim = simulate_did_data(
+        n_participants=n_participants,
+        n_genes=n_genes,
+        n_cells_per_participant=n_cells_per_participant,
+        effect_sizes=effect_sizes,
+        noise_sd=noise_sd,
+        seed=it_seed,
+        **sim_kwargs,
+    )
+    adata = sim["adata"]
+    pb = sim["pseudobulk"]
+    truth = sim["truth"]
+    gene_cols = [c for c in pb.columns if c.startswith("gene_")]
+
+    rows = []
+    for method in methods:
+        if method == "sctrial_did":
+            results = _run_sctrial_did(adata, gene_cols)
+        elif method == "mixed_did":
+            results = _run_mixed_did(adata, gene_cols)
+        elif method == "wilcoxon":
+            results = _run_wilcoxon(pb, gene_cols)
+        elif method == "pseudobulk_ols":
+            results = _run_pseudobulk_ols(pb, gene_cols)
+        else:
+            raise ValueError(f"Unknown method: {method}")
+
+        for g in gene_cols:
+            r = results.get(g, {})
+            rows.append({
+                "iteration": it,
+                "method": method,
+                "gene": g,
+                "true_beta": truth[g],
+                "estimated_beta": r.get("beta", np.nan),
+                "pvalue": r.get("pvalue", np.nan),
+                "ci_lo": r.get("ci_lo", np.nan),
+                "ci_hi": r.get("ci_hi", np.nan),
+            })
+    return rows
+
+
 def run_method_comparison(
     n_participants: int = 20,
     n_genes: int = 50,
@@ -128,85 +238,84 @@ def run_method_comparison(
     methods: list[str] | None = None,
     seed: int = 42,
     n_cells_per_participant: int = 100,
+    n_jobs: int | None = None,
     **sim_kwargs,
 ) -> pd.DataFrame:
     """Run Monte Carlo comparison of DiD methods on simulated data.
 
+    Generates cell-level scRNA-seq data with known ground truth and runs
+    each method on the same datasets.  Methods that operate on cell-level
+    data (sctrial DiD, mixed DiD) receive the full AnnData so their
+    internal aggregation + cluster-robust SE pipeline is exercised
+    faithfully.  Methods that expect pseudobulk (OLS, Wilcoxon) receive
+    the pre-aggregated participant-visit means.
+
+    Iterations are parallelised across CPU cores for speed.
+
     Parameters
     ----------
     methods : list of str
-        Methods to compare. Options: "sctrial_did", "wilcoxon",
-        "pseudobulk_ols". Default: all three.
+        Methods to compare. Options: ``"sctrial_did"``, ``"mixed_did"``,
+        ``"pseudobulk_ols"``, ``"wilcoxon"``.  Default: all four.
     n_iterations : int
         Number of simulation repetitions.
+    n_jobs : int, optional
+        Number of parallel workers.  Defaults to ``min(cpu_count, 8)``.
+        Set to 1 to disable parallelisation.
 
     Returns
     -------
     DataFrame with columns: iteration, method, gene, true_beta,
         estimated_beta, pvalue, ci_lo, ci_hi
     """
-    methods = methods or ["sctrial_did", "wilcoxon", "pseudobulk_ols"]
+    import multiprocessing as mp
+
+    methods = methods or ["sctrial_did", "mixed_did", "pseudobulk_ols", "wilcoxon"]
     rng = np.random.default_rng(seed)
-    all_rows = []
 
-    for it in range(n_iterations):
-        it_seed = int(rng.integers(0, 2**31))
-        sim = simulate_did_data(
-            n_participants=n_participants,
-            n_genes=n_genes,
-            n_cells_per_participant=n_cells_per_participant,
-            effect_sizes=effect_sizes,
-            noise_sd=noise_sd,
-            seed=it_seed,
-            **sim_kwargs,
-        )
-        pb = sim["pseudobulk"]
-        truth = sim["truth"]
-        gene_cols = [c for c in pb.columns if c.startswith("gene_")]
+    if n_jobs is None:
+        n_jobs = min(mp.cpu_count(), 8)
 
-        for method in methods:
-            if method == "sctrial_did":
-                results = _run_sctrial_did(pb, gene_cols)
-            elif method == "wilcoxon":
-                results = _run_wilcoxon(pb, gene_cols)
-            elif method == "pseudobulk_ols":
-                results = _run_pseudobulk_ols(pb, gene_cols)
-            else:
-                raise ValueError(f"Unknown method: {method}")
+    # Pre-generate seeds for reproducibility
+    it_seeds = [int(rng.integers(0, 2**31)) for _ in range(n_iterations)]
 
-            for g in gene_cols:
-                r = results.get(g, {})
-                all_rows.append({
-                    "iteration": it,
-                    "method": method,
-                    "gene": g,
-                    "true_beta": truth[g],
-                    "estimated_beta": r.get("beta", np.nan),
-                    "pvalue": r.get("pvalue", np.nan),
-                    "ci_lo": r.get("ci_lo", np.nan),
-                    "ci_hi": r.get("ci_hi", np.nan),
-                })
+    task_args = [
+        (it, it_seeds[it], n_participants, n_genes, n_cells_per_participant,
+         effect_sizes, noise_sd, methods, sim_kwargs)
+        for it in range(n_iterations)
+    ]
+
+    if n_jobs == 1:
+        # Sequential fallback
+        all_rows = []
+        for args in task_args:
+            all_rows.extend(_run_single_iteration(args))
+    else:
+        all_rows = []
+        with mp.Pool(n_jobs) as pool:
+            for batch in pool.imap(_run_single_iteration, task_args):
+                all_rows.extend(batch)
+                # Progress callback (if caller wraps with tqdm etc.)
+                done = len(all_rows) // (len(methods) * n_genes)
+                if done % 10 == 0:
+                    logger.info("  %d/%d iterations complete", done, n_iterations)
 
     return pd.DataFrame(all_rows)
 
 
-def _run_sctrial_did(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
-    """Run sctrial did_table on pseudobulk DataFrame."""
-    import warnings
+def _run_sctrial_did(adata, gene_cols: list[str]) -> dict:
+    """Run sctrial did_table on cell-level AnnData.
 
-    import anndata as ad
+    Mirrors the real user workflow: cell-level data → did_table with
+    ``aggregate="cell"`` so that cluster-robust standard errors have
+    many observations per cluster (participant), producing reliable
+    inference.
+    """
+    import warnings
 
     from ..design import TrialDesign
     from .did import did_table
 
-    # Build minimal AnnData from pseudobulk
-    obs = pb[["participant", "visit", "arm"]].copy().reset_index(drop=True)
-    X = pb[gene_cols].values.astype(np.float32)
-    adata = ad.AnnData(
-        X=X,
-        obs=obs,
-        var=pd.DataFrame(index=gene_cols),
-    )
     design = TrialDesign(
         participant_col="participant",
         visit_col="visit",
@@ -222,7 +331,7 @@ def _run_sctrial_did(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
             gene_cols,
             design,
             visits=("Pre", "Post"),
-            aggregate="participant_visit",
+            aggregate="cell",
             standardize=False,
         )
     out = {}
@@ -232,6 +341,52 @@ def _run_sctrial_did(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
             "pvalue": row["p_DiD"],
             "ci_lo": row.get("ci_lo_DiD", np.nan),
             "ci_hi": row.get("ci_hi_DiD", np.nan),
+        }
+    return out
+
+
+def _run_mixed_did(adata, gene_cols: list[str]) -> dict:
+    """Run mixed-effects DiD with participant as random intercept.
+
+    Receives cell-level AnnData.  Uses ``aggregate="participant_visit"``
+    because the mixed model's random intercept absorbs participant
+    heterogeneity and only needs pseudobulk-level data.
+    """
+    import warnings
+
+    from ..design import TrialDesign
+    from .mixed_effects import did_table_mixed
+
+    design = TrialDesign(
+        participant_col="participant",
+        visit_col="visit",
+        arm_col="arm",
+        arm_treated="Treated",
+        arm_control="Control",
+        celltype_col=None,
+    )
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        res = did_table_mixed(
+            adata,
+            gene_cols,
+            design,
+            visits=("Pre", "Post"),
+            aggregate="participant_visit",
+            standardize=False,
+        )
+    out = {}
+    for _, row in res.iterrows():
+        # Skip non-converged fits — their coefficients are unreliable
+        if not row.get("converged", True):
+            logger.debug("Mixed DiD did not converge for %s", row["feature"])
+            continue
+        out[row["feature"]] = {
+            "beta": row["beta_DiD"],
+            "pvalue": row["p_DiD"],
+            "ci_lo": row.get("ci_lower", np.nan),
+            "ci_hi": row.get("ci_upper", np.nan),
         }
     return out
 

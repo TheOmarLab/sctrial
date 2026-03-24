@@ -806,43 +806,66 @@ _SIM_EFFECT_SIZES = [0.0, 0.2, 0.5, 1.0]
 _SIM_N_GENES = 50
 _SIM_N_SIGNAL = 10  # first 10 genes get the effect
 _SIM_NOISE_SD = 1.0
-_SIM_METHODS = ["sctrial_did", "pseudobulk_ols", "wilcoxon"]
+_SIM_METHODS = ["sctrial_did", "mixed_did", "pseudobulk_ols", "wilcoxon"]
 _SIM_METHOD_LABELS = {
-    "sctrial_did": "sctrial DiD",
+    "sctrial_did": "sctrial DiD (FE)",
+    "mixed_did": "Mixed DiD (RE)",
     "pseudobulk_ols": "Pseudobulk OLS",
     "wilcoxon": "Wilcoxon",
 }
 _SIM_METHOD_COLORS = {
     "sctrial_did": "#2c3e50",
+    "mixed_did": "#8e44ad",
     "pseudobulk_ols": "#e67e22",
     "wilcoxon": "#27ae60",
 }
 
 
-def _run_simulation_grid():
-    """Run full simulation grid. Returns combined results DataFrame."""
+def _run_simulation_grid(n_jobs=None):
+    """Run full simulation grid. Returns combined results DataFrame.
+
+    Parameters
+    ----------
+    n_jobs : int, optional
+        Parallel workers.  Passed to ``run_method_comparison``.
+    """
+    import time
+
     from sctrial.stats.simulation import run_method_comparison
 
+    grid = [(n, beta) for n in _SIM_SAMPLE_SIZES for beta in _SIM_EFFECT_SIZES]
+    total = len(grid)
     all_dfs = []
-    for n in _SIM_SAMPLE_SIZES:
-        for beta in _SIM_EFFECT_SIZES:
-            print(f"    n={n}, beta={beta} ...")
-            effects = {f"gene_{i}": beta for i in range(_SIM_N_SIGNAL)}
-            df = run_method_comparison(
-                n_participants=n,
-                n_genes=_SIM_N_GENES,
-                effect_sizes=effects,
-                noise_sd=_SIM_NOISE_SD,
-                n_iterations=_SIM_ITERATIONS,
-                methods=_SIM_METHODS,
-                seed=42 + n * 100 + int(beta * 10),
-            )
-            df["n_participants"] = n
-            df["target_beta"] = beta
-            df["is_signal"] = df["gene"].isin(
-                [f"gene_{i}" for i in range(_SIM_N_SIGNAL)]
-            )
-            all_dfs.append(df)
+    t0 = time.time()
+
+    for idx, (n, beta) in enumerate(grid, 1):
+        elapsed = time.time() - t0
+        eta = (elapsed / max(idx - 1, 1)) * (total - idx + 1) if idx > 1 else 0
+        print(
+            f"    [{idx}/{total}] n={n}, beta={beta} "
+            f"(elapsed {elapsed/60:.1f}m, ETA {eta/60:.1f}m) ...",
+            flush=True,
+        )
+        effects = {f"gene_{i}": beta for i in range(_SIM_N_SIGNAL)}
+        df = run_method_comparison(
+            n_participants=n,
+            n_genes=_SIM_N_GENES,
+            effect_sizes=effects,
+            noise_sd=_SIM_NOISE_SD,
+            n_iterations=_SIM_ITERATIONS,
+            methods=_SIM_METHODS,
+            seed=42 + n * 100 + int(beta * 10),
+            n_jobs=n_jobs,
+        )
+        df["n_participants"] = n
+        df["target_beta"] = beta
+        df["is_signal"] = df["gene"].isin(
+            [f"gene_{i}" for i in range(_SIM_N_SIGNAL)]
+        )
+        all_dfs.append(df)
+
+    total_time = time.time() - t0
+    print(f"    Grid complete in {total_time/60:.1f} minutes", flush=True)
     return pd.concat(all_dfs, ignore_index=True)
 
 
@@ -965,7 +988,7 @@ def _panel_sim_fpr(ax, results):
 def _panel_sim_bias(ax, results):
     """Panel J: Effect-size bias (estimated vs true beta).
 
-    All three methods are nearly unbiased, so points overlap on the y=x
+    All four methods are nearly unbiased, so points overlap on the y=x
     line.  We use distinct marker shapes and decreasing sizes so every
     method is visible without shifting x (which would create false
     apparent bias against the identity line).
@@ -979,8 +1002,8 @@ def _panel_sim_bias(ax, results):
 
     # Distinct markers + decreasing size so later-drawn methods don't
     # fully occlude earlier ones.  Draw order: largest first.
-    markers = ["o", "s", "^"]
-    sizes = [9, 7, 5]
+    markers = ["o", "D", "s", "^"]
+    sizes = [10, 8, 7, 5]
 
     for idx, method in enumerate(_SIM_METHODS):
         sub = signal[signal["method"] == method]
