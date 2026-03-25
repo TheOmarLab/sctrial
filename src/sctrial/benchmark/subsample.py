@@ -4,6 +4,7 @@ For each dataset, subsample participants at different fractions,
 run all methods, and measure ranking stability via Spearman ρ
 and top-k Jaccard overlap.
 """
+
 from __future__ import annotations
 
 import logging
@@ -49,6 +50,7 @@ def run_subsampling(
     """
     if methods is None:
         from .orchestrator import CORE_METHODS
+
         methods = CORE_METHODS
     if fractions is None:
         fractions = [0.5, 0.7, 0.9]
@@ -64,9 +66,11 @@ def run_subsampling(
 
     # First: run full-data reference for each method
     print(f"Running full-data reference ({len(methods)} methods, {len(gene_cols)} genes)...")
-    from sctrial.stats.pseudobulk import aggregate_pseudobulk
-    pb_full = aggregate_pseudobulk(
-        adata, gene_cols,
+    from sctrial.stats.pseudobulk import pseudobulk_expression
+
+    pb_full = pseudobulk_expression(
+        adata,
+        gene_cols,
         groupby=[participant_col, visit_col, arm_col],
     )
     sim_full = {"adata": adata, "pseudobulk": pb_full}
@@ -75,14 +79,10 @@ def run_subsampling(
     for method in methods:
         try:
             res = _dispatch_method(method, sim_full, gene_cols)
-            full_pvals[method] = pd.Series(
-                {g: res[g]["pvalue"] for g in gene_cols}
-            )
+            full_pvals[method] = pd.Series({g: res[g]["pvalue"] for g in gene_cols})
         except Exception as exc:
             logger.warning("Full-data %s failed: %s", method, exc)
-            full_pvals[method] = pd.Series(
-                {g: np.nan for g in gene_cols}
-            )
+            full_pvals[method] = pd.Series({g: np.nan for g in gene_cols})
 
     # Run subsamples
     rows = []
@@ -92,16 +92,16 @@ def run_subsampling(
     run_count = 0
     for frac in fractions:
         n_sub = max(4, int(n_total * frac))
-        print(f"\nFraction {frac}: {n_sub}/{n_total} participants, "
-              f"{n_resamples} resamples...")
+        print(f"\nFraction {frac}: {n_sub}/{n_total} participants, {n_resamples} resamples...")
 
         for r in range(n_resamples):
             sub_pids = rng.choice(participants, size=n_sub, replace=False)
             mask = adata.obs[participant_col].isin(sub_pids)
             adata_sub = adata[mask].copy()
 
-            pb_sub = aggregate_pseudobulk(
-                adata_sub, gene_cols,
+            pb_sub = pseudobulk_expression(
+                adata_sub,
+                gene_cols,
                 groupby=[participant_col, visit_col, arm_col],
             )
             sim_sub = {"adata": adata_sub, "pseudobulk": pb_sub}
@@ -109,9 +109,7 @@ def run_subsampling(
             for method in methods:
                 try:
                     res = _dispatch_method(method, sim_sub, gene_cols)
-                    sub_pvals = pd.Series(
-                        {g: res[g]["pvalue"] for g in gene_cols}
-                    )
+                    sub_pvals = pd.Series({g: res[g]["pvalue"] for g in gene_cols})
 
                     # Spearman ρ
                     common = sub_pvals.dropna().index.intersection(
@@ -127,35 +125,39 @@ def run_subsampling(
 
                     # Top-k Jaccard
                     jaccard = compute_topk_jaccard(
-                        full_pvals[method], sub_pvals, k=20,
+                        full_pvals[method],
+                        sub_pvals,
+                        k=20,
                     )
 
-                    rows.append({
-                        "fraction": frac,
-                        "resample": r,
-                        "method": method,
-                        "spearman_rho": rho,
-                        "jaccard_top20": jaccard,
-                        "n_participants": n_sub,
-                    })
+                    rows.append(
+                        {
+                            "fraction": frac,
+                            "resample": r,
+                            "method": method,
+                            "spearman_rho": rho,
+                            "jaccard_top20": jaccard,
+                            "n_participants": n_sub,
+                        }
+                    )
                 except Exception as exc:
-                    logger.debug("Subsample %s frac=%s r=%d failed: %s",
-                                 method, frac, r, exc)
-                    rows.append({
-                        "fraction": frac,
-                        "resample": r,
-                        "method": method,
-                        "spearman_rho": np.nan,
-                        "jaccard_top20": np.nan,
-                        "n_participants": n_sub,
-                    })
+                    logger.debug("Subsample %s frac=%s r=%d failed: %s", method, frac, r, exc)
+                    rows.append(
+                        {
+                            "fraction": frac,
+                            "resample": r,
+                            "method": method,
+                            "spearman_rho": np.nan,
+                            "jaccard_top20": np.nan,
+                            "n_participants": n_sub,
+                        }
+                    )
 
             run_count += 1
             if run_count % 20 == 0:
                 elapsed = time.time() - t0
                 eta = elapsed / run_count * (total_runs - run_count)
-                print(f"  {run_count}/{total_runs} "
-                      f"({elapsed:.0f}s elapsed, ~{eta:.0f}s remaining)")
+                print(f"  {run_count}/{total_runs} ({elapsed:.0f}s elapsed, ~{eta:.0f}s remaining)")
 
     df = pd.DataFrame(rows)
 

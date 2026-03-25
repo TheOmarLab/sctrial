@@ -372,6 +372,8 @@ def phase_ablation(n_jobs: int):
     """Phase 4: Ablation study."""
     import time
 
+    import pandas as pd
+
     from sctrial.benchmark.ablation import ABLATION_VARIANTS, run_ablation
     from sctrial.benchmark.metrics import summarize_iteration
     from sctrial.benchmark.simulator import SimulationConfig, simulate_trial

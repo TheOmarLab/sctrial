@@ -4,6 +4,7 @@ Shuffles arm labels (two-arm) or visit labels (single-arm) while
 preserving the participant structure. All core methods are run on
 each permuted dataset.
 """
+
 from __future__ import annotations
 
 import logging
@@ -41,10 +42,20 @@ def _permute_visits(adata, participant_col: str, visit_col: str, rng):
 def _run_permutation_iteration(args: tuple) -> list[dict]:
     """Run all methods on one permuted dataset."""
     import warnings
+
     warnings.filterwarnings("ignore")
 
-    (perm_idx, seed, adata, design_type, gene_cols, methods,
-     participant_col, arm_col, visit_col) = args
+    (
+        perm_idx,
+        seed,
+        adata,
+        design_type,
+        gene_cols,
+        methods,
+        participant_col,
+        arm_col,
+        visit_col,
+    ) = args
 
     from .orchestrator import _dispatch_method
 
@@ -57,9 +68,11 @@ def _run_permutation_iteration(args: tuple) -> list[dict]:
         adata_perm = _permute_visits(adata, participant_col, visit_col, rng)
 
     # Build pseudobulk
-    from sctrial.stats.pseudobulk import aggregate_pseudobulk
-    pb = aggregate_pseudobulk(
-        adata_perm, gene_cols,
+    from sctrial.stats.pseudobulk import pseudobulk_expression
+
+    pb = pseudobulk_expression(
+        adata_perm,
+        gene_cols,
         groupby=[participant_col, visit_col, arm_col],
     )
 
@@ -69,6 +82,7 @@ def _run_permutation_iteration(args: tuple) -> list[dict]:
     for method in methods:
         try:
             from .orchestrator import _dispatch_method
+
             results = _dispatch_method(method, sim, gene_cols)
         except Exception as exc:
             logger.debug("Permutation %d, method %s failed: %s", perm_idx, method, exc)
@@ -76,12 +90,14 @@ def _run_permutation_iteration(args: tuple) -> list[dict]:
 
         for gene in gene_cols:
             r = results.get(gene, {})
-            rows.append({
-                "permutation": perm_idx,
-                "method": method,
-                "gene": gene,
-                "pvalue": r.get("pvalue", np.nan),
-            })
+            rows.append(
+                {
+                    "permutation": perm_idx,
+                    "method": method,
+                    "gene": gene,
+                    "pvalue": r.get("pvalue", np.nan),
+                }
+            )
 
     return rows
 
@@ -121,6 +137,7 @@ def run_permutation_test(
     """
     if methods is None:
         from .orchestrator import CORE_METHODS
+
         methods = CORE_METHODS
 
     if n_jobs == -1:
@@ -129,8 +146,10 @@ def run_permutation_test(
     rng = np.random.default_rng(seed)
     seeds = [int(rng.integers(0, 2**31)) for _ in range(n_permutations)]
 
-    print(f"Running {n_permutations} permutations × {len(methods)} methods "
-          f"on {len(gene_cols)} genes ({n_jobs} workers)...")
+    print(
+        f"Running {n_permutations} permutations × {len(methods)} methods "
+        f"on {len(gene_cols)} genes ({n_jobs} workers)..."
+    )
 
     # NOTE: For multiprocessing with AnnData, we need to serialize carefully.
     # For now, use sequential or thread-based parallelism.
@@ -139,16 +158,27 @@ def run_permutation_test(
     t0 = time.time()
 
     for i in range(n_permutations):
-        args = (i, seeds[i], adata, design_type, gene_cols, methods,
-                participant_col, arm_col, visit_col)
+        args = (
+            i,
+            seeds[i],
+            adata,
+            design_type,
+            gene_cols,
+            methods,
+            participant_col,
+            arm_col,
+            visit_col,
+        )
         rows = _run_permutation_iteration(args)
         all_rows.extend(rows)
 
         if (i + 1) % 50 == 0:
             elapsed = time.time() - t0
             eta = elapsed / (i + 1) * (n_permutations - i - 1)
-            print(f"  {i+1}/{n_permutations} permutations "
-                  f"({elapsed:.0f}s elapsed, ~{eta:.0f}s remaining)")
+            print(
+                f"  {i + 1}/{n_permutations} permutations "
+                f"({elapsed:.0f}s elapsed, ~{eta:.0f}s remaining)"
+            )
 
     df = pd.DataFrame(all_rows)
 
