@@ -21,6 +21,7 @@ Generative model (per gene g, participant i, visit j, cell k)::
     Overdispersion:       Y_igk ~ NegBin(μ_igk, θ_g)
     Cell counts:          n_cells_ij ~ Poisson(λ) or LogNormal (imbalanced)
 """
+
 from __future__ import annotations
 
 import logging
@@ -185,9 +186,7 @@ def simulate_trial(cfg: SimulationConfig) -> dict:
             # Cell count for this participant-visit
             if cfg.cell_count_mode == "lognormal":
                 mu_cells = cfg.mean_cells_per_visit
-                sigma_cells = np.sqrt(
-                    np.log(1 + cfg.cell_count_cv**2)
-                )
+                sigma_cells = np.sqrt(np.log(1 + cfg.cell_count_cv**2))
                 n_cells = int(
                     rng.lognormal(
                         np.log(mu_cells) - sigma_cells**2 / 2,
@@ -205,7 +204,8 @@ def simulate_trial(cfg: SimulationConfig) -> dict:
 
             # Library sizes for each cell
             log_lib = rng.normal(
-                np.log(cfg.target_library_size), cfg.library_size_sd,
+                np.log(cfg.target_library_size),
+                cfg.library_size_sd,
                 size=n_cells,
             )
             lib_sizes = np.exp(log_lib)
@@ -213,10 +213,10 @@ def simulate_trial(cfg: SimulationConfig) -> dict:
             # Gene expression: log(μ) = β₀ + α_i + β₁·Post + β₂·(Treat×Post) + log(L)
             # Shape: (n_cells, n_genes)
             log_mu = (
-                beta0[np.newaxis, :]                    # (1, G)
-                + alpha[i, :][np.newaxis, :]             # (1, G)
-                + cfg.time_effect * is_post              # scalar
-                + log_lib[:, np.newaxis]                 # (C, 1)
+                beta0[np.newaxis, :]  # (1, G)
+                + alpha[i, :][np.newaxis, :]  # (1, G)
+                + cfg.time_effect * is_post  # scalar
+                + log_lib[:, np.newaxis]  # (C, 1)
             )
 
             # Add treatment × post interaction for signal genes
@@ -244,12 +244,14 @@ def simulate_trial(cfg: SimulationConfig) -> dict:
 
             # Store obs metadata
             for k in range(n_cells):
-                all_obs.append({
-                    "participant": pid,
-                    "arm": arm,
-                    "visit": visit,
-                    "library_size": lib_sizes[k],
-                })
+                all_obs.append(
+                    {
+                        "participant": pid,
+                        "arm": arm,
+                        "visit": visit,
+                        "library_size": lib_sizes[k],
+                    }
+                )
             all_counts.append(counts)
 
     # --- Assemble AnnData ---

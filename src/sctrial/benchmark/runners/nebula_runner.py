@@ -6,6 +6,7 @@ This makes it a distinct methodological class from edgeR/limma/dreamlet.
 
 Requires: install.packages("nebula") in R.
 """
+
 from __future__ import annotations
 
 import logging
@@ -18,25 +19,21 @@ from scipy import sparse
 
 logger = logging.getLogger(__name__)
 
-_R_SCRIPT = """\
+_R_SCRIPT_TWO_ARM = """\
 library(nebula)
 library(Matrix)
 
-# Read sparse count matrix (genes × cells, MatrixMarket format)
 counts <- readMM("{mtx_path}")
 genes  <- readLines("{genes_path}")
 rownames(counts) <- genes
 
-# Read metadata
 meta <- read.csv("{meta_csv}", stringsAsFactors=TRUE)
 meta$arm   <- factor(meta$arm, levels=c("{control}", "{treated}"))
 meta$visit <- factor(meta$visit, levels=c("{pre}", "{post}"))
 
-# Design matrix: interaction model
-# NEBULA uses the design matrix directly
+# Two-arm: interaction model
 design <- model.matrix(~arm * visit, data=meta)
 
-# Fit NEBULA (NBLMM with subject-level random intercept)
 res <- nebula(
   counts,
   id = meta$participant,
@@ -46,9 +43,8 @@ res <- nebula(
   verbose = FALSE
 )
 
-# Extract results for the interaction term
 coef_names <- colnames(design)
-interaction_idx <- length(coef_names)  # last column
+interaction_idx <- length(coef_names)
 
 out <- data.frame(
   gene = res$summary$gene,
@@ -58,7 +54,43 @@ out <- data.frame(
   stringsAsFactors = FALSE
 )
 rownames(out) <- out$gene
+write.csv(out, "{output_csv}")
+"""
 
+_R_SCRIPT_SINGLE_ARM = """\
+library(nebula)
+library(Matrix)
+
+counts <- readMM("{mtx_path}")
+genes  <- readLines("{genes_path}")
+rownames(counts) <- genes
+
+meta <- read.csv("{meta_csv}", stringsAsFactors=TRUE)
+meta$visit <- factor(meta$visit, levels=c("{pre}", "{post}"))
+
+# Single-arm: visit effect only
+design <- model.matrix(~visit, data=meta)
+
+res <- nebula(
+  counts,
+  id = meta$participant,
+  pred = design,
+  offset = log(colSums(counts)),
+  method = "LN",
+  verbose = FALSE
+)
+
+coef_names <- colnames(design)
+visit_idx <- length(coef_names)
+
+out <- data.frame(
+  gene = res$summary$gene,
+  logFC = res$summary[[paste0("logFC_", coef_names[visit_idx])]],
+  pvalue = res$summary[[paste0("p_", coef_names[visit_idx])]],
+  converged = res$convergence,
+  stringsAsFactors = FALSE
+)
+rownames(out) <- out$gene
 write.csv(out, "{output_csv}")
 """
 
@@ -72,6 +104,7 @@ def run(
     treated_label: str = "Treated",
     control_label: str = "Control",
     visits: tuple[str, str] = ("Pre", "Post"),
+    design_type: str = "two_arm",
 ) -> dict[str, dict]:
     """Run NEBULA NBLMM on cell-level counts.
 
@@ -95,6 +128,7 @@ def run(
 
         # Export as MatrixMarket (genes × cells = transposed)
         from scipy.io import mmwrite
+
         mtx_path = tmpdir / "counts.mtx"
         mmwrite(str(mtx_path), X.T)  # genes × cells
 
@@ -111,7 +145,8 @@ def run(
 
         output_csv = tmpdir / "results.csv"
 
-        script = _R_SCRIPT.format(
+        template = _R_SCRIPT_TWO_ARM if design_type == "two_arm" else _R_SCRIPT_SINGLE_ARM
+        script = template.format(
             mtx_path=str(mtx_path),
             genes_path=str(genes_path),
             meta_csv=str(meta_csv),
@@ -151,7 +186,10 @@ def run(
 
 def _fail_result(mode: str) -> dict:
     return {
-        "beta": np.nan, "pvalue": np.nan,
-        "ci_lo": np.nan, "ci_hi": np.nan,
-        "converged": False, "failure_mode": mode,
+        "beta": np.nan,
+        "pvalue": np.nan,
+        "ci_lo": np.nan,
+        "ci_hi": np.nan,
+        "converged": False,
+        "failure_mode": mode,
     }
