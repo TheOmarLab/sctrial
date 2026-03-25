@@ -24,6 +24,7 @@ Non-overlap guardrail: methodological sensitivity only, not biological claims.
 from __future__ import annotations
 
 import gc
+import pickle
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -67,7 +68,35 @@ except ImportError:
     _HAS_ADJUSTTEXT = False
 
 
-def _add_gene_labels(ax, features, x_series, y_series):
+# ======================================================================
+# Disk cache — avoids re-running expensive computations across sessions
+# ======================================================================
+
+def _cache_dir():
+    d = SUPP_OUTPUT / f"{FIGURE_NAME}_panels"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def _load_cache(tag: str):
+    """Return cached object for *tag*, or None on miss."""
+    p = _cache_dir() / f"_cache_{tag}.pkl"
+    if not p.exists():
+        return None
+    print(f"    [cache hit] {tag}")
+    with open(p, "rb") as f:
+        return pickle.load(f)
+
+
+def _save_cache(tag: str, obj):
+    """Persist *obj* under *tag*."""
+    p = _cache_dir() / f"_cache_{tag}.pkl"
+    with open(p, "wb") as f:
+        pickle.dump(obj, f, protocol=pickle.HIGHEST_PROTOCOL)
+    print(f"    [cached]    {tag}")
+
+
+def _add_gene_labels(ax, features, x_series, y_series, *, fontsize=7):
     """Add non-overlapping gene labels to a scatter plot.
 
     Uses adjustText when available; otherwise falls back to manual offsets.
@@ -77,7 +106,7 @@ def _add_gene_labels(ax, features, x_series, y_series):
         for feat in features:
             texts.append(
                 ax.text(x_series[feat], y_series[feat], feat,
-                        fontsize=7, fontweight="bold", ha="left")
+                        fontsize=fontsize, fontweight="bold", ha="left")
             )
         _adjust_text(
             texts, ax=ax,
@@ -89,7 +118,7 @@ def _add_gene_labels(ax, features, x_series, y_series):
         for feat in features:
             ax.annotate(
                 feat, (x_series[feat], y_series[feat]),
-                fontsize=7, fontweight="bold", alpha=0.85, ha="left",
+                fontsize=fontsize, fontweight="bold", alpha=0.85, ha="left",
                 xytext=(5, 3), textcoords="offset points",
             )
 
@@ -272,7 +301,7 @@ def _run_multi_bootstrap():
     return results
 
 
-def _panel_bootstrap_multi(fig, boot_data: dict):
+def _panel_bootstrap_multi(fig, boot_data: dict, *, composite: bool = False):
     """A: Faceted forest plot — analytical vs bootstrap SE per dataset."""
     names = [n for n in boot_data if boot_data[n].get("part") is not None]
     if not names:
@@ -286,7 +315,12 @@ def _panel_bootstrap_multi(fig, boot_data: dict):
     if ncols == 1:
         axes = [axes]
 
-    # Detect which column holds the beta / SE
+    _ms = 2 if composite else 3
+    _elw = 0.5 if composite else 0.8
+    _cs = 1.0 if composite else 1.5
+    _ytick_fs = 4.5 if composite else 6
+    _title_fs = 5.5 if composite else 9
+
     def _beta_col(df):
         for c in ("beta_DiD", "beta_delta", "beta_time", "beta"):
             if c in df.columns:
@@ -300,7 +334,6 @@ def _panel_bootstrap_multi(fig, boot_data: dict):
         return None
 
     def _se_boot_col(df):
-        """Find the bootstrap SE column. Returns None if not present."""
         for c in ("se_DiD_boot", "se_delta_boot", "se_time_boot"):
             if c in df.columns:
                 return c
@@ -314,9 +347,9 @@ def _panel_bootstrap_multi(fig, boot_data: dict):
         sc_a = _se_col(part)
         sc_b = _se_boot_col(boot)
         if bc is None or sc_a is None or sc_b is None:
-            ax.set_title(name, fontweight="bold", fontsize=9)
+            ax.set_title(name, fontweight="bold", fontsize=_title_fs)
             ax.text(0.5, 0.5, "No data", ha="center", va="center",
-                    transform=ax.transAxes, fontsize=8)
+                    transform=ax.transAxes, fontsize=_title_fs)
             continue
 
         df_a = part.set_index("feature")[[bc, sc_a]].rename(
@@ -330,28 +363,42 @@ def _panel_bootstrap_multi(fig, boot_data: dict):
         off = 0.15
 
         ax.errorbar(df["beta"], y - off, xerr=1.96 * df["se_analytical"],
-                     fmt="s", markersize=3, color=_PAL["cell"], elinewidth=0.8,
-                     capsize=1.5, label="Analytical")
+                     fmt="s", markersize=_ms, color=_PAL["cell"],
+                     elinewidth=_elw, capsize=_cs, label="Analytical")
         ax.errorbar(df["beta"], y + off, xerr=1.96 * df["se_boot"],
-                     fmt="o", markersize=3, color=_PAL["participant"],
-                     elinewidth=0.8, capsize=1.5, label="Bootstrap")
+                     fmt="o", markersize=_ms, color=_PAL["participant"],
+                     elinewidth=_elw, capsize=_cs, label="Bootstrap")
         ax.axvline(0, color="black", linewidth=0.6)
         ax.set_yticks(y)
-        ax.set_yticklabels(df["feature"], fontsize=6)
-        ax.set_title(name, fontweight="bold", fontsize=9)
-        if ax == axes[0]:
-            ax.set_xlabel("β with 95% CI", fontsize=8)
-            ax.legend(fontsize=6, loc="lower right", frameon=True)
+        ax.set_yticklabels(df["feature"], fontsize=_ytick_fs)
+        ax.set_title(name, fontweight="bold", fontsize=_title_fs)
+
+        if composite:
+            if name == "Vaccine":
+                ax.legend(fontsize=4, loc="lower right", frameon=True)
+            if name == "CAR-T":
+                ax.set_xlabel("β with 95% CI", fontsize=5)
+            else:
+                ax.set_xlabel("")
         else:
-            ax.set_xlabel("")
+            if ax == axes[0]:
+                ax.set_xlabel("β with 95% CI", fontsize=8)
+                ax.legend(fontsize=6, loc="lower right", frameon=True)
+            else:
+                ax.set_xlabel("")
         despine(ax)
 
-    fig.suptitle("Analytical vs Bootstrap SE", fontweight="bold", fontsize=11)
+    if composite:
+        fig.suptitle("Analytical vs Bootstrap SE", fontweight="bold",
+                     fontsize=5.5, y=1.06)
+    else:
+        fig.suptitle("Analytical vs Bootstrap SE", fontweight="bold",
+                     fontsize=11)
 
 
 # ── Panel C: Standardised vs Unstandardised ───────────────────────
 
-def _panel_std_vs_unstd(ax, data: dict):
+def _panel_std_vs_unstd(ax, data: dict, *, composite: bool = False):
     """Scatter: standardised vs unstandardised effect sizes."""
     std = data["part"].set_index("feature")["beta_DiD"]
     unstd = data["unstd"].set_index("feature")["beta_DiD"]
@@ -361,16 +408,21 @@ def _panel_std_vs_unstd(ax, data: dict):
                 transform=ax.transAxes)
         return
 
+    _s = 18 if composite else 50
+    _lbl_fs = 4.5 if composite else 7
+    _r_fs = 5.5 if composite else 7
+
     x, y = std[common].values, unstd[common].values
-    ax.scatter(x, y, s=50, alpha=0.85, color=COLORS.get("treated", "#E07B54"),
+    ax.scatter(x, y, s=_s, alpha=0.85, color=COLORS.get("treated", "#E07B54"),
                edgecolors="grey", linewidth=0.3)
 
-    _add_gene_labels(ax, common, std, unstd)
+    _add_gene_labels(ax, common, std, unstd, fontsize=_lbl_fs)
 
     r, _ = sp_stats.pearsonr(x, y)
-    ax.text(0.05, 0.95, f"r = {r:.2f}", transform=ax.transAxes, fontsize=7,
-            va="top", bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
-                                edgecolor="#ccc", alpha=0.8))
+    ax.text(0.05, 0.95, f"r = {r:.2f}", transform=ax.transAxes,
+            fontsize=_r_fs, va="top",
+            bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
+                      edgecolor="#ccc", alpha=0.8))
     ax.set_xlabel("β (standardised)")
     ax.set_ylabel("β (unstandardised)")
     ax.set_title("Standardised vs Unstandardised (Melanoma)",
@@ -380,12 +432,11 @@ def _panel_std_vs_unstd(ax, data: dict):
 
 # ── Panel D: Mean vs Median aggregation ───────────────────────────
 
-def _panel_mean_vs_median(ax, data: dict):
+def _panel_mean_vs_median(ax, data: dict, *, composite: bool = False):
     """Scatter: mean-aggregation vs median-aggregation betas."""
     mean_df = data["part"].set_index("feature")["beta_DiD"]
     med_res = data.get("median")
 
-    # Guard: median agg may produce NaN betas
     if med_res is None or med_res.empty:
         ax.text(0.5, 0.5, "No median-aggregation results", ha="center",
                 va="center", transform=ax.transAxes, fontsize=9, color="#888")
@@ -396,7 +447,6 @@ def _panel_mean_vs_median(ax, data: dict):
 
     med_df = med_res.set_index("feature")["beta_DiD"]
     common = mean_df.index.intersection(med_df.index)
-    # Drop NaN/Inf
     mask = np.isfinite(mean_df[common]) & np.isfinite(med_df[common])
     common = common[mask]
     if len(common) < 2:
@@ -407,18 +457,32 @@ def _panel_mean_vs_median(ax, data: dict):
         despine(ax)
         return
 
+    _s = 18 if composite else 50
+    _lbl_fs = 4.5 if composite else 7
+    _r_fs = 5.5 if composite else 7
+
     x, y = mean_df[common].values, med_df[common].values
-    ax.scatter(x, y, s=50, alpha=0.85, color="#7B68EE",
+    ax.scatter(x, y, s=_s, alpha=0.85, color="#7B68EE",
                edgecolors="grey", linewidth=0.3)
 
-    _add_gene_labels(ax, common, mean_df, med_df)
+    _add_gene_labels(ax, common, mean_df, med_df, fontsize=_lbl_fs)
 
     lims = [min(min(x), min(y)) - 0.1, max(max(x), max(y)) + 0.1]
     ax.plot(lims, lims, "k--", linewidth=0.5, alpha=0.3)
     r, _ = sp_stats.pearsonr(x, y)
-    ax.text(0.05, 0.95, f"r = {r:.2f}", transform=ax.transAxes, fontsize=7,
-            va="top", bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
-                                edgecolor="#ccc", alpha=0.8))
+
+    if composite:
+        ax.text(0.95, 0.05, f"r = {r:.2f}", transform=ax.transAxes,
+                fontsize=_r_fs, va="bottom", ha="right",
+                bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
+                          edgecolor="#ccc", alpha=0.8))
+        ax.set_xlim(right=0)
+    else:
+        ax.text(0.05, 0.95, f"r = {r:.2f}", transform=ax.transAxes,
+                fontsize=_r_fs, va="top",
+                bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
+                          edgecolor="#ccc", alpha=0.8))
+
     ax.set_xlabel("β (mean aggregation)")
     ax.set_ylabel("β (median aggregation)")
     ax.set_title("Mean vs Median Aggregation (Melanoma)",
@@ -428,7 +492,7 @@ def _panel_mean_vs_median(ax, data: dict):
 
 # ── Panel E: Log-transform sensitivity ────────────────────────────
 
-def _panel_log_sensitivity(ax, data: dict):
+def _panel_log_sensitivity(ax, data: dict, *, composite: bool = False):
     """Scatter: log1p_tpm betas vs raw TPM betas."""
     log_df = data["part"].set_index("feature")["beta_DiD"]
     raw_res = data.get("raw")
@@ -447,16 +511,21 @@ def _panel_log_sensitivity(ax, data: dict):
                 transform=ax.transAxes)
         return
 
+    _s = 18 if composite else 50
+    _lbl_fs = 4.5 if composite else 7
+    _r_fs = 5.5 if composite else 7
+
     x, y = log_df[common].values, raw_df[common].values
-    ax.scatter(x, y, s=50, alpha=0.85, color="#2ECC71",
+    ax.scatter(x, y, s=_s, alpha=0.85, color="#2ECC71",
                edgecolors="grey", linewidth=0.3)
 
-    _add_gene_labels(ax, common, log_df, raw_df)
+    _add_gene_labels(ax, common, log_df, raw_df, fontsize=_lbl_fs)
 
     r, _ = sp_stats.pearsonr(x, y)
-    ax.text(0.05, 0.95, f"r = {r:.2f}", transform=ax.transAxes, fontsize=7,
-            va="top", bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
-                                edgecolor="#ccc", alpha=0.8))
+    ax.text(0.05, 0.95, f"r = {r:.2f}", transform=ax.transAxes,
+            fontsize=_r_fs, va="top",
+            bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
+                      edgecolor="#ccc", alpha=0.8))
     ax.set_xlabel("β (log1p TPM)")
     ax.set_ylabel("β (raw TPM)")
     ax.set_title("Log-Transform Sensitivity (Melanoma)",
@@ -466,7 +535,7 @@ def _panel_log_sensitivity(ax, data: dict):
 
 # ── Panel F: Cell-type stratified heatmap ─────────────────────────
 
-def _panel_ct_heatmap(ax, data: dict):
+def _panel_ct_heatmap(ax, data: dict, *, composite: bool = False):
     """Heatmap: DiD effect sizes stratified by top cell types."""
     ct_results = data.get("ct_results", {})
     if not ct_results:
@@ -477,7 +546,6 @@ def _panel_ct_heatmap(ax, data: dict):
         despine(ax)
         return
 
-    # Build matrix
     rows = {}
     for ct, df in ct_results.items():
         if "beta_DiD" in df.columns and "feature" in df.columns:
@@ -488,19 +556,23 @@ def _panel_ct_heatmap(ax, data: dict):
         return
 
     mat = pd.DataFrame(rows)
-    # Show top features by mean absolute effect across cell types
     mat["_mean_abs"] = mat.abs().mean(axis=1)
     mat = mat.sort_values("_mean_abs", ascending=False).head(12).drop(columns="_mean_abs")
 
+    _annot_fs = 4 if composite else 6
     sns.heatmap(mat, ax=ax, cmap="RdBu_r", center=0, linewidths=0.5,
                 linecolor="white", cbar_kws={"shrink": 0.6, "label": "β"},
-                annot=True, fmt=".2f", annot_kws={"fontsize": 6})
+                annot=True, fmt=".2f", annot_kws={"fontsize": _annot_fs})
     ax.set_xlabel("Cell type")
     ax.set_ylabel("Feature")
     ax.set_title("Cell-Type Stratified DiD (Melanoma)",
                  fontweight="bold")
-    ax.tick_params(axis="x", labelsize=7, rotation=45)
-    ax.tick_params(axis="y", labelsize=7)
+    if composite:
+        ax.tick_params(axis="x", labelsize=4.5, rotation=25)
+        ax.tick_params(axis="y", labelsize=4.5)
+    else:
+        ax.tick_params(axis="x", labelsize=7, rotation=45)
+        ax.tick_params(axis="y", labelsize=7)
 
 
 # ── Panel G: Rank concordance ────────────────────────────────────
@@ -572,7 +644,7 @@ def _panel_rank_concordance(ax, data: dict):
     ax.set_yticks(y)
     ax.set_yticklabels(labels, fontsize=8)
     ax.set_xlabel(f"Spearman ρ (vs {ref_key})")
-    ax.set_xlim(0, 1.05)
+    ax.set_xlim(0, 1.15)
     ax.set_title("Rank Concordance Across Choices (Melanoma)",
                  fontweight="bold")
 
@@ -592,13 +664,10 @@ def _find_beta_col(df):
     raise KeyError(f"No beta column in {list(df.columns)}")
 
 
-def _panel_loo_stability(ax):
-    """G: LOO max-deviation of betas — heatmap of features × datasets.
+def _compute_loo_data():
+    """Compute LOO max-deviation matrix (features × datasets).
 
-    Metric: max_i |beta_LOO_i - beta_full| / (|beta_full| + 0.01)
-    This measures the worst-case influence of any single participant,
-    normalised by the full-data effect size. Stable near zero unlike CV.
-    Uses all participants per dataset (no data subsampling).
+    Returns a DataFrame or None if no data could be computed.
     """
     import sctrial
 
@@ -621,8 +690,6 @@ def _panel_loo_stability(ax):
             if len(feats) < 2:
                 continue
 
-            # Slice to only needed genes — reduces memory ~6000×
-            # so LOO copies are tiny (~34 participants × 3 genes)
             adata = adata[:, feats].copy()
 
             arm_col = cfg.get("arm_col")
@@ -630,13 +697,11 @@ def _panel_loo_stability(ax):
             pid_col = cfg["participant_col"]
             vis_col = cfg["visit_col"]
 
-            # Use all participants — no data subsampling
             obs = adata.obs
             pids = obs[pid_col].unique().tolist()
             if len(pids) < 4:
                 continue
 
-            # Full-data betas
             if design_type == "two_arm" and arm_col:
                 design = sctrial.TrialDesign(
                     participant_col=pid_col, visit_col=vis_col,
@@ -666,7 +731,6 @@ def _panel_loo_stability(ax):
 
             full_betas = full_df.set_index("feature")[beta_col]
 
-            # LOO: drop each participant, recompute betas
             loo_betas = []
             for pid in pids:
                 mask = obs[pid_col] != pid
@@ -702,7 +766,6 @@ def _panel_loo_stability(ax):
                 continue
 
             loo_mat = pd.DataFrame(loo_betas)
-            # Max-deviation: max_i |beta_LOO_i - beta_full| / (|beta_full| + 0.01)
             deviations = loo_mat.subtract(full_betas, axis=1).abs()
             max_dev = deviations.max() / (full_betas.abs() + 0.01)
             rows[name] = max_dev
@@ -712,21 +775,31 @@ def _panel_loo_stability(ax):
             print(f"  LOO {name}: failed ({exc})")
 
     if not rows:
-        ax.text(0.5, 0.5, "No LOO data", ha="center", va="center",
-                transform=ax.transAxes)
-        return
+        return None
+    return pd.DataFrame(rows)
 
-    mat = pd.DataFrame(rows)
 
+def _draw_loo_heatmap(ax, mat, *, annot_fs: float = 7):
+    """Draw LOO stability heatmap on *ax*."""
     sns.heatmap(mat, ax=ax, cmap="YlOrRd", linewidths=0.5,
                 linecolor="white",
                 cbar_kws={"shrink": 0.7, "label": "Max LOO deviation"},
-                annot=True, fmt=".2f", annot_kws={"fontsize": 7})
+                annot=True, fmt=".2f", annot_kws={"fontsize": annot_fs})
     ax.set_xlabel("Dataset")
     ax.set_ylabel("Feature")
     ax.set_title("Leave-One-Out Stability (max influence)", fontweight="bold")
     ax.tick_params(axis="x", labelsize=8, rotation=30)
     ax.tick_params(axis="y", labelsize=8)
+
+
+def _panel_loo_stability(ax):
+    """G: LOO max-deviation of betas — heatmap of features × datasets."""
+    mat = _compute_loo_data()
+    if mat is None:
+        ax.text(0.5, 0.5, "No LOO data", ha="center", va="center",
+                transform=ax.transAxes)
+        return
+    _draw_loo_heatmap(ax, mat)
 
 
 # ======================================================================
@@ -869,13 +942,12 @@ def _run_simulation_grid(n_jobs=None):
     return pd.concat(all_dfs, ignore_index=True)
 
 
-def _panel_sim_tpr(ax, results):
+def _panel_sim_tpr(ax, results, *, composite: bool = False):
     """Panel H: True positive rate at FDR < 0.05 across effect sizes."""
+    from matplotlib.patches import Patch
     from statsmodels.stats.multitest import multipletests
 
-    n_default = _SIM_SAMPLE_SIZES[1]  # middle sample size
-    # Include ALL genes (null + signal) for proper FDR correction scope,
-    # but only for iterations that have target_beta > 0
+    n_default = _SIM_SAMPLE_SIZES[1]
     subset = results[
         (results["target_beta"] > 0) & (results["n_participants"] == n_default)
     ].copy()
@@ -888,9 +960,7 @@ def _panel_sim_tpr(ax, results):
         is_sig = grp.loc[grp["pvalue"].notna(), "is_signal"].values
         if len(pvals) == 0:
             continue
-        # FDR correction over ALL genes (null + signal) per iteration
         reject = multipletests(pvals, alpha=0.05, method="fdr_bh")[0]
-        # TPR = fraction of signal genes rejected
         if is_sig.sum() > 0:
             rows.append(
                 {"method": method, "target_beta": beta,
@@ -902,6 +972,9 @@ def _panel_sim_tpr(ax, results):
         .agg(["mean", "std"])
         .reset_index()
     )
+
+    _capsize = 1.5 if composite else 3
+    _err_kw = {"elinewidth": 0.5} if composite else {}
 
     betas = sorted(tpr_agg["target_beta"].unique())
     x = np.arange(len(betas))
@@ -916,27 +989,40 @@ def _panel_sim_tpr(ax, results):
         ax.bar(
             x + i * width, vals, width, yerr=errs,
             label=_SIM_METHOD_LABELS[method],
-            color=_SIM_METHOD_COLORS[method], alpha=0.85, capsize=3,
+            color=_SIM_METHOD_COLORS[method], alpha=0.85,
+            capsize=_capsize, error_kw=_err_kw,
         )
 
     ax.set_xticks(x + width)
     ax.set_xticklabels([fr"$\beta$={b}" for b in betas])
     ax.set_xlabel(r"True effect size ($\beta$)")
     ax.set_ylabel("True Positive Rate (FDR < 0.05)")
-    ax.set_ylim(0, 1.05)
     ax.set_title(f"Power (n={n_default})", fontweight="bold")
-    ax.legend(fontsize=7, loc="upper left")
+
+    if composite:
+        ax.set_ylim(0, 1.30)
+        handles = [Patch(facecolor=_SIM_METHOD_COLORS[m],
+                         label=_SIM_METHOD_LABELS[m])
+                   for m in _SIM_METHODS]
+        ax.legend(handles=handles, fontsize=3.5, loc="upper right",
+                  ncol=2, frameon=True,
+                  handlelength=0.7, handleheight=0.7, columnspacing=0.6,
+                  borderpad=0.3)
+    else:
+        ax.set_ylim(0, 1.05)
+        ax.legend(fontsize=7, loc="upper left")
     despine(ax)
 
 
-def _panel_sim_fpr(ax, results):
+def _panel_sim_fpr(ax, results, *, composite: bool = False):
     """Panel I: Per-test type I error rate under pure null (target_beta=0).
 
     Uses uncorrected p < 0.05 rejection rate (not BH-adjusted) so that the
     expected rate under a well-calibrated method is exactly 0.05, producing
     visible bars near the nominal line.
     """
-    # Pure null: only iterations where target_beta=0 (all genes are null)
+    from matplotlib.patches import Patch
+
     pure_null = results[results["target_beta"] == 0.0].copy()
 
     rows = []
@@ -946,7 +1032,6 @@ def _panel_sim_fpr(ax, results):
         pvals = grp["pvalue"].dropna().values
         if len(pvals) == 0:
             continue
-        # Uncorrected: fraction of raw p < 0.05
         rows.append(
             {"method": method, "n_participants": n,
              "fpr": (pvals < 0.05).mean()}
@@ -957,6 +1042,9 @@ def _panel_sim_fpr(ax, results):
         .agg(["mean", "std"])
         .reset_index()
     )
+
+    _capsize = 1.5 if composite else 3
+    _err_kw = {"elinewidth": 0.5} if composite else {}
 
     ns = sorted(fpr_agg["n_participants"].unique())
     x = np.arange(len(ns))
@@ -971,7 +1059,8 @@ def _panel_sim_fpr(ax, results):
         ax.bar(
             x + i * width, vals, width, yerr=errs,
             label=_SIM_METHOD_LABELS[method],
-            color=_SIM_METHOD_COLORS[method], alpha=0.85, capsize=3,
+            color=_SIM_METHOD_COLORS[method], alpha=0.85,
+            capsize=_capsize, error_kw=_err_kw,
         )
 
     ax.axhline(0.05, color="red", linestyle="--", linewidth=0.8, alpha=0.7)
@@ -979,13 +1068,24 @@ def _panel_sim_fpr(ax, results):
     ax.set_xticklabels([f"n={n}" for n in ns])
     ax.set_xlabel("Sample size (participants)")
     ax.set_ylabel("Type I Error Rate (uncorrected)")
-    ax.set_ylim(0, max(0.15, fpr_agg["mean"].max() * 1.3))
     ax.set_title("Type I Error Calibration", fontweight="bold")
-    ax.legend(fontsize=7)
+
+    if composite:
+        ax.set_ylim(0, 0.15)
+        handles = [Patch(facecolor=_SIM_METHOD_COLORS[m],
+                         label=_SIM_METHOD_LABELS[m])
+                   for m in _SIM_METHODS]
+        ax.legend(handles=handles, fontsize=3.5, loc="upper right",
+                  ncol=2, frameon=True,
+                  handlelength=0.7, handleheight=0.7, columnspacing=0.6,
+                  borderpad=0.3)
+    else:
+        ax.set_ylim(0, max(0.15, fpr_agg["mean"].max() * 1.3))
+        ax.legend(fontsize=7)
     despine(ax)
 
 
-def _panel_sim_bias(ax, results):
+def _panel_sim_bias(ax, results, *, composite: bool = False):
     """Panel J: Effect-size bias (estimated vs true beta).
 
     All four methods are nearly unbiased, so points overlap on the y=x
@@ -994,16 +1094,15 @@ def _panel_sim_bias(ax, results):
     apparent bias against the identity line).
     """
     n_default = _SIM_SAMPLE_SIZES[1]
-    # Only non-zero effects for bias assessment
     signal = results[
         results["is_signal"] & (results["target_beta"] > 0)
         & (results["n_participants"] == n_default)
     ].copy()
 
-    # Distinct markers + decreasing size so later-drawn methods don't
-    # fully occlude earlier ones.  Draw order: largest first.
     markers = ["o", "D", "s", "^"]
-    sizes = [10, 8, 7, 5]
+    sizes = [3.5, 3, 2.5, 2] if composite else [10, 8, 7, 5]
+    _lw = 0.8 if composite else 1.5
+    _cs = 2 if composite else 4
 
     for idx, method in enumerate(_SIM_METHODS):
         sub = signal[signal["method"] == method]
@@ -1021,8 +1120,8 @@ def _panel_sim_bias(ax, results):
             markersize=sizes[idx],
             label=_SIM_METHOD_LABELS[method],
             color=_SIM_METHOD_COLORS[method],
-            capsize=4,
-            linewidth=1.5,
+            capsize=_cs,
+            linewidth=_lw,
             zorder=3 + idx,
         )
 
@@ -1031,17 +1130,28 @@ def _panel_sim_bias(ax, results):
     ax.set_xlabel(r"True $\beta_{\mathrm{DiD}}$")
     ax.set_ylabel(r"Estimated $\beta$")
     ax.set_title(f"Effect-Size Bias (n={n_default})", fontweight="bold")
-    ax.legend(fontsize=7)
+
+    if composite:
+        cur_top = ax.get_ylim()[1]
+        ax.set_ylim(top=cur_top * 1.15)
+        ax.legend(fontsize=3.5, loc="upper right",
+                  ncol=2, markerscale=0.6,
+                  columnspacing=0.6, borderpad=0.3, frameon=True)
+    else:
+        ax.legend(fontsize=7)
     despine(ax)
 
 
-def _panel_sim_coverage(ax, results):
+def _panel_sim_coverage(ax, results, *, composite: bool = False):
     """Panel K: P-value QQ plot under pure null (target_beta=0).
 
     Plots observed vs expected p-value quantiles for each method under
     the null hypothesis. Well-calibrated methods follow the diagonal;
     anti-conservative methods curve above it.
     """
+    _s_data = 1.5 if composite else 3
+    _s_leg = 10 if composite else 25
+
     n_default = _SIM_SAMPLE_SIZES[1]
     pure_null = results[
         (results["target_beta"] == 0.0)
@@ -1056,25 +1166,30 @@ def _panel_sim_coverage(ax, results):
             continue
         n = len(pvals)
         expected = (np.arange(1, n + 1) - 0.5) / n
-        # Convert to -log10 for visual clarity
         obs_log = -np.log10(pvals + 1e-300)
         exp_log = -np.log10(expected + 1e-300)
         ax.scatter(
-            exp_log, obs_log, s=3, alpha=0.3,
+            exp_log, obs_log, s=_s_data, alpha=0.3,
             color=_SIM_METHOD_COLORS[method], rasterized=True,
         )
-        # Full-opacity handle for legend
-        ax.scatter([], [], s=25, alpha=1.0,
+        ax.scatter([], [], s=_s_leg, alpha=1.0,
                    color=_SIM_METHOD_COLORS[method],
                    label=_SIM_METHOD_LABELS[method])
 
-    # Diagonal reference
     lim = max(ax.get_xlim()[1], ax.get_ylim()[1])
     ax.plot([0, lim], [0, lim], "k--", linewidth=0.8, alpha=0.5)
     ax.set_xlabel(r"Expected $-\log_{10}(p)$")
     ax.set_ylabel(r"Observed $-\log_{10}(p)$")
     ax.set_title(f"P-value Calibration QQ (n={n_default})", fontweight="bold")
-    ax.legend(fontsize=7)
+
+    if composite:
+        cur_top = ax.get_ylim()[1]
+        ax.set_ylim(top=cur_top * 1.15)
+        ax.legend(fontsize=3.5, loc="upper right",
+                  ncol=2, markerscale=0.5,
+                  columnspacing=0.6, borderpad=0.3, frameon=True)
+    else:
+        ax.legend(fontsize=7)
     despine(ax)
 
 
@@ -1083,7 +1198,7 @@ def _panel_sim_coverage(ax, results):
 # ======================================================================
 
 def generate():
-    """Create and save Supplementary Figure 4 panels (A–K).
+    """Create and save Supplementary Figure 4 panels (A–K) + composite.
 
     Layout:
       A  Analytical vs bootstrap SE (all 5 datasets, faceted forest plot)
@@ -1099,12 +1214,23 @@ def generate():
       K  Simulation: p-value calibration QQ plot
     """
     print("Supplementary Figure 4: Sensitivity to Modeling and Preprocessing")
-    data = _run_sensitivity()
 
-    # Panel A: Multi-dataset bootstrap SE (separate pipeline)
-    print("  Loading multi-dataset bootstrap data ...")
-    boot_data = _run_multi_bootstrap()
-    # Filter to datasets that actually returned results
+    # ── Sensitivity (panels B–F) — cache minus large adata ────────────
+    data = _load_cache("sensitivity")
+    if data is None:
+        data = _run_sensitivity()
+        cacheable = {k: v for k, v in data.items() if k != "adata"}
+        _save_cache("sensitivity", cacheable)
+        if "adata" in data:
+            del data["adata"]
+    # (cached version never contains adata — panels B–F don't need it)
+
+    # ── Bootstrap (panel A) ───────────────────────────────────────────
+    boot_data = _load_cache("bootstrap")
+    if boot_data is None:
+        print("  Computing multi-dataset bootstrap ...")
+        boot_data = _run_multi_bootstrap()
+        _save_cache("bootstrap", boot_data)
     boot_ok = {k: v for k, v in boot_data.items() if v.get("part") is not None}
     if boot_ok:
         ncols_a = len(boot_ok)
@@ -1112,7 +1238,6 @@ def generate():
         _panel_bootstrap_multi(fig, boot_ok)
         fig.tight_layout(rect=[0, 0, 1, 0.93])
         save_panel(fig, "panel_A", FIGURE_NAME, SUPP_OUTPUT)
-    boot_data.clear()
 
     # Panels B–F: single-dataset sensitivity (Sade-Feldman only)
     panels_bf = [
@@ -1122,33 +1247,38 @@ def generate():
         ("panel_E", _panel_ct_heatmap, (8.8, 5.8)),
         ("panel_F", _panel_rank_concordance, (7.2, 5.8)),
     ]
-
     for panel_name, fn, size in panels_bf:
         fig, ax = plt.subplots(figsize=size)
         fn(ax, data)
         fig.tight_layout()
         save_panel(fig, panel_name, FIGURE_NAME, SUPP_OUTPUT)
 
-    if "adata" in data:
-        del data["adata"]
-    data.clear()
-
-    # Panel G: LOO stability (heavy computation)
-    print("  Computing LOO stability ...")
+    # ── LOO stability (panel G) ───────────────────────────────────────
+    loo_mat = _load_cache("loo")
+    if loo_mat is None:
+        print("  Computing LOO stability ...")
+        loo_mat = _compute_loo_data()
+        _save_cache("loo", loo_mat)
     fig, ax = plt.subplots(figsize=(9, 6))
-    _panel_loo_stability(ax)
+    if loo_mat is not None:
+        _draw_loo_heatmap(ax, loo_mat)
+    else:
+        ax.text(0.5, 0.5, "No LOO data", ha="center", va="center",
+                transform=ax.transAxes)
     fig.tight_layout()
     save_panel(fig, "panel_G", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panels H–K: Monte Carlo simulation study
-    print("  Running simulation grid (this may take several minutes) ...")
-    sim_results = _run_simulation_grid()
-
-    # Save raw simulation results for reproducibility
-    out_dir = SUPP_OUTPUT / f"{FIGURE_NAME}_panels"
-    out_dir.mkdir(exist_ok=True)
-    sim_results.to_csv(out_dir / "simulation_results.csv", index=False)
-    print(f"    Saved raw results → {out_dir / 'simulation_results.csv'}")
+    # ── Simulation grid (panels H–K) ─────────────────────────────────
+    sim_csv = _cache_dir() / "simulation_results.csv"
+    if sim_csv.exists():
+        print("  Loading cached simulation results ...")
+        sim_results = pd.read_csv(sim_csv)
+        sim_results["is_signal"] = sim_results["is_signal"].astype(bool)
+    else:
+        print("  Running simulation grid (this may take several minutes) ...")
+        sim_results = _run_simulation_grid()
+        sim_results.to_csv(sim_csv, index=False)
+        print(f"    Saved raw results → {sim_csv}")
 
     sim_panels = [
         ("panel_H", _panel_sim_tpr, (7.0, 5.0)),
@@ -1161,11 +1291,171 @@ def generate():
         fn(ax, sim_results)
         fig.tight_layout()
         save_panel(fig, panel_name, FIGURE_NAME, SUPP_OUTPUT)
-    del sim_results
+
+    # ==================================================================
+    # Composite artboard  (180 mm × ≤ 215 mm)
+    # ==================================================================
+    #   Row 0: A  (full-width subfigure — faceted forest plot)
+    #   Row 1: B | C | D
+    #   Row 2: E | F | G
+    #     (larger gap here)
+    #   Row 3: H | I | J | K
+    # ==================================================================
+    print("  Building composite figure ...")
+
+    _SMALL_RC = {
+        "font.size": 5,
+        "axes.titlesize": 5.5,
+        "axes.labelsize": 5,
+        "xtick.labelsize": 4.5,
+        "ytick.labelsize": 4.5,
+        "legend.fontsize": 4,
+        "legend.title_fontsize": 4,
+    }
+    _MAX_FONT = 6
+
+    def _cap_fontsize(fig_obj, maximum):
+        for ax_i in fig_obj.get_axes():
+            for txt in ([ax_i.title, ax_i.xaxis.label, ax_i.yaxis.label]
+                        + ax_i.get_xticklabels() + ax_i.get_yticklabels()
+                        + ax_i.texts):
+                if txt.get_fontsize() > maximum:
+                    txt.set_fontsize(maximum)
+            leg = ax_i.get_legend()
+            if leg:
+                for txt in leg.get_texts():
+                    if txt.get_fontsize() > maximum:
+                        txt.set_fontsize(maximum)
+                t = leg.get_title()
+                if t and t.get_fontsize() > maximum:
+                    t.set_fontsize(maximum)
+
+    _prev_rc = {k: plt.rcParams[k] for k in _SMALL_RC}
+    plt.rcParams.update(_SMALL_RC)
+
+    _mm = 1.0 / 25.4
+    fig_c = plt.figure(figsize=(180 * _mm, 215 * _mm))
+
+    # Use spacer rows for independent gap control:
+    #   [A] [gap] [BCD] [gap] [EFG] [gap] [HIJK]
+    outer = fig_c.add_gridspec(
+        7, 1,
+        height_ratios=[1.0, 0.10, 0.75, 0.30, 0.85, 0.45, 0.85],
+        hspace=0.0,
+        left=0.08, right=0.97, top=0.97, bottom=0.04,
+    )
+
+    # ── Row 0: Panel A (subfigure for multi-axes forest plot) ─────────
+    subfig_a = fig_c.add_subfigure(outer[0])
+    if boot_ok:
+        _panel_bootstrap_multi(subfig_a, boot_ok, composite=True)
+    else:
+        ax_a_tmp = subfig_a.subplots(1, 1)
+        ax_a_tmp.text(0.5, 0.5, "No bootstrap data", ha="center",
+                      va="center", transform=ax_a_tmp.transAxes)
+    subfig_a.subplots_adjust(wspace=0.45, left=0.04, right=0.98)
+
+    # ── Row 2: B | C | D (scatter plots) ─────────────────────────────
+    gs1 = outer[2].subgridspec(1, 3, wspace=0.50)
+    ax_b = fig_c.add_subplot(gs1[0])
+    ax_cc = fig_c.add_subplot(gs1[1])
+    ax_d = fig_c.add_subplot(gs1[2])
+
+    _panel_std_vs_unstd(ax_b, data, composite=True)
+    _panel_mean_vs_median(ax_cc, data, composite=True)
+    _panel_log_sensitivity(ax_d, data, composite=True)
+
+    # ── Row 4: E | F | G (heatmap / bar / heatmap) ───────────────────
+    gs2 = outer[4].subgridspec(1, 3, width_ratios=[1.3, 0.8, 1.3],
+                               wspace=0.55)
+    ax_e = fig_c.add_subplot(gs2[0])
+    ax_f = fig_c.add_subplot(gs2[1])
+    ax_g = fig_c.add_subplot(gs2[2])
+
+    _panel_ct_heatmap(ax_e, data, composite=True)
+    _panel_rank_concordance(ax_f, data)
+    if loo_mat is not None:
+        _draw_loo_heatmap(ax_g, loo_mat, annot_fs=4)
+    else:
+        ax_g.text(0.5, 0.5, "No LOO data", ha="center", va="center",
+                  transform=ax_g.transAxes)
+
+    # ── Row 6: H | I | J | K (simulation panels) ─────────────────────
+    gs3 = outer[6].subgridspec(1, 4, wspace=0.60)
+    ax_h = fig_c.add_subplot(gs3[0])
+    ax_i = fig_c.add_subplot(gs3[1])
+    ax_j = fig_c.add_subplot(gs3[2])
+    ax_k = fig_c.add_subplot(gs3[3])
+
+    _panel_sim_tpr(ax_h, sim_results, composite=True)
+    _panel_sim_fpr(ax_i, sim_results, composite=True)
+    _panel_sim_bias(ax_j, sim_results, composite=True)
+    _panel_sim_coverage(ax_k, sim_results, composite=True)
+
+    # ── Post-processing ───────────────────────────────────────────────
+    for ax_pp in fig_c.get_axes():
+        leg = ax_pp.get_legend()
+        if leg:
+            leg.get_frame().set_alpha(0.85)
+            leg.get_frame().set_edgecolor("#CCCCCC")
+
+    _cap_fontsize(fig_c, _MAX_FONT)
+    _cap_fontsize(subfig_a, _MAX_FONT)
+
+    # Bold panel labels (placed after cap so they stay prominent)
+    _lbl_fs = 9
+    _lbl_xy = (-0.25, 1.12)
+
+    subfig_axes = subfig_a.get_axes()
+    if subfig_axes:
+        subfig_axes[0].text(
+            -0.22, 1.15, "A",
+            transform=subfig_axes[0].transAxes,
+            fontsize=_lbl_fs, fontweight="bold", va="top", ha="left",
+        )
+
+    for ax_lbl, lbl in [
+        (ax_b, "B"), (ax_cc, "C"), (ax_d, "D"),
+        (ax_h, "H"), (ax_i, "I"), (ax_j, "J"), (ax_k, "K"),
+    ]:
+        ax_lbl.text(
+            _lbl_xy[0], _lbl_xy[1], lbl,
+            transform=ax_lbl.transAxes,
+            fontsize=_lbl_fs, fontweight="bold", va="top", ha="left",
+        )
+
+    # E, F, G labels lower to avoid overlap with titles
+    _efg_y = 1.10
+    for ax_lbl, lbl, x_off in [
+        (ax_e, "E", _lbl_xy[0]),
+        (ax_f, "F", -0.55),
+        (ax_g, "G", _lbl_xy[0]),
+    ]:
+        ax_lbl.text(
+            x_off, _efg_y, lbl,
+            transform=ax_lbl.transAxes,
+            fontsize=_lbl_fs, fontweight="bold", va="top", ha="left",
+        )
+
+    plt.rcParams.update(_prev_rc)
+
+    save_panel(fig_c, FIGURE_NAME, FIGURE_NAME, SUPP_OUTPUT, close=False)
+    pdf_path = SUPP_OUTPUT / f"{FIGURE_NAME}_panels" / f"{FIGURE_NAME}.pdf"
+    fig_c.savefig(str(pdf_path), format="pdf", bbox_inches="tight",
+                  facecolor="white")
+    plt.close(fig_c)
+    print("    Saved combined artboard (PNG + PDF)")
+
+    # ── Cleanup ───────────────────────────────────────────────────────
+    if "adata" in data:
+        del data["adata"]
+    data.clear()
+    boot_data.clear()
+    del sim_results, loo_mat
 
     clear_cache()
     gc.collect()
-    print("  Done.\n")
+    print("  SuppFig4 complete: 11 individual panels + combined (A–K)\n")
 
 
 if __name__ == "__main__":
