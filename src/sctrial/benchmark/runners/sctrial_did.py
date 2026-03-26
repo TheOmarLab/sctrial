@@ -16,6 +16,18 @@ import pandas as pd
 logger = logging.getLogger(__name__)
 
 
+def _fail_result(failure_mode: str = "numerical") -> dict:
+    """Return a NaN result dict for a failed gene."""
+    return {
+        "beta": float("nan"),
+        "pvalue": float("nan"),
+        "ci_lo": float("nan"),
+        "ci_hi": float("nan"),
+        "converged": False,
+        "failure_mode": failure_mode,
+    }
+
+
 def _run_from_pseudobulk(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
     """Participant-level first-difference DiD on log-pseudobulk.
 
