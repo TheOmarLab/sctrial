@@ -183,7 +183,7 @@ def run_ablation(
             from .runners.sctrial_fe import run as run_sctrial
 
             results[var_name] = run_sctrial(sim["adata"], gene_cols)
-        else:
+        elif fn is not None:
             results[var_name] = fn(sim[data_key], gene_cols)
 
     return results

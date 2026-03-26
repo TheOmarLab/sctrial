@@ -290,32 +290,32 @@ def _dispatch_method(
         pb_log = None
 
     if method == "sctrial_fe":
-        from .runners.sctrial_fe import run
+        from .runners import sctrial_fe
 
         # Pass log-pseudobulk DataFrame instead of raw cell-level AnnData
         # so that DiD betas are on log-expression scale, comparable to
         # edgeR/limma/dreamlet log-fold-changes
-        return run(pb_log, gene_cols, from_pseudobulk=True)
+        return sctrial_fe.run(pb_log, gene_cols, from_pseudobulk=True)
     elif method == "edger_qlf":
-        from .runners.edger_qlf import run
+        from .runners import edger_qlf
 
-        return run(pb_counts, gene_cols, design_type=design_type)
+        return edger_qlf.run(pb_counts, gene_cols, design_type=design_type)
     elif method == "limma_voom":
-        from .runners.limma_voom import run
+        from .runners import limma_voom
 
-        return run(pb_counts, gene_cols, design_type=design_type)
+        return limma_voom.run(pb_counts, gene_cols, design_type=design_type)
     elif method == "dreamlet":
-        from .runners.dreamlet_runner import run
+        from .runners import dreamlet_runner
 
-        return run(pb_counts, gene_cols, design_type=design_type)
+        return dreamlet_runner.run(pb_counts, gene_cols, design_type=design_type)
     elif method == "nebula":
-        from .runners.nebula_runner import run
+        from .runners import nebula_runner
 
-        return run(sim["adata"], gene_cols, design_type=design_type)
+        return nebula_runner.run(sim["adata"], gene_cols, design_type=design_type)
     elif method == "wilcoxon_paired":
-        from .runners.wilcoxon_paired import run
+        from .runners import wilcoxon_paired
 
-        return run(pb_log, gene_cols)
+        return wilcoxon_paired.run(pb_log, gene_cols)
     else:
         raise ValueError(f"Unknown method: {method}")
 

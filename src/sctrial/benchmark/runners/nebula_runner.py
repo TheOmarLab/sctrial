@@ -117,8 +117,8 @@ def run(
         logger.error("rpy2 not installed — cannot run NEBULA")
         return {g: _fail_result("numerical") for g in gene_cols}
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmpdir = Path(tmpdir)
+    with tempfile.TemporaryDirectory() as _tmpdir:
+        td = Path(_tmpdir)
 
         # Subset to requested genes
         adata_sub = adata[:, gene_cols].copy()
@@ -129,10 +129,10 @@ def run(
         # Export as MatrixMarket (genes × cells = transposed)
         from scipy.io import mmwrite
 
-        mtx_path = tmpdir / "counts.mtx"
+        mtx_path = td / "counts.mtx"
         mmwrite(str(mtx_path), X.T)  # genes × cells
 
-        genes_path = tmpdir / "genes.txt"
+        genes_path = td / "genes.txt"
         with open(genes_path, "w") as f:
             for g in gene_cols:
                 f.write(g + "\n")
@@ -140,10 +140,10 @@ def run(
         # Export metadata
         meta_df = adata_sub.obs[[participant_col, arm_col, visit_col]].copy()
         meta_df.columns = ["participant", "arm", "visit"]
-        meta_csv = tmpdir / "meta.csv"
+        meta_csv = td / "meta.csv"
         meta_df.to_csv(meta_csv, index=False)
 
-        output_csv = tmpdir / "results.csv"
+        output_csv = td / "results.csv"
 
         template = _R_SCRIPT_TWO_ARM if design_type == "two_arm" else _R_SCRIPT_SINGLE_ARM
         script = template.format(
