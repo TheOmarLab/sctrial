@@ -92,25 +92,25 @@ def run(
         logger.error("rpy2 not installed — cannot run limma-voom")
         return {g: _fail_result("numerical") for g in gene_cols}
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmpdir = Path(tmpdir)
+    with tempfile.TemporaryDirectory() as _tmpdir:
+        td = Path(_tmpdir)
 
         sample_ids = [f"S{i}" for i in range(len(pseudobulk))]
 
         counts_df = pseudobulk[gene_cols].copy().clip(lower=0)
         counts_df.index = sample_ids
-        counts_csv = tmpdir / "counts.csv"
+        counts_csv = td / "counts.csv"
         counts_df.to_csv(counts_csv)
 
         meta_df = pseudobulk[[participant_col, arm_col, visit_col]].copy()
         meta_df.columns = ["participant", "arm", "visit"]
         meta_df.index = sample_ids
-        meta_csv = tmpdir / "meta.csv"
+        meta_csv = td / "meta.csv"
         meta_df.to_csv(meta_csv)
 
         assert len(counts_df) == len(meta_df)
 
-        output_csv = tmpdir / "results.csv"
+        output_csv = td / "results.csv"
 
         template = _R_SCRIPT_TWO_ARM if design_type == "two_arm" else _R_SCRIPT_SINGLE_ARM
         script = template.format(

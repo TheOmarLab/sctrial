@@ -375,7 +375,7 @@ def calibrate_from_real_data(
     cv_cells = cell_counts.std() / mean_cells if mean_cells > 0 else 0.5
 
     # --- Count-based statistics ---
-    if has_raw_counts:
+    if has_raw_counts and X_counts is not None:
         # Library sizes from raw counts
         lib_sizes = X_counts.sum(axis=1)
         log_lib = np.log(lib_sizes + 1)
