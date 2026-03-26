@@ -150,15 +150,16 @@ def simulate_trial(cfg: SimulationConfig) -> dict:
 
     # Gene-specific dispersion θ_g
     # Real scRNA-seq has very low θ (high overdispersion): median ~0.1-0.3
+    theta: np.ndarray
     if cfg.dispersion_mode == "fixed":
         theta = np.full(cfg.n_genes, cfg.dispersion_fixed)
     elif cfg.dispersion_mode == "extreme":
         # Very low dispersion = extremely high variance
-        theta = rng.uniform(0.01, 0.5, size=cfg.n_genes)
+        theta = np.asarray(rng.uniform(0.01, 0.5, size=cfg.n_genes))
     else:
         # Calibrated: match real scRNA-seq (θ typically 0.01-2.0, median ~0.15)
-        theta = rng.lognormal(np.log(0.15), 1.0, size=cfg.n_genes)
-        theta = np.clip(theta, 0.01, 50.0)
+        theta = np.asarray(rng.lognormal(np.log(0.15), 1.0, size=cfg.n_genes))
+        theta = np.asarray(np.clip(theta, 0.01, 50.0))
 
     # True effects
     true_effects = {}
