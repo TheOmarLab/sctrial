@@ -21,18 +21,25 @@ library(edgeR)
 counts <- read.csv("{counts_csv}", row.names=1, check.names=FALSE)
 meta   <- read.csv("{meta_csv}", row.names=1, stringsAsFactors=TRUE)
 
+# Ensure row order matches
+meta <- meta[rownames(counts), , drop=FALSE]
+
 meta$arm   <- factor(meta$arm, levels=c("{control}", "{treated}"))
 meta$visit <- factor(meta$visit, levels=c("{pre}", "{post}"))
 
 # Two-arm: interaction model ~arm * visit (DiD effect)
 design <- model.matrix(~arm * visit, data=meta)
 
+# Group variable for filterByExpr: use the interaction of arm and visit
+# Without this, filterByExpr assumes all samples are one group and over-filters
+group <- interaction(meta$arm, meta$visit)
+
 y <- DGEList(counts=t(counts))
-keep <- filterByExpr(y, design, min.count=1)
+keep <- filterByExpr(y, group=group, min.count=1)
 y <- y[keep, , keep.lib.sizes=FALSE]
 y <- calcNormFactors(y)
-y <- estimateDisp(y, design)
-fit <- glmQLFit(y, design)
+y <- estimateDisp(y, design, robust=TRUE)
+fit <- glmQLFit(y, design, robust=TRUE)
 
 # Test the interaction term (last coefficient)
 coef_idx <- ncol(design)
@@ -47,18 +54,24 @@ library(edgeR)
 counts <- read.csv("{counts_csv}", row.names=1, check.names=FALSE)
 meta   <- read.csv("{meta_csv}", row.names=1, stringsAsFactors=TRUE)
 
+# Ensure row order matches
+meta <- meta[rownames(counts), , drop=FALSE]
+
 meta$visit       <- factor(meta$visit, levels=c("{pre}", "{post}"))
 meta$participant <- factor(meta$participant)
 
 # Single-arm paired: ~participant + visit (block on participant, test visit)
 design <- model.matrix(~participant + visit, data=meta)
 
+# Group for filterByExpr: use visit
+group <- meta$visit
+
 y <- DGEList(counts=t(counts))
-keep <- filterByExpr(y, design, min.count=1)
+keep <- filterByExpr(y, group=group, min.count=1)
 y <- y[keep, , keep.lib.sizes=FALSE]
 y <- calcNormFactors(y)
-y <- estimateDisp(y, design)
-fit <- glmQLFit(y, design)
+y <- estimateDisp(y, design, robust=TRUE)
+fit <- glmQLFit(y, design, robust=TRUE)
 
 # Test the visit coefficient (Post vs Pre)
 coef_idx <- ncol(design)

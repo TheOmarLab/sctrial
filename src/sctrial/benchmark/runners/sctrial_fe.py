@@ -46,10 +46,21 @@ def _run_from_pseudobulk(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
             X = sm.add_constant(X)
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                model = sm.OLS(y, X, missing="drop").fit(
-                    cov_type="cluster",
-                    cov_kwds={"groups": df["participant"].values},
-                )
+                n_participants = df["participant"].nunique()
+                # With few participants, cluster-robust SEs are too
+                # conservative (fewer clusters than parameters). Use HC1
+                # (heteroscedasticity-robust) SEs instead when clusters
+                # are small.  With many participants, cluster-robust is
+                # preferred.
+                if n_participants <= 20:
+                    model = sm.OLS(y, X, missing="drop").fit(
+                        cov_type="HC1",
+                    )
+                else:
+                    model = sm.OLS(y, X, missing="drop").fit(
+                        cov_type="cluster",
+                        cov_kwds={"groups": df["participant"].values},
+                    )
 
             beta = model.params.get("interaction", np.nan)
             pval = model.pvalues.get("interaction", np.nan)
