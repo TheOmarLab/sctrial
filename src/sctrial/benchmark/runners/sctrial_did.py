@@ -1,4 +1,9 @@
-"""sctrial DiD (Fixed Effects) runner for benchmarking."""
+"""sctrial DiD (first-difference) runner for benchmarking.
+
+Benchmark representation of the participant-level DiD estimand.
+With T=2 periods, first-differencing is equivalent to the FE estimator
+(Wooldridge Ch.14) but avoids near-saturated models at small n.
+"""
 
 from __future__ import annotations
 
@@ -98,7 +103,7 @@ def _run_from_pseudobulk(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
                 "failure_mode": None,
             }
         except Exception as exc:
-            logger.debug("sctrial_fe gene %s failed: %s", gene, exc)
+            logger.debug("sctrial_did gene %s failed: %s", gene, exc)
             out[gene] = _fail_result("numerical")
 
     return out
@@ -174,7 +179,7 @@ def run(
                 "failure_mode": None,
             }
     except Exception as exc:
-        logger.warning("sctrial_fe failed: %s", exc)
+        logger.warning("sctrial_did failed: %s", exc)
         for g in gene_cols:
             out[g] = {
                 "beta": np.nan,

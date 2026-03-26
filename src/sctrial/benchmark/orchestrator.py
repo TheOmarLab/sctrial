@@ -35,7 +35,7 @@ _MEAN_CELLS = 500
 
 # Core methods
 CORE_METHODS = [
-    "sctrial_fe",
+    "sctrial_did",
     "edger_qlf",
     "limma_voom",
     "dreamlet",
@@ -277,11 +277,11 @@ def _dispatch_method(
     pb_means = sim.get("pseudobulk_means", sim.get("pseudobulk"))
 
     # Log-transformed pseudobulk means for methods that need expression-scale
-    # input (sctrial_fe, wilcoxon_paired). This ensures all methods report
+    # input (sctrial_did, wilcoxon_paired). This ensures all methods report
     # betas on a comparable log-fold-change scale:
     #   - edgeR/limma/dreamlet internally log-transform raw counts
     #   - NEBULA fits a log-link NB model on raw counts
-    #   - sctrial_fe and wilcoxon_paired need log-transformed input explicitly
+    #   - sctrial_did and wilcoxon_paired need log-transformed input explicitly
     if pb_means is not None:
         pb_log = pb_means.copy()
         gene_mask = [c for c in gene_cols if c in pb_log.columns]
@@ -289,13 +289,13 @@ def _dispatch_method(
     else:
         pb_log = None
 
-    if method == "sctrial_fe":
-        from .runners import sctrial_fe
+    if method == "sctrial_did":
+        from .runners import sctrial_did
 
         # Pass log-pseudobulk DataFrame instead of raw cell-level AnnData
         # so that DiD betas are on log-expression scale, comparable to
         # edgeR/limma/dreamlet log-fold-changes
-        return sctrial_fe.run(pb_log, gene_cols, from_pseudobulk=True)
+        return sctrial_did.run(pb_log, gene_cols, from_pseudobulk=True)
     elif method == "edger_qlf":
         from .runners import edger_qlf
 
