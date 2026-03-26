@@ -7,6 +7,7 @@ All metrics follow the locked rules from the NatMeth benchmark plan:
 3. λ_GC is a secondary null diagnostic, not a headline metric
 4. Non-convergence split into: convergence / numerical / timeout
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -35,8 +36,7 @@ def compute_fpr(
     pvalues = pvalues[~np.isnan(pvalues)]
     n = len(pvalues)
     if n == 0:
-        return {"fpr": np.nan, "n_tests": 0,
-                "wilson_ci_lo": np.nan, "wilson_ci_hi": np.nan}
+        return {"fpr": np.nan, "n_tests": 0, "wilson_ci_lo": np.nan, "wilson_ci_hi": np.nan}
 
     k = (pvalues < alpha).sum()
     fpr = k / n
@@ -80,8 +80,13 @@ def compute_fdr_tpr(
     is_signal = is_signal[mask]
 
     if len(pvalues) == 0:
-        return {"fdr": np.nan, "tpr": np.nan, "n_discoveries": 0,
-                "n_true_positives": 0, "n_signal": 0}
+        return {
+            "fdr": np.nan,
+            "tpr": np.nan,
+            "n_discoveries": 0,
+            "n_true_positives": 0,
+            "n_signal": 0,
+        }
 
     reject = multipletests(pvalues, alpha=q, method="fdr_bh")[0]
 
@@ -227,8 +232,11 @@ def compute_failure_rates(results: list[dict]) -> dict:
     n = len(results)
     if n == 0:
         return {
-            "convergence_rate": 0.0, "numerical_rate": 0.0,
-            "timeout_rate": 0.0, "total_failure_rate": 0.0, "n": 0,
+            "convergence_rate": 0.0,
+            "numerical_rate": 0.0,
+            "timeout_rate": 0.0,
+            "total_failure_rate": 0.0,
+            "n": 0,
         }
 
     modes = [r.get("failure_mode") for r in results]

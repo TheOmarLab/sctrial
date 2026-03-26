@@ -9,6 +9,7 @@ increasingly complete variants:
 4. Pseudobulk + FE + CRSE (cluster-robust SE)
 5. Full sctrial (FE + interaction + bootstrap)
 """
+
 from __future__ import annotations
 
 import logging
@@ -46,8 +47,7 @@ def _cell_level_ols(adata, gene_cols: list[str]) -> dict:
                 "ci_hi": float(fit.conf_int()[3, 1]),
             }
         except Exception:
-            out[gene] = {"beta": np.nan, "pvalue": np.nan,
-                         "ci_lo": np.nan, "ci_hi": np.nan}
+            out[gene] = {"beta": np.nan, "pvalue": np.nan, "ci_lo": np.nan, "ci_hi": np.nan}
     return out
 
 
@@ -75,8 +75,7 @@ def _pseudobulk_ols(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
                 "ci_hi": float(fit.conf_int()[3, 1]),
             }
         except Exception:
-            out[gene] = {"beta": np.nan, "pvalue": np.nan,
-                         "ci_lo": np.nan, "ci_hi": np.nan}
+            out[gene] = {"beta": np.nan, "pvalue": np.nan, "ci_lo": np.nan, "ci_hi": np.nan}
     return out
 
 
@@ -107,8 +106,7 @@ def _pseudobulk_fe(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
                 "ci_hi": float(fit.conf_int()[3, 1]),
             }
         except Exception:
-            out[gene] = {"beta": np.nan, "pvalue": np.nan,
-                         "ci_lo": np.nan, "ci_hi": np.nan}
+            out[gene] = {"beta": np.nan, "pvalue": np.nan, "ci_lo": np.nan, "ci_hi": np.nan}
     return out
 
 
@@ -141,8 +139,7 @@ def _pseudobulk_fe_crse(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
                 "ci_hi": float(fit.conf_int()[3, 1]),
             }
         except Exception:
-            out[gene] = {"beta": np.nan, "pvalue": np.nan,
-                         "ci_lo": np.nan, "ci_hi": np.nan}
+            out[gene] = {"beta": np.nan, "pvalue": np.nan, "ci_lo": np.nan, "ci_hi": np.nan}
     return out
 
 
@@ -184,6 +181,7 @@ def run_ablation(
 
         if var_name == "sctrial_full":
             from .runners.sctrial_fe import run as run_sctrial
+
             results[var_name] = run_sctrial(sim["adata"], gene_cols)
         else:
             results[var_name] = fn(sim[data_key], gene_cols)

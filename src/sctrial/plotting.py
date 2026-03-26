@@ -206,11 +206,7 @@ def plot_trial_interaction(
     grp_cols = [design.participant_col, design.visit_col]
     if design.arm_col is not None:
         grp_cols.append(design.arm_col)
-    obs = (
-        obs.groupby(grp_cols, observed=True)[feature]
-        .mean()
-        .reset_index()
-    )
+    obs = obs.groupby(grp_cols, observed=True)[feature].mean().reset_index()
     obs[design.visit_col] = pd.Categorical(
         obs[design.visit_col], categories=list(visits), ordered=True
     )
@@ -289,11 +285,7 @@ def plot_parallel_trends(
     grp_cols = [design.participant_col, design.visit_col]
     if design.arm_col is not None:
         grp_cols.append(design.arm_col)
-    obs = (
-        obs.groupby(grp_cols, observed=True)[feature]
-        .mean()
-        .reset_index()
-    )
+    obs = obs.groupby(grp_cols, observed=True)[feature].mean().reset_index()
     obs[design.visit_col] = pd.Categorical(
         obs[design.visit_col], categories=list(visits), ordered=True
     )
@@ -874,16 +866,9 @@ def plot_abundance_interaction(
 
     # Filter for specific celltype — use merge to keep participant-visits
     # that have zero cells of this type.
-    pv_frame = (
-        obs.groupby(id_cols, observed=True)
-        .size()
-        .reset_index(name="_n")
-        .drop(columns="_n")
-    )
+    pv_frame = obs.groupby(id_cols, observed=True).size().reset_index(name="_n").drop(columns="_n")
     ct_counts = counts[counts[design.celltype_col] == celltype].copy()
-    df_plot = pd.merge(
-        pv_frame, ct_counts, on=id_cols, how="left"
-    )
+    df_plot = pd.merge(pv_frame, ct_counts, on=id_cols, how="left")
     df_plot["prop"] = df_plot["prop"].fillna(0.0)
     df_plot[design.visit_col] = pd.Categorical(
         df_plot[design.visit_col], categories=list(visits), ordered=True
