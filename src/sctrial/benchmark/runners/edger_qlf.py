@@ -34,12 +34,12 @@ design <- model.matrix(~arm * visit, data=meta)
 # Without this, filterByExpr assumes all samples are one group and over-filters
 group <- interaction(meta$arm, meta$visit)
 
-y <- DGEList(counts=t(counts))
-keep <- filterByExpr(y, group=group, min.count=1)
+y <- DGEList(counts=t(counts), group=group)
+keep <- filterByExpr(y, min.count=1)
 y <- y[keep, , keep.lib.sizes=FALSE]
 y <- calcNormFactors(y)
-y <- estimateDisp(y, design, robust=TRUE)
-fit <- glmQLFit(y, design, robust=TRUE)
+y <- estimateDisp(y, design)
+fit <- glmQLFit(y, design)
 
 # Test the interaction term (last coefficient)
 coef_idx <- ncol(design)
@@ -66,12 +66,12 @@ design <- model.matrix(~participant + visit, data=meta)
 # Group for filterByExpr: use visit
 group <- meta$visit
 
-y <- DGEList(counts=t(counts))
-keep <- filterByExpr(y, group=group, min.count=1)
+y <- DGEList(counts=t(counts), group=group)
+keep <- filterByExpr(y, min.count=1)
 y <- y[keep, , keep.lib.sizes=FALSE]
 y <- calcNormFactors(y)
-y <- estimateDisp(y, design, robust=TRUE)
-fit <- glmQLFit(y, design, robust=TRUE)
+y <- estimateDisp(y, design)
+fit <- glmQLFit(y, design)
 
 # Test the visit coefficient (Post vs Pre)
 coef_idx <- ncol(design)
