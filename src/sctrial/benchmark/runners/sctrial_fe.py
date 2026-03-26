@@ -12,75 +12,94 @@ logger = logging.getLogger(__name__)
 
 
 def _run_from_pseudobulk(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
-    """Run OLS DiD with participant FE on pre-aggregated pseudobulk.
+    """Participant-level first-difference DiD on log-pseudobulk.
 
-    This operates on log-transformed pseudobulk means so that betas are on
-    a log-expression scale comparable to edgeR/limma/dreamlet log-fold-changes.
+    For a two-period design (Pre/Post), first-differencing is numerically
+    equivalent to the FE estimator (Wooldridge, *Econometric Analysis*,
+    Ch. 14). Computing Δ_i = Y_i,post − Y_i,pre per participant eliminates
+    participant fixed effects by construction, avoiding the near-saturated
+    model that makes FE + cluster-robust inference unreliable with few
+    participants.
 
-    Model per gene:  Y_it = α_i + β₁·Post_t + β₂·(Treat_i × Post_t) + ε_it
-    where Y_it is log1p(mean expression) for participant i at visit t.
-    β₂ is the DiD interaction coefficient.
+    The DiD estimate is:  β₂ = mean(Δ_treated) − mean(Δ_control)
+    Inference uses Welch's t-test on the deltas between arms, which is
+    valid because within-participant dependence is removed by differencing.
+
+    The estimand — the average treatment-by-time interaction on the
+    log-expression scale — is identical to what edgeR/limma/dreamlet
+    target with their interaction coefficients.
     """
-    import statsmodels.api as sm
+    from scipy import stats as sp_stats
 
     out = {}
-    # Build design columns
     df = pb.copy()
-    df["post"] = (df["visit"] == "Post").astype(int)
-    df["treated"] = (df["arm"] == "Treated").astype(int)
-    df["interaction"] = df["post"] * df["treated"]
 
-    # Participant dummies for fixed effects
-    participants = df["participant"].unique()
-    for p in participants[1:]:  # drop first for identification
-        df[f"fe_{p}"] = (df["participant"] == p).astype(int)
-    fe_cols = [c for c in df.columns if c.startswith("fe_")]
+    # Pivot to one row per participant with Pre and Post values
+    pre_df = df[df["visit"] == "Pre"].set_index("participant")
+    post_df = df[df["visit"] == "Post"].set_index("participant")
+
+    # Only participants with both visits
+    common = pre_df.index.intersection(post_df.index)
+    if len(common) == 0:
+        for g in gene_cols:
+            out[g] = _fail_result("numerical")
+        return out
+
+    pre_df = pre_df.loc[common]
+    post_df = post_df.loc[common]
+
+    # Arm labels (same for pre and post)
+    arms = pre_df["arm"]
+    treated_mask = arms == "Treated"
+    control_mask = arms == "Control"
+
+    n_treat = int(treated_mask.sum())
+    n_ctrl = int(control_mask.sum())
 
     for gene in gene_cols:
         try:
-            y = df[gene].values
-            if np.all(np.isnan(y)) or np.std(y) == 0:
-                raise ValueError("No variance")
+            # Participant-level change scores
+            delta = post_df[gene].values - pre_df[gene].values
 
-            X = df[["post", "interaction"] + fe_cols].copy()
-            X = sm.add_constant(X)
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                # Use participant-clustered SEs with small-sample
-                # correction. statsmodels cov_type="cluster" uses a
-                # degrees-of-freedom adjustment G/(G-1) * (N-1)/(N-K)
-                # which helps with few clusters.  For very small G,
-                # the standard cluster-robust is known to be
-                # conservative.  We apply it uniformly and report the
-                # conservatism honestly rather than switching to HC1
-                # (which would drop the within-participant dependence
-                # correction that motivates the method).
-                model = sm.OLS(y, X, missing="drop").fit(
-                    cov_type="cluster",
-                    cov_kwds={"groups": df["participant"].values},
-                )
+            delta_treat = delta[treated_mask.values]
+            delta_ctrl = delta[control_mask.values]
 
-            beta = model.params.get("interaction", np.nan)
-            pval = model.pvalues.get("interaction", np.nan)
-            ci = model.conf_int().loc["interaction"]
+            if len(delta_treat) < 2 or len(delta_ctrl) < 2:
+                raise ValueError("Too few participants per arm")
+
+            # DiD estimate = mean(Δ_treated) − mean(Δ_control)
+            beta = float(np.mean(delta_treat) - np.mean(delta_ctrl))
+
+            # Welch's t-test on deltas between arms
+            _, pval = sp_stats.ttest_ind(
+                delta_treat, delta_ctrl, equal_var=False
+            )
+
+            # CI from Welch t-test (two-sample SE + Satterthwaite df)
+            v1 = np.var(delta_treat, ddof=1) / n_treat
+            v2 = np.var(delta_ctrl, ddof=1) / n_ctrl
+            se = np.sqrt(v1 + v2)
+            df_ws = (
+                (v1 + v2) ** 2
+                / (v1**2 / (n_treat - 1) + v2**2 / (n_ctrl - 1))
+                if (v1 + v2) > 0
+                else 1.0
+            )
+            t_crit = sp_stats.t.ppf(0.975, df_ws)
+            ci_lo = beta - t_crit * se
+            ci_hi = beta + t_crit * se
+
             out[gene] = {
                 "beta": beta,
-                "pvalue": pval,
-                "ci_lo": ci.iloc[0],
-                "ci_hi": ci.iloc[1],
+                "pvalue": float(pval),
+                "ci_lo": float(ci_lo),
+                "ci_hi": float(ci_hi),
                 "converged": True,
                 "failure_mode": None,
             }
         except Exception as exc:
             logger.debug("sctrial_fe gene %s failed: %s", gene, exc)
-            out[gene] = {
-                "beta": np.nan,
-                "pvalue": np.nan,
-                "ci_lo": np.nan,
-                "ci_hi": np.nan,
-                "converged": False,
-                "failure_mode": "numerical",
-            }
+            out[gene] = _fail_result("numerical")
 
     return out
 
