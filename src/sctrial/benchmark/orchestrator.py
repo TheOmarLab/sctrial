@@ -399,26 +399,28 @@ def run_benchmark(
 
             t0 = time.time()
 
+            all_rows: list = []
+            flush_interval = 20  # write to disk every 20 iterations
+
+            def _process_iteration(i: int, batch: list) -> None:
+                all_rows.extend(batch)
+                if (i + 1) % flush_interval == 0:
+                    elapsed = time.time() - t0
+                    eta = elapsed / (i + 1) * (n_iterations - i - 1)
+                    print(
+                        f"    {i + 1}/{n_iterations} iterations "
+                        f"({elapsed:.0f}s elapsed, ~{eta:.0f}s remaining)"
+                    )
+                    # Incremental save — protects against crashes
+                    pd.DataFrame(all_rows).to_csv(csv_path, index=False)
+
             if n_jobs == 1:
-                all_rows = []
                 for i, args in enumerate(task_args):
-                    all_rows.extend(_run_single_iteration(args))
-                    if (i + 1) % 20 == 0:
-                        print(
-                            f"    {i + 1}/{n_iterations} iterations done ({time.time() - t0:.0f}s)"
-                        )
+                    _process_iteration(i, _run_single_iteration(args))
             else:
-                all_rows = []
                 with mp.Pool(n_jobs) as pool:
                     for i, batch in enumerate(pool.imap(_run_single_iteration, task_args)):
-                        all_rows.extend(batch)
-                        if (i + 1) % 20 == 0:
-                            elapsed = time.time() - t0
-                            eta = elapsed / (i + 1) * (n_iterations - i - 1)
-                            print(
-                                f"    {i + 1}/{n_iterations} iterations "
-                                f"({elapsed:.0f}s elapsed, ~{eta:.0f}s remaining)"
-                            )
+                        _process_iteration(i, batch)
 
             elapsed = time.time() - t0
             df = pd.DataFrame(all_rows)
