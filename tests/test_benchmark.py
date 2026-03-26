@@ -140,8 +140,8 @@ class TestRunnerContracts:
             if not np.isnan(r["pvalue"]):
                 assert 0 <= r["pvalue"] <= 1, f"{gene}: pvalue={r['pvalue']}"
 
-    def test_sctrial_fe_contract(self, sim_data):
-        from sctrial.benchmark.runners.sctrial_fe import run
+    def test_sctrial_did_contract(self, sim_data):
+        from sctrial.benchmark.runners.sctrial_did import run
 
         gene_cols = [f"gene_{i}" for i in range(5)]
         result = run(sim_data["adata"], gene_cols)
@@ -245,13 +245,13 @@ class TestEndToEnd:
                 "effects": {},
                 "mean_cells_per_visit": 50,
             },
-            ["sctrial_fe", "wilcoxon_paired"],  # methods
+            ["sctrial_did", "wilcoxon_paired"],  # methods
         )
 
         rows = _run_single_iteration(args)
         df = pd.DataFrame(rows)
 
         assert len(df) == 2 * 5  # 2 methods × 5 genes
-        assert set(df["method"]) == {"sctrial_fe", "wilcoxon_paired"}
+        assert set(df["method"]) == {"sctrial_did", "wilcoxon_paired"}
         assert (df["true_beta"] == 0.0).all()  # null scenario
         assert df["pvalue"].notna().all()

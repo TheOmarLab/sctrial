@@ -180,7 +180,7 @@ def run_ablation(
         label, fn, data_key = ABLATION_VARIANTS[var_name]
 
         if var_name == "sctrial_full":
-            from .runners.sctrial_fe import run as run_sctrial
+            from .runners.sctrial_did import run as run_sctrial
 
             results[var_name] = run_sctrial(sim["adata"], gene_cols)
         elif fn is not None:
