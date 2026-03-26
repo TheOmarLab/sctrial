@@ -33,14 +33,18 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-OUTPUT_DIR = Path(__file__).parent.parent.parent.parent / "manuscript" / "benchmark"
+# Output under project root, not relative to file path (which can resolve
+# incorrectly on HPC). Use script's parent.parent = project root.
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+OUTPUT_DIR = PROJECT_ROOT / "manuscript" / "benchmark"
 
 
 def phase_validate(n_jobs: int):
     """Phase 0: Simulator validation gate.
 
-    Calibrates the simulator against melanoma and vaccine data,
-    generates the validation figure. MUST pass before Phase 2.
+    Calibrates the simulator from TNBC (raw counts), validates on
+    vaccine (holdout), and generates descriptive comparison for melanoma
+    (no raw counts). MUST pass before Phase 2.
     """
     import matplotlib.pyplot as plt
     import numpy as np
@@ -369,9 +373,14 @@ def phase_realdata(n_jobs: int):
 
 
 def phase_ablation(n_jobs: int):
-    """Phase 4: Ablation study."""
+    """Phase 4: Ablation study.
+
+    Uses TNBC-calibrated simulator params (same family as Phase 2)
+    to ensure ablation results support the same manuscript claims.
+    """
     import time
 
+    import numpy as np
     import pandas as pd
 
     from sctrial.benchmark.ablation import ABLATION_VARIANTS, run_ablation
@@ -385,6 +394,28 @@ def phase_ablation(n_jobs: int):
     out_dir = OUTPUT_DIR / "ablation"
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    # Load TNBC calibration params so ablation uses the same simulator
+    # family as the main Phase 2 benchmark (locked rule: same calibrated
+    # simulator for all manuscript claims).
+    import json
+
+    cal_path = OUTPUT_DIR / "validation" / "calibration_tnbc.json"
+    if cal_path.exists():
+        with open(cal_path) as f:
+            cal = json.load(f)
+        print(f"  Using TNBC calibration params from {cal_path}")
+    else:
+        # Fallback: hardcoded TNBC values (from calibration run)
+        print("  WARNING: calibration_tnbc.json not found, using hardcoded TNBC values")
+        cal = {
+            "mean_cells_per_visit": 5898,
+            "participant_icc": 0.0012,
+            "baseline_mean": -12.864,
+            "baseline_sd": 2.667,
+            "library_size_mean": 8.0,
+            "library_size_sd": 0.761,
+        }
+
     # Run ablation on 100 simulated null + 100 simulated signal datasets
     all_rows = []
     for scenario, beta in [("null", 0.0), ("signal", 0.5)]:
@@ -393,7 +424,13 @@ def phase_ablation(n_jobs: int):
             cfg = SimulationConfig(
                 n_per_arm=40, n_genes=50,
                 effects={f"gene_{i}": beta for i in range(10)} if beta > 0 else {},
-                mean_cells_per_visit=500,
+                # Use TNBC-calibrated params (same simulator family as Phase 2)
+                mean_cells_per_visit=int(cal["mean_cells_per_visit"]),
+                baseline_mean=cal["baseline_mean"],
+                baseline_sd=cal["baseline_sd"],
+                target_library_size=int(np.exp(cal["library_size_mean"])),
+                library_size_sd=cal["library_size_sd"],
+                participant_sd=max(0.1, np.sqrt(cal["participant_icc"])),
                 seed=42 + it,
             )
             sim = simulate_trial(cfg)

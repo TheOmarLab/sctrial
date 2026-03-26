@@ -4,6 +4,7 @@ Computes per-participant post−pre deltas on pseudobulk means, then
 applies Mann-Whitney U between arms on those deltas. This is a
 participant-aware, paired comparator — not a naive baseline.
 """
+
 from __future__ import annotations
 
 import logging
@@ -38,8 +39,14 @@ def run(
     common = pre.index.intersection(post.index)
     if len(common) == 0:
         return {
-            g: {"beta": np.nan, "pvalue": np.nan, "ci_lo": np.nan,
-                "ci_hi": np.nan, "converged": False, "failure_mode": "numerical"}
+            g: {
+                "beta": np.nan,
+                "pvalue": np.nan,
+                "ci_lo": np.nan,
+                "ci_hi": np.nan,
+                "converged": False,
+                "failure_mode": "numerical",
+            }
             for g in gene_cols
         }
 
@@ -57,14 +64,19 @@ def run(
 
             if len(t_vals) < 2 or len(c_vals) < 2:
                 out[g] = {
-                    "beta": np.nan, "pvalue": np.nan,
-                    "ci_lo": np.nan, "ci_hi": np.nan,
-                    "converged": False, "failure_mode": "numerical",
+                    "beta": np.nan,
+                    "pvalue": np.nan,
+                    "ci_lo": np.nan,
+                    "ci_hi": np.nan,
+                    "converged": False,
+                    "failure_mode": "numerical",
                 }
                 continue
 
             stat, pval = sp_stats.mannwhitneyu(
-                t_vals, c_vals, alternative="two-sided",
+                t_vals,
+                c_vals,
+                alternative="two-sided",
             )
             beta = t_vals.mean() - c_vals.mean()
 
@@ -79,9 +91,12 @@ def run(
         except Exception as exc:
             logger.debug("Wilcoxon failed for %s: %s", g, exc)
             out[g] = {
-                "beta": np.nan, "pvalue": np.nan,
-                "ci_lo": np.nan, "ci_hi": np.nan,
-                "converged": False, "failure_mode": "numerical",
+                "beta": np.nan,
+                "pvalue": np.nan,
+                "ci_lo": np.nan,
+                "ci_hi": np.nan,
+                "converged": False,
+                "failure_mode": "numerical",
             }
 
     return out

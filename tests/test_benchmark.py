@@ -6,6 +6,7 @@ Covers:
 - End-to-end tiny benchmark pass
 - Metrics computation
 """
+
 import sys
 from pathlib import Path
 
@@ -21,13 +22,18 @@ from sctrial.benchmark.simulator import SimulationConfig, simulate_trial
 # Simulator tests
 # ---------------------------------------------------------------------------
 
+
 class TestSimulator:
     """Test simulator output contracts."""
 
     def _make_sim(self, **kwargs):
         cfg = SimulationConfig(
-            n_per_arm=6, n_genes=5, mean_cells_per_visit=50,
-            effects={"gene_0": 0.5}, seed=42, **kwargs,
+            n_per_arm=6,
+            n_genes=5,
+            mean_cells_per_visit=50,
+            effects={"gene_0": 0.5},
+            seed=42,
+            **kwargs,
         )
         return simulate_trial(cfg)
 
@@ -71,6 +77,7 @@ class TestSimulator:
     def test_adata_is_sparse_counts(self):
         """Cell-level X should be sparse integer counts."""
         from scipy import sparse
+
         sim = self._make_sim()
         assert sparse.issparse(sim["adata"].X)
         X = sim["adata"].X.toarray()
@@ -104,14 +111,18 @@ class TestSimulator:
 # Runner contract tests
 # ---------------------------------------------------------------------------
 
+
 class TestRunnerContracts:
     """Test that all runners return standardized dicts."""
 
     @pytest.fixture
     def sim_data(self):
         cfg = SimulationConfig(
-            n_per_arm=6, n_genes=5, mean_cells_per_visit=50,
-            effects={"gene_0": 0.5}, seed=42,
+            n_per_arm=6,
+            n_genes=5,
+            mean_cells_per_visit=50,
+            effects={"gene_0": 0.5},
+            seed=42,
         )
         return simulate_trial(cfg)
 
@@ -131,12 +142,14 @@ class TestRunnerContracts:
 
     def test_sctrial_fe_contract(self, sim_data):
         from sctrial.benchmark.runners.sctrial_fe import run
+
         gene_cols = [f"gene_{i}" for i in range(5)]
         result = run(sim_data["adata"], gene_cols)
         self._check_runner_output(result, gene_cols)
 
     def test_wilcoxon_paired_contract(self, sim_data):
         from sctrial.benchmark.runners.wilcoxon_paired import run
+
         gene_cols = [f"gene_{i}" for i in range(5)]
         result = run(sim_data["pseudobulk_means"], gene_cols)
         self._check_runner_output(result, gene_cols)
@@ -146,12 +159,14 @@ class TestRunnerContracts:
 # Metrics tests
 # ---------------------------------------------------------------------------
 
+
 class TestMetrics:
     """Test metric computations."""
 
     def test_fpr_on_uniform(self):
         """FPR on uniform p-values should be ~0.05."""
         from sctrial.benchmark.metrics import compute_fpr
+
         rng = np.random.default_rng(42)
         pvals = rng.uniform(0, 1, size=10000)
         result = compute_fpr(pvals)
@@ -160,6 +175,7 @@ class TestMetrics:
     def test_fpr_on_zeros(self):
         """FPR on all-significant should be 1.0."""
         from sctrial.benchmark.metrics import compute_fpr
+
         pvals = np.full(100, 0.001)
         result = compute_fpr(pvals)
         assert result["fpr"] == 1.0
@@ -167,12 +183,14 @@ class TestMetrics:
     def test_topk_jaccard_identical(self):
         """Identical rankings should give Jaccard = 1.0."""
         from sctrial.benchmark.metrics import compute_topk_jaccard
+
         s = pd.Series({"a": 0.01, "b": 0.02, "c": 0.5, "d": 0.9})
         assert compute_topk_jaccard(s, s, k=2) == 1.0
 
     def test_topk_jaccard_disjoint(self):
         """Completely different top-k should give Jaccard = 0.0."""
         from sctrial.benchmark.metrics import compute_topk_jaccard
+
         s1 = pd.Series({"a": 0.01, "b": 0.02, "c": 0.5, "d": 0.9})
         s2 = pd.Series({"a": 0.9, "b": 0.8, "c": 0.01, "d": 0.02})
         assert compute_topk_jaccard(s1, s2, k=2) == 0.0
@@ -180,14 +198,18 @@ class TestMetrics:
     def test_ci_coverage_returns_none_for_nans(self):
         """CI coverage should return None when no intervals exist."""
         from sctrial.benchmark.metrics import compute_ci_coverage
+
         result = compute_ci_coverage(
-            np.full(10, np.nan), np.full(10, np.nan), np.zeros(10),
+            np.full(10, np.nan),
+            np.full(10, np.nan),
+            np.zeros(10),
         )
         assert result is None
 
     def test_failure_modes_split(self):
         """Failure rates should split by mode correctly."""
         from sctrial.benchmark.metrics import compute_failure_rates
+
         results = [
             {"failure_mode": None},
             {"failure_mode": "convergence"},
@@ -204,6 +226,7 @@ class TestMetrics:
 # End-to-end mini benchmark
 # ---------------------------------------------------------------------------
 
+
 class TestEndToEnd:
     """Tiny end-to-end benchmark pass."""
 
@@ -213,9 +236,9 @@ class TestEndToEnd:
 
         args = (
             "test_null",  # scenario name
-            0,            # iteration
-            42,           # seed
-            {             # config_kwargs
+            0,  # iteration
+            42,  # seed
+            {  # config_kwargs
                 "design": "two_arm",
                 "n_per_arm": 6,
                 "n_genes": 5,

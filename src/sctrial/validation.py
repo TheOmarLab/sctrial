@@ -61,7 +61,9 @@ class TrialDataValidator:
         issues = []
 
         # Check required columns
-        required_cols = [c for c in [design.participant_col, design.visit_col, design.arm_col] if c is not None]
+        required_cols = [
+            c for c in [design.participant_col, design.visit_col, design.arm_col] if c is not None
+        ]
         for col in required_cols:
             if col not in adata.obs.columns:
                 msg = f"Required column '{col}' not found in adata.obs"
@@ -373,8 +375,7 @@ def check_covariate_balance(
         raise KeyError(f"visit_col '{design.visit_col}' not in adata.obs")
     if design.arm_col is None:
         raise ValueError(
-            "check_covariate_balance() requires a two-arm design "
-            "(arm_col must not be None)."
+            "check_covariate_balance() requires a two-arm design (arm_col must not be None)."
         )
     if design.arm_col not in adata.obs.columns:
         raise KeyError(f"arm_col '{design.arm_col}' not in adata.obs")
