@@ -33,7 +33,11 @@ echo "============================================"
 
 # Verify packages
 python -c "from sctrial.benchmark.simulator import SimulationConfig; print('sctrial OK')"
-python -c "import rpy2.robjects as ro; ro.r('library(edgeR)'); print('rpy2+R OK')"
+python -c "import subprocess; subprocess.run(['Rscript', '-e', 'library(edgeR); library(limma); library(dreamlet); library(nebula); cat(\"Rscript OK\n\")'], check=True)"
+
+# Print git commit and installed package path for reproducibility
+python -c "import sctrial.benchmark.orchestrator as o; import inspect; print('Orchestrator:', inspect.getfile(o))"
+echo "Git commit: $(git rev-parse --short HEAD 2>/dev/null || echo 'N/A')"
 
 # Run the benchmark
 python scripts/run_benchmark.py \
