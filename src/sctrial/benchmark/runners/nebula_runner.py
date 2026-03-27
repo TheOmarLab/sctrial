@@ -10,6 +10,7 @@ Requires: install.packages("nebula") in R.
 from __future__ import annotations
 
 import logging
+import subprocess
 import tempfile
 from pathlib import Path
 
@@ -111,12 +112,6 @@ def run(
     Unlike other runners, NEBULA takes the full cell-level AnnData,
     NOT pseudobulk.
     """
-    try:
-        from rpy2.robjects import r as R
-    except ImportError:
-        logger.error("rpy2 not installed — cannot run NEBULA")
-        return {g: _fail_result("numerical") for g in gene_cols}
-
     with tempfile.TemporaryDirectory() as _tmpdir:
         td = Path(_tmpdir)
 
@@ -157,8 +152,16 @@ def run(
             post=visits[1],
         )
 
+        script_file = td / "run_nebula.R"
+        script_file.write_text(script)
         try:
-            R(script)
+            proc = subprocess.run(
+                ["Rscript", str(script_file)],
+                capture_output=True, text=True, timeout=300,
+            )
+            if proc.returncode != 0:
+                logger.warning("NEBULA R error: %s", proc.stderr[-500:])
+                return {g: _fail_result("numerical") for g in gene_cols}
             res = pd.read_csv(output_csv, index_col=0)
         except Exception as exc:
             logger.warning("NEBULA failed: %s", exc)

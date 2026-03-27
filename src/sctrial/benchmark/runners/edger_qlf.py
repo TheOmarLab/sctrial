@@ -7,6 +7,7 @@ processed in R, and results are read back.
 from __future__ import annotations
 
 import logging
+import subprocess
 import tempfile
 from pathlib import Path
 
@@ -105,12 +106,6 @@ def run(
     -------
     dict : gene → {"beta", "pvalue", "ci_lo", "ci_hi", "converged", "failure_mode"}
     """
-    try:
-        from rpy2.robjects import r as R
-    except ImportError:
-        logger.error("rpy2 not installed — cannot run edgeR")
-        return {g: _fail_result("numerical") for g in gene_cols}
-
     with tempfile.TemporaryDirectory() as _tmpdir:
         td = Path(_tmpdir)
 
@@ -146,8 +141,17 @@ def run(
             post=visits[1],
         )
 
+        # Use subprocess instead of rpy2 to avoid forked-process R corruption
+        script_file = td / "run_edger.R"
+        script_file.write_text(script)
         try:
-            R(script)
+            proc = subprocess.run(
+                ["Rscript", str(script_file)],
+                capture_output=True, text=True, timeout=120,
+            )
+            if proc.returncode != 0:
+                logger.warning("edgeR-QLF R error: %s", proc.stderr[-500:])
+                return {g: _fail_result("numerical") for g in gene_cols}
             res = pd.read_csv(output_csv, index_col=0)
         except Exception as exc:
             logger.warning("edgeR-QLF failed: %s", exc)
