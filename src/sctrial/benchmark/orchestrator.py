@@ -418,7 +418,12 @@ def run_benchmark(
                 for i, args in enumerate(task_args):
                     _process_iteration(i, _run_single_iteration(args))
             else:
-                with mp.Pool(n_jobs) as pool:
+                # Use 'spawn' context to avoid fork-inheriting corrupted R/rpy2
+                # state. With 'fork', R subprocess calls inside workers
+                # produce incorrect results (e.g., edgeR FPR=0.002 instead
+                # of 0.05) even when using Rscript subprocess.
+                ctx = mp.get_context("spawn")
+                with ctx.Pool(n_jobs) as pool:
                     for i, batch in enumerate(pool.imap(_run_single_iteration, task_args)):
                         _process_iteration(i, batch)
 
