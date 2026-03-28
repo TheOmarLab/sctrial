@@ -7,18 +7,17 @@ all datasets with paired two-arm pre/post data.
 
 Panels:
   A  Q-Q plots of model residuals (faceted, one per dataset).
-  B  Residual vs fitted values (multi-dataset overlay).
+  B  Residual vs fitted values (all datasets overlaid, single panel).
   C  Influence diagnostics: Cook's distance per dataset.
   D  Baseline diagnostics: arm means (two-arm) / pre-post means (single-arm).
   E  Signal enrichment: observed |effect| vs permutation null quantiles.
-  F  Full assumption diagnostics: normality + heteroscedasticity (merged 1×2).
+  F  Full assumption diagnostics: normality + heteroscedasticity (merged 2×1).
   G  Funnel plot: model effect vs standard error.
   H  Observed rejection rate vs nominal alpha (signal excess over null).
-  I  Pseudoreplication diagnostics: cell-level vs participant-level
+  I  Runtime scaling across datasets (Cleveland dot plot).
+  J  Pseudoreplication diagnostics: cell-level vs participant-level
      inference comparison across all 5 datasets (β scatter, −log10(p),
      SE bars).
-  J  Runtime scaling across datasets (Cleveland dot plot; moved from
-     Figure 3 panel C).
 
 Non-overlap guardrail: no sensitivity analysis (→ SF4), no cross-dataset
 biological concordance (→ SF5), no heterogeneity (→ SF6).
@@ -28,6 +27,7 @@ from __future__ import annotations
 
 import gc
 
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -480,7 +480,7 @@ def _panel_qq(fig, axes, results: dict[str, dict]):
 
 
 def _panel_resid_fitted(fig_faceted, results: dict[str, dict]):
-    """B: Residual vs fitted value scatter, faceted per dataset."""
+    """B (faceted): Residual vs fitted value scatter, one subplot per dataset."""
     names = list(results.keys())
     n_ds = len(names)
     ncols = min(n_ds, 3)
@@ -505,6 +505,25 @@ def _panel_resid_fitted(fig_faceted, results: dict[str, dict]):
     for idx in range(n_ds, nrows * ncols):
         r, c = divmod(idx, ncols)
         axes[r][c].set_visible(False)
+
+
+def _panel_resid_fitted_combined(ax, results: dict[str, dict]):
+    """B (combined): All datasets overlaid in a single scatter plot."""
+    for name, res in results.items():
+        df = res["residuals"]
+        ax.scatter(
+            df["fitted"], df["residual"],
+            s=10, alpha=0.3,
+            color=_DS_PALETTE.get(name, "grey"),
+            label=f"{name} ({res['design_label']})",
+            rasterized=True,
+        )
+    ax.axhline(0, color="black", lw=0.8, ls="--")
+    ax.set_xlabel("Fitted value")
+    ax.set_ylabel("Residual")
+    ax.set_title("Residual vs Fitted", fontweight="bold")
+    ax.legend(fontsize=7, frameon=True, markerscale=1.5)
+    despine(ax)
 
 
 def _panel_influence(ax, results: dict[str, dict]):
@@ -1241,16 +1260,22 @@ def generate():
     fig.tight_layout()
     save_panel(fig, "panel_A", FIGURE_NAME, SUPP_OUTPUT)
 
-    # B: Residual vs fitted (faceted per dataset)
+    # B: Residual vs fitted (combined overlay)
+    fig, ax = plt.subplots(figsize=(8, 6))
+    _panel_resid_fitted_combined(ax, results)
+    fig.tight_layout()
+    save_panel(fig, "panel_B", FIGURE_NAME, SUPP_OUTPUT)
+
+    # B (faceted version, for reference)
     ncols_b = min(n_ds, 3)
     nrows_b = max(1, (n_ds + ncols_b - 1) // ncols_b)
     fig = plt.figure(figsize=(5.2 * ncols_b, 4.8 * nrows_b))
     _panel_resid_fitted(fig, results)
     fig.suptitle("Residual vs Fitted", fontweight="bold", y=1.02)
     fig.tight_layout()
-    save_panel(fig, "panel_B", FIGURE_NAME, SUPP_OUTPUT)
+    save_panel(fig, "panel_B_faceted", FIGURE_NAME, SUPP_OUTPUT)
 
-    # C: Influence diagnostics
+    # C: Influence diagnostics (Cook's distance)
     fig, ax = plt.subplots(figsize=(7.4, 5.8))
     _panel_influence(ax, results)
     fig.tight_layout()
@@ -1299,6 +1324,7 @@ def generate():
     # I: Pseudoreplication — cell-level vs participant-level (separate per dataset)
     print("  Computing pseudoreplication comparisons ...")
     pseudo_idx = 0
+    all_pseudo: dict[str, dict] = {}
     for ds_name, ds_cfg in _DATASET_CFG.items():
         print(f"    {ds_name} ...")
         pr = _pseudorep_data_for_dataset(ds_name, ds_cfg)
@@ -1309,6 +1335,7 @@ def generate():
         if pr["df_cell"]["beta"].isna().all():
             print(f"    {ds_name}: skipped (cell-level stats degenerate)")
             continue
+        all_pseudo[ds_name] = pr
         ds_design = ds_cfg.get("design", "two_arm")
         fig_pr = _panel_pseudoreplication_single(ds_name, pr, ds_design)
         if fig_pr is not None:
@@ -1336,11 +1363,507 @@ def generate():
     except Exception as exc:
         print(f"  Warning: Could not generate runtime panel J: {exc}")
 
-    # Cleanup
+    # ==================================================================
+    # Composite artboard  (180 mm × 215 mm)  —  ALL panels A–J
+    # ==================================================================
+    #   Row  0: A   — Q-Q plots (1×5, small markers)
+    #   Row  2: B (combined scatter) | C (Cook's distance)
+    #   Row  4: D   — Baseline comparability (1×5)
+    #   Row  6: E (signal enrichment) | F (normality/heterosc. vert)
+    #   Row  8: G | H | I (runtime)
+    #   Row 10: J row 1 (pseudorep ds 0+1)
+    #   Row 12: J row 2 (pseudorep ds 2+3)
+    #   Row 14: J row 3 (pseudorep ds 4)
+    # ==================================================================
+    print("  Building composite figure (all panels A–J) ...")
+
+    _SMALL_RC = {
+        "font.size": 4.5,
+        "axes.titlesize": 5,
+        "axes.labelsize": 4.5,
+        "xtick.labelsize": 4,
+        "ytick.labelsize": 4,
+        "legend.fontsize": 2.5,
+        "legend.title_fontsize": 2.5,
+    }
+    _MAX_FONT = 5.5
+
+    def _cap_fontsize(fig_obj, maximum):
+        for ax_i in fig_obj.get_axes():
+            for txt in ([ax_i.title, ax_i.xaxis.label, ax_i.yaxis.label]
+                        + ax_i.get_xticklabels() + ax_i.get_yticklabels()
+                        + ax_i.texts):
+                if txt.get_fontsize() > maximum:
+                    txt.set_fontsize(maximum)
+            leg = ax_i.get_legend()
+            if leg:
+                for txt in leg.get_texts():
+                    if txt.get_fontsize() > maximum:
+                        txt.set_fontsize(maximum)
+                t = leg.get_title()
+                if t and t.get_fontsize() > maximum:
+                    t.set_fontsize(maximum)
+
+    def _draw_pseudorep_compact(axes_3, ds_name, pr_data, design_type):
+        """Draw compact 1×3 pseudoreplication on pre-created axes."""
+        df_c_pr = pr_data["df_cell"]
+        df_p_pr = pr_data["df_part"]
+        merged = df_c_pr[["feature", "beta", "pval", "se"]].merge(
+            df_p_pr[["feature", "beta", "pval", "se"]],
+            on="feature", suffixes=("_cell", "_part"),
+        )
+        merged = merged.dropna(
+            subset=["beta_cell", "beta_part", "pval_cell",
+                     "pval_part", "se_cell", "se_part"],
+        )
+        if len(merged) < 3:
+            for _ax in axes_3:
+                _ax.text(0.5, 0.5, "Too few features",
+                         ha="center", va="center", transform=_ax.transAxes)
+            return
+
+        color = _DS_PALETTE.get(ds_name, "#555")
+        beta_lbl = (r"$\beta_{\mathrm{DiD}}$" if design_type == "two_arm"
+                    else r"$\Delta$")
+
+        # Col 0: β scatter
+        ax0 = axes_3[0]
+        x_b = merged["beta_cell"].values
+        y_b = merged["beta_part"].values
+        span = max(np.ptp(x_b), np.ptp(y_b)) if len(x_b) > 1 else 1.0
+        margin = span * 0.15 if span > 0 else 0.5
+        lo_b = min(x_b.min(), y_b.min()) - margin
+        hi_b = max(x_b.max(), y_b.max()) + margin
+        ax0.plot([lo_b, hi_b], [lo_b, hi_b], ls="--", color="#999",
+                 lw=0.5, zorder=1)
+        ax0.scatter(x_b, y_b, s=12, color=color, edgecolor="white",
+                    linewidth=0.3, zorder=3)
+        if len(x_b) >= 3:
+            r_val, _ = stats.pearsonr(x_b, y_b)
+            ax0.text(
+                0.05, 0.95, f"r={r_val:.2f}", transform=ax0.transAxes,
+                fontsize=3.5, va="top",
+                bbox=dict(boxstyle="round,pad=0.2", fc="white",
+                          ec="none", alpha=0.8),
+            )
+        ax0.set_xlabel(f"Cell {beta_lbl}")
+        ax0.set_ylabel(f"Part. {beta_lbl}")
+        ax0.set_title(ds_name, fontweight="bold")
+        despine(ax0)
+
+        # Col 1: −log₁₀(p) bars
+        ax1 = axes_3[1]
+        merged["nlp_cell"] = -np.log10(merged["pval_cell"].clip(1e-300))
+        merged["nlp_part"] = -np.log10(merged["pval_part"].clip(1e-300))
+        ms = merged.sort_values("nlp_part", ascending=True)
+        yp = np.arange(len(ms))
+        bh = 0.30
+        ax1.barh(yp - bh / 2, ms["nlp_cell"].values,
+                 height=bh, color=color, alpha=0.5,
+                 label="Cell", edgecolor="none")
+        ax1.barh(yp + bh / 2, ms["nlp_part"].values,
+                 height=bh, color=color, alpha=0.9,
+                 label="Part.", edgecolor="none")
+        ax1.axvline(-np.log10(0.05), ls="--", color="#999", lw=0.4)
+        mc = np.nanmax(ms["nlp_cell"].values) if len(ms) else 1
+        mp = np.nanmax(ms["nlp_part"].values) if len(ms) else 1
+        if mc / max(mp, 0.01) > 20 or mp / max(mc, 0.01) > 20:
+            ax1.set_xscale("symlog", linthresh=1.0)
+            ax1.set_xlim(left=0)
+        ax1.set_yticks(yp)
+        ax1.set_yticklabels(ms["feature"].values, fontsize=2.5)
+        ax1.set_xlabel(r"$-\log_{10}(p)$")
+        ax1.set_title(r"$-\log_{10}(p)$", fontweight="bold")
+        ax1.legend(fontsize=2.5, loc="lower right", frameon=True)
+        despine(ax1)
+
+        # Col 2: SE bars
+        ax2 = axes_3[2]
+        ms2 = merged.sort_values("se_part", ascending=True)
+        yp2 = np.arange(len(ms2))
+        se_c_vals = ms2["se_cell"].values
+        se_p_vals = ms2["se_part"].values
+        ax2.barh(yp2 - bh / 2, se_c_vals,
+                 height=bh, color=color, alpha=0.5,
+                 label="Cell", edgecolor="none")
+        ax2.barh(yp2 + bh / 2, se_p_vals,
+                 height=bh, color=color, alpha=0.9,
+                 label="Part.", edgecolor="none")
+        msc = np.nanmax(se_c_vals) if len(se_c_vals) else 1
+        msp = np.nanmax(se_p_vals) if len(se_p_vals) else 1
+        if msp / max(msc, 1e-10) > 20 or msc / max(msp, 1e-10) > 20:
+            ax2.set_xscale("symlog", linthresh=0.001)
+            ax2.set_xlim(left=0)
+        ax2.set_yticks(yp2)
+        ax2.set_yticklabels(ms2["feature"].values, fontsize=2.5)
+        ax2.set_xlabel("SE")
+        ax2.set_title("SE", fontweight="bold")
+        ax2.legend(fontsize=2.5, loc="lower right", frameon=True)
+        despine(ax2)
+
+    _prev_rc = {k: plt.rcParams[k] for k in _SMALL_RC}
+    plt.rcParams.update(_SMALL_RC)
+
+    _mm = 1.0 / 25.4
+    fig_c = plt.figure(figsize=(180 * _mm, 215 * _mm))
+
+    outer = fig_c.add_gridspec(
+        15, 1,
+        height_ratios=[
+            0.34,   # row  0: A (Q-Q)
+            0.34,   # spacer (increased A → B|C)
+            0.40,   # row  2: B (combined scatter) | C (Cook's)
+            0.34,   # spacer (increased B|C → D)
+            0.58,   # row  4: D (baseline, 1×5, taller)
+            0.36,   # spacer (increased D → E|F|G)
+            0.80,   # row  6: E+G (left 2×1) | F (right 2×1)
+            0.36,   # spacer (increased E|F|G → H|I)
+            0.38,   # row  8: H | I (equal width)
+            0.40,   # spacer (increased H|I → J)
+            0.52,   # row 10: J row 1 (pseudorep ds 0+1)
+            0.36,   # spacer (increased within J)
+            0.52,   # row 12: J row 2 (pseudorep ds 2+3)
+            0.36,   # spacer (increased within J)
+            0.52,   # row 14: J row 3 (pseudorep ds 4)
+        ],
+        hspace=0.0,
+        left=0.06, right=0.98, top=0.97, bottom=0.03,
+    )
+
+    import re as _re
+
+    # ── Row 0: A — Q-Q (1 × n_ds, small markers) ─────────────────────
+    gs_a = outer[0].subgridspec(1, n_ds, wspace=0.35)
+    axes_a = np.array(
+        [fig_c.add_subplot(gs_a[0, i]) for i in range(n_ds)]
+    )
+    _panel_qq(fig_c, axes_a, results)
+    for _aq in axes_a:
+        lines_aq = _aq.get_lines()
+        if lines_aq:
+            lines_aq[0].set_markersize(1.5)
+        _aq.set_xlabel(_aq.get_xlabel(), labelpad=1)
+        _aq.set_ylabel(_aq.get_ylabel(), labelpad=1)
+
+    # ── Row 2: B (combined scatter, left) | C (Cook's, right) ────────
+    gs_bc = outer[2].subgridspec(1, 2, width_ratios=[0.5, 0.5],
+                                 wspace=0.35)
+    ax_b = fig_c.add_subplot(gs_bc[0])
+    _panel_resid_fitted_combined(ax_b, results)
+    for _coll in ax_b.collections:
+        if hasattr(_coll, "set_sizes"):
+            _coll.set_sizes([2])
+    _leg_b = ax_b.get_legend()
+    if _leg_b:
+        _leg_b.remove()
+    ax_b.legend(
+        fontsize=3.0, ncol=2, loc="best",
+        frameon=True, framealpha=0.85,
+        markerscale=0.6, handlelength=1.0,
+        columnspacing=0.6, handletextpad=0.3,
+    )
+
+    ax_c = fig_c.add_subplot(gs_bc[1])
+    _panel_influence(ax_c, results)
+    for _txt in list(ax_c.texts):
+        _m = _re.search(
+            r'(\d+/\d+).*?(\d+%)', _txt.get_text().replace('\n', ' '),
+        )
+        if _m:
+            _txt.set_text(f"{_m.group(1)}\n({_m.group(2)})")
+            _txt.set_fontsize(3.5)
+    for _line in ax_c.lines:
+        _line.set_linewidth(max(0.15, _line.get_linewidth() * 0.25))
+    for _patch in ax_c.patches:
+        _patch.set_linewidth(0.2)
+    for _coll in ax_c.collections:
+        if hasattr(_coll, 'set_sizes'):
+            _coll.set_sizes([0.5])
+        if hasattr(_coll, 'set_linewidths'):
+            _coll.set_linewidths([0.0])
+
+    # ── Row 4: D — Baseline comparability (1 × n_ds) ─────────────────
+    gs_d = outer[4].subgridspec(1, n_ds, wspace=0.45)
+    axes_d = np.array(
+        [fig_c.add_subplot(gs_d[0, i]) for i in range(n_ds)]
+    )
+    _panel_baseline_comparability(fig_c, axes_d, results)
+    for _axd_i in axes_d:
+        for _coll in _axd_i.collections:
+            if hasattr(_coll, 'set_sizes'):
+                _coll.set_sizes([15])
+        for _ann in list(_axd_i.texts):
+            if "r =" in _ann.get_text() or "r=" in _ann.get_text():
+                _ann.set_fontsize(3.5)
+            else:
+                _ann.set_fontsize(min(_ann.get_fontsize(), 2.5))
+        for _child in list(_axd_i.get_children()):
+            if isinstance(_child, matplotlib.patches.FancyArrowPatch):
+                _child.remove()
+        _axd_i.set_xlabel(_axd_i.get_xlabel(), labelpad=1, fontsize=4.5)
+        _axd_i.set_ylabel(_axd_i.get_ylabel(), labelpad=1, fontsize=4.5)
+
+    # ── Row 6: E+G (left 2×1) | F (right 2×1) ───────────────────────
+    gs_row6 = outer[6].subgridspec(
+        1, 2, width_ratios=[0.50, 0.50], wspace=0.25,
+    )
+
+    # Left column: E (top) + G (bottom)
+    gs_left6 = gs_row6[0].subgridspec(2, 1, hspace=0.95)
+    ax_e = fig_c.add_subplot(gs_left6[0])
+    _panel_signal_enrichment(ax_e, results)
+    ax_e.set_ylabel("Observed |effect|\nquantiles")
+    ax_e.set_xlabel(ax_e.get_xlabel(), labelpad=0.5)
+    _leg_e = ax_e.get_legend()
+    if _leg_e:
+        _leg_e.remove()
+    ax_e.legend(
+        fontsize=3.0, ncol=2, loc="upper left",
+        frameon=True, framealpha=0.85,
+        markerscale=0.4, handlelength=1.0,
+        columnspacing=0.6, handletextpad=0.3,
+    )
+
+    ax_g = fig_c.add_subplot(gs_left6[1])
+    _panel_funnel(ax_g, results)
+    ax_g.set_title(ax_g.get_title(), pad=1.0)
+    for _coll in ax_g.collections:
+        if hasattr(_coll, 'set_sizes'):
+            _coll.set_sizes([10])
+    _leg_g = ax_g.get_legend()
+    if _leg_g:
+        _leg_g.remove()
+    ax_g.legend(
+        fontsize=2.5, ncol=2, loc="upper left",
+        frameon=True, framealpha=0.85,
+        markerscale=0.4, handlelength=1.0,
+        columnspacing=0.6, handletextpad=0.3,
+    )
+
+    # Right column: F (normality top, heteroscedasticity bottom)
+    gs_f = gs_row6[1].subgridspec(2, 1, hspace=0.95)
+    ax_f1 = fig_c.add_subplot(gs_f[0])
+    ax_f2 = fig_c.add_subplot(gs_f[1])
+    _panel_normality_tests(ax_f1, results)
+    _panel_heteroscedasticity(ax_f2, results)
+    for _ax_f in [ax_f1, ax_f2]:
+        for _txt in list(_ax_f.texts):
+            _x_pos, _y_pos = _txt.get_position()
+            _txt.set_position((0.01, _y_pos + 0.33))
+            _txt.set_fontsize(3.0)
+            _txt.set_fontweight("normal")
+            _txt.set_ha("left")
+            _txt.set_va("bottom")
+        _ax_f.set_title(_ax_f.get_title(), pad=1.5)
+        _ax_f.set_xlabel(_ax_f.get_xlabel(), labelpad=0.5)
+        _ax_f.tick_params(axis="y", labelsize=2.5)
+        _leg_f = _ax_f.get_legend()
+        if _leg_f:
+            _leg_f.remove()
+    _yl1 = ax_f1.get_ylim()
+    ax_f1.text(
+        0.96, (_yl1[0] + _yl1[1]) / 2, "W = 0.95",
+        fontsize=2.8, color="red", ha="left", va="center", rotation=90,
+    )
+    _yl2 = ax_f2.get_ylim()
+    ax_f2.text(
+        3.95, (_yl2[0] + _yl2[1]) / 2,
+        r"$\chi^2$(1) = 3.84",
+        fontsize=2.8, color="red", ha="left", va="center", rotation=90,
+    )
+
+    # ── Row 8: H | I (equal width) ─────────────────────────────────
+    gs_row8 = outer[8].subgridspec(1, 2, width_ratios=[0.5, 0.5],
+                                   wspace=0.35)
+    ax_h = fig_c.add_subplot(gs_row8[0])
+    ax_i = fig_c.add_subplot(gs_row8[1])
+
+    _panel_rejection_vs_alpha(ax_h, results)
+    ax_h.set_ylabel("Fraction of features\nexceeding threshold")
+    _leg_h = ax_h.get_legend()
+    if _leg_h:
+        _leg_h.remove()
+    ax_h.legend(
+        fontsize=3.0, ncol=2, loc="upper center",
+        bbox_to_anchor=(0.5, 1.0), frameon=True, framealpha=0.85,
+        markerscale=0.4, handlelength=1.0,
+        columnspacing=0.8, handletextpad=0.3,
+    )
+
+    # I: Runtime scaling
+    try:
+        from ..main.figure3_robustness_benchmarking import (
+            _panel_c as _fig3_panel_c,
+        )
+        from ..main.figure3_robustness_benchmarking import (
+            _prepare_scalability_data,
+        )
+        _scale_data = _prepare_scalability_data()
+        _fig3_panel_c(ax_i, {"scale_data": _scale_data})
+    except Exception:
+        ax_i.text(
+            0.5, 0.5, "Runtime data unavailable",
+            ha="center", va="center", transform=ax_i.transAxes,
+        )
+    for _coll in ax_i.collections:
+        if hasattr(_coll, 'set_sizes'):
+            _coll.set_sizes(_coll.get_sizes() * 0.2)
+    ax_i.tick_params(axis='y', labelsize=3)
+    _leg_i = ax_i.get_legend()
+    if _leg_i:
+        _leg_i.remove()
+    ax_i.legend(
+        fontsize=2.0, frameon=True, framealpha=0.85,
+        markerscale=0.3, handlelength=1.0,
+        handletextpad=0.3,
+    )
+    despine(ax_i)
+
+    # ── Rows 10–14: J (per-dataset pseudorep, was old I) ─────────────
+    pseudo_names = list(all_pseudo.keys())
+    n_pseudo = len(pseudo_names)
+    _ax_j_first = None
+    _all_j_axes: list[plt.Axes] = []
+    _j_group_mid_axes: list[tuple] = []  # (mid_ax, ds_name) per study
+
+    _j_study_titles = {
+        "Melanoma": "Melanoma (DiD)",
+        "AML": r"AML ($\Delta$, within-arm)",
+        "CAR-T": r"CAR-T ($\Delta$, within-arm)",
+        "COVID-19": "COVID-19 (DiD)",
+        "Vaccine": r"Vaccine ($\Delta$, within-arm)",
+    }
+
+    def _draw_j_group(gs_parent, slot, pi):
+        """Draw one 1×3 pseudorep group, return axes list or None."""
+        nonlocal _ax_j_first
+        if pi >= n_pseudo:
+            _ax_empty = fig_c.add_subplot(gs_parent[slot])
+            _ax_empty.set_visible(False)
+            return None
+        _gsj = gs_parent[slot].subgridspec(1, 3, wspace=0.55)
+        _axes_j = [fig_c.add_subplot(_gsj[0, j]) for j in range(3)]
+        _dn = pseudo_names[pi]
+        _draw_pseudorep_compact(
+            _axes_j, _dn, all_pseudo[_dn],
+            _DATASET_CFG[_dn].get("design", "two_arm"),
+        )
+        _all_j_axes.extend(_axes_j)
+        _j_group_mid_axes.append((_axes_j[1], _dn))
+        if _ax_j_first is None:
+            _ax_j_first = _axes_j[0]
+        return _axes_j
+
+    # Row 10: datasets 0, 1
+    gs_jr1 = outer[10].subgridspec(1, 2, wspace=0.35)
+    _draw_j_group(gs_jr1, 0, 0)
+    _draw_j_group(gs_jr1, 1, 1)
+
+    # Row 12: datasets 2, 3
+    gs_jr2 = outer[12].subgridspec(1, 2, wspace=0.35)
+    _draw_j_group(gs_jr2, 0, 2)
+    _draw_j_group(gs_jr2, 1, 3)
+
+    # Row 14: dataset 4 (centered)
+    if n_pseudo >= 5:
+        gs_jr3 = outer[14].subgridspec(
+            1, 3, width_ratios=[1, 2, 1], wspace=0.0,
+        )
+        _ax_pad_l = fig_c.add_subplot(gs_jr3[0, 0])
+        _ax_pad_l.set_visible(False)
+        _ax_pad_r = fig_c.add_subplot(gs_jr3[0, 2])
+        _ax_pad_r.set_visible(False)
+        _gsj = gs_jr3[0, 1].subgridspec(1, 3, wspace=0.55)
+        _axes_j = [fig_c.add_subplot(_gsj[0, j]) for j in range(3)]
+        _dn = pseudo_names[4]
+        _draw_pseudorep_compact(
+            _axes_j, _dn, all_pseudo[_dn],
+            _DATASET_CFG[_dn].get("design", "two_arm"),
+        )
+        _all_j_axes.extend(_axes_j)
+        _j_group_mid_axes.append((_axes_j[1], _dn))
+        if _ax_j_first is None:
+            _ax_j_first = _axes_j[0]
+    else:
+        _ax_empty = fig_c.add_subplot(outer[14])
+        _ax_empty.set_visible(False)
+
+    # Post-process J axes
+    for _axj in _all_j_axes:
+        _axj.set_xlabel(_axj.get_xlabel(), labelpad=1)
+        _axj.set_ylabel(_axj.get_ylabel(), labelpad=1)
+        _axj.set_title("")  # remove individual subplot titles
+        _leg_j = _axj.get_legend()
+        if _leg_j:
+            for _lt in _leg_j.get_texts():
+                _lt.set_fontsize(3.5)
+
+    # Add study-level title centered above each group of 3 panels
+    for _mid_ax, _dn in _j_group_mid_axes:
+        _stitle = _j_study_titles.get(_dn, _dn)
+        _mid_ax.set_title(_stitle, fontsize=4.5, fontweight="bold", pad=3)
+
+    # Super title for J section — centered across the full figure width
+    if _ax_j_first is not None:
+        _j_top_y = _ax_j_first.get_position().y1
+        fig_c.text(
+            0.5, _j_top_y + 0.015,
+            "Cell-Level vs Participant-Level Inference",
+            fontsize=5.5, fontweight="bold", ha="center", va="bottom",
+        )
+
+    # ── Post-processing ───────────────────────────────────────────────
+    for ax_pp in fig_c.get_axes():
+        leg = ax_pp.get_legend()
+        if leg:
+            leg.get_frame().set_alpha(0.85)
+            leg.get_frame().set_edgecolor("#CCCCCC")
+
+    _cap_fontsize(fig_c, _MAX_FONT)
+
+    _lbl_fs = 8
+    _lbl_x = -0.10
+    _lbl_y = 1.10
+    _lbl_y_hi = 1.30
+    _lbl_x_far = -0.20
+    _lbl_x_xfar = -0.25
+
+    _label_pairs: list[tuple] = [
+        (axes_a[0], "A", _lbl_x_far, _lbl_y_hi),
+        (ax_b, "B", _lbl_x, _lbl_y),
+        (ax_c, "C", _lbl_x, _lbl_y),
+        (axes_d[0], "D", _lbl_x_xfar, _lbl_y),
+        (ax_e, "E", _lbl_x, _lbl_y_hi),
+        (ax_f1, "F", _lbl_x, _lbl_y),
+        (ax_g, "G", _lbl_x, _lbl_y_hi),
+        (ax_h, "H", _lbl_x, _lbl_y_hi),
+        (ax_i, "I", _lbl_x_far + 0.06, _lbl_y_hi),
+    ]
+    if _ax_j_first is not None:
+        _label_pairs.append((_ax_j_first, "J", _lbl_x_xfar, _lbl_y))
+
+    for ax_lbl, lbl, lx, ly in _label_pairs:
+        ax_lbl.text(
+            lx, ly, lbl,
+            transform=ax_lbl.transAxes,
+            fontsize=_lbl_fs, fontweight="bold", va="top", ha="left",
+        )
+
+    plt.rcParams.update(_prev_rc)
+
+    save_panel(fig_c, FIGURE_NAME, FIGURE_NAME, SUPP_OUTPUT, close=False)
+    pdf_path = SUPP_OUTPUT / f"{FIGURE_NAME}_panels" / f"{FIGURE_NAME}.pdf"
+    fig_c.savefig(str(pdf_path), format="pdf", bbox_inches="tight",
+                  facecolor="white")
+    plt.close(fig_c)
+    print("    Saved combined artboard (PNG + PDF)")
+
+    # ── Cleanup ───────────────────────────────────────────────────────
     results.clear()
+    all_pseudo.clear()
     clear_cache()
     gc.collect()
-    print("  Done.\n")
+    print("  SuppFig3 complete: individual panels + combined (A–J)\n")
 
 
 if __name__ == "__main__":
