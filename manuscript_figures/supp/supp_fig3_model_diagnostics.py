@@ -591,7 +591,9 @@ def _panel_influence(ax, results: dict[str, dict]):
     despine(ax)
 
 
-def _panel_baseline_comparability(fig, axes, results: dict[str, dict]):
+def _panel_baseline_comparability(
+    fig, axes, results: dict[str, dict], *, composite: bool = False,
+):
     """D: Baseline mean comparability.
 
     Two-arm datasets: scatter of (control pre-mean, treated pre-mean) per
@@ -599,6 +601,12 @@ def _panel_baseline_comparability(fig, axes, results: dict[str, dict]):
 
     Single-arm datasets: scatter of (Pre mean, Post mean) per feature to
     show the magnitude/direction of change.
+
+    Parameters
+    ----------
+    composite : bool
+        When True, draw labels at the small composite fontsize and tune
+        adjust_text for that scale so positions are geometrically correct.
     """
     names = list(results)
     for i, ax in enumerate(np.ravel(axes)):
@@ -632,7 +640,10 @@ def _panel_baseline_comparability(fig, axes, results: dict[str, dict]):
             )
             x_label = f"{cfg['arm_control']} mean"
             y_label = f"{cfg['arm_treated']} mean"
-            subtitle = f"{name} — baseline comparability"
+            subtitle = {
+                "Melanoma": "Melanoma — responder vs non-responder",
+                "COVID-19": "COVID-19 — severe vs mild",
+            }.get(name, f"{name} — baseline comparability")
         else:
             # Single-arm: compare Pre vs Post means.
             pre_data = pv[pv[visit_col] == pre_v]
@@ -655,22 +666,40 @@ def _panel_baseline_comparability(fig, axes, results: dict[str, dict]):
             color=_DS_PALETTE.get(name, "grey"),
             edgecolors="white", linewidth=0.5, zorder=3,
         )
-        texts = [
-            ax.text(cx, ty, feat, fontsize=7, fontweight="bold")
-            for feat, cx, ty in zip(
-                features, x_vals.values, y_vals.values
+        if composite:
+            if i > 0:
+                _cur_yl = ax.get_ylim()
+                ax.set_ylim(min(-0.5, _cur_yl[0]), _cur_yl[1])
+            texts = [
+                ax.text(cx, ty, feat, fontsize=2.2, fontweight="bold")
+                for feat, cx, ty in zip(
+                    features, x_vals.values, y_vals.values
+                )
+            ]
+            adjust_text(
+                texts, ax=ax,
+                force_text=(2.0, 2.0), force_points=(2.0, 2.0),
+                expand=(1.5, 1.5),
+                arrowprops=dict(arrowstyle="-", color="#cccccc", lw=0.25),
             )
-        ]
-        adjust_text(
-            texts, ax=ax,
-            force_text=(2.0, 2.0), force_points=(2.0, 2.0),
-            expand=(1.5, 1.5),
-            arrowprops=dict(arrowstyle="-", color="gray", lw=0.5),
-        )
+        else:
+            texts = [
+                ax.text(cx, ty, feat, fontsize=7, fontweight="bold")
+                for feat, cx, ty in zip(
+                    features, x_vals.values, y_vals.values
+                )
+            ]
+            adjust_text(
+                texts, ax=ax,
+                force_text=(2.0, 2.0), force_points=(2.0, 2.0),
+                expand=(1.5, 1.5),
+                arrowprops=dict(arrowstyle="-", color="gray", lw=0.5),
+            )
 
         lo = min(x_vals.min(), y_vals.min()) * 0.9
         hi = max(x_vals.max(), y_vals.max()) * 1.1
-        ax.plot([lo, hi], [lo, hi], ls="--", color="black", lw=0.9)
+        ax.plot([lo, hi], [lo, hi], ls="--", color="black",
+                lw=0.3 if composite else 0.9)
 
         r, _ = stats.pearsonr(x_vals.values, y_vals.values)
         ax.text(
@@ -1442,7 +1471,7 @@ def generate():
             r_val, _ = stats.pearsonr(x_b, y_b)
             ax0.text(
                 0.05, 0.95, f"r={r_val:.2f}", transform=ax0.transAxes,
-                fontsize=3.5, va="top",
+                fontsize=4.5, va="top",
                 bbox=dict(boxstyle="round,pad=0.2", fc="white",
                           ec="none", alpha=0.8),
             )
@@ -1515,10 +1544,10 @@ def generate():
             0.40,   # row  2: B (combined scatter) | C (Cook's)
             0.34,   # spacer (increased B|C → D)
             0.58,   # row  4: D (baseline, 1×5, taller)
-            0.36,   # spacer (increased D → E|F|G)
-            0.80,   # row  6: E+G (left 2×1) | F (right 2×1)
-            0.36,   # spacer (increased E|F|G → H|I)
-            0.38,   # row  8: H | I (equal width)
+            0.36,   # spacer (increased D → E|F)
+            0.50,   # row  6: E | F1 | F2
+            0.36,   # spacer (E|F → G|H|I)
+            0.42,   # row  8: G | H | I
             0.40,   # spacer (increased H|I → J)
             0.52,   # row 10: J row 1 (pseudorep ds 0+1)
             0.36,   # spacer (increased within J)
@@ -1557,7 +1586,7 @@ def generate():
     if _leg_b:
         _leg_b.remove()
     ax_b.legend(
-        fontsize=3.0, ncol=2, loc="best",
+        fontsize=3.0, ncol=3, loc="upper right",
         frameon=True, framealpha=0.85,
         markerscale=0.6, handlelength=1.0,
         columnspacing=0.6, handletextpad=0.3,
@@ -1587,46 +1616,164 @@ def generate():
     axes_d = np.array(
         [fig_c.add_subplot(gs_d[0, i]) for i in range(n_ds)]
     )
-    _panel_baseline_comparability(fig_c, axes_d, results)
+    _panel_baseline_comparability(fig_c, axes_d, results, composite=True)
     for _axd_i in axes_d:
         for _coll in _axd_i.collections:
             if hasattr(_coll, 'set_sizes'):
-                _coll.set_sizes([15])
+                _coll.set_sizes([5])
         for _ann in list(_axd_i.texts):
             if "r =" in _ann.get_text() or "r=" in _ann.get_text():
                 _ann.set_fontsize(3.5)
-            else:
-                _ann.set_fontsize(min(_ann.get_fontsize(), 2.5))
-        for _child in list(_axd_i.get_children()):
-            if isinstance(_child, matplotlib.patches.FancyArrowPatch):
-                _child.remove()
         _axd_i.set_xlabel(_axd_i.get_xlabel(), labelpad=1, fontsize=4.5)
         _axd_i.set_ylabel(_axd_i.get_ylabel(), labelpad=1, fontsize=4.5)
 
-    # ── Row 6: E+G (left 2×1) | F (right 2×1) ───────────────────────
-    gs_row6 = outer[6].subgridspec(
-        1, 2, width_ratios=[0.50, 0.50], wspace=0.25,
-    )
+    # Melanoma (axes_d[0]): nudge specific gene labels
+    _mel_nudge = {
+        "IL2": (-0.22, 0.0),
+        "CD4": (0.0, 0.05),
+        "CD8A": (0.0, 0.05),
+        "NKG7": (0.08, 0.0),
+    }
+    _mel_ha = {"IL2": "right"}
+    for _ann in list(axes_d[0].texts):
+        _gene = _ann.get_text()
+        if _gene in _mel_nudge:
+            _cx, _cy = _ann.get_position()
+            _dx, _dy = _mel_nudge[_gene]
+            _ann.set_position((_cx + _dx, _cy + _dy))
+        if _gene in _mel_ha:
+            _ann.set_ha(_mel_ha[_gene])
 
-    # Left column: E (top) + G (bottom)
-    gs_left6 = gs_row6[0].subgridspec(2, 1, hspace=0.95)
-    ax_e = fig_c.add_subplot(gs_left6[0])
+    # AML (axes_d[1]): nudge specific gene labels
+    _aml_nudge = {
+        "LAG3": (-0.10, 0.0),
+        "CD14": (-0.18, 0.05),
+        "CD8A": (-0.10, 0.0),
+        "GZMB": (0.0, -0.06),
+        "CTLA4": (0.0, -0.05),
+    }
+    _aml_ha = {"CD14": "right"}
+    for _ann in list(axes_d[1].texts):
+        _gene = _ann.get_text()
+        if _gene in _aml_nudge:
+            _cx, _cy = _ann.get_position()
+            _dx, _dy = _aml_nudge[_gene]
+            _ann.set_position((_cx + _dx, _cy + _dy))
+        if _gene in _aml_ha:
+            _ann.set_ha(_aml_ha[_gene])
+
+    # CAR-T (axes_d[2]): nudge specific gene labels
+    _cart_nudge = {
+        "IL7R": (-0.08, 0.10),
+        "CD8A": (0.08, 0.0),
+        "CD3D": (0.0, -0.06),
+        "LAG3": (0.0, 0.06),
+        "CTLA4": (-0.15, 0.0),
+        "CD19": (-0.10, 0.0),
+        "IL2": (0.0, 0.08),
+        "CD4": (0.0, -0.06),
+    }
+    for _ann in list(axes_d[2].texts):
+        _gene = _ann.get_text()
+        if _gene in _cart_nudge:
+            _cx, _cy = _ann.get_position()
+            _dx, _dy = _cart_nudge[_gene]
+            _ann.set_position((_cx + _dx, _cy + _dy))
+
+    # COVID-19 (axes_d[3]): nudge specific gene labels
+    _covid_nudge = {
+        "FOXP3": (-0.10, 0.0),
+        "LAG3": (0.10, 0.0),
+        "IFNG": (0.10, 0.0),
+        "HAVCR2": (0.0, 0.06),
+        "CD4": (0.0, -0.05),
+    }
+    for _ann in list(axes_d[3].texts):
+        _gene = _ann.get_text()
+        if _gene in _covid_nudge:
+            _cx, _cy = _ann.get_position()
+            _dx, _dy = _covid_nudge[_gene]
+            _ann.set_position((_cx + _dx, _cy + _dy))
+
+    # Vaccine (axes_d[4]): nudge specific gene labels
+    _vacc_nudge = {
+        "CD14": (0.10, 0.0),
+        "CTLA4": (-0.10, 0.0),
+        "HAVCR2": (0.0, 0.06),
+        "IFNG": (-0.08, -0.04),
+        "CD8A": (0.0, 0.06),
+        "FOXP3": (0.0, 0.08),
+        "PDCD1": (-0.10, 0.0),
+    }
+    for _ann in list(axes_d[4].texts):
+        _gene = _ann.get_text()
+        if _gene in _vacc_nudge:
+            _cx, _cy = _ann.get_position()
+            _dx, _dy = _vacc_nudge[_gene]
+            _ann.set_position((_cx + _dx, _cy + _dy))
+
+    # ── Row 6: E | F1 | F2 (horizontal) ──────────────────────────
+    gs_row6 = outer[6].subgridspec(
+        1, 3, width_ratios=[0.34, 0.33, 0.33], wspace=0.35,
+    )
+    ax_e = fig_c.add_subplot(gs_row6[0])
     _panel_signal_enrichment(ax_e, results)
     ax_e.set_ylabel("Observed |effect|\nquantiles")
     ax_e.set_xlabel(ax_e.get_xlabel(), labelpad=0.5)
+    for _line_e in ax_e.get_lines():
+        _line_e.set_linewidth(max(0.4, _line_e.get_linewidth() * 0.5))
+        _line_e.set_markersize(max(0.8, _line_e.get_markersize() * 0.35))
     _leg_e = ax_e.get_legend()
     if _leg_e:
         _leg_e.remove()
     ax_e.legend(
-        fontsize=3.0, ncol=2, loc="upper left",
+        fontsize=3.0, ncol=3, loc="upper left",
         frameon=True, framealpha=0.85,
         markerscale=0.4, handlelength=1.0,
         columnspacing=0.6, handletextpad=0.3,
     )
+    _yl_e = ax_e.get_ylim()
+    ax_e.set_ylim(_yl_e[0], _yl_e[1] * 0.85)
 
-    ax_g = fig_c.add_subplot(gs_left6[1])
+    ax_f1 = fig_c.add_subplot(gs_row6[1])
+    ax_f2 = fig_c.add_subplot(gs_row6[2])
+    _panel_normality_tests(ax_f1, results)
+    _panel_heteroscedasticity(ax_f2, results)
+    for _ax_f in [ax_f1, ax_f2]:
+        for _txt in list(_ax_f.texts):
+            _x_pos, _y_pos = _txt.get_position()
+            _txt.set_position((0.01, _y_pos + 0.33))
+            _txt.set_fontsize(3.5)
+            _txt.set_fontweight("normal")
+            _txt.set_ha("left")
+            _txt.set_va("bottom")
+        _ax_f.set_title(
+            _ax_f.get_title(), pad=5.0, fontweight="bold",
+        )
+        _ax_f.set_xlabel(_ax_f.get_xlabel(), labelpad=0.5)
+        _ax_f.tick_params(axis="y", labelsize=3)
+        _leg_f = _ax_f.get_legend()
+        if _leg_f:
+            _leg_f.remove()
+    _yl1 = ax_f1.get_ylim()
+    ax_f1.text(
+        0.96, (_yl1[0] + _yl1[1]) / 2, "W = 0.95",
+        fontsize=3.2, color="red", ha="left", va="center", rotation=90,
+    )
+    _yl2 = ax_f2.get_ylim()
+    ax_f2.text(
+        3.95, (_yl2[0] + _yl2[1]) / 2,
+        r"$\chi^2$(1) = 3.84",
+        fontsize=3.2, color="red", ha="left", va="center", rotation=90,
+    )
+
+    # ── Row 8: G | H | I ───────────────────────────────────────────
+    gs_row8 = outer[8].subgridspec(
+        1, 3, width_ratios=[0.34, 0.33, 0.33], wspace=0.35,
+    )
+
+    ax_g = fig_c.add_subplot(gs_row8[0])
     _panel_funnel(ax_g, results)
-    ax_g.set_title(ax_g.get_title(), pad=1.0)
     for _coll in ax_g.collections:
         if hasattr(_coll, 'set_sizes'):
             _coll.set_sizes([10])
@@ -1634,63 +1781,31 @@ def generate():
     if _leg_g:
         _leg_g.remove()
     ax_g.legend(
-        fontsize=2.5, ncol=2, loc="upper left",
+        fontsize=3.0, ncol=2, loc="upper left",
         frameon=True, framealpha=0.85,
-        markerscale=0.4, handlelength=1.0,
+        markerscale=0.8, handlelength=1.0,
         columnspacing=0.6, handletextpad=0.3,
     )
 
-    # Right column: F (normality top, heteroscedasticity bottom)
-    gs_f = gs_row6[1].subgridspec(2, 1, hspace=0.95)
-    ax_f1 = fig_c.add_subplot(gs_f[0])
-    ax_f2 = fig_c.add_subplot(gs_f[1])
-    _panel_normality_tests(ax_f1, results)
-    _panel_heteroscedasticity(ax_f2, results)
-    for _ax_f in [ax_f1, ax_f2]:
-        for _txt in list(_ax_f.texts):
-            _x_pos, _y_pos = _txt.get_position()
-            _txt.set_position((0.01, _y_pos + 0.33))
-            _txt.set_fontsize(3.0)
-            _txt.set_fontweight("normal")
-            _txt.set_ha("left")
-            _txt.set_va("bottom")
-        _ax_f.set_title(_ax_f.get_title(), pad=1.5)
-        _ax_f.set_xlabel(_ax_f.get_xlabel(), labelpad=0.5)
-        _ax_f.tick_params(axis="y", labelsize=2.5)
-        _leg_f = _ax_f.get_legend()
-        if _leg_f:
-            _leg_f.remove()
-    _yl1 = ax_f1.get_ylim()
-    ax_f1.text(
-        0.96, (_yl1[0] + _yl1[1]) / 2, "W = 0.95",
-        fontsize=2.8, color="red", ha="left", va="center", rotation=90,
-    )
-    _yl2 = ax_f2.get_ylim()
-    ax_f2.text(
-        3.95, (_yl2[0] + _yl2[1]) / 2,
-        r"$\chi^2$(1) = 3.84",
-        fontsize=2.8, color="red", ha="left", va="center", rotation=90,
-    )
-
-    # ── Row 8: H | I (equal width) ─────────────────────────────────
-    gs_row8 = outer[8].subgridspec(1, 2, width_ratios=[0.5, 0.5],
-                                   wspace=0.35)
-    ax_h = fig_c.add_subplot(gs_row8[0])
-    ax_i = fig_c.add_subplot(gs_row8[1])
-
+    ax_h = fig_c.add_subplot(gs_row8[1])
     _panel_rejection_vs_alpha(ax_h, results)
     ax_h.set_ylabel("Fraction of features\nexceeding threshold")
+    ax_h.set_ylim(0, 0.65)
+    ax_h.set_xlim(-0.05, ax_h.get_xlim()[1])
+    for _line_h in ax_h.get_lines():
+        _line_h.set_linewidth(max(0.3, _line_h.get_linewidth() * 0.5))
+        _line_h.set_markersize(max(1.0, _line_h.get_markersize() * 0.5))
     _leg_h = ax_h.get_legend()
     if _leg_h:
         _leg_h.remove()
     ax_h.legend(
-        fontsize=3.0, ncol=2, loc="upper center",
-        bbox_to_anchor=(0.5, 1.0), frameon=True, framealpha=0.85,
+        fontsize=3.0, ncol=2, loc="upper left",
+        frameon=True, framealpha=0.85,
         markerscale=0.4, handlelength=1.0,
         columnspacing=0.8, handletextpad=0.3,
     )
 
-    # I: Runtime scaling
+    ax_i = fig_c.add_subplot(gs_row8[2])
     try:
         from ..main.figure3_robustness_benchmarking import (
             _panel_c as _fig3_panel_c,
@@ -1709,14 +1824,20 @@ def generate():
         if hasattr(_coll, 'set_sizes'):
             _coll.set_sizes(_coll.get_sizes() * 0.2)
     ax_i.tick_params(axis='y', labelsize=3)
+    ax_i.set_xlabel(ax_i.get_xlabel(), fontsize=4.5)
+    ax_i.set_ylabel(ax_i.get_ylabel(), fontsize=4.5)
     _leg_i = ax_i.get_legend()
     if _leg_i:
+        _i_handles = _leg_i.legend_handles
+        _i_labels = [t.get_text() for t in _leg_i.get_texts()]
         _leg_i.remove()
-    ax_i.legend(
-        fontsize=2.0, frameon=True, framealpha=0.85,
-        markerscale=0.3, handlelength=1.0,
-        handletextpad=0.3,
-    )
+        ax_i.legend(
+            handles=_i_handles, labels=_i_labels,
+            fontsize=3.0, loc="lower right",
+            frameon=True, framealpha=0.85,
+            markerscale=0.3, handlelength=1.0,
+            handletextpad=0.3,
+        )
     despine(ax_i)
 
     # ── Rows 10–14: J (per-dataset pseudorep, was old I) ─────────────
@@ -1833,11 +1954,11 @@ def generate():
         (ax_b, "B", _lbl_x, _lbl_y),
         (ax_c, "C", _lbl_x, _lbl_y),
         (axes_d[0], "D", _lbl_x_xfar, _lbl_y),
-        (ax_e, "E", _lbl_x, _lbl_y_hi),
-        (ax_f1, "F", _lbl_x, _lbl_y),
-        (ax_g, "G", _lbl_x, _lbl_y_hi),
-        (ax_h, "H", _lbl_x, _lbl_y_hi),
-        (ax_i, "I", _lbl_x_far + 0.06, _lbl_y_hi),
+        (ax_e, "E", _lbl_x_far + 0.06, _lbl_y_hi),
+        (ax_f1, "F", _lbl_x_far + 0.06, _lbl_y_hi),
+        (ax_g, "G", _lbl_x_far + 0.06, _lbl_y_hi),
+        (ax_h, "H", _lbl_x_far, _lbl_y_hi),
+        (ax_i, "I", _lbl_x_far, _lbl_y_hi),
     ]
     if _ax_j_first is not None:
         _label_pairs.append((_ax_j_first, "J", _lbl_x_xfar, _lbl_y))

@@ -2,9 +2,9 @@
 Figure 2 — Pseudoreplication Bias & Melanoma Primary Analysis
 ==============================================================
 
-Nine-panel figure: empirical demonstration of pseudoreplication (A-C),
+Eight-panel figure: empirical demonstration of pseudoreplication (A-C),
 primary DiD analysis (D-E), per-participant effects (F-G), clinical
-outcome correlation (H-I).
+outcome correlation (H).
 
 Panels
 ------
@@ -16,7 +16,6 @@ E : Small-multiple interaction plots for the top 6 signatures.
 F : Per-participant change heatmap across signatures.
 G : Bar plot of mean Δ score (post − pre) by response group.
 H : Cohen's d effect sizes (responder − non-responder) on Δ scores.
-I : Individual participant trajectories for memory T cell signature.
 """
 
 from __future__ import annotations
@@ -834,7 +833,7 @@ def _enforce_min_fontsize(fig, minimum: float = _MIN_FONT) -> None:
 
 
 def generate() -> None:
-    """Create and save all Figure 2 panels (A–I)."""
+    """Create and save all Figure 2 panels (A–H)."""
     print("Figure 2: Pseudoreplication Bias & Melanoma Primary Analysis")
     data = _prepare_data()
 
@@ -878,7 +877,6 @@ def generate() -> None:
         simple_panels = [
             ("panel_G_delta_by_response", _panel_g_delta_by_response),
             ("panel_H_cohens_d", _panel_h_cohens_d),
-            ("panel_I_individual_trajectories", _panel_i_individual_trajectories),
         ]
         for panel_name, func in simple_panels:
             fig, ax = plt.subplots(figsize=(7, 5.5))
@@ -950,10 +948,9 @@ def generate() -> None:
     ax_f = fig_c.add_subplot(gs2[0])
     ax_g = fig_c.add_subplot(gs2[1])
 
-    # Row 3: H | I
-    gs3 = outer[3].subgridspec(1, 2, wspace=0.40)
-    ax_h = fig_c.add_subplot(gs3[0])
-    ax_i = fig_c.add_subplot(gs3[1])
+    # Row 3: H (centred)
+    gs3 = outer[3].subgridspec(1, 3, width_ratios=[0.6, 1.8, 0.6], wspace=0.40)
+    ax_h = fig_c.add_subplot(gs3[1])
 
     _panel_a_paired_verification(ax_a, data)
     _panel_b_beta_comparison(ax_b, data)
@@ -966,14 +963,13 @@ def generate() -> None:
     _panel_f_heatmap(ax_f, data)
     _panel_g_delta_by_response(ax_g, data)
     _panel_h_cohens_d(ax_h, data)
-    _panel_i_individual_trajectories(ax_i, data)
 
     # ── Combined-panel-only adjustments ──
 
     # Move below-figure legends to inside the plot for space
     _inside = {
         ax_a: "upper right", ax_b: "lower right", ax_c: "lower right",
-        ax_d: "lower right", ax_g: "lower right", ax_i: "upper right",
+        ax_d: "lower right", ax_g: "lower right",
     }
     for ax_target, loc in _inside.items():
         leg = ax_target.get_legend()
@@ -1061,7 +1057,7 @@ def generate() -> None:
     for ax, lbl in [
         (ax_a, "A"), (ax_b, "B"), (ax_c, "C"),
         (ax_d, "D"), (ax_f, "F"),
-        (ax_g, "G"), (ax_h, "H"), (ax_i, "I"),
+        (ax_g, "G"), (ax_h, "H"),
     ]:
         ax.text(-0.15, 1.12, lbl, transform=ax.transAxes,
                 fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
@@ -1083,7 +1079,7 @@ def generate() -> None:
     del data["adata"]
     del data
     gc.collect()
-    print("  Figure 2 complete: 9 individual panels + combined (A–I)\n")
+    print("  Figure 2 complete: 8 individual panels + combined (A–H)\n")
 
 
 # ── CLI entry point ─────────────────────────────────────────────────────
