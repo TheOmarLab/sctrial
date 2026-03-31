@@ -953,12 +953,12 @@ def _panel_sim_tpr(ax, results, *, composite: bool = False):
     ].copy()
 
     rows = []
-    for (method, beta, it), grp in subset.groupby(
-        ["method", "target_beta", "iteration"]
+    for (method, n, beta, it), grp in subset.groupby(
+        ["method", "n_participants", "target_beta", "iteration"]
     ):
         pvals = grp["pvalue"].dropna().values
         is_sig = grp.loc[grp["pvalue"].notna(), "is_signal"].values
-        if len(pvals) == 0:
+        if len(pvals) == 0 or is_sig.sum() == 0:
             continue
         reject = multipletests(pvals, alpha=0.05, method="fdr_bh")[0]
         if is_sig.sum() > 0:
@@ -967,9 +967,11 @@ def _panel_sim_tpr(ax, results, *, composite: bool = False):
                  "tpr": reject[is_sig].mean()}
             )
     tpr_df = pd.DataFrame(rows)
+
+    # Aggregate: mean ± Wilson CI
     tpr_agg = (
-        tpr_df.groupby(["method", "target_beta"])["tpr"]
-        .agg(["mean", "std"])
+        tpr_df.groupby(["method", "n_participants", "target_beta"])["tpr"]
+        .agg(["mean", "std", "count"])
         .reset_index()
     )
 
@@ -1039,7 +1041,7 @@ def _panel_sim_fpr(ax, results, *, composite: bool = False):
     fpr_df = pd.DataFrame(rows)
     fpr_agg = (
         fpr_df.groupby(["method", "n_participants"])["fpr"]
-        .agg(["mean", "std"])
+        .agg(["mean", "std", "count"])
         .reset_index()
     )
 
@@ -1145,9 +1147,9 @@ def _panel_sim_bias(ax, results, *, composite: bool = False):
 def _panel_sim_coverage(ax, results, *, composite: bool = False):
     """Panel K: P-value QQ plot under pure null (target_beta=0).
 
-    Plots observed vs expected p-value quantiles for each method under
-    the null hypothesis. Well-calibrated methods follow the diagonal;
-    anti-conservative methods curve above it.
+    Each method gets its own QQ panel with a gray 95% confidence
+    envelope (Kolmogorov-Smirnov band). Well-calibrated methods fall
+    within the band; miscalibrated methods breach it visibly.
     """
     _s_data = 1.5 if composite else 3
     _s_leg = 10 if composite else 25
@@ -1158,7 +1160,18 @@ def _panel_sim_coverage(ax, results, *, composite: bool = False):
         & (results["n_participants"] == n_default)
     ].copy()
 
-    for method in _SIM_METHODS:
+    n_methods = len(_SIM_METHODS)
+
+    # Accept figure or single axes
+    if hasattr(fig_or_ax, "subplots"):
+        axes = fig_or_ax.subplots(1, n_methods, sharey=True)
+        if n_methods == 1:
+            axes = [axes]
+    else:
+        # Fallback: overlay on single axes (original behavior)
+        axes = None
+
+    for mi, method in enumerate(_SIM_METHODS):
         pvals = pure_null.loc[
             pure_null["method"] == method, "pvalue"
         ].dropna().sort_values().values
@@ -1168,6 +1181,23 @@ def _panel_sim_coverage(ax, results, *, composite: bool = False):
         expected = (np.arange(1, n + 1) - 0.5) / n
         obs_log = -np.log10(pvals + 1e-300)
         exp_log = -np.log10(expected + 1e-300)
+
+        ax = axes[mi] if axes is not None else fig_or_ax
+
+        # 95% confidence envelope under uniform null
+        # Based on order statistics: Beta(i, n-i+1) for the i-th p-value
+        lo_env = -np.log10(
+            sp_stats.beta.ppf(0.975, np.arange(1, n + 1), n - np.arange(n))
+            + 1e-300
+        )
+        hi_env = -np.log10(
+            sp_stats.beta.ppf(0.025, np.arange(1, n + 1), n - np.arange(n))
+            + 1e-300
+        )
+        ax.fill_between(exp_log, lo_env, hi_env, color="gray", alpha=0.15,
+                         label="95% envelope" if mi == 0 else None)
+
+        # QQ points
         ax.scatter(
             exp_log, obs_log, s=_s_data, alpha=0.3,
             color=_SIM_METHOD_COLORS[method], rasterized=True,

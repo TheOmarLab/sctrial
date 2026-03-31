@@ -1,4 +1,5 @@
 """Tests for Monte Carlo simulation engine."""
+
 import pandas as pd
 
 import sctrial as st
@@ -97,8 +98,10 @@ class TestSimulateDidData:
     def test_variable_cell_counts(self):
         """Cell counts vary across participant-visits (Poisson)."""
         result = st.simulate_did_data(
-            n_participants=20, n_genes=5,
-            n_cells_per_participant=100, seed=42,
+            n_participants=20,
+            n_genes=5,
+            n_cells_per_participant=100,
+            seed=42,
         )
         pb = result["pseudobulk"]
         # Not all n_cells should be identical
@@ -140,7 +143,10 @@ class TestRunMethodComparison:
             seed=42,
         )
         assert set(result["method"].unique()) == {
-            "sctrial_did", "mixed_did", "wilcoxon", "pseudobulk_ols"
+            "sctrial_did",
+            "mixed_did",
+            "wilcoxon",
+            "pseudobulk_ols",
         }
         assert len(result) == 2 * 5 * 4  # 2 iter x 5 genes x 4 methods
 

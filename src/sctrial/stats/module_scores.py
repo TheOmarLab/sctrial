@@ -101,9 +101,7 @@ def module_score_pseudobulk(
 
     # Long format: participant × visit × [arm] × pool × module
     melt_id = id_cols + ["pool"]
-    long_df = df[
-        melt_id + list(module_cols)
-    ].melt(
+    long_df = df[melt_id + list(module_cols)].melt(
         id_vars=melt_id,
         value_vars=list(module_cols),
         var_name="module",
@@ -122,13 +120,7 @@ def module_score_pseudobulk(
     )
     pb = pb[pb["module_score"].notna()].copy()
 
-    counts = (
-        df.groupby(
-            id_cols + ["pool"], observed=True
-        )
-        .size()
-        .reset_index(name="n_cells")
-    )
+    counts = df.groupby(id_cols + ["pool"], observed=True).size().reset_index(name="n_cells")
 
     pb = pb.merge(
         counts,

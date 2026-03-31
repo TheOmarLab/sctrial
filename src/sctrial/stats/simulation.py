@@ -5,6 +5,7 @@ DiD effects, enabling controlled comparison of statistical methods under
 realistic conditions (variable cell counts, participant heterogeneity,
 cell-level noise).
 """
+
 from __future__ import annotations
 
 import logging
@@ -124,15 +125,21 @@ def simulate_did_data(
 
                 # Store cell-level data
                 for c in range(n_cells):
-                    obs_rows.append({
-                        "participant": pid, "visit": visit, "arm": arm,
-                    })
+                    obs_rows.append(
+                        {
+                            "participant": pid,
+                            "visit": visit,
+                            "arm": arm,
+                        }
+                    )
                 X_rows.append(cell_X)
 
                 # Pre-compute pseudobulk (mean per participant-visit)
                 pb_mean = cell_X.mean(axis=0)
                 pb_row = {
-                    "participant": pid, "visit": visit, "arm": arm,
+                    "participant": pid,
+                    "visit": visit,
+                    "arm": arm,
                     "n_cells": n_cells,
                 }
                 for gi, g in enumerate(gene_names):
@@ -169,12 +176,47 @@ def simulate_did_data(
 
 def _run_single_iteration(args: tuple) -> list[dict]:
     """Run all methods on a single simulated dataset (for parallel dispatch)."""
-    (it, it_seed, n_participants, n_genes, n_cells_per_participant,
-     effect_sizes, noise_sd, methods, sim_kwargs) = args
+    (
+        it,
+        it_seed,
+        n_participants,
+        n_genes,
+        n_cells_per_participant,
+        effect_sizes,
+        noise_sd,
+        methods,
+        sim_kwargs,
+    ) = args
 
     import warnings
-    warnings.filterwarnings("ignore")
 
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        return _run_single_iteration_inner(
+            it,
+            it_seed,
+            n_participants,
+            n_genes,
+            n_cells_per_participant,
+            effect_sizes,
+            noise_sd,
+            methods,
+            sim_kwargs,
+        )
+
+
+def _run_single_iteration_inner(
+    it,
+    it_seed,
+    n_participants,
+    n_genes,
+    n_cells_per_participant,
+    effect_sizes,
+    noise_sd,
+    methods,
+    sim_kwargs,
+) -> list[dict]:
+    """Inner implementation — called inside a ``catch_warnings`` context."""
     sim = simulate_did_data(
         n_participants=n_participants,
         n_genes=n_genes,
@@ -204,16 +246,18 @@ def _run_single_iteration(args: tuple) -> list[dict]:
 
         for g in gene_cols:
             r = results.get(g, {})
-            rows.append({
-                "iteration": it,
-                "method": method,
-                "gene": g,
-                "true_beta": truth[g],
-                "estimated_beta": r.get("beta", np.nan),
-                "pvalue": r.get("pvalue", np.nan),
-                "ci_lo": r.get("ci_lo", np.nan),
-                "ci_hi": r.get("ci_hi", np.nan),
-            })
+            rows.append(
+                {
+                    "iteration": it,
+                    "method": method,
+                    "gene": g,
+                    "true_beta": truth[g],
+                    "estimated_beta": r.get("beta", np.nan),
+                    "pvalue": r.get("pvalue", np.nan),
+                    "ci_lo": r.get("ci_lo", np.nan),
+                    "ci_hi": r.get("ci_hi", np.nan),
+                }
+            )
     return rows
 
 
@@ -268,8 +312,17 @@ def run_method_comparison(
     it_seeds = [int(rng.integers(0, 2**31)) for _ in range(n_iterations)]
 
     task_args = [
-        (it, it_seeds[it], n_participants, n_genes, n_cells_per_participant,
-         effect_sizes, noise_sd, methods, sim_kwargs)
+        (
+            it,
+            it_seeds[it],
+            n_participants,
+            n_genes,
+            n_cells_per_participant,
+            effect_sizes,
+            noise_sd,
+            methods,
+            sim_kwargs,
+        )
         for it in range(n_iterations)
     ]
 
@@ -281,7 +334,7 @@ def run_method_comparison(
     else:
         all_rows = []
         with mp.Pool(n_jobs) as pool:
-            for batch in pool.imap_unordered(_run_single_iteration, task_args):
+            for batch in pool.imap(_run_single_iteration, task_args):
                 all_rows.extend(batch)
                 # Progress callback (if caller wraps with tqdm etc.)
                 done = len(all_rows) // (len(methods) * n_genes)
@@ -366,6 +419,10 @@ def _run_mixed_did(adata, gene_cols: list[str]) -> dict:
         )
     out = {}
     for _, row in res.iterrows():
+        # Skip non-converged fits — their coefficients are unreliable
+        if not row.get("converged", True):
+            logger.debug("Mixed DiD did not converge for %s", row["feature"])
+            continue
         out[row["feature"]] = {
             "beta": row["beta_DiD"],
             "pvalue": row["p_DiD"],
@@ -427,8 +484,7 @@ def _run_pseudobulk_ols(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
     for g in gene_cols:
         try:
             # Backtick-quote gene names for formula safety
-            fit = smf.ols(f"Q('{g}') ~ arm_bin + visit_bin + interaction",
-                          data=pb).fit()
+            fit = smf.ols(f"Q('{g}') ~ arm_bin + visit_bin + interaction", data=pb).fit()
             beta = fit.params["interaction"]
             pval = fit.pvalues["interaction"]
             ci = fit.conf_int().loc["interaction"]
@@ -443,7 +499,5 @@ def _run_pseudobulk_ols(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
             n_failures += 1
             out[g] = {}
     if n_failures:
-        logger.warning(
-            "Pseudobulk OLS: %d/%d genes failed", n_failures, len(gene_cols)
-        )
+        logger.warning("Pseudobulk OLS: %d/%d genes failed", n_failures, len(gene_cols))
     return out

@@ -28,8 +28,8 @@ logger = logging.getLogger(__name__)
 # src/sctrial/), so loaders work regardless of the caller's cwd.
 # When installed as a proper package (no repo checkout), falls back to cwd.
 # ---------------------------------------------------------------------------
-_PACKAGE_DIR = Path(__file__).resolve().parent          # src/sctrial/
-_REPO_ROOT = _PACKAGE_DIR.parent.parent                 # sc_trial_inference/
+_PACKAGE_DIR = Path(__file__).resolve().parent  # src/sctrial/
+_REPO_ROOT = _PACKAGE_DIR.parent.parent  # sc_trial_inference/
 _DATASETS_ROOT = _REPO_ROOT / "datasets"
 if not _DATASETS_ROOT.is_dir():
     # Installed package without repo structure — fall back to cwd
@@ -701,13 +701,14 @@ def load_stephenson_data(
 
     if data_path is not None:
         warnings.warn(
-            "load_stephenson_data(data_path=...) is deprecated. "
-            "Use data_dir=... instead.",
+            "load_stephenson_data(data_path=...) is deprecated. Use data_dir=... instead.",
             FutureWarning,
             stacklevel=2,
         )
         raw_file = _resolve_file(data_path)
-        data_dir_path = raw_file.parent.parent if raw_file.exists() else Path(data_path).parent.parent
+        data_dir_path = (
+            raw_file.parent.parent if raw_file.exists() else Path(data_path).parent.parent
+        )
     else:
         data_dir_path = Path(data_dir)
         raw_file = data_dir_path / "raw" / "covid_portal_210320_with_raw.h5ad"
@@ -1179,9 +1180,7 @@ def _process_aml_raw(
             continue
 
         if max_cells_per_sample and len(common_cells) > max_cells_per_sample:
-            common_cells = list(
-                rng.choice(common_cells, max_cells_per_sample, replace=False)
-            )
+            common_cells = list(rng.choice(common_cells, max_cells_per_sample, replace=False))
 
         expr_df = expr_df[common_cells]
         anno_df = anno_df.loc[common_cells]
@@ -1252,7 +1251,9 @@ def _process_aml_raw(
         )
     else:
         obs["is_malignant"] = False
-    obs["response"] = obs["sample_type"].map({"AML": "Treatment", "Healthy": "Control"}).fillna("Unknown")
+    obs["response"] = (
+        obs["sample_type"].map({"AML": "Treatment", "Healthy": "Control"}).fillna("Unknown")
+    )
     adata.obs = obs
 
     # ── Embeddings (HVG → PCA → neighbours → UMAP) ───────────────────
@@ -1340,7 +1341,9 @@ def load_aml(
         prev = adata.uns.get("processing_params", {})
         if prev:
             if _params_match(prev, processing_params):
-                logger.info(f"Loaded AML dataset (GSE116256): {adata.n_obs:,} cells, {adata.n_vars:,} genes")
+                logger.info(
+                    f"Loaded AML dataset (GSE116256): {adata.n_obs:,} cells, {adata.n_vars:,} genes"
+                )
                 return adata
             logger.info("Processed file parameters differ; reprocessing.")
         else:
@@ -1350,7 +1353,9 @@ def load_aml(
                 UserWarning,
                 stacklevel=2,
             )
-            logger.info(f"Loaded AML dataset (GSE116256): {adata.n_obs:,} cells, {adata.n_vars:,} genes")
+            logger.info(
+                f"Loaded AML dataset (GSE116256): {adata.n_obs:,} cells, {adata.n_vars:,} genes"
+            )
             return adata
 
     # ── Locate or download raw files ──────────────────────────────────
@@ -1376,10 +1381,7 @@ def load_aml(
             )
         # Download tar from GEO and extract
         raw_dir.mkdir(parents=True, exist_ok=True)
-        tar_url = (
-            "https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE116256"
-            "&format=file"
-        )
+        tar_url = "https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE116256&format=file"
         tar_dest = raw_dir / "GSE116256_RAW.tar"
         _download_file(tar_url, tar_dest, "GSE116256 supplementary tar")
         logger.info("Extracting raw files...")
@@ -1444,13 +1446,15 @@ def _process_cart_raw(
         patient, timepoint, days = _parse_cart_sample_info(f.name)
         if patient is None:
             continue
-        samples.append({
-            "file": f,
-            "patient": patient,
-            "timepoint": timepoint,
-            "days": days,
-            "sample_id": f"{patient}_{timepoint}",
-        })
+        samples.append(
+            {
+                "file": f,
+                "patient": patient,
+                "timepoint": timepoint,
+                "days": days,
+                "sample_id": f"{patient}_{timepoint}",
+            }
+        )
 
     if not samples:
         raise ValueError("No valid CAR-T samples found.")
@@ -1492,13 +1496,16 @@ def _process_cart_raw(
             X = X[idx]
             cells = [cells[i] for i in idx]
 
-        obs_df = pd.DataFrame({
-            "cell_id": cells,
-            "sample_id": sample["sample_id"],
-            "patient_id": sample["patient"],
-            "timepoint": sample["timepoint"],
-            "days_post_treatment": sample["days"],
-        }, index=[f"{sample['sample_id']}_{c}" for c in cells])
+        obs_df = pd.DataFrame(
+            {
+                "cell_id": cells,
+                "sample_id": sample["sample_id"],
+                "patient_id": sample["patient"],
+                "timepoint": sample["timepoint"],
+                "days_post_treatment": sample["days"],
+            },
+            index=[f"{sample['sample_id']}_{c}" for c in cells],
+        )
 
         all_X.append(X)
         all_obs.append(obs_df)
@@ -1534,9 +1541,7 @@ def _process_cart_raw(
     # ── Standardised sctrial obs columns ──────────────────────────────
     obs = adata.obs
     obs["participant_id"] = obs["patient_id"].astype(str)
-    obs["visit"] = obs["timepoint"].apply(
-        lambda t: "Pre" if t == "Leukapheresis" else "Post"
-    )
+    obs["visit"] = obs["timepoint"].apply(lambda t: "Pre" if t == "Leukapheresis" else "Post")
     obs["is_paired"] = False  # filled below
     obs["response"] = "CAR-T"
     adata.obs = obs
@@ -1552,6 +1557,7 @@ def _process_cart_raw(
         sc.tl.leiden(adata, resolution=0.8)
     except Exception:
         from sklearn.cluster import MiniBatchKMeans
+
         X_pca = adata.obsm["X_pca"][:, :20]
         kmeans = MiniBatchKMeans(n_clusters=15, random_state=seed, batch_size=1000)
         clusters = kmeans.fit_predict(X_pca)
@@ -1641,7 +1647,9 @@ def load_cart(
         prev = adata.uns.get("processing_params", {})
         if prev:
             if _params_match(prev, processing_params):
-                logger.info(f"Loaded CAR-T dataset (GSE290722): {adata.n_obs:,} cells, {adata.n_vars:,} genes")
+                logger.info(
+                    f"Loaded CAR-T dataset (GSE290722): {adata.n_obs:,} cells, {adata.n_vars:,} genes"
+                )
                 return adata
             logger.info("Processed file parameters differ; reprocessing.")
         else:
@@ -1651,7 +1659,9 @@ def load_cart(
                 UserWarning,
                 stacklevel=2,
             )
-            logger.info(f"Loaded CAR-T dataset (GSE290722): {adata.n_obs:,} cells, {adata.n_vars:,} genes")
+            logger.info(
+                f"Loaded CAR-T dataset (GSE290722): {adata.n_obs:,} cells, {adata.n_vars:,} genes"
+            )
             return adata
 
     # ── Locate or download raw files ──────────────────────────────────
@@ -1676,10 +1686,7 @@ def load_cart(
                 "or set allow_download=True to fetch automatically."
             )
         raw_dir.mkdir(parents=True, exist_ok=True)
-        tar_url = (
-            "https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE290722"
-            "&format=file"
-        )
+        tar_url = "https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE290722&format=file"
         tar_dest = raw_dir / "GSE290722_RAW.tar"
         _download_file(tar_url, tar_dest, "GSE290722 supplementary tar")
         logger.info("Extracting raw files...")
@@ -1736,9 +1743,13 @@ def harmonize_response(adata: ad.AnnData, *, force: bool = False) -> ad.AnnData:
         return adata
 
     mapping = {
-        "responder": "Responder", "Responder": "Responder", "R": "Responder",
-        "non-responder": "Non-responder", "Non-responder": "Non-responder",
-        "NR": "Non-responder", "nonresponder": "Non-responder",
+        "responder": "Responder",
+        "Responder": "Responder",
+        "R": "Responder",
+        "non-responder": "Non-responder",
+        "Non-responder": "Non-responder",
+        "NR": "Non-responder",
+        "nonresponder": "Non-responder",
     }
     for col in ("response", "Response", "clinical_response"):
         if col in adata.obs.columns:

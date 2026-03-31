@@ -249,7 +249,9 @@ def get_within_arm_aggregated_df(
         )
     else:
         df_use = df.copy()
-    df_use = _ensure_paired(df_use, unit=design.participant_col, time=design.visit_col, visits=visits)
+    df_use = _ensure_paired(
+        df_use, unit=design.participant_col, time=design.visit_col, visits=visits
+    )
     df_use = encode_visit(df_use, design.visit_col, visits)
     df_use = df_use.reset_index(drop=True)
     return df_use, design.participant_col
