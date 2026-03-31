@@ -27,6 +27,7 @@ import gc
 import pickle
 
 import matplotlib.pyplot as plt
+import matplotlib.transforms as mtransforms
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -568,11 +569,25 @@ def _panel_ct_heatmap(ax, data: dict, *, composite: bool = False):
     ax.set_title("Cell-Type Stratified DiD (Melanoma)",
                  fontweight="bold")
     if composite:
-        ax.tick_params(axis="x", labelsize=4.5, rotation=25)
+        ax.tick_params(axis="x", labelsize=4, rotation=25, pad=1.0)
         ax.tick_params(axis="y", labelsize=4.5)
     else:
-        ax.tick_params(axis="x", labelsize=7, rotation=45)
+        ax.tick_params(axis="x", labelsize=7, rotation=45, pad=1.5)
         ax.tick_params(axis="y", labelsize=7)
+
+    # Slight extra nudge for this long label only (toward the x-axis).
+    _mono_ct = "Monocyte/Macrophage"
+    _dy_pt = 3.5 if composite else 4.5
+    _fig = ax.figure
+    for _tl in ax.get_xticklabels():
+        if " ".join(_tl.get_text().split()) == _mono_ct:
+            _tl.set_transform(
+                _tl.get_transform()
+                + mtransforms.ScaledTranslation(
+                    0, _dy_pt / 72.0, _fig.dpi_scale_trans
+                )
+            )
+            break
 
 
 # ── Panel G: Rank concordance ────────────────────────────────────
@@ -963,8 +978,12 @@ def _panel_sim_tpr(ax, results, *, composite: bool = False):
         reject = multipletests(pvals, alpha=0.05, method="fdr_bh")[0]
         if is_sig.sum() > 0:
             rows.append(
-                {"method": method, "target_beta": beta,
-                 "tpr": reject[is_sig].mean()}
+                {
+                    "method": method,
+                    "n_participants": n,
+                    "target_beta": beta,
+                    "tpr": reject[is_sig].mean(),
+                }
             )
     tpr_df = pd.DataFrame(rows)
 
@@ -1162,13 +1181,12 @@ def _panel_sim_coverage(ax, results, *, composite: bool = False):
 
     n_methods = len(_SIM_METHODS)
 
-    # Accept figure or single axes
-    if hasattr(fig_or_ax, "subplots"):
-        axes = fig_or_ax.subplots(1, n_methods, sharey=True)
+    # Accept Figure (subplots) or single Axes (overlay all methods).
+    if hasattr(ax, "subplots"):
+        axes = ax.subplots(1, n_methods, sharey=True)
         if n_methods == 1:
             axes = [axes]
     else:
-        # Fallback: overlay on single axes (original behavior)
         axes = None
 
     for mi, method in enumerate(_SIM_METHODS):
@@ -1182,7 +1200,7 @@ def _panel_sim_coverage(ax, results, *, composite: bool = False):
         obs_log = -np.log10(pvals + 1e-300)
         exp_log = -np.log10(expected + 1e-300)
 
-        ax = axes[mi] if axes is not None else fig_or_ax
+        ax = axes[mi] if axes is not None else ax
 
         # 95% confidence envelope under uniform null
         # Based on order statistics: Beta(i, n-i+1) for the i-th p-value
