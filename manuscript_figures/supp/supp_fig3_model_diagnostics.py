@@ -1646,11 +1646,11 @@ def generate():
 
     # AML (axes_d[1]): nudge specific gene labels
     _aml_nudge = {
-        "LAG3": (-0.10, 0.0),
+        "LAG3": (-0.10, 0.05),
         "CD14": (-0.18, 0.05),
         "CD8A": (-0.10, 0.0),
         "GZMB": (0.0, -0.06),
-        "CTLA4": (0.0, -0.05),
+        "CTLA4": (0.0, -0.02),
     }
     _aml_ha = {"CD14": "right"}
     for _ann in list(axes_d[1].texts):
@@ -1664,7 +1664,7 @@ def generate():
 
     # CAR-T (axes_d[2]): nudge specific gene labels
     _cart_nudge = {
-        "IL7R": (-0.08, 0.10),
+        "IL7R": (-0.08, 0.05),
         "CD8A": (0.08, 0.0),
         "CD3D": (0.0, -0.06),
         "LAG3": (0.0, 0.06),
@@ -1682,7 +1682,7 @@ def generate():
 
     # COVID-19 (axes_d[3]): nudge specific gene labels
     _covid_nudge = {
-        "FOXP3": (-0.10, 0.0),
+        "FOXP3": (-0.15, 0.0),
         "LAG3": (0.10, 0.0),
         "IFNG": (0.10, 0.0),
         "HAVCR2": (0.0, 0.06),
@@ -1700,9 +1700,9 @@ def generate():
         "CD14": (0.10, 0.0),
         "CTLA4": (-0.10, 0.0),
         "HAVCR2": (0.0, 0.06),
-        "IFNG": (-0.08, -0.04),
+        "IFNG": (-0.08, 0.0),
         "CD8A": (0.0, 0.06),
-        "FOXP3": (0.0, 0.08),
+        "FOXP3": (0.0, 0.02),
         "PDCD1": (-0.10, 0.0),
     }
     for _ann in list(axes_d[4].texts):
