@@ -25,8 +25,12 @@ def run(
     treated_label: str = "Treated",
     control_label: str = "Control",
     visits: tuple[str, str] = ("Pre", "Post"),
+    design_type: str = "two_arm",
 ) -> dict[str, dict]:
-    """Run Wilcoxon rank-sum on post−pre deltas between arms.
+    """Wilcoxon test on post−pre deltas.
+
+    **Two-arm:** Mann-Whitney U on Δ_treated vs Δ_control.
+    **Single-arm:** Wilcoxon signed-rank on Δ vs 0.
 
     Returns
     -------
@@ -53,37 +57,38 @@ def run(
     delta = post.loc[common, gene_cols] - pre.loc[common, gene_cols]
     delta[arm_col] = post.loc[common, arm_col]
 
-    treat_delta = delta[delta[arm_col] == treated_label]
-    ctrl_delta = delta[delta[arm_col] == control_label]
-
     out = {}
     for g in gene_cols:
         try:
-            t_vals = treat_delta[g].dropna().values
-            c_vals = ctrl_delta[g].dropna().values
+            if design_type == "single_arm":
+                # Single-arm: Wilcoxon signed-rank on Δ vs 0
+                vals = delta[g].dropna().values
+                if len(vals) < 2:
+                    raise ValueError("Too few participants")
 
-            if len(t_vals) < 2 or len(c_vals) < 2:
-                out[g] = {
-                    "beta": np.nan,
-                    "pvalue": np.nan,
-                    "ci_lo": np.nan,
-                    "ci_hi": np.nan,
-                    "converged": False,
-                    "failure_mode": "numerical",
-                }
-                continue
+                beta = float(vals.mean())
+                # wilcoxon signed-rank test (paired, one-sample)
+                stat, pval = sp_stats.wilcoxon(vals, alternative="two-sided")
+            else:
+                # Two-arm: Mann-Whitney U on Δ_treated vs Δ_control
+                treat_delta = delta[delta[arm_col] == treated_label]
+                ctrl_delta = delta[delta[arm_col] == control_label]
 
-            stat, pval = sp_stats.mannwhitneyu(
-                t_vals,
-                c_vals,
-                alternative="two-sided",
-            )
-            beta = t_vals.mean() - c_vals.mean()
+                t_vals = treat_delta[g].dropna().values
+                c_vals = ctrl_delta[g].dropna().values
+
+                if len(t_vals) < 2 or len(c_vals) < 2:
+                    raise ValueError("Too few participants per arm")
+
+                stat, pval = sp_stats.mannwhitneyu(
+                    t_vals, c_vals, alternative="two-sided",
+                )
+                beta = float(t_vals.mean() - c_vals.mean())
 
             out[g] = {
                 "beta": float(beta),
                 "pvalue": float(pval),
-                "ci_lo": np.nan,  # Wilcoxon does not produce CIs
+                "ci_lo": np.nan,
                 "ci_hi": np.nan,
                 "converged": True,
                 "failure_mode": None,

@@ -28,11 +28,12 @@ meta <- meta[rownames(counts), , drop=FALSE]
 meta$arm   <- factor(meta$arm, levels=c("{control}", "{treated}"))
 meta$visit <- factor(meta$visit, levels=c("{pre}", "{post}"))
 
-# Two-arm: interaction model ~arm * visit (DiD effect)
+# Two-arm: ~arm * visit interaction model.
+# NOTE: excluded from main benchmark — edgeR-QLF has no native
+# repeated-measures support and is severely conservative for paired
+# designs. Kept for optional standalone use only.
 design <- model.matrix(~arm * visit, data=meta)
 
-# Group variable for filterByExpr: use the interaction of arm and visit
-# Without this, filterByExpr assumes all samples are one group and over-filters
 group <- interaction(meta$arm, meta$visit)
 
 y <- DGEList(counts=t(counts), group=group)
@@ -147,7 +148,7 @@ def run(
         try:
             proc = subprocess.run(
                 ["Rscript", str(script_file)],
-                capture_output=True, text=True, timeout=120,
+                capture_output=True, text=True, timeout=300,
             )
             if proc.returncode != 0:
                 logger.warning("edgeR-QLF R error: %s", proc.stderr[-500:])

@@ -24,6 +24,7 @@ Non-overlap guardrail: methodological sensitivity only, not biological claims.
 from __future__ import annotations
 
 import gc
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -796,322 +797,273 @@ _MDE_DATASET_CFG = {
 
 
 # ======================================================================
-# Simulation panels H–K
+# NatMeth Benchmark panels H–N
 # ======================================================================
 
-# Simulation grid parameters
-_SIM_ITERATIONS = 200
-_SIM_SAMPLE_SIZES = [20, 40, 60]
-_SIM_EFFECT_SIZES = [0.0, 0.2, 0.5, 1.0]
-_SIM_N_GENES = 50
-_SIM_N_SIGNAL = 10  # first 10 genes get the effect
-_SIM_NOISE_SD = 1.0
-_SIM_METHODS = ["sctrial_did", "mixed_did", "pseudobulk_ols", "wilcoxon"]
-_SIM_METHOD_LABELS = {
-    "sctrial_did": "sctrial DiD (FE)",
-    "mixed_did": "Mixed DiD (RE)",
-    "pseudobulk_ols": "Pseudobulk OLS",
-    "wilcoxon": "Wilcoxon",
+# Benchmark data lives in the manuscript directory (generated on HPC)
+_BENCHMARK_CSV = Path(__file__).resolve().parents[4] / "manuscript" / "benchmark" / "simulation" / "benchmark_combined.csv"
+
+# Method display configuration
+_BENCH_METHODS = ["sctrial_did", "dreamlet", "nebula", "wilcoxon_paired"]
+_BENCH_METHOD_LABELS = {
+    "sctrial_did": "sctrial (DiD)",
+    "dreamlet": "dreamlet",
+    "nebula": "NEBULA",
+    "wilcoxon_paired": "Wilcoxon (paired)",
 }
-_SIM_METHOD_COLORS = {
-    "sctrial_did": "#2c3e50",
-    "mixed_did": "#8e44ad",
-    "pseudobulk_ols": "#e67e22",
-    "wilcoxon": "#27ae60",
+_BENCH_METHOD_COLORS = {
+    "sctrial_did": "#1f77b4",   # strong blue
+    "dreamlet": "#d62728",      # red
+    "nebula": "#ff7f0e",        # orange
+    "wilcoxon_paired": "#2ca02c",  # green
+}
+_BENCH_METHOD_MARKERS = {
+    "sctrial_did": "o",
+    "dreamlet": "D",
+    "nebula": "s",
+    "wilcoxon_paired": "^",
 }
 
 
-def _run_simulation_grid(n_jobs=None):
-    """Run full simulation grid. Returns combined results DataFrame.
+def _load_benchmark_data():
+    """Load NatMeth benchmark results from HPC output."""
+    if not _BENCHMARK_CSV.exists():
+        raise FileNotFoundError(
+            f"Benchmark results not found at {_BENCHMARK_CSV}.\n"
+            "Run the benchmark on HPC first, then rsync results locally."
+        )
+    df = pd.read_csv(_BENCHMARK_CSV, low_memory=False)
+    df["design"] = df["scenario"].str.split("__").str[0]
+    # Extract effect size from scenario name for DE scenarios
+    beta_extract = df["scenario"].str.extract(r"b(\d+\.?\d*)")
+    df["scenario_beta"] = pd.to_numeric(beta_extract[0], errors="coerce")
+    return df
 
-    Parameters
-    ----------
-    n_jobs : int, optional
-        Parallel workers.  Passed to ``run_method_comparison``.
+
+def _filter_bench(df, design="two_arm", scenario_pattern=None):
+    """Filter benchmark data by design and optional scenario regex."""
+    sub = df[df["design"] == design]
+    if scenario_pattern:
+        sub = sub[sub["scenario"].str.contains(scenario_pattern, regex=True)]
+    return sub
+
+
+def _panel_bench_power(fig_or_ax, bench_df, design="two_arm"):
+    """Panel H/M: Power curves — signal-gene detection rate vs effect size.
+
+    Faceted by sample size. Shows power on signal genes ONLY (not pooled
+    across all genes). Lines per method with ±SE bands.
     """
-    import time
+    de_data = _filter_bench(bench_df, design, "de_pos")
+    signal = de_data[de_data["is_signal"] == True].copy()
+    if signal.empty:
+        return
 
-    from sctrial.stats.simulation import run_method_comparison
-
-    grid = [(n, beta) for n in _SIM_SAMPLE_SIZES for beta in _SIM_EFFECT_SIZES]
-    total = len(grid)
-    all_dfs = []
-    t0 = time.time()
-
-    for idx, (n, beta) in enumerate(grid, 1):
-        elapsed = time.time() - t0
-        eta = (elapsed / max(idx - 1, 1)) * (total - idx + 1) if idx > 1 else 0
-        print(
-            f"    [{idx}/{total}] n={n}, beta={beta} "
-            f"(elapsed {elapsed/60:.1f}m, ETA {eta/60:.1f}m) ...",
-            flush=True,
-        )
-        effects = {f"gene_{i}": beta for i in range(_SIM_N_SIGNAL)}
-        df = run_method_comparison(
-            n_participants=n,
-            n_genes=_SIM_N_GENES,
-            effect_sizes=effects,
-            noise_sd=_SIM_NOISE_SD,
-            n_iterations=_SIM_ITERATIONS,
-            methods=_SIM_METHODS,
-            seed=42 + n * 100 + int(beta * 10),
-            n_jobs=n_jobs,
-        )
-        df["n_participants"] = n
-        df["target_beta"] = beta
-        df["is_signal"] = df["gene"].isin(
-            [f"gene_{i}" for i in range(_SIM_N_SIGNAL)]
-        )
-        all_dfs.append(df)
-
-    total_time = time.time() - t0
-    print(f"    Grid complete in {total_time/60:.1f} minutes", flush=True)
-    return pd.concat(all_dfs, ignore_index=True)
-
-
-def _panel_sim_tpr(fig_or_ax, results):
-    """Panel H: Power curves — TPR vs effect size, faceted by sample size.
-
-    Line plot shows the power gap between methods as a continuous curve,
-    making the massive sensitivity advantage of sctrial/mixed over
-    Wilcoxon/OLS immediately visible.
-    """
-    from statsmodels.stats.multitest import multipletests
-
-    # Compute TPR per (method, n, beta, iteration)
-    subset = results[results["target_beta"] > 0].copy()
-
+    # Compute per-iteration power
     rows = []
-    for (method, n, beta, it), grp in subset.groupby(
-        ["method", "n_participants", "target_beta", "iteration"]
+    for (method, n, beta, it), grp in signal.groupby(
+        ["method", "n_per_arm", "scenario_beta", "iteration"]
     ):
         pvals = grp["pvalue"].dropna().values
-        is_sig = grp.loc[grp["pvalue"].notna(), "is_signal"].values
-        if len(pvals) == 0 or is_sig.sum() == 0:
+        if len(pvals) == 0:
             continue
-        reject = multipletests(pvals, alpha=0.05, method="fdr_bh")[0]
-        rows.append(
-            {"method": method, "n_participants": n, "target_beta": beta,
-             "tpr": reject[is_sig].mean()}
-        )
-    tpr_df = pd.DataFrame(rows)
-
-    # Aggregate: mean ± Wilson CI
-    tpr_agg = (
-        tpr_df.groupby(["method", "n_participants", "target_beta"])["tpr"]
-        .agg(["mean", "std", "count"])
-        .reset_index()
+        rows.append({
+            "method": method, "n_per_arm": n, "beta": beta,
+            "power": (pvals < 0.05).mean(),
+        })
+    power_df = pd.DataFrame(rows)
+    agg = (
+        power_df.groupby(["method", "n_per_arm", "beta"])["power"]
+        .agg(["mean", "std", "count"]).reset_index()
     )
-    tpr_agg["se"] = tpr_agg["std"] / np.sqrt(tpr_agg["count"])
+    agg["se"] = agg["std"] / np.sqrt(agg["count"])
 
-    ns = sorted(tpr_agg["n_participants"].unique())
+    ns = sorted(agg["n_per_arm"].unique())
     n_panels = len(ns)
 
-    # Accept either a figure (to create subplots) or single axes
     if hasattr(fig_or_ax, "subplots"):
         axes = fig_or_ax.subplots(1, n_panels, sharey=True)
         if n_panels == 1:
             axes = [axes]
     else:
-        # Single axes fallback — show middle sample size only
         axes = [fig_or_ax]
-        ns = [_SIM_SAMPLE_SIZES[1]]
-
-    markers = {"sctrial_did": "o", "mixed_did": "D",
-               "pseudobulk_ols": "s", "wilcoxon": "^"}
+        ns = ns[:1]
 
     for ax_idx, (ax, n_val) in enumerate(zip(axes, ns)):
-        for method in _SIM_METHODS:
-            sub = tpr_agg[
-                (tpr_agg["method"] == method)
-                & (tpr_agg["n_participants"] == n_val)
-            ].sort_values("target_beta")
+        for method in _BENCH_METHODS:
+            sub = agg[(agg["method"] == method) & (agg["n_per_arm"] == n_val)].sort_values("beta")
             if sub.empty:
                 continue
             ax.plot(
-                sub["target_beta"], sub["mean"],
-                marker=markers.get(method, "o"), markersize=7,
-                label=_SIM_METHOD_LABELS[method] if ax_idx == 0 else None,
-                color=_SIM_METHOD_COLORS[method], linewidth=2,
+                sub["beta"], sub["mean"],
+                marker=_BENCH_METHOD_MARKERS[method], markersize=7,
+                label=_BENCH_METHOD_LABELS[method] if ax_idx == 0 else None,
+                color=_BENCH_METHOD_COLORS[method], linewidth=2,
             )
             ax.fill_between(
-                sub["target_beta"],
+                sub["beta"],
                 (sub["mean"] - 1.96 * sub["se"]).clip(0, 1),
                 (sub["mean"] + 1.96 * sub["se"]).clip(0, 1),
-                color=_SIM_METHOD_COLORS[method], alpha=0.12,
+                color=_BENCH_METHOD_COLORS[method], alpha=0.12,
             )
-
         ax.set_xlabel(r"True effect size ($\beta$)")
-        ax.set_title(f"n = {n_val}", fontweight="bold")
+        ax.set_title(f"n = {n_val} per arm", fontweight="bold")
         ax.set_ylim(-0.02, 1.05)
         ax.axhline(0.8, color="gray", linestyle=":", linewidth=0.7, alpha=0.5)
         despine(ax)
 
-    axes[0].set_ylabel("Power (TPR at FDR < 0.05)")
+    design_label = "Two-arm" if design == "two_arm" else "Single-arm"
+    axes[0].set_ylabel(f"Power (p < 0.05 on signal genes)\n{design_label}")
     axes[0].legend(fontsize=7, loc="lower right")
 
 
-def _panel_sim_fpr(ax, results):
+def _panel_bench_fpr(ax, bench_df):
     """Panel I: Type I error calibration — dot-and-whisker by method × n.
 
-    Horizontal layout: each method gets a row, dots show FPR per sample size
-    with Wilson CIs. Red vertical line at 0.05 makes calibration immediately
-    visible. Methods hugging the line are well-calibrated; those far from it
-    are miscalibrated.
+    Both two-arm and single-arm null scenarios. Methods grouped on y-axis,
+    dots per sample size with Wilson CIs. Red vertical line at 0.05.
     """
-    pure_null = results[results["target_beta"] == 0.0].copy()
+    # Use only pure-null scenarios (null_n* and null_hetero_n*)
+    null_data = bench_df[
+        (bench_df["true_beta"] == 0.0)
+        & (bench_df["scenario"].str.contains("null"))
+    ].copy()
 
     rows = []
-    for (method, n, it), grp in pure_null.groupby(
-        ["method", "n_participants", "iteration"]
+    for (method, design, n, it), grp in null_data.groupby(
+        ["method", "design", "n_per_arm", "iteration"]
     ):
         pvals = grp["pvalue"].dropna().values
         if len(pvals) == 0:
             continue
-        rows.append(
-            {"method": method, "n_participants": n,
-             "fpr": (pvals < 0.05).mean()}
-        )
+        rows.append({
+            "method": method, "design": design, "n_per_arm": n,
+            "fpr": (pvals < 0.05).mean(),
+        })
     fpr_df = pd.DataFrame(rows)
+
+    # Aggregate across iterations (pool both designs for cleaner plot)
     fpr_agg = (
-        fpr_df.groupby(["method", "n_participants"])["fpr"]
-        .agg(["mean", "std", "count"])
-        .reset_index()
+        fpr_df.groupby(["method", "n_per_arm"])["fpr"]
+        .agg(["mean", "std", "count"]).reset_index()
     )
     fpr_agg["se"] = fpr_agg["std"] / np.sqrt(fpr_agg["count"])
     fpr_agg["ci_lo"] = (fpr_agg["mean"] - 1.96 * fpr_agg["se"]).clip(0)
     fpr_agg["ci_hi"] = fpr_agg["mean"] + 1.96 * fpr_agg["se"]
 
-    ns = sorted(fpr_agg["n_participants"].unique())
-    n_markers = {"s": 6, "D": 7, "o": 8}  # vary by sample size
+    ns = sorted(fpr_agg["n_per_arm"].unique())
     marker_list = ["o", "s", "D", "^", "v"]
 
     y_pos = 0
     y_ticks, y_labels = [], []
-    for method in _SIM_METHODS:
+    for method in _BENCH_METHODS:
         for ni, n_val in enumerate(ns):
             sub = fpr_agg[
-                (fpr_agg["method"] == method)
-                & (fpr_agg["n_participants"] == n_val)
+                (fpr_agg["method"] == method) & (fpr_agg["n_per_arm"] == n_val)
             ]
             if sub.empty:
                 continue
             row = sub.iloc[0]
             ax.errorbar(
-                row["mean"], y_pos, xerr=[[row["mean"] - row["ci_lo"]],
-                                           [row["ci_hi"] - row["mean"]]],
+                row["mean"], y_pos,
+                xerr=[[row["mean"] - row["ci_lo"]], [row["ci_hi"] - row["mean"]]],
                 marker=marker_list[ni % len(marker_list)],
                 markersize=7, capsize=4, linewidth=1.5,
-                color=_SIM_METHOD_COLORS[method],
-                label=f"n={n_val}" if method == _SIM_METHODS[0] else None,
+                color=_BENCH_METHOD_COLORS[method],
+                label=f"n={n_val}" if method == _BENCH_METHODS[0] else None,
             )
             y_pos += 1
-        # Label at center of this method's rows
         center = y_pos - len(ns) / 2
         y_ticks.append(center)
-        y_labels.append(_SIM_METHOD_LABELS[method])
-        y_pos += 0.5  # gap between methods
+        y_labels.append(_BENCH_METHOD_LABELS[method])
+        y_pos += 0.5
 
-    ax.axvline(0.05, color="red", linestyle="--", linewidth=1.2, alpha=0.8,
-               label="Nominal 5%")
-    # Shade ± acceptable range (3-7%)
+    ax.axvline(0.05, color="red", linestyle="--", linewidth=1.2, alpha=0.8)
     ax.axvspan(0.03, 0.07, color="red", alpha=0.06)
     ax.set_yticks(y_ticks)
     ax.set_yticklabels(y_labels, fontsize=9)
-    ax.set_xlabel("Type I Error Rate (uncorrected p < 0.05)")
-    ax.set_title("Type I Error Calibration", fontweight="bold")
-    ax.set_xlim(0, max(0.15, fpr_agg["ci_hi"].max() * 1.2))
-    # Legend for sample sizes
+    ax.set_xlabel("Type I Error Rate (p < 0.05)")
+    ax.set_title("Null Calibration (both designs)", fontweight="bold")
+    ax.set_xlim(0, max(0.12, fpr_agg["ci_hi"].max() * 1.1))
+
     from matplotlib.lines import Line2D
-    handles = [Line2D([0], [0], marker=marker_list[i], color="gray",
-                       markersize=6, linestyle="none", label=f"n={n}")
-               for i, n in enumerate(ns)]
+    handles = [
+        Line2D([0], [0], marker=marker_list[i], color="gray",
+               markersize=6, linestyle="none", label=f"n={n}")
+        for i, n in enumerate(ns)
+    ]
     handles.append(Line2D([0], [0], color="red", linestyle="--",
-                           linewidth=1.2, label="Nominal 5%"))
+                          linewidth=1.2, label="Nominal 5%"))
     ax.legend(handles=handles, fontsize=7, loc="upper right")
     ax.invert_yaxis()
     despine(ax)
 
 
-def _panel_sim_bias(ax, results):
+def _panel_bench_lambda(ax, bench_df):
     """Panel J: Genomic inflation factor (λ_GC) under null.
 
-    λ_GC = median(χ²_obs) / 0.456 summarizes calibration in a single
-    number per method × sample-size.  Well-calibrated methods have
-    λ ≈ 1.0; anti-conservative methods have λ > 1; ultra-conservative
-    methods have λ < 1.  This replaces the bias scatter which showed
-    all methods as unbiased (uninformative).
+    λ_GC = median(χ²_obs) / 0.456 per method × n. Well-calibrated ≈ 1.0.
+    Uses two-arm null scenarios only.
     """
-    pure_null = results[results["target_beta"] == 0.0].copy()
+    null_data = _filter_bench(bench_df, "two_arm", r"null_n\d+$")
+    pure_null = null_data[null_data["true_beta"] == 0.0]
 
-    # Compute λ_GC per method × n
     rows = []
-    for (method, n), grp in pure_null.groupby(["method", "n_participants"]):
+    for (method, n), grp in pure_null.groupby(["method", "n_per_arm"]):
         pvals = grp["pvalue"].dropna().values
         if len(pvals) == 0:
             continue
-        # Convert p-values to χ² statistics (1 df)
         chi2_obs = sp_stats.chi2.ppf(1 - pvals.clip(1e-300, 1), df=1)
         lambda_gc = np.median(chi2_obs) / sp_stats.chi2.ppf(0.5, df=1)
-        rows.append({
-            "method": method, "n_participants": n,
-            "lambda_gc": lambda_gc,
-        })
+        rows.append({"method": method, "n_per_arm": n, "lambda_gc": lambda_gc})
 
     lambda_df = pd.DataFrame(rows)
+    ns = sorted(lambda_df["n_per_arm"].unique())
 
-    ns = sorted(lambda_df["n_participants"].unique())
-    x = np.arange(len(ns))
-    width = 0.18
-    markers = ["o", "D", "s", "^"]
-
-    for i, method in enumerate(_SIM_METHODS):
-        sub = lambda_df[lambda_df["method"] == method].sort_values("n_participants")
+    for method in _BENCH_METHODS:
+        sub = lambda_df[lambda_df["method"] == method].sort_values("n_per_arm")
         if sub.empty:
             continue
         ax.plot(
-            sub["n_participants"], sub["lambda_gc"],
-            marker=markers[i], markersize=8, linewidth=2,
-            label=_SIM_METHOD_LABELS[method],
-            color=_SIM_METHOD_COLORS[method],
+            sub["n_per_arm"], sub["lambda_gc"],
+            marker=_BENCH_METHOD_MARKERS[method], markersize=8, linewidth=2,
+            label=_BENCH_METHOD_LABELS[method],
+            color=_BENCH_METHOD_COLORS[method],
         )
 
     ax.axhline(1.0, color="red", linestyle="--", linewidth=1.2, alpha=0.7,
-               label="Ideal ($\\lambda$ = 1)")
+               label=r"Ideal ($\lambda$ = 1)")
     ax.axhspan(0.95, 1.05, color="red", alpha=0.06)
-    ax.set_xlabel("Sample size (participants)")
+    ax.set_xlabel("Sample size (participants per arm)")
     ax.set_ylabel(r"Genomic inflation factor ($\lambda_{\mathrm{GC}}$)")
-    ax.set_title("Calibration Summary", fontweight="bold")
+    ax.set_title("Null Calibration Summary (two-arm)", fontweight="bold")
     ax.set_xticks(ns)
+    ax.set_ylim(0.90, 1.15)
     ax.legend(fontsize=7)
     despine(ax)
 
 
-def _panel_sim_coverage(fig_or_ax, results):
-    """Panel K: Faceted QQ plot — one panel per method with 95% envelope.
+def _panel_bench_qq(fig_or_ax, bench_df, n_target=40):
+    """Panel K: Faceted QQ — one panel per method with 95% Beta envelope.
 
-    Each method gets its own QQ panel with a gray 95% confidence
-    envelope (Kolmogorov-Smirnov band). Well-calibrated methods fall
-    within the band; miscalibrated methods breach it visibly.
+    Uses two-arm null at specified sample size. Well-calibrated methods
+    track the diagonal within the gray envelope.
     """
-    n_default = _SIM_SAMPLE_SIZES[1]
-    pure_null = results[
-        (results["target_beta"] == 0.0)
-        & (results["n_participants"] == n_default)
-    ].copy()
+    null_data = _filter_bench(bench_df, "two_arm", r"null_n\d+$")
+    pure_null = null_data[
+        (null_data["true_beta"] == 0.0)
+        & (null_data["n_per_arm"] == n_target)
+    ]
 
-    n_methods = len(_SIM_METHODS)
-
-    # Accept figure or single axes
+    n_methods = len(_BENCH_METHODS)
     if hasattr(fig_or_ax, "subplots"):
         axes = fig_or_ax.subplots(1, n_methods, sharey=True)
         if n_methods == 1:
             axes = [axes]
     else:
-        # Fallback: overlay on single axes (original behavior)
         axes = None
 
-    for mi, method in enumerate(_SIM_METHODS):
+    for mi, method in enumerate(_BENCH_METHODS):
         pvals = pure_null.loc[
             pure_null["method"] == method, "pvalue"
         ].dropna().sort_values().values
@@ -1124,38 +1076,116 @@ def _panel_sim_coverage(fig_or_ax, results):
 
         ax = axes[mi] if axes is not None else fig_or_ax
 
-        # 95% confidence envelope under uniform null
-        # Based on order statistics: Beta(i, n-i+1) for the i-th p-value
+        # 95% Beta confidence envelope
         lo_env = -np.log10(
-            sp_stats.beta.ppf(0.975, np.arange(1, n + 1), n - np.arange(n))
-            + 1e-300
+            sp_stats.beta.ppf(0.975, np.arange(1, n + 1), n - np.arange(n)) + 1e-300
         )
         hi_env = -np.log10(
-            sp_stats.beta.ppf(0.025, np.arange(1, n + 1), n - np.arange(n))
-            + 1e-300
+            sp_stats.beta.ppf(0.025, np.arange(1, n + 1), n - np.arange(n)) + 1e-300
         )
         ax.fill_between(exp_log, lo_env, hi_env, color="gray", alpha=0.15,
-                         label="95% envelope" if mi == 0 else None)
-
-        # QQ points
-        ax.scatter(
-            exp_log, obs_log, s=4, alpha=0.5,
-            color=_SIM_METHOD_COLORS[method], rasterized=True,
-        )
-
-        # Diagonal
+                        label="95% envelope" if mi == 0 else None)
+        ax.scatter(exp_log, obs_log, s=4, alpha=0.5,
+                   color=_BENCH_METHOD_COLORS[method], rasterized=True)
         lim = max(exp_log.max(), obs_log.max()) * 1.05
         ax.plot([0, lim], [0, lim], "k--", linewidth=0.8, alpha=0.5)
-        ax.set_title(_SIM_METHOD_LABELS[method], fontweight="bold",
-                      fontsize=9)
+        ax.set_title(_BENCH_METHOD_LABELS[method], fontweight="bold", fontsize=9)
         ax.set_xlabel(r"Expected $-\log_{10}(p)$")
         if mi == 0:
             ax.set_ylabel(r"Observed $-\log_{10}(p)$")
         despine(ax)
 
     if axes is not None and len(axes) > 0:
-        # Add subtitle
         axes[0].legend(fontsize=6, loc="upper left")
+
+
+def _panel_bench_de_null_fpr(ax, bench_df):
+    """Panel L: Null-gene FPR in DE scenarios — the key benchmark finding.
+
+    Shows how each method's false positive rate on null genes scales
+    with signal strength. sctrial_did and wilcoxon_paired stay near
+    nominal; dreamlet shows inflation from empirical Bayes variance
+    moderation on the small (50-gene) benchmark panel.
+    """
+    de_data = _filter_bench(bench_df, "two_arm", "de_pos")
+    null_genes = de_data[de_data["true_beta"] == 0.0].copy()
+
+    rows = []
+    for (method, n, beta), grp in null_genes.groupby(
+        ["method", "n_per_arm", "scenario_beta"]
+    ):
+        pvals = grp["pvalue"].dropna().values
+        if len(pvals) == 0:
+            continue
+        rows.append({
+            "method": method, "n_per_arm": n, "beta": beta,
+            "null_fpr": (pvals < 0.05).mean(),
+        })
+    fpr_df = pd.DataFrame(rows)
+
+    # Plot: x = effect size, y = null-gene FPR, faceted by n
+    # Use n=40 for the main display
+    n_show = 40
+    sub = fpr_df[fpr_df["n_per_arm"] == n_show].sort_values("beta")
+
+    for method in _BENCH_METHODS:
+        msub = sub[sub["method"] == method]
+        if msub.empty:
+            continue
+        ax.plot(
+            msub["beta"], msub["null_fpr"],
+            marker=_BENCH_METHOD_MARKERS[method], markersize=8, linewidth=2,
+            label=_BENCH_METHOD_LABELS[method],
+            color=_BENCH_METHOD_COLORS[method],
+        )
+
+    ax.axhline(0.05, color="red", linestyle="--", linewidth=1.2, alpha=0.7,
+               label="Nominal 5%")
+    ax.axhspan(0.03, 0.07, color="red", alpha=0.06)
+    ax.set_xlabel(r"True effect size on signal genes ($\beta$)")
+    ax.set_ylabel("FPR on null genes (p < 0.05)")
+    ax.set_title(f"Null-gene FPR in DE scenarios (n={n_show}, two-arm)",
+                 fontweight="bold")
+    ax.set_ylim(0, min(1.0, fpr_df["null_fpr"].max() * 1.1))
+    ax.legend(fontsize=7)
+    despine(ax)
+
+
+def _panel_bench_runtime(ax, bench_df):
+    """Panel M: Runtime comparison across methods.
+
+    Boxplot of per-iteration runtime (seconds) grouped by method.
+    Runtime is recorded per method × iteration (duplicated across genes).
+    """
+    # Deduplicate: one runtime per method × scenario × iteration
+    rt = (
+        bench_df.groupby(["method", "scenario", "iteration"])["runtime_seconds"]
+        .first().reset_index()
+    )
+
+    import matplotlib.patches as mpatches
+
+    methods_data = []
+    labels = []
+    colors = []
+    for method in _BENCH_METHODS:
+        sub = rt[rt["method"] == method]["runtime_seconds"].dropna()
+        if len(sub) == 0:
+            continue
+        methods_data.append(sub.values)
+        labels.append(_BENCH_METHOD_LABELS[method])
+        colors.append(_BENCH_METHOD_COLORS[method])
+
+    bp = ax.boxplot(methods_data, labels=labels, patch_artist=True,
+                    showfliers=False, widths=0.6)
+    for patch, color in zip(bp["boxes"], colors):
+        patch.set_facecolor(color)
+        patch.set_alpha(0.6)
+
+    ax.set_yscale("log")
+    ax.set_ylabel("Runtime per iteration (seconds, log scale)")
+    ax.set_title("Computational Cost", fontweight="bold")
+    despine(ax)
 
 
 # ======================================================================
@@ -1163,7 +1193,7 @@ def _panel_sim_coverage(fig_or_ax, results):
 # ======================================================================
 
 def generate():
-    """Create and save Supplementary Figure 4 panels (A–K).
+    """Create and save Supplementary Figure 4 panels (A–N).
 
     Layout:
       A  Analytical vs bootstrap SE (all 5 datasets, faceted forest plot)
@@ -1173,10 +1203,14 @@ def generate():
       E  Cell-type-stratified DiD heatmap (Melanoma)
       F  Rank-order concordance across choices (Melanoma)
       G  Leave-one-out stability matrix (all datasets)
-      H  Simulation: power (TPR) across effect sizes
-      I  Simulation: type I error calibration across sample sizes
-      J  Simulation: effect-size bias (estimated vs true beta)
-      K  Simulation: p-value calibration QQ plot
+      --- NatMeth Benchmark (4 methods: sctrial_did, dreamlet, NEBULA, Wilcoxon) ---
+      H  Benchmark: two-arm signal-gene power curves (faceted by n)
+      I  Benchmark: null calibration FPR (dot-and-whisker, both designs)
+      J  Benchmark: genomic inflation factor λ_GC (two-arm null)
+      K  Benchmark: faceted QQ plots with 95% Beta envelope (two-arm n=40)
+      L  Benchmark: null-gene FPR in DE scenarios (dreamlet inflation finding)
+      M  Benchmark: single-arm signal-gene power curves
+      N  Benchmark: runtime comparison across methods
     """
     print("Supplementary Figure 4: Sensitivity to Modeling and Preprocessing")
     data = _run_sensitivity()
@@ -1220,45 +1254,56 @@ def generate():
     fig.tight_layout()
     save_panel(fig, "panel_G", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panels H–K: Monte Carlo simulation study
-    out_dir = SUPP_OUTPUT / f"{FIGURE_NAME}_panels"
-    out_dir.mkdir(exist_ok=True)
-    csv_path = out_dir / "simulation_results.csv"
+    # Panels H–M: NatMeth benchmark panels (from HPC simulation)
+    print("  Loading NatMeth benchmark results ...")
+    bench_df = _load_benchmark_data()
+    print(f"    {len(bench_df):,} rows, {bench_df.scenario.nunique()} scenarios")
 
-    if csv_path.exists():
-        print(f"  Loading cached simulation results from {csv_path} ...")
-        sim_results = pd.read_csv(csv_path)
-    else:
-        print("  Running simulation grid (this may take several minutes) ...")
-        sim_results = _run_simulation_grid()
-        sim_results.to_csv(csv_path, index=False)
-        print(f"    Saved raw results → {csv_path}")
-
-    # Panel H: Power curves (faceted by sample size)
+    # Panel H: Two-arm power curves (signal genes, faceted by n)
     fig_h = plt.figure(figsize=(14, 4.5))
-    _panel_sim_tpr(fig_h, sim_results)
+    _panel_bench_power(fig_h, bench_df, design="two_arm")
+    fig_h.suptitle("Two-arm DiD: Signal-gene power", fontsize=13, y=1.02)
     fig_h.tight_layout()
     save_panel(fig_h, "panel_H", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel I: Type I error calibration (dot-and-whisker)
-    fig_i, ax_i = plt.subplots(figsize=(7.0, 5.0))
-    _panel_sim_fpr(ax_i, sim_results)
+    # Panel I: FPR calibration (dot-and-whisker, both designs)
+    fig_i, ax_i = plt.subplots(figsize=(7.5, 6.0))
+    _panel_bench_fpr(ax_i, bench_df)
     fig_i.tight_layout()
     save_panel(fig_i, "panel_I", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel J: Genomic inflation factor
+    # Panel J: Genomic inflation factor (λ_GC)
     fig_j, ax_j = plt.subplots(figsize=(7.0, 5.0))
-    _panel_sim_bias(ax_j, sim_results)
+    _panel_bench_lambda(ax_j, bench_df)
     fig_j.tight_layout()
     save_panel(fig_j, "panel_J", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel K: Faceted QQ with confidence envelopes
+    # Panel K: Faceted QQ with 95% envelopes (two-arm, n=40)
     fig_k = plt.figure(figsize=(16, 4.0))
-    _panel_sim_coverage(fig_k, sim_results)
+    _panel_bench_qq(fig_k, bench_df, n_target=40)
     fig_k.tight_layout()
     save_panel(fig_k, "panel_K", FIGURE_NAME, SUPP_OUTPUT)
 
-    del sim_results
+    # Panel L: Null-gene FPR in DE scenarios (key finding)
+    fig_l, ax_l = plt.subplots(figsize=(7.5, 5.5))
+    _panel_bench_de_null_fpr(ax_l, bench_df)
+    fig_l.tight_layout()
+    save_panel(fig_l, "panel_L", FIGURE_NAME, SUPP_OUTPUT)
+
+    # Panel M: Single-arm power curves
+    fig_m = plt.figure(figsize=(14, 4.5))
+    _panel_bench_power(fig_m, bench_df, design="single_arm")
+    fig_m.suptitle("Single-arm paired: Signal-gene power", fontsize=13, y=1.02)
+    fig_m.tight_layout()
+    save_panel(fig_m, "panel_M", FIGURE_NAME, SUPP_OUTPUT)
+
+    # Panel N: Runtime comparison
+    fig_n, ax_n = plt.subplots(figsize=(7.0, 5.0))
+    _panel_bench_runtime(ax_n, bench_df)
+    fig_n.tight_layout()
+    save_panel(fig_n, "panel_N", FIGURE_NAME, SUPP_OUTPUT)
+
+    del bench_df
 
     clear_cache()
     gc.collect()

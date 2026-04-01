@@ -157,7 +157,7 @@ def run(
         try:
             proc = subprocess.run(
                 ["Rscript", str(script_file)],
-                capture_output=True, text=True, timeout=300,
+                capture_output=True, text=True, timeout=1200,
             )
             if proc.returncode != 0:
                 logger.warning("NEBULA R error: %s", proc.stderr[-500:])
