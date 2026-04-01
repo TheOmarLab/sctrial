@@ -1044,14 +1044,17 @@ def _panel_bench_lambda(ax, bench_df):
 
 
 def _panel_bench_qq(fig_or_ax, bench_df, n_target=None):
-    """Panel K: Faceted QQ — one panel per method with 95% Beta envelope.
+    """Panel K: Faceted QQ — one panel per method, colored by scenario type.
 
-    Pools null-gene p-values across ALL null scenarios (all sample sizes,
-    both designs) for maximum statistical resolution.  Well-calibrated
-    methods track the diagonal within the gray envelope.
+    Within each method panel, null-gene p-values are split into:
+      • Pure-null scenarios (all genes null) — shown in method color
+      • DE null-genes (null genes coexisting with signal genes) — shown in gray
+
+    This reveals whether empirical Bayes variance moderation contaminates
+    null-gene p-values when signal genes are present.
     """
-    # Collect ALL null p-values: pure-null scenarios + null genes in DE scenarios
-    null_pvals = bench_df[bench_df["true_beta"] == 0.0].copy()
+    null_all = bench_df[bench_df["true_beta"] == 0.0].copy()
+    null_all["is_de_scenario"] = null_all["scenario"].str.contains("de_pos")
 
     n_methods = len(_BENCH_METHODS)
     if hasattr(fig_or_ax, "subplots"):
@@ -1062,42 +1065,55 @@ def _panel_bench_qq(fig_or_ax, bench_df, n_target=None):
         axes = None
 
     for mi, method in enumerate(_BENCH_METHODS):
-        pvals = null_pvals.loc[
-            null_pvals["method"] == method, "pvalue"
-        ].dropna().sort_values().values
-        if len(pvals) == 0:
-            continue
-        n = len(pvals)
-        expected = (np.arange(1, n + 1) - 0.5) / n
-        obs_log = -np.log10(pvals + 1e-300)
-        exp_log = -np.log10(expected + 1e-300)
-
+        mdata = null_all[null_all["method"] == method]
         ax = axes[mi] if axes is not None else fig_or_ax
 
-        # 95% Beta confidence envelope
+        # Split into pure-null vs DE-scenario null genes
+        pure = mdata.loc[~mdata["is_de_scenario"], "pvalue"].dropna().sort_values().values
+        de_null = mdata.loc[mdata["is_de_scenario"], "pvalue"].dropna().sort_values().values
+
+        # Plot each category with its own QQ
+        max_obs = 0
+        max_exp = 0
+        for pvals, color, alpha, label, zorder in [
+            (de_null, "#888888", 0.35, "DE-scenario null genes", 1),
+            (pure, _BENCH_METHOD_COLORS[method], 0.55, "Pure-null scenarios", 2),
+        ]:
+            if len(pvals) == 0:
+                continue
+            n = len(pvals)
+            expected = (np.arange(1, n + 1) - 0.5) / n
+            obs_log = -np.log10(pvals + 1e-300)
+            exp_log = -np.log10(expected + 1e-300)
+            ax.scatter(exp_log, obs_log, s=3, alpha=alpha, color=color,
+                       rasterized=True, zorder=zorder,
+                       label=label if mi == 0 else None)
+            max_obs = max(max_obs, obs_log.max())
+            max_exp = max(max_exp, exp_log.max())
+
+        # 95% Beta envelope based on the larger set
+        n_env = max(len(pure), len(de_null), 1)
+        ranks = np.arange(1, n_env + 1)
+        exp_env = -np.log10((ranks - 0.5) / n_env + 1e-300)
         lo_env = -np.log10(
-            sp_stats.beta.ppf(0.975, np.arange(1, n + 1), n - np.arange(n)) + 1e-300
+            sp_stats.beta.ppf(0.975, ranks, n_env - ranks + 1) + 1e-300
         )
         hi_env = -np.log10(
-            sp_stats.beta.ppf(0.025, np.arange(1, n + 1), n - np.arange(n)) + 1e-300
+            sp_stats.beta.ppf(0.025, ranks, n_env - ranks + 1) + 1e-300
         )
-        ax.fill_between(exp_log, lo_env, hi_env, color="gray", alpha=0.15,
-                        label="95% envelope" if mi == 0 else None)
-        ax.scatter(exp_log, obs_log, s=4, alpha=0.5,
-                   color=_BENCH_METHOD_COLORS[method], rasterized=True)
-        lim = max(exp_log.max(), obs_log.max()) * 1.05
-        ax.plot([0, lim], [0, lim], "k--", linewidth=0.8, alpha=0.5)
-        ax.set_title(
-            f"{_BENCH_METHOD_LABELS[method]}  (n={n:,} null p-values)",
-            fontweight="bold", fontsize=9,
-        )
+        ax.fill_between(exp_env, lo_env, hi_env, color="gray", alpha=0.1,
+                        zorder=0, label="95% envelope" if mi == 0 else None)
+
+        lim = max(max_exp, max_obs) * 1.05
+        ax.plot([0, lim], [0, lim], "k--", linewidth=0.8, alpha=0.5, zorder=3)
+        ax.set_title(_BENCH_METHOD_LABELS[method], fontweight="bold", fontsize=10)
         ax.set_xlabel(r"Expected $-\log_{10}(p)$")
         if mi == 0:
             ax.set_ylabel(r"Observed $-\log_{10}(p)$")
         despine(ax)
 
     if axes is not None and len(axes) > 0:
-        axes[0].legend(fontsize=6, loc="upper left")
+        axes[0].legend(fontsize=7, loc="upper left", markerscale=2.5)
 
 
 def _panel_bench_de_null_fpr(ax, bench_df):
