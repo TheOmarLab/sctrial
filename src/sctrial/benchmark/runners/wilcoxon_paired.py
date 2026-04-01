@@ -16,6 +16,18 @@ from scipy import stats as sp_stats
 logger = logging.getLogger(__name__)
 
 
+def _fail_result(mode: str = "numerical") -> dict:
+    """Return a NaN result dict for a failed gene."""
+    return {
+        "beta": float("nan"),
+        "pvalue": float("nan"),
+        "ci_lo": float("nan"),
+        "ci_hi": float("nan"),
+        "converged": False,
+        "failure_mode": mode,
+    }
+
+
 def run(
     pseudobulk: pd.DataFrame,
     gene_cols: list[str],
@@ -95,13 +107,6 @@ def run(
             }
         except Exception as exc:
             logger.debug("Wilcoxon failed for %s: %s", g, exc)
-            out[g] = {
-                "beta": np.nan,
-                "pvalue": np.nan,
-                "ci_lo": np.nan,
-                "ci_hi": np.nan,
-                "converged": False,
-                "failure_mode": "numerical",
-            }
+            out[g] = _fail_result("numerical")
 
     return out
