@@ -1112,8 +1112,26 @@ def _panel_bench_qq(fig_or_ax, bench_df, n_target=None):
             ax.set_ylabel(r"Observed $-\log_{10}(p)$")
         despine(ax)
 
+    # Shared legend across all panels
     if axes is not None and len(axes) > 0:
-        axes[0].legend(fontsize=7, loc="upper left", markerscale=2.5)
+        import matplotlib.lines as mlines
+        import matplotlib.patches as mpatches
+        handles = [
+            mlines.Line2D([], [], marker="o", color="w",
+                          markerfacecolor=_BENCH_METHOD_COLORS["sctrial_did"],
+                          markersize=8, alpha=0.7,
+                          label="Null genes — pure-null scenarios (method color)"),
+            mlines.Line2D([], [], marker="o", color="w",
+                          markerfacecolor="#888888",
+                          markersize=8, alpha=0.5,
+                          label="Null genes — DE scenarios (gray)"),
+            mpatches.Patch(facecolor="gray", alpha=0.15,
+                           label="95% Beta envelope"),
+        ]
+        fig = axes[0].get_figure()
+        fig.legend(handles=handles, loc="lower center", ncol=3,
+                   fontsize=9, frameon=True, fancybox=True,
+                   bbox_to_anchor=(0.5, -0.02))
 
 
 def _panel_bench_de_null_fpr(ax, bench_df):
