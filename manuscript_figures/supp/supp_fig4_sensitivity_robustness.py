@@ -804,7 +804,8 @@ _MDE_DATASET_CFG = {
 _BENCHMARK_CSV = Path(__file__).resolve().parents[4] / "manuscript" / "benchmark" / "simulation" / "benchmark_combined.csv"
 
 # Method display configuration
-_BENCH_METHODS = ["sctrial_did", "dreamlet", "nebula", "wilcoxon_paired"]
+# Plot order: sctrial last so it renders on top and stays visible
+_BENCH_METHODS = ["wilcoxon_paired", "nebula", "dreamlet", "sctrial_did"]
 _BENCH_METHOD_LABELS = {
     "sctrial_did": "sctrial (DiD)",
     "dreamlet": "dreamlet",
@@ -890,21 +891,26 @@ def _panel_bench_power(fig_or_ax, bench_df, design="two_arm"):
         ns = ns[:1]
 
     for ax_idx, (ax, n_val) in enumerate(zip(axes, ns)):
-        for method in _BENCH_METHODS:
+        for zi, method in enumerate(_BENCH_METHODS):
             sub = agg[(agg["method"] == method) & (agg["n_per_arm"] == n_val)].sort_values("beta")
             if sub.empty:
                 continue
+            is_sctrial = method == "sctrial_did"
             ax.plot(
                 sub["beta"], sub["mean"],
-                marker=_BENCH_METHOD_MARKERS[method], markersize=7,
+                marker=_BENCH_METHOD_MARKERS[method],
+                markersize=9 if is_sctrial else 7,
                 label=_BENCH_METHOD_LABELS[method] if ax_idx == 0 else None,
-                color=_BENCH_METHOD_COLORS[method], linewidth=2,
+                color=_BENCH_METHOD_COLORS[method],
+                linewidth=2.5 if is_sctrial else 1.8,
+                zorder=10 if is_sctrial else zi + 1,
             )
             ax.fill_between(
                 sub["beta"],
                 (sub["mean"] - 1.96 * sub["se"]).clip(0, 1),
                 (sub["mean"] + 1.96 * sub["se"]).clip(0, 1),
                 color=_BENCH_METHOD_COLORS[method], alpha=0.12,
+                zorder=0,
             )
         ax.set_xlabel(r"True effect size ($\beta$)")
         ax.set_title(f"n = {n_val} per arm", fontweight="bold")
@@ -1020,15 +1026,19 @@ def _panel_bench_lambda(ax, bench_df):
     lambda_df = pd.DataFrame(rows)
     ns = sorted(lambda_df["n_per_arm"].unique())
 
-    for method in _BENCH_METHODS:
+    for zi, method in enumerate(_BENCH_METHODS):
         sub = lambda_df[lambda_df["method"] == method].sort_values("n_per_arm")
         if sub.empty:
             continue
+        is_sctrial = method == "sctrial_did"
         ax.plot(
             sub["n_per_arm"], sub["lambda_gc"],
-            marker=_BENCH_METHOD_MARKERS[method], markersize=8, linewidth=2,
+            marker=_BENCH_METHOD_MARKERS[method],
+            markersize=10 if is_sctrial else 8,
+            linewidth=2.5 if is_sctrial else 1.8,
             label=_BENCH_METHOD_LABELS[method],
             color=_BENCH_METHOD_COLORS[method],
+            zorder=10 if is_sctrial else zi + 1,
         )
 
     ax.axhline(1.0, color="red", linestyle="--", linewidth=1.2, alpha=0.7,
@@ -1163,15 +1173,19 @@ def _panel_bench_de_null_fpr(ax, bench_df):
     n_show = 40
     sub = fpr_df[fpr_df["n_per_arm"] == n_show].sort_values("beta")
 
-    for method in _BENCH_METHODS:
+    for zi, method in enumerate(_BENCH_METHODS):
         msub = sub[sub["method"] == method]
         if msub.empty:
             continue
+        is_sctrial = method == "sctrial_did"
         ax.plot(
             msub["beta"], msub["null_fpr"],
-            marker=_BENCH_METHOD_MARKERS[method], markersize=8, linewidth=2,
+            marker=_BENCH_METHOD_MARKERS[method],
+            markersize=10 if is_sctrial else 8,
+            linewidth=2.5 if is_sctrial else 1.8,
             label=_BENCH_METHOD_LABELS[method],
             color=_BENCH_METHOD_COLORS[method],
+            zorder=10 if is_sctrial else zi + 1,
         )
 
     ax.axhline(0.05, color="red", linestyle="--", linewidth=1.2, alpha=0.7,
