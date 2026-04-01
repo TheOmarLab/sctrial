@@ -1043,17 +1043,15 @@ def _panel_bench_lambda(ax, bench_df):
     despine(ax)
 
 
-def _panel_bench_qq(fig_or_ax, bench_df, n_target=40):
+def _panel_bench_qq(fig_or_ax, bench_df, n_target=None):
     """Panel K: Faceted QQ — one panel per method with 95% Beta envelope.
 
-    Uses two-arm null at specified sample size. Well-calibrated methods
-    track the diagonal within the gray envelope.
+    Pools null-gene p-values across ALL null scenarios (all sample sizes,
+    both designs) for maximum statistical resolution.  Well-calibrated
+    methods track the diagonal within the gray envelope.
     """
-    null_data = _filter_bench(bench_df, "two_arm", r"null_n\d+$")
-    pure_null = null_data[
-        (null_data["true_beta"] == 0.0)
-        & (null_data["n_per_arm"] == n_target)
-    ]
+    # Collect ALL null p-values: pure-null scenarios + null genes in DE scenarios
+    null_pvals = bench_df[bench_df["true_beta"] == 0.0].copy()
 
     n_methods = len(_BENCH_METHODS)
     if hasattr(fig_or_ax, "subplots"):
@@ -1064,8 +1062,8 @@ def _panel_bench_qq(fig_or_ax, bench_df, n_target=40):
         axes = None
 
     for mi, method in enumerate(_BENCH_METHODS):
-        pvals = pure_null.loc[
-            pure_null["method"] == method, "pvalue"
+        pvals = null_pvals.loc[
+            null_pvals["method"] == method, "pvalue"
         ].dropna().sort_values().values
         if len(pvals) == 0:
             continue
@@ -1089,7 +1087,10 @@ def _panel_bench_qq(fig_or_ax, bench_df, n_target=40):
                    color=_BENCH_METHOD_COLORS[method], rasterized=True)
         lim = max(exp_log.max(), obs_log.max()) * 1.05
         ax.plot([0, lim], [0, lim], "k--", linewidth=0.8, alpha=0.5)
-        ax.set_title(_BENCH_METHOD_LABELS[method], fontweight="bold", fontsize=9)
+        ax.set_title(
+            f"{_BENCH_METHOD_LABELS[method]}  (n={n:,} null p-values)",
+            fontweight="bold", fontsize=9,
+        )
         ax.set_xlabel(r"Expected $-\log_{10}(p)$")
         if mi == 0:
             ax.set_ylabel(r"Observed $-\log_{10}(p)$")
