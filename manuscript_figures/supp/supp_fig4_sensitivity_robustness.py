@@ -810,7 +810,7 @@ _BENCH_METHOD_LABELS = {
     "sctrial_did": "sctrial (DiD)",
     "dreamlet": "dreamlet",
     "nebula": "NEBULA",
-    "wilcoxon_paired": "Wilcoxon (paired)",
+    "wilcoxon_paired": "Wilcoxon (Δ scores)",
 }
 _BENCH_METHOD_COLORS = {
     "sctrial_did": "#1f77b4",   # strong blue
@@ -913,7 +913,8 @@ def _panel_bench_power(fig_or_ax, bench_df, design="two_arm"):
                 zorder=0,
             )
         ax.set_xlabel(r"True effect size ($\beta$)")
-        ax.set_title(f"n = {n_val} per arm", fontweight="bold")
+        n_label = "per arm" if design == "two_arm" else "participants"
+        ax.set_title(f"n = {n_val} {n_label}", fontweight="bold")
         ax.set_ylim(-0.02, 1.05)
         ax.axhline(0.8, color="gray", linestyle=":", linewidth=0.7, alpha=0.5)
         despine(ax)
