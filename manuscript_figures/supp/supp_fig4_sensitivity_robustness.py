@@ -1028,10 +1028,11 @@ def _panel_bench_power(
     _ms_hi, _ms_lo = (4, 3.2) if composite else (9, 7)
     _lw_hi, _lw_lo = (1.35, 0.95) if composite else (2.5, 1.8)
     _ref_lw = 0.5 if composite else 0.7
-    _leg_fs = 5.5 if composite else 7
-    # M (single-arm): smaller legend glyphs than H in composite.
+    # Match panel L legend text size (standalone vs composite).
+    _leg_fs = 3.8 if composite else 7
+    # M (single-arm): slightly smaller legend glyphs than H in composite.
     _leg_ms = (
-        0.38 if composite and design == "single_arm" else (0.52 if composite else 1.0)
+        0.38 if composite and design == "single_arm" else (0.45 if composite else 1.0)
     )
 
     for ax_idx, (ax, n_val) in enumerate(zip(axes, ns)):
@@ -1070,23 +1071,54 @@ def _panel_bench_power(
 
     design_label = "Two-arm" if design == "two_arm" else "Single-arm"
     axes[0].set_ylabel(f"Power (p < 0.05 on signal genes)\n{design_label}")
-    # Bottom-right of the faceted row: use last axis so legend sits under H/M right side.
-    _leg_ax = axes[-1] if len(axes) > 1 else axes[0]
-    _leg_ax.legend(
-        fontsize=_leg_fs, loc="lower right", markerscale=_leg_ms,
-    )
+    # Line labels are only on the first facet; place legend on n=60 panel (third facet
+    # when sample sizes are 20/40/60) using those handles.
+    _leg_n = 60
+    if _leg_n in ns:
+        _leg_ax = axes[ns.index(_leg_n)]
+    elif len(axes) >= 3:
+        _leg_ax = axes[2]
+    else:
+        _leg_ax = axes[-1]
+    _handles, _labels = axes[0].get_legend_handles_labels()
+    if _handles:
+        _leg_ax.legend(
+            _handles,
+            _labels,
+            fontsize=_leg_fs,
+            loc="lower right",
+            bbox_to_anchor=(0.99, 0.02),
+            borderaxespad=0.25,
+            markerscale=_leg_ms,
+            frameon=True,
+        )
+    else:
+        _leg_ax.legend(
+            fontsize=_leg_fs,
+            loc="lower right",
+            bbox_to_anchor=(0.99, 0.02),
+            borderaxespad=0.25,
+            markerscale=_leg_ms,
+            frameon=True,
+        )
 
 
-def _match_subfig_axes_height_to_ref(ref_ax, subfig) -> None:
-    """Scale axes inside *subfig* to *ref_ax* height (figure-normalized coords).
+def _match_subfig_axes_height_to_ref(
+    ref_ax, subfig, *, height_frac: float = 1.0,
+) -> None:
+    """Scale axes inside *subfig* to match *ref_ax* height (figure-normalized).
 
     Faceted subfigures (power curves, QQ panels) expand axes to fill the
     subfigure's cell, so they look vertically stretched next to single-axis
-    neighbours. This rescales each child axis's vertical extent to match
-    ``ref_ax`` and aligns the block's bottom to ``ref_ax``.
+    neighbours. This rescales each child axis's vertical extent and aligns the
+    block's bottom to ``ref_ax``.
+
+    *height_frac* (< 1) uses only that fraction of *ref_ax*'s height, bottom
+    aligned, leaving space above (e.g. composite H/M suptitles).
     """
     pos_ref = ref_ax.get_position()
-    h_ref, y0_ref = pos_ref.height, pos_ref.y0
+    h_ref = pos_ref.height * float(np.clip(height_frac, 0.05, 1.0))
+    y0_ref = pos_ref.y0
     axes_sf = subfig.get_axes()
     if not axes_sf:
         return
@@ -1103,6 +1135,84 @@ def _match_subfig_axes_height_to_ref(ref_ax, subfig) -> None:
         new_y0 = y0_ref + rel_lo * h_ref
         new_h = (rel_hi - rel_lo) * h_ref
         ax.set_position([p.x0, new_y0, p.width, new_h])
+
+
+def _subfig_bbox_in_figure_coords(fig, subfig) -> mtransforms.Bbox:
+    """Return *subfig* bounds in normalized figure coordinates (0–1).
+
+    Prefer the **gridspec cell** for this subfigure (``SubplotSpec.get_position``)
+    so titles sit above the correct panel (H vs M). Fall back when unavailable.
+    """
+    spec = getattr(subfig, "_subplotspec", None)
+    if spec is not None:
+        get_cell = getattr(spec, "get_position", None)
+        if callable(get_cell):
+            bb = None
+            try:
+                bb = get_cell(fig)
+            except TypeError:
+                try:
+                    bb = get_cell(figure=fig)
+                except TypeError:
+                    bb = None
+            if bb is not None and all(
+                np.isfinite(x) for x in (bb.x0, bb.y0, bb.width, bb.height)
+            ):
+                return bb
+
+    gpf = getattr(subfig, "get_position", None)
+    if callable(gpf):
+        pos = gpf()
+        return mtransforms.Bbox.from_bounds(
+            pos.x0, pos.y0, pos.width, pos.height,
+        )
+
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    try:
+        bb_disp = subfig.get_window_extent(renderer=renderer)
+        return bb_disp.transformed(fig.transFigure.inverted())
+    except (AttributeError, RuntimeError):
+        pass
+
+    axes_sf = subfig.get_axes()
+    if not axes_sf:
+        return mtransforms.Bbox.from_extents(0.0, 0.0, 1.0, 1.0)
+    u = None
+    for ax in axes_sf:
+        p = ax.get_position()
+        bb = mtransforms.Bbox.from_bounds(p.x0, p.y0, p.width, p.height)
+        u = bb if u is None else u.union(bb)
+    return u
+
+
+def _figure_title_above_subfig(
+    fig,
+    subfig,
+    title: str,
+    *,
+    fontsize: float = 6.5,
+    pad_frac: float = 0.012,
+) -> None:
+    """Draw *title* just above *subfig* in figure coordinates.
+
+    ``SubFigure.suptitle`` is often clipped or invisible inside nested grids;
+    anchoring to the parent figure avoids that.
+    """
+    pos = _subfig_bbox_in_figure_coords(fig, subfig)
+    xc = pos.x0 + 0.5 * pos.width
+    y = pos.y1 + pad_frac
+    fig.text(
+        xc,
+        y,
+        title,
+        ha="center",
+        va="bottom",
+        fontsize=fontsize,
+        fontweight="bold",
+        transform=fig.transFigure,
+        clip_on=False,
+    )
 
 
 def _panel_bench_fpr(ax, bench_df, *, composite: bool = False):
@@ -1715,7 +1825,7 @@ def generate():
         ax_g.text(0.5, 0.5, "No LOO data", ha="center", va="center",
                   transform=ax_g.transAxes)
     _panel_bench_power(subfig_h, bench_df, design="two_arm", composite=True)
-    subfig_h.subplots_adjust(left=0.11, right=0.985, top=0.88, bottom=0.18)
+    subfig_h.subplots_adjust(left=0.11, right=0.985, top=0.82, bottom=0.18)
 
     # ── Row 4: I | J | K (spacers: tighter I–J, wider J–K)
     gs_r4 = mid[2].subgridspec(
@@ -1733,21 +1843,26 @@ def generate():
     subfig_k.subplots_adjust(left=0.05, right=0.992, top=0.82, bottom=0.46)
 
     # ── Row 5: L | M | N ────────────────────────────────────────────
-    gs_r5 = outer[1].subgridspec(1, 3, wspace=0.45, width_ratios=[1.0, 1.15, 0.92])
+    gs_r5 = outer[1].subgridspec(1, 3, wspace=0.45, width_ratios=[0.9, 1.22, 0.92])
     ax_l = fig_c.add_subplot(gs_r5[0])
     subfig_m = fig_c.add_subfigure(gs_r5[1])
     ax_n = fig_c.add_subplot(gs_r5[2])
 
     _panel_bench_de_null_fpr(ax_l, bench_df, composite=True)
     _panel_bench_power(subfig_m, bench_df, design="single_arm", composite=True)
-    subfig_m.subplots_adjust(left=0.11, right=0.985, top=0.85, bottom=0.22)
+    subfig_m.subplots_adjust(left=0.11, right=0.985, top=0.80, bottom=0.22)
     _panel_bench_runtime(ax_n, bench_df)
     # Final layout so get_position() is correct; shrink faceted subfigures to
     # match same-row neighbour axis height (G for H; J for K; L for M).
     fig_c.canvas.draw()
-    _match_subfig_axes_height_to_ref(ax_g, subfig_h)
+    _COMP_HM_HEIGHT_FRAC = 0.88
+    _match_subfig_axes_height_to_ref(
+        ax_g, subfig_h, height_frac=_COMP_HM_HEIGHT_FRAC,
+    )
     _match_subfig_axes_height_to_ref(ax_j, subfig_k)
-    _match_subfig_axes_height_to_ref(ax_l, subfig_m)
+    _match_subfig_axes_height_to_ref(
+        ax_l, subfig_m, height_frac=_COMP_HM_HEIGHT_FRAC,
+    )
 
     # ── Post-processing ───────────────────────────────────────────────
     for ax_pp in fig_c.get_axes():
@@ -1797,9 +1912,9 @@ def generate():
                 fontsize=_lbl_fs, fontweight="bold", va="top", ha="left",
             )
 
-    _label_subfig_panel(subfig_h, "H")
+    _label_subfig_panel(subfig_h, "H", y=1.20)
     _label_subfig_panel(subfig_k, "K", x=-0.46, y=1.06)
-    _label_subfig_panel(subfig_m, "M", x=_lbl_x_left)
+    _label_subfig_panel(subfig_m, "M", x=_lbl_x_left, y=1.20)
 
     # E & G: heatmaps — label slightly lower to clear title/colorbar
     _heat_y = 1.08
@@ -1812,6 +1927,21 @@ def generate():
         _lbl_xy[0], _heat_y, "G",
         transform=ax_g.transAxes,
         fontsize=_lbl_fs, fontweight="bold", va="top", ha="left",
+    )
+
+    # H/M row titles: same size as panel G axis title (axes.titlesize in composite).
+    _figure_title_above_subfig(
+        fig_c,
+        subfig_h,
+        "Two-arm DiD: Signal-gene power",
+        fontsize=_SMALL_RC["axes.titlesize"],
+        pad_frac=0.004,
+    )
+    _figure_title_above_subfig(
+        fig_c,
+        subfig_m,
+        "Single-arm paired: Signal-gene power",
+        fontsize=_SMALL_RC["axes.titlesize"],
     )
 
     plt.rcParams.update(_prev_rc)
