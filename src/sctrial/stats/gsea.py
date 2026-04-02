@@ -84,9 +84,7 @@ def _rank_between_arm_results(
     elif rank_by == "beta":
         valid["rank"] = valid["beta_arm"].fillna(0)
     elif rank_by == "tstat":
-        valid["rank"] = valid["beta_arm"].fillna(0) / (
-            valid["se_arm"].fillna(1) + 1e-12
-        )
+        valid["rank"] = valid["beta_arm"].fillna(0) / (valid["se_arm"].fillna(1) + 1e-12)
     else:
         raise ValueError(f"Unknown rank_by: {rank_by}")
 
@@ -113,9 +111,7 @@ def _rank_within_arm_results(
     elif rank_by == "beta":
         valid["rank"] = valid["beta_time"].fillna(0)
     elif rank_by == "tstat":
-        valid["rank"] = valid["beta_time"].fillna(0) / (
-            valid["se_time"].fillna(1) + 1e-12
-        )
+        valid["rank"] = valid["beta_time"].fillna(0) / (valid["se_time"].fillna(1) + 1e-12)
     else:
         raise ValueError(f"Unknown rank_by: {rank_by}")
 

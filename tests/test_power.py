@@ -214,4 +214,5 @@ class TestSensitivityPaired:
 
     def test_n_1_returns_inf(self):
         import numpy as np
+
         assert sensitivity_paired(n_participants=1) == np.inf
