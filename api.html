@@ -27,8 +27,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
-<link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+  <link href="_static/styles/theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
@@ -36,10 +36,10 @@
     <link rel="stylesheet" type="text/css" href="_static/custom.css?v=44e57e90" />
   
   <!-- So that users can add custom icons -->
-  <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <script defer src="_static/scripts/fontawesome.js?digest=7f76b32a3354e82990f2"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
-<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2" />
 
     <script src="_static/documentation_options.js?v=f129cdf0"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
@@ -51,6 +51,7 @@
     <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
     <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'api';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
     <link rel="icon" href="_static/logo_icon.svg"/>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -59,14 +60,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="" />
+  
+    
+    <script src="_static/searchtools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <script src="searchindex.js"></script>
+  
   </head>
-  
-  
-  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
-
+  <body data-default-mode="">
   
   
   <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
   
   <div id="pst-scroll-pixel-helper"></div>
   <button type="button" class="btn rounded-pill" id="pst-back-to-top">
@@ -4669,9 +4674,9 @@ and the parent directory of <em>data_path</em> is used.</p>
     class="page-toc tocsection onthispage">
     <i class="fa-solid fa-list"></i> On this page
   </div>
-  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
-    <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#trial-design">Trial Design</a><ul class="visible nav section-nav flex-column">
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#trial-design">Trial Design</a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.design.TrialDesign"><code class="docutils literal notranslate"><span class="pre">TrialDesign</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.design.TrialDesign.arm_bin"><code class="docutils literal notranslate"><span class="pre">TrialDesign.arm_bin()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.design.TrialDesign.arm_col"><code class="docutils literal notranslate"><span class="pre">TrialDesign.arm_col</span></code></a></li>
@@ -4690,7 +4695,7 @@ and the parent directory of <em>data_path</em> is used.</p>
 </li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-sctrial.analysis">Analysis Interfaces</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-sctrial.analysis">Analysis Interfaces</a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.analysis.DiDAnalyzer"><code class="docutils literal notranslate"><span class="pre">DiDAnalyzer</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.analysis.DiDAnalyzer.fit"><code class="docutils literal notranslate"><span class="pre">DiDAnalyzer.fit()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.analysis.DiDAnalyzer.plot_forest"><code class="docutils literal notranslate"><span class="pre">DiDAnalyzer.plot_forest()</span></code></a></li>
@@ -4699,7 +4704,7 @@ and the parent directory of <em>data_path</em> is used.</p>
 </li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-sctrial.workflow">Workflow API</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-sctrial.workflow">Workflow API</a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.workflow.TrialWorkflow"><code class="docutils literal notranslate"><span class="pre">TrialWorkflow</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.workflow.TrialWorkflow.add_log1p_cpm_layer"><code class="docutils literal notranslate"><span class="pre">TrialWorkflow.add_log1p_cpm_layer()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.workflow.TrialWorkflow.did_table"><code class="docutils literal notranslate"><span class="pre">TrialWorkflow.did_table()</span></code></a></li>
@@ -4710,22 +4715,22 @@ and the parent directory of <em>data_path</em> is used.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.workflow.workflow"><code class="docutils literal notranslate"><span class="pre">workflow()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-sctrial.preprocessing">Preprocessing</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-sctrial.preprocessing">Preprocessing</a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.preprocessing.add_log1p_cpm_layer"><code class="docutils literal notranslate"><span class="pre">add_log1p_cpm_layer()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-sctrial.scoring">Scoring</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-sctrial.scoring">Scoring</a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.scoring.score_gene_sets"><code class="docutils literal notranslate"><span class="pre">score_gene_sets()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.scoring.score_gene_sets_aucell"><code class="docutils literal notranslate"><span class="pre">score_gene_sets_aucell()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-sctrial.adata_tools">AnnData Tools</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-sctrial.adata_tools">AnnData Tools</a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.adata_tools.profile_features"><code class="docutils literal notranslate"><span class="pre">profile_features()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.adata_tools.subset_cells"><code class="docutils literal notranslate"><span class="pre">subset_cells()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.adata_tools.subset_primary"><code class="docutils literal notranslate"><span class="pre">subset_primary()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#statistics">Statistics</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#statistics">Statistics</a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#module-sctrial.stats.did">Core DiD Methods</a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.stats.did.AggregateFunc"><code class="docutils literal notranslate"><span class="pre">AggregateFunc</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.stats.did.AggregateMode"><code class="docutils literal notranslate"><span class="pre">AggregateMode</span></code></a></li>
@@ -4858,7 +4863,7 @@ and the parent directory of <em>data_path</em> is used.</p>
 </li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-sctrial.plotting">Plotting</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-sctrial.plotting">Plotting</a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.plotting.did_volcano_frame"><code class="docutils literal notranslate"><span class="pre">did_volcano_frame()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.plotting.plot_abundance_interaction"><code class="docutils literal notranslate"><span class="pre">plot_abundance_interaction()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.plotting.plot_did_forest"><code class="docutils literal notranslate"><span class="pre">plot_did_forest()</span></code></a></li>
@@ -4876,7 +4881,7 @@ and the parent directory of <em>data_path</em> is used.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.plotting.signed_logp"><code class="docutils literal notranslate"><span class="pre">signed_logp()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-sctrial.utils">Utilities</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-sctrial.utils">Utilities</a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.utils.ensure_unique_index"><code class="docutils literal notranslate"><span class="pre">ensure_unique_index()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.utils.get_counts_matrix"><code class="docutils literal notranslate"><span class="pre">get_counts_matrix()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.utils.intersect_preserve_order"><code class="docutils literal notranslate"><span class="pre">intersect_preserve_order()</span></code></a></li>
@@ -4888,7 +4893,7 @@ and the parent directory of <em>data_path</em> is used.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.utils.wild_cluster_bootstrap_t"><code class="docutils literal notranslate"><span class="pre">wild_cluster_bootstrap_t()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-sctrial.validation">Validation</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-sctrial.validation">Validation</a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.validation.TrialDataValidator"><code class="docutils literal notranslate"><span class="pre">TrialDataValidator</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.validation.TrialDataValidator.validate_adata"><code class="docutils literal notranslate"><span class="pre">TrialDataValidator.validate_adata()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.validation.TrialDataValidator.validate_features"><code class="docutils literal notranslate"><span class="pre">TrialDataValidator.validate_features()</span></code></a></li>
@@ -4900,12 +4905,12 @@ and the parent directory of <em>data_path</em> is used.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.validation.validate_features"><code class="docutils literal notranslate"><span class="pre">validate_features()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-sctrial.convenience">Convenience Functions</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-sctrial.convenience">Convenience Functions</a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.convenience.auto_detect_design"><code class="docutils literal notranslate"><span class="pre">auto_detect_design()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.convenience.quick_did"><code class="docutils literal notranslate"><span class="pre">quick_did()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-sctrial.datasets">Datasets and Example Helpers</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-sctrial.datasets">Datasets and Example Helpers</a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.datasets.categorize_celltype"><code class="docutils literal notranslate"><span class="pre">categorize_celltype()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.datasets.count_paired"><code class="docutils literal notranslate"><span class="pre">count_paired()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.datasets.ensure_fdr"><code class="docutils literal notranslate"><span class="pre">ensure_fdr()</span></code></a></li>
@@ -4949,8 +4954,8 @@ and the parent directory of <em>data_path</em> is used.</p>
     </div>
   </div>
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
-<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+  <script defer src="_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2"></script>
 
   <footer class="bd-footer">
 <div class="bd-footer__inner bd-page-width">
