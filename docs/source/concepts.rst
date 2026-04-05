@@ -87,8 +87,9 @@ to first-differencing:
 
 and then comparing :math:`\Delta Y` between arms via a two-sample test.
 This equivalence is standard in econometrics
-(Wooldridge, *Introductory Econometrics*, 7th ed., Ch. 13;
-Angrist & Pischke, *Mostly Harmless Econometrics*, Ch. 5,
+(Wooldridge, *Introductory Econometrics: A Modern Approach*,
+Cengage Learning, 7th ed., 2020;
+Angrist & Pischke, *Mostly Harmless Econometrics*,
 Princeton University Press, 2009, ISBN 978-0-691-12035-5).
 
 The identifying assumption
@@ -102,7 +103,7 @@ are available, sctrial provides :func:`~sctrial.stats.timeseries.test_parallel_t
 to assess whether pre-treatment trends diverge.
 
 For a formal treatment of parallel-trends testing and sensitivity
-analysis, see Roth (2023),
+analysis, see Rambachan & Roth (2023),
 `Review of Economic Studies <https://doi.org/10.1093/restud/rdad018>`__.
 
 When parallel trends is implausible (e.g. observational severity
@@ -116,7 +117,7 @@ Single-cell clinical studies typically have 5–30 participants.
 Cluster-robust (Huber–White) standard errors are asymptotically valid
 but can be anti-conservative when the number of clusters is small
 (Cameron & Miller, 2015,
-`Journal of Econometrics <https://doi.org/10.1016/j.jeconom.2014.05.015>`__).
+`Journal of Human Resources <https://doi.org/10.3368/jhr.50.2.317>`__).
 
 sctrial provides two approaches for finite-sample inference:
 
@@ -124,7 +125,7 @@ sctrial provides two approaches for finite-sample inference:
   Resamples Rademacher weights at the participant level to construct
   a bootstrap-*t* distribution.  Recommended for fewer than 15
   participants per arm.  Based on the procedure described in
-  Cameron et al. (2008),
+  Cameron, Gelbach & Miller (2008),
   `Review of Economics and Statistics <https://doi.org/10.1162/rest.90.3.414>`__.
 
 **Permutation testing** (``permutation_pvalue`` utility)
@@ -138,14 +139,18 @@ cluster-robust standard errors are generally adequate.
 Within-arm and cross-sectional comparisons
 ------------------------------------------
 
-For single-arm paired designs, sctrial applies a Wilcoxon signed-rank
-test (or paired *t*-test) on participant-level change scores
-:math:`\Delta Y_i = Y_{i,\text{post}} - Y_{i,\text{pre}}`, testing
-whether the median change differs from zero.
+For single-arm paired designs,
+:func:`~sctrial.stats.comparisons.within_arm_comparison` fits an OLS
+model with participant fixed effects on pseudobulk means, regressing the
+outcome on a visit indicator (``outcome ~ visit_num + C(participant)``).
+The coefficient on the visit term estimates the average
+within-participant change, and inference uses cluster-robust standard
+errors (or bootstrap when specified).
 
-For cross-sectional between-arm comparisons at a fixed visit, sctrial
-aggregates to participant-level means and applies a Mann–Whitney *U*
-test (or OLS) between groups.
+For cross-sectional between-arm comparisons at a fixed visit,
+:func:`~sctrial.stats.comparisons.between_arm_comparison` aggregates to
+participant-level means and applies either OLS or a Mann–Whitney *U*
+test between groups.
 
 In both cases, inference operates on participant-level summaries, not
 individual cells.
@@ -189,7 +194,7 @@ confidence metric:
 
 .. math::
 
-   r_g = -\text{sign}(\hat{\beta}_g) \cdot \log_{10}(p_g)
+   r_g = \text{sign}(\hat{\beta}_g) \cdot (-\log_{10}(p_g))
 
 and passes this ranking to pre-ranked GSEA via
 `gseapy <https://gseapy.readthedocs.io>`_.  This preserves both
@@ -208,7 +213,9 @@ tools:
   designs, primarily targeting cross-sectional contrasts.
 
 - **dreamlet** (Hoffman et al., 2023,
-  `Bioinformatics <https://doi.org/10.1093/bioinformatics/btad003>`__)
+  `bioRxiv <https://doi.org/10.1101/2023.03.17.533005>`__), building on
+  the dream framework (Hoffman & Roussos, 2021,
+  `Bioinformatics <https://doi.org/10.1093/bioinformatics/btaa687>`__),
   fits precision-weighted linear mixed models on voom-transformed
   pseudobulk counts with empirical Bayes variance moderation.
 
