@@ -1,5 +1,5 @@
 sctrial — Participant-Level Differential Analysis for Longitudinal Single-Cell Experiments
-=========================================================================================
+==============================================================================================
 
 .. image:: https://github.com/TheOmarLab/sctrial/actions/workflows/test.yml/badge.svg?branch=main
    :target: https://github.com/TheOmarLab/sctrial/actions/workflows/test.yml
