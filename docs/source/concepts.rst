@@ -213,9 +213,7 @@ tools:
   designs, primarily targeting cross-sectional contrasts.
 
 - **dreamlet** (Hoffman et al., 2023,
-  `bioRxiv <https://doi.org/10.1101/2023.03.17.533005>`__), building on
-  the dream framework (Hoffman & Roussos, 2021,
-  `Bioinformatics <https://doi.org/10.1093/bioinformatics/btaa687>`__),
+  `bioRxiv <https://doi.org/10.1101/2023.03.17.533005>`__)
   fits precision-weighted linear mixed models on voom-transformed
   pseudobulk counts with empirical Bayes variance moderation.
 
