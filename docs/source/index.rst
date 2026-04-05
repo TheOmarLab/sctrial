@@ -84,6 +84,7 @@ If you use **sctrial** in your research, please cite:
 
    installation
    quickstart
+   concepts
 
 .. toctree::
    :maxdepth: 2
