@@ -360,17 +360,15 @@
                   
   <section id="changelog">
 <h1>Changelog<a class="headerlink" href="#changelog" title="Link to this heading">#</a></h1>
-<section id="changelog">
-<h2>Changelog<a class="headerlink" href="#changelog" title="Link to this heading">#</a></h2>
 <p>All notable changes to this project will be documented in this file.</p>
 <p>The format is based on <a class="reference external" href="https://keepachangelog.com/en/1.0.0/">Keep a Changelog</a>,
 and this project adheres to <a class="reference external" href="https://semver.org/spec/v2.0.0.html">Semantic Versioning</a>.</p>
 <section id="unreleased">
-<h3>[Unreleased]<a class="headerlink" href="#unreleased" title="Link to this heading">#</a></h3>
+<h2>[Unreleased]<a class="headerlink" href="#unreleased" title="Link to this heading">#</a></h2>
 <section id="added">
-<h4>Added<a class="headerlink" href="#added" title="Link to this heading">#</a></h4>
+<h3>Added<a class="headerlink" href="#added" title="Link to this heading">#</a></h3>
 <section id="simulation-benchmark-framework-sctrial-benchmark">
-<h5>Simulation Benchmark Framework (<code class="docutils literal notranslate"><span class="pre">sctrial.benchmark</span></code>)<a class="headerlink" href="#simulation-benchmark-framework-sctrial-benchmark" title="Link to this heading">#</a></h5>
+<h4>Simulation Benchmark Framework (<code class="docutils literal notranslate"><span class="pre">sctrial.benchmark</span></code>)<a class="headerlink" href="#simulation-benchmark-framework-sctrial-benchmark" title="Link to this heading">#</a></h4>
 <ul class="simple">
 <li><p>Hierarchical gamma-Poisson simulator calibrated from real scRNA-seq data (TNBC)</p></li>
 <li><p>Benchmark orchestrator with parallel execution (spawn context) and incremental CSV saving</p></li>
@@ -381,7 +379,7 @@ and this project adheres to <a class="reference external" href="https://semver.o
 </ul>
 </section>
 <section id="supplementary-figure-4-benchmark-panels-h-n">
-<h5>Supplementary Figure 4 Benchmark Panels (H-N)<a class="headerlink" href="#supplementary-figure-4-benchmark-panels-h-n" title="Link to this heading">#</a></h5>
+<h4>Supplementary Figure 4 Benchmark Panels (H-N)<a class="headerlink" href="#supplementary-figure-4-benchmark-panels-h-n" title="Link to this heading">#</a></h4>
 <ul class="simple">
 <li><p>Panel H: Two-arm power curves faceted by sample size</p></li>
 <li><p>Panel I: Type I error calibration (dot-and-whisker, both designs)</p></li>
@@ -394,7 +392,7 @@ and this project adheres to <a class="reference external" href="https://semver.o
 </section>
 </section>
 <section id="fixed">
-<h4>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">#</a></h4>
+<h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Benchmark runners: log1p scale mismatch between Python and R methods resolved</p></li>
 <li><p>Benchmark runners: single-arm design dispatch (one-sample t-test / signed-rank vs two-sample)</p></li>
@@ -406,7 +404,7 @@ and this project adheres to <a class="reference external" href="https://semver.o
 </ul>
 </section>
 <section id="improved">
-<h4>Improved<a class="headerlink" href="#improved" title="Link to this heading">#</a></h4>
+<h3>Improved<a class="headerlink" href="#improved" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Documentation URLs standardized to Read the Docs across README, pyproject.toml, and Sphinx docs</p></li>
 <li><p>CITATION.cff updated with full author list and preprint title</p></li>
@@ -415,11 +413,11 @@ and this project adheres to <a class="reference external" href="https://semver.o
 </section>
 </section>
 <section id="id1">
-<h3>[0.3.0] - 2026-03-18<a class="headerlink" href="#id1" title="Link to this heading">#</a></h3>
+<h2>[0.3.0] - 2026-03-18<a class="headerlink" href="#id1" title="Link to this heading">#</a></h2>
 <section id="id2">
-<h4>Added<a class="headerlink" href="#id2" title="Link to this heading">#</a></h4>
+<h3>Added<a class="headerlink" href="#id2" title="Link to this heading">#</a></h3>
 <section id="single-arm-power-analysis-sctrial-stats-power">
-<h5>Single-Arm Power Analysis (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.power</span></code>)<a class="headerlink" href="#single-arm-power-analysis-sctrial-stats-power" title="Link to this heading">#</a></h5>
+<h4>Single-Arm Power Analysis (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.power</span></code>)<a class="headerlink" href="#single-arm-power-analysis-sctrial-stats-power" title="Link to this heading">#</a></h4>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">power_paired()</span></code>: Power for paired pre/post designs (vaccine, CAR-T, etc.)</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">sample_size_paired()</span></code>: Required sample size for paired designs</p></li>
@@ -427,7 +425,7 @@ and this project adheres to <a class="reference external" href="https://semver.o
 </ul>
 </section>
 <section id="single-arm-design-support-sctrial-design">
-<h5>Single-Arm Design Support (<code class="docutils literal notranslate"><span class="pre">sctrial.design</span></code>)<a class="headerlink" href="#single-arm-design-support-sctrial-design" title="Link to this heading">#</a></h5>
+<h4>Single-Arm Design Support (<code class="docutils literal notranslate"><span class="pre">sctrial.design</span></code>)<a class="headerlink" href="#single-arm-design-support-sctrial-design" title="Link to this heading">#</a></h4>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">TrialDesign.arm_col</span></code> now accepts <code class="docutils literal notranslate"><span class="pre">None</span></code> for single-arm studies</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">required_cols()</span></code>, <code class="docutils literal notranslate"><span class="pre">validate()</span></code>, <code class="docutils literal notranslate"><span class="pre">subset_cells()</span></code> handle <code class="docutils literal notranslate"><span class="pre">arm_col=None</span></code></p></li>
@@ -435,7 +433,7 @@ and this project adheres to <a class="reference external" href="https://semver.o
 </ul>
 </section>
 <section id="monte-carlo-simulation-sctrial-stats-simulation">
-<h5>Monte Carlo Simulation (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.simulation</span></code>)<a class="headerlink" href="#monte-carlo-simulation-sctrial-stats-simulation" title="Link to this heading">#</a></h5>
+<h4>Monte Carlo Simulation (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.simulation</span></code>)<a class="headerlink" href="#monte-carlo-simulation-sctrial-stats-simulation" title="Link to this heading">#</a></h4>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">simulate_did_data()</span></code>: Generate synthetic DiD datasets with known ground truth</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">run_method_comparison()</span></code>: Compare sctrial DiD vs pseudobulk OLS vs Wilcoxon</p></li>
@@ -443,7 +441,7 @@ and this project adheres to <a class="reference external" href="https://semver.o
 </section>
 </section>
 <section id="id3">
-<h4>Fixed<a class="headerlink" href="#id3" title="Link to this heading">#</a></h4>
+<h3>Fixed<a class="headerlink" href="#id3" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">n_boot</span></code> default: 1000 → 999 in <code class="docutils literal notranslate"><span class="pre">bootstrap_effect_size_ci()</span></code></p></li>
 <li><p>Zero-SE paired delta returns <code class="docutils literal notranslate"><span class="pre">NaN</span></code> instead of <code class="docutils literal notranslate"><span class="pre">t=0,</span> <span class="pre">p=1</span></code></p></li>
@@ -453,14 +451,14 @@ and this project adheres to <a class="reference external" href="https://semver.o
 <li><p>mypy: fixed <code class="docutils literal notranslate"><span class="pre">catch_warnings</span></code> type in <code class="docutils literal notranslate"><span class="pre">comparisons.py</span></code></p></li>
 </ul>
 <section id="bayesian-did-sctrial-stats-bayes">
-<h5>Bayesian DiD (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.bayes</span></code>)<a class="headerlink" href="#bayesian-did-sctrial-stats-bayes" title="Link to this heading">#</a></h5>
+<h4>Bayesian DiD (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.bayes</span></code>)<a class="headerlink" href="#bayesian-did-sctrial-stats-bayes" title="Link to this heading">#</a></h4>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">prior_predictive_check()</span></code>: Run prior predictive checks to calibrate Bayesian priors before fitting.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">did_table_bayes()</span></code> now accepts <code class="docutils literal notranslate"><span class="pre">prior_scale</span></code> and <code class="docutils literal notranslate"><span class="pre">sigma_scale</span></code> parameters for prior sensitivity analysis.</p></li>
 </ul>
 </section>
 <section id="effect-size-module-sctrial-stats-effect-size">
-<h5>Effect Size Module (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.effect_size</span></code>)<a class="headerlink" href="#effect-size-module-sctrial-stats-effect-size" title="Link to this heading">#</a></h5>
+<h4>Effect Size Module (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.effect_size</span></code>)<a class="headerlink" href="#effect-size-module-sctrial-stats-effect-size" title="Link to this heading">#</a></h4>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">cohens_d()</span></code>: Calculate Cohen’s d effect size between two groups</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">hedges_g()</span></code>: Bias-corrected effect size (recommended for n &lt; 20)</p></li>
@@ -470,7 +468,7 @@ and this project adheres to <a class="reference external" href="https://semver.o
 </ul>
 </section>
 <section id="power-analysis-module-sctrial-stats-power">
-<h5>Power Analysis Module (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.power</span></code>)<a class="headerlink" href="#power-analysis-module-sctrial-stats-power" title="Link to this heading">#</a></h5>
+<h4>Power Analysis Module (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.power</span></code>)<a class="headerlink" href="#power-analysis-module-sctrial-stats-power" title="Link to this heading">#</a></h4>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">power_did()</span></code>: Calculate power for DiD analysis given sample size</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">sample_size_did()</span></code>: Determine required sample size for desired power</p></li>
@@ -480,7 +478,7 @@ and this project adheres to <a class="reference external" href="https://semver.o
 </ul>
 </section>
 <section id="mixed-effects-models-sctrial-stats-mixed-effects">
-<h5>Mixed Effects Models (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.mixed_effects</span></code>)<a class="headerlink" href="#mixed-effects-models-sctrial-stats-mixed-effects" title="Link to this heading">#</a></h5>
+<h4>Mixed Effects Models (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.mixed_effects</span></code>)<a class="headerlink" href="#mixed-effects-models-sctrial-stats-mixed-effects" title="Link to this heading">#</a></h4>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">did_table_mixed()</span></code>: DiD with random participant effects</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">compare_fixed_vs_mixed()</span></code>: Compare both approaches for sensitivity analysis</p></li>
@@ -488,7 +486,7 @@ and this project adheres to <a class="reference external" href="https://semver.o
 </ul>
 </section>
 <section id="time-series-analysis-sctrial-stats-timeseries">
-<h5>Time Series Analysis (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.timeseries</span></code>)<a class="headerlink" href="#time-series-analysis-sctrial-stats-timeseries" title="Link to this heading">#</a></h5>
+<h4>Time Series Analysis (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.timeseries</span></code>)<a class="headerlink" href="#time-series-analysis-sctrial-stats-timeseries" title="Link to this heading">#</a></h4>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">trend_interaction()</span></code>: Treatment × time trend for 3+ timepoints</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">event_study_did()</span></code>: Generalized DiD comparing each visit to baseline</p></li>
@@ -497,7 +495,7 @@ and this project adheres to <a class="reference external" href="https://semver.o
 </ul>
 </section>
 <section id="cross-validation-sctrial-stats-cv">
-<h5>Cross-Validation (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.cv</span></code>)<a class="headerlink" href="#cross-validation-sctrial-stats-cv" title="Link to this heading">#</a></h5>
+<h4>Cross-Validation (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.cv</span></code>)<a class="headerlink" href="#cross-validation-sctrial-stats-cv" title="Link to this heading">#</a></h4>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">loo_cv_did()</span></code>: Leave-one-out CV for influence diagnostics</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">kfold_cv_did()</span></code>: K-fold CV for effect stability assessment</p></li>
@@ -507,7 +505,7 @@ and this project adheres to <a class="reference external" href="https://semver.o
 </section>
 </section>
 <section id="id4">
-<h4>Improved<a class="headerlink" href="#id4" title="Link to this heading">#</a></h4>
+<h3>Improved<a class="headerlink" href="#id4" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">add_effect_sizes_to_did()</span></code> now uses residual SD directly from the OLS/WLS fit when available, instead of back-calculating from standard errors with a balanced-design assumption.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">module_score_did_by_pool()</span></code> now accepts <code class="docutils literal notranslate"><span class="pre">fdr_global</span></code> parameter; emits a global FDR column (<code class="docutils literal notranslate"><span class="pre">FDR_DiD_global</span></code>) and a warning when per-group FDR is used.</p></li>
@@ -528,7 +526,7 @@ and this project adheres to <a class="reference external" href="https://semver.o
 </ul>
 </section>
 <section id="id5">
-<h4>Fixed<a class="headerlink" href="#id5" title="Link to this heading">#</a></h4>
+<h3>Fixed<a class="headerlink" href="#id5" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p><strong>Statistical</strong>: Fixed WLS weighting in <code class="docutils literal notranslate"><span class="pre">did_fit()</span></code> — now uses <code class="docutils literal notranslate"><span class="pre">n_cells</span></code> (correct inverse-variance weights) instead of <code class="docutils literal notranslate"><span class="pre">sqrt(n_cells)</span></code> for pre-aggregated participant-level means.</p></li>
 <li><p><strong>Statistical</strong>: Fixed <code class="docutils literal notranslate"><span class="pre">pseudobulk_expression()</span></code> to drop groups with zero total counts before CPM normalization instead of adding a <code class="docutils literal notranslate"><span class="pre">1e-12</span></code> epsilon.</p></li>
@@ -544,7 +542,7 @@ and this project adheres to <a class="reference external" href="https://semver.o
 </ul>
 </section>
 <section id="internal">
-<h4>Internal<a class="headerlink" href="#internal" title="Link to this heading">#</a></h4>
+<h3>Internal<a class="headerlink" href="#internal" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Added <code class="docutils literal notranslate"><span class="pre">__all__</span></code> exports to all modules for better API clarity: <code class="docutils literal notranslate"><span class="pre">design</span></code>, <code class="docutils literal notranslate"><span class="pre">preprocessing</span></code>, <code class="docutils literal notranslate"><span class="pre">scoring</span></code>, <code class="docutils literal notranslate"><span class="pre">adata_tools</span></code>, <code class="docutils literal notranslate"><span class="pre">utils</span></code>, <code class="docutils literal notranslate"><span class="pre">plotting</span></code>.</p></li>
 <li><p>Added <code class="docutils literal notranslate"><span class="pre">validation</span></code> and <code class="docutils literal notranslate"><span class="pre">convenience</span></code> modules to API documentation.</p></li>
@@ -552,9 +550,9 @@ and this project adheres to <a class="reference external" href="https://semver.o
 </section>
 </section>
 <section id="id6">
-<h3>[0.2.0] - 2026-01-01<a class="headerlink" href="#id6" title="Link to this heading">#</a></h3>
+<h2>[0.2.0] - 2026-01-01<a class="headerlink" href="#id6" title="Link to this heading">#</a></h2>
 <section id="id7">
-<h4>Added<a class="headerlink" href="#id7" title="Link to this heading">#</a></h4>
+<h3>Added<a class="headerlink" href="#id7" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Core trial-aware inference engine: Difference-in-Differences (DiD) with participant fixed effects and covariate support.</p></li>
 <li><p>Robust statistical methods: Wild Cluster Bootstrap (Rademacher) and Permutation tests.</p></li>
@@ -567,7 +565,6 @@ and this project adheres to <a class="reference external" href="https://semver.o
 <li><p>Professional infrastructure: MIT License, pre-commit hooks, and GitHub Actions CI.</p></li>
 <li><p>Full support for sparse <code class="docutils literal notranslate"><span class="pre">AnnData</span></code> objects.</p></li>
 </ul>
-</section>
 </section>
 </section>
 </section>
@@ -607,42 +604,39 @@ and this project adheres to <a class="reference external" href="https://semver.o
   </div>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#changelog">Changelog</a><ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#unreleased">[Unreleased]</a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#added">Added</a><ul class="nav section-nav flex-column">
-<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#simulation-benchmark-framework-sctrial-benchmark">Simulation Benchmark Framework (<code class="docutils literal notranslate"><span class="pre">sctrial.benchmark</span></code>)</a></li>
-<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#supplementary-figure-4-benchmark-panels-h-n">Supplementary Figure 4 Benchmark Panels (H-N)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#unreleased">[Unreleased]</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#added">Added</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#simulation-benchmark-framework-sctrial-benchmark">Simulation Benchmark Framework (<code class="docutils literal notranslate"><span class="pre">sctrial.benchmark</span></code>)</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#supplementary-figure-4-benchmark-panels-h-n">Supplementary Figure 4 Benchmark Panels (H-N)</a></li>
 </ul>
 </li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#fixed">Fixed</a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#improved">Improved</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fixed">Fixed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#improved">Improved</a></li>
 </ul>
 </li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">[0.3.0] - 2026-03-18</a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id2">Added</a><ul class="nav section-nav flex-column">
-<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#single-arm-power-analysis-sctrial-stats-power">Single-Arm Power Analysis (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.power</span></code>)</a></li>
-<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#single-arm-design-support-sctrial-design">Single-Arm Design Support (<code class="docutils literal notranslate"><span class="pre">sctrial.design</span></code>)</a></li>
-<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#monte-carlo-simulation-sctrial-stats-simulation">Monte Carlo Simulation (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.simulation</span></code>)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">[0.3.0] - 2026-03-18</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id2">Added</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#single-arm-power-analysis-sctrial-stats-power">Single-Arm Power Analysis (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.power</span></code>)</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#single-arm-design-support-sctrial-design">Single-Arm Design Support (<code class="docutils literal notranslate"><span class="pre">sctrial.design</span></code>)</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#monte-carlo-simulation-sctrial-stats-simulation">Monte Carlo Simulation (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.simulation</span></code>)</a></li>
 </ul>
 </li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id3">Fixed</a><ul class="nav section-nav flex-column">
-<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#bayesian-did-sctrial-stats-bayes">Bayesian DiD (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.bayes</span></code>)</a></li>
-<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#effect-size-module-sctrial-stats-effect-size">Effect Size Module (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.effect_size</span></code>)</a></li>
-<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#power-analysis-module-sctrial-stats-power">Power Analysis Module (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.power</span></code>)</a></li>
-<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#mixed-effects-models-sctrial-stats-mixed-effects">Mixed Effects Models (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.mixed_effects</span></code>)</a></li>
-<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#time-series-analysis-sctrial-stats-timeseries">Time Series Analysis (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.timeseries</span></code>)</a></li>
-<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#cross-validation-sctrial-stats-cv">Cross-Validation (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.cv</span></code>)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id3">Fixed</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#bayesian-did-sctrial-stats-bayes">Bayesian DiD (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.bayes</span></code>)</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#effect-size-module-sctrial-stats-effect-size">Effect Size Module (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.effect_size</span></code>)</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#power-analysis-module-sctrial-stats-power">Power Analysis Module (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.power</span></code>)</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mixed-effects-models-sctrial-stats-mixed-effects">Mixed Effects Models (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.mixed_effects</span></code>)</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#time-series-analysis-sctrial-stats-timeseries">Time Series Analysis (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.timeseries</span></code>)</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#cross-validation-sctrial-stats-cv">Cross-Validation (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.cv</span></code>)</a></li>
 </ul>
 </li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id4">Improved</a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id5">Fixed</a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#internal">Internal</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id4">Improved</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id5">Fixed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#internal">Internal</a></li>
 </ul>
 </li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id6">[0.2.0] - 2026-01-01</a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id7">Added</a></li>
-</ul>
-</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id6">[0.2.0] - 2026-01-01</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id7">Added</a></li>
 </ul>
 </li>
 </ul>
@@ -652,7 +646,7 @@ and this project adheres to <a class="reference external" href="https://semver.o
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/TheOmarLab/sctrial/edit/main/docs/source/changelog.rst">
+    <a href="https://github.com/TheOmarLab/sctrial/edit/main/docs/source/changelog.md">
       <i class="fa-solid fa-pencil"></i>
       
       
