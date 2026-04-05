@@ -1,3 +1,5 @@
+"""High-level analysis helpers for trial-aware inference."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

@@ -1,3 +1,5 @@
+"""AnnData manipulation utilities: subsetting, merging, pseudobulk helpers."""
+
 from __future__ import annotations
 
 from collections.abc import Sequence

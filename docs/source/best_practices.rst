@@ -27,32 +27,12 @@ An ``AnnData`` object with:
 Sample Size Recommendations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Minimum Requirements**:
+Use ``st.power_did()`` and ``st.sample_size_did()`` (two-arm) or
+``st.power_paired()`` and ``st.sample_size_paired()`` (single-arm) to
+determine whether your study is adequately powered. For fewer than 15
+participants, always use bootstrap inference (``use_bootstrap=True``).
 
-- **Two-arm DiD**: At least **4 paired participants per arm** (8 total)
-- **Single-arm paired**: At least **4 paired participants**
-- Recommend **10-15 paired participants** for reliable inference
-- For **< 15 participants**: Always use bootstrap (``use_bootstrap=True``)
-
-**Power Considerations**:
-
-.. code-block:: python
-
-   # Two-arm DiD power
-   power = st.power_did(n_treated=15, n_control=15, effect_size=0.5)
-   n_needed = st.sample_size_did(effect_size=0.5, power=0.80)
-
-   # Single-arm paired power (e.g. vaccine, CAR-T)
-   power = st.power_paired(n_participants=10, effect_size=0.8)
-   n_needed = st.sample_size_paired(effect_size=0.8, power=0.80)
-   mde = st.sensitivity_paired(n_participants=10, power=0.80)
-
-   # Check your sample size
-   n_paired = st.count_paired(adata.obs, "visit", ["baseline", "followup"])
-   print(f"Paired participants: {n_paired}")
-
-   if n_paired < 15:
-       print("Consider using bootstrap inference (use_bootstrap=True)")
+See :ref:`faq-sample-size` for detailed tables and code examples.
 
 Visit Selection
 ~~~~~~~~~~~~~~~

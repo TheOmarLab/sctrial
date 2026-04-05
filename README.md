@@ -1,7 +1,7 @@
 <p align="center">
   <img src="docs/source/_static/logo.svg" alt="sctrial" width="280">
 </p>
-<p align="center"><strong>Trial-Aware Statistical Inference for Single-Cell Data</strong></p>
+<p align="center"><strong>Participant-Level Differential Analysis for Longitudinal Single-Cell Experiments</strong></p>
 
 <p align="center">
   <a href="https://github.com/TheOmarLab/sctrial/actions/workflows/test.yml">
@@ -14,7 +14,7 @@
   <a href="https://opensource.org/licenses/MIT">
     <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT">
   </a>
-  <a href="https://TheOmarLab.github.io/sctrial/">
+  <a href="https://sctrial.readthedocs.io">
     <img src="https://img.shields.io/badge/docs-latest-brightgreen.svg" alt="Documentation">
   </a>
 </p>
@@ -128,22 +128,24 @@ Additional tutorial: [Scalability Benchmark](tutorials/stress_test_real_scale.ip
 
 ## Documentation
 
-Full documentation: [https://TheOmarLab.github.io/sctrial/](https://TheOmarLab.github.io/sctrial/)
+Full documentation: [https://sctrial.readthedocs.io](https://sctrial.readthedocs.io)
 
-- [API Reference](https://TheOmarLab.github.io/sctrial/api.html)
-- [Tutorials](https://TheOmarLab.github.io/sctrial/tutorials/index.html)
-- [FAQ](https://TheOmarLab.github.io/sctrial/faq.html)
+- [API Reference](https://sctrial.readthedocs.io/en/latest/api.html)
+- [Tutorials](https://sctrial.readthedocs.io/en/latest/tutorials/index.html)
+- [FAQ](https://sctrial.readthedocs.io/en/latest/faq.html)
 
 ## Citation
 
 If you use **sctrial** in your research, please cite:
 
+> Vasanthakumari P, Valencia I, Aghmiouni MR, Magana B, Omar MN. **sctrial: Participant-Level Differential Analysis for Longitudinal Single-Cell Experiments.** *bioRxiv* (2026).
+
 ```bibtex
-@software{omar2024sctrial,
-  author = {Omar, Mohamed},
-  title = {sctrial: Trial-Aware Statistical Inference for Single-Cell Data},
+@article{vasanthakumari2026sctrial,
+  title = {sctrial: Participant-Level Differential Analysis for Longitudinal Single-Cell Experiments},
+  author = {Vasanthakumari, Priyanka and Valencia, Itzel and Aghmiouni, Maryam R. and Magana, Bryan and Omar, Mohamed N.},
+  journal = {bioRxiv},
   year = {2026},
-  publisher = {GitHub},
   url = {https://github.com/TheOmarLab/sctrial}
 }
 ```

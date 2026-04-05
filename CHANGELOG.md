@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+#### Simulation Benchmark Framework (`sctrial.benchmark`)
+- Hierarchical gamma-Poisson simulator calibrated from real scRNA-seq data (TNBC)
+- Benchmark orchestrator with parallel execution (spawn context) and incremental CSV saving
+- R method runners (dreamlet, NEBULA) via subprocess Rscript
+- Python method runners (sctrial DiD first-difference, paired Wilcoxon on change scores)
+- Validation gate with TNBC calibration and vaccine holdout validation
+- Comprehensive scenario grid: null calibration, power, robustness (heterogeneity, missing data, cell-count variation, arm imbalance)
+
+#### Supplementary Figure 4 Benchmark Panels (H-N)
+- Panel H: Two-arm power curves faceted by sample size
+- Panel I: Type I error calibration (dot-and-whisker, both designs)
+- Panel J: Genomic inflation factor (lambda_GC) under null
+- Panel K: QQ plots colored by scenario type (pure-null vs DE null genes)
+- Panel L: Null-gene FPR in DE scenarios (empirical Bayes inflation finding)
+- Panel M: Single-arm paired power curves
+- Panel N: Computational cost comparison (log-scale boxplot)
+
+### Fixed
+- Benchmark runners: log1p scale mismatch between Python and R methods resolved
+- Benchmark runners: single-arm design dispatch (one-sample t-test / signed-rank vs two-sample)
+- Benchmark orchestrator: `time_effect=0.0` enforced for single-arm null scenarios
+- Multiprocessing: spawn context prevents fork-inherited R subprocess corruption
+- Wilcoxon runner: mypy dict-item type error resolved via `_fail_result()` helper
+- SF4 panel labels: single-arm panels now say "participants" not "per arm"
+- SF4 method label: "Wilcoxon (paired)" renamed to "Wilcoxon (Δ scores)"
+
+### Improved
+- Documentation URLs standardized to Read the Docs across README, pyproject.toml, and Sphinx docs
+- CITATION.cff updated with full author list and preprint title
+- `stats/__init__.py` exports `run_gsea_cross_sectional` and `run_gsea_within_arm`
+
 ## [0.3.0] - 2026-03-18
 
 ### Added

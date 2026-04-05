@@ -1,3 +1,5 @@
+"""Shared internal utilities: logging, formatting, helpers."""
+
 from __future__ import annotations
 
 import re
