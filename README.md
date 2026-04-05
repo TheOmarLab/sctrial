@@ -14,7 +14,7 @@
   <a href="https://opensource.org/licenses/MIT">
     <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT">
   </a>
-  <a href="https://TheOmarLab.github.io/sctrial/">
+  <a href="https://sctrial.readthedocs.io">
     <img src="https://img.shields.io/badge/docs-latest-brightgreen.svg" alt="Documentation">
   </a>
 </p>
@@ -128,11 +128,11 @@ Additional tutorial: [Scalability Benchmark](tutorials/stress_test_real_scale.ip
 
 ## Documentation
 
-Full documentation: [https://TheOmarLab.github.io/sctrial/](https://TheOmarLab.github.io/sctrial/)
+Full documentation: [https://sctrial.readthedocs.io](https://sctrial.readthedocs.io)
 
-- [API Reference](https://TheOmarLab.github.io/sctrial/api.html)
-- [Tutorials](https://TheOmarLab.github.io/sctrial/tutorials/index.html)
-- [FAQ](https://TheOmarLab.github.io/sctrial/faq.html)
+- [API Reference](https://sctrial.readthedocs.io/en/latest/api.html)
+- [Tutorials](https://sctrial.readthedocs.io/en/latest/tutorials/index.html)
+- [FAQ](https://sctrial.readthedocs.io/en/latest/faq.html)
 
 ## Citation
 

@@ -36,7 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - SF4 method label: "Wilcoxon (paired)" renamed to "Wilcoxon (Δ scores)"
 
 ### Improved
-- Documentation URL standardized to GitHub Pages across README, pyproject.toml, and Sphinx docs
+- Documentation URLs standardized to Read the Docs across README, pyproject.toml, and Sphinx docs
 - CITATION.cff updated with full author list and preprint title
 - `stats/__init__.py` exports `run_gsea_cross_sectional` and `run_gsea_within_arm`
 
