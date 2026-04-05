@@ -1,3 +1,5 @@
+"""Trial design specification: TrialDesign dataclass and design detection."""
+
 from __future__ import annotations
 
 import logging

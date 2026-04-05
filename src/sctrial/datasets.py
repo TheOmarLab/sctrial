@@ -1,3 +1,5 @@
+"""Built-in dataset loaders for clinical trial scRNA-seq cohorts."""
+
 from __future__ import annotations
 
 import gc

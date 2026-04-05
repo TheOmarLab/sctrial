@@ -1,3 +1,5 @@
+"""Gene-set scoring: z-mean, Seurat-style, and AUCell methods."""
+
 from __future__ import annotations
 
 import logging
