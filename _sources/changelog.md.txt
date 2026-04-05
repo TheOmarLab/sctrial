@@ -23,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CITATION.cff updated to v0.3.0 with full author list matching the preprint
 - README updated with preprint citation, PyPI badge, and corrected API links
 - Module-level docstrings added to 8 core modules
-- Tutorial notebooks cleaned up: removed AI-generated language, use sctrial API consistently
+- Tutorial notebooks revised for clarity and consistent use of sctrial API
 
 ## [0.3.0] - 2026-03-18
 
