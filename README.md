@@ -14,8 +14,11 @@
   <a href="https://opensource.org/licenses/MIT">
     <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT">
   </a>
+  <a href="https://pypi.org/project/sctrial/">
+    <img src="https://img.shields.io/pypi/v/sctrial.svg" alt="PyPI">
+  </a>
   <a href="https://sctrial.readthedocs.io">
-    <img src="https://img.shields.io/badge/docs-latest-brightgreen.svg" alt="Documentation">
+    <img src="https://readthedocs.org/projects/sctrial/badge/?version=latest" alt="Documentation">
   </a>
 </p>
 
@@ -23,7 +26,7 @@
 
 ## Overview
 
-**sctrial** is a Python package for performing rigorous statistical inference on single-cell RNA-seq data from clinical trials and longitudinal studies. Built on top of [AnnData](https://anndata.readthedocs.io/) and [Scanpy](https://scanpy.readthedocs.io/), it provides specialized tools for:
+**sctrial** is a Python package for participant-level differential analysis of longitudinal single-cell RNA-seq data from clinical trials and translational studies. Built on [AnnData](https://anndata.readthedocs.io/) and the [scverse](https://scverse.org/) ecosystem, it provides:
 
 - **Difference-in-Differences (DiD)** analysis with participant fixed effects
 - **Paired within-arm** pre→post contrasts
@@ -130,7 +133,7 @@ Additional tutorial: [Scalability Benchmark](tutorials/stress_test_real_scale.ip
 
 Full documentation: [https://sctrial.readthedocs.io](https://sctrial.readthedocs.io)
 
-- [API Reference](https://sctrial.readthedocs.io/en/latest/api.html)
+- [API Reference](https://sctrial.readthedocs.io/en/latest/api/index.html)
 - [Tutorials](https://sctrial.readthedocs.io/en/latest/tutorials/index.html)
 - [FAQ](https://sctrial.readthedocs.io/en/latest/faq.html)
 
