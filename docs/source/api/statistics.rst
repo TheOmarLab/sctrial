@@ -102,3 +102,9 @@ Summary Utilities
 .. automodule:: sctrial.stats.summary
    :members:
    :show-inheritance:
+
+Monte Carlo Simulation
+----------------------
+.. automodule:: sctrial.stats.simulation
+   :members:
+   :show-inheritance:

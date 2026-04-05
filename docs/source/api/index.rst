@@ -10,4 +10,5 @@ API Reference
    plotting
    datasets
    workflow
+   benchmark
    utilities

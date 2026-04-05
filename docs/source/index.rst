@@ -108,3 +108,4 @@ If you use **sctrial** in your research, please cite:
    troubleshooting
    faq
    performance
+   changelog
