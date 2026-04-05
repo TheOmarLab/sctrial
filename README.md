@@ -17,7 +17,7 @@
   <a href="https://pypi.org/project/sctrial/">
     <img src="https://img.shields.io/pypi/v/sctrial.svg" alt="PyPI">
   </a>
-  <a href="https://sctrial.readthedocs.io">
+  <a href="https://www.omar-lab.com/sctrial/">
     <img src="https://readthedocs.org/projects/sctrial/badge/?version=latest" alt="Documentation">
   </a>
 </p>
@@ -131,11 +131,11 @@ Additional tutorial: [Scalability Benchmark](tutorials/stress_test_real_scale.ip
 
 ## Documentation
 
-Full documentation: [https://sctrial.readthedocs.io](https://sctrial.readthedocs.io)
+Full documentation: [https://www.omar-lab.com/sctrial/](https://www.omar-lab.com/sctrial/)
 
-- [API Reference](https://sctrial.readthedocs.io/en/latest/api/index.html)
-- [Tutorials](https://sctrial.readthedocs.io/en/latest/tutorials/index.html)
-- [FAQ](https://sctrial.readthedocs.io/en/latest/faq.html)
+- [API Reference](https://www.omar-lab.com/sctrial/api/index.html)
+- [Tutorials](https://www.omar-lab.com/sctrial/tutorials/index.html)
+- [FAQ](https://www.omar-lab.com/sctrial/faq.html)
 
 ## Citation
 
