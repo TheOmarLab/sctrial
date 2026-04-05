@@ -4,16 +4,12 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sctrial"
-version = "0.3.1"
+version = "0.3.2"
 description = "Participant-level differential analysis for longitudinal single-cell experiments: DiD, paired comparisons, module scoring, pseudobulk, and power analysis."
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.9"
 license = {  text = "MIT" }
 authors = [
-  { name = "Priyanka Vasanthakumari" },
-  { name = "Itzel Valencia" },
-  { name = "Maryam R. Aghmiouni" },
-  { name = "Bryan Magana" },
   { name = "Mohamed N. Omar", email = "mohamed.omar@cshs.org" },
 ]
 keywords = ["single-cell", "anndata", "clinical-trial", "longitudinal", "difference-in-differences", "pseudobulk", "scRNA-seq"]
