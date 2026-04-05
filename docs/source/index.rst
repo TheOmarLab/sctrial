@@ -25,7 +25,7 @@ as independent observations inflates statistical power and leads to false discov
 methods from causal inference and clinical biostatistics — including difference-in-differences,
 wild cluster bootstrap, and paired contrasts — to deliver reliable, trial-level conclusions.
 
-.. image:: _static/overview_figure.svg
+.. image:: _static/overview_figure.png
    :alt: sctrial overview — from scRNA-seq input through trial-aware analysis to statistical outputs
    :width: 100%
    :align: center
