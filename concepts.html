@@ -386,10 +386,11 @@ cell-level approaches and found that pseudobulk methods offer the best
 balance of calibration and power
 (<a class="reference external" href="https://doi.org/10.1038/s41467-022-35519-4">Nature Communications</a>).</p></li>
 </ul>
-<p><strong>sctrial</strong> addresses this by aggregating cell-level expression to
-participant-level pseudobulk means before applying any statistical test.
-The participant — not the cell — is the unit of inference throughout the
-package.</p>
+<p>By default, <strong>sctrial</strong> aggregates cell-level expression to
+participant-level summaries before inference, typically at the
+participant-visit level.  Supported aggregation functions include mean,
+median, and percent-positive summaries.  The participant — not the
+cell — is the recommended unit of inference throughout the package.</p>
 </section>
 <section id="supported-study-designs">
 <h2>Supported study designs<a class="headerlink" href="#supported-study-designs" title="Link to this heading">#</a></h2>
@@ -397,9 +398,14 @@ package.</p>
 estimand:</p>
 <dl class="simple">
 <dt><strong>Two-arm longitudinal (Difference-in-Differences)</strong></dt><dd><p>Participants in two arms (e.g. treatment vs control, responder vs
-non-responder) are measured at two or more time points.  The estimand
-is the <em>interaction</em> between arm and time — i.e. the differential
-change.</p>
+non-responder) are measured at two or more time points.  For the
+canonical two-visit setting, sctrial estimates a standard pre/post DiD
+parameter.  For studies with more than two visits, sctrial additionally
+provides event-study
+(<a class="reference internal" href="api/statistics.html#sctrial.stats.timeseries.event_study_did" title="sctrial.stats.timeseries.event_study_did"><code class="xref py py-func docutils literal notranslate"><span class="pre">event_study_did()</span></code></a>) and
+trend-interaction
+(<a class="reference internal" href="api/statistics.html#sctrial.stats.timeseries.trend_interaction" title="sctrial.stats.timeseries.trend_interaction"><code class="xref py py-func docutils literal notranslate"><span class="pre">trend_interaction()</span></code></a>) analyses to
+characterize time-varying differential effects.</p>
 </dd>
 <dt><strong>Single-arm paired</strong></dt><dd><p>All participants receive the same intervention and are measured pre
 and post.  The estimand is the <em>average within-participant change</em>.</p>
@@ -414,7 +420,7 @@ the correct estimand is applied automatically.</p>
 </section>
 <section id="difference-in-differences-estimation">
 <h2>Difference-in-Differences estimation<a class="headerlink" href="#difference-in-differences-estimation" title="Link to this heading">#</a></h2>
-<p>For the two-arm longitudinal case, sctrial estimates a
+<p>For the two-arm, two-visit longitudinal case, sctrial estimates a
 Difference-in-Differences (DiD) parameter.  For participant <em>i</em> in
 arm <em>a</em> at time <em>t</em>, the model is:</p>
 <div class="math notranslate nohighlight">
@@ -444,9 +450,11 @@ Princeton University Press, 2009, ISBN 978-0-691-12035-5).</p>
 <p>The key assumption for a causal interpretation of <span class="math notranslate nohighlight">\(\beta_{\text{DiD}}\)</span>
 is <strong>parallel trends</strong>: in the absence of treatment, both arms would have
 followed the same trajectory.  With only two time points, this assumption
-cannot be tested directly.  When three or more pre-treatment observations
-are available, sctrial provides <a class="reference internal" href="api/statistics.html#sctrial.stats.timeseries.test_parallel_trends" title="sctrial.stats.timeseries.test_parallel_trends"><code class="xref py py-func docutils literal notranslate"><span class="pre">test_parallel_trends()</span></code></a>
-to assess whether pre-treatment trends diverge.</p>
+cannot be tested directly.  When at least two pre-treatment visits are
+available, sctrial provides
+<a class="reference internal" href="api/statistics.html#sctrial.stats.timeseries.test_parallel_trends" title="sctrial.stats.timeseries.test_parallel_trends"><code class="xref py py-func docutils literal notranslate"><span class="pre">test_parallel_trends()</span></code></a> to assess
+evidence of differential pre-treatment trends; interpretation is more
+informative when multiple pre-treatment intervals are observed.</p>
 <p>For a formal treatment of parallel-trends testing and sensitivity
 analysis, see Rambachan &amp; Roth (2023),
 <a class="reference external" href="https://doi.org/10.1093/restud/rdad018">Review of Economic Studies</a>.</p>
@@ -465,18 +473,20 @@ but can be anti-conservative when the number of clusters is small
 <p>sctrial provides two approaches for finite-sample inference:</p>
 <dl class="simple">
 <dt><strong>Wild cluster bootstrap</strong> (<code class="docutils literal notranslate"><span class="pre">use_bootstrap=True</span></code>)</dt><dd><p>Resamples Rademacher weights at the participant level to construct
-a bootstrap-<em>t</em> distribution.  Recommended for fewer than 15
-participants per arm.  Based on the procedure described in
-Cameron, Gelbach &amp; Miller (2008),
+a bootstrap-<em>t</em> distribution.  Recommended as a small-sample
+safeguard, especially when the number of participants per arm is
+modest (e.g. fewer than ~15 per arm).  Based on the procedure
+described in Cameron, Gelbach &amp; Miller (2008),
 <a class="reference external" href="https://doi.org/10.1162/rest.90.3.414">Review of Economics and Statistics</a>.</p>
 </dd>
-<dt><strong>Permutation testing</strong> (<code class="docutils literal notranslate"><span class="pre">permutation_pvalue</span></code> utility)</dt><dd><p>Randomly reassigns treatment labels across participants and recomputes
-the test statistic under the null.  Distribution-free but
-computationally more expensive.</p>
+<dt><strong>Permutation testing</strong></dt><dd><p>sctrial also supports permutation-based inference on participant-level
+summaries, which randomly reassigns treatment labels across
+participants and recomputes the test statistic under the null.
+Distribution-free but computationally more expensive.</p>
 </dd>
 </dl>
-<p>For well-powered studies (≥ 15 participants per arm), the default
-cluster-robust standard errors are generally adequate.</p>
+<p>For larger and better-balanced studies, cluster-robust standard errors
+are often adequate, though diagnostics remain important.</p>
 </section>
 <section id="within-arm-and-cross-sectional-comparisons">
 <h2>Within-arm and cross-sectional comparisons<a class="headerlink" href="#within-arm-and-cross-sectional-comparisons" title="Link to this heading">#</a></h2>
@@ -541,8 +551,9 @@ tools:</p>
 <ul class="simple">
 <li><p><strong>muscat</strong> (Crowell et al., 2020,
 <a class="reference external" href="https://doi.org/10.1038/s41467-020-19894-4">Nature Communications</a>)
-provides pseudobulk DE via edgeR/limma for multi-sample multi-condition
-designs, primarily targeting cross-sectional contrasts.</p></li>
+provides flexible differential-state analysis for multi-sample,
+multi-condition scRNA-seq data using pseudobulk and mixed-model
+approaches.</p></li>
 <li><p><strong>dreamlet</strong> (Hoffman et al., 2023,
 <a class="reference external" href="https://doi.org/10.1101/2023.03.17.533005">bioRxiv</a>)
 fits precision-weighted linear mixed models on voom-transformed
@@ -551,14 +562,14 @@ pseudobulk counts with empirical Bayes variance moderation.</p></li>
 <a class="reference external" href="https://doi.org/10.1038/s42003-021-02146-6">Communications Biology</a>)
 fits negative binomial mixed models directly on cell-level counts.</p></li>
 </ul>
-<p>sctrial differs from these tools in three respects: (1) it explicitly
-targets longitudinal estimands (DiD, paired change scores) rather than
-cross-sectional group contrasts; (2) it estimates effects gene-by-gene
-without cross-gene variance borrowing, avoiding the empirical Bayes
-assumptions that can inflate false positives when the fraction of
-differentially expressed genes is high; and (3) it provides a unified
-interface across two-arm, single-arm, and cross-sectional designs within
-a single package.</p>
+<p>sctrial differs from these tools in that it centers participant-level
+longitudinal estimands (DiD, paired change scores) and associated
+diagnostics as the primary analysis target.  It estimates effects
+gene-by-gene without cross-gene variance borrowing; in our benchmark
+settings, this improved calibration in mixed-signal panels with a high
+fraction of affected genes.  It also provides a unified interface across
+two-arm, single-arm, and cross-sectional designs within a single
+package.</p>
 </section>
 </section>
 

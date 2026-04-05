@@ -28,10 +28,11 @@ effect:
   balance of calibration and power
   (`Nature Communications <https://doi.org/10.1038/s41467-022-35519-4>`__).
 
-**sctrial** addresses this by aggregating cell-level expression to
-participant-level pseudobulk means before applying any statistical test.
-The participant — not the cell — is the unit of inference throughout the
-package.
+By default, **sctrial** aggregates cell-level expression to
+participant-level summaries before inference, typically at the
+participant-visit level.  Supported aggregation functions include mean,
+median, and percent-positive summaries.  The participant — not the
+cell — is the recommended unit of inference throughout the package.
 
 Supported study designs
 -----------------------
@@ -41,9 +42,14 @@ estimand:
 
 **Two-arm longitudinal (Difference-in-Differences)**
   Participants in two arms (e.g. treatment vs control, responder vs
-  non-responder) are measured at two or more time points.  The estimand
-  is the *interaction* between arm and time — i.e. the differential
-  change.
+  non-responder) are measured at two or more time points.  For the
+  canonical two-visit setting, sctrial estimates a standard pre/post DiD
+  parameter.  For studies with more than two visits, sctrial additionally
+  provides event-study
+  (:func:`~sctrial.stats.timeseries.event_study_did`) and
+  trend-interaction
+  (:func:`~sctrial.stats.timeseries.trend_interaction`) analyses to
+  characterize time-varying differential effects.
 
 **Single-arm paired**
   All participants receive the same intervention and are measured pre
@@ -60,7 +66,7 @@ the correct estimand is applied automatically.
 Difference-in-Differences estimation
 -------------------------------------
 
-For the two-arm longitudinal case, sctrial estimates a
+For the two-arm, two-visit longitudinal case, sctrial estimates a
 Difference-in-Differences (DiD) parameter.  For participant *i* in
 arm *a* at time *t*, the model is:
 
@@ -98,9 +104,11 @@ The identifying assumption
 The key assumption for a causal interpretation of :math:`\beta_{\text{DiD}}`
 is **parallel trends**: in the absence of treatment, both arms would have
 followed the same trajectory.  With only two time points, this assumption
-cannot be tested directly.  When three or more pre-treatment observations
-are available, sctrial provides :func:`~sctrial.stats.timeseries.test_parallel_trends`
-to assess whether pre-treatment trends diverge.
+cannot be tested directly.  When at least two pre-treatment visits are
+available, sctrial provides
+:func:`~sctrial.stats.timeseries.test_parallel_trends` to assess
+evidence of differential pre-treatment trends; interpretation is more
+informative when multiple pre-treatment intervals are observed.
 
 For a formal treatment of parallel-trends testing and sensitivity
 analysis, see Rambachan & Roth (2023),
@@ -123,18 +131,20 @@ sctrial provides two approaches for finite-sample inference:
 
 **Wild cluster bootstrap** (``use_bootstrap=True``)
   Resamples Rademacher weights at the participant level to construct
-  a bootstrap-*t* distribution.  Recommended for fewer than 15
-  participants per arm.  Based on the procedure described in
-  Cameron, Gelbach & Miller (2008),
+  a bootstrap-*t* distribution.  Recommended as a small-sample
+  safeguard, especially when the number of participants per arm is
+  modest (e.g. fewer than ~15 per arm).  Based on the procedure
+  described in Cameron, Gelbach & Miller (2008),
   `Review of Economics and Statistics <https://doi.org/10.1162/rest.90.3.414>`__.
 
-**Permutation testing** (``permutation_pvalue`` utility)
-  Randomly reassigns treatment labels across participants and recomputes
-  the test statistic under the null.  Distribution-free but
-  computationally more expensive.
+**Permutation testing**
+  sctrial also supports permutation-based inference on participant-level
+  summaries, which randomly reassigns treatment labels across
+  participants and recomputes the test statistic under the null.
+  Distribution-free but computationally more expensive.
 
-For well-powered studies (≥ 15 participants per arm), the default
-cluster-robust standard errors are generally adequate.
+For larger and better-balanced studies, cluster-robust standard errors
+are often adequate, though diagnostics remain important.
 
 Within-arm and cross-sectional comparisons
 ------------------------------------------
@@ -209,8 +219,9 @@ tools:
 
 - **muscat** (Crowell et al., 2020,
   `Nature Communications <https://doi.org/10.1038/s41467-020-19894-4>`__)
-  provides pseudobulk DE via edgeR/limma for multi-sample multi-condition
-  designs, primarily targeting cross-sectional contrasts.
+  provides flexible differential-state analysis for multi-sample,
+  multi-condition scRNA-seq data using pseudobulk and mixed-model
+  approaches.
 
 - **dreamlet** (Hoffman et al., 2023,
   `bioRxiv <https://doi.org/10.1101/2023.03.17.533005>`__)
@@ -221,11 +232,11 @@ tools:
   `Communications Biology <https://doi.org/10.1038/s42003-021-02146-6>`__)
   fits negative binomial mixed models directly on cell-level counts.
 
-sctrial differs from these tools in three respects: (1) it explicitly
-targets longitudinal estimands (DiD, paired change scores) rather than
-cross-sectional group contrasts; (2) it estimates effects gene-by-gene
-without cross-gene variance borrowing, avoiding the empirical Bayes
-assumptions that can inflate false positives when the fraction of
-differentially expressed genes is high; and (3) it provides a unified
-interface across two-arm, single-arm, and cross-sectional designs within
-a single package.
+sctrial differs from these tools in that it centers participant-level
+longitudinal estimands (DiD, paired change scores) and associated
+diagnostics as the primary analysis target.  It estimates effects
+gene-by-gene without cross-gene variance borrowing; in our benchmark
+settings, this improved calibration in mixed-signal panels with a high
+fraction of affected genes.  It also provides a unified interface across
+two-arm, single-arm, and cross-sectional designs within a single
+package.
