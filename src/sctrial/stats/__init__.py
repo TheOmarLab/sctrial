@@ -54,7 +54,14 @@ from .effect_size import (
     effect_size_ci,
     hedges_g,
 )
-from .gsea import run_gsea_did, run_gsea_did_by_celltype, run_gsea_did_multi, run_gsea_pseudobulk
+from .gsea import (
+    run_gsea_cross_sectional,
+    run_gsea_did,
+    run_gsea_did_by_celltype,
+    run_gsea_did_multi,
+    run_gsea_pseudobulk,
+    run_gsea_within_arm,
+)
 from .heterogeneity import test_treatment_heterogeneity
 from .mixed_effects import compare_fixed_vs_mixed, did_mixed, did_table_mixed
 from .module_scores import (
@@ -97,6 +104,8 @@ __all__ = [
     "run_gsea_did_multi",
     "run_gsea_did_by_celltype",
     "run_gsea_pseudobulk",
+    "run_gsea_cross_sectional",
+    "run_gsea_within_arm",
     "within_arm_comparison",
     "between_arm_comparison",
     "get_did_aggregated_df",

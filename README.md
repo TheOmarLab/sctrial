@@ -1,7 +1,7 @@
 <p align="center">
   <img src="docs/source/_static/logo.svg" alt="sctrial" width="280">
 </p>
-<p align="center"><strong>Trial-Aware Statistical Inference for Single-Cell Data</strong></p>
+<p align="center"><strong>Participant-Level Differential Analysis for Longitudinal Single-Cell Experiments</strong></p>
 
 <p align="center">
   <a href="https://github.com/TheOmarLab/sctrial/actions/workflows/test.yml">
@@ -138,12 +138,14 @@ Full documentation: [https://TheOmarLab.github.io/sctrial/](https://TheOmarLab.g
 
 If you use **sctrial** in your research, please cite:
 
+> Vasanthakumari P, Valencia I, Aghmiouni MR, Magana B, Omar MN. **sctrial: Participant-Level Differential Analysis for Longitudinal Single-Cell Experiments.** *bioRxiv* (2026).
+
 ```bibtex
-@software{omar2024sctrial,
-  author = {Omar, Mohamed},
-  title = {sctrial: Trial-Aware Statistical Inference for Single-Cell Data},
+@article{vasanthakumari2026sctrial,
+  title = {sctrial: Participant-Level Differential Analysis for Longitudinal Single-Cell Experiments},
+  author = {Vasanthakumari, Priyanka and Valencia, Itzel and Aghmiouni, Maryam R. and Magana, Bryan and Omar, Mohamed N.},
+  journal = {bioRxiv},
   year = {2026},
-  publisher = {GitHub},
   url = {https://github.com/TheOmarLab/sctrial}
 }
 ```

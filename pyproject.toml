@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "sctrial"
 version = "0.3.0"
-description = "Trial-aware inference utilities for single-cell AnnData: DiD, crossover, module scoring, pseudobulk, and abundance."
+description = "Participant-level differential analysis for longitudinal single-cell experiments: DiD, paired comparisons, module scoring, pseudobulk, and power analysis."
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.9"
 license = {  text = "MIT" }
@@ -37,7 +37,7 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/TheOmarLab/sctrial"
-Documentation = "https://sctrial.readthedocs.io"
+Documentation = "https://TheOmarLab.github.io/sctrial/"
 Repository = "https://github.com/TheOmarLab/sctrial"
 Issues = "https://github.com/TheOmarLab/sctrial/issues"
 

@@ -69,10 +69,17 @@ Citing sctrial
 
 If you use **sctrial** in your research, please cite:
 
+  Vasanthakumari P, Valencia I, Aghmiouni MR, Magana B, Omar MN.
+  **sctrial: Participant-Level Differential Analysis for Longitudinal Single-Cell Experiments.**
+  *bioRxiv* (2026).
+
 .. code-block:: bibtex
 
-   @software{sctrial,
-     title = {sctrial: Trial-Aware Statistical Inference for Single-Cell Data},
+   @article{vasanthakumari2026sctrial,
+     title = {sctrial: Participant-Level Differential Analysis for Longitudinal Single-Cell Experiments},
+     author = {Vasanthakumari, Priyanka and Valencia, Itzel and Aghmiouni, Maryam R. and Magana, Bryan and Omar, Mohamed N.},
+     journal = {bioRxiv},
+     year = {2026},
      url = {https://github.com/TheOmarLab/sctrial}
    }
 
