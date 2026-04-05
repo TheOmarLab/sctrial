@@ -1,5 +1,5 @@
-sctrial — Trial-Aware Statistical Inference for Single-Cell Data
-================================================================
+sctrial — Participant-Level Differential Analysis for Longitudinal Single-Cell Experiments
+=========================================================================================
 
 .. image:: https://github.com/TheOmarLab/sctrial/actions/workflows/test.yml/badge.svg?branch=main
    :target: https://github.com/TheOmarLab/sctrial/actions/workflows/test.yml
@@ -12,18 +12,12 @@ sctrial — Trial-Aware Statistical Inference for Single-Cell Data
    :target: https://opensource.org/licenses/MIT
    :alt: License
 
-**sctrial** is a Python package for rigorous statistical inference on single-cell RNA-seq
-data from clinical trials and longitudinal studies. Built on
-`AnnData <https://anndata.readthedocs.io>`_, it implements trial-aware analytical
-methods that properly account for participant-level replication — a critical requirement
-for valid inference in single-cell experiments where thousands of cells come from each
-of a limited number of participants.
-
-The package addresses a common pitfall in single-cell analysis: treating individual cells
-as independent observations inflates statistical power and leads to false discoveries.
-**sctrial** solves this by pseudobulking to participant-level replicates and applying
-methods from causal inference and clinical biostatistics — including difference-in-differences,
-wild cluster bootstrap, and paired contrasts — to deliver reliable, trial-level conclusions.
+**sctrial** is a Python package for participant-level differential analysis of longitudinal
+single-cell RNA-seq data. Built on `AnnData <https://anndata.readthedocs.io>`_, it
+aggregates cell-level measurements to participant-level replicates and applies
+design-specific statistical methods — difference-in-differences, paired contrasts, and
+cross-sectional comparisons — so that inference reflects the actual number of independent
+biological units in the study.
 
 .. image:: _static/overview_figure.png
    :alt: sctrial overview — from scRNA-seq input through trial-aware analysis to statistical outputs
@@ -99,11 +93,11 @@ If you use **sctrial** in your research, please cite:
    tutorials/index
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :hidden:
-   :caption: Reference
+   :caption: API Reference
 
-   api
+   api/index
 
 .. toctree::
    :maxdepth: 2
