@@ -77,6 +77,7 @@ from .power import (
     power_paired,
     sample_size_did,
     sample_size_paired,
+    sensitivity_analysis,
     sensitivity_paired,
 )
 from .pseudobulk import (
@@ -133,6 +134,7 @@ __all__ = [
     "power_paired",
     "sample_size_did",
     "sample_size_paired",
+    "sensitivity_analysis",
     "sensitivity_paired",
     "power_curve",
     "design_effect",
