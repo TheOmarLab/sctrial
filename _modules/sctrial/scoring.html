@@ -267,6 +267,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../concepts.html">Concepts and Methods</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
 <ul class="nav bd-sidenav">
@@ -278,9 +279,19 @@
 </ul>
 </details></li>
 </ul>
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../../api.html">API Reference</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../api/index.html">API Reference</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/design.html">Trial Design</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/statistics.html">Statistical Methods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/scoring.html">Scoring and Preprocessing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/plotting.html">Plotting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/datasets.html">Datasets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/workflow.html">Workflow and Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/benchmark.html">Benchmark Simulation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/utilities.html">Utilities and Validation</a></li>
+</ul>
+</details></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
 <ul class="nav bd-sidenav">
@@ -288,6 +299,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../troubleshooting.html">Troubleshooting Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../faq.html">Frequently Asked Questions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../performance.html">Performance Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../changelog.html">Changelog</a></li>
 </ul>
 </div>
 </nav></div>
@@ -344,7 +356,9 @@
                 <article class="bd-article">
                   
   <h1>Source code for sctrial.scoring</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+<span></span><span class="sd">&quot;&quot;&quot;Gene-set scoring: z-mean, Seurat-style, and AUCell methods.&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Literal</span>
@@ -371,7 +385,7 @@
 
 
 <div class="viewcode-block" id="score_gene_sets">
-<a class="viewcode-back" href="../../api.html#sctrial.scoring.score_gene_sets">[docs]</a>
+<a class="viewcode-back" href="../../api/scoring.html#sctrial.scoring.score_gene_sets">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">score_gene_sets</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
     <span class="n">gene_sets</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]],</span>
@@ -562,7 +576,7 @@
 
 
 <div class="viewcode-block" id="score_gene_sets_aucell">
-<a class="viewcode-back" href="../../api.html#sctrial.scoring.score_gene_sets_aucell">[docs]</a>
+<a class="viewcode-back" href="../../api/scoring.html#sctrial.scoring.score_gene_sets_aucell">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">score_gene_sets_aucell</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
     <span class="n">gene_sets</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">|</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">GeneSignature</span><span class="p">],</span>
@@ -659,7 +673,7 @@
 
   <p class="copyright">
     
-      © Copyright 2026, Contributors.
+      © Copyright 2026, Omar Lab, Cedars-Sinai Medical Center.
       <br/>
     
   </p>

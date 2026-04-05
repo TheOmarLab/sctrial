@@ -1,0 +1,678 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Concepts and Methods &#8212; sctrial 0.3.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=44e57e90" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="_static/scripts/fontawesome.js?digest=7f76b32a3354e82990f2"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2" />
+
+    <script src="_static/documentation_options.js?v=f129cdf0"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'concepts';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="icon" href="_static/logo_icon.svg"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Tutorials" href="tutorials/index.html" />
+    <link rel="prev" title="Quickstart" href="quickstart.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  
+    
+    <script src="_static/searchtools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <script src="searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="_static/logo.svg" class="logo__image only-light" alt="sctrial 0.3.0 documentation - Home"/>
+    <img src="_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.3.0 documentation - Home"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Concepts and Methods</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="tutorials/index.html">Tutorials</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/example_covid19_stephenson.html">Immune Profiling of COVID-19 Severity: A Cross-Sectional Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/example_immunotherapy_sade_feldman.html">Immunotherapy Response in Melanoma: Longitudinal Single-Cell Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/example_vaccine_immport.html">Vaccine Response Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/stress_test_real_scale.html">Scalability Analysis</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="api/index.html">API Reference</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/design.html">Trial Design</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/statistics.html">Statistical Methods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/scoring.html">Scoring and Preprocessing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/plotting.html">Plotting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/datasets.html">Datasets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/workflow.html">Workflow and Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/benchmark.html">Benchmark Simulation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/utilities.html">Utilities and Validation</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="best_practices.html">Best Practices Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="faq.html">Frequently Asked Questions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="performance.html">Performance Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      <main id="main-content" class="bd-main" role="main">
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Concepts and Methods</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="concepts-and-methods">
+<h1>Concepts and Methods<a class="headerlink" href="#concepts-and-methods" title="Link to this heading">#</a></h1>
+<p>This page describes the statistical framework underlying <strong>sctrial</strong>.
+For the full derivation and empirical evaluation, see the preprint
+(<a class="reference external" href="https://github.com/TheOmarLab/sctrial">Vasanthakumari et al., 2026</a>).</p>
+<section id="the-pseudoreplication-problem">
+<h2>The pseudoreplication problem<a class="headerlink" href="#the-pseudoreplication-problem" title="Link to this heading">#</a></h2>
+<p>In multi-participant scRNA-seq experiments, each participant contributes
+hundreds to thousands of cells.  Treating these cells as independent
+observations inflates the effective sample size and produces
+anti-conservative p-values.  Multiple studies have demonstrated this
+effect:</p>
+<ul class="simple">
+<li><p>Squair et al. (2021) showed that cell-level differential expression
+tests yield false-discovery rates far above nominal levels when
+participants are ignored
+(<a class="reference external" href="https://doi.org/10.1038/s41467-021-25960-2">Nature Communications</a>).</p></li>
+<li><p>Zimmerman et al. (2021) confirmed that pseudobulk aggregation to the
+sample level restores correct Type I error control
+(<a class="reference external" href="https://doi.org/10.1038/s41467-021-21038-1">Nature Communications</a>).</p></li>
+<li><p>Murphy &amp; Skene (2022) benchmarked pseudobulk against mixed-model and
+cell-level approaches and found that pseudobulk methods offer the best
+balance of calibration and power
+(<a class="reference external" href="https://doi.org/10.1038/s41467-022-35519-4">Nature Communications</a>).</p></li>
+</ul>
+<p><strong>sctrial</strong> addresses this by aggregating cell-level expression to
+participant-level pseudobulk means before applying any statistical test.
+The participant — not the cell — is the unit of inference throughout the
+package.</p>
+</section>
+<section id="supported-study-designs">
+<h2>Supported study designs<a class="headerlink" href="#supported-study-designs" title="Link to this heading">#</a></h2>
+<p>sctrial supports three study architectures, each targeting a different
+estimand:</p>
+<dl class="simple">
+<dt><strong>Two-arm longitudinal (Difference-in-Differences)</strong></dt><dd><p>Participants in two arms (e.g. treatment vs control, responder vs
+non-responder) are measured at two or more time points.  The estimand
+is the <em>interaction</em> between arm and time — i.e. the differential
+change.</p>
+</dd>
+<dt><strong>Single-arm paired</strong></dt><dd><p>All participants receive the same intervention and are measured pre
+and post.  The estimand is the <em>average within-participant change</em>.</p>
+</dd>
+<dt><strong>Cross-sectional</strong></dt><dd><p>Two groups are compared at a single time point.  The estimand is the
+<em>between-group difference</em> in participant-level means at that visit.</p>
+</dd>
+</dl>
+<p>Each design is specified through the <a class="reference internal" href="api/design.html#sctrial.design.TrialDesign" title="sctrial.design.TrialDesign"><code class="xref py py-class docutils literal notranslate"><span class="pre">TrialDesign</span></code></a>
+dataclass, which encodes the participant, visit, and arm columns so that
+the correct estimand is applied automatically.</p>
+</section>
+<section id="difference-in-differences-estimation">
+<h2>Difference-in-Differences estimation<a class="headerlink" href="#difference-in-differences-estimation" title="Link to this heading">#</a></h2>
+<p>For the two-arm longitudinal case, sctrial estimates a
+Difference-in-Differences (DiD) parameter.  For participant <em>i</em> in
+arm <em>a</em> at time <em>t</em>, the model is:</p>
+<div class="math notranslate nohighlight">
+\[Y_{iat} = \alpha_i + \gamma \cdot \text{Post}_t
+          + \beta_{\text{DiD}} \cdot (\text{Treated}_a \times \text{Post}_t)
+          + \varepsilon_{iat}\]</div>
+<p>where:</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(\alpha_i\)</span> is a participant fixed effect that absorbs all
+time-invariant confounders,</p></li>
+<li><p><span class="math notranslate nohighlight">\(\gamma\)</span> captures the common time trend,</p></li>
+<li><p><span class="math notranslate nohighlight">\(\beta_{\text{DiD}}\)</span> is the parameter of interest — the
+<em>additional</em> change in the treated arm relative to control.</p></li>
+</ul>
+<p>With two time periods, estimating this model is algebraically equivalent
+to first-differencing:</p>
+<div class="math notranslate nohighlight">
+\[\Delta Y_i = Y_{i,\text{post}} - Y_{i,\text{pre}}\]</div>
+<p>and then comparing <span class="math notranslate nohighlight">\(\Delta Y\)</span> between arms via a two-sample test.
+This equivalence is standard in econometrics
+(Wooldridge, <em>Introductory Econometrics: A Modern Approach</em>,
+Cengage Learning, 7th ed., 2020;
+Angrist &amp; Pischke, <em>Mostly Harmless Econometrics</em>,
+Princeton University Press, 2009, ISBN 978-0-691-12035-5).</p>
+<section id="the-identifying-assumption">
+<h3>The identifying assumption<a class="headerlink" href="#the-identifying-assumption" title="Link to this heading">#</a></h3>
+<p>The key assumption for a causal interpretation of <span class="math notranslate nohighlight">\(\beta_{\text{DiD}}\)</span>
+is <strong>parallel trends</strong>: in the absence of treatment, both arms would have
+followed the same trajectory.  With only two time points, this assumption
+cannot be tested directly.  When three or more pre-treatment observations
+are available, sctrial provides <a class="reference internal" href="api/statistics.html#sctrial.stats.timeseries.test_parallel_trends" title="sctrial.stats.timeseries.test_parallel_trends"><code class="xref py py-func docutils literal notranslate"><span class="pre">test_parallel_trends()</span></code></a>
+to assess whether pre-treatment trends diverge.</p>
+<p>For a formal treatment of parallel-trends testing and sensitivity
+analysis, see Rambachan &amp; Roth (2023),
+<a class="reference external" href="https://doi.org/10.1093/restud/rdad018">Review of Economic Studies</a>.</p>
+<p>When parallel trends is implausible (e.g. observational severity
+comparisons), sctrial results should be interpreted as descriptive
+associations, not causal effects.</p>
+</section>
+</section>
+<section id="inference-in-small-samples">
+<h2>Inference in small samples<a class="headerlink" href="#inference-in-small-samples" title="Link to this heading">#</a></h2>
+<p>Single-cell clinical studies typically have 5–30 participants.
+Cluster-robust (Huber–White) standard errors are asymptotically valid
+but can be anti-conservative when the number of clusters is small
+(Cameron &amp; Miller, 2015,
+<a class="reference external" href="https://doi.org/10.3368/jhr.50.2.317">Journal of Human Resources</a>).</p>
+<p>sctrial provides two approaches for finite-sample inference:</p>
+<dl class="simple">
+<dt><strong>Wild cluster bootstrap</strong> (<code class="docutils literal notranslate"><span class="pre">use_bootstrap=True</span></code>)</dt><dd><p>Resamples Rademacher weights at the participant level to construct
+a bootstrap-<em>t</em> distribution.  Recommended for fewer than 15
+participants per arm.  Based on the procedure described in
+Cameron, Gelbach &amp; Miller (2008),
+<a class="reference external" href="https://doi.org/10.1162/rest.90.3.414">Review of Economics and Statistics</a>.</p>
+</dd>
+<dt><strong>Permutation testing</strong> (<code class="docutils literal notranslate"><span class="pre">permutation_pvalue</span></code> utility)</dt><dd><p>Randomly reassigns treatment labels across participants and recomputes
+the test statistic under the null.  Distribution-free but
+computationally more expensive.</p>
+</dd>
+</dl>
+<p>For well-powered studies (≥ 15 participants per arm), the default
+cluster-robust standard errors are generally adequate.</p>
+</section>
+<section id="within-arm-and-cross-sectional-comparisons">
+<h2>Within-arm and cross-sectional comparisons<a class="headerlink" href="#within-arm-and-cross-sectional-comparisons" title="Link to this heading">#</a></h2>
+<p>For single-arm paired designs,
+<a class="reference internal" href="api/statistics.html#sctrial.stats.comparisons.within_arm_comparison" title="sctrial.stats.comparisons.within_arm_comparison"><code class="xref py py-func docutils literal notranslate"><span class="pre">within_arm_comparison()</span></code></a> fits an OLS
+model with participant fixed effects on pseudobulk means, regressing the
+outcome on a visit indicator (<code class="docutils literal notranslate"><span class="pre">outcome</span> <span class="pre">~</span> <span class="pre">visit_num</span> <span class="pre">+</span> <span class="pre">C(participant)</span></code>).
+The coefficient on the visit term estimates the average
+within-participant change, and inference uses cluster-robust standard
+errors (or bootstrap when specified).</p>
+<p>For cross-sectional between-arm comparisons at a fixed visit,
+<a class="reference internal" href="api/statistics.html#sctrial.stats.comparisons.between_arm_comparison" title="sctrial.stats.comparisons.between_arm_comparison"><code class="xref py py-func docutils literal notranslate"><span class="pre">between_arm_comparison()</span></code></a> aggregates to
+participant-level means and applies either OLS or a Mann–Whitney <em>U</em>
+test between groups.</p>
+<p>In both cases, inference operates on participant-level summaries, not
+individual cells.</p>
+</section>
+<section id="effect-sizes">
+<h2>Effect sizes<a class="headerlink" href="#effect-sizes" title="Link to this heading">#</a></h2>
+<p>sctrial reports standardized effect sizes alongside p-values:</p>
+<ul class="simple">
+<li><p><strong>Cohen’s d</strong> and <strong>Hedges’ g</strong> (bias-corrected for small <em>n</em>) for
+between-group contrasts.</p></li>
+<li><p><strong>Bootstrap confidence intervals</strong> for effect sizes when analytical
+intervals rely on normality assumptions that may not hold in small
+samples.</p></li>
+</ul>
+<p>Effect sizes are computed from participant-level aggregates via
+<a class="reference internal" href="api/statistics.html#sctrial.stats.effect_size.cohens_d" title="sctrial.stats.effect_size.cohens_d"><code class="xref py py-func docutils literal notranslate"><span class="pre">cohens_d()</span></code></a> and
+<a class="reference internal" href="api/statistics.html#sctrial.stats.effect_size.hedges_g" title="sctrial.stats.effect_size.hedges_g"><code class="xref py py-func docutils literal notranslate"><span class="pre">hedges_g()</span></code></a>.</p>
+</section>
+<section id="power-analysis">
+<h2>Power analysis<a class="headerlink" href="#power-analysis" title="Link to this heading">#</a></h2>
+<p>sctrial includes prospective power calculations for both study designs:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="api/statistics.html#sctrial.stats.power.power_did" title="sctrial.stats.power.power_did"><code class="xref py py-func docutils literal notranslate"><span class="pre">power_did()</span></code></a> /
+<a class="reference internal" href="api/statistics.html#sctrial.stats.power.sample_size_did" title="sctrial.stats.power.sample_size_did"><code class="xref py py-func docutils literal notranslate"><span class="pre">sample_size_did()</span></code></a> for two-arm DiD.</p></li>
+<li><p><a class="reference internal" href="api/statistics.html#sctrial.stats.power.power_paired" title="sctrial.stats.power.power_paired"><code class="xref py py-func docutils literal notranslate"><span class="pre">power_paired()</span></code></a> /
+<a class="reference internal" href="api/statistics.html#sctrial.stats.power.sample_size_paired" title="sctrial.stats.power.sample_size_paired"><code class="xref py py-func docutils literal notranslate"><span class="pre">sample_size_paired()</span></code></a> for single-arm
+paired designs.</p></li>
+</ul>
+<p>These use a two-sample <em>t</em>-test power formula (two-arm) or a
+one-sample <em>t</em>-test formula (single-arm) as the basis, since the
+DiD estimator under balanced allocation reduces to a comparison of
+participant-level change scores.</p>
+</section>
+<section id="gene-set-enrichment-analysis">
+<h2>Gene set enrichment analysis<a class="headerlink" href="#gene-set-enrichment-analysis" title="Link to this heading">#</a></h2>
+<p>For pathway-level analysis, sctrial ranks genes by a signed
+confidence metric:</p>
+<div class="math notranslate nohighlight">
+\[r_g = \text{sign}(\hat{\beta}_g) \cdot (-\log_{10}(p_g))\]</div>
+<p>and passes this ranking to pre-ranked GSEA via
+<a class="reference external" href="https://gseapy.readthedocs.io">gseapy</a>.  This preserves both
+direction and statistical strength in the ranking without requiring
+an arbitrary fold-change cutoff.</p>
+</section>
+<section id="relationship-to-other-tools">
+<h2>Relationship to other tools<a class="headerlink" href="#relationship-to-other-tools" title="Link to this heading">#</a></h2>
+<p>sctrial is complementary to existing pseudobulk differential expression
+tools:</p>
+<ul class="simple">
+<li><p><strong>muscat</strong> (Crowell et al., 2020,
+<a class="reference external" href="https://doi.org/10.1038/s41467-020-19894-4">Nature Communications</a>)
+provides pseudobulk DE via edgeR/limma for multi-sample multi-condition
+designs, primarily targeting cross-sectional contrasts.</p></li>
+<li><p><strong>dreamlet</strong> (Hoffman et al., 2023,
+<a class="reference external" href="https://doi.org/10.1101/2023.03.17.533005">bioRxiv</a>)
+fits precision-weighted linear mixed models on voom-transformed
+pseudobulk counts with empirical Bayes variance moderation.</p></li>
+<li><p><strong>NEBULA</strong> (He et al., 2021,
+<a class="reference external" href="https://doi.org/10.1038/s42003-021-02146-6">Communications Biology</a>)
+fits negative binomial mixed models directly on cell-level counts.</p></li>
+</ul>
+<p>sctrial differs from these tools in three respects: (1) it explicitly
+targets longitudinal estimands (DiD, paired change scores) rather than
+cross-sectional group contrasts; (2) it estimates effects gene-by-gene
+without cross-gene variance borrowing, avoiding the empirical Bayes
+assumptions that can inflate false positives when the fraction of
+differentially expressed genes is high; and (3) it provides a unified
+interface across two-arm, single-arm, and cross-sectional designs within
+a single package.</p>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="quickstart.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Quickstart</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="tutorials/index.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Tutorials</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-pseudoreplication-problem">The pseudoreplication problem</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#supported-study-designs">Supported study designs</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#difference-in-differences-estimation">Difference-in-Differences estimation</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#the-identifying-assumption">The identifying assumption</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#inference-in-small-samples">Inference in small samples</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#within-arm-and-cross-sectional-comparisons">Within-arm and cross-sectional comparisons</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#effect-sizes">Effect sizes</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#power-analysis">Power analysis</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#gene-set-enrichment-analysis">Gene set enrichment analysis</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#relationship-to-other-tools">Relationship to other tools</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+
+  
+  <div class="tocsection editthispage">
+    <a href="https://github.com/TheOmarLab/sctrial/edit/main/docs/source/concepts.rst">
+      <i class="fa-solid fa-pencil"></i>
+      
+      
+        
+          Edit on GitHub
+        
+      
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2026, Omar Lab, Cedars-Sinai Medical Center.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+</div>
+
+  </footer>
+  </body>
+</html>

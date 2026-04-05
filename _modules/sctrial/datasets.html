@@ -267,6 +267,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../concepts.html">Concepts and Methods</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
 <ul class="nav bd-sidenav">
@@ -278,9 +279,19 @@
 </ul>
 </details></li>
 </ul>
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../../api.html">API Reference</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../api/index.html">API Reference</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/design.html">Trial Design</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/statistics.html">Statistical Methods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/scoring.html">Scoring and Preprocessing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/plotting.html">Plotting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/datasets.html">Datasets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/workflow.html">Workflow and Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/benchmark.html">Benchmark Simulation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/utilities.html">Utilities and Validation</a></li>
+</ul>
+</details></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
 <ul class="nav bd-sidenav">
@@ -288,6 +299,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../troubleshooting.html">Troubleshooting Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../faq.html">Frequently Asked Questions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../performance.html">Performance Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../changelog.html">Changelog</a></li>
 </ul>
 </div>
 </nav></div>
@@ -344,7 +356,9 @@
                 <article class="bd-article">
                   
   <h1>Source code for sctrial.datasets</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+<span></span><span class="sd">&quot;&quot;&quot;Built-in dataset loaders for clinical trial scRNA-seq cohorts.&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">gc</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">gzip</span>
@@ -793,7 +807,7 @@
 
 
 <div class="viewcode-block" id="load_sade_feldman">
-<a class="viewcode-back" href="../../api.html#sctrial.datasets.load_sade_feldman">[docs]</a>
+<a class="viewcode-back" href="../../api/datasets.html#sctrial.datasets.load_sade_feldman">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">load_sade_feldman</span><span class="p">(</span>
     <span class="n">data_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">processed_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;sade_feldman_processed_v6.h5ad&quot;</span><span class="p">,</span>
@@ -1008,7 +1022,7 @@
 
 
 <div class="viewcode-block" id="load_stephenson_data">
-<a class="viewcode-back" href="../../api.html#sctrial.datasets.load_stephenson_data">[docs]</a>
+<a class="viewcode-back" href="../../api/datasets.html#sctrial.datasets.load_stephenson_data">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">load_stephenson_data</span><span class="p">(</span>
     <span class="n">data_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">processed_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;stephenson_covid19_v3.h5ad&quot;</span><span class="p">,</span>
@@ -1140,7 +1154,7 @@
 
 
 <div class="viewcode-block" id="load_vaccine_gse171964">
-<a class="viewcode-back" href="../../api.html#sctrial.datasets.load_vaccine_gse171964">[docs]</a>
+<a class="viewcode-back" href="../../api/datasets.html#sctrial.datasets.load_vaccine_gse171964">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">load_vaccine_gse171964</span><span class="p">(</span>
     <span class="n">data_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">processed_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;vaccine_gse171964.h5ad&quot;</span><span class="p">,</span>
@@ -1315,7 +1329,7 @@
 
 
 <div class="viewcode-block" id="count_paired">
-<a class="viewcode-back" href="../../api.html#sctrial.datasets.count_paired">[docs]</a>
+<a class="viewcode-back" href="../../api/datasets.html#sctrial.datasets.count_paired">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">count_paired</span><span class="p">(</span>
     <span class="n">obs</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">visit_col</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
@@ -1358,7 +1372,7 @@
 
 
 <div class="viewcode-block" id="verify_paired_participants">
-<a class="viewcode-back" href="../../api.html#sctrial.datasets.verify_paired_participants">[docs]</a>
+<a class="viewcode-back" href="../../api/datasets.html#sctrial.datasets.verify_paired_participants">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">verify_paired_participants</span><span class="p">(</span>
     <span class="n">obs</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">visit_col</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
@@ -1429,7 +1443,7 @@
 
 
 <div class="viewcode-block" id="categorize_celltype">
-<a class="viewcode-back" href="../../api.html#sctrial.datasets.categorize_celltype">[docs]</a>
+<a class="viewcode-back" href="../../api/datasets.html#sctrial.datasets.categorize_celltype">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">categorize_celltype</span><span class="p">(</span><span class="n">ct</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Map fine-grained cell types to coarse lineages (COVID-19 example).</span>
 
@@ -1642,7 +1656,7 @@
 
 
 <div class="viewcode-block" id="load_aml">
-<a class="viewcode-back" href="../../api.html#sctrial.datasets.load_aml">[docs]</a>
+<a class="viewcode-back" href="../../api/datasets.html#sctrial.datasets.load_aml">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">load_aml</span><span class="p">(</span>
     <span class="n">data_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">processed_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;gse116256_aml_processed.h5ad&quot;</span><span class="p">,</span>
@@ -1951,7 +1965,7 @@
 
 
 <div class="viewcode-block" id="load_cart">
-<a class="viewcode-back" href="../../api.html#sctrial.datasets.load_cart">[docs]</a>
+<a class="viewcode-back" href="../../api/datasets.html#sctrial.datasets.load_cart">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">load_cart</span><span class="p">(</span>
     <span class="n">data_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">processed_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;gse290722_cart_processed.h5ad&quot;</span><span class="p">,</span>
@@ -2080,7 +2094,7 @@
 
 
 <div class="viewcode-block" id="harmonize_response">
-<a class="viewcode-back" href="../../api.html#sctrial.datasets.harmonize_response">[docs]</a>
+<a class="viewcode-back" href="../../api/datasets.html#sctrial.datasets.harmonize_response">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">harmonize_response</span><span class="p">(</span><span class="n">adata</span><span class="p">:</span> <span class="n">ad</span><span class="o">.</span><span class="n">AnnData</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">force</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ad</span><span class="o">.</span><span class="n">AnnData</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a ``response_harmonized`` column with consistent labels.</span>
 
@@ -2141,7 +2155,7 @@
 
 
 <div class="viewcode-block" id="ensure_fdr">
-<a class="viewcode-back" href="../../api.html#sctrial.datasets.ensure_fdr">[docs]</a>
+<a class="viewcode-back" href="../../api/datasets.html#sctrial.datasets.ensure_fdr">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">ensure_fdr</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">p_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;p_time&quot;</span><span class="p">,</span> <span class="n">fdr_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;FDR_time&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Add Benjamini-Hochberg FDR column for a p-value column.</span>
 
@@ -2207,7 +2221,7 @@
 
   <p class="copyright">
     
-      © Copyright 2026, Contributors.
+      © Copyright 2026, Omar Lab, Cedars-Sinai Medical Center.
       <br/>
     
   </p>

@@ -1,0 +1,973 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>sctrial.benchmark.simulator &#8212; sctrial 0.3.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=44e57e90" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../../../_static/scripts/fontawesome.js?digest=7f76b32a3354e82990f2"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2" />
+
+    <script src="../../../_static/documentation_options.js?v=f129cdf0"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/sctrial/benchmark/simulator';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="icon" href="../../../_static/logo_icon.svg"/>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  
+    
+    <script src="../../../_static/searchtools.js"></script>
+    <script src="../../../_static/language_data.js"></script>
+    <script src="../../../searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/logo.svg" class="logo__image only-light" alt="sctrial 0.3.0 documentation - Home"/>
+    <img src="../../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.3.0 documentation - Home"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../concepts.html">Concepts and Methods</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_covid19_stephenson.html">Immune Profiling of COVID-19 Severity: A Cross-Sectional Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_immunotherapy_sade_feldman.html">Immunotherapy Response in Melanoma: Longitudinal Single-Cell Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_vaccine_immport.html">Vaccine Response Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/stress_test_real_scale.html">Scalability Analysis</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../api/index.html">API Reference</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/design.html">Trial Design</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/statistics.html">Statistical Methods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/scoring.html">Scoring and Preprocessing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/plotting.html">Plotting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/datasets.html">Datasets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/workflow.html">Workflow and Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/benchmark.html">Benchmark Simulation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/utilities.html">Utilities and Validation</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../best_practices.html">Best Practices Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../troubleshooting.html">Troubleshooting Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../faq.html">Frequently Asked Questions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../performance.html">Performance Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog.html">Changelog</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      <main id="main-content" class="bd-main" role="main">
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">sctrial.benchmark.simulator</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for sctrial.benchmark.simulator</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Hierarchical gamma-Poisson simulator for scRNA-seq clinical trial data.</span>
+
+<span class="sd">Generates realistic cell-level count data for benchmarking, inspired by</span>
+<span class="sd">rescueSim&#39;s generative framework (Crowell et al., 2020) but implemented</span>
+<span class="sd">natively in Python for computational efficiency.</span>
+
+<span class="sd">The simulator produces data within a single cell type — matching how</span>
+<span class="sd">edgeR, dreamlet, NEBULA, and sctrial are actually applied in practice.</span>
+
+<span class="sd">Design families</span>
+<span class="sd">---------------</span>
+<span class="sd">- **Two-arm longitudinal**: Treated/Control × Pre/Post, β₂ = interaction</span>
+<span class="sd">- **Single-arm paired**: All participants same arm, Pre/Post, β₁ = time</span>
+
+<span class="sd">Generative model (per gene g, participant i, visit j, cell k)::</span>
+
+<span class="sd">    Library size:         L_ijk ~ LogNormal(log(target_lib), σ_lib)</span>
+<span class="sd">    Participant RE:       α_ig  ~ N(0, σ²_participant)</span>
+<span class="sd">    Log-mean:             log(μ_igk) = β₀g + α_ig + β₁·Post_j</span>
+<span class="sd">                                       + β₂·(Treat_i × Post_j) + log(L_ijk)</span>
+<span class="sd">    Overdispersion:       Y_igk ~ NegBin(μ_igk, θ_g)</span>
+<span class="sd">    Cell counts:          n_cells_ij ~ Poisson(λ) or LogNormal (imbalanced)</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Literal</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">anndata</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ad</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">sparse</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="SimulationConfig">
+<a class="viewcode-back" href="../../../api/benchmark.html#sctrial.benchmark.SimulationConfig">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">SimulationConfig</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Configuration for a single simulation run.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    design : {&quot;two_arm&quot;, &quot;single_arm&quot;}</span>
+<span class="sd">        Trial design family.</span>
+<span class="sd">    n_per_arm : int</span>
+<span class="sd">        Participants per arm. For two-arm designs with equal allocation,</span>
+<span class="sd">        total participants = 2 × n_per_arm. For single-arm, this IS the</span>
+<span class="sd">        total participant count.</span>
+<span class="sd">    n_genes : int</span>
+<span class="sd">        Total genes to simulate.</span>
+<span class="sd">    effects : dict[str, float]</span>
+<span class="sd">        Gene-name → true effect size. Genes not listed have β₂=0 (null).</span>
+<span class="sd">    mean_cells_per_visit : int</span>
+<span class="sd">        Average cells per participant-visit.</span>
+<span class="sd">    cell_count_mode : {&quot;poisson&quot;, &quot;lognormal&quot;}</span>
+<span class="sd">        How cell counts vary across participant-visits.</span>
+<span class="sd">    cell_count_cv : float</span>
+<span class="sd">        Coefficient of variation for lognormal cell counts (ignored if poisson).</span>
+<span class="sd">    arm_ratio : tuple[int, int] | None</span>
+<span class="sd">        Ratio of treated:control (e.g., (3, 7) for unbalanced). Only for two-arm.</span>
+<span class="sd">        If None, uses equal allocation.</span>
+<span class="sd">    missing_rate : float</span>
+<span class="sd">        Fraction of participants missing their Post visit (0.0 = no attrition).</span>
+<span class="sd">    dispersion_mode : {&quot;calibrated&quot;, &quot;fixed&quot;, &quot;extreme&quot;}</span>
+<span class="sd">        How gene-specific θ_g is drawn.</span>
+<span class="sd">    dispersion_fixed : float</span>
+<span class="sd">        Fixed θ for all genes (only if dispersion_mode=&quot;fixed&quot;).</span>
+<span class="sd">    participant_sd : float</span>
+<span class="sd">        SD of participant random intercept (σ_participant).</span>
+<span class="sd">    baseline_mean : float</span>
+<span class="sd">        Mean of β₀g across genes (log-scale).</span>
+<span class="sd">    baseline_sd : float</span>
+<span class="sd">        SD of β₀g across genes.</span>
+<span class="sd">    time_effect : float</span>
+<span class="sd">        Global time effect β₁ (applied to all genes).</span>
+<span class="sd">    target_library_size : int</span>
+<span class="sd">        Target library size per cell.</span>
+<span class="sd">    library_size_sd : float</span>
+<span class="sd">        SD of log-library size.</span>
+<span class="sd">    seed : int</span>
+<span class="sd">        Random seed.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">design</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;two_arm&quot;</span><span class="p">,</span> <span class="s2">&quot;single_arm&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;two_arm&quot;</span>
+    <span class="n">n_per_arm</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span>
+    <span class="n">n_genes</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span>
+    <span class="n">effects</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+    <span class="n">mean_cells_per_visit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">500</span>
+    <span class="n">cell_count_mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;poisson&quot;</span><span class="p">,</span> <span class="s2">&quot;lognormal&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;poisson&quot;</span>
+    <span class="n">cell_count_cv</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span>
+    <span class="n">arm_ratio</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">missing_rate</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">dispersion_mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;calibrated&quot;</span><span class="p">,</span> <span class="s2">&quot;fixed&quot;</span><span class="p">,</span> <span class="s2">&quot;extreme&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;calibrated&quot;</span>
+    <span class="n">dispersion_fixed</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">10.0</span>
+    <span class="n">participant_sd</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.3</span>
+    <span class="n">baseline_mean</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span>
+    <span class="n">baseline_sd</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span>
+    <span class="n">time_effect</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span>
+    <span class="n">target_library_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10000</span>
+    <span class="n">library_size_sd</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.3</span>
+    <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">42</span></div>
+
+
+
+<div class="viewcode-block" id="simulate_trial">
+<a class="viewcode-back" href="../../../api/benchmark.html#sctrial.benchmark.simulate_trial">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">simulate_trial</span><span class="p">(</span><span class="n">cfg</span><span class="p">:</span> <span class="n">SimulationConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate a complete simulated trial dataset.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict with keys:</span>
+<span class="sd">        &quot;adata&quot;           : AnnData — cell-level counts (X = raw counts, obs has metadata)</span>
+<span class="sd">        &quot;pseudobulk_means&quot;: DataFrame — participant-visit mean expression (for sctrial/Wilcoxon)</span>
+<span class="sd">        &quot;pseudobulk_counts&quot;: DataFrame — participant-visit summed counts (for edgeR/limma/dreamlet)</span>
+<span class="sd">        &quot;truth&quot;           : dict[str, float] — gene → true interaction effect</span>
+<span class="sd">        &quot;config&quot;          : SimulationConfig</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">seed</span><span class="p">)</span>
+
+    <span class="c1"># --- Participant structure ---</span>
+    <span class="c1"># n_per_arm = participants PER ARM (not total)</span>
+    <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">design</span> <span class="o">==</span> <span class="s2">&quot;two_arm&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">arm_ratio</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># arm_ratio is e.g. (3, 7) meaning 3 treated : 7 control</span>
+            <span class="n">n_treat</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">arm_ratio</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">n_ctrl</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">arm_ratio</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">n_treat</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">n_per_arm</span>
+            <span class="n">n_ctrl</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">n_per_arm</span>
+        <span class="n">arms</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Treated&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="n">n_treat</span> <span class="o">+</span> <span class="p">[</span><span class="s2">&quot;Control&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="n">n_ctrl</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">n_treat</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">n_per_arm</span>
+        <span class="n">n_ctrl</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">arms</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Treated&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="n">n_treat</span>
+
+    <span class="n">n_total</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">arms</span><span class="p">)</span>
+    <span class="n">participant_ids</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;P</span><span class="si">{</span><span class="n">i</span><span class="si">:</span><span class="s2">03d</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_total</span><span class="p">)]</span>
+    <span class="n">visits</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Pre&quot;</span><span class="p">,</span> <span class="s2">&quot;Post&quot;</span><span class="p">]</span>
+
+    <span class="c1"># --- Gene parameters ---</span>
+    <span class="n">gene_names</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;gene_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">n_genes</span><span class="p">)]</span>
+
+    <span class="c1"># Baseline expression: log-rate = log(gene_mean / library_size)</span>
+    <span class="c1"># In real scRNA-seq, this spans ~5 orders of magnitude (most genes barely</span>
+    <span class="c1"># detected, a few highly expressed). baseline_mean and baseline_sd define</span>
+    <span class="c1"># the distribution of log-rates BEFORE the library-size offset is added.</span>
+    <span class="c1"># Typical values from TNBC: mean=-12.4, sd=2.7 (on log scale).</span>
+    <span class="n">beta0</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">baseline_mean</span><span class="p">,</span> <span class="n">cfg</span><span class="o">.</span><span class="n">baseline_sd</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">n_genes</span><span class="p">)</span>
+    <span class="c1"># No clipping — extreme low values produce sparse genes (realistic)</span>
+
+    <span class="c1"># Gene-specific dispersion θ_g</span>
+    <span class="c1"># Real scRNA-seq has very low θ (high overdispersion): median ~0.1-0.3</span>
+    <span class="n">theta</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">dispersion_mode</span> <span class="o">==</span> <span class="s2">&quot;fixed&quot;</span><span class="p">:</span>
+        <span class="n">theta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">n_genes</span><span class="p">,</span> <span class="n">cfg</span><span class="o">.</span><span class="n">dispersion_fixed</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">cfg</span><span class="o">.</span><span class="n">dispersion_mode</span> <span class="o">==</span> <span class="s2">&quot;extreme&quot;</span><span class="p">:</span>
+        <span class="c1"># Very low dispersion = extremely high variance</span>
+        <span class="n">theta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">n_genes</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Calibrated: match real scRNA-seq (θ typically 0.01-2.0, median ~0.15)</span>
+        <span class="n">theta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">rng</span><span class="o">.</span><span class="n">lognormal</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mf">0.15</span><span class="p">),</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">n_genes</span><span class="p">))</span>
+        <span class="n">theta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="mf">50.0</span><span class="p">))</span>
+
+    <span class="c1"># True effects</span>
+    <span class="n">true_effects</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">g</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">gene_names</span><span class="p">):</span>
+        <span class="n">true_effects</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">effects</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+
+    <span class="c1"># Participant random intercepts (per gene)</span>
+    <span class="n">alpha</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">cfg</span><span class="o">.</span><span class="n">participant_sd</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">n_total</span><span class="p">,</span> <span class="n">cfg</span><span class="o">.</span><span class="n">n_genes</span><span class="p">))</span>
+
+    <span class="c1"># --- Determine which participant-visits exist (attrition) ---</span>
+    <span class="n">missing_post</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">missing_rate</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">n_missing</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">n_total</span> <span class="o">*</span> <span class="n">cfg</span><span class="o">.</span><span class="n">missing_rate</span><span class="p">))</span>
+        <span class="n">missing_post</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">rng</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">n_total</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">n_missing</span><span class="p">,</span> <span class="n">replace</span><span class="o">=</span><span class="kc">False</span><span class="p">))</span>
+
+    <span class="c1"># --- Generate cells ---</span>
+    <span class="n">all_obs</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">all_counts</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">pid</span><span class="p">,</span> <span class="n">arm</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">participant_ids</span><span class="p">,</span> <span class="n">arms</span><span class="p">)):</span>
+        <span class="k">for</span> <span class="n">visit</span> <span class="ow">in</span> <span class="n">visits</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">visit</span> <span class="o">==</span> <span class="s2">&quot;Post&quot;</span> <span class="ow">and</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">missing_post</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># Cell count for this participant-visit</span>
+            <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">cell_count_mode</span> <span class="o">==</span> <span class="s2">&quot;lognormal&quot;</span><span class="p">:</span>
+                <span class="n">mu_cells</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">mean_cells_per_visit</span>
+                <span class="n">sigma_cells</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">cfg</span><span class="o">.</span><span class="n">cell_count_cv</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+                <span class="n">n_cells</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span>
+                    <span class="n">rng</span><span class="o">.</span><span class="n">lognormal</span><span class="p">(</span>
+                        <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">mu_cells</span><span class="p">)</span> <span class="o">-</span> <span class="n">sigma_cells</span><span class="o">**</span><span class="mi">2</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span>
+                        <span class="n">sigma_cells</span><span class="p">,</span>
+                    <span class="p">)</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">n_cells</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">mean_cells_per_visit</span><span class="p">)</span>
+
+            <span class="n">n_cells</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="n">n_cells</span><span class="p">,</span> <span class="mi">20000</span><span class="p">))</span>  <span class="c1"># safety bounds</span>
+
+            <span class="c1"># Indicators</span>
+            <span class="n">is_post</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="k">if</span> <span class="n">visit</span> <span class="o">==</span> <span class="s2">&quot;Post&quot;</span> <span class="k">else</span> <span class="mf">0.0</span>
+            <span class="n">is_treated</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="k">if</span> <span class="n">arm</span> <span class="o">==</span> <span class="s2">&quot;Treated&quot;</span> <span class="k">else</span> <span class="mf">0.0</span>
+
+            <span class="c1"># Library sizes for each cell</span>
+            <span class="n">log_lib</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">target_library_size</span><span class="p">),</span>
+                <span class="n">cfg</span><span class="o">.</span><span class="n">library_size_sd</span><span class="p">,</span>
+                <span class="n">size</span><span class="o">=</span><span class="n">n_cells</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">lib_sizes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">log_lib</span><span class="p">)</span>
+
+            <span class="c1"># Gene expression: log(μ) = β₀ + α_i + β₁·Post + β₂·(Treat×Post) + log(L)</span>
+            <span class="c1"># Shape: (n_cells, n_genes)</span>
+            <span class="n">log_mu</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">beta0</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:]</span>  <span class="c1"># (1, G)</span>
+                <span class="o">+</span> <span class="n">alpha</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:][</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:]</span>  <span class="c1"># (1, G)</span>
+                <span class="o">+</span> <span class="n">cfg</span><span class="o">.</span><span class="n">time_effect</span> <span class="o">*</span> <span class="n">is_post</span>  <span class="c1"># scalar</span>
+                <span class="o">+</span> <span class="n">log_lib</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>  <span class="c1"># (C, 1)</span>
+            <span class="p">)</span>
+
+            <span class="c1"># Add treatment × post interaction for signal genes</span>
+            <span class="k">for</span> <span class="n">g</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">gene_names</span><span class="p">):</span>
+                <span class="n">effect</span> <span class="o">=</span> <span class="n">true_effects</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">effect</span> <span class="o">!=</span> <span class="mf">0.0</span><span class="p">:</span>
+                    <span class="n">log_mu</span><span class="p">[:,</span> <span class="n">g</span><span class="p">]</span> <span class="o">+=</span> <span class="n">effect</span> <span class="o">*</span> <span class="n">is_post</span> <span class="o">*</span> <span class="n">is_treated</span>
+
+            <span class="n">mu</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">log_mu</span><span class="p">)</span>
+
+            <span class="c1"># Draw counts via Gamma-Poisson (equivalent to NegBin but handles</span>
+            <span class="c1"># non-integer theta, which is essential for realistic scRNA-seq</span>
+            <span class="c1"># where theta can be as low as 0.01)</span>
+            <span class="c1">#</span>
+            <span class="c1"># Step 1: rate ~ Gamma(shape=theta, scale=mu/theta)</span>
+            <span class="c1"># Step 2: count ~ Poisson(rate)</span>
+            <span class="c1">#</span>
+            <span class="c1"># This is the standard compound distribution for NB counts.</span>
+            <span class="n">theta_broad</span> <span class="o">=</span> <span class="n">theta</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:]</span>  <span class="c1"># (1, G)</span>
+            <span class="n">rate</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">gamma</span><span class="p">(</span>
+                <span class="n">shape</span><span class="o">=</span><span class="n">theta_broad</span><span class="p">,</span>
+                <span class="n">scale</span><span class="o">=</span><span class="n">mu</span> <span class="o">/</span> <span class="n">theta_broad</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">counts</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="n">rate</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+
+            <span class="c1"># Store obs metadata</span>
+            <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_cells</span><span class="p">):</span>
+                <span class="n">all_obs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="p">{</span>
+                        <span class="s2">&quot;participant&quot;</span><span class="p">:</span> <span class="n">pid</span><span class="p">,</span>
+                        <span class="s2">&quot;arm&quot;</span><span class="p">:</span> <span class="n">arm</span><span class="p">,</span>
+                        <span class="s2">&quot;visit&quot;</span><span class="p">:</span> <span class="n">visit</span><span class="p">,</span>
+                        <span class="s2">&quot;library_size&quot;</span><span class="p">:</span> <span class="n">lib_sizes</span><span class="p">[</span><span class="n">k</span><span class="p">],</span>
+                    <span class="p">}</span>
+                <span class="p">)</span>
+            <span class="n">all_counts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">counts</span><span class="p">)</span>
+
+    <span class="c1"># --- Assemble AnnData ---</span>
+    <span class="n">obs_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">all_obs</span><span class="p">)</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">(</span><span class="n">all_counts</span><span class="p">)</span>
+
+    <span class="n">adata</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">AnnData</span><span class="p">(</span>
+        <span class="n">X</span><span class="o">=</span><span class="n">sparse</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">(</span><span class="n">X</span><span class="p">),</span>
+        <span class="n">obs</span><span class="o">=</span><span class="n">obs_df</span><span class="p">,</span>
+        <span class="n">var</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">gene_names</span><span class="p">),</span>
+    <span class="p">)</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">obs_names</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;cell_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span><span class="p">)]</span>
+
+    <span class="c1"># --- Pseudobulk aggregation ---</span>
+    <span class="c1"># Two outputs: means (for sctrial/Wilcoxon) and summed counts (for edgeR/limma/dreamlet)</span>
+    <span class="n">pb_mean_rows</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">pb_count_rows</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">pid</span><span class="p">,</span> <span class="n">visit</span><span class="p">),</span> <span class="n">grp</span> <span class="ow">in</span> <span class="n">obs_df</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">&quot;participant&quot;</span><span class="p">,</span> <span class="s2">&quot;visit&quot;</span><span class="p">]):</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="n">grp</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">values</span>
+        <span class="n">means</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">sums</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">meta</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;participant&quot;</span><span class="p">:</span> <span class="n">pid</span><span class="p">,</span> <span class="s2">&quot;visit&quot;</span><span class="p">:</span> <span class="n">visit</span><span class="p">,</span> <span class="s2">&quot;arm&quot;</span><span class="p">:</span> <span class="n">grp</span><span class="p">[</span><span class="s2">&quot;arm&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]}</span>
+        <span class="n">mean_row</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">meta</span><span class="p">)</span>
+        <span class="n">count_row</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">meta</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">g</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">gene_names</span><span class="p">):</span>
+            <span class="n">mean_row</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">means</span><span class="p">[</span><span class="n">g</span><span class="p">]</span>
+            <span class="n">count_row</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">sums</span><span class="p">[</span><span class="n">g</span><span class="p">])</span>
+        <span class="n">pb_mean_rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">mean_row</span><span class="p">)</span>
+        <span class="n">pb_count_rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">count_row</span><span class="p">)</span>
+    <span class="n">pseudobulk_means</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">pb_mean_rows</span><span class="p">)</span>
+    <span class="n">pseudobulk_counts</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">pb_count_rows</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;adata&quot;</span><span class="p">:</span> <span class="n">adata</span><span class="p">,</span>
+        <span class="s2">&quot;pseudobulk_means&quot;</span><span class="p">:</span> <span class="n">pseudobulk_means</span><span class="p">,</span>
+        <span class="s2">&quot;pseudobulk_counts&quot;</span><span class="p">:</span> <span class="n">pseudobulk_counts</span><span class="p">,</span>
+        <span class="s2">&quot;truth&quot;</span><span class="p">:</span> <span class="n">true_effects</span><span class="p">,</span>
+        <span class="s2">&quot;config&quot;</span><span class="p">:</span> <span class="n">cfg</span><span class="p">,</span>
+    <span class="p">}</span></div>
+
+
+
+<div class="viewcode-block" id="calibrate_from_real_data">
+<a class="viewcode-back" href="../../../api/benchmark.html#sctrial.benchmark.calibrate_from_real_data">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">calibrate_from_real_data</span><span class="p">(</span>
+    <span class="n">adata_real</span><span class="p">,</span>
+    <span class="n">layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">count_layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">participant_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;participant&quot;</span><span class="p">,</span>
+    <span class="n">visit_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;visit&quot;</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract distributional parameters from real scRNA-seq data.</span>
+
+<span class="sd">    Uses raw counts for dispersion/library-size calibration (critical for</span>
+<span class="sd">    the NB generative model), and normalized expression for ICC estimation.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    adata_real : AnnData</span>
+<span class="sd">        Real dataset.</span>
+<span class="sd">    layer : str, optional</span>
+<span class="sd">        Normalized expression layer (for ICC). If None, uses .X.</span>
+<span class="sd">    count_layer : str, optional</span>
+<span class="sd">        Raw count layer for dispersion and library size calibration.</span>
+<span class="sd">        If None, auto-detects: checks for integer .X, then &quot;counts&quot; layer.</span>
+<span class="sd">        If no raw counts available, estimates from normalized data.</span>
+<span class="sd">    participant_col : str</span>
+<span class="sd">        Column name for participant IDs.</span>
+<span class="sd">    visit_col : str</span>
+<span class="sd">        Column name for visit/timepoint.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict with keys:</span>
+<span class="sd">        &quot;mean_cells_per_visit&quot; : float</span>
+<span class="sd">        &quot;cell_count_cv&quot; : float</span>
+<span class="sd">        &quot;participant_icc&quot; : float  (median across genes)</span>
+<span class="sd">        &quot;dispersion_median&quot; : float</span>
+<span class="sd">        &quot;baseline_mean&quot; : float  (log-scale, on raw counts)</span>
+<span class="sd">        &quot;baseline_sd&quot; : float</span>
+<span class="sd">        &quot;library_size_mean&quot; : float  (log-scale, on raw counts)</span>
+<span class="sd">        &quot;library_size_sd&quot; : float</span>
+<span class="sd">        &quot;has_raw_counts&quot; : bool</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+
+    <span class="n">obs</span> <span class="o">=</span> <span class="n">adata_real</span><span class="o">.</span><span class="n">obs</span>
+
+    <span class="c1"># --- Find raw counts ---</span>
+    <span class="n">has_raw_counts</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">X_counts</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">if</span> <span class="n">count_layer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">X_counts</span> <span class="o">=</span> <span class="n">adata_real</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="n">count_layer</span><span class="p">]</span>
+        <span class="n">has_raw_counts</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Auto-detect: check if .X is integer counts</span>
+        <span class="n">X_test</span> <span class="o">=</span> <span class="n">adata_real</span><span class="o">.</span><span class="n">X</span>
+        <span class="k">if</span> <span class="n">sparse</span><span class="o">.</span><span class="n">issparse</span><span class="p">(</span><span class="n">X_test</span><span class="p">):</span>
+            <span class="n">X_test_dense</span> <span class="o">=</span> <span class="n">X_test</span><span class="p">[:</span><span class="mi">100</span><span class="p">]</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">X_test_dense</span> <span class="o">=</span> <span class="n">X_test</span><span class="p">[:</span><span class="mi">100</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">X_test_dense</span><span class="p">,</span> <span class="n">X_test_dense</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)):</span>
+            <span class="n">X_counts</span> <span class="o">=</span> <span class="n">adata_real</span><span class="o">.</span><span class="n">X</span>
+            <span class="n">has_raw_counts</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">elif</span> <span class="s2">&quot;counts&quot;</span> <span class="ow">in</span> <span class="p">(</span><span class="n">adata_real</span><span class="o">.</span><span class="n">layers</span> <span class="ow">or</span> <span class="p">{}):</span>
+            <span class="n">X_counts</span> <span class="o">=</span> <span class="n">adata_real</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">&quot;counts&quot;</span><span class="p">]</span>
+            <span class="n">has_raw_counts</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">if</span> <span class="n">X_counts</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">sparse</span><span class="o">.</span><span class="n">issparse</span><span class="p">(</span><span class="n">X_counts</span><span class="p">):</span>
+            <span class="n">X_counts</span> <span class="o">=</span> <span class="n">X_counts</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span>
+        <span class="n">X_counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">X_counts</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+
+    <span class="c1"># --- Normalized expression (for ICC) ---</span>
+    <span class="n">X_norm</span> <span class="o">=</span> <span class="n">adata_real</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="n">layer</span><span class="p">]</span> <span class="k">if</span> <span class="n">layer</span> <span class="k">else</span> <span class="n">adata_real</span><span class="o">.</span><span class="n">X</span>
+    <span class="k">if</span> <span class="n">sparse</span><span class="o">.</span><span class="n">issparse</span><span class="p">(</span><span class="n">X_norm</span><span class="p">):</span>
+        <span class="n">X_norm</span> <span class="o">=</span> <span class="n">X_norm</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span>
+    <span class="n">X_norm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">X_norm</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+
+    <span class="c1"># --- Cell counts per participant-visit ---</span>
+    <span class="n">cell_counts</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">visit_col</span><span class="p">])</span><span class="o">.</span><span class="n">size</span><span class="p">()</span>
+    <span class="n">mean_cells</span> <span class="o">=</span> <span class="n">cell_counts</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+    <span class="n">cv_cells</span> <span class="o">=</span> <span class="n">cell_counts</span><span class="o">.</span><span class="n">std</span><span class="p">()</span> <span class="o">/</span> <span class="n">mean_cells</span> <span class="k">if</span> <span class="n">mean_cells</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.5</span>
+
+    <span class="c1"># --- Count-based statistics ---</span>
+    <span class="k">if</span> <span class="n">has_raw_counts</span> <span class="ow">and</span> <span class="n">X_counts</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Library sizes from raw counts</span>
+        <span class="n">lib_sizes</span> <span class="o">=</span> <span class="n">X_counts</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">log_lib</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">lib_sizes</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">avg_lib</span> <span class="o">=</span> <span class="n">lib_sizes</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+
+        <span class="c1"># Gene-level stats on counts</span>
+        <span class="n">gene_means</span> <span class="o">=</span> <span class="n">X_counts</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">gene_vars</span> <span class="o">=</span> <span class="n">X_counts</span><span class="o">.</span><span class="n">var</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># Log-rate: log(gene_mean / avg_library_size)</span>
+        <span class="c1"># This is the baseline parameter β₀g in the generative model</span>
+        <span class="c1"># BEFORE library-size offset. Spans ~5 orders of magnitude.</span>
+        <span class="n">mask_expressed</span> <span class="o">=</span> <span class="n">gene_means</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="n">log_rates</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">gene_means</span> <span class="o">/</span> <span class="n">avg_lib</span> <span class="o">+</span> <span class="mf">1e-10</span><span class="p">)</span>
+        <span class="n">log_rates_expr</span> <span class="o">=</span> <span class="n">log_rates</span><span class="p">[</span><span class="n">mask_expressed</span><span class="p">]</span>
+        <span class="n">log_means</span> <span class="o">=</span> <span class="n">log_rates_expr</span>  <span class="c1"># used for baseline_mean/sd below</span>
+
+        <span class="c1"># Dispersion: method of moments on counts</span>
+        <span class="c1"># Var = mu + mu^2/theta =&gt; theta = mu^2 / (var - mu)</span>
+        <span class="c1"># Real scRNA-seq has very low theta (0.01-2.0), do NOT clip at 1.0</span>
+        <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">&quot;ignore&quot;</span><span class="p">)</span>
+            <span class="n">denom</span> <span class="o">=</span> <span class="n">gene_vars</span> <span class="o">-</span> <span class="n">gene_means</span>
+            <span class="n">denom</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">denom</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">denom</span><span class="p">,</span> <span class="mf">1e-6</span><span class="p">)</span>
+            <span class="n">theta_est</span> <span class="o">=</span> <span class="n">gene_means</span><span class="o">**</span><span class="mi">2</span> <span class="o">/</span> <span class="n">denom</span>
+            <span class="n">theta_est</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">theta_est</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># No raw counts — estimate from normalized data</span>
+        <span class="c1"># Use typical scRNA-seq defaults calibrated to the sparsity pattern</span>
+        <span class="n">zero_frac</span> <span class="o">=</span> <span class="p">(</span><span class="n">X_norm</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        <span class="c1"># Typical library size for scRNA-seq: ~2000-10000</span>
+        <span class="c1"># Estimate from expression scale</span>
+        <span class="n">lib_sizes_norm</span> <span class="o">=</span> <span class="n">X_norm</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">log_lib</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">lib_sizes_norm</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
+
+        <span class="n">gene_means</span> <span class="o">=</span> <span class="n">X_norm</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">gene_vars</span> <span class="o">=</span> <span class="n">X_norm</span><span class="o">.</span><span class="n">var</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">log_means</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">gene_means</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># For normalized data, dispersion estimate is less reliable</span>
+        <span class="c1"># Use conservative defaults based on zero fraction</span>
+        <span class="c1"># More zeros → lower dispersion (higher overdispersion)</span>
+        <span class="n">theta_est</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full_like</span><span class="p">(</span><span class="n">gene_means</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">)</span>  <span class="c1"># moderate default</span>
+        <span class="k">if</span> <span class="n">zero_frac</span> <span class="o">&gt;</span> <span class="mf">0.9</span><span class="p">:</span>
+            <span class="n">theta_est</span><span class="p">[:]</span> <span class="o">=</span> <span class="mf">2.0</span>  <span class="c1"># high sparsity → high overdispersion</span>
+
+    <span class="c1"># --- ICC from normalized expression ---</span>
+    <span class="n">iccs</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">n_genes_sample</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="n">adata_real</span><span class="o">.</span><span class="n">n_vars</span><span class="p">)</span>
+    <span class="n">gene_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">adata_real</span><span class="o">.</span><span class="n">n_vars</span><span class="p">,</span> <span class="n">n_genes_sample</span><span class="p">,</span> <span class="n">replace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">gene_idx</span><span class="p">:</span>
+        <span class="n">expr</span> <span class="o">=</span> <span class="n">X_norm</span><span class="p">[:,</span> <span class="n">g</span><span class="p">]</span>
+        <span class="n">groups</span> <span class="o">=</span> <span class="n">obs</span><span class="p">[</span><span class="n">participant_col</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+        <span class="n">unique_groups</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">groups</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">unique_groups</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">grand_mean</span> <span class="o">=</span> <span class="n">expr</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        <span class="n">ss_between</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">groups</span> <span class="o">==</span> <span class="n">grp</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">expr</span><span class="p">[</span><span class="n">groups</span> <span class="o">==</span> <span class="n">grp</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">-</span> <span class="n">grand_mean</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
+            <span class="k">for</span> <span class="n">grp</span> <span class="ow">in</span> <span class="n">unique_groups</span>
+        <span class="p">)</span>
+        <span class="n">ss_total</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="n">expr</span> <span class="o">-</span> <span class="n">grand_mean</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">ss_total</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">iccs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ss_between</span> <span class="o">/</span> <span class="n">ss_total</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;mean_cells_per_visit&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">mean_cells</span><span class="p">),</span>
+        <span class="s2">&quot;cell_count_cv&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">cv_cells</span><span class="p">),</span>
+        <span class="s2">&quot;participant_icc&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">iccs</span><span class="p">))</span> <span class="k">if</span> <span class="n">iccs</span> <span class="k">else</span> <span class="mf">0.1</span><span class="p">,</span>
+        <span class="s2">&quot;dispersion_median&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">theta_est</span><span class="p">)),</span>
+        <span class="s2">&quot;baseline_mean&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">log_means</span><span class="o">.</span><span class="n">mean</span><span class="p">()),</span>
+        <span class="s2">&quot;baseline_sd&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">log_means</span><span class="o">.</span><span class="n">std</span><span class="p">()),</span>
+        <span class="s2">&quot;library_size_mean&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">log_lib</span><span class="o">.</span><span class="n">mean</span><span class="p">()),</span>
+        <span class="s2">&quot;library_size_sd&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">log_lib</span><span class="o">.</span><span class="n">std</span><span class="p">()),</span>
+        <span class="s2">&quot;has_raw_counts&quot;</span><span class="p">:</span> <span class="n">has_raw_counts</span><span class="p">,</span>
+    <span class="p">}</span></div>
+
+
+
+<div class="viewcode-block" id="validate_simulator">
+<a class="viewcode-back" href="../../../api/benchmark.html#sctrial.benchmark.validate_simulator">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">validate_simulator</span><span class="p">(</span>
+    <span class="n">cfg</span><span class="p">:</span> <span class="n">SimulationConfig</span><span class="p">,</span>
+    <span class="n">adata_real</span><span class="p">,</span>
+    <span class="n">layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">participant_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;participant&quot;</span><span class="p">,</span>
+    <span class="n">visit_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;visit&quot;</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compare simulated data properties against real data.</span>
+
+<span class="sd">    Compares on a common scale: if real data is normalized (no raw counts),</span>
+<span class="sd">    the simulated raw counts are log1p-CPM-normalized before comparison.</span>
+<span class="sd">    If real data has raw counts, compares counts directly.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict with keys:</span>
+<span class="sd">        &quot;cell_level&quot; : dict — mean-variance, zero fraction, library size</span>
+<span class="sd">        &quot;pseudobulk_level&quot; : dict — ICC, cell-count distribution, mean distribution</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">sim</span> <span class="o">=</span> <span class="n">simulate_trial</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span>
+    <span class="n">sim_adata</span> <span class="o">=</span> <span class="n">sim</span><span class="p">[</span><span class="s2">&quot;adata&quot;</span><span class="p">]</span>
+    <span class="n">sim_X_raw</span> <span class="o">=</span> <span class="n">sim_adata</span><span class="o">.</span><span class="n">X</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span> <span class="k">if</span> <span class="n">sparse</span><span class="o">.</span><span class="n">issparse</span><span class="p">(</span><span class="n">sim_adata</span><span class="o">.</span><span class="n">X</span><span class="p">)</span> <span class="k">else</span> <span class="n">sim_adata</span><span class="o">.</span><span class="n">X</span>
+
+    <span class="n">real_X</span> <span class="o">=</span> <span class="n">adata_real</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="n">layer</span><span class="p">]</span> <span class="k">if</span> <span class="n">layer</span> <span class="k">else</span> <span class="n">adata_real</span><span class="o">.</span><span class="n">X</span>
+    <span class="k">if</span> <span class="n">sparse</span><span class="o">.</span><span class="n">issparse</span><span class="p">(</span><span class="n">real_X</span><span class="p">):</span>
+        <span class="n">real_X</span> <span class="o">=</span> <span class="n">real_X</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span>
+    <span class="n">real_X</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">real_X</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+
+    <span class="c1"># Check if real data is normalized (non-integer) — if so, normalize sim too</span>
+    <span class="n">real_is_counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">real_X</span><span class="p">[:</span><span class="mi">100</span><span class="p">],</span> <span class="n">real_X</span><span class="p">[:</span><span class="mi">100</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">real_is_counts</span><span class="p">:</span>
+        <span class="n">sim_X</span> <span class="o">=</span> <span class="n">sim_X_raw</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Normalize simulated counts to log1p-CPM to match real normalized data</span>
+        <span class="n">lib</span> <span class="o">=</span> <span class="n">sim_X_raw</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+        <span class="n">lib</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">lib</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">lib</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+        <span class="n">sim_X</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log1p</span><span class="p">(</span><span class="n">sim_X_raw</span> <span class="o">/</span> <span class="n">lib</span> <span class="o">*</span> <span class="mf">1e6</span><span class="p">)</span>
+
+    <span class="c1"># --- Cell-level comparisons ---</span>
+    <span class="c1"># Mean-variance</span>
+    <span class="n">sim_means</span> <span class="o">=</span> <span class="n">sim_X</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">sim_vars</span> <span class="o">=</span> <span class="n">sim_X</span><span class="o">.</span><span class="n">var</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">real_means</span> <span class="o">=</span> <span class="n">real_X</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">real_vars</span> <span class="o">=</span> <span class="n">real_X</span><span class="o">.</span><span class="n">var</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="c1"># Zero fraction per gene</span>
+    <span class="n">sim_zeros</span> <span class="o">=</span> <span class="p">(</span><span class="n">sim_X</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">real_zeros</span> <span class="o">=</span> <span class="p">(</span><span class="n">real_X</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="c1"># Library size: compare on MATCHED gene count</span>
+    <span class="c1"># When simulator uses fewer genes than the real dataset (e.g. 50 vs 20k),</span>
+    <span class="c1"># whole-transcriptome library sizes are not comparable. Instead, compare</span>
+    <span class="c1"># total counts across the SAME number of genes.</span>
+    <span class="n">n_sim_genes</span> <span class="o">=</span> <span class="n">sim_X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">n_real_genes</span> <span class="o">=</span> <span class="n">real_X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">n_sim_genes</span> <span class="o">&lt;</span> <span class="n">n_real_genes</span><span class="p">:</span>
+        <span class="c1"># Subsample real data to same number of genes (pick random subset</span>
+        <span class="c1"># with similar mean expression distribution)</span>
+        <span class="n">real_gene_means_sorted</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">real_X</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
+        <span class="c1"># Sample evenly across the expression range</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">n_real_genes</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">n_sim_genes</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+        <span class="n">real_X_subset</span> <span class="o">=</span> <span class="n">real_X</span><span class="p">[:,</span> <span class="n">real_gene_means_sorted</span><span class="p">[</span><span class="n">idx</span><span class="p">]]</span>
+        <span class="n">real_lib</span> <span class="o">=</span> <span class="n">real_X_subset</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">real_lib</span> <span class="o">=</span> <span class="n">real_X</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">sim_lib</span> <span class="o">=</span> <span class="n">sim_X</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># --- Pseudobulk-level comparisons ---</span>
+    <span class="c1"># Cell counts per participant-visit</span>
+    <span class="n">sim_cell_counts</span> <span class="o">=</span> <span class="n">sim_adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">&quot;participant&quot;</span><span class="p">,</span> <span class="s2">&quot;visit&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">size</span><span class="p">()</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">real_cell_counts</span> <span class="o">=</span> <span class="n">adata_real</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">visit_col</span><span class="p">])</span><span class="o">.</span><span class="n">size</span><span class="p">()</span><span class="o">.</span><span class="n">values</span>
+
+    <span class="c1"># Pseudobulk means</span>
+    <span class="n">sim_pb</span> <span class="o">=</span> <span class="n">sim</span><span class="p">[</span><span class="s2">&quot;pseudobulk_means&quot;</span><span class="p">]</span>
+    <span class="n">gene_cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">sim_pb</span><span class="o">.</span><span class="n">columns</span> <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;gene_&quot;</span><span class="p">)]</span>
+    <span class="n">sim_pb_means</span> <span class="o">=</span> <span class="n">sim_pb</span><span class="p">[</span><span class="n">gene_cols</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;cell_level&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;sim_gene_means&quot;</span><span class="p">:</span> <span class="n">sim_means</span><span class="p">,</span>
+            <span class="s2">&quot;sim_gene_vars&quot;</span><span class="p">:</span> <span class="n">sim_vars</span><span class="p">,</span>
+            <span class="s2">&quot;real_gene_means&quot;</span><span class="p">:</span> <span class="n">real_means</span><span class="p">,</span>
+            <span class="s2">&quot;real_gene_vars&quot;</span><span class="p">:</span> <span class="n">real_vars</span><span class="p">,</span>
+            <span class="s2">&quot;sim_zero_fraction&quot;</span><span class="p">:</span> <span class="n">sim_zeros</span><span class="p">,</span>
+            <span class="s2">&quot;real_zero_fraction&quot;</span><span class="p">:</span> <span class="n">real_zeros</span><span class="p">,</span>
+            <span class="s2">&quot;sim_library_sizes&quot;</span><span class="p">:</span> <span class="n">sim_lib</span><span class="p">,</span>
+            <span class="s2">&quot;real_library_sizes&quot;</span><span class="p">:</span> <span class="n">real_lib</span><span class="p">,</span>
+        <span class="p">},</span>
+        <span class="s2">&quot;pseudobulk_level&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;sim_cell_counts&quot;</span><span class="p">:</span> <span class="n">sim_cell_counts</span><span class="p">,</span>
+            <span class="s2">&quot;real_cell_counts&quot;</span><span class="p">:</span> <span class="n">real_cell_counts</span><span class="p">,</span>
+            <span class="s2">&quot;sim_pb_means&quot;</span><span class="p">:</span> <span class="n">sim_pb_means</span><span class="p">,</span>
+        <span class="p">},</span>
+    <span class="p">}</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2026, Omar Lab, Cedars-Sinai Medical Center.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+</div>
+
+  </footer>
+  </body>
+</html>

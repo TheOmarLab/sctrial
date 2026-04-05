@@ -277,6 +277,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts.html">Concepts and Methods</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
 <ul class="current nav bd-sidenav">
@@ -288,9 +289,19 @@
 </ul>
 </details></li>
 </ul>
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../api.html">API Reference</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../api/index.html">API Reference</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../api/design.html">Trial Design</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/statistics.html">Statistical Methods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/scoring.html">Scoring and Preprocessing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/plotting.html">Plotting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/datasets.html">Datasets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/workflow.html">Workflow and Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/benchmark.html">Benchmark Simulation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/utilities.html">Utilities and Validation</a></li>
+</ul>
+</details></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
 <ul class="nav bd-sidenav">
@@ -298,6 +309,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../troubleshooting.html">Troubleshooting Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../faq.html">Frequently Asked Questions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../performance.html">Performance Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
 </ul>
 </div>
 </nav></div>
@@ -554,6 +566,8 @@ Name: pt_id, dtype: int64
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">--- Trial Diagnostics ---&quot;</span><span class="p">)</span>
 <span class="n">diag</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">diagnose_trial_data</span><span class="p">(</span><span class="n">adata_analysis</span><span class="p">,</span> <span class="n">design</span><span class="p">)</span>
 <span class="n">display</span><span class="p">(</span><span class="n">diag</span><span class="p">)</span>
+
+<span class="n">design</span>
 </pre></div>
 </div>
 </div>
@@ -569,7 +583,7 @@ Covariates available (not modeled here): []
 --- Trial Diagnostics ---
 </pre></div></div>
 </div>
-<div class="nboutput nblast docutils container">
+<div class="nboutput docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
@@ -604,6 +618,15 @@ Covariates available (not modeled here): []
   &#39;C8_CD14+BDCA1+PD-L1+ cells&#39;: 30},
  &#39;warnings&#39;: [],
  &#39;recommendations&#39;: [&#39;Sample size is small; use bootstrap inference (use_bootstrap=True)&#39;]}
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+TrialDesign(participant_col=&#39;participant_id&#39;, visit_col=&#39;visit&#39;, arm_col=None, arm_treated=&#39;Treated&#39;, arm_control=&#39;Control&#39;, celltype_col=&#39;cell_type&#39;, crossover_col=None, baseline_visit=None, followup_visit=None)
 </pre></div></div>
 </div>
 <section id="3.1-Exploratory-plots-of-cell-types-per-visit">
@@ -931,17 +954,17 @@ WITHIN-ARM COMPARISONS: MODULE SCORES (Day 0 vs Day 7)
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/491674085.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_44110/491674085.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/491674085.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_44110/491674085.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/491674085.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_44110/491674085.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/491674085.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_44110/491674085.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/491674085.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_44110/491674085.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/491674085.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_44110/491674085.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
 </pre></div></div>
 </div>
@@ -1463,43 +1486,43 @@ WITHIN-ARM COMPARISONS: PANEL GENES (Day 0 vs Day 7)
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_44110/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_44110/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_44110/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_44110/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_44110/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_44110/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_44110/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_44110/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_44110/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_44110/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_44110/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_44110/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_44110/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_44110/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_44110/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_44110/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_44110/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_44110/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_20511/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_44110/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
 </pre></div></div>
 </div>
@@ -2360,7 +2383,7 @@ Pseudobulk paired deltas with Wilcoxon signed-rank test (panel genes × cell typ
 </section>
 <section id="12.-Advanced-Statistical-Analyses">
 <h2>12. Advanced Statistical Analyses<a class="headerlink" href="#12.-Advanced-Statistical-Analyses" title="Link to this heading">#</a></h2>
-<p>This section demonstrates the new statistical modules for within-arm longitudinal studies:</p>
+<p>Statistical modules for within-arm longitudinal studies:</p>
 <ul class="simple">
 <li><p><strong>Effect sizes</strong>: Cohen’s d for paired within-arm changes</p></li>
 <li><p><strong>Power analysis</strong>: Current power and sample size planning</p></li>
@@ -2764,7 +2787,7 @@ AnnData object with n_obs × n_vars = 202 × 5
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-/opt/anaconda3/lib/python3.12/functools.py:907: ImplicitModificationWarning: Transforming to str index.
+/opt/anaconda3/lib/python3.12/functools.py:909: ImplicitModificationWarning: Transforming to str index.
   return dispatch(args[0].__class__)(*args, **kw)
 </pre></div></div>
 </div>
@@ -2949,7 +2972,7 @@ AnnData object with n_obs × n_vars = 202 × 5
 
   <p class="copyright">
     
-      © Copyright 2026, Contributors.
+      © Copyright 2026, Omar Lab, Cedars-Sinai Medical Center.
       <br/>
     
   </p>

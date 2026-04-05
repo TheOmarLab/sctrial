@@ -172,6 +172,8 @@ When should I use bootstrap vs. standard errors?
 
 where :math:`\hat{\beta}^*` is the bootstrap estimate.
 
+.. _faq-sample-size:
+
 What are the minimum sample size recommendations?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

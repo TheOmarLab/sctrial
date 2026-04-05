@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>sctrial — Trial-Aware Statistical Inference for Single-Cell Data &#8212; sctrial 0.3.0 documentation</title>
+    <title>sctrial — Participant-Level Differential Analysis for Longitudinal Single-Cell Experiments &#8212; sctrial 0.3.0 documentation</title>
   
   
   
@@ -275,6 +275,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="concepts.html">Concepts and Methods</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
 <ul class="nav bd-sidenav">
@@ -286,9 +287,19 @@
 </ul>
 </details></li>
 </ul>
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="api/index.html">API Reference</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/design.html">Trial Design</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/statistics.html">Statistical Methods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/scoring.html">Scoring and Preprocessing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/plotting.html">Plotting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/datasets.html">Datasets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/workflow.html">Workflow and Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/benchmark.html">Benchmark Simulation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/utilities.html">Utilities and Validation</a></li>
+</ul>
+</details></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
 <ul class="nav bd-sidenav">
@@ -296,6 +307,7 @@
 <li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="faq.html">Frequently Asked Questions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="performance.html">Performance Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
 </ul>
 </div>
 </nav></div>
@@ -324,25 +336,20 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="sctrial-trial-aware-statistical-inference-for-single-cell-data">
-<h1>sctrial — Trial-Aware Statistical Inference for Single-Cell Data<a class="headerlink" href="#sctrial-trial-aware-statistical-inference-for-single-cell-data" title="Link to this heading">#</a></h1>
+  <section id="sctrial-participant-level-differential-analysis-for-longitudinal-single-cell-experiments">
+<h1>sctrial — Participant-Level Differential Analysis for Longitudinal Single-Cell Experiments<a class="headerlink" href="#sctrial-participant-level-differential-analysis-for-longitudinal-single-cell-experiments" title="Link to this heading">#</a></h1>
 <a class="reference external image-reference" href="https://github.com/TheOmarLab/sctrial/actions/workflows/test.yml"><img alt="Tests" src="https://github.com/TheOmarLab/sctrial/actions/workflows/test.yml/badge.svg?branch=main" />
 </a>
 <img alt="Python" src="https://img.shields.io/badge/python-3.9%2B-blue" />
 <a class="reference external image-reference" href="https://opensource.org/licenses/MIT"><img alt="License" src="https://img.shields.io/badge/License-MIT-yellow.svg" />
 </a>
-<p><strong>sctrial</strong> is a Python package for rigorous statistical inference on single-cell RNA-seq
-data from clinical trials and longitudinal studies. Built on
-<a class="reference external" href="https://anndata.readthedocs.io">AnnData</a>, it implements trial-aware analytical
-methods that properly account for participant-level replication — a critical requirement
-for valid inference in single-cell experiments where thousands of cells come from each
-of a limited number of participants.</p>
-<p>The package addresses a common pitfall in single-cell analysis: treating individual cells
-as independent observations inflates statistical power and leads to false discoveries.
-<strong>sctrial</strong> solves this by pseudobulking to participant-level replicates and applying
-methods from causal inference and clinical biostatistics — including difference-in-differences,
-wild cluster bootstrap, and paired contrasts — to deliver reliable, trial-level conclusions.</p>
-<a class="reference internal image-reference" href="_images/overview_figure.svg"><img alt="sctrial overview — from scRNA-seq input through trial-aware analysis to statistical outputs" class="align-center" src="_images/overview_figure.svg" style="width: 100%;" />
+<p><strong>sctrial</strong> is a Python package for participant-level differential analysis of longitudinal
+single-cell RNA-seq data. Built on <a class="reference external" href="https://anndata.readthedocs.io">AnnData</a>, it
+aggregates cell-level measurements to participant-level replicates and applies
+design-specific statistical methods — difference-in-differences, paired contrasts, and
+cross-sectional comparisons — so that inference reflects the actual number of independent
+biological units in the study.</p>
+<a class="reference internal image-reference" href="_images/overview_figure.png"><img alt="sctrial overview — from scRNA-seq input through trial-aware analysis to statistical outputs" class="align-center" src="_images/overview_figure.png" style="width: 100%;" />
 </a>
 <section id="key-applications">
 <h2>Key Applications<a class="headerlink" href="#key-applications" title="Link to this heading">#</a></h2>
@@ -374,8 +381,16 @@ For end-to-end analyses on real clinical datasets, explore the <a class="referen
 <section id="citing-sctrial">
 <h2>Citing sctrial<a class="headerlink" href="#citing-sctrial" title="Link to this heading">#</a></h2>
 <p>If you use <strong>sctrial</strong> in your research, please cite:</p>
-<div class="highlight-bibtex notranslate"><div class="highlight"><pre><span></span><span class="nc">@software</span><span class="p">{</span><span class="nl">sctrial</span><span class="p">,</span>
-<span class="w">  </span><span class="na">title</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">{sctrial: Trial-Aware Statistical Inference for Single-Cell Data}</span><span class="p">,</span>
+<blockquote>
+<div><p>Vasanthakumari P, Valencia I, Aghmiouni MR, Magana B, Omar MN.
+<strong>sctrial: Participant-Level Differential Analysis for Longitudinal Single-Cell Experiments.</strong>
+<em>bioRxiv</em> (2026).</p>
+</div></blockquote>
+<div class="highlight-bibtex notranslate"><div class="highlight"><pre><span></span><span class="nc">@article</span><span class="p">{</span><span class="nl">vasanthakumari2026sctrial</span><span class="p">,</span>
+<span class="w">  </span><span class="na">title</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">{sctrial: Participant-Level Differential Analysis for Longitudinal Single-Cell Experiments}</span><span class="p">,</span>
+<span class="w">  </span><span class="na">author</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">{Vasanthakumari, Priyanka and Valencia, Itzel and Aghmiouni, Maryam R. and Magana, Bryan and Omar, Mohamed N.}</span><span class="p">,</span>
+<span class="w">  </span><span class="na">journal</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">{bioRxiv}</span><span class="p">,</span>
+<span class="w">  </span><span class="na">year</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">{2026}</span><span class="p">,</span>
 <span class="w">  </span><span class="na">url</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">{https://github.com/TheOmarLab/sctrial}</span>
 <span class="p">}</span>
 </pre></div>
@@ -474,7 +489,7 @@ For end-to-end analyses on real clinical datasets, explore the <a class="referen
 
   <p class="copyright">
     
-      © Copyright 2026, Contributors.
+      © Copyright 2026, Omar Lab, Cedars-Sinai Medical Center.
       <br/>
     
   </p>

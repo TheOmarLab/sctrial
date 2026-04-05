@@ -1,0 +1,705 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Changelog &#8212; sctrial 0.3.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=44e57e90" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="_static/scripts/fontawesome.js?digest=7f76b32a3354e82990f2"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2" />
+
+    <script src="_static/documentation_options.js?v=f129cdf0"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'changelog';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="icon" href="_static/logo_icon.svg"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Performance Guide" href="performance.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  
+    
+    <script src="_static/searchtools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <script src="searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="_static/logo.svg" class="logo__image only-light" alt="sctrial 0.3.0 documentation - Home"/>
+    <img src="_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.3.0 documentation - Home"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="concepts.html">Concepts and Methods</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="tutorials/index.html">Tutorials</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/example_covid19_stephenson.html">Immune Profiling of COVID-19 Severity: A Cross-Sectional Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/example_immunotherapy_sade_feldman.html">Immunotherapy Response in Melanoma: Longitudinal Single-Cell Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/example_vaccine_immport.html">Vaccine Response Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/stress_test_real_scale.html">Scalability Analysis</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="api/index.html">API Reference</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/design.html">Trial Design</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/statistics.html">Statistical Methods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/scoring.html">Scoring and Preprocessing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/plotting.html">Plotting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/datasets.html">Datasets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/workflow.html">Workflow and Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/benchmark.html">Benchmark Simulation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/utilities.html">Utilities and Validation</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="best_practices.html">Best Practices Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="faq.html">Frequently Asked Questions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="performance.html">Performance Guide</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Changelog</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      <main id="main-content" class="bd-main" role="main">
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Changelog</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="changelog">
+<h1>Changelog<a class="headerlink" href="#changelog" title="Link to this heading">#</a></h1>
+<section id="changelog">
+<h2>Changelog<a class="headerlink" href="#changelog" title="Link to this heading">#</a></h2>
+<p>All notable changes to this project will be documented in this file.</p>
+<p>The format is based on <a class="reference external" href="https://keepachangelog.com/en/1.0.0/">Keep a Changelog</a>,
+and this project adheres to <a class="reference external" href="https://semver.org/spec/v2.0.0.html">Semantic Versioning</a>.</p>
+<section id="unreleased">
+<h3>[Unreleased]<a class="headerlink" href="#unreleased" title="Link to this heading">#</a></h3>
+<section id="added">
+<h4>Added<a class="headerlink" href="#added" title="Link to this heading">#</a></h4>
+<section id="simulation-benchmark-framework-sctrial-benchmark">
+<h5>Simulation Benchmark Framework (<code class="docutils literal notranslate"><span class="pre">sctrial.benchmark</span></code>)<a class="headerlink" href="#simulation-benchmark-framework-sctrial-benchmark" title="Link to this heading">#</a></h5>
+<ul class="simple">
+<li><p>Hierarchical gamma-Poisson simulator calibrated from real scRNA-seq data (TNBC)</p></li>
+<li><p>Benchmark orchestrator with parallel execution (spawn context) and incremental CSV saving</p></li>
+<li><p>R method runners (dreamlet, NEBULA) via subprocess Rscript</p></li>
+<li><p>Python method runners (sctrial DiD first-difference, paired Wilcoxon on change scores)</p></li>
+<li><p>Validation gate with TNBC calibration and vaccine holdout validation</p></li>
+<li><p>Comprehensive scenario grid: null calibration, power, robustness (heterogeneity, missing data, cell-count variation, arm imbalance)</p></li>
+</ul>
+</section>
+<section id="supplementary-figure-4-benchmark-panels-h-n">
+<h5>Supplementary Figure 4 Benchmark Panels (H-N)<a class="headerlink" href="#supplementary-figure-4-benchmark-panels-h-n" title="Link to this heading">#</a></h5>
+<ul class="simple">
+<li><p>Panel H: Two-arm power curves faceted by sample size</p></li>
+<li><p>Panel I: Type I error calibration (dot-and-whisker, both designs)</p></li>
+<li><p>Panel J: Genomic inflation factor (lambda_GC) under null</p></li>
+<li><p>Panel K: QQ plots colored by scenario type (pure-null vs DE null genes)</p></li>
+<li><p>Panel L: Null-gene FPR in DE scenarios (empirical Bayes inflation finding)</p></li>
+<li><p>Panel M: Single-arm paired power curves</p></li>
+<li><p>Panel N: Computational cost comparison (log-scale boxplot)</p></li>
+</ul>
+</section>
+</section>
+<section id="fixed">
+<h4>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">#</a></h4>
+<ul class="simple">
+<li><p>Benchmark runners: log1p scale mismatch between Python and R methods resolved</p></li>
+<li><p>Benchmark runners: single-arm design dispatch (one-sample t-test / signed-rank vs two-sample)</p></li>
+<li><p>Benchmark orchestrator: <code class="docutils literal notranslate"><span class="pre">time_effect=0.0</span></code> enforced for single-arm null scenarios</p></li>
+<li><p>Multiprocessing: spawn context prevents fork-inherited R subprocess corruption</p></li>
+<li><p>Wilcoxon runner: mypy dict-item type error resolved via <code class="docutils literal notranslate"><span class="pre">_fail_result()</span></code> helper</p></li>
+<li><p>SF4 panel labels: single-arm panels now say “participants” not “per arm”</p></li>
+<li><p>SF4 method label: “Wilcoxon (paired)” renamed to “Wilcoxon (Δ scores)”</p></li>
+</ul>
+</section>
+<section id="improved">
+<h4>Improved<a class="headerlink" href="#improved" title="Link to this heading">#</a></h4>
+<ul class="simple">
+<li><p>Documentation URLs standardized to Read the Docs across README, pyproject.toml, and Sphinx docs</p></li>
+<li><p>CITATION.cff updated with full author list and preprint title</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">stats/__init__.py</span></code> exports <code class="docutils literal notranslate"><span class="pre">run_gsea_cross_sectional</span></code> and <code class="docutils literal notranslate"><span class="pre">run_gsea_within_arm</span></code></p></li>
+</ul>
+</section>
+</section>
+<section id="id1">
+<h3>[0.3.0] - 2026-03-18<a class="headerlink" href="#id1" title="Link to this heading">#</a></h3>
+<section id="id2">
+<h4>Added<a class="headerlink" href="#id2" title="Link to this heading">#</a></h4>
+<section id="single-arm-power-analysis-sctrial-stats-power">
+<h5>Single-Arm Power Analysis (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.power</span></code>)<a class="headerlink" href="#single-arm-power-analysis-sctrial-stats-power" title="Link to this heading">#</a></h5>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">power_paired()</span></code>: Power for paired pre/post designs (vaccine, CAR-T, etc.)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">sample_size_paired()</span></code>: Required sample size for paired designs</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">sensitivity_paired()</span></code>: Minimum detectable effect size for paired designs</p></li>
+</ul>
+</section>
+<section id="single-arm-design-support-sctrial-design">
+<h5>Single-Arm Design Support (<code class="docutils literal notranslate"><span class="pre">sctrial.design</span></code>)<a class="headerlink" href="#single-arm-design-support-sctrial-design" title="Link to this heading">#</a></h5>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">TrialDesign.arm_col</span></code> now accepts <code class="docutils literal notranslate"><span class="pre">None</span></code> for single-arm studies</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">required_cols()</span></code>, <code class="docutils literal notranslate"><span class="pre">validate()</span></code>, <code class="docutils literal notranslate"><span class="pre">subset_cells()</span></code> handle <code class="docutils literal notranslate"><span class="pre">arm_col=None</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">arm_bin()</span></code> raises clear <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> for single-arm designs</p></li>
+</ul>
+</section>
+<section id="monte-carlo-simulation-sctrial-stats-simulation">
+<h5>Monte Carlo Simulation (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.simulation</span></code>)<a class="headerlink" href="#monte-carlo-simulation-sctrial-stats-simulation" title="Link to this heading">#</a></h5>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">simulate_did_data()</span></code>: Generate synthetic DiD datasets with known ground truth</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">run_method_comparison()</span></code>: Compare sctrial DiD vs pseudobulk OLS vs Wilcoxon</p></li>
+</ul>
+</section>
+</section>
+<section id="id3">
+<h4>Fixed<a class="headerlink" href="#id3" title="Link to this heading">#</a></h4>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">n_boot</span></code> default: 1000 → 999 in <code class="docutils literal notranslate"><span class="pre">bootstrap_effect_size_ci()</span></code></p></li>
+<li><p>Zero-SE paired delta returns <code class="docutils literal notranslate"><span class="pre">NaN</span></code> instead of <code class="docutils literal notranslate"><span class="pre">t=0,</span> <span class="pre">p=1</span></code></p></li>
+<li><p>Non-finite SE coerced to <code class="docutils literal notranslate"><span class="pre">NaN</span></code> instead of <code class="docutils literal notranslate"><span class="pre">0.0</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">validate()</span></code> no longer crashes when <code class="docutils literal notranslate"><span class="pre">arm_col=None</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">check_covariate_balance()</span></code> raises clear error for single-arm designs</p></li>
+<li><p>mypy: fixed <code class="docutils literal notranslate"><span class="pre">catch_warnings</span></code> type in <code class="docutils literal notranslate"><span class="pre">comparisons.py</span></code></p></li>
+</ul>
+<section id="bayesian-did-sctrial-stats-bayes">
+<h5>Bayesian DiD (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.bayes</span></code>)<a class="headerlink" href="#bayesian-did-sctrial-stats-bayes" title="Link to this heading">#</a></h5>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">prior_predictive_check()</span></code>: Run prior predictive checks to calibrate Bayesian priors before fitting.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">did_table_bayes()</span></code> now accepts <code class="docutils literal notranslate"><span class="pre">prior_scale</span></code> and <code class="docutils literal notranslate"><span class="pre">sigma_scale</span></code> parameters for prior sensitivity analysis.</p></li>
+</ul>
+</section>
+<section id="effect-size-module-sctrial-stats-effect-size">
+<h5>Effect Size Module (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.effect_size</span></code>)<a class="headerlink" href="#effect-size-module-sctrial-stats-effect-size" title="Link to this heading">#</a></h5>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">cohens_d()</span></code>: Calculate Cohen’s d effect size between two groups</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">hedges_g()</span></code>: Bias-corrected effect size (recommended for n &lt; 20)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">add_effect_sizes_to_did()</span></code>: Add standardized effect sizes to DiD results</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">bootstrap_effect_size_ci()</span></code>: Bootstrap confidence intervals for effect sizes</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">effect_size_ci()</span></code>: Analytical confidence intervals using noncentral t</p></li>
+</ul>
+</section>
+<section id="power-analysis-module-sctrial-stats-power">
+<h5>Power Analysis Module (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.power</span></code>)<a class="headerlink" href="#power-analysis-module-sctrial-stats-power" title="Link to this heading">#</a></h5>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">power_did()</span></code>: Calculate power for DiD analysis given sample size</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">sample_size_did()</span></code>: Determine required sample size for desired power</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">power_curve()</span></code>: Generate power curves across sample sizes</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">design_effect()</span></code>: Calculate design effect for clustered data</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">effective_sample_size()</span></code>: Compute effective n accounting for ICC</p></li>
+</ul>
+</section>
+<section id="mixed-effects-models-sctrial-stats-mixed-effects">
+<h5>Mixed Effects Models (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.mixed_effects</span></code>)<a class="headerlink" href="#mixed-effects-models-sctrial-stats-mixed-effects" title="Link to this heading">#</a></h5>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">did_table_mixed()</span></code>: DiD with random participant effects</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">compare_fixed_vs_mixed()</span></code>: Compare both approaches for sensitivity analysis</p></li>
+<li><p>Returns ICC (intraclass correlation) and variance components</p></li>
+</ul>
+</section>
+<section id="time-series-analysis-sctrial-stats-timeseries">
+<h5>Time Series Analysis (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.timeseries</span></code>)<a class="headerlink" href="#time-series-analysis-sctrial-stats-timeseries" title="Link to this heading">#</a></h5>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">trend_interaction()</span></code>: Treatment × time trend for 3+ timepoints</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">event_study_did()</span></code>: Generalized DiD comparing each visit to baseline</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">polynomial_trend()</span></code>: Fit polynomial trajectories by arm</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">test_parallel_trends()</span></code>: Validate parallel trends assumption</p></li>
+</ul>
+</section>
+<section id="cross-validation-sctrial-stats-cv">
+<h5>Cross-Validation (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.cv</span></code>)<a class="headerlink" href="#cross-validation-sctrial-stats-cv" title="Link to this heading">#</a></h5>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">loo_cv_did()</span></code>: Leave-one-out CV for influence diagnostics</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">kfold_cv_did()</span></code>: K-fold CV for effect stability assessment</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">influence_diagnostics()</span></code>: Identify influential participants</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">cv_summary()</span></code>: Summary statistics from CV results</p></li>
+</ul>
+</section>
+</section>
+<section id="id4">
+<h4>Improved<a class="headerlink" href="#id4" title="Link to this heading">#</a></h4>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">add_effect_sizes_to_did()</span></code> now uses residual SD directly from the OLS/WLS fit when available, instead of back-calculating from standard errors with a balanced-design assumption.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">module_score_did_by_pool()</span></code> now accepts <code class="docutils literal notranslate"><span class="pre">fdr_global</span></code> parameter; emits a global FDR column (<code class="docutils literal notranslate"><span class="pre">FDR_DiD_global</span></code>) and a warning when per-group FDR is used.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">kfold_cv_did()</span></code> now stratifies fold assignment by treatment arm for balanced folds.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">did_table_mixed()</span></code> convergence handling improved: trusts <code class="docutils literal notranslate"><span class="pre">fit.converged</span></code> as primary indicator with <code class="docutils literal notranslate"><span class="pre">lbfgs</span></code> fallback optimizer.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">design_effect()</span></code> and <code class="docutils literal notranslate"><span class="pre">effective_sample_size()</span></code> now validate inputs (ICC, cluster_size).</p></li>
+<li><p>Missing feature error messages in <code class="docutils literal notranslate"><span class="pre">did_fit()</span></code> now show total count when more than 5 are missing.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">add_log1p_cpm_layer()</span></code> now supports <code class="docutils literal notranslate"><span class="pre">overwrite=True</span></code> to replace an existing layer and <code class="docutils literal notranslate"><span class="pre">inplace=True</span></code> to modify the AnnData in place without copying.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">_to_bool_series()</span></code> now emits a <code class="docutils literal notranslate"><span class="pre">WARNING</span></code>-level log when non-finite values are encountered in a boolean column, aiding data quality diagnostics.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">profile_features()</span></code> docstring now documents that aggregation is cell-weighted; for balanced participant-level comparisons, pre-aggregate to pseudobulk first.</p></li>
+<li><p>Replaced <code class="docutils literal notranslate"><span class="pre">print()</span></code> with <code class="docutils literal notranslate"><span class="pre">logging</span></code> throughout <code class="docutils literal notranslate"><span class="pre">convenience</span></code>, <code class="docutils literal notranslate"><span class="pre">datasets</span></code>, and <code class="docutils literal notranslate"><span class="pre">validation</span></code> modules.</p></li>
+<li><p>Enhanced <code class="docutils literal notranslate"><span class="pre">did_fit()</span></code> docstring with full mathematical model specification</p></li>
+<li><p>Added explicit null hypothesis statements to all statistical functions</p></li>
+<li><p>Expanded FAQ with bootstrap vs standard errors guidance</p></li>
+<li><p>Expanded FAQ with minimum sample size recommendations</p></li>
+<li><p>Expanded FAQ with missing data handling guidance</p></li>
+<li><p>Reorganized API documentation by statistical method category</p></li>
+</ul>
+</section>
+<section id="id5">
+<h4>Fixed<a class="headerlink" href="#id5" title="Link to this heading">#</a></h4>
+<ul class="simple">
+<li><p><strong>Statistical</strong>: Fixed WLS weighting in <code class="docutils literal notranslate"><span class="pre">did_fit()</span></code> — now uses <code class="docutils literal notranslate"><span class="pre">n_cells</span></code> (correct inverse-variance weights) instead of <code class="docutils literal notranslate"><span class="pre">sqrt(n_cells)</span></code> for pre-aggregated participant-level means.</p></li>
+<li><p><strong>Statistical</strong>: Fixed <code class="docutils literal notranslate"><span class="pre">pseudobulk_expression()</span></code> to drop groups with zero total counts before CPM normalization instead of adding a <code class="docutils literal notranslate"><span class="pre">1e-12</span></code> epsilon.</p></li>
+<li><p><strong>Preprocessing</strong>: <code class="docutils literal notranslate"><span class="pre">add_log1p_cpm_layer()</span></code> now validates input: raises <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> on negative counts, warns on NaN/inf values, and warns when all cells in the counts layer are zero.</p></li>
+<li><p><strong>Preprocessing</strong>: <code class="docutils literal notranslate"><span class="pre">add_log1p_cpm_layer()</span></code> now records provenance metadata in <code class="docutils literal notranslate"><span class="pre">adata.uns[&quot;log1p_cpm_info&quot;]</span></code> (source layer, target layer, timestamp).</p></li>
+<li><p><strong>adata_tools</strong>: Fixed <code class="docutils literal notranslate"><span class="pre">_to_bool_series()</span></code> truncating fractional crossover values (e.g. <code class="docutils literal notranslate"><span class="pre">0.5</span></code> was cast to <code class="docutils literal notranslate"><span class="pre">int</span></code> → <code class="docutils literal notranslate"><span class="pre">0</span></code> → <code class="docutils literal notranslate"><span class="pre">False</span></code>). Now any non-zero finite value is truthy.</p></li>
+<li><p><strong>adata_tools</strong>: Fixed <code class="docutils literal notranslate"><span class="pre">_to_bool_series()</span></code> crashing with <code class="docutils literal notranslate"><span class="pre">IntCastingNaNError</span></code> on <code class="docutils literal notranslate"><span class="pre">np.inf</span></code> crossover values. Non-finite values (NaN, inf) are now treated as <code class="docutils literal notranslate"><span class="pre">False</span></code> with a logged warning.</p></li>
+<li><p><strong>analysis</strong>: Fixed <code class="docutils literal notranslate"><span class="pre">DiDAnalyzer.fit()</span></code> returning a mutable alias to internal <code class="docutils literal notranslate"><span class="pre">results_</span></code> DataFrame. Now returns a copy so external mutations cannot corrupt internal state.</p></li>
+<li><p>Fixed duplicate <code class="docutils literal notranslate"><span class="pre">_params_match()</span></code> definition in <code class="docutils literal notranslate"><span class="pre">datasets.py</span></code> that silently overwrote the robust version; also fixed numpy array comparison bug.</p></li>
+<li><p>Fixed README.md example with incorrect <code class="docutils literal notranslate"><span class="pre">arm_col</span></code> parameter value.</p></li>
+<li><p>Fixed <code class="docutils literal notranslate"><span class="pre">auto_detect_design</span></code> docstring example showing incorrect mutation of frozen dataclass.</p></li>
+<li><p>Fixed <code class="docutils literal notranslate"><span class="pre">test_plot_gsea_heatmap</span></code> test to skip when matplotlib is not installed.</p></li>
+</ul>
+</section>
+<section id="internal">
+<h4>Internal<a class="headerlink" href="#internal" title="Link to this heading">#</a></h4>
+<ul class="simple">
+<li><p>Added <code class="docutils literal notranslate"><span class="pre">__all__</span></code> exports to all modules for better API clarity: <code class="docutils literal notranslate"><span class="pre">design</span></code>, <code class="docutils literal notranslate"><span class="pre">preprocessing</span></code>, <code class="docutils literal notranslate"><span class="pre">scoring</span></code>, <code class="docutils literal notranslate"><span class="pre">adata_tools</span></code>, <code class="docutils literal notranslate"><span class="pre">utils</span></code>, <code class="docutils literal notranslate"><span class="pre">plotting</span></code>.</p></li>
+<li><p>Added <code class="docutils literal notranslate"><span class="pre">validation</span></code> and <code class="docutils literal notranslate"><span class="pre">convenience</span></code> modules to API documentation.</p></li>
+</ul>
+</section>
+</section>
+<section id="id6">
+<h3>[0.2.0] - 2026-01-01<a class="headerlink" href="#id6" title="Link to this heading">#</a></h3>
+<section id="id7">
+<h4>Added<a class="headerlink" href="#id7" title="Link to this heading">#</a></h4>
+<ul class="simple">
+<li><p>Core trial-aware inference engine: Difference-in-Differences (DiD) with participant fixed effects and covariate support.</p></li>
+<li><p>Robust statistical methods: Wild Cluster Bootstrap (Rademacher) and Permutation tests.</p></li>
+<li><p>Cell-type abundance DiD for compositional analysis.</p></li>
+<li><p>GSEA integration with trial-aware rankings (signed confidence, beta, or t-statistic).</p></li>
+<li><p>Stratified DiD analysis across cell-type hierarchies (<code class="docutils literal notranslate"><span class="pre">did_table_by_celltype</span></code>).</p></li>
+<li><p>Advanced visualizations: Trial interaction plots, forest plots, spaghetti plots, radar plots, and trial-stratified UMAP panels.</p></li>
+<li><p>Automated summary reporting for DiD results.</p></li>
+<li><p>Comprehensive Sphinx documentation with API reference and detailed tutorials.</p></li>
+<li><p>Professional infrastructure: MIT License, pre-commit hooks, and GitHub Actions CI.</p></li>
+<li><p>Full support for sparse <code class="docutils literal notranslate"><span class="pre">AnnData</span></code> objects.</p></li>
+</ul>
+</section>
+</section>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="performance.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Performance Guide</p>
+      </div>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#changelog">Changelog</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#unreleased">[Unreleased]</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#added">Added</a><ul class="nav section-nav flex-column">
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#simulation-benchmark-framework-sctrial-benchmark">Simulation Benchmark Framework (<code class="docutils literal notranslate"><span class="pre">sctrial.benchmark</span></code>)</a></li>
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#supplementary-figure-4-benchmark-panels-h-n">Supplementary Figure 4 Benchmark Panels (H-N)</a></li>
+</ul>
+</li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#fixed">Fixed</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#improved">Improved</a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">[0.3.0] - 2026-03-18</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id2">Added</a><ul class="nav section-nav flex-column">
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#single-arm-power-analysis-sctrial-stats-power">Single-Arm Power Analysis (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.power</span></code>)</a></li>
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#single-arm-design-support-sctrial-design">Single-Arm Design Support (<code class="docutils literal notranslate"><span class="pre">sctrial.design</span></code>)</a></li>
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#monte-carlo-simulation-sctrial-stats-simulation">Monte Carlo Simulation (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.simulation</span></code>)</a></li>
+</ul>
+</li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id3">Fixed</a><ul class="nav section-nav flex-column">
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#bayesian-did-sctrial-stats-bayes">Bayesian DiD (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.bayes</span></code>)</a></li>
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#effect-size-module-sctrial-stats-effect-size">Effect Size Module (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.effect_size</span></code>)</a></li>
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#power-analysis-module-sctrial-stats-power">Power Analysis Module (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.power</span></code>)</a></li>
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#mixed-effects-models-sctrial-stats-mixed-effects">Mixed Effects Models (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.mixed_effects</span></code>)</a></li>
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#time-series-analysis-sctrial-stats-timeseries">Time Series Analysis (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.timeseries</span></code>)</a></li>
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#cross-validation-sctrial-stats-cv">Cross-Validation (<code class="docutils literal notranslate"><span class="pre">sctrial.stats.cv</span></code>)</a></li>
+</ul>
+</li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id4">Improved</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id5">Fixed</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#internal">Internal</a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id6">[0.2.0] - 2026-01-01</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id7">Added</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+
+  
+  <div class="tocsection editthispage">
+    <a href="https://github.com/TheOmarLab/sctrial/edit/main/docs/source/changelog.rst">
+      <i class="fa-solid fa-pencil"></i>
+      
+      
+        
+          Edit on GitHub
+        
+      
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2026, Omar Lab, Cedars-Sinai Medical Center.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+</div>
+
+  </footer>
+  </body>
+</html>

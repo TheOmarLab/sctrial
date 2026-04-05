@@ -267,6 +267,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../concepts.html">Concepts and Methods</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
 <ul class="nav bd-sidenav">
@@ -278,9 +279,19 @@
 </ul>
 </details></li>
 </ul>
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../../api.html">API Reference</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../api/index.html">API Reference</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/design.html">Trial Design</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/statistics.html">Statistical Methods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/scoring.html">Scoring and Preprocessing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/plotting.html">Plotting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/datasets.html">Datasets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/workflow.html">Workflow and Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/benchmark.html">Benchmark Simulation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/utilities.html">Utilities and Validation</a></li>
+</ul>
+</details></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
 <ul class="nav bd-sidenav">
@@ -288,6 +299,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../troubleshooting.html">Troubleshooting Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../faq.html">Frequently Asked Questions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../performance.html">Performance Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../changelog.html">Changelog</a></li>
 </ul>
 </div>
 </nav></div>
@@ -344,7 +356,9 @@
                 <article class="bd-article">
                   
   <h1>Source code for sctrial.utils</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+<span></span><span class="sd">&quot;&quot;&quot;Shared internal utilities: logging, formatting, helpers.&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Sequence</span>
@@ -372,7 +386,7 @@
 
 
 <div class="viewcode-block" id="BootstrapResult">
-<a class="viewcode-back" href="../../api.html#sctrial.utils.BootstrapResult">[docs]</a>
+<a class="viewcode-back" href="../../api/utilities.html#sctrial.utils.BootstrapResult">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">BootstrapResult</span><span class="p">(</span><span class="n">NamedTuple</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Result of a wild cluster bootstrap procedure.</span>
 
@@ -399,7 +413,7 @@
 
 
 <div class="viewcode-block" id="safe_filename">
-<a class="viewcode-back" href="../../api.html#sctrial.utils.safe_filename">[docs]</a>
+<a class="viewcode-back" href="../../api/utilities.html#sctrial.utils.safe_filename">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">safe_filename</span><span class="p">(</span><span class="n">s</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">maxlen</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">180</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a filesystem-safe filename slug.</span>
 
@@ -425,7 +439,7 @@
 
 
 <div class="viewcode-block" id="intersect_preserve_order">
-<a class="viewcode-back" href="../../api.html#sctrial.utils.intersect_preserve_order">[docs]</a>
+<a class="viewcode-back" href="../../api/utilities.html#sctrial.utils.intersect_preserve_order">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">intersect_preserve_order</span><span class="p">(</span><span class="n">items</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">universe</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return items that appear in universe, preserving original order.</span>
 
@@ -447,7 +461,7 @@
 
 
 <div class="viewcode-block" id="ensure_unique_index">
-<a class="viewcode-back" href="../../api.html#sctrial.utils.ensure_unique_index">[docs]</a>
+<a class="viewcode-back" href="../../api/utilities.html#sctrial.utils.ensure_unique_index">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">ensure_unique_index</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">agg</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;mean&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;If df.index has duplicates, aggregate duplicates and return a new df.</span>
 <span class="sd">    Parameters</span>
@@ -472,7 +486,7 @@
 
 
 <div class="viewcode-block" id="looks_like_counts">
-<a class="viewcode-back" href="../../api.html#sctrial.utils.looks_like_counts">[docs]</a>
+<a class="viewcode-back" href="../../api/utilities.html#sctrial.utils.looks_like_counts">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">looks_like_counts</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">sample</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10000</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Check if matrix appears to be raw counts.</span>
 
@@ -509,7 +523,7 @@
 
 
 <div class="viewcode-block" id="get_counts_matrix">
-<a class="viewcode-back" href="../../api.html#sctrial.utils.get_counts_matrix">[docs]</a>
+<a class="viewcode-back" href="../../api/utilities.html#sctrial.utils.get_counts_matrix">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_counts_matrix</span><span class="p">(</span><span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a raw-counts matrix and its source label, if available.</span>
 
@@ -541,7 +555,7 @@
 
 
 <div class="viewcode-block" id="wild_cluster_bootstrap_t">
-<a class="viewcode-back" href="../../api.html#sctrial.utils.wild_cluster_bootstrap_t">[docs]</a>
+<a class="viewcode-back" href="../../api/utilities.html#sctrial.utils.wild_cluster_bootstrap_t">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">wild_cluster_bootstrap_t</span><span class="p">(</span>
     <span class="n">fit</span><span class="p">:</span> <span class="n">RegressionResultsWrapper</span><span class="p">,</span>
     <span class="n">X</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
@@ -713,7 +727,7 @@
 
 
 <div class="viewcode-block" id="permutation_pvalue">
-<a class="viewcode-back" href="../../api.html#sctrial.utils.permutation_pvalue">[docs]</a>
+<a class="viewcode-back" href="../../api/utilities.html#sctrial.utils.permutation_pvalue">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">permutation_pvalue</span><span class="p">(</span>
     <span class="n">group1</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="n">group2</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
@@ -757,7 +771,7 @@
 
 
 <div class="viewcode-block" id="permutation_pvalue_paired">
-<a class="viewcode-back" href="../../api.html#sctrial.utils.permutation_pvalue_paired">[docs]</a>
+<a class="viewcode-back" href="../../api/utilities.html#sctrial.utils.permutation_pvalue_paired">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">permutation_pvalue_paired</span><span class="p">(</span>
     <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="n">y</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
@@ -801,7 +815,7 @@
 
 
 <div class="viewcode-block" id="resolve_feature">
-<a class="viewcode-back" href="../../api.html#sctrial.utils.resolve_feature">[docs]</a>
+<a class="viewcode-back" href="../../api/utilities.html#sctrial.utils.resolve_feature">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">resolve_feature</span><span class="p">(</span><span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span> <span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve a feature name in adata.var_names or adata.obs.columns (case-insensitive).</span>
 
@@ -884,7 +898,7 @@
 
   <p class="copyright">
     
-      © Copyright 2026, Contributors.
+      © Copyright 2026, Omar Lab, Cedars-Sinai Medical Center.
       <br/>
     
   </p>

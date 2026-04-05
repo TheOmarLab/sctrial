@@ -267,6 +267,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../concepts.html">Concepts and Methods</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
 <ul class="nav bd-sidenav">
@@ -278,9 +279,19 @@
 </ul>
 </details></li>
 </ul>
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../../../api.html">API Reference</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../api/index.html">API Reference</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/design.html">Trial Design</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/statistics.html">Statistical Methods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/scoring.html">Scoring and Preprocessing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/plotting.html">Plotting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/datasets.html">Datasets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/workflow.html">Workflow and Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/benchmark.html">Benchmark Simulation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/utilities.html">Utilities and Validation</a></li>
+</ul>
+</details></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
 <ul class="nav bd-sidenav">
@@ -288,6 +299,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../troubleshooting.html">Troubleshooting Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../faq.html">Frequently Asked Questions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../performance.html">Performance Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog.html">Changelog</a></li>
 </ul>
 </div>
 </nav></div>
@@ -409,7 +421,7 @@
 
 
 <div class="viewcode-block" id="design_effect">
-<a class="viewcode-back" href="../../../api.html#sctrial.stats.power.design_effect">[docs]</a>
+<a class="viewcode-back" href="../../../api/statistics.html#sctrial.stats.power.design_effect">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">design_effect</span><span class="p">(</span>
     <span class="n">cluster_size</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
     <span class="n">icc</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
@@ -454,7 +466,7 @@
 
 
 <div class="viewcode-block" id="effective_sample_size">
-<a class="viewcode-back" href="../../../api.html#sctrial.stats.power.effective_sample_size">[docs]</a>
+<a class="viewcode-back" href="../../../api/statistics.html#sctrial.stats.power.effective_sample_size">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">effective_sample_size</span><span class="p">(</span>
     <span class="n">n_clusters</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
     <span class="n">cluster_size</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
@@ -496,7 +508,7 @@
 
 
 <div class="viewcode-block" id="power_did">
-<a class="viewcode-back" href="../../../api.html#sctrial.stats.power.power_did">[docs]</a>
+<a class="viewcode-back" href="../../../api/statistics.html#sctrial.stats.power.power_did">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">power_did</span><span class="p">(</span>
     <span class="n">n_per_group</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
     <span class="n">effect_size</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
@@ -612,7 +624,7 @@
 
 
 <div class="viewcode-block" id="sample_size_did">
-<a class="viewcode-back" href="../../../api.html#sctrial.stats.power.sample_size_did">[docs]</a>
+<a class="viewcode-back" href="../../../api/statistics.html#sctrial.stats.power.sample_size_did">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">sample_size_did</span><span class="p">(</span>
     <span class="n">effect_size</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
     <span class="n">sigma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
@@ -700,7 +712,7 @@
 
 
 <div class="viewcode-block" id="power_curve">
-<a class="viewcode-back" href="../../../api.html#sctrial.stats.power.power_curve">[docs]</a>
+<a class="viewcode-back" href="../../../api/statistics.html#sctrial.stats.power.power_curve">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">power_curve</span><span class="p">(</span>
     <span class="n">n_range</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">50</span><span class="p">),</span>
     <span class="n">effect_size</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span>
@@ -812,7 +824,7 @@
 
 
 <div class="viewcode-block" id="power_paired">
-<a class="viewcode-back" href="../../../api.html#sctrial.stats.power.power_paired">[docs]</a>
+<a class="viewcode-back" href="../../../api/statistics.html#sctrial.stats.power.power_paired">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">power_paired</span><span class="p">(</span>
     <span class="n">n_participants</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
     <span class="n">effect_size</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
@@ -903,7 +915,7 @@
 
 
 <div class="viewcode-block" id="sample_size_paired">
-<a class="viewcode-back" href="../../../api.html#sctrial.stats.power.sample_size_paired">[docs]</a>
+<a class="viewcode-back" href="../../../api/statistics.html#sctrial.stats.power.sample_size_paired">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">sample_size_paired</span><span class="p">(</span>
     <span class="n">effect_size</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
     <span class="n">sigma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
@@ -962,7 +974,7 @@
 
 
 <div class="viewcode-block" id="sensitivity_paired">
-<a class="viewcode-back" href="../../../api.html#sctrial.stats.power.sensitivity_paired">[docs]</a>
+<a class="viewcode-back" href="../../../api/statistics.html#sctrial.stats.power.sensitivity_paired">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">sensitivity_paired</span><span class="p">(</span>
     <span class="n">n_participants</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
     <span class="n">sigma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
@@ -1048,7 +1060,7 @@
 
   <p class="copyright">
     
-      © Copyright 2026, Contributors.
+      © Copyright 2026, Omar Lab, Cedars-Sinai Medical Center.
       <br/>
     
   </p>

@@ -267,6 +267,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../concepts.html">Concepts and Methods</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
 <ul class="nav bd-sidenav">
@@ -278,9 +279,19 @@
 </ul>
 </details></li>
 </ul>
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../../api.html">API Reference</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../api/index.html">API Reference</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/design.html">Trial Design</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/statistics.html">Statistical Methods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/scoring.html">Scoring and Preprocessing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/plotting.html">Plotting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/datasets.html">Datasets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/workflow.html">Workflow and Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/benchmark.html">Benchmark Simulation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/utilities.html">Utilities and Validation</a></li>
+</ul>
+</details></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
 <ul class="nav bd-sidenav">
@@ -288,6 +299,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../troubleshooting.html">Troubleshooting Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../faq.html">Frequently Asked Questions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../performance.html">Performance Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../changelog.html">Changelog</a></li>
 </ul>
 </div>
 </nav></div>
@@ -344,7 +356,9 @@
                 <article class="bd-article">
                   
   <h1>Source code for sctrial.plotting</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+<span></span><span class="sd">&quot;&quot;&quot;Publication-quality plotting: forest plots, interaction plots, volcanoes, UMAPs, GSEA heatmaps.&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sequence</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">types</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModuleType</span>
@@ -415,7 +429,7 @@
 
 
 <div class="viewcode-block" id="did_volcano_frame">
-<a class="viewcode-back" href="../../api.html#sctrial.plotting.did_volcano_frame">[docs]</a>
+<a class="viewcode-back" href="../../api/plotting.html#sctrial.plotting.did_volcano_frame">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">did_volcano_frame</span><span class="p">(</span>
     <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
@@ -457,7 +471,7 @@
 
 
 <div class="viewcode-block" id="signed_logp">
-<a class="viewcode-back" href="../../api.html#sctrial.plotting.signed_logp">[docs]</a>
+<a class="viewcode-back" href="../../api/plotting.html#sctrial.plotting.signed_logp">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">signed_logp</span><span class="p">(</span>
     <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
@@ -495,7 +509,7 @@
 
 
 <div class="viewcode-block" id="plot_trial_interaction">
-<a class="viewcode-back" href="../../api.html#sctrial.plotting.plot_trial_interaction">[docs]</a>
+<a class="viewcode-back" href="../../api/plotting.html#sctrial.plotting.plot_trial_interaction">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">plot_trial_interaction</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
     <span class="n">feature</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
@@ -584,7 +598,7 @@
 
 
 <div class="viewcode-block" id="plot_parallel_trends">
-<a class="viewcode-back" href="../../api.html#sctrial.plotting.plot_parallel_trends">[docs]</a>
+<a class="viewcode-back" href="../../api/plotting.html#sctrial.plotting.plot_parallel_trends">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">plot_parallel_trends</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
     <span class="n">feature</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
@@ -665,7 +679,7 @@
 
 
 <div class="viewcode-block" id="plot_did_forest">
-<a class="viewcode-back" href="../../api.html#sctrial.plotting.plot_did_forest">[docs]</a>
+<a class="viewcode-back" href="../../api/plotting.html#sctrial.plotting.plot_did_forest">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">plot_did_forest</span><span class="p">(</span>
     <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
@@ -797,7 +811,7 @@
 
 
 <div class="viewcode-block" id="plot_within_arm_comparison">
-<a class="viewcode-back" href="../../api.html#sctrial.plotting.plot_within_arm_comparison">[docs]</a>
+<a class="viewcode-back" href="../../api/plotting.html#sctrial.plotting.plot_within_arm_comparison">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">plot_within_arm_comparison</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
     <span class="n">arm</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
@@ -902,7 +916,7 @@
 
 
 <div class="viewcode-block" id="plot_trial_umap">
-<a class="viewcode-back" href="../../api.html#sctrial.plotting.plot_trial_umap">[docs]</a>
+<a class="viewcode-back" href="../../api/plotting.html#sctrial.plotting.plot_trial_umap">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">plot_trial_umap</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
     <span class="n">feature</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
@@ -1007,7 +1021,7 @@
 
 
 <div class="viewcode-block" id="plot_gsea_radar">
-<a class="viewcode-back" href="../../api.html#sctrial.plotting.plot_gsea_radar">[docs]</a>
+<a class="viewcode-back" href="../../api/plotting.html#sctrial.plotting.plot_gsea_radar">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">plot_gsea_radar</span><span class="p">(</span>
     <span class="n">gsea_results</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">term</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
@@ -1087,7 +1101,7 @@
 
 
 <div class="viewcode-block" id="plot_trial_dotplot">
-<a class="viewcode-back" href="../../api.html#sctrial.plotting.plot_trial_dotplot">[docs]</a>
+<a class="viewcode-back" href="../../api/plotting.html#sctrial.plotting.plot_trial_dotplot">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">plot_trial_dotplot</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
     <span class="n">features</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
@@ -1175,7 +1189,7 @@
 
 
 <div class="viewcode-block" id="plot_abundance_interaction">
-<a class="viewcode-back" href="../../api.html#sctrial.plotting.plot_abundance_interaction">[docs]</a>
+<a class="viewcode-back" href="../../api/plotting.html#sctrial.plotting.plot_abundance_interaction">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">plot_abundance_interaction</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
     <span class="n">celltype</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
@@ -1268,7 +1282,7 @@
 
 
 <div class="viewcode-block" id="plot_trial_umap_panel">
-<a class="viewcode-back" href="../../api.html#sctrial.plotting.plot_trial_umap_panel">[docs]</a>
+<a class="viewcode-back" href="../../api/plotting.html#sctrial.plotting.plot_trial_umap_panel">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">plot_trial_umap_panel</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
     <span class="n">feature</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
@@ -1441,7 +1455,7 @@
 
 
 <div class="viewcode-block" id="plot_module_umap_panel">
-<a class="viewcode-back" href="../../api.html#sctrial.plotting.plot_module_umap_panel">[docs]</a>
+<a class="viewcode-back" href="../../api/plotting.html#sctrial.plotting.plot_module_umap_panel">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">plot_module_umap_panel</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
     <span class="n">module_cols</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
@@ -1542,7 +1556,7 @@
 
 
 <div class="viewcode-block" id="plot_gsea_heatmap">
-<a class="viewcode-back" href="../../api.html#sctrial.plotting.plot_gsea_heatmap">[docs]</a>
+<a class="viewcode-back" href="../../api/plotting.html#sctrial.plotting.plot_gsea_heatmap">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">plot_gsea_heatmap</span><span class="p">(</span>
     <span class="n">gsea_results</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
     <span class="n">collection</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -1638,7 +1652,7 @@
 
 
 <div class="viewcode-block" id="plot_did_forest_interactive">
-<a class="viewcode-back" href="../../api.html#sctrial.plotting.plot_did_forest_interactive">[docs]</a>
+<a class="viewcode-back" href="../../api/plotting.html#sctrial.plotting.plot_did_forest_interactive">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">plot_did_forest_interactive</span><span class="p">(</span>
     <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
@@ -1717,7 +1731,7 @@
 
 
 <div class="viewcode-block" id="plot_did_volcano_interactive">
-<a class="viewcode-back" href="../../api.html#sctrial.plotting.plot_did_volcano_interactive">[docs]</a>
+<a class="viewcode-back" href="../../api/plotting.html#sctrial.plotting.plot_did_volcano_interactive">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">plot_did_volcano_interactive</span><span class="p">(</span>
     <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
@@ -1798,7 +1812,7 @@
 
   <p class="copyright">
     
-      © Copyright 2026, Contributors.
+      © Copyright 2026, Omar Lab, Cedars-Sinai Medical Center.
       <br/>
     
   </p>

@@ -1,0 +1,910 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>sctrial.benchmark.orchestrator &#8212; sctrial 0.3.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=44e57e90" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../../../_static/scripts/fontawesome.js?digest=7f76b32a3354e82990f2"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2" />
+
+    <script src="../../../_static/documentation_options.js?v=f129cdf0"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/sctrial/benchmark/orchestrator';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="icon" href="../../../_static/logo_icon.svg"/>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  
+    
+    <script src="../../../_static/searchtools.js"></script>
+    <script src="../../../_static/language_data.js"></script>
+    <script src="../../../searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/logo.svg" class="logo__image only-light" alt="sctrial 0.3.0 documentation - Home"/>
+    <img src="../../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.3.0 documentation - Home"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../concepts.html">Concepts and Methods</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_covid19_stephenson.html">Immune Profiling of COVID-19 Severity: A Cross-Sectional Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_immunotherapy_sade_feldman.html">Immunotherapy Response in Melanoma: Longitudinal Single-Cell Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_vaccine_immport.html">Vaccine Response Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/stress_test_real_scale.html">Scalability Analysis</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../api/index.html">API Reference</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/design.html">Trial Design</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/statistics.html">Statistical Methods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/scoring.html">Scoring and Preprocessing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/plotting.html">Plotting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/datasets.html">Datasets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/workflow.html">Workflow and Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/benchmark.html">Benchmark Simulation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/utilities.html">Utilities and Validation</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../best_practices.html">Best Practices Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../troubleshooting.html">Troubleshooting Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../faq.html">Frequently Asked Questions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../performance.html">Performance Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog.html">Changelog</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      <main id="main-content" class="bd-main" role="main">
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">sctrial.benchmark.orchestrator</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for sctrial.benchmark.orchestrator</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Benchmark orchestrator — runs the full simulation grid with parallelization.</span>
+
+<span class="sd">Usage::</span>
+
+<span class="sd">    from sctrial.benchmark.orchestrator import run_benchmark</span>
+<span class="sd">    results = run_benchmark(n_jobs=25, output_dir=&quot;benchmark_results&quot;)</span>
+
+<span class="sd">Or from command line::</span>
+
+<span class="sd">    python -m sctrial.benchmark.orchestrator --n-jobs 25 --output-dir benchmark_results</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">multiprocessing</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">mp</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.simulator</span><span class="w"> </span><span class="kn">import</span> <span class="n">SimulationConfig</span><span class="p">,</span> <span class="n">simulate_trial</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Scenario definitions (from the locked NatMeth benchmark plan)</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+<span class="n">_N_GENES</span> <span class="o">=</span> <span class="mi">50</span>
+<span class="n">_N_SIGNAL</span> <span class="o">=</span> <span class="mi">10</span>
+<span class="n">_N_ITERATIONS</span> <span class="o">=</span> <span class="mi">200</span>
+<span class="n">_MEAN_CELLS</span> <span class="o">=</span> <span class="mi">500</span>
+
+<span class="c1"># Core methods</span>
+<span class="n">CORE_METHODS</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;sctrial_did&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;dreamlet&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;nebula&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;wilcoxon_paired&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="c1"># Excluded from benchmark:</span>
+<span class="c1"># - edger_qlf: no native repeated-measures support; ~arm*visit without</span>
+<span class="c1">#   participant blocking is severely conservative (~0% FPR); participant</span>
+<span class="c1">#   FE designs are rank-deficient with nested participants.</span>
+<span class="c1"># - limma_voom: duplicateCorrelation crashes at n&gt;=40; participant FE</span>
+<span class="c1">#   designs are rank-deficient; unblocked ~arm*visit is conservative.</span>
+<span class="c1"># Both lack proper paired-design handling. dreamlet (mixed model)</span>
+<span class="c1"># represents the count-based pseudobulk class correctly.</span>
+
+<span class="c1"># Internal sensitivity (not headline)</span>
+<span class="n">INTERNAL_METHODS</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;sctrial_mixed&quot;</span><span class="p">]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_make_effects</span><span class="p">(</span><span class="n">n_signal</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">beta</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">mixed_sign</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create effect dict for n_signal genes.&quot;&quot;&quot;</span>
+    <span class="n">effects</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_signal</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">mixed_sign</span> <span class="ow">and</span> <span class="n">i</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">effects</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;gene_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">beta</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">effects</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;gene_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">beta</span>
+    <span class="k">return</span> <span class="n">effects</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">build_scenario_grid</span><span class="p">(</span><span class="n">design</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;two_arm&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build the full scenario grid for one design family.</span>
+
+<span class="sd">    Returns list of dicts, each with keys: name, config_kwargs, description.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">scenarios</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="c1"># 1. Complete null</span>
+    <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">8</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">40</span><span class="p">,</span> <span class="mi">60</span><span class="p">]:</span>
+        <span class="n">scenarios</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;null_n</span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Complete null, n=</span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2"> per arm&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;config_kwargs&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">&quot;design&quot;</span><span class="p">:</span> <span class="n">design</span><span class="p">,</span>
+                    <span class="s2">&quot;n_per_arm&quot;</span><span class="p">:</span> <span class="n">n</span><span class="p">,</span>
+                    <span class="s2">&quot;n_genes&quot;</span><span class="p">:</span> <span class="n">_N_GENES</span><span class="p">,</span>
+                    <span class="s2">&quot;effects&quot;</span><span class="p">:</span> <span class="p">{},</span>
+                    <span class="s2">&quot;mean_cells_per_visit&quot;</span><span class="p">:</span> <span class="n">_MEAN_CELLS</span><span class="p">,</span>
+                <span class="p">},</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+
+    <span class="c1"># 2. Null + nuisance heterogeneity</span>
+    <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">20</span><span class="p">,</span> <span class="mi">40</span><span class="p">]:</span>
+        <span class="n">scenarios</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;null_hetero_n</span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Null + high participant SD + imbalanced cells, n=</span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;config_kwargs&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">&quot;design&quot;</span><span class="p">:</span> <span class="n">design</span><span class="p">,</span>
+                    <span class="s2">&quot;n_per_arm&quot;</span><span class="p">:</span> <span class="n">n</span><span class="p">,</span>
+                    <span class="s2">&quot;n_genes&quot;</span><span class="p">:</span> <span class="n">_N_GENES</span><span class="p">,</span>
+                    <span class="s2">&quot;effects&quot;</span><span class="p">:</span> <span class="p">{},</span>
+                    <span class="s2">&quot;mean_cells_per_visit&quot;</span><span class="p">:</span> <span class="n">_MEAN_CELLS</span><span class="p">,</span>
+                    <span class="s2">&quot;participant_sd&quot;</span><span class="p">:</span> <span class="mf">0.8</span><span class="p">,</span>
+                    <span class="s2">&quot;cell_count_mode&quot;</span><span class="p">:</span> <span class="s2">&quot;lognormal&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;cell_count_cv&quot;</span><span class="p">:</span> <span class="mf">0.8</span><span class="p">,</span>
+                <span class="p">},</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+
+    <span class="c1"># 3. Sparse DE (positive)</span>
+    <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">20</span><span class="p">,</span> <span class="mi">40</span><span class="p">,</span> <span class="mi">60</span><span class="p">]:</span>
+        <span class="k">for</span> <span class="n">beta</span> <span class="ow">in</span> <span class="p">[</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">]:</span>
+            <span class="n">scenarios</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;de_pos_n</span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">_b</span><span class="si">{</span><span class="n">beta</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Sparse DE (positive), n=</span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">, beta=</span><span class="si">{</span><span class="n">beta</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;config_kwargs&quot;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="s2">&quot;design&quot;</span><span class="p">:</span> <span class="n">design</span><span class="p">,</span>
+                        <span class="s2">&quot;n_per_arm&quot;</span><span class="p">:</span> <span class="n">n</span><span class="p">,</span>
+                        <span class="s2">&quot;n_genes&quot;</span><span class="p">:</span> <span class="n">_N_GENES</span><span class="p">,</span>
+                        <span class="s2">&quot;effects&quot;</span><span class="p">:</span> <span class="n">_make_effects</span><span class="p">(</span><span class="n">_N_SIGNAL</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">mixed_sign</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+                        <span class="s2">&quot;mean_cells_per_visit&quot;</span><span class="p">:</span> <span class="n">_MEAN_CELLS</span><span class="p">,</span>
+                    <span class="p">},</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+
+    <span class="c1"># 4. Sparse DE (mixed sign)</span>
+    <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">20</span><span class="p">,</span> <span class="mi">40</span><span class="p">]:</span>
+        <span class="k">for</span> <span class="n">beta</span> <span class="ow">in</span> <span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">]:</span>
+            <span class="n">scenarios</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;de_mixed_n</span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">_b</span><span class="si">{</span><span class="n">beta</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Sparse DE (mixed sign), n=</span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">, beta=</span><span class="si">{</span><span class="n">beta</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;config_kwargs&quot;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="s2">&quot;design&quot;</span><span class="p">:</span> <span class="n">design</span><span class="p">,</span>
+                        <span class="s2">&quot;n_per_arm&quot;</span><span class="p">:</span> <span class="n">n</span><span class="p">,</span>
+                        <span class="s2">&quot;n_genes&quot;</span><span class="p">:</span> <span class="n">_N_GENES</span><span class="p">,</span>
+                        <span class="s2">&quot;effects&quot;</span><span class="p">:</span> <span class="n">_make_effects</span><span class="p">(</span><span class="n">_N_SIGNAL</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">mixed_sign</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+                        <span class="s2">&quot;mean_cells_per_visit&quot;</span><span class="p">:</span> <span class="n">_MEAN_CELLS</span><span class="p">,</span>
+                    <span class="p">},</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+
+    <span class="c1"># 5. Varying cells</span>
+    <span class="k">for</span> <span class="n">n_cells</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">200</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="mi">5000</span><span class="p">]:</span>
+        <span class="n">scenarios</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;cells_</span><span class="si">{</span><span class="n">n_cells</span><span class="si">}</span><span class="s2">_n40&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Varying cells (</span><span class="si">{</span><span class="n">n_cells</span><span class="si">}</span><span class="s2">/visit), n=40, beta=0.5&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;config_kwargs&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">&quot;design&quot;</span><span class="p">:</span> <span class="n">design</span><span class="p">,</span>
+                    <span class="s2">&quot;n_per_arm&quot;</span><span class="p">:</span> <span class="mi">40</span><span class="p">,</span>
+                    <span class="s2">&quot;n_genes&quot;</span><span class="p">:</span> <span class="n">_N_GENES</span><span class="p">,</span>
+                    <span class="s2">&quot;effects&quot;</span><span class="p">:</span> <span class="n">_make_effects</span><span class="p">(</span><span class="n">_N_SIGNAL</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">),</span>
+                    <span class="s2">&quot;mean_cells_per_visit&quot;</span><span class="p">:</span> <span class="n">n_cells</span><span class="p">,</span>
+                <span class="p">},</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+
+    <span class="c1"># 6. Unequal arms (two-arm only)</span>
+    <span class="k">if</span> <span class="n">design</span> <span class="o">==</span> <span class="s2">&quot;two_arm&quot;</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">ratio</span> <span class="ow">in</span> <span class="p">[(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">7</span><span class="p">),</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">)]:</span>
+            <span class="n">scenarios</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;imbal_</span><span class="si">{</span><span class="n">ratio</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">v</span><span class="si">{</span><span class="n">ratio</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Unequal arms </span><span class="si">{</span><span class="n">ratio</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">ratio</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">, beta=0.5&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;config_kwargs&quot;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="s2">&quot;design&quot;</span><span class="p">:</span> <span class="n">design</span><span class="p">,</span>
+                        <span class="s2">&quot;n_per_arm&quot;</span><span class="p">:</span> <span class="nb">sum</span><span class="p">(</span><span class="n">ratio</span><span class="p">),</span>
+                        <span class="s2">&quot;n_genes&quot;</span><span class="p">:</span> <span class="n">_N_GENES</span><span class="p">,</span>
+                        <span class="s2">&quot;effects&quot;</span><span class="p">:</span> <span class="n">_make_effects</span><span class="p">(</span><span class="n">_N_SIGNAL</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">),</span>
+                        <span class="s2">&quot;mean_cells_per_visit&quot;</span><span class="p">:</span> <span class="n">_MEAN_CELLS</span><span class="p">,</span>
+                        <span class="s2">&quot;arm_ratio&quot;</span><span class="p">:</span> <span class="n">ratio</span><span class="p">,</span>
+                    <span class="p">},</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+
+    <span class="c1"># 7. Missing visits</span>
+    <span class="k">for</span> <span class="n">rate</span> <span class="ow">in</span> <span class="p">[</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">]:</span>
+        <span class="n">scenarios</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;missing_</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">rate</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">100</span><span class="p">)</span><span class="si">}</span><span class="s2">pct_n40&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Missing </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">rate</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">100</span><span class="p">)</span><span class="si">}</span><span class="s2">% post visits, n=40, beta=0.5&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;config_kwargs&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">&quot;design&quot;</span><span class="p">:</span> <span class="n">design</span><span class="p">,</span>
+                    <span class="s2">&quot;n_per_arm&quot;</span><span class="p">:</span> <span class="mi">40</span><span class="p">,</span>
+                    <span class="s2">&quot;n_genes&quot;</span><span class="p">:</span> <span class="n">_N_GENES</span><span class="p">,</span>
+                    <span class="s2">&quot;effects&quot;</span><span class="p">:</span> <span class="n">_make_effects</span><span class="p">(</span><span class="n">_N_SIGNAL</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">),</span>
+                    <span class="s2">&quot;mean_cells_per_visit&quot;</span><span class="p">:</span> <span class="n">_MEAN_CELLS</span><span class="p">,</span>
+                    <span class="s2">&quot;missing_rate&quot;</span><span class="p">:</span> <span class="n">rate</span><span class="p">,</span>
+                <span class="p">},</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">scenarios</span>
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Single-iteration worker (for multiprocessing)</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_run_single_iteration</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Run all methods on one simulated dataset. Called in worker processes.&quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+
+    <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s2">&quot;ignore&quot;</span><span class="p">)</span>
+
+    <span class="n">scenario_name</span><span class="p">,</span> <span class="n">iteration</span><span class="p">,</span> <span class="n">seed</span><span class="p">,</span> <span class="n">config_kwargs</span><span class="p">,</span> <span class="n">methods</span> <span class="o">=</span> <span class="n">args</span>
+
+    <span class="c1"># For single-arm designs, force time_effect=0 so null scenarios are</span>
+    <span class="c1"># truly null (the default 0.1 cancels in two-arm DiD but is detected</span>
+    <span class="c1"># by single-arm methods testing Δ vs 0).</span>
+    <span class="n">kw</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">config_kwargs</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">kw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;design&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;single_arm&quot;</span> <span class="ow">and</span> <span class="s2">&quot;time_effect&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kw</span><span class="p">:</span>
+        <span class="n">kw</span><span class="p">[</span><span class="s2">&quot;time_effect&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+    <span class="n">cfg</span> <span class="o">=</span> <span class="n">SimulationConfig</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">)</span>
+    <span class="n">design_type</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">design</span>
+    <span class="n">sim</span> <span class="o">=</span> <span class="n">simulate_trial</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span>
+    <span class="n">gene_cols</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;gene_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">n_genes</span><span class="p">)]</span>
+    <span class="n">signal_genes</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">effects</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+
+    <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">method</span> <span class="ow">in</span> <span class="n">methods</span><span class="p">:</span>
+        <span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">results</span> <span class="o">=</span> <span class="n">_dispatch_method</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="n">sim</span><span class="p">,</span> <span class="n">gene_cols</span><span class="p">,</span> <span class="n">design_type</span><span class="o">=</span><span class="n">design_type</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="s2">&quot;Method </span><span class="si">%s</span><span class="s2"> failed on </span><span class="si">%s</span><span class="s2"> iter </span><span class="si">%d</span><span class="s2">: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="n">scenario_name</span><span class="p">,</span> <span class="n">iteration</span><span class="p">,</span> <span class="n">exc</span>
+            <span class="p">)</span>
+            <span class="n">results</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">g</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">&quot;beta&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                    <span class="s2">&quot;pvalue&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                    <span class="s2">&quot;ci_lo&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                    <span class="s2">&quot;ci_hi&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                    <span class="s2">&quot;converged&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                    <span class="s2">&quot;failure_mode&quot;</span><span class="p">:</span> <span class="s2">&quot;numerical&quot;</span><span class="p">,</span>
+                <span class="p">}</span>
+                <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">gene_cols</span>
+            <span class="p">}</span>
+        <span class="n">elapsed</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">t0</span>
+
+        <span class="k">for</span> <span class="n">gene</span> <span class="ow">in</span> <span class="n">gene_cols</span><span class="p">:</span>
+            <span class="n">r</span> <span class="o">=</span> <span class="n">results</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">gene</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;scenario&quot;</span><span class="p">:</span> <span class="n">scenario_name</span><span class="p">,</span>
+                    <span class="s2">&quot;iteration&quot;</span><span class="p">:</span> <span class="n">iteration</span><span class="p">,</span>
+                    <span class="s2">&quot;method&quot;</span><span class="p">:</span> <span class="n">method</span><span class="p">,</span>
+                    <span class="s2">&quot;gene&quot;</span><span class="p">:</span> <span class="n">gene</span><span class="p">,</span>
+                    <span class="s2">&quot;true_beta&quot;</span><span class="p">:</span> <span class="n">cfg</span><span class="o">.</span><span class="n">effects</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">gene</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+                    <span class="s2">&quot;is_signal&quot;</span><span class="p">:</span> <span class="n">gene</span> <span class="ow">in</span> <span class="n">signal_genes</span><span class="p">,</span>
+                    <span class="s2">&quot;estimated_beta&quot;</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;beta&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span>
+                    <span class="s2">&quot;pvalue&quot;</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pvalue&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span>
+                    <span class="s2">&quot;ci_lo&quot;</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ci_lo&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span>
+                    <span class="s2">&quot;ci_hi&quot;</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ci_hi&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span>
+                    <span class="s2">&quot;converged&quot;</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;converged&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span>
+                    <span class="s2">&quot;failure_mode&quot;</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;failure_mode&quot;</span><span class="p">,</span> <span class="s2">&quot;numerical&quot;</span><span class="p">),</span>
+                    <span class="s2">&quot;runtime_seconds&quot;</span><span class="p">:</span> <span class="n">elapsed</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">gene_cols</span><span class="p">),</span>
+                    <span class="s2">&quot;n_per_arm&quot;</span><span class="p">:</span> <span class="n">cfg</span><span class="o">.</span><span class="n">n_per_arm</span><span class="p">,</span>
+                    <span class="s2">&quot;mean_cells&quot;</span><span class="p">:</span> <span class="n">cfg</span><span class="o">.</span><span class="n">mean_cells_per_visit</span><span class="p">,</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">rows</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_dispatch_method</span><span class="p">(</span>
+    <span class="n">method</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">sim</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+    <span class="n">gene_cols</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="n">design_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;two_arm&quot;</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Route to the correct runner with the appropriate data representation.</span>
+
+<span class="sd">    - sctrial, NEBULA: cell-level AnnData</span>
+<span class="sd">    - edgeR, limma-voom, dreamlet: summed-count pseudobulk (true counts)</span>
+<span class="sd">    - Wilcoxon (paired delta): mean-expression pseudobulk</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    design_type : str</span>
+<span class="sd">        &quot;two_arm&quot; or &quot;single_arm&quot;. Determines the statistical model used</span>
+<span class="sd">        by R-based runners (interaction vs paired visit).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Backwards compat: old sim dicts may have &quot;pseudobulk&quot; instead of split keys</span>
+    <span class="n">pb_counts</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pseudobulk_counts&quot;</span><span class="p">,</span> <span class="n">sim</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pseudobulk&quot;</span><span class="p">))</span>
+    <span class="n">pb_means</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pseudobulk_means&quot;</span><span class="p">,</span> <span class="n">sim</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pseudobulk&quot;</span><span class="p">))</span>
+
+    <span class="c1"># Log-transformed pseudobulk means for methods that need expression-scale</span>
+    <span class="c1"># input (sctrial_did, wilcoxon_paired). This ensures all methods report</span>
+    <span class="c1"># betas on a comparable log-fold-change scale:</span>
+    <span class="c1">#   - edgeR/limma/dreamlet internally log-transform raw counts</span>
+    <span class="c1">#   - NEBULA fits a log-link NB model on raw counts</span>
+    <span class="c1">#   - sctrial_did and wilcoxon_paired need log-transformed input explicitly</span>
+    <span class="k">if</span> <span class="n">pb_means</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">pb_log</span> <span class="o">=</span> <span class="n">pb_means</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">gene_mask</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">gene_cols</span> <span class="k">if</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">pb_log</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
+        <span class="n">pb_log</span><span class="p">[</span><span class="n">gene_mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log1p</span><span class="p">(</span><span class="n">pb_log</span><span class="p">[</span><span class="n">gene_mask</span><span class="p">])</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">pb_log</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;sctrial_did&quot;</span><span class="p">:</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">.runners</span><span class="w"> </span><span class="kn">import</span> <span class="n">sctrial_did</span>
+
+        <span class="c1"># Pass log-pseudobulk DataFrame instead of raw cell-level AnnData</span>
+        <span class="c1"># so that DiD betas are on log-expression scale, comparable to</span>
+        <span class="c1"># edgeR/limma/dreamlet log-fold-changes</span>
+        <span class="k">return</span> <span class="n">sctrial_did</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">pb_log</span><span class="p">,</span> <span class="n">gene_cols</span><span class="p">,</span> <span class="n">from_pseudobulk</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">design_type</span><span class="o">=</span><span class="n">design_type</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;edger_qlf&quot;</span><span class="p">:</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">.runners</span><span class="w"> </span><span class="kn">import</span> <span class="n">edger_qlf</span>
+
+        <span class="k">return</span> <span class="n">edger_qlf</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">pb_counts</span><span class="p">,</span> <span class="n">gene_cols</span><span class="p">,</span> <span class="n">design_type</span><span class="o">=</span><span class="n">design_type</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;limma_voom&quot;</span><span class="p">:</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">.runners</span><span class="w"> </span><span class="kn">import</span> <span class="n">limma_voom</span>
+
+        <span class="k">return</span> <span class="n">limma_voom</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">pb_counts</span><span class="p">,</span> <span class="n">gene_cols</span><span class="p">,</span> <span class="n">design_type</span><span class="o">=</span><span class="n">design_type</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;dreamlet&quot;</span><span class="p">:</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">.runners</span><span class="w"> </span><span class="kn">import</span> <span class="n">dreamlet_runner</span>
+
+        <span class="k">return</span> <span class="n">dreamlet_runner</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">pb_counts</span><span class="p">,</span> <span class="n">gene_cols</span><span class="p">,</span> <span class="n">design_type</span><span class="o">=</span><span class="n">design_type</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;nebula&quot;</span><span class="p">:</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">.runners</span><span class="w"> </span><span class="kn">import</span> <span class="n">nebula_runner</span>
+
+        <span class="k">return</span> <span class="n">nebula_runner</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">sim</span><span class="p">[</span><span class="s2">&quot;adata&quot;</span><span class="p">],</span> <span class="n">gene_cols</span><span class="p">,</span> <span class="n">design_type</span><span class="o">=</span><span class="n">design_type</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;wilcoxon_paired&quot;</span><span class="p">:</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">.runners</span><span class="w"> </span><span class="kn">import</span> <span class="n">wilcoxon_paired</span>
+
+        <span class="k">return</span> <span class="n">wilcoxon_paired</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">pb_log</span><span class="p">,</span> <span class="n">gene_cols</span><span class="p">,</span> <span class="n">design_type</span><span class="o">=</span><span class="n">design_type</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown method: </span><span class="si">{</span><span class="n">method</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Main orchestrator</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="run_benchmark">
+<a class="viewcode-back" href="../../../api/benchmark.html#sctrial.benchmark.run_benchmark">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_benchmark</span><span class="p">(</span>
+    <span class="n">designs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">methods</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">n_iterations</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">_N_ITERATIONS</span><span class="p">,</span>
+    <span class="n">n_jobs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="n">output_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">=</span> <span class="s2">&quot;benchmark_results&quot;</span><span class="p">,</span>
+    <span class="n">resume</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Run the full NatMeth benchmark grid.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    designs : list of str</span>
+<span class="sd">        Design families to run. Default: [&quot;two_arm&quot;, &quot;single_arm&quot;].</span>
+<span class="sd">    methods : list of str</span>
+<span class="sd">        Methods to benchmark. Default: CORE_METHODS.</span>
+<span class="sd">    n_iterations : int</span>
+<span class="sd">        Monte Carlo iterations per scenario.</span>
+<span class="sd">    n_jobs : int</span>
+<span class="sd">        Parallel workers. Use -1 for all cores.</span>
+<span class="sd">    output_dir : str or Path</span>
+<span class="sd">        Directory for output CSVs and figures.</span>
+<span class="sd">    resume : bool</span>
+<span class="sd">        If True, skip scenarios that already have results in output_dir.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    DataFrame with all results concatenated.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">designs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">designs</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;two_arm&quot;</span><span class="p">,</span> <span class="s2">&quot;single_arm&quot;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">methods</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">methods</span> <span class="o">=</span> <span class="n">CORE_METHODS</span>
+    <span class="k">if</span> <span class="n">n_jobs</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+        <span class="n">n_jobs</span> <span class="o">=</span> <span class="n">mp</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">()</span>
+
+    <span class="n">output_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="n">output_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="mi">2024</span><span class="p">)</span>
+    <span class="n">all_results</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">design</span> <span class="ow">in</span> <span class="n">designs</span><span class="p">:</span>
+        <span class="n">scenarios</span> <span class="o">=</span> <span class="n">build_scenario_grid</span><span class="p">(</span><span class="n">design</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="si">{</span><span class="s1">&#39;=&#39;</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">60</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Design: </span><span class="si">{</span><span class="n">design</span><span class="si">}</span><span class="s2"> — </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">scenarios</span><span class="p">)</span><span class="si">}</span><span class="s2"> scenarios × </span><span class="si">{</span><span class="n">n_iterations</span><span class="si">}</span><span class="s2"> iterations&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Methods: </span><span class="si">{</span><span class="n">methods</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Parallel workers: </span><span class="si">{</span><span class="n">n_jobs</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39;=&#39;</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">60</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">si</span><span class="p">,</span> <span class="n">scenario</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">scenarios</span><span class="p">):</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">design</span><span class="si">}</span><span class="s2">__</span><span class="si">{</span><span class="n">scenario</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="n">csv_path</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">.csv&quot;</span>
+
+            <span class="c1"># Resume support</span>
+            <span class="k">if</span> <span class="n">resume</span> <span class="ow">and</span> <span class="n">csv_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  [</span><span class="si">{</span><span class="n">si</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">scenarios</span><span class="p">)</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> — CACHED, skipping&quot;</span><span class="p">)</span>
+                <span class="n">existing</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">csv_path</span><span class="p">)</span>
+                <span class="n">all_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">existing</span><span class="p">)</span>
+                <span class="k">continue</span>
+
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  [</span><span class="si">{</span><span class="n">si</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">scenarios</span><span class="p">)</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">scenario</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Pre-generate seeds</span>
+            <span class="n">seeds</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">rng</span><span class="o">.</span><span class="n">integers</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="o">**</span><span class="mi">31</span><span class="p">))</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_iterations</span><span class="p">)]</span>
+
+            <span class="c1"># Build task args</span>
+            <span class="n">task_args</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">it</span><span class="p">,</span> <span class="n">seeds</span><span class="p">[</span><span class="n">it</span><span class="p">],</span> <span class="n">scenario</span><span class="p">[</span><span class="s2">&quot;config_kwargs&quot;</span><span class="p">],</span> <span class="n">methods</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">it</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_iterations</span><span class="p">)</span>
+            <span class="p">]</span>
+
+            <span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+            <span class="n">all_rows</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">flush_interval</span> <span class="o">=</span> <span class="mi">20</span>  <span class="c1"># write to disk every 20 iterations</span>
+
+            <span class="k">def</span><span class="w"> </span><span class="nf">_process_iteration</span><span class="p">(</span><span class="n">i</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">batch</span><span class="p">:</span> <span class="nb">list</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">all_rows</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">batch</span><span class="p">)</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="n">flush_interval</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">elapsed</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">t0</span>
+                    <span class="n">eta</span> <span class="o">=</span> <span class="n">elapsed</span> <span class="o">/</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">n_iterations</span> <span class="o">-</span> <span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+                    <span class="nb">print</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;    </span><span class="si">{</span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">n_iterations</span><span class="si">}</span><span class="s2"> iterations &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">elapsed</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">s elapsed, ~</span><span class="si">{</span><span class="n">eta</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">s remaining)&quot;</span>
+                    <span class="p">)</span>
+                    <span class="c1"># Incremental save — protects against crashes</span>
+                    <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">all_rows</span><span class="p">)</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">csv_path</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">n_jobs</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">args</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">task_args</span><span class="p">):</span>
+                    <span class="n">_process_iteration</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">_run_single_iteration</span><span class="p">(</span><span class="n">args</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Use &#39;spawn&#39; context to avoid fork-inheriting corrupted R/rpy2</span>
+                <span class="c1"># state. With &#39;fork&#39;, R subprocess calls inside workers</span>
+                <span class="c1"># produce incorrect results (e.g., edgeR FPR=0.002 instead</span>
+                <span class="c1"># of 0.05) even when using Rscript subprocess.</span>
+                <span class="n">ctx</span> <span class="o">=</span> <span class="n">mp</span><span class="o">.</span><span class="n">get_context</span><span class="p">(</span><span class="s2">&quot;spawn&quot;</span><span class="p">)</span>
+                <span class="k">with</span> <span class="n">ctx</span><span class="o">.</span><span class="n">Pool</span><span class="p">(</span><span class="n">n_jobs</span><span class="p">)</span> <span class="k">as</span> <span class="n">pool</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">batch</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">pool</span><span class="o">.</span><span class="n">imap</span><span class="p">(</span><span class="n">_run_single_iteration</span><span class="p">,</span> <span class="n">task_args</span><span class="p">)):</span>
+                        <span class="n">_process_iteration</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">batch</span><span class="p">)</span>
+
+            <span class="n">elapsed</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">t0</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">all_rows</span><span class="p">)</span>
+            <span class="n">df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">csv_path</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="n">all_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    Done in </span><span class="si">{</span><span class="n">elapsed</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">s → </span><span class="si">{</span><span class="n">csv_path</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Combine all</span>
+    <span class="n">combined</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">all_results</span><span class="p">,</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">combined_path</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="s2">&quot;benchmark_combined.csv&quot;</span>
+    <span class="n">combined</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">combined_path</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">All results saved → </span><span class="si">{</span><span class="n">combined_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total rows: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">combined</span><span class="p">)</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">combined</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># CLI entry point</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
+
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;NatMeth benchmark: simulation grid&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--n-jobs&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Parallel workers (-1 = all cores)&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--n-iterations&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="n">_N_ITERATIONS</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Monte Carlo iterations per scenario&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--output-dir&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;benchmark_results&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Output directory&quot;</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--designs&quot;</span><span class="p">,</span> <span class="n">nargs</span><span class="o">=</span><span class="s2">&quot;+&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;two_arm&quot;</span><span class="p">,</span> <span class="s2">&quot;single_arm&quot;</span><span class="p">],</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Design families&quot;</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--methods&quot;</span><span class="p">,</span> <span class="n">nargs</span><span class="o">=</span><span class="s2">&quot;+&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Methods to run (default: all core)&quot;</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--no-resume&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Don&#39;t skip existing results&quot;</span><span class="p">)</span>
+
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+
+    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+
+    <span class="n">run_benchmark</span><span class="p">(</span>
+        <span class="n">designs</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">designs</span><span class="p">,</span>
+        <span class="n">methods</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">methods</span><span class="p">,</span>
+        <span class="n">n_iterations</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">n_iterations</span><span class="p">,</span>
+        <span class="n">n_jobs</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">n_jobs</span><span class="p">,</span>
+        <span class="n">output_dir</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">output_dir</span><span class="p">,</span>
+        <span class="n">resume</span><span class="o">=</span><span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">no_resume</span><span class="p">,</span>
+    <span class="p">)</span>
+</pre></div>
+
+                </article>
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2026, Omar Lab, Cedars-Sinai Medical Center.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+</div>
+
+  </footer>
+  </body>
+</html>

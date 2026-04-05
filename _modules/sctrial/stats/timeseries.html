@@ -267,6 +267,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../concepts.html">Concepts and Methods</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
 <ul class="nav bd-sidenav">
@@ -278,9 +279,19 @@
 </ul>
 </details></li>
 </ul>
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../../../api.html">API Reference</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../api/index.html">API Reference</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/design.html">Trial Design</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/statistics.html">Statistical Methods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/scoring.html">Scoring and Preprocessing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/plotting.html">Plotting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/datasets.html">Datasets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/workflow.html">Workflow and Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/benchmark.html">Benchmark Simulation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/utilities.html">Utilities and Validation</a></li>
+</ul>
+</details></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
 <ul class="nav bd-sidenav">
@@ -288,6 +299,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../troubleshooting.html">Troubleshooting Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../faq.html">Frequently Asked Questions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../performance.html">Performance Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog.html">Changelog</a></li>
 </ul>
 </div>
 </nav></div>
@@ -455,7 +467,7 @@
 
 
 <div class="viewcode-block" id="trend_interaction">
-<a class="viewcode-back" href="../../../api.html#sctrial.stats.timeseries.trend_interaction">[docs]</a>
+<a class="viewcode-back" href="../../../api/statistics.html#sctrial.stats.timeseries.trend_interaction">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">trend_interaction</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
     <span class="n">features</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
@@ -637,7 +649,7 @@
 
 
 <div class="viewcode-block" id="event_study_did">
-<a class="viewcode-back" href="../../../api.html#sctrial.stats.timeseries.event_study_did">[docs]</a>
+<a class="viewcode-back" href="../../../api/statistics.html#sctrial.stats.timeseries.event_study_did">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">event_study_did</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
     <span class="n">features</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
@@ -748,7 +760,7 @@
 
 
 <div class="viewcode-block" id="polynomial_trend">
-<a class="viewcode-back" href="../../../api.html#sctrial.stats.timeseries.polynomial_trend">[docs]</a>
+<a class="viewcode-back" href="../../../api/statistics.html#sctrial.stats.timeseries.polynomial_trend">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">polynomial_trend</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
     <span class="n">feature</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
@@ -857,7 +869,7 @@
 
 
 <div class="viewcode-block" id="test_parallel_trends">
-<a class="viewcode-back" href="../../../api.html#sctrial.stats.timeseries.test_parallel_trends">[docs]</a>
+<a class="viewcode-back" href="../../../api/statistics.html#sctrial.stats.timeseries.test_parallel_trends">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">test_parallel_trends</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
     <span class="n">features</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
@@ -975,7 +987,7 @@
 
   <p class="copyright">
     
-      © Copyright 2026, Contributors.
+      © Copyright 2026, Omar Lab, Cedars-Sinai Medical Center.
       <br/>
     
   </p>

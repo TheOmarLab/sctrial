@@ -1,0 +1,787 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Workflow and Analysis &#8212; sctrial 0.3.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=44e57e90" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../_static/scripts/fontawesome.js?digest=7f76b32a3354e82990f2"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2" />
+
+    <script src="../_static/documentation_options.js?v=f129cdf0"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api/workflow';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="icon" href="../_static/logo_icon.svg"/>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Benchmark Simulation" href="benchmark.html" />
+    <link rel="prev" title="Datasets" href="datasets.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  
+    
+    <script src="../_static/searchtools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script src="../searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/logo.svg" class="logo__image only-light" alt="sctrial 0.3.0 documentation - Home"/>
+    <img src="../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.3.0 documentation - Home"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts.html">Concepts and Methods</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../tutorials/index.html">Tutorials</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/example_covid19_stephenson.html">Immune Profiling of COVID-19 Severity: A Cross-Sectional Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/example_immunotherapy_sade_feldman.html">Immunotherapy Response in Melanoma: Longitudinal Single-Cell Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/example_vaccine_immport.html">Vaccine Response Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/stress_test_real_scale.html">Scalability Analysis</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="index.html">API Reference</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="design.html">Trial Design</a></li>
+<li class="toctree-l2"><a class="reference internal" href="statistics.html">Statistical Methods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scoring.html">Scoring and Preprocessing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plotting.html">Plotting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="datasets.html">Datasets</a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">Workflow and Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="benchmark.html">Benchmark Simulation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="utilities.html">Utilities and Validation</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../best_practices.html">Best Practices Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../troubleshooting.html">Troubleshooting Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">Frequently Asked Questions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../performance.html">Performance Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      <main id="main-content" class="bd-main" role="main">
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="index.html" class="nav-link">API Reference</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Workflow and Analysis</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="workflow-and-analysis">
+<h1>Workflow and Analysis<a class="headerlink" href="#workflow-and-analysis" title="Link to this heading">#</a></h1>
+<section id="module-sctrial.analysis">
+<span id="analysis-interfaces"></span><h2>Analysis Interfaces<a class="headerlink" href="#module-sctrial.analysis" title="Link to this heading">#</a></h2>
+<p>High-level analysis helpers for trial-aware inference.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="sctrial.analysis.DiDAnalyzer">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">sctrial.analysis.</span></span><span class="sig-name descname"><span class="pre">DiDAnalyzer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">adata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">AnnData</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">design</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="design.html#sctrial.design.TrialDesign" title="sctrial.design.TrialDesign"><span class="pre">TrialDesign</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">results_</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sctrial/analysis.html#DiDAnalyzer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.analysis.DiDAnalyzer" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>High-level interface for DiD analysis with stored results.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="sctrial.analysis.DiDAnalyzer.fit">
+<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">features</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">visits</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="statistics.html#sctrial.stats.did.DiDConfig" title="sctrial.stats.did.DiDConfig"><span class="pre">DiDConfig</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">celltype</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="reference internal" href="../_modules/sctrial/analysis.html#DiDAnalyzer.fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.analysis.DiDAnalyzer.fit" title="Link to this definition">#</a></dt>
+<dd><p>Run DiD and store results.</p>
+<p>Returns a <em>copy</em> of the results DataFrame so that external
+mutations do not alter the analyzer’s internal state.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>features</strong> – List of features to analyze.</p></li>
+<li><p><strong>visits</strong> – Tuple of (baseline, followup) visit labels.</p></li>
+<li><p><strong>config</strong> – Configuration for the DiD analysis. See <cite>sctrial.stats.did.DiDConfig</cite> for more details.</p></li>
+<li><p><strong>celltype</strong> – Cell type to analyze. If None, all cell types are analyzed.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A copy of the results DataFrame.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sctrial.analysis.DiDAnalyzer.plot_forest">
+<span class="sig-name descname"><span class="pre">plot_forest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sctrial/analysis.html#DiDAnalyzer.plot_forest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.analysis.DiDAnalyzer.plot_forest" title="Link to this definition">#</a></dt>
+<dd><p>Plot a forest plot of the last DiD results.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>**kwargs</strong> – Additional keyword arguments passed to <cite>sctrial.plotting.plot_did_forest</cite>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The axes containing the forest plot.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>matplotlib.axes.Axes</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sctrial.analysis.DiDAnalyzer.summarize">
+<span class="sig-name descname"><span class="pre">summarize</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../_modules/sctrial/analysis.html#DiDAnalyzer.summarize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.analysis.DiDAnalyzer.summarize" title="Link to this definition">#</a></dt>
+<dd><p>Summarize the last DiD results.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A summary of the DiD results.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-sctrial.workflow">
+<span id="workflow-api"></span><h2>Workflow API<a class="headerlink" href="#module-sctrial.workflow" title="Link to this heading">#</a></h2>
+<p>End-to-end trial analysis workflow: TrialWorkflow and convenience pipeline.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="sctrial.workflow.TrialWorkflow">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">sctrial.workflow.</span></span><span class="sig-name descname"><span class="pre">TrialWorkflow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">adata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">AnnData</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">last_result</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sctrial/workflow.html#TrialWorkflow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.workflow.TrialWorkflow" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Fluent API for common sctrial workflows.</p>
+<p>This class provides a minimal chainable interface for common tasks:
+preprocessing, gene scoring, and DiD analysis.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="sctrial.workflow.TrialWorkflow.add_log1p_cpm_layer">
+<span class="sig-name descname"><span class="pre">add_log1p_cpm_layer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">counts_layer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'counts'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#sctrial.workflow.TrialWorkflow" title="sctrial.workflow.TrialWorkflow"><span class="pre">TrialWorkflow</span></a></span></span><a class="reference internal" href="../_modules/sctrial/workflow.html#TrialWorkflow.add_log1p_cpm_layer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.workflow.TrialWorkflow.add_log1p_cpm_layer" title="Link to this definition">#</a></dt>
+<dd><p>Add a log1p-CPM layer to the workflow AnnData.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>counts_layer</strong> – Layer name in <cite>adata.layers</cite> to use for counts data.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The workflow object with the new log1p-CPM layer added.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#sctrial.workflow.TrialWorkflow" title="sctrial.workflow.TrialWorkflow">TrialWorkflow</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sctrial.workflow.TrialWorkflow.did_table">
+<span class="sig-name descname"><span class="pre">did_table</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">features</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">design</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="design.html#sctrial.design.TrialDesign" title="sctrial.design.TrialDesign"><span class="pre">TrialDesign</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">visits</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="statistics.html#sctrial.stats.did.DiDConfig" title="sctrial.stats.did.DiDConfig"><span class="pre">DiDConfig</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#sctrial.workflow.TrialWorkflow" title="sctrial.workflow.TrialWorkflow"><span class="pre">TrialWorkflow</span></a></span></span><a class="reference internal" href="../_modules/sctrial/workflow.html#TrialWorkflow.did_table"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.workflow.TrialWorkflow.did_table" title="Link to this definition">#</a></dt>
+<dd><p>Run DiD and store the result on the workflow.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>features</strong> – List of feature names to analyze.</p></li>
+<li><p><strong>design</strong> – Trial design object.</p></li>
+<li><p><strong>visits</strong> – Tuple of (baseline, followup) visit labels.</p></li>
+<li><p><strong>config</strong> – Configuration for the DiD analysis. See <cite>sctrial.stats.did.DiDConfig</cite> for more details.
+If None, uses the default configuration.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The workflow object with the DiD result stored in <code class="docutils literal notranslate"><span class="pre">self.last_result</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#sctrial.workflow.TrialWorkflow" title="sctrial.workflow.TrialWorkflow">TrialWorkflow</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sctrial.workflow.TrialWorkflow.result">
+<span class="sig-name descname"><span class="pre">result</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></span><a class="reference internal" href="../_modules/sctrial/workflow.html#TrialWorkflow.result"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.workflow.TrialWorkflow.result" title="Link to this definition">#</a></dt>
+<dd><p>Return the last result computed in the workflow.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The last result computed in the workflow (e.g., a DataFrame).</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Any</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sctrial.workflow.TrialWorkflow.score_gene_sets">
+<span class="sig-name descname"><span class="pre">score_gene_sets</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">gene_sets</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'zmean'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'mean'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'zmean'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prefix</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'ms_'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_genes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#sctrial.workflow.TrialWorkflow" title="sctrial.workflow.TrialWorkflow"><span class="pre">TrialWorkflow</span></a></span></span><a class="reference internal" href="../_modules/sctrial/workflow.html#TrialWorkflow.score_gene_sets"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.workflow.TrialWorkflow.score_gene_sets" title="Link to this definition">#</a></dt>
+<dd><p>Score gene sets and store module scores in <cite>adata.obs</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>gene_sets</strong> – Dictionary mapping set names to lists of gene names.
+Each value must be a <code class="docutils literal notranslate"><span class="pre">list</span></code> (not a bare string).  Duplicate gene
+names within a set are automatically removed.</p></li>
+<li><p><strong>layer</strong> – Layer name in <cite>adata.layers</cite> to use for expression data.
+If None, uses <cite>adata.X</cite>.
+For log1p-CPM workflows, use layer=”log1p_cpm”.</p></li>
+<li><p><strong>method</strong> – Scoring method. <code class="docutils literal notranslate"><span class="pre">&quot;zmean&quot;</span></code> (default) z-scores each gene across
+cells then averages; <code class="docutils literal notranslate"><span class="pre">&quot;mean&quot;</span></code> uses raw mean expression.</p></li>
+<li><p><strong>prefix</strong> – Prefix to add to column names (e.g., <code class="docutils literal notranslate"><span class="pre">ms_</span></code> for module scores).</p></li>
+<li><p><strong>min_genes</strong> – Minimum number of genes from the set that must be present in the data.
+Default is 5.</p></li>
+<li><p><strong>overwrite</strong> – If False (default), skip gene sets that already have a column in
+<code class="docutils literal notranslate"><span class="pre">adata.obs</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The workflow object with the gene sets scored and module scores stored in <code class="docutils literal notranslate"><span class="pre">adata.obs</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#sctrial.workflow.TrialWorkflow" title="sctrial.workflow.TrialWorkflow">TrialWorkflow</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="sctrial.workflow.workflow">
+<span class="sig-prename descclassname"><span class="pre">sctrial.workflow.</span></span><span class="sig-name descname"><span class="pre">workflow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">adata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">AnnData</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#sctrial.workflow.TrialWorkflow" title="sctrial.workflow.TrialWorkflow"><span class="pre">TrialWorkflow</span></a></span></span><a class="reference internal" href="../_modules/sctrial/workflow.html#workflow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.workflow.workflow" title="Link to this definition">#</a></dt>
+<dd><p>Create a TrialWorkflow for fluent chaining.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>adata</strong> – AnnData object with trial data.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A TrialWorkflow object with the AnnData object set.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#sctrial.workflow.TrialWorkflow" title="sctrial.workflow.TrialWorkflow">TrialWorkflow</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-sctrial.convenience">
+<span id="convenience-functions"></span><h2>Convenience Functions<a class="headerlink" href="#module-sctrial.convenience" title="Link to this heading">#</a></h2>
+<p>Convenience functions for quick trial analysis workflows.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="sctrial.convenience.auto_detect_design">
+<span class="sig-prename descclassname"><span class="pre">sctrial.convenience.</span></span><span class="sig-name descname"><span class="pre">auto_detect_design</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">adata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">AnnData</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arm_treated</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arm_control</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="design.html#sctrial.design.TrialDesign" title="sctrial.design.TrialDesign"><span class="pre">TrialDesign</span></a></span></span><a class="reference internal" href="../_modules/sctrial/convenience.html#auto_detect_design"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.convenience.auto_detect_design" title="Link to this definition">#</a></dt>
+<dd><p>Auto-detect trial design from common column naming patterns.</p>
+<p>Looks for common patterns in column names:</p>
+<ul class="simple">
+<li><p>participant: <code class="docutils literal notranslate"><span class="pre">participant_id</span></code>, <code class="docutils literal notranslate"><span class="pre">patient_id</span></code>, <code class="docutils literal notranslate"><span class="pre">donor_id</span></code>,
+<code class="docutils literal notranslate"><span class="pre">subject_id</span></code>, <code class="docutils literal notranslate"><span class="pre">sample_id</span></code></p></li>
+<li><p>visit: <code class="docutils literal notranslate"><span class="pre">visit</span></code>, <code class="docutils literal notranslate"><span class="pre">timepoint</span></code>, <code class="docutils literal notranslate"><span class="pre">time</span></code>, <code class="docutils literal notranslate"><span class="pre">day</span></code>, <code class="docutils literal notranslate"><span class="pre">week</span></code>,
+<code class="docutils literal notranslate"><span class="pre">time_point</span></code></p></li>
+<li><p>arm: <code class="docutils literal notranslate"><span class="pre">arm</span></code>, <code class="docutils literal notranslate"><span class="pre">treatment_arm</span></code>, <code class="docutils literal notranslate"><span class="pre">arm_id</span></code>, <code class="docutils literal notranslate"><span class="pre">treatment</span></code>,
+<code class="docutils literal notranslate"><span class="pre">group</span></code>, <code class="docutils literal notranslate"><span class="pre">condition</span></code></p></li>
+<li><p>celltype: <code class="docutils literal notranslate"><span class="pre">celltype</span></code>, <code class="docutils literal notranslate"><span class="pre">cell_type</span></code>, <code class="docutils literal notranslate"><span class="pre">cluster</span></code>,
+<code class="docutils literal notranslate"><span class="pre">annotation</span></code>, <code class="docutils literal notranslate"><span class="pre">cell_annotation</span></code></p></li>
+</ul>
+<p>Column matching uses exact (case-insensitive) match first, then
+word-boundary partial match (pattern must appear at a word boundary
+in the column name, so <code class="docutils literal notranslate"><span class="pre">&quot;arm&quot;</span></code> matches <code class="docutils literal notranslate"><span class="pre">&quot;arm_id&quot;</span></code> but not
+<code class="docutils literal notranslate"><span class="pre">&quot;farm_id&quot;</span></code>).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>adata</strong> – AnnData object to analyze.</p></li>
+<li><p><strong>arm_treated</strong> – Optional: specify the label for treated arm.  If not provided,
+the function tries keyword-based detection (e.g. “Treated”,
+“Drug”, “Active”).  Raises if detection fails.</p></li>
+<li><p><strong>arm_control</strong> – Optional: specify the label for control arm.  If not provided,
+the function tries keyword-based detection (e.g. “Control”,
+“Placebo”).  Raises if detection fails.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Detected design (may need manual adjustment).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="design.html#sctrial.design.TrialDesign" title="sctrial.design.TrialDesign">TrialDesign</a></p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">design</span> <span class="o">=</span> <span class="n">auto_detect_design</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Detected design: </span><span class="si">{</span><span class="n">design</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Verify the detected design. If arm labels need adjustment,</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># create a new TrialDesign with corrected values:</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">replace</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">design</span> <span class="o">=</span> <span class="n">replace</span><span class="p">(</span><span class="n">design</span><span class="p">,</span> <span class="n">arm_treated</span><span class="o">=</span><span class="s2">&quot;Drug_A&quot;</span><span class="p">,</span> <span class="n">arm_control</span><span class="o">=</span><span class="s2">&quot;Placebo&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If required columns cannot be detected, or if arm labels
+    cannot be determined (more than 2 arms, only 1 arm, or no
+    keyword match for ambiguous labels).</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="sctrial.convenience.quick_did">
+<span class="sig-prename descclassname"><span class="pre">sctrial.convenience.</span></span><span class="sig-name descname"><span class="pre">quick_did</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">adata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">AnnData</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module_scores</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">visits</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">participant_col</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'participant_id'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">visit_col</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'visit'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arm_col</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'arm'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arm_treated</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'Treated'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arm_control</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'Control'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">celltype_col</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'log1p_cpm'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">counts_layer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'counts'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">score_method</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'zmean'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'mean'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'zmean'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_genes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="reference internal" href="../_modules/sctrial/convenience.html#quick_did"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.convenience.quick_did" title="Link to this definition">#</a></dt>
+<dd><p>One-line wrapper for the most common DiD workflow.</p>
+<p>This function combines preprocessing, scoring, and DiD analysis
+in a single call for quick exploration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>adata</strong> – AnnData object with trial data.</p></li>
+<li><p><strong>module_scores</strong> – Dictionary mapping module names to gene lists.</p></li>
+<li><p><strong>visits</strong> – Tuple of (baseline, followup) visit labels.  The order matters:
+the first element is the baseline visit and the second is the
+follow-up, which determines the sign of the DiD estimate.</p></li>
+<li><p><strong>participant_col</strong> – Column name for participant identifiers.</p></li>
+<li><p><strong>visit_col</strong> – Column name for visit labels.</p></li>
+<li><p><strong>arm_col</strong> – Column name for treatment arm.</p></li>
+<li><p><strong>arm_treated</strong> – Label for treated arm.</p></li>
+<li><p><strong>arm_control</strong> – Label for control arm.</p></li>
+<li><p><strong>celltype_col</strong> – Optional column name for cell types.</p></li>
+<li><p><strong>layer</strong> – Layer name for normalized expression. If not present, will be created.</p></li>
+<li><p><strong>counts_layer</strong> – Layer name for raw counts (used if layer needs to be created).</p></li>
+<li><p><strong>score_method</strong> – Method for gene set scoring (‘mean’ or ‘zmean’).</p></li>
+<li><p><strong>min_genes</strong> – Minimum number of overlapping genes for a module score to be
+computed.  Modules with fewer overlapping genes get NaN scores.
+Default is 3.</p></li>
+<li><p><strong>**kwargs</strong> – Additional arguments passed to did_table().</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>DiD results table.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">gene_sets</span> <span class="o">=</span> <span class="p">{</span>
+<span class="gp">... </span>    <span class="s2">&quot;OXPHOS&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;COX7A1&quot;</span><span class="p">,</span> <span class="s2">&quot;ATP5F1A&quot;</span><span class="p">,</span> <span class="s2">&quot;NDUFA1&quot;</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="s2">&quot;Glycolysis&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;PKM&quot;</span><span class="p">,</span> <span class="s2">&quot;LDHA&quot;</span><span class="p">,</span> <span class="s2">&quot;HK2&quot;</span><span class="p">]</span>
+<span class="gp">... </span><span class="p">}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">res</span> <span class="o">=</span> <span class="n">quick_did</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">adata</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">module_scores</span><span class="o">=</span><span class="n">gene_sets</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">)</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">res</span><span class="p">[[</span><span class="s2">&quot;feature&quot;</span><span class="p">,</span> <span class="s2">&quot;beta_DiD&quot;</span><span class="p">,</span> <span class="s2">&quot;p_DiD&quot;</span><span class="p">,</span> <span class="s2">&quot;FDR_DiD&quot;</span><span class="p">]])</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="datasets.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Datasets</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="benchmark.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Benchmark Simulation</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-sctrial.analysis">Analysis Interfaces</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.analysis.DiDAnalyzer"><code class="docutils literal notranslate"><span class="pre">DiDAnalyzer</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.analysis.DiDAnalyzer.fit"><code class="docutils literal notranslate"><span class="pre">DiDAnalyzer.fit()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.analysis.DiDAnalyzer.plot_forest"><code class="docutils literal notranslate"><span class="pre">DiDAnalyzer.plot_forest()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.analysis.DiDAnalyzer.summarize"><code class="docutils literal notranslate"><span class="pre">DiDAnalyzer.summarize()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-sctrial.workflow">Workflow API</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.workflow.TrialWorkflow"><code class="docutils literal notranslate"><span class="pre">TrialWorkflow</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.workflow.TrialWorkflow.add_log1p_cpm_layer"><code class="docutils literal notranslate"><span class="pre">TrialWorkflow.add_log1p_cpm_layer()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.workflow.TrialWorkflow.did_table"><code class="docutils literal notranslate"><span class="pre">TrialWorkflow.did_table()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.workflow.TrialWorkflow.result"><code class="docutils literal notranslate"><span class="pre">TrialWorkflow.result()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.workflow.TrialWorkflow.score_gene_sets"><code class="docutils literal notranslate"><span class="pre">TrialWorkflow.score_gene_sets()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.workflow.workflow"><code class="docutils literal notranslate"><span class="pre">workflow()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-sctrial.convenience">Convenience Functions</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.convenience.auto_detect_design"><code class="docutils literal notranslate"><span class="pre">auto_detect_design()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.convenience.quick_did"><code class="docutils literal notranslate"><span class="pre">quick_did()</span></code></a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+
+  
+  <div class="tocsection editthispage">
+    <a href="https://github.com/TheOmarLab/sctrial/edit/main/docs/source/api/workflow.rst">
+      <i class="fa-solid fa-pencil"></i>
+      
+      
+        
+          Edit on GitHub
+        
+      
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2026, Omar Lab, Cedars-Sinai Medical Center.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+</div>
+
+  </footer>
+  </body>
+</html>
