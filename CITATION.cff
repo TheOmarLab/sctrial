@@ -12,8 +12,8 @@ authors:
   - family-names: "Omar"
     given-names: "Mohamed N."
 title: "sctrial: Participant-Level Differential Analysis for Longitudinal Single-Cell Experiments"
-version: 0.3.0
-date-released: 2026-03-18
+version: 0.3.3
+date-released: 2026-04-05
 url: "https://github.com/TheOmarLab/sctrial"
 repository-code: "https://github.com/TheOmarLab/sctrial"
 license: MIT
