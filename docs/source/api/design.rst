@@ -13,3 +13,4 @@ Trial Design
 Design Detection
 ----------------
 .. autofunction:: sctrial.convenience.auto_detect_design
+   :no-index:
