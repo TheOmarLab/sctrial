@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.1] - 2026-04-05
+## [0.3.3] - 2026-04-05
 
 ### Added
 - `sctrial.benchmark` subpackage: hierarchical gamma-Poisson simulator (`SimulationConfig`, `simulate_trial`, `calibrate_from_real_data`) and benchmark orchestrator (`run_benchmark`) for controlled method comparisons

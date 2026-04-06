@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sctrial"
-version = "0.3.2"
+version = "0.3.3"
 description = "Participant-level differential analysis for longitudinal single-cell experiments: DiD, paired comparisons, module scoring, pseudobulk, and power analysis."
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.9"

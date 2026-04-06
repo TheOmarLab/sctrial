@@ -128,7 +128,7 @@ def did_table_bayes(
     standardize
         Whether to z-score outcomes before model fitting.
     agg
-        Aggregation function (``"mean"``, ``"sum"``, etc.).
+        Aggregation function (``"mean"``, ``"median"``, or ``"pct_pos"``).
     covariates
         Optional covariate columns to include as fixed effects.
     prior_scale
