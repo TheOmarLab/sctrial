@@ -134,7 +134,7 @@ def run(
         try:
             proc = subprocess.run(
                 ["Rscript", str(script_file)],
-                capture_output=True, text=True, timeout=600,
+                capture_output=True, text=True, timeout=1800,
             )
             if proc.returncode != 0:
                 logger.warning("dreamlet R error: %s", proc.stderr[-500:])
