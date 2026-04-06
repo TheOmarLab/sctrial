@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Trial Design &#8212; sctrial 0.3.2 documentation</title>
+    <title>Trial Design &#8212; sctrial 0.3.3 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2" />
 
-    <script src="../_static/documentation_options.js?v=78d8237d"></script>
+    <script src="../_static/documentation_options.js?v=d198571b"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -125,8 +125,8 @@
       
     
     
-    <img src="../_static/logo.svg" class="logo__image only-light" alt="sctrial 0.3.2 documentation - Home"/>
-    <img src="../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.3.2 documentation - Home"/>
+    <img src="../_static/logo.svg" class="logo__image only-light" alt="sctrial 0.3.3 documentation - Home"/>
+    <img src="../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.3.3 documentation - Home"/>
   
   
 </a></div>
@@ -520,6 +520,65 @@ functions in <cite>sctrial</cite>.</p>
 </dd></dl>
 
 <p id="module-sctrial.design">Trial design specification: TrialDesign dataclass and design detection.</p>
+<section id="design-detection">
+<h2>Design Detection<a class="headerlink" href="#design-detection" title="Link to this heading">#</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="sctrial.convenience.auto_detect_design">
+<span class="sig-prename descclassname"><span class="pre">sctrial.convenience.</span></span><span class="sig-name descname"><span class="pre">auto_detect_design</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">adata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">AnnData</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arm_treated</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arm_control</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#sctrial.design.TrialDesign" title="sctrial.design.TrialDesign"><span class="pre">TrialDesign</span></a></span></span><a class="reference internal" href="../_modules/sctrial/convenience.html#auto_detect_design"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.convenience.auto_detect_design" title="Link to this definition">#</a></dt>
+<dd><p>Auto-detect trial design from common column naming patterns.</p>
+<p>Looks for common patterns in column names:</p>
+<ul class="simple">
+<li><p>participant: <code class="docutils literal notranslate"><span class="pre">participant_id</span></code>, <code class="docutils literal notranslate"><span class="pre">patient_id</span></code>, <code class="docutils literal notranslate"><span class="pre">donor_id</span></code>,
+<code class="docutils literal notranslate"><span class="pre">subject_id</span></code>, <code class="docutils literal notranslate"><span class="pre">sample_id</span></code></p></li>
+<li><p>visit: <code class="docutils literal notranslate"><span class="pre">visit</span></code>, <code class="docutils literal notranslate"><span class="pre">timepoint</span></code>, <code class="docutils literal notranslate"><span class="pre">time</span></code>, <code class="docutils literal notranslate"><span class="pre">day</span></code>, <code class="docutils literal notranslate"><span class="pre">week</span></code>,
+<code class="docutils literal notranslate"><span class="pre">time_point</span></code></p></li>
+<li><p>arm: <code class="docutils literal notranslate"><span class="pre">arm</span></code>, <code class="docutils literal notranslate"><span class="pre">treatment_arm</span></code>, <code class="docutils literal notranslate"><span class="pre">arm_id</span></code>, <code class="docutils literal notranslate"><span class="pre">treatment</span></code>,
+<code class="docutils literal notranslate"><span class="pre">group</span></code>, <code class="docutils literal notranslate"><span class="pre">condition</span></code></p></li>
+<li><p>celltype: <code class="docutils literal notranslate"><span class="pre">celltype</span></code>, <code class="docutils literal notranslate"><span class="pre">cell_type</span></code>, <code class="docutils literal notranslate"><span class="pre">cluster</span></code>,
+<code class="docutils literal notranslate"><span class="pre">annotation</span></code>, <code class="docutils literal notranslate"><span class="pre">cell_annotation</span></code></p></li>
+</ul>
+<p>Column matching uses exact (case-insensitive) match first, then
+word-boundary partial match (pattern must appear at a word boundary
+in the column name, so <code class="docutils literal notranslate"><span class="pre">&quot;arm&quot;</span></code> matches <code class="docutils literal notranslate"><span class="pre">&quot;arm_id&quot;</span></code> but not
+<code class="docutils literal notranslate"><span class="pre">&quot;farm_id&quot;</span></code>).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>adata</strong> – AnnData object to analyze.</p></li>
+<li><p><strong>arm_treated</strong> – Optional: specify the label for treated arm.  If not provided,
+the function tries keyword-based detection (e.g. “Treated”,
+“Drug”, “Active”).  Raises if detection fails.</p></li>
+<li><p><strong>arm_control</strong> – Optional: specify the label for control arm.  If not provided,
+the function tries keyword-based detection (e.g. “Control”,
+“Placebo”).  Raises if detection fails.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Detected design (may need manual adjustment).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#sctrial.design.TrialDesign" title="sctrial.design.TrialDesign">TrialDesign</a></p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">design</span> <span class="o">=</span> <span class="n">auto_detect_design</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Detected design: </span><span class="si">{</span><span class="n">design</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Verify the detected design. If arm labels need adjustment,</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># create a new TrialDesign with corrected values:</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">replace</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">design</span> <span class="o">=</span> <span class="n">replace</span><span class="p">(</span><span class="n">design</span><span class="p">,</span> <span class="n">arm_treated</span><span class="o">=</span><span class="s2">&quot;Drug_A&quot;</span><span class="p">,</span> <span class="n">arm_control</span><span class="o">=</span><span class="s2">&quot;Placebo&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If required columns cannot be detected, or if arm labels
+    cannot be determined (more than 2 arms, only 1 arm, or no
+    keyword match for ambiguous labels).</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
 </section>
 
 
@@ -580,6 +639,10 @@ functions in <cite>sctrial</cite>.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.design.TrialDesign.required_cols"><code class="docutils literal notranslate"><span class="pre">TrialDesign.required_cols()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.design.TrialDesign.validate"><code class="docutils literal notranslate"><span class="pre">TrialDesign.validate()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.design.TrialDesign.visit_col"><code class="docutils literal notranslate"><span class="pre">TrialDesign.visit_col</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#design-detection">Design Detection</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.convenience.auto_detect_design"><code class="docutils literal notranslate"><span class="pre">auto_detect_design()</span></code></a></li>
 </ul>
 </li>
 </ul>
