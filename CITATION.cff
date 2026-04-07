@@ -1,5 +1,5 @@
 cff-version: 1.2.0
-message: "If you use this software, please cite it as below."
+message: "If you use this software, please cite the preprint below."
 authors:
   - family-names: "Vasanthakumari"
     given-names: "Priyanka"
@@ -10,10 +10,28 @@ authors:
   - family-names: "Magana"
     given-names: "Bryan"
   - family-names: "Omar"
-    given-names: "Mohamed N."
+    given-names: "Mohamed"
 title: "sctrial: Participant-Level Differential Analysis for Longitudinal Single-Cell Experiments"
 version: 0.3.3
 date-released: 2026-04-05
 url: "https://github.com/TheOmarLab/sctrial"
 repository-code: "https://github.com/TheOmarLab/sctrial"
 license: MIT
+preferred-citation:
+  type: article
+  title: "sctrial: Participant-Level Differential Analysis for Longitudinal Single-Cell Experiments"
+  authors:
+    - family-names: "Vasanthakumari"
+      given-names: "Priyanka"
+    - family-names: "Valencia"
+      given-names: "Itzel"
+    - family-names: "Aghmiouni"
+      given-names: "Maryam R."
+    - family-names: "Magana"
+      given-names: "Bryan"
+    - family-names: "Omar"
+      given-names: "Mohamed"
+  journal: "bioRxiv"
+  year: 2026
+  doi: "10.64898/2026.04.02.716219"
+  url: "https://www.biorxiv.org/content/10.64898/2026.04.02.716219v1"
