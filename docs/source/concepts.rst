@@ -2,8 +2,9 @@ Concepts and Methods
 ====================
 
 This page describes the statistical framework underlying **sctrial**.
-For the full derivation and empirical evaluation, see the preprint
-(`Vasanthakumari et al., 2026 <https://github.com/TheOmarLab/sctrial>`_).
+For the full derivation and empirical evaluation, see the preprint:
+Vasanthakumari et al., *bioRxiv* 2026, doi:
+`10.64898/2026.04.02.716219 <https://doi.org/10.64898/2026.04.02.716219>`_.
 
 The pseudoreplication problem
 -----------------------------

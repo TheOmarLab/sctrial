@@ -141,15 +141,16 @@ Full documentation: [https://www.omar-lab.com/sctrial/](https://www.omar-lab.com
 
 If you use **sctrial** in your research, please cite:
 
-> Vasanthakumari P, Valencia I, Aghmiouni MR, Magana B, Omar MN. **sctrial: Participant-Level Differential Analysis for Longitudinal Single-Cell Experiments.** *bioRxiv* (2026).
+> Vasanthakumari P, Valencia I, Aghmiouni MR, Magana B, Omar M. **sctrial: Participant-Level Differential Analysis for Longitudinal Single-Cell Experiments.** *bioRxiv* 2026. doi:[10.64898/2026.04.02.716219](https://doi.org/10.64898/2026.04.02.716219).
 
 ```bibtex
 @article{vasanthakumari2026sctrial,
   title = {sctrial: Participant-Level Differential Analysis for Longitudinal Single-Cell Experiments},
-  author = {Vasanthakumari, Priyanka and Valencia, Itzel and Aghmiouni, Maryam R. and Magana, Bryan and Omar, Mohamed N.},
+  author = {Vasanthakumari, Priyanka and Valencia, Itzel and Aghmiouni, Maryam R. and Magana, Bryan and Omar, Mohamed},
   journal = {bioRxiv},
   year = {2026},
-  url = {https://github.com/TheOmarLab/sctrial}
+  doi = {10.64898/2026.04.02.716219},
+  url = {https://www.biorxiv.org/content/10.64898/2026.04.02.716219v1}
 }
 ```
 
