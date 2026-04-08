@@ -11,9 +11,6 @@
     <img src="https://img.shields.io/github/v/release/TheOmarLab/sctrial?label=version" alt="Release Version">
   </a>
   <img src="https://img.shields.io/badge/python-3.9%2B-blue" alt="Python Versions">
-  <a href="https://opensource.org/licenses/MIT">
-    <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT">
-  </a>
   <a href="https://pypi.org/project/sctrial/">
     <img src="https://img.shields.io/pypi/v/sctrial.svg" alt="PyPI">
   </a>
