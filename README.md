@@ -17,6 +17,9 @@
   <a href="https://pypi.org/project/sctrial/">
     <img src="https://img.shields.io/pypi/v/sctrial.svg" alt="PyPI">
   </a>
+  <a href="https://pepy.tech/project/sctrial">
+    <img src="https://static.pepy.tech/badge/sctrial" alt="Downloads">
+  </a>
   <a href="https://www.omar-lab.com/sctrial/">
     <img src="https://readthedocs.org/projects/sctrial/badge/?version=latest" alt="Documentation">
   </a>
