@@ -37,6 +37,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from matplotlib.ticker import MultipleLocator
 from scipy import stats as sp_stats
 
 from .._shared import (
@@ -1010,12 +1011,18 @@ def _panel_bench_fpr_curves(fig, bench_df):
     if not hasattr(axes, "__len__"):
         axes = [axes]
 
-    # Small x-offsets (% of signal fraction) to separate overlapping lines
+    # Categorical x-positions so all 4 signal-fraction ticks are evenly
+    # spaced across every subplot (instead of uneven log-ish spacing).
+    x_positions = np.arange(len(_SIGNAL_FRACTIONS), dtype=float)
+    frac_to_x = dict(zip(_SIGNAL_FRACTIONS, x_positions))
+
+    # Small x-offsets (fraction of a tick-spacing) to separate overlapping
+    # lines.  With tick spacing = 1.0, ±0.08 is a clear visual gap.
     method_offsets = {
-        "wilcoxon_paired": -0.30,
-        "nebula":          -0.10,
-        "sctrial_did":     +0.10,
-        "dreamlet":        +0.30,
+        "wilcoxon_paired": -0.08,
+        "nebula":          -0.03,
+        "sctrial_did":     +0.03,
+        "dreamlet":        +0.08,
     }
 
     for ax_idx, (ax, n_g) in enumerate(zip(axes, _PANEL_SIZES)):
@@ -1026,7 +1033,8 @@ def _panel_bench_fpr_curves(fig, bench_df):
                 continue
             is_focal = method == "sctrial_did"
             style = _method_style(method, is_focal=is_focal)
-            x = m["signal_pct"].values + method_offsets[method]
+            x = np.array([frac_to_x[int(f)] for f in m["signal_pct"].values]) \
+                + method_offsets[method]
             ax.plot(
                 x, m["fpr"],
                 label=_BENCH_METHOD_LABELS[method] if ax_idx == 0 else None,
@@ -1035,14 +1043,16 @@ def _panel_bench_fpr_curves(fig, bench_df):
             )
 
         _add_nominal_band(ax)
-        ax.set_xticks(_SIGNAL_FRACTIONS)
+        ax.set_xticks(x_positions)
         ax.set_xticklabels([f"{f}%" for f in _SIGNAL_FRACTIONS])
+        ax.set_xlim(-0.4, len(_SIGNAL_FRACTIONS) - 0.6)
         ax.set_xlabel("Signal fraction")
         ax.set_title(
             f"{n_g:,} genes",
             fontsize=12, fontweight="bold", color="#222222", pad=8,
         )
-        ax.set_ylim(-0.02, 0.72)
+        ax.set_ylim(0.0, 0.7)
+        ax.yaxis.set_major_locator(MultipleLocator(0.1))
         _style_axis(ax)
 
     axes[0].set_ylabel("Null-gene FPR (p < 0.05)", fontsize=11)
@@ -1164,14 +1174,19 @@ def _panel_bench_lambda_gc(ax, bench_df):
         rows.append({"method": method, "n_genes": int(n_g), "lambda_gc": lam})
     lam_df = pd.DataFrame(rows)
 
+    # Use categorical x-positions so the 4 panel sizes are evenly spaced.
+    x_positions = np.arange(len(_PANEL_SIZES), dtype=float)
+    n_to_x = dict(zip(_PANEL_SIZES, x_positions))
+
     for method in _BENCH_METHODS:
         sub = lam_df[lam_df["method"] == method].sort_values("n_genes")
         if sub.empty:
             continue
         is_focal = method == "sctrial_did"
         style = _method_style(method, is_focal=is_focal)
+        xs = [n_to_x[int(n)] for n in sub["n_genes"].values]
         ax.plot(
-            sub["n_genes"], sub["lambda_gc"],
+            xs, sub["lambda_gc"],
             label=_BENCH_METHOD_LABELS[method],
             zorder=10 if is_focal else 3,
             **style,
@@ -1181,15 +1196,16 @@ def _panel_bench_lambda_gc(ax, bench_df):
                alpha=0.65, zorder=1)
     ax.axhspan(0.95, 1.05, color="#d62728", alpha=0.06, zorder=0)
 
-    ax.set_xscale("log")
-    ax.set_xticks(_PANEL_SIZES)
+    ax.set_xticks(x_positions)
     ax.set_xticklabels([f"{p:,}" for p in _PANEL_SIZES])
+    ax.set_xlim(-0.35, len(_PANEL_SIZES) - 0.65)
     ax.set_xlabel("Panel size (genes)", fontsize=11)
     ax.set_ylabel(r"Genomic inflation factor ($\lambda_{\mathrm{GC}}$)",
                   fontsize=11)
     ax.set_title("Pure-null calibration across panel sizes",
                  fontsize=12, fontweight="bold", pad=10)
     ax.set_ylim(0.88, 1.18)
+    ax.yaxis.set_major_locator(MultipleLocator(0.05))
     ax.legend(
         loc="upper left", frameon=True, framealpha=0.95,
         edgecolor="#cccccc", fontsize=9,
@@ -1311,20 +1327,24 @@ def _panel_bench_pure_null_fpr(ax, bench_df):
                alpha=0.7, zorder=1)
 
     panel_sizes = sorted(_PANEL_SIZES)
-    x_vals = np.array(panel_sizes, dtype=float)
-    # Tiny log-scale offsets so error-bars don't perfectly overlap
-    log_offsets = {
-        "wilcoxon_paired": 0.93,
-        "nebula":          0.97,
-        "sctrial_did":     1.03,
-        "dreamlet":        1.07,
+    # Categorical x-positions so all 4 panel sizes are evenly spaced.
+    x_positions = np.arange(len(panel_sizes), dtype=float)
+    n_to_x = dict(zip(panel_sizes, x_positions))
+
+    # Small linear offsets so error-bars don't overlap at identical FPRs.
+    method_offsets = {
+        "wilcoxon_paired": -0.09,
+        "nebula":          -0.03,
+        "sctrial_did":     +0.03,
+        "dreamlet":        +0.09,
     }
 
     for method in _BENCH_METHODS:
         sub = df[df["method"] == method].sort_values("n_genes")
         if sub.empty:
             continue
-        xs = sub["n_genes"].values * log_offsets[method]
+        xs = np.array([n_to_x[int(n)] for n in sub["n_genes"].values]) \
+            + method_offsets[method]
         ys = sub["fpr"].values
         lo = sub["ci_lo"].values
         hi = sub["ci_hi"].values
@@ -1345,12 +1365,13 @@ def _panel_bench_pure_null_fpr(ax, bench_df):
             alpha=0.92, zorder=10 if is_focal else 4,
         )
 
-    ax.set_xscale("log")
-    ax.set_xticks(panel_sizes)
+    ax.set_xticks(x_positions)
     ax.set_xticklabels([f"{p:,}" for p in panel_sizes])
+    ax.set_xlim(-0.35, len(panel_sizes) - 0.65)
     ax.set_xlabel("Panel size (genes)", fontsize=11)
     ax.set_ylabel("Pure-null Type I error (p < 0.05)", fontsize=11)
     ax.set_ylim(0.025, 0.085)
+    ax.yaxis.set_major_locator(MultipleLocator(0.01))
     ax.set_title(
         "All methods are calibrated under pure-null conditions",
         fontsize=12, fontweight="bold", pad=10,
@@ -1444,6 +1465,7 @@ def _panel_bench_signal_rmse(fig, bench_df):
         ax_bias.set_xticks(x_positions)
         ax_bias.set_xticklabels([])
         ax_bias.set_ylim(bias_lo, bias_hi)
+        ax_bias.yaxis.set_major_locator(MultipleLocator(0.05))
         ax_bias.set_title(
             f"{n_g:,} genes",
             fontsize=12, fontweight="bold", color="#222222", pad=8,
@@ -1455,6 +1477,7 @@ def _panel_bench_signal_rmse(fig, bench_df):
         ax_rmse.set_xticklabels([f"{f}%" for f in _SIGNAL_FRACTIONS])
         ax_rmse.set_xlabel("Signal fraction")
         ax_rmse.set_ylim(0, rmse_hi)
+        ax_rmse.yaxis.set_major_locator(MultipleLocator(0.05))
         _style_axis(ax_rmse)
 
         if col > 0:
@@ -1490,7 +1513,11 @@ def _panel_bench_signal_rmse(fig, bench_df):
 # ----------------------------------------------------------------------
 
 def _panel_bench_runtime(ax, bench_df):
-    """Per-iteration runtime by method × panel size (log scale)."""
+    """Per-iteration runtime by method × panel size (log y).
+
+    X-axis uses evenly-spaced categorical positions so the 4 panel sizes
+    are ticked at equal intervals, independent of their raw values.
+    """
     rt = (
         bench_df.groupby(["method", "scenario", "n_genes", "iteration"])[
             "runtime_seconds"
@@ -1505,23 +1532,27 @@ def _panel_bench_runtime(ax, bench_df):
         .reset_index()
     )
 
+    x_positions = np.arange(len(_PANEL_SIZES), dtype=float)
+    n_to_x = dict(zip(_PANEL_SIZES, x_positions))
+
     for method in _BENCH_METHODS:
         sub = summary[summary["method"] == method].sort_values("n_genes")
         if sub.empty:
             continue
         is_focal = method == "sctrial_did"
         style = _method_style(method, is_focal=is_focal)
+        xs = [n_to_x[int(n)] for n in sub["n_genes"].values]
         ax.plot(
-            sub["n_genes"], sub["runtime_seconds"],
+            xs, sub["runtime_seconds"],
             label=_BENCH_METHOD_LABELS[method],
             zorder=10 if is_focal else 3,
             **style,
         )
 
-    ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.set_xticks(_PANEL_SIZES)
+    ax.set_xticks(x_positions)
     ax.set_xticklabels([f"{p:,}" for p in _PANEL_SIZES])
+    ax.set_xlim(-0.35, len(_PANEL_SIZES) - 0.65)
     ax.set_xlabel("Panel size (genes)", fontsize=11)
     ax.set_ylabel("Median runtime per iteration (s)", fontsize=11)
     ax.set_title("Computational cost",
