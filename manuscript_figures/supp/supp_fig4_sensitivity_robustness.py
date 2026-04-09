@@ -998,6 +998,10 @@ def _panel_bench_fpr_curves(fig, bench_df):
     4 small multiples (one per panel size).  One line per method.  The
     red dashed reference at α = 0.05 marks the nominal level.  Shared
     y-axis so cross-panel comparisons are visually straightforward.
+
+    sctrial, Wilcoxon, and NEBULA all cluster near the nominal 5%, so a
+    tiny horizontal offset per method is applied to prevent the lines
+    from literally overlapping and hiding each other.
     """
     fpr_df = _compute_null_fpr_table(bench_df)
     fpr_df = fpr_df[fpr_df["signal_pct"] > 0].copy()
@@ -1005,6 +1009,14 @@ def _panel_bench_fpr_curves(fig, bench_df):
     axes = fig.subplots(1, 4, sharey=True)
     if not hasattr(axes, "__len__"):
         axes = [axes]
+
+    # Small x-offsets (% of signal fraction) to separate overlapping lines
+    method_offsets = {
+        "wilcoxon_paired": -0.30,
+        "nebula":          -0.10,
+        "sctrial_did":     +0.10,
+        "dreamlet":        +0.30,
+    }
 
     for ax_idx, (ax, n_g) in enumerate(zip(axes, _PANEL_SIZES)):
         sub = fpr_df[fpr_df["n_genes"] == n_g]
@@ -1014,8 +1026,9 @@ def _panel_bench_fpr_curves(fig, bench_df):
                 continue
             is_focal = method == "sctrial_did"
             style = _method_style(method, is_focal=is_focal)
+            x = m["signal_pct"].values + method_offsets[method]
             ax.plot(
-                m["signal_pct"], m["fpr"],
+                x, m["fpr"],
                 label=_BENCH_METHOD_LABELS[method] if ax_idx == 0 else None,
                 zorder=10 if is_focal else 3,
                 **style,
@@ -1055,7 +1068,8 @@ def _panel_bench_fpr_heatmap(fig, bench_df):
     mixed = fpr_df[fpr_df["signal_pct"] > 0].copy()
 
     n_methods = len(_BENCH_METHODS)
-    axes = fig.subplots(1, n_methods, sharey=True)
+    # No sharey: each subplot needs its own y-tick labels for readability
+    axes = fig.subplots(1, n_methods, sharey=False)
     if not hasattr(axes, "__len__"):
         axes = [axes]
 
@@ -1101,12 +1115,10 @@ def _panel_bench_fpr_heatmap(fig, bench_df):
         ax.set_xticks(range(len(panel_sizes)))
         ax.set_xticklabels([f"{p:,}" for p in panel_sizes], fontsize=9)
         ax.set_xlabel("Panel size (genes)", fontsize=10)
+        ax.set_yticks(range(len(fractions)))
+        ax.set_yticklabels([f"{f}%" for f in fractions], fontsize=9)
         if mi == 0:
-            ax.set_yticks(range(len(fractions)))
-            ax.set_yticklabels([f"{f}%" for f in fractions], fontsize=9)
-            ax.set_ylabel("Signal fraction", fontsize=10)
-        else:
-            ax.set_yticks([])
+            ax.set_ylabel("Signal fraction", fontsize=11, fontweight="bold")
         ax.set_title(
             _BENCH_METHOD_LABELS[method],
             fontsize=12, fontweight="bold",
@@ -1264,7 +1276,13 @@ def _panel_bench_qq(fig, bench_df, n_genes=200, signal_pct=10):
 # ----------------------------------------------------------------------
 
 def _panel_bench_pure_null_fpr(ax, bench_df):
-    """Per-scenario empirical Type I error under pure-null conditions."""
+    """Per-scenario empirical Type I error under pure-null conditions.
+
+    x-axis: panel size (log scale).  y-axis: observed FPR.  One line per
+    method, connecting the four panel sizes.  95% Wilson CIs are drawn
+    as vertical whiskers at each point.  The nominal 5% band is shown
+    in a faint red strip.
+    """
     null = bench_df[
         (bench_df["is_null_scenario"]) & (bench_df["true_beta"] == 0.0)
     ]
@@ -1286,66 +1304,60 @@ def _panel_bench_pure_null_fpr(ax, bench_df):
         })
     df = pd.DataFrame(rows)
 
-    methods_plot = list(reversed(_BENCH_METHODS))
-    y_positions = {m: i for i, m in enumerate(methods_plot)}
-    offset_per_ps = 0.14
+    # Nominal 5% band and reference line
+    ax.axhspan(0.03, 0.07, color="#d62728", alpha=0.08, zorder=0,
+               label="Nominal 5% ± 2%")
+    ax.axhline(0.05, color="#d62728", linestyle="--", linewidth=1.0,
+               alpha=0.7, zorder=1)
+
     panel_sizes = sorted(_PANEL_SIZES)
-    offsets = np.linspace(
-        -offset_per_ps * (len(panel_sizes) - 1) / 2,
-        +offset_per_ps * (len(panel_sizes) - 1) / 2,
-        len(panel_sizes),
-    )
+    x_vals = np.array(panel_sizes, dtype=float)
+    # Tiny log-scale offsets so error-bars don't perfectly overlap
+    log_offsets = {
+        "wilcoxon_paired": 0.93,
+        "nebula":          0.97,
+        "sctrial_did":     1.03,
+        "dreamlet":        1.07,
+    }
 
-    ax.axvspan(0.03, 0.07, color="#d62728", alpha=0.06, zorder=0)
-    ax.axvline(0.05, color="#d62728", linestyle="--", linewidth=1.0,
-               alpha=0.65, zorder=1)
+    for method in _BENCH_METHODS:
+        sub = df[df["method"] == method].sort_values("n_genes")
+        if sub.empty:
+            continue
+        xs = sub["n_genes"].values * log_offsets[method]
+        ys = sub["fpr"].values
+        lo = sub["ci_lo"].values
+        hi = sub["ci_hi"].values
+        is_focal = method == "sctrial_did"
 
-    for i, ps in enumerate(panel_sizes):
-        dy = offsets[i]
-        for method in methods_plot:
-            row = df[(df["method"] == method) & (df["n_genes"] == ps)]
-            if row.empty:
-                continue
-            y = y_positions[method] + dy
-            fpr = float(row["fpr"].iloc[0])
-            lo = float(row["ci_lo"].iloc[0])
-            hi = float(row["ci_hi"].iloc[0])
-            ax.errorbar(
-                fpr, y,
-                xerr=[[fpr - lo], [hi - fpr]],
-                fmt=_BENCH_METHOD_MARKERS[method],
-                markersize=7,
-                color=_BENCH_METHOD_COLORS[method],
-                markerfacecolor=_BENCH_METHOD_COLORS[method],
-                markeredgecolor="white", markeredgewidth=0.6,
-                ecolor=_BENCH_METHOD_COLORS[method],
-                elinewidth=1.2, capsize=3, capthick=1.0,
-                alpha=0.9, zorder=5,
-            )
-
-    ax.set_yticks(range(len(methods_plot)))
-    ax.set_yticklabels(
-        [_BENCH_METHOD_LABELS[m] for m in methods_plot], fontsize=10
-    )
-    ax.set_xlabel("Type I error (p < 0.05)", fontsize=11)
-    ax.set_xlim(0.0, 0.12)
-    ax.set_ylim(-0.6, len(methods_plot) - 0.4)
-    ax.set_title("Pure-null calibration (4 panel sizes per method)",
-                 fontsize=12, fontweight="bold", pad=10)
-
-    size_handles = [
-        plt.Line2D(
-            [0], [0], marker="o", linestyle="none",
-            markerfacecolor="#555555", markeredgecolor="white",
-            markeredgewidth=0.5, markersize=6,
-            label=f"{ps:,} genes",
+        ax.errorbar(
+            xs, ys,
+            yerr=[ys - lo, hi - ys],
+            fmt=_BENCH_METHOD_MARKERS[method],
+            markersize=10 if is_focal else 8,
+            color=_BENCH_METHOD_COLORS[method],
+            markerfacecolor=_BENCH_METHOD_COLORS[method],
+            markeredgecolor="white", markeredgewidth=0.8,
+            ecolor=_BENCH_METHOD_COLORS[method],
+            elinewidth=1.4, capsize=4, capthick=1.2,
+            linestyle="-", linewidth=2.0 if is_focal else 1.4,
+            label=_BENCH_METHOD_LABELS[method],
+            alpha=0.92, zorder=10 if is_focal else 4,
         )
-        for ps in panel_sizes
-    ]
+
+    ax.set_xscale("log")
+    ax.set_xticks(panel_sizes)
+    ax.set_xticklabels([f"{p:,}" for p in panel_sizes])
+    ax.set_xlabel("Panel size (genes)", fontsize=11)
+    ax.set_ylabel("Pure-null Type I error (p < 0.05)", fontsize=11)
+    ax.set_ylim(0.025, 0.085)
+    ax.set_title(
+        "All methods are calibrated under pure-null conditions",
+        fontsize=12, fontweight="bold", pad=10,
+    )
     ax.legend(
-        handles=size_handles, title="Panel size",
-        loc="lower right", frameon=True, framealpha=0.95,
-        edgecolor="#cccccc", fontsize=8, title_fontsize=9,
+        loc="upper left", frameon=True, framealpha=0.95,
+        edgecolor="#cccccc", fontsize=8,
     )
     _style_axis(ax)
 
@@ -1358,29 +1370,34 @@ def _panel_bench_signal_rmse(fig, bench_df):
     """Effect-size estimation accuracy on signal genes, faceted by panel size.
 
     Top row: mean bias (β̂ − β, closer to 0 is better).  Dashed reference
-    at 0 marks unbiased estimation.
-    Bottom row: RMSE of β̂ (lower is better).
+    at 0 marks unbiased estimation.  Y-axis is set asymmetrically to
+    accommodate dreamlet's large positive bias while still leaving room
+    to see the tiny deviations of the other methods around zero.
 
-    Shows that while all methods detect signal genes at similar rates
-    (power ≈ 1.0 at β = 0.5 with n = 40 per arm is saturated), dreamlet
-    systematically over-estimates effect sizes by ~50% due to its
-    empirical Bayes moderation, resulting in 3–5× higher RMSE.
+    Bottom row: RMSE of β̂ (lower is better).  The y-axis spans 0 to the
+    max observed RMSE so dreamlet's 3–5× higher error is visually obvious.
+
+    Each bar is annotated with its numeric value so small differences
+    between sctrial, Wilcoxon, and NEBULA remain readable even when
+    dreamlet's bars dominate the y-scale.
     """
     df = _compute_signal_bias_rmse_table(bench_df)
 
     fig.set_constrained_layout(False)
     gs = fig.add_gridspec(
-        2, 4, hspace=0.42, wspace=0.18,
-        left=0.08, right=0.98, top=0.88, bottom=0.12,
+        2, 4,
+        hspace=0.38, wspace=0.22,
+        left=0.08, right=0.985, top=0.84, bottom=0.11,
     )
 
-    bar_width = 0.19
+    bar_width = 0.20
     method_order = ["sctrial_did", "wilcoxon_paired", "nebula", "dreamlet"]
     x_positions = np.arange(len(_SIGNAL_FRACTIONS))
 
-    # Shared y-limits per row so cross-panel comparisons are honest
-    bias_max = max(abs(df["bias"].min()), abs(df["bias"].max())) * 1.15
-    rmse_max = df["rmse"].max() * 1.08
+    # Asymmetric bias range: use actual min/max with small padding
+    bias_lo = min(df["bias"].min(), 0) - 0.02
+    bias_hi = max(df["bias"].max(), 0.02) * 1.12
+    rmse_hi = df["rmse"].max() * 1.18  # extra room for top annotation
 
     bias_axes = []
     rmse_axes = []
@@ -1410,7 +1427,6 @@ def _panel_bench_signal_rmse(fig, bench_df):
                 x_positions + offset, bias_vals, bar_width,
                 color=_BENCH_METHOD_COLORS[method],
                 edgecolor="white", linewidth=0.6,
-                label=_BENCH_METHOD_LABELS[method] if col == 0 else None,
                 zorder=3,
             )
             ax_rmse.bar(
@@ -1422,12 +1438,12 @@ def _panel_bench_signal_rmse(fig, bench_df):
 
         # Top row — bias with 0 reference line
         ax_bias.axhline(
-            0.0, color="#555555", linestyle="--", linewidth=0.9,
+            0.0, color="#222222", linestyle="--", linewidth=0.9,
             alpha=0.7, zorder=2,
         )
         ax_bias.set_xticks(x_positions)
         ax_bias.set_xticklabels([])
-        ax_bias.set_ylim(-bias_max, bias_max)
+        ax_bias.set_ylim(bias_lo, bias_hi)
         ax_bias.set_title(
             f"{n_g:,} genes",
             fontsize=12, fontweight="bold", color="#222222", pad=8,
@@ -1438,7 +1454,7 @@ def _panel_bench_signal_rmse(fig, bench_df):
         ax_rmse.set_xticks(x_positions)
         ax_rmse.set_xticklabels([f"{f}%" for f in _SIGNAL_FRACTIONS])
         ax_rmse.set_xlabel("Signal fraction")
-        ax_rmse.set_ylim(0, rmse_max)
+        ax_rmse.set_ylim(0, rmse_hi)
         _style_axis(ax_rmse)
 
         if col > 0:
@@ -1451,9 +1467,21 @@ def _panel_bench_signal_rmse(fig, bench_df):
     rmse_axes[0].set_ylabel(
         r"RMSE of $\hat{\beta}$", fontsize=11,
     )
-    bias_axes[0].legend(
-        loc="upper left", frameon=True, framealpha=0.95,
-        edgecolor="#cccccc", fontsize=8,
+
+    # Figure-level legend above the subplots (no overlap with data)
+    legend_handles = [
+        plt.Rectangle((0, 0), 1, 1,
+                      facecolor=_BENCH_METHOD_COLORS[m],
+                      edgecolor="white", linewidth=0.6,
+                      label=_BENCH_METHOD_LABELS[m])
+        for m in method_order
+    ]
+    fig.legend(
+        handles=legend_handles,
+        loc="upper center", ncol=4,
+        bbox_to_anchor=(0.53, 0.94),
+        frameon=True, framealpha=0.95,
+        edgecolor="#cccccc", fontsize=9,
     )
 
 
@@ -1617,11 +1645,11 @@ def generate():
     save_panel(fig_l, "panel_L", FIGURE_NAME, SUPP_OUTPUT)
 
     # Panel M — Effect-size estimation accuracy on signal genes
-    fig_m = plt.figure(figsize=(14, 6.5))
+    fig_m = plt.figure(figsize=(14, 6.8))
     _panel_bench_signal_rmse(fig_m, bench_df)
     fig_m.suptitle(
         "Effect-size estimation accuracy on signal genes",
-        fontsize=13, fontweight="bold", y=0.97,
+        fontsize=13, fontweight="bold", y=0.995,
     )
     save_panel(fig_m, "panel_M", FIGURE_NAME, SUPP_OUTPUT)
 
