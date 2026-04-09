@@ -1,8 +1,12 @@
 """
-Supplementary Figure 4 — Sensitivity and Robustness.
-=====================================================
+Supplementary Figure 4 — Sensitivity, Robustness, and Benchmarking.
+===================================================================
 
-Show how DiD results change under different analytical decisions.
+Panels A–G characterize the sensitivity and robustness of sctrial's
+participant-level inference on real datasets.  Panels H–N benchmark
+sctrial against established multi-subject methods (dreamlet, NEBULA,
+Wilcoxon on change scores) on a hierarchical gamma-Poisson simulator
+across gene-panel sizes (50–2000) and signal fractions (1–20%).
 
 Panels
 ------
@@ -13,10 +17,13 @@ Panels
   E  Cell-type-stratified DiD heatmap (Melanoma).
   F  Rank-order concordance across preprocessing choices (Melanoma).
   G  Leave-one-out stability matrix (max influence, all datasets).
-  H  Simulation: power (TPR) across effect sizes.
-  I  Simulation: type I error calibration across sample sizes.
-  J  Simulation: effect-size bias (estimated vs true beta).
-  K  Simulation: p-value calibration QQ plot.
+  H  Benchmark: null-gene FPR curves faceted by panel size.
+  I  Benchmark: null-gene FPR heatmap (method × panel size × signal).
+  J  Benchmark: pure-null λ_GC across panel sizes.
+  K  Benchmark: QQ plots at 200 genes / 10% signal (challenging regime).
+  L  Benchmark: pure-null FPR dot-and-whisker.
+  M  Benchmark: signal-gene power across panel sizes.
+  N  Benchmark: runtime scaling.
 
 Non-overlap guardrail: methodological sensitivity only, not biological claims.
 """
@@ -30,6 +37,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from matplotlib.ticker import MultipleLocator
 from scipy import stats as sp_stats
 
 from .._shared import (
@@ -797,14 +805,27 @@ _MDE_DATASET_CFG = {
 
 
 # ======================================================================
-# NatMeth Benchmark panels H–N
+# Benchmark panels H–N (signal-fraction sensitivity)
 # ======================================================================
+#
+# These panels characterize the statistical calibration and signal
+# detection of sctrial against established multi-subject methods
+# (dreamlet, NEBULA, Wilcoxon on change scores) across a 4 x 5 grid
+# of gene-panel sizes and signal fractions.
+#
+# Data source: hierarchical gamma-Poisson simulator calibrated from TNBC
+# (Phase 5 sensitivity grid, n = 11M per-gene test rows).
 
-# Benchmark data lives in the manuscript directory (generated on HPC)
-_BENCHMARK_CSV = Path(__file__).resolve().parents[4] / "manuscript" / "benchmark" / "simulation" / "benchmark_combined.csv"
+_BENCHMARK_CSV = (
+    Path(__file__).resolve().parents[4]
+    / "manuscript"
+    / "benchmark"
+    / "sensitivity"
+    / "sensitivity_combined.csv"
+)
 
-# Method display configuration
-# Plot order: sctrial last so it renders on top and stays visible
+# Method display configuration — plot order: sctrial last so it renders
+# on top of overlapping curves and stays visible.
 _BENCH_METHODS = ["wilcoxon_paired", "nebula", "dreamlet", "sctrial_did"]
 _BENCH_METHOD_LABELS = {
     "sctrial_did": "sctrial (DiD)",
@@ -813,10 +834,10 @@ _BENCH_METHOD_LABELS = {
     "wilcoxon_paired": "Wilcoxon (Δ scores)",
 }
 _BENCH_METHOD_COLORS = {
-    "sctrial_did": "#1f77b4",   # strong blue
-    "dreamlet": "#d62728",      # red
-    "nebula": "#ff7f0e",        # orange
-    "wilcoxon_paired": "#2ca02c",  # green
+    "sctrial_did": "#1f77b4",        # steel blue
+    "dreamlet": "#d62728",           # brick red
+    "nebula": "#ff7f0e",             # safety orange
+    "wilcoxon_paired": "#2ca02c",    # forest green
 }
 _BENCH_METHOD_MARKERS = {
     "sctrial_did": "o",
@@ -825,417 +846,722 @@ _BENCH_METHOD_MARKERS = {
     "wilcoxon_paired": "^",
 }
 
+_PANEL_SIZES = [50, 200, 500, 2000]
+_SIGNAL_FRACTIONS = [1, 5, 10, 20]  # percent; pure null (0) handled separately
+
 
 def _load_benchmark_data():
-    """Load NatMeth benchmark results from HPC output."""
+    """Load signal-fraction sensitivity results from HPC output.
+
+    Returns a DataFrame with columns added for panel size (n_genes) and
+    signal fraction (signal_pct, 0 for pure-null scenarios).
+    """
     if not _BENCHMARK_CSV.exists():
         raise FileNotFoundError(
             f"Benchmark results not found at {_BENCHMARK_CSV}.\n"
-            "Run the benchmark on HPC first, then rsync results locally."
+            "Run the signal-fraction sensitivity benchmark on HPC first, "
+            "then rsync results locally."
         )
     df = pd.read_csv(_BENCHMARK_CSV, low_memory=False)
-    df["design"] = df["scenario"].str.split("__").str[0]
-    # Extract effect size from scenario name for DE scenarios
-    beta_extract = df["scenario"].str.extract(r"b(\d+\.?\d*)")
-    df["scenario_beta"] = pd.to_numeric(beta_extract[0], errors="coerce")
+    df["n_genes"] = df["scenario"].str.extract(r"_g(\d+)")[0].astype(int)
+    frac = df["scenario"].str.extract(r"_f(\d+)")
+    df["signal_pct"] = pd.to_numeric(frac[0], errors="coerce").fillna(0).astype(int)
+    df["is_null_scenario"] = df["scenario"].str.contains("sens_null")
     return df
 
 
-def _filter_bench(df, design="two_arm", scenario_pattern=None):
-    """Filter benchmark data by design and optional scenario regex."""
-    sub = df[df["design"] == design]
-    if scenario_pattern:
-        sub = sub[sub["scenario"].str.contains(scenario_pattern, regex=True)]
-    return sub
+def _method_style(method, is_focal=False, alpha=1.0):
+    """Return standardized styling kwargs for a method's line/marker.
 
-
-def _panel_bench_power(fig_or_ax, bench_df, design="two_arm"):
-    """Panel H/M: Power curves — signal-gene detection rate vs effect size.
-
-    Faceted by sample size. Shows power on signal genes ONLY (not pooled
-    across all genes). Lines per method with ±SE bands.
+    Focal method (sctrial) gets slightly heavier styling for visibility.
     """
-    de_data = _filter_bench(bench_df, design, "de_pos")
-    signal = de_data[de_data["is_signal"] == True].copy()
-    if signal.empty:
-        return
+    return {
+        "color": _BENCH_METHOD_COLORS[method],
+        "marker": _BENCH_METHOD_MARKERS[method],
+        "markersize": 9 if is_focal else 7,
+        "markeredgecolor": "white",
+        "markeredgewidth": 0.6,
+        "linewidth": 2.5 if is_focal else 1.8,
+        "alpha": alpha,
+    }
 
-    # Compute per-iteration power
+
+def _add_nominal_band(ax, level=0.05, low=0.03, high=0.07, color="#d62728"):
+    """Overlay a subtle reference band at the nominal α level."""
+    ax.axhspan(low, high, color=color, alpha=0.06, zorder=0)
+    ax.axhline(level, color=color, linestyle="--", linewidth=1.0,
+               alpha=0.65, zorder=1)
+
+
+def _style_axis(ax):
+    """Apply consistent publication styling to an axis."""
+    ax.grid(axis="y", linestyle=":", color="#b0b0b0", alpha=0.45,
+            linewidth=0.6, zorder=0)
+    ax.set_axisbelow(True)
+    despine(ax)
+    for spine in ("left", "bottom"):
+        ax.spines[spine].set_color("#333333")
+        ax.spines[spine].set_linewidth(0.9)
+    ax.tick_params(axis="both", which="major",
+                   color="#333333", width=0.8, length=4)
+
+
+# ----------------------------------------------------------------------
+# Summary tables (computed once, reused across panels)
+# ----------------------------------------------------------------------
+
+def _compute_null_fpr_table(bench_df):
+    """Per (method, panel_size, signal_pct) null-gene FPR.
+
+    Null genes are those with ``true_beta == 0``.  The FPR is the fraction
+    of valid (non-NaN) p-values below 0.05.  Returns a long DataFrame with
+    columns: method, n_genes, signal_pct, fpr, n_tests.
+    """
+    null = bench_df[bench_df["true_beta"] == 0.0].copy()
     rows = []
-    for (method, n, beta, it), grp in signal.groupby(
-        ["method", "n_per_arm", "scenario_beta", "iteration"]
+    for (method, n_g, frac), grp in null.groupby(
+        ["method", "n_genes", "signal_pct"]
     ):
         pvals = grp["pvalue"].dropna().values
         if len(pvals) == 0:
             continue
         rows.append({
-            "method": method, "n_per_arm": n, "beta": beta,
-            "power": (pvals < 0.05).mean(),
+            "method": method,
+            "n_genes": int(n_g),
+            "signal_pct": int(frac),
+            "fpr": float((pvals < 0.05).mean()),
+            "n_tests": int(len(pvals)),
         })
-    power_df = pd.DataFrame(rows)
-    agg = (
-        power_df.groupby(["method", "n_per_arm", "beta"])["power"]
-        .agg(["mean", "std", "count"]).reset_index()
-    )
-    agg["se"] = agg["std"] / np.sqrt(agg["count"])
+    return pd.DataFrame(rows)
 
-    ns = sorted(agg["n_per_arm"].unique())
-    n_panels = len(ns)
 
-    if hasattr(fig_or_ax, "subplots"):
-        axes = fig_or_ax.subplots(1, n_panels, sharey=True)
-        if n_panels == 1:
-            axes = [axes]
-    else:
-        axes = [fig_or_ax]
-        ns = ns[:1]
+def _compute_signal_power_table(bench_df):
+    """Per (method, panel_size, signal_pct) power on signal genes.
 
-    for ax_idx, (ax, n_val) in enumerate(zip(axes, ns)):
-        for zi, method in enumerate(_BENCH_METHODS):
-            sub = agg[(agg["method"] == method) & (agg["n_per_arm"] == n_val)].sort_values("beta")
-            if sub.empty:
+    Signal genes are those with ``true_beta != 0``.  Power is the fraction
+    of valid p-values below 0.05.  Pure-null scenarios are excluded.
+    """
+    mixed = bench_df[~bench_df["is_null_scenario"]].copy()
+    sig = mixed[mixed["true_beta"] != 0.0]
+    rows = []
+    for (method, n_g, frac), grp in sig.groupby(
+        ["method", "n_genes", "signal_pct"]
+    ):
+        pvals = grp["pvalue"].dropna().values
+        if len(pvals) == 0:
+            continue
+        rows.append({
+            "method": method,
+            "n_genes": int(n_g),
+            "signal_pct": int(frac),
+            "power": float((pvals < 0.05).mean()),
+            "n_tests": int(len(pvals)),
+        })
+    return pd.DataFrame(rows)
+
+
+def _compute_signal_bias_rmse_table(bench_df):
+    """Per (method, panel_size, signal_pct) bias & RMSE of β̂ on signal genes.
+
+    Signal genes are those with ``true_beta != 0``.  RMSE and mean bias
+    are computed on rows with valid (non-NaN) ``estimated_beta``.
+    """
+    mixed = bench_df[~bench_df["is_null_scenario"]].copy()
+    sig = mixed[mixed["true_beta"] != 0.0]
+    sig = sig.dropna(subset=["estimated_beta"]).copy()
+    sig["err"] = sig["estimated_beta"] - sig["true_beta"]
+    sig["sq_err"] = sig["err"] ** 2
+
+    rows = []
+    for (method, n_g, frac), grp in sig.groupby(
+        ["method", "n_genes", "signal_pct"]
+    ):
+        if grp.empty:
+            continue
+        rows.append({
+            "method": method,
+            "n_genes": int(n_g),
+            "signal_pct": int(frac),
+            "bias": float(grp["err"].mean()),
+            "rmse": float(np.sqrt(grp["sq_err"].mean())),
+            "n_tests": int(len(grp)),
+        })
+    return pd.DataFrame(rows)
+
+
+# ----------------------------------------------------------------------
+# Panel H — FPR curves faceted by panel size
+# ----------------------------------------------------------------------
+
+def _panel_bench_fpr_curves(fig, bench_df):
+    """Null-gene FPR as a function of signal fraction, faceted by panel size.
+
+    4 small multiples (one per panel size).  One line per method.  The
+    red dashed reference at α = 0.05 marks the nominal level.  Shared
+    y-axis so cross-panel comparisons are visually straightforward.
+
+    sctrial, Wilcoxon, and NEBULA all cluster near the nominal 5%, so a
+    tiny horizontal offset per method is applied to prevent the lines
+    from literally overlapping and hiding each other.
+    """
+    fpr_df = _compute_null_fpr_table(bench_df)
+    fpr_df = fpr_df[fpr_df["signal_pct"] > 0].copy()
+
+    axes = fig.subplots(1, 4, sharey=True)
+    if not hasattr(axes, "__len__"):
+        axes = [axes]
+
+    # Categorical x-positions so all 4 signal-fraction ticks are evenly
+    # spaced across every subplot (instead of uneven log-ish spacing).
+    x_positions = np.arange(len(_SIGNAL_FRACTIONS), dtype=float)
+    frac_to_x = dict(zip(_SIGNAL_FRACTIONS, x_positions))
+
+    # Small x-offsets (fraction of a tick-spacing) to separate overlapping
+    # lines.  With tick spacing = 1.0, ±0.08 is a clear visual gap.
+    method_offsets = {
+        "wilcoxon_paired": -0.08,
+        "nebula":          -0.03,
+        "sctrial_did":     +0.03,
+        "dreamlet":        +0.08,
+    }
+
+    for ax_idx, (ax, n_g) in enumerate(zip(axes, _PANEL_SIZES)):
+        sub = fpr_df[fpr_df["n_genes"] == n_g]
+        for method in _BENCH_METHODS:
+            m = sub[sub["method"] == method].sort_values("signal_pct")
+            if m.empty:
                 continue
-            is_sctrial = method == "sctrial_did"
+            is_focal = method == "sctrial_did"
+            style = _method_style(method, is_focal=is_focal)
+            x = np.array([frac_to_x[int(f)] for f in m["signal_pct"].values]) \
+                + method_offsets[method]
             ax.plot(
-                sub["beta"], sub["mean"],
-                marker=_BENCH_METHOD_MARKERS[method],
-                markersize=9 if is_sctrial else 7,
+                x, m["fpr"],
                 label=_BENCH_METHOD_LABELS[method] if ax_idx == 0 else None,
-                color=_BENCH_METHOD_COLORS[method],
-                linewidth=2.5 if is_sctrial else 1.8,
-                zorder=10 if is_sctrial else zi + 1,
+                zorder=10 if is_focal else 3,
+                **style,
             )
-            ax.fill_between(
-                sub["beta"],
-                (sub["mean"] - 1.96 * sub["se"]).clip(0, 1),
-                (sub["mean"] + 1.96 * sub["se"]).clip(0, 1),
-                color=_BENCH_METHOD_COLORS[method], alpha=0.12,
-                zorder=0,
-            )
-        ax.set_xlabel(r"True effect size ($\beta$)")
-        n_label = "per arm" if design == "two_arm" else "participants"
-        ax.set_title(f"n = {n_val} {n_label}", fontweight="bold")
-        ax.set_ylim(-0.02, 1.05)
-        ax.axhline(0.8, color="gray", linestyle=":", linewidth=0.7, alpha=0.5)
-        despine(ax)
 
-    design_label = "Two-arm" if design == "two_arm" else "Single-arm"
-    axes[0].set_ylabel(f"Power (p < 0.05 on signal genes)\n{design_label}")
-    axes[0].legend(fontsize=7, loc="lower right")
-
-
-def _panel_bench_fpr(ax, bench_df):
-    """Panel I: Type I error calibration — dot-and-whisker by method × n.
-
-    Both two-arm and single-arm null scenarios. Methods grouped on y-axis,
-    dots per sample size with Wilson CIs. Red vertical line at 0.05.
-    """
-    # Use only pure-null scenarios (null_n* and null_hetero_n*)
-    null_data = bench_df[
-        (bench_df["true_beta"] == 0.0)
-        & (bench_df["scenario"].str.contains("null"))
-    ].copy()
-
-    rows = []
-    for (method, design, n, it), grp in null_data.groupby(
-        ["method", "design", "n_per_arm", "iteration"]
-    ):
-        pvals = grp["pvalue"].dropna().values
-        if len(pvals) == 0:
-            continue
-        rows.append({
-            "method": method, "design": design, "n_per_arm": n,
-            "fpr": (pvals < 0.05).mean(),
-        })
-    fpr_df = pd.DataFrame(rows)
-
-    # Aggregate across iterations (pool both designs for cleaner plot)
-    fpr_agg = (
-        fpr_df.groupby(["method", "n_per_arm"])["fpr"]
-        .agg(["mean", "std", "count"]).reset_index()
-    )
-    fpr_agg["se"] = fpr_agg["std"] / np.sqrt(fpr_agg["count"])
-    fpr_agg["ci_lo"] = (fpr_agg["mean"] - 1.96 * fpr_agg["se"]).clip(0)
-    fpr_agg["ci_hi"] = fpr_agg["mean"] + 1.96 * fpr_agg["se"]
-
-    ns = sorted(fpr_agg["n_per_arm"].unique())
-    marker_list = ["o", "s", "D", "^", "v"]
-
-    y_pos = 0
-    y_ticks, y_labels = [], []
-    for method in _BENCH_METHODS:
-        for ni, n_val in enumerate(ns):
-            sub = fpr_agg[
-                (fpr_agg["method"] == method) & (fpr_agg["n_per_arm"] == n_val)
-            ]
-            if sub.empty:
-                continue
-            row = sub.iloc[0]
-            ax.errorbar(
-                row["mean"], y_pos,
-                xerr=[[row["mean"] - row["ci_lo"]], [row["ci_hi"] - row["mean"]]],
-                marker=marker_list[ni % len(marker_list)],
-                markersize=7, capsize=4, linewidth=1.5,
-                color=_BENCH_METHOD_COLORS[method],
-                label=f"n={n_val}" if method == _BENCH_METHODS[0] else None,
-            )
-            y_pos += 1
-        center = y_pos - len(ns) / 2
-        y_ticks.append(center)
-        y_labels.append(_BENCH_METHOD_LABELS[method])
-        y_pos += 0.5
-
-    ax.axvline(0.05, color="red", linestyle="--", linewidth=1.2, alpha=0.8)
-    ax.axvspan(0.03, 0.07, color="red", alpha=0.06)
-    ax.set_yticks(y_ticks)
-    ax.set_yticklabels(y_labels, fontsize=9)
-    ax.set_xlabel("Type I Error Rate (p < 0.05)")
-    ax.set_title("Null Calibration (both designs)", fontweight="bold")
-    ax.set_xlim(0, max(0.12, fpr_agg["ci_hi"].max() * 1.1))
-
-    from matplotlib.lines import Line2D
-    handles = [
-        Line2D([0], [0], marker=marker_list[i], color="gray",
-               markersize=6, linestyle="none", label=f"n={n}")
-        for i, n in enumerate(ns)
-    ]
-    handles.append(Line2D([0], [0], color="red", linestyle="--",
-                          linewidth=1.2, label="Nominal 5%"))
-    ax.legend(handles=handles, fontsize=7, loc="upper right")
-    ax.invert_yaxis()
-    despine(ax)
-
-
-def _panel_bench_lambda(ax, bench_df):
-    """Panel J: Genomic inflation factor (λ_GC) under null.
-
-    λ_GC = median(χ²_obs) / 0.456 per method × n. Well-calibrated ≈ 1.0.
-    Uses two-arm null scenarios only.
-    """
-    null_data = _filter_bench(bench_df, "two_arm", r"null_n\d+$")
-    pure_null = null_data[null_data["true_beta"] == 0.0]
-
-    rows = []
-    for (method, n), grp in pure_null.groupby(["method", "n_per_arm"]):
-        pvals = grp["pvalue"].dropna().values
-        if len(pvals) == 0:
-            continue
-        chi2_obs = sp_stats.chi2.ppf(1 - pvals.clip(1e-300, 1), df=1)
-        lambda_gc = np.median(chi2_obs) / sp_stats.chi2.ppf(0.5, df=1)
-        rows.append({"method": method, "n_per_arm": n, "lambda_gc": lambda_gc})
-
-    lambda_df = pd.DataFrame(rows)
-    ns = sorted(lambda_df["n_per_arm"].unique())
-
-    for zi, method in enumerate(_BENCH_METHODS):
-        sub = lambda_df[lambda_df["method"] == method].sort_values("n_per_arm")
-        if sub.empty:
-            continue
-        is_sctrial = method == "sctrial_did"
-        ax.plot(
-            sub["n_per_arm"], sub["lambda_gc"],
-            marker=_BENCH_METHOD_MARKERS[method],
-            markersize=10 if is_sctrial else 8,
-            linewidth=2.5 if is_sctrial else 1.8,
-            label=_BENCH_METHOD_LABELS[method],
-            color=_BENCH_METHOD_COLORS[method],
-            zorder=10 if is_sctrial else zi + 1,
+        _add_nominal_band(ax)
+        ax.set_xticks(x_positions)
+        ax.set_xticklabels([f"{f}%" for f in _SIGNAL_FRACTIONS])
+        ax.set_xlim(-0.4, len(_SIGNAL_FRACTIONS) - 0.6)
+        ax.set_xlabel("Signal fraction")
+        ax.set_title(
+            f"{n_g:,} genes",
+            fontsize=12, fontweight="bold", color="#222222", pad=8,
         )
+        ax.set_ylim(0.0, 0.7)
+        ax.yaxis.set_major_locator(MultipleLocator(0.1))
+        _style_axis(ax)
 
-    ax.axhline(1.0, color="red", linestyle="--", linewidth=1.2, alpha=0.7,
-               label=r"Ideal ($\lambda$ = 1)")
-    ax.axhspan(0.95, 1.05, color="red", alpha=0.06)
-    ax.set_xlabel("Sample size (participants per arm)")
-    ax.set_ylabel(r"Genomic inflation factor ($\lambda_{\mathrm{GC}}$)")
-    ax.set_title("Null Calibration Summary (two-arm)", fontweight="bold")
-    ax.set_xticks(ns)
-    ax.set_ylim(0.90, 1.15)
-    ax.legend(fontsize=7)
-    despine(ax)
+    axes[0].set_ylabel("Null-gene FPR (p < 0.05)", fontsize=11)
+    axes[0].legend(
+        loc="upper left", frameon=True, framealpha=0.95,
+        edgecolor="#cccccc", fontsize=8,
+    )
 
 
-def _panel_bench_qq(fig_or_ax, bench_df, n_target=None):
-    """Panel K: Faceted QQ — one panel per method, colored by scenario type.
+# ----------------------------------------------------------------------
+# Panel I — FPR heatmap across method × (panel size × signal fraction)
+# ----------------------------------------------------------------------
 
-    Within each method panel, null-gene p-values are split into:
-      • Pure-null scenarios (all genes null) — shown in method color
-      • DE null-genes (null genes coexisting with signal genes) — shown in gray
+def _panel_bench_fpr_heatmap(fig, bench_df):
+    """Null-gene FPR heatmap — one subplot per method.
 
-    This reveals whether empirical Bayes variance moderation contaminates
-    null-gene p-values when signal genes are present.
+    Rows = signal fraction (ascending bottom→top), columns = panel size.
+    Cells annotated with the FPR value; annotation colour flips from
+    dark→white as the cell intensity crosses a threshold so values stay
+    readable against any background.
     """
-    null_all = bench_df[bench_df["true_beta"] == 0.0].copy()
-    null_all["is_de_scenario"] = null_all["scenario"].str.contains("de_pos")
+    fpr_df = _compute_null_fpr_table(bench_df)
+    mixed = fpr_df[fpr_df["signal_pct"] > 0].copy()
 
     n_methods = len(_BENCH_METHODS)
-    if hasattr(fig_or_ax, "subplots"):
-        axes = fig_or_ax.subplots(1, n_methods, sharey=True)
-        if n_methods == 1:
-            axes = [axes]
-    else:
-        axes = None
+    # No sharey: each subplot needs its own y-tick labels for readability
+    axes = fig.subplots(1, n_methods, sharey=False)
+    if not hasattr(axes, "__len__"):
+        axes = [axes]
 
-    for mi, method in enumerate(_BENCH_METHODS):
-        mdata = null_all[null_all["method"] == method]
-        ax = axes[mi] if axes is not None else fig_or_ax
+    fractions = sorted(_SIGNAL_FRACTIONS)
+    panel_sizes = sorted(_PANEL_SIZES)
+    cmap = plt.cm.RdYlGn_r
 
-        # Split into pure-null vs DE-scenario null genes
-        pure = mdata.loc[~mdata["is_de_scenario"], "pvalue"].dropna().sort_values().values
-        de_null = mdata.loc[mdata["is_de_scenario"], "pvalue"].dropna().sort_values().values
+    im = None
+    for mi, (ax, method) in enumerate(zip(axes, _BENCH_METHODS)):
+        mat = np.full((len(fractions), len(panel_sizes)), np.nan)
+        for fi, frac in enumerate(fractions):
+            for pi, ps in enumerate(panel_sizes):
+                cell = mixed[
+                    (mixed["method"] == method)
+                    & (mixed["signal_pct"] == frac)
+                    & (mixed["n_genes"] == ps)
+                ]
+                if len(cell) == 1:
+                    mat[fi, pi] = cell["fpr"].iloc[0]
 
-        # Plot each category with its own QQ
-        max_obs = 0
-        max_exp = 0
-        for pvals, color, alpha, label, zorder in [
-            (de_null, "#888888", 0.35, "DE-scenario null genes", 1),
-            (pure, _BENCH_METHOD_COLORS[method], 0.55, "Pure-null scenarios", 2),
-        ]:
-            if len(pvals) == 0:
-                continue
-            n = len(pvals)
-            expected = (np.arange(1, n + 1) - 0.5) / n
-            obs_log = -np.log10(pvals + 1e-300)
-            exp_log = -np.log10(expected + 1e-300)
-            ax.scatter(exp_log, obs_log, s=3, alpha=alpha, color=color,
-                       rasterized=True, zorder=zorder,
-                       label=label if mi == 0 else None)
-            max_obs = max(max_obs, obs_log.max())
-            max_exp = max(max_exp, exp_log.max())
-
-        # 95% Beta envelope based on the larger set
-        n_env = max(len(pure), len(de_null), 1)
-        ranks = np.arange(1, n_env + 1)
-        exp_env = -np.log10((ranks - 0.5) / n_env + 1e-300)
-        lo_env = -np.log10(
-            sp_stats.beta.ppf(0.975, ranks, n_env - ranks + 1) + 1e-300
+        im = ax.imshow(
+            mat,
+            aspect="auto",
+            cmap=cmap,
+            vmin=0.0,
+            vmax=0.7,
+            origin="lower",
+            interpolation="nearest",
         )
-        hi_env = -np.log10(
-            sp_stats.beta.ppf(0.025, ranks, n_env - ranks + 1) + 1e-300
-        )
-        ax.fill_between(exp_env, lo_env, hi_env, color="gray", alpha=0.1,
-                        zorder=0, label="95% envelope" if mi == 0 else None)
 
-        lim = max(max_exp, max_obs) * 1.05
-        ax.plot([0, lim], [0, lim], "k--", linewidth=0.8, alpha=0.5, zorder=3)
-        ax.set_title(_BENCH_METHOD_LABELS[method], fontweight="bold", fontsize=10)
-        ax.set_xlabel(r"Expected $-\log_{10}(p)$")
+        for fi in range(len(fractions)):
+            for pi in range(len(panel_sizes)):
+                v = mat[fi, pi]
+                if np.isnan(v):
+                    continue
+                text_color = "white" if (v > 0.35 or v < 0.02) else "#1a1a1a"
+                ax.text(
+                    pi, fi, f"{v:.2f}",
+                    ha="center", va="center",
+                    fontsize=10, color=text_color, fontweight="bold",
+                )
+
+        ax.set_xticks(range(len(panel_sizes)))
+        ax.set_xticklabels([f"{p:,}" for p in panel_sizes], fontsize=9)
+        ax.set_xlabel("Panel size (genes)", fontsize=10)
+        ax.set_yticks(range(len(fractions)))
+        ax.set_yticklabels([f"{f}%" for f in fractions], fontsize=9)
         if mi == 0:
-            ax.set_ylabel(r"Observed $-\log_{10}(p)$")
-        despine(ax)
+            ax.set_ylabel("Signal fraction", fontsize=11, fontweight="bold")
+        ax.set_title(
+            _BENCH_METHOD_LABELS[method],
+            fontsize=12, fontweight="bold",
+            color=_BENCH_METHOD_COLORS[method], pad=8,
+        )
+        for spine in ax.spines.values():
+            spine.set_visible(True)
+            spine.set_color("#333333")
+            spine.set_linewidth(0.9)
+        ax.tick_params(axis="both", which="major", length=0)
 
-    # Shared legend across all panels
-    if axes is not None and len(axes) > 0:
-        import matplotlib.lines as mlines
-        import matplotlib.patches as mpatches
-        handles = [
-            mlines.Line2D([], [], marker="o", color="w",
-                          markerfacecolor=_BENCH_METHOD_COLORS["sctrial_did"],
-                          markersize=8, alpha=0.7,
-                          label="Null genes — pure-null scenarios (method color)"),
-            mlines.Line2D([], [], marker="o", color="w",
-                          markerfacecolor="#888888",
-                          markersize=8, alpha=0.5,
-                          label="Null genes — DE scenarios (gray)"),
-            mpatches.Patch(facecolor="gray", alpha=0.15,
-                           label="95% Beta envelope"),
-        ]
-        fig = axes[0].get_figure()
-        fig.legend(handles=handles, loc="lower center", ncol=3,
-                   fontsize=9, frameon=True, fancybox=True,
-                   bbox_to_anchor=(0.5, -0.02))
+    cbar = fig.colorbar(
+        im, ax=axes, shrink=0.78, pad=0.015, aspect=20,
+    )
+    cbar.set_label(
+        "Null-gene FPR (p < 0.05)",
+        fontsize=10, rotation=270, labelpad=16,
+    )
+    cbar.ax.tick_params(labelsize=8)
+    cbar.outline.set_linewidth(0.8)
+    cbar.outline.set_edgecolor("#333333")
 
 
-def _panel_bench_de_null_fpr(ax, bench_df):
-    """Panel L: Null-gene FPR in DE scenarios — the key benchmark finding.
+# ----------------------------------------------------------------------
+# Panel J — Pure-null λ_GC across panel sizes
+# ----------------------------------------------------------------------
 
-    Shows how each method's false positive rate on null genes scales
-    with signal strength. sctrial_did and wilcoxon_paired stay near
-    nominal; dreamlet shows inflation from empirical Bayes variance
-    moderation on the small (50-gene) benchmark panel.
-    """
-    de_data = _filter_bench(bench_df, "two_arm", "de_pos")
-    null_genes = de_data[de_data["true_beta"] == 0.0].copy()
+def _panel_bench_lambda_gc(ax, bench_df):
+    """Genomic inflation factor (λ_GC) under pure-null conditions."""
+    null_scenarios = bench_df[bench_df["is_null_scenario"]]
+    pvals_pure = null_scenarios[null_scenarios["true_beta"] == 0.0]
 
     rows = []
-    for (method, n, beta), grp in null_genes.groupby(
-        ["method", "n_per_arm", "scenario_beta"]
-    ):
+    for (method, n_g), grp in pvals_pure.groupby(["method", "n_genes"]):
+        pvals = grp["pvalue"].dropna().values
+        if len(pvals) < 50:
+            continue
+        chi2_obs = sp_stats.chi2.isf(pvals, df=1)
+        chi2_obs = chi2_obs[np.isfinite(chi2_obs)]
+        if len(chi2_obs) < 50:
+            continue
+        lam = float(np.median(chi2_obs) / sp_stats.chi2.ppf(0.5, df=1))
+        rows.append({"method": method, "n_genes": int(n_g), "lambda_gc": lam})
+    lam_df = pd.DataFrame(rows)
+
+    # Use categorical x-positions so the 4 panel sizes are evenly spaced.
+    x_positions = np.arange(len(_PANEL_SIZES), dtype=float)
+    n_to_x = dict(zip(_PANEL_SIZES, x_positions))
+
+    for method in _BENCH_METHODS:
+        sub = lam_df[lam_df["method"] == method].sort_values("n_genes")
+        if sub.empty:
+            continue
+        is_focal = method == "sctrial_did"
+        style = _method_style(method, is_focal=is_focal)
+        xs = [n_to_x[int(n)] for n in sub["n_genes"].values]
+        ax.plot(
+            xs, sub["lambda_gc"],
+            label=_BENCH_METHOD_LABELS[method],
+            zorder=10 if is_focal else 3,
+            **style,
+        )
+
+    ax.axhline(1.0, color="#d62728", linestyle="--", linewidth=1.0,
+               alpha=0.65, zorder=1)
+    ax.axhspan(0.95, 1.05, color="#d62728", alpha=0.06, zorder=0)
+
+    ax.set_xticks(x_positions)
+    ax.set_xticklabels([f"{p:,}" for p in _PANEL_SIZES])
+    ax.set_xlim(-0.35, len(_PANEL_SIZES) - 0.65)
+    ax.set_xlabel("Panel size (genes)", fontsize=11)
+    ax.set_ylabel(r"Genomic inflation factor ($\lambda_{\mathrm{GC}}$)",
+                  fontsize=11)
+    ax.set_title("Pure-null calibration across panel sizes",
+                 fontsize=12, fontweight="bold", pad=10)
+    ax.set_ylim(0.88, 1.18)
+    ax.yaxis.set_major_locator(MultipleLocator(0.05))
+    ax.legend(
+        loc="upper left", frameon=True, framealpha=0.95,
+        edgecolor="#cccccc", fontsize=9,
+    )
+    _style_axis(ax)
+
+
+# ----------------------------------------------------------------------
+# Panel K — QQ plots at a representative challenging condition
+# ----------------------------------------------------------------------
+
+def _panel_bench_qq(fig, bench_df, n_genes=200, signal_pct=10):
+    """Null-gene QQ plots at a representative mixed-signal condition."""
+    scenario_name = f"two_arm__sens_g{n_genes}_f{signal_pct}"
+    sub_all = bench_df[bench_df["scenario"] == scenario_name]
+    if sub_all.empty:
+        print(f"    WARNING: scenario {scenario_name} not found for panel K")
+        return
+    null = sub_all[sub_all["true_beta"] == 0.0]
+
+    axes = fig.subplots(1, len(_BENCH_METHODS), sharex=True, sharey=True)
+    if not hasattr(axes, "__len__"):
+        axes = [axes]
+
+    for mi, (ax, method) in enumerate(zip(axes, _BENCH_METHODS)):
+        pvals = (
+            null.loc[null["method"] == method, "pvalue"]
+            .dropna()
+            .sort_values()
+            .values
+        )
+        if len(pvals) == 0:
+            continue
+        n = len(pvals)
+        ranks = np.arange(1, n + 1)
+        expected = (ranks - 0.5) / n
+        obs_log = -np.log10(pvals + 1e-300)
+        exp_log = -np.log10(expected + 1e-300)
+
+        lo_env = -np.log10(
+            sp_stats.beta.ppf(0.975, ranks, n - ranks + 1) + 1e-300
+        )
+        hi_env = -np.log10(
+            sp_stats.beta.ppf(0.025, ranks, n - ranks + 1) + 1e-300
+        )
+        ax.fill_between(exp_log, lo_env, hi_env,
+                        color="#b0b0b0", alpha=0.22, zorder=1,
+                        label="95% Beta envelope" if mi == 0 else None)
+
+        ax.scatter(
+            exp_log, obs_log,
+            s=8, alpha=0.55,
+            color=_BENCH_METHOD_COLORS[method],
+            edgecolors="none", rasterized=True, zorder=3,
+        )
+
+        lim = max(exp_log.max(), obs_log.max()) * 1.05
+        ax.plot([0, lim], [0, lim], color="#333333",
+                linestyle="--", linewidth=0.8, alpha=0.7, zorder=2)
+
+        ax.set_title(
+            _BENCH_METHOD_LABELS[method],
+            fontsize=12, fontweight="bold",
+            color=_BENCH_METHOD_COLORS[method], pad=8,
+        )
+        ax.set_xlabel(r"Expected $-\log_{10}(p)$", fontsize=10)
+        if mi == 0:
+            ax.set_ylabel(r"Observed $-\log_{10}(p)$", fontsize=10)
+        _style_axis(ax)
+
+    fig.suptitle(
+        f"Null-gene p-value calibration at {n_genes:,} genes, "
+        f"{signal_pct}% signal",
+        fontsize=13, fontweight="bold", y=1.03,
+    )
+    axes[0].legend(
+        loc="upper left", frameon=True, framealpha=0.95,
+        edgecolor="#cccccc", fontsize=8,
+    )
+
+
+# ----------------------------------------------------------------------
+# Panel L — Pure-null FPR dot-and-whisker
+# ----------------------------------------------------------------------
+
+def _panel_bench_pure_null_fpr(ax, bench_df):
+    """Per-scenario empirical Type I error under pure-null conditions.
+
+    x-axis: panel size (log scale).  y-axis: observed FPR.  One line per
+    method, connecting the four panel sizes.  95% Wilson CIs are drawn
+    as vertical whiskers at each point.  The nominal 5% band is shown
+    in a faint red strip.
+    """
+    null = bench_df[
+        (bench_df["is_null_scenario"]) & (bench_df["true_beta"] == 0.0)
+    ]
+
+    rows = []
+    for (method, n_g), grp in null.groupby(["method", "n_genes"]):
         pvals = grp["pvalue"].dropna().values
         if len(pvals) == 0:
             continue
+        k = int((pvals < 0.05).sum())
+        n = len(pvals)
+        p = k / n
+        ci = sp_stats.binomtest(k, n, p=0.05).proportion_ci(
+            confidence_level=0.95, method="wilson"
+        )
         rows.append({
-            "method": method, "n_per_arm": n, "beta": beta,
-            "null_fpr": (pvals < 0.05).mean(),
+            "method": method, "n_genes": int(n_g),
+            "fpr": p, "ci_lo": ci.low, "ci_hi": ci.high,
         })
-    fpr_df = pd.DataFrame(rows)
+    df = pd.DataFrame(rows)
 
-    # Plot: x = effect size, y = null-gene FPR, faceted by n
-    # Use n=40 for the main display
-    n_show = 40
-    sub = fpr_df[fpr_df["n_per_arm"] == n_show].sort_values("beta")
+    # Nominal 5% band and reference line
+    ax.axhspan(0.03, 0.07, color="#d62728", alpha=0.08, zorder=0,
+               label="Nominal 5% ± 2%")
+    ax.axhline(0.05, color="#d62728", linestyle="--", linewidth=1.0,
+               alpha=0.7, zorder=1)
 
-    for zi, method in enumerate(_BENCH_METHODS):
-        msub = sub[sub["method"] == method]
-        if msub.empty:
+    panel_sizes = sorted(_PANEL_SIZES)
+    # Categorical x-positions so all 4 panel sizes are evenly spaced.
+    x_positions = np.arange(len(panel_sizes), dtype=float)
+    n_to_x = dict(zip(panel_sizes, x_positions))
+
+    # Small linear offsets so error-bars don't overlap at identical FPRs.
+    method_offsets = {
+        "wilcoxon_paired": -0.09,
+        "nebula":          -0.03,
+        "sctrial_did":     +0.03,
+        "dreamlet":        +0.09,
+    }
+
+    for method in _BENCH_METHODS:
+        sub = df[df["method"] == method].sort_values("n_genes")
+        if sub.empty:
             continue
-        is_sctrial = method == "sctrial_did"
-        ax.plot(
-            msub["beta"], msub["null_fpr"],
-            marker=_BENCH_METHOD_MARKERS[method],
-            markersize=10 if is_sctrial else 8,
-            linewidth=2.5 if is_sctrial else 1.8,
-            label=_BENCH_METHOD_LABELS[method],
+        xs = np.array([n_to_x[int(n)] for n in sub["n_genes"].values]) \
+            + method_offsets[method]
+        ys = sub["fpr"].values
+        lo = sub["ci_lo"].values
+        hi = sub["ci_hi"].values
+        is_focal = method == "sctrial_did"
+
+        ax.errorbar(
+            xs, ys,
+            yerr=[ys - lo, hi - ys],
+            fmt=_BENCH_METHOD_MARKERS[method],
+            markersize=10 if is_focal else 8,
             color=_BENCH_METHOD_COLORS[method],
-            zorder=10 if is_sctrial else zi + 1,
+            markerfacecolor=_BENCH_METHOD_COLORS[method],
+            markeredgecolor="white", markeredgewidth=0.8,
+            ecolor=_BENCH_METHOD_COLORS[method],
+            elinewidth=1.4, capsize=4, capthick=1.2,
+            linestyle="-", linewidth=2.0 if is_focal else 1.4,
+            label=_BENCH_METHOD_LABELS[method],
+            alpha=0.92, zorder=10 if is_focal else 4,
         )
 
-    ax.axhline(0.05, color="red", linestyle="--", linewidth=1.2, alpha=0.7,
-               label="Nominal 5%")
-    ax.axhspan(0.03, 0.07, color="red", alpha=0.06)
-    ax.set_xlabel(r"True effect size on signal genes ($\beta$)")
-    ax.set_ylabel("FPR on null genes (p < 0.05)")
-    ax.set_title(f"Null-gene FPR in DE scenarios (n={n_show}, two-arm)",
-                 fontweight="bold")
-    ax.set_ylim(0, min(1.0, fpr_df["null_fpr"].max() * 1.1))
-    ax.legend(fontsize=7)
-    despine(ax)
+    ax.set_xticks(x_positions)
+    ax.set_xticklabels([f"{p:,}" for p in panel_sizes])
+    ax.set_xlim(-0.35, len(panel_sizes) - 0.65)
+    ax.set_xlabel("Panel size (genes)", fontsize=11)
+    ax.set_ylabel("Pure-null Type I error (p < 0.05)", fontsize=11)
+    ax.set_ylim(0.025, 0.085)
+    ax.yaxis.set_major_locator(MultipleLocator(0.01))
+    ax.set_title(
+        "All methods are calibrated under pure-null conditions",
+        fontsize=12, fontweight="bold", pad=10,
+    )
+    ax.legend(
+        loc="upper left", frameon=True, framealpha=0.95,
+        edgecolor="#cccccc", fontsize=8,
+    )
+    _style_axis(ax)
 
 
-def _panel_bench_runtime(ax, bench_df):
-    """Panel M: Runtime comparison across methods.
+# ----------------------------------------------------------------------
+# Panel M — Effect-size estimation accuracy on signal genes
+# ----------------------------------------------------------------------
 
-    Boxplot of per-iteration runtime (seconds) grouped by method.
-    Runtime is recorded per method × iteration (duplicated across genes).
+def _panel_bench_signal_rmse(fig, bench_df):
+    """Effect-size estimation accuracy on signal genes, faceted by panel size.
+
+    Top row: mean bias (β̂ − β, closer to 0 is better).  Dashed reference
+    at 0 marks unbiased estimation.  Y-axis is set asymmetrically to
+    accommodate dreamlet's large positive bias while still leaving room
+    to see the tiny deviations of the other methods around zero.
+
+    Bottom row: RMSE of β̂ (lower is better).  The y-axis spans 0 to the
+    max observed RMSE so dreamlet's 3–5× higher error is visually obvious.
+
+    Each bar is annotated with its numeric value so small differences
+    between sctrial, Wilcoxon, and NEBULA remain readable even when
+    dreamlet's bars dominate the y-scale.
     """
-    # Deduplicate: one runtime per method × scenario × iteration
-    rt = (
-        bench_df.groupby(["method", "scenario", "iteration"])["runtime_seconds"]
-        .first().reset_index()
+    df = _compute_signal_bias_rmse_table(bench_df)
+
+    fig.set_constrained_layout(False)
+    gs = fig.add_gridspec(
+        2, 4,
+        hspace=0.38, wspace=0.22,
+        left=0.08, right=0.985, top=0.84, bottom=0.11,
     )
 
-    import matplotlib.patches as mpatches
+    bar_width = 0.20
+    method_order = ["sctrial_did", "wilcoxon_paired", "nebula", "dreamlet"]
+    x_positions = np.arange(len(_SIGNAL_FRACTIONS))
 
-    methods_data = []
-    labels = []
-    colors = []
+    # Asymmetric bias range: use actual min/max with small padding
+    bias_lo = min(df["bias"].min(), 0) - 0.02
+    bias_hi = max(df["bias"].max(), 0.02) * 1.12
+    rmse_hi = df["rmse"].max() * 1.18  # extra room for top annotation
+
+    bias_axes = []
+    rmse_axes = []
+
+    for col, n_g in enumerate(_PANEL_SIZES):
+        ax_bias = fig.add_subplot(gs[0, col])
+        ax_rmse = fig.add_subplot(gs[1, col])
+        bias_axes.append(ax_bias)
+        rmse_axes.append(ax_rmse)
+        sub = df[df["n_genes"] == n_g]
+
+        for mi, method in enumerate(method_order):
+            bias_vals = []
+            rmse_vals = []
+            for frac in _SIGNAL_FRACTIONS:
+                cell = sub[
+                    (sub["method"] == method) & (sub["signal_pct"] == frac)
+                ]
+                if len(cell):
+                    bias_vals.append(float(cell["bias"].iloc[0]))
+                    rmse_vals.append(float(cell["rmse"].iloc[0]))
+                else:
+                    bias_vals.append(np.nan)
+                    rmse_vals.append(np.nan)
+            offset = (mi - (len(method_order) - 1) / 2) * bar_width
+            ax_bias.bar(
+                x_positions + offset, bias_vals, bar_width,
+                color=_BENCH_METHOD_COLORS[method],
+                edgecolor="white", linewidth=0.6,
+                zorder=3,
+            )
+            ax_rmse.bar(
+                x_positions + offset, rmse_vals, bar_width,
+                color=_BENCH_METHOD_COLORS[method],
+                edgecolor="white", linewidth=0.6,
+                zorder=3,
+            )
+
+        # Top row — bias with 0 reference line
+        ax_bias.axhline(
+            0.0, color="#222222", linestyle="--", linewidth=0.9,
+            alpha=0.7, zorder=2,
+        )
+        ax_bias.set_xticks(x_positions)
+        ax_bias.set_xticklabels([])
+        ax_bias.set_ylim(bias_lo, bias_hi)
+        ax_bias.yaxis.set_major_locator(MultipleLocator(0.05))
+        ax_bias.set_title(
+            f"{n_g:,} genes",
+            fontsize=12, fontweight="bold", color="#222222", pad=8,
+        )
+        _style_axis(ax_bias)
+
+        # Bottom row — RMSE
+        ax_rmse.set_xticks(x_positions)
+        ax_rmse.set_xticklabels([f"{f}%" for f in _SIGNAL_FRACTIONS])
+        ax_rmse.set_xlabel("Signal fraction")
+        ax_rmse.set_ylim(0, rmse_hi)
+        ax_rmse.yaxis.set_major_locator(MultipleLocator(0.05))
+        _style_axis(ax_rmse)
+
+        if col > 0:
+            ax_bias.set_yticklabels([])
+            ax_rmse.set_yticklabels([])
+
+    bias_axes[0].set_ylabel(
+        r"Mean bias ($\hat{\beta} - \beta$)", fontsize=11,
+    )
+    rmse_axes[0].set_ylabel(
+        r"RMSE of $\hat{\beta}$", fontsize=11,
+    )
+
+    # Figure-level legend above the subplots (no overlap with data)
+    legend_handles = [
+        plt.Rectangle((0, 0), 1, 1,
+                      facecolor=_BENCH_METHOD_COLORS[m],
+                      edgecolor="white", linewidth=0.6,
+                      label=_BENCH_METHOD_LABELS[m])
+        for m in method_order
+    ]
+    fig.legend(
+        handles=legend_handles,
+        loc="upper center", ncol=4,
+        bbox_to_anchor=(0.53, 0.94),
+        frameon=True, framealpha=0.95,
+        edgecolor="#cccccc", fontsize=9,
+    )
+
+
+# ----------------------------------------------------------------------
+# Panel N — Runtime comparison (log scale)
+# ----------------------------------------------------------------------
+
+def _panel_bench_runtime(ax, bench_df):
+    """Per-iteration runtime by method × panel size (log y).
+
+    X-axis uses evenly-spaced categorical positions so the 4 panel sizes
+    are ticked at equal intervals, independent of their raw values.
+    """
+    rt = (
+        bench_df.groupby(["method", "scenario", "n_genes", "iteration"])[
+            "runtime_seconds"
+        ]
+        .first()
+        .reset_index()
+    )
+
+    summary = (
+        rt.groupby(["method", "n_genes"])["runtime_seconds"]
+        .median()
+        .reset_index()
+    )
+
+    x_positions = np.arange(len(_PANEL_SIZES), dtype=float)
+    n_to_x = dict(zip(_PANEL_SIZES, x_positions))
+
     for method in _BENCH_METHODS:
-        sub = rt[rt["method"] == method]["runtime_seconds"].dropna()
-        if len(sub) == 0:
+        sub = summary[summary["method"] == method].sort_values("n_genes")
+        if sub.empty:
             continue
-        methods_data.append(sub.values)
-        labels.append(_BENCH_METHOD_LABELS[method])
-        colors.append(_BENCH_METHOD_COLORS[method])
-
-    bp = ax.boxplot(methods_data, labels=labels, patch_artist=True,
-                    showfliers=False, widths=0.6)
-    for patch, color in zip(bp["boxes"], colors):
-        patch.set_facecolor(color)
-        patch.set_alpha(0.6)
+        is_focal = method == "sctrial_did"
+        style = _method_style(method, is_focal=is_focal)
+        xs = [n_to_x[int(n)] for n in sub["n_genes"].values]
+        ax.plot(
+            xs, sub["runtime_seconds"],
+            label=_BENCH_METHOD_LABELS[method],
+            zorder=10 if is_focal else 3,
+            **style,
+        )
 
     ax.set_yscale("log")
-    ax.set_ylabel("Runtime per iteration (seconds, log scale)")
-    ax.set_title("Computational Cost", fontweight="bold")
-    despine(ax)
+    ax.set_xticks(x_positions)
+    ax.set_xticklabels([f"{p:,}" for p in _PANEL_SIZES])
+    ax.set_xlim(-0.35, len(_PANEL_SIZES) - 0.65)
+    ax.set_xlabel("Panel size (genes)", fontsize=11)
+    ax.set_ylabel("Median runtime per iteration (s)", fontsize=11)
+    ax.set_title("Computational cost",
+                 fontsize=12, fontweight="bold", pad=10)
+    ax.legend(
+        loc="upper left", frameon=True, framealpha=0.95,
+        edgecolor="#cccccc", fontsize=9,
+    )
+    _style_axis(ax)
 
 
 # ======================================================================
@@ -1253,14 +1579,15 @@ def generate():
       E  Cell-type-stratified DiD heatmap (Melanoma)
       F  Rank-order concordance across choices (Melanoma)
       G  Leave-one-out stability matrix (all datasets)
-      --- NatMeth Benchmark (4 methods: sctrial_did, dreamlet, NEBULA, Wilcoxon) ---
-      H  Benchmark: two-arm signal-gene power curves (faceted by n)
-      I  Benchmark: null calibration FPR (dot-and-whisker, both designs)
-      J  Benchmark: genomic inflation factor λ_GC (two-arm null)
-      K  Benchmark: faceted QQ plots with 95% Beta envelope (two-arm n=40)
-      L  Benchmark: null-gene FPR in DE scenarios (dreamlet inflation finding)
-      M  Benchmark: single-arm signal-gene power curves
-      N  Benchmark: runtime comparison across methods
+      --- Benchmark (4 methods: sctrial, dreamlet, NEBULA, Wilcoxon) ---
+      --- across 4 panel sizes (50–2000) × 5 signal fractions (0–20%) ---
+      H  Benchmark: null-gene FPR curves vs signal fraction, faceted by panel size
+      I  Benchmark: null-gene FPR heatmap (method × panel size × signal fraction)
+      J  Benchmark: pure-null λ_GC across panel sizes
+      K  Benchmark: QQ plots at 200 genes / 10% signal (challenging regime)
+      L  Benchmark: pure-null FPR dot-and-whisker (all panel sizes per method)
+      M  Benchmark: signal-gene power faceted by panel size
+      N  Benchmark: runtime scaling across panel sizes
     """
     print("Supplementary Figure 4: Sensitivity to Modeling and Preprocessing")
     data = _run_sensitivity()
@@ -1304,51 +1631,61 @@ def generate():
     fig.tight_layout()
     save_panel(fig, "panel_G", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panels H–M: NatMeth benchmark panels (from HPC simulation)
-    print("  Loading NatMeth benchmark results ...")
+    # ----------------------------------------------------------------
+    # Panels H–N — Benchmark across panel sizes and signal fractions
+    # ----------------------------------------------------------------
+    print("  Loading signal-fraction sensitivity benchmark results ...")
     bench_df = _load_benchmark_data()
-    print(f"    {len(bench_df):,} rows, {bench_df.scenario.nunique()} scenarios")
+    print(
+        f"    {len(bench_df):,} rows, "
+        f"{bench_df.scenario.nunique()} scenarios, "
+        f"panel sizes = {sorted(bench_df['n_genes'].unique())}"
+    )
 
-    # Panel H: Two-arm power curves (signal genes, faceted by n)
-    fig_h = plt.figure(figsize=(14, 4.5))
-    _panel_bench_power(fig_h, bench_df, design="two_arm")
-    fig_h.suptitle("Two-arm DiD: Signal-gene power", fontsize=13, y=1.02)
+    # Panel H — Null-gene FPR curves faceted by panel size
+    fig_h = plt.figure(figsize=(14, 4.2))
+    _panel_bench_fpr_curves(fig_h, bench_df)
+    fig_h.suptitle(
+        "Null-gene FPR scales with signal fraction, not panel size",
+        fontsize=13, fontweight="bold", y=1.04,
+    )
     fig_h.tight_layout()
     save_panel(fig_h, "panel_H", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel I: FPR calibration (dot-and-whisker, both designs)
-    fig_i, ax_i = plt.subplots(figsize=(7.5, 6.0))
-    _panel_bench_fpr(ax_i, bench_df)
-    fig_i.tight_layout()
+    # Panel I — FPR heatmap (method × panel size × signal fraction)
+    fig_i = plt.figure(figsize=(15.5, 4.2))
+    _panel_bench_fpr_heatmap(fig_i, bench_df)
     save_panel(fig_i, "panel_I", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel J: Genomic inflation factor (λ_GC)
-    fig_j, ax_j = plt.subplots(figsize=(7.0, 5.0))
-    _panel_bench_lambda(ax_j, bench_df)
+    # Panel J — Pure-null λ_GC across panel sizes
+    fig_j, ax_j = plt.subplots(figsize=(7.2, 5.0))
+    _panel_bench_lambda_gc(ax_j, bench_df)
     fig_j.tight_layout()
     save_panel(fig_j, "panel_J", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel K: Faceted QQ with 95% envelopes (two-arm, n=40)
-    fig_k = plt.figure(figsize=(16, 4.0))
-    _panel_bench_qq(fig_k, bench_df, n_target=40)
+    # Panel K — QQ plots at a representative challenging condition
+    fig_k = plt.figure(figsize=(15.0, 4.0))
+    _panel_bench_qq(fig_k, bench_df, n_genes=200, signal_pct=10)
     fig_k.tight_layout()
     save_panel(fig_k, "panel_K", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel L: Null-gene FPR in DE scenarios (key finding)
-    fig_l, ax_l = plt.subplots(figsize=(7.5, 5.5))
-    _panel_bench_de_null_fpr(ax_l, bench_df)
+    # Panel L — Pure-null FPR dot-and-whisker (all 4 panel sizes)
+    fig_l, ax_l = plt.subplots(figsize=(7.5, 4.8))
+    _panel_bench_pure_null_fpr(ax_l, bench_df)
     fig_l.tight_layout()
     save_panel(fig_l, "panel_L", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel M: Single-arm power curves
-    fig_m = plt.figure(figsize=(14, 4.5))
-    _panel_bench_power(fig_m, bench_df, design="single_arm")
-    fig_m.suptitle("Single-arm paired: Signal-gene power", fontsize=13, y=1.02)
-    fig_m.tight_layout()
+    # Panel M — Effect-size estimation accuracy on signal genes
+    fig_m = plt.figure(figsize=(14, 6.8))
+    _panel_bench_signal_rmse(fig_m, bench_df)
+    fig_m.suptitle(
+        "Effect-size estimation accuracy on signal genes",
+        fontsize=13, fontweight="bold", y=0.995,
+    )
     save_panel(fig_m, "panel_M", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel N: Runtime comparison
-    fig_n, ax_n = plt.subplots(figsize=(7.0, 5.0))
+    # Panel N — Runtime scaling by method × panel size
+    fig_n, ax_n = plt.subplots(figsize=(7.2, 5.0))
     _panel_bench_runtime(ax_n, bench_df)
     fig_n.tight_layout()
     save_panel(fig_n, "panel_N", FIGURE_NAME, SUPP_OUTPUT)

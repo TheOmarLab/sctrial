@@ -195,6 +195,64 @@ def build_scenario_grid(design: str = "two_arm") -> list[dict]:
     return scenarios
 
 
+def build_sensitivity_grid(design: str = "two_arm") -> list[dict]:
+    """Build signal-fraction sensitivity scenarios.
+
+    Tests how null-gene FPR depends on gene-panel size and signal fraction.
+    Fixed at n=40 per arm, beta=0.5 for signal genes.  Grid:
+
+        Total genes:      50,  200,  500,  2000
+        Signal fraction:  1%,  5%,  10%,  20%
+
+    Also includes a matched pure-null for each panel size.
+
+    Returns list of dicts with keys: name, config_kwargs, description.
+    """
+    scenarios = []
+    n_per_arm = 40
+    beta = 0.5
+    panel_sizes = [50, 200, 500, 2000]
+    signal_fractions = [0.01, 0.05, 0.10, 0.20]
+
+    for n_genes in panel_sizes:
+        # Pure-null for this panel size
+        scenarios.append(
+            {
+                "name": f"sens_null_g{n_genes}",
+                "description": f"Sensitivity null, {n_genes} genes, n={n_per_arm}",
+                "config_kwargs": {
+                    "design": design,
+                    "n_per_arm": n_per_arm,
+                    "n_genes": n_genes,
+                    "effects": {},
+                    "mean_cells_per_visit": _MEAN_CELLS,
+                },
+            }
+        )
+
+        # Mixed-signal at each fraction
+        for frac in signal_fractions:
+            n_signal = max(1, int(round(n_genes * frac)))
+            scenarios.append(
+                {
+                    "name": f"sens_g{n_genes}_f{int(frac * 100)}",
+                    "description": (
+                        f"Sensitivity: {n_genes} genes, {frac:.0%} signal "
+                        f"({n_signal} DE), beta={beta}"
+                    ),
+                    "config_kwargs": {
+                        "design": design,
+                        "n_per_arm": n_per_arm,
+                        "n_genes": n_genes,
+                        "effects": _make_effects(n_signal, beta, mixed_sign=False),
+                        "mean_cells_per_visit": _MEAN_CELLS,
+                    },
+                }
+            )
+
+    return scenarios
+
+
 # ---------------------------------------------------------------------------
 # Single-iteration worker (for multiprocessing)
 # ---------------------------------------------------------------------------
@@ -452,6 +510,110 @@ def run_benchmark(
     combined_path = output_dir / "benchmark_combined.csv"
     combined.to_csv(combined_path, index=False)
     print(f"\nAll results saved → {combined_path}")
+    print(f"Total rows: {len(combined):,}")
+
+    return combined
+
+
+def run_sensitivity_benchmark(
+    designs: list[str] | None = None,
+    methods: list[str] | None = None,
+    n_iterations: int = _N_ITERATIONS,
+    n_jobs: int = 1,
+    output_dir: str | Path = "benchmark_results",
+    resume: bool = True,
+) -> pd.DataFrame:
+    """Run the signal-fraction sensitivity benchmark.
+
+    Tests how null-gene FPR depends on gene-panel size (50–2000) and
+    signal fraction (1–20%). Used to determine whether the dreamlet/NEBULA
+    inflation observed in the 50-gene/20%-signal benchmark generalizes
+    or attenuates with more realistic panel compositions.
+
+    Parameters
+    ----------
+    designs : list of str
+        Default: ["two_arm"].
+    methods, n_iterations, n_jobs, output_dir, resume :
+        Same as run_benchmark().
+
+    Returns
+    -------
+    DataFrame with all sensitivity results.
+    """
+    if designs is None:
+        designs = ["two_arm"]
+    if methods is None:
+        methods = CORE_METHODS
+    if n_jobs == -1:
+        n_jobs = mp.cpu_count()
+
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    rng = np.random.default_rng(2025)
+    all_results = []
+
+    for design in designs:
+        scenarios = build_sensitivity_grid(design)
+        print(f"\n{'=' * 60}")
+        print(f"SENSITIVITY: {design} — {len(scenarios)} scenarios × {n_iterations} iterations")
+        print(f"Methods: {methods}")
+        print(f"Parallel workers: {n_jobs}")
+        print(f"{'=' * 60}")
+
+        for si, scenario in enumerate(scenarios):
+            name = f"{design}__{scenario['name']}"
+            csv_path = output_dir / f"{name}.csv"
+
+            if resume and csv_path.exists():
+                print(f"  [{si + 1}/{len(scenarios)}] {name} — CACHED, skipping")
+                existing = pd.read_csv(csv_path)
+                all_results.append(existing)
+                continue
+
+            print(f"  [{si + 1}/{len(scenarios)}] {name}: {scenario['description']}")
+
+            seeds = [int(rng.integers(0, 2**31)) for _ in range(n_iterations)]
+            task_args = [
+                (name, it, seeds[it], scenario["config_kwargs"], methods)
+                for it in range(n_iterations)
+            ]
+
+            t0 = time.time()
+            all_rows: list = []
+            flush_interval = 20
+
+            def _process_iteration(i: int, batch: list) -> None:
+                all_rows.extend(batch)
+                if (i + 1) % flush_interval == 0:
+                    elapsed = time.time() - t0
+                    eta = elapsed / (i + 1) * (n_iterations - i - 1)
+                    print(
+                        f"    {i + 1}/{n_iterations} iterations "
+                        f"({elapsed:.0f}s elapsed, ~{eta:.0f}s remaining)"
+                    )
+                    pd.DataFrame(all_rows).to_csv(csv_path, index=False)
+
+            if n_jobs == 1:
+                for i, args in enumerate(task_args):
+                    _process_iteration(i, _run_single_iteration(args))
+            else:
+                ctx = mp.get_context("spawn")
+                with ctx.Pool(n_jobs) as pool:
+                    for i, batch in enumerate(pool.imap(_run_single_iteration, task_args)):
+                        _process_iteration(i, batch)
+
+            elapsed = time.time() - t0
+            df = pd.DataFrame(all_rows)
+            df.to_csv(csv_path, index=False)
+            all_results.append(df)
+            print(f"    Done in {elapsed:.0f}s → {csv_path.name}")
+
+    combined = pd.concat(all_results, ignore_index=True)
+    combined_path = output_dir / "sensitivity_combined.csv"
+    combined.to_csv(combined_path, index=False)
+    print(f"\nSensitivity results saved → {combined_path}")
     print(f"Total rows: {len(combined):,}")
 
     return combined
