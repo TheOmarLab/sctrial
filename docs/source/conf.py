@@ -5,9 +5,9 @@ from datetime import datetime
 sys.path.insert(0, os.path.abspath("../../src"))
 
 project = "sctrial"
-copyright = f"{datetime.now().year}, Contributors"
-author = "Contributors"
-release = "0.3.0"
+copyright = f"{datetime.now().year}, Omar Lab, Cedars-Sinai Medical Center"
+author = "Omar Lab, Cedars-Sinai Medical Center"
+release = "0.3.3"
 
 # -- Extensions ---------------------------------------------------------------
 
@@ -16,6 +16,7 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
     "sphinx.ext.intersphinx",
+    "myst_parser",
     "nbsphinx",
     "sphinx_design",
     "sphinx_copybutton",

@@ -1,3 +1,5 @@
+"""Publication-quality plotting: forest plots, interaction plots, volcanoes, UMAPs, GSEA heatmaps."""
+
 from __future__ import annotations
 
 from collections.abc import Sequence

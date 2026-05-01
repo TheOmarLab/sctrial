@@ -1,7 +1,7 @@
 <p align="center">
   <img src="docs/source/_static/logo.svg" alt="sctrial" width="280">
 </p>
-<p align="center"><strong>Trial-Aware Statistical Inference for Single-Cell Data</strong></p>
+<p align="center"><strong>Participant-Level Differential Analysis for Longitudinal Single-Cell Experiments</strong></p>
 
 <p align="center">
   <a href="https://github.com/TheOmarLab/sctrial/actions/workflows/test.yml">
@@ -11,11 +11,14 @@
     <img src="https://img.shields.io/github/v/release/TheOmarLab/sctrial?label=version" alt="Release Version">
   </a>
   <img src="https://img.shields.io/badge/python-3.9%2B-blue" alt="Python Versions">
-  <a href="https://opensource.org/licenses/MIT">
-    <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT">
+  <a href="https://pypi.org/project/sctrial/">
+    <img src="https://img.shields.io/pypi/v/sctrial.svg" alt="PyPI">
   </a>
-  <a href="https://TheOmarLab.github.io/sctrial/">
-    <img src="https://img.shields.io/badge/docs-latest-brightgreen.svg" alt="Documentation">
+  <a href="https://pepy.tech/project/sctrial">
+    <img src="https://static.pepy.tech/badge/sctrial" alt="Downloads">
+  </a>
+  <a href="https://www.omar-lab.com/sctrial/">
+    <img src="https://readthedocs.org/projects/sctrial/badge/?version=latest" alt="Documentation">
   </a>
 </p>
 
@@ -23,7 +26,7 @@
 
 ## Overview
 
-**sctrial** is a Python package for performing rigorous statistical inference on single-cell RNA-seq data from clinical trials and longitudinal studies. Built on top of [AnnData](https://anndata.readthedocs.io/) and [Scanpy](https://scanpy.readthedocs.io/), it provides specialized tools for:
+**sctrial** is a Python package for participant-level differential analysis of longitudinal single-cell RNA-seq data from clinical trials and translational studies. Built on [AnnData](https://anndata.readthedocs.io/) and the [scverse](https://scverse.org/) ecosystem, it provides:
 
 - **Difference-in-Differences (DiD)** analysis with participant fixed effects
 - **Paired within-arm** pre→post contrasts
@@ -128,23 +131,26 @@ Additional tutorial: [Scalability Benchmark](tutorials/stress_test_real_scale.ip
 
 ## Documentation
 
-Full documentation: [https://TheOmarLab.github.io/sctrial/](https://TheOmarLab.github.io/sctrial/)
+Full documentation: [https://www.omar-lab.com/sctrial/](https://www.omar-lab.com/sctrial/)
 
-- [API Reference](https://TheOmarLab.github.io/sctrial/api.html)
-- [Tutorials](https://TheOmarLab.github.io/sctrial/tutorials/index.html)
-- [FAQ](https://TheOmarLab.github.io/sctrial/faq.html)
+- [API Reference](https://www.omar-lab.com/sctrial/api/index.html)
+- [Tutorials](https://www.omar-lab.com/sctrial/tutorials/index.html)
+- [FAQ](https://www.omar-lab.com/sctrial/faq.html)
 
 ## Citation
 
 If you use **sctrial** in your research, please cite:
 
+> Vasanthakumari P, Valencia I, Aghmiouni MR, Magana B, Omar M. **sctrial: Participant-Level Differential Analysis for Longitudinal Single-Cell Experiments.** *bioRxiv* 2026. [doi:10.64898/2026.04.02.716219](https://www.biorxiv.org/content/10.64898/2026.04.02.716219v1).
+
 ```bibtex
-@software{omar2024sctrial,
-  author = {Omar, Mohamed},
-  title = {sctrial: Trial-Aware Statistical Inference for Single-Cell Data},
+@article{vasanthakumari2026sctrial,
+  title = {sctrial: Participant-Level Differential Analysis for Longitudinal Single-Cell Experiments},
+  author = {Vasanthakumari, Priyanka and Valencia, Itzel and Aghmiouni, Maryam R. and Magana, Bryan and Omar, Mohamed},
+  journal = {bioRxiv},
   year = {2026},
-  publisher = {GitHub},
-  url = {https://github.com/TheOmarLab/sctrial}
+  doi = {10.64898/2026.04.02.716219},
+  url = {https://www.biorxiv.org/content/10.64898/2026.04.02.716219v1}
 }
 ```
 

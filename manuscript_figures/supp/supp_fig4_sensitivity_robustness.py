@@ -1328,6 +1328,8 @@ def _panel_bench_fpr(ax, bench_df, *, composite: bool = False):
     rows = []
     for (method, design, n, it), grp in null_data.groupby(
         ["method", "design", "n_per_arm", "iteration"]
+    for (method, design, n, it), grp in null_data.groupby(
+        ["method", "design", "n_per_arm", "iteration"]
     ):
         pvals = grp["pvalue"].dropna().values
         if len(pvals) == 0:
@@ -1336,7 +1338,13 @@ def _panel_bench_fpr(ax, bench_df, *, composite: bool = False):
             "method": method, "design": design, "n_per_arm": n,
             "fpr": (pvals < 0.05).mean(),
         })
+        rows.append({
+            "method": method, "design": design, "n_per_arm": n,
+            "fpr": (pvals < 0.05).mean(),
+        })
     fpr_df = pd.DataFrame(rows)
+
+    # Aggregate across iterations (pool both designs for cleaner plot)
 
     # Aggregate across iterations (pool both designs for cleaner plot)
     fpr_agg = (
@@ -1673,6 +1681,43 @@ def _panel_bench_runtime(ax, bench_df):
     ax.set_title("Computational cost", fontsize=12, fontweight="bold", pad=10)
     ax.legend(loc="upper left", frameon=True, framealpha=0.95, edgecolor="#cccccc", fontsize=9)
     _style_axis(ax)
+
+
+def _panel_bench_runtime(ax, bench_df):
+    """Panel M: Runtime comparison across methods.
+
+    Boxplot of per-iteration runtime (seconds) grouped by method.
+    Runtime is recorded per method × iteration (duplicated across genes).
+    """
+    # Deduplicate: one runtime per method × scenario × iteration
+    rt = (
+        bench_df.groupby(["method", "scenario", "iteration"])["runtime_seconds"]
+        .first().reset_index()
+    )
+
+    import matplotlib.patches as mpatches
+
+    methods_data = []
+    labels = []
+    colors = []
+    for method in _BENCH_METHODS:
+        sub = rt[rt["method"] == method]["runtime_seconds"].dropna()
+        if len(sub) == 0:
+            continue
+        methods_data.append(sub.values)
+        labels.append(_BENCH_METHOD_LABELS[method])
+        colors.append(_BENCH_METHOD_COLORS[method])
+
+    bp = ax.boxplot(methods_data, labels=labels, patch_artist=True,
+                    showfliers=False, widths=0.6)
+    for patch, color in zip(bp["boxes"], colors):
+        patch.set_facecolor(color)
+        patch.set_alpha(0.6)
+
+    ax.set_yscale("log")
+    ax.set_ylabel("Runtime per iteration (seconds, log scale)")
+    ax.set_title("Computational Cost", fontweight="bold")
+    despine(ax)
 
 
 # ======================================================================

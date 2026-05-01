@@ -102,13 +102,13 @@ An ``AnnData`` object with:
 How many participants do I need?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Minimum**: 4 paired participants per arm (statistical requirement)
+As a rough guide:
 
-**Recommended**: 10-15 paired participants for robust inference
+- **~4 paired participants per arm** is a practical lower bound for estimation, though inference will be imprecise.
+- **~10–15 paired participants** per arm generally provides more reliable inference.
+- **~20–30 paired participants** per arm is typically needed for adequate power to detect moderate effects (d ≈ 0.5).
 
-**Ideal**: 20-30 paired participants for adequate power to detect moderate effects
-
-For smaller samples, use bootstrap: ``use_bootstrap=True``
+For smaller samples, bootstrap inference (``use_bootstrap=True``) is recommended as a safeguard against anti-conservative cluster-robust standard errors.
 
 Do I need the same number of cells per participant?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -135,18 +135,16 @@ Statistical Questions
 When should I use bootstrap vs. standard errors?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Use cluster-robust standard errors (default)** when:
+**Cluster-robust standard errors (default)** are often adequate when the
+number of participants per arm is reasonably large (e.g. ~15 or more) and
+sample sizes are roughly balanced.
 
-- You have ≥15 paired participants per arm
-- Sample sizes are balanced across arms
-- Variance is approximately equal across groups
+**Wild Cluster Bootstrap** (``use_bootstrap=True``) is recommended as a
+safeguard when:
 
-**Use Wild Cluster Bootstrap** (``use_bootstrap=True``) when:
-
-- Few clusters (< 15 participants per arm)
-- Unbalanced sample sizes
-- Concerned about finite-sample bias
-- Need more accurate p-values and confidence intervals for publication
+- The number of participants per arm is modest (e.g. fewer than ~15)
+- Sample sizes are unbalanced across arms
+- More accurate p-values and confidence intervals are needed for publication
 
 .. code-block:: python
 
@@ -172,18 +170,20 @@ When should I use bootstrap vs. standard errors?
 
 where :math:`\hat{\beta}^*` is the bootstrap estimate.
 
+.. _faq-sample-size:
+
 What are the minimum sample size recommendations?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Statistical minimums (two-arm DiD)**:
+**Approximate guidance (two-arm DiD)**:
 
 =========================  ==============  =======================
 Scenario                   Per Arm         Total Participants
 =========================  ==============  =======================
-Absolute minimum           4 paired        8
-Adequate for bootstrap     6-8 paired      12-16
-Recommended                10-15 paired    20-30
-Well-powered (d=0.5)       20+ paired      40+
+Practical lower bound      ~4 paired       ~8
+Adequate for bootstrap     ~6–8 paired     ~12–16
+Generally reliable         ~10–15 paired   ~20–30
+Well-powered (d ≈ 0.5)     ~20+ paired     ~40+
 =========================  ==============  =======================
 
 **Single-arm paired designs** (e.g. vaccination, single-agent therapy):
@@ -191,11 +191,14 @@ Well-powered (d=0.5)       20+ paired      40+
 =========================  =======================
 Scenario                   Paired Participants
 =========================  =======================
-Absolute minimum           4
-Adequate for bootstrap     6-8
-Recommended                10-15
-Well-powered (d=0.5)       14+
+Practical lower bound      ~4
+Adequate for bootstrap     ~6–8
+Generally reliable         ~10–15
+Well-powered (d ≈ 0.5)     ~14+
 =========================  =======================
+
+These are rules of thumb. Actual requirements depend on effect size,
+variance structure, and the degree of within-participant correlation.
 
 **Power calculation example**:
 

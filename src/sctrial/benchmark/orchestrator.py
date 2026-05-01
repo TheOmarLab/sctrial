@@ -36,12 +36,19 @@ _MEAN_CELLS = 500
 # Core methods
 CORE_METHODS = [
     "sctrial_did",
-    "edger_qlf",
-    "limma_voom",
     "dreamlet",
     "nebula",
     "wilcoxon_paired",
 ]
+
+# Excluded from benchmark:
+# - edger_qlf: no native repeated-measures support; ~arm*visit without
+#   participant blocking is severely conservative (~0% FPR); participant
+#   FE designs are rank-deficient with nested participants.
+# - limma_voom: duplicateCorrelation crashes at n>=40; participant FE
+#   designs are rank-deficient; unblocked ~arm*visit is conservative.
+# Both lack proper paired-design handling. dreamlet (mixed model)
+# represents the count-based pseudobulk class correctly.
 
 # Internal sensitivity (not headline)
 INTERNAL_METHODS = ["sctrial_mixed"]
@@ -201,7 +208,14 @@ def _run_single_iteration(args: tuple) -> list[dict]:
 
     scenario_name, iteration, seed, config_kwargs, methods = args
 
-    cfg = SimulationConfig(seed=seed, **config_kwargs)
+    # For single-arm designs, force time_effect=0 so null scenarios are
+    # truly null (the default 0.1 cancels in two-arm DiD but is detected
+    # by single-arm methods testing Δ vs 0).
+    kw = dict(config_kwargs)
+    if kw.get("design") == "single_arm" and "time_effect" not in kw:
+        kw["time_effect"] = 0.0
+
+    cfg = SimulationConfig(seed=seed, **kw)
     design_type = cfg.design
     sim = simulate_trial(cfg)
     gene_cols = [f"gene_{i}" for i in range(cfg.n_genes)]
@@ -295,7 +309,7 @@ def _dispatch_method(
         # Pass log-pseudobulk DataFrame instead of raw cell-level AnnData
         # so that DiD betas are on log-expression scale, comparable to
         # edgeR/limma/dreamlet log-fold-changes
-        return sctrial_did.run(pb_log, gene_cols, from_pseudobulk=True)
+        return sctrial_did.run(pb_log, gene_cols, from_pseudobulk=True, design_type=design_type)
     elif method == "edger_qlf":
         from .runners import edger_qlf
 
@@ -315,7 +329,7 @@ def _dispatch_method(
     elif method == "wilcoxon_paired":
         from .runners import wilcoxon_paired
 
-        return wilcoxon_paired.run(pb_log, gene_cols)
+        return wilcoxon_paired.run(pb_log, gene_cols, design_type=design_type)
     else:
         raise ValueError(f"Unknown method: {method}")
 

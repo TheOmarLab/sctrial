@@ -27,6 +27,10 @@ meta   <- read.csv("{meta_csv}", row.names=1, stringsAsFactors=TRUE)
 meta$arm   <- factor(meta$arm, levels=c("{control}", "{treated}"))
 meta$visit <- factor(meta$visit, levels=c("{pre}", "{post}"))
 
+# Two-arm: ~arm * visit interaction model.
+# NOTE: excluded from main benchmark — limma-voom's
+# duplicateCorrelation crashes at n>=40 and unblocked ~arm*visit
+# is conservative. Kept for optional standalone use only.
 design <- model.matrix(~arm * visit, data=meta)
 
 y <- DGEList(counts=t(counts))
@@ -35,9 +39,7 @@ y <- y[keep, , keep.lib.sizes=FALSE]
 y <- calcNormFactors(y)
 
 v <- voom(y, design)
-corfit <- duplicateCorrelation(v, design, block=meta$participant)
-fit <- lmFit(v, design, block=meta$participant,
-             correlation=corfit$consensus.correlation)
+fit <- lmFit(v, design)
 fit <- eBayes(fit)
 
 coef_idx <- ncol(design)
@@ -123,7 +125,7 @@ def run(
         try:
             proc = subprocess.run(
                 ["Rscript", str(script_file)],
-                capture_output=True, text=True, timeout=120,
+                capture_output=True, text=True, timeout=300,
             )
             if proc.returncode != 0:
                 logger.warning("limma-voom R error: %s", proc.stderr[-500:])

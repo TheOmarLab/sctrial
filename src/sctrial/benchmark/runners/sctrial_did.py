@@ -28,23 +28,20 @@ def _fail_result(failure_mode: str = "numerical") -> dict:
     }
 
 
-def _run_from_pseudobulk(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
-    """Participant-level first-difference DiD on log-pseudobulk.
+def _run_from_pseudobulk(
+    pb: pd.DataFrame,
+    gene_cols: list[str],
+    design_type: str = "two_arm",
+) -> dict:
+    """Participant-level first-difference estimator on log-pseudobulk.
+
+    **Two-arm (DiD):** β = mean(Δ_treated) − mean(Δ_control), Welch t-test.
+    **Single-arm (paired):** β = mean(Δ), one-sample t-test vs 0.
 
     For a two-period design (Pre/Post), first-differencing is numerically
     equivalent to the FE estimator (Wooldridge, *Econometric Analysis*,
     Ch. 14). Computing Δ_i = Y_i,post − Y_i,pre per participant eliminates
-    participant fixed effects by construction, avoiding the near-saturated
-    model that makes FE + cluster-robust inference unreliable with few
-    participants.
-
-    The DiD estimate is:  β₂ = mean(Δ_treated) − mean(Δ_control)
-    Inference uses Welch's t-test on the deltas between arms, which is
-    valid because within-participant dependence is removed by differencing.
-
-    The estimand — the average treatment-by-time interaction on the
-    log-expression scale — is identical to what edgeR/limma/dreamlet
-    target with their interaction coefficients.
+    participant fixed effects by construction.
     """
     from scipy import stats as sp_stats
 
@@ -65,46 +62,56 @@ def _run_from_pseudobulk(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
     pre_df = pre_df.loc[common]
     post_df = post_df.loc[common]
 
-    # Arm labels (same for pre and post)
-    arms = pre_df["arm"]
-    treated_mask = arms == "Treated"
-    control_mask = arms == "Control"
-
-    n_treat = int(treated_mask.sum())
-    n_ctrl = int(control_mask.sum())
-
     for gene in gene_cols:
         try:
             # Participant-level change scores
             delta = post_df[gene].values - pre_df[gene].values
 
-            delta_treat = delta[treated_mask.values]
-            delta_ctrl = delta[control_mask.values]
+            if design_type == "single_arm":
+                # Single-arm: one-sample t-test on Δ vs 0
+                n = len(delta)
+                if n < 2:
+                    raise ValueError("Too few participants")
 
-            if len(delta_treat) < 2 or len(delta_ctrl) < 2:
-                raise ValueError("Too few participants per arm")
+                beta = float(np.mean(delta))
+                _, pval = sp_stats.ttest_1samp(delta, 0.0)
 
-            # DiD estimate = mean(Δ_treated) − mean(Δ_control)
-            beta = float(np.mean(delta_treat) - np.mean(delta_ctrl))
+                se = float(np.std(delta, ddof=1) / np.sqrt(n))
+                t_crit = sp_stats.t.ppf(0.975, n - 1)
+                ci_lo = beta - t_crit * se
+                ci_hi = beta + t_crit * se
+            else:
+                # Two-arm DiD: Welch t-test on Δ_treated vs Δ_control
+                arms = pre_df["arm"]
+                treated_mask = arms == "Treated"
+                control_mask = arms == "Control"
 
-            # Welch's t-test on deltas between arms
-            _, pval = sp_stats.ttest_ind(
-                delta_treat, delta_ctrl, equal_var=False
-            )
+                delta_treat = delta[treated_mask.values]
+                delta_ctrl = delta[control_mask.values]
 
-            # CI from Welch t-test (two-sample SE + Satterthwaite df)
-            v1 = np.var(delta_treat, ddof=1) / n_treat
-            v2 = np.var(delta_ctrl, ddof=1) / n_ctrl
-            se = np.sqrt(v1 + v2)
-            df_ws = (
-                (v1 + v2) ** 2
-                / (v1**2 / (n_treat - 1) + v2**2 / (n_ctrl - 1))
-                if (v1 + v2) > 0
-                else 1.0
-            )
-            t_crit = sp_stats.t.ppf(0.975, df_ws)
-            ci_lo = beta - t_crit * se
-            ci_hi = beta + t_crit * se
+                n_treat = len(delta_treat)
+                n_ctrl = len(delta_ctrl)
+
+                if n_treat < 2 or n_ctrl < 2:
+                    raise ValueError("Too few participants per arm")
+
+                beta = float(np.mean(delta_treat) - np.mean(delta_ctrl))
+                _, pval = sp_stats.ttest_ind(
+                    delta_treat, delta_ctrl, equal_var=False
+                )
+
+                v1 = np.var(delta_treat, ddof=1) / n_treat
+                v2 = np.var(delta_ctrl, ddof=1) / n_ctrl
+                se = np.sqrt(v1 + v2)
+                df_ws = (
+                    (v1 + v2) ** 2
+                    / (v1**2 / (n_treat - 1) + v2**2 / (n_ctrl - 1))
+                    if (v1 + v2) > 0
+                    else 1.0
+                )
+                t_crit = sp_stats.t.ppf(0.975, df_ws)
+                ci_lo = beta - t_crit * se
+                ci_hi = beta + t_crit * se
 
             out[gene] = {
                 "beta": beta,
@@ -127,8 +134,9 @@ def run(
     design_kwargs: dict | None = None,
     visits: tuple[str, str] = ("Pre", "Post"),
     from_pseudobulk: bool = False,
+    design_type: str = "two_arm",
 ) -> dict[str, dict]:
-    """Run sctrial DiD with participant FE + cluster-robust SE.
+    """Run sctrial DiD / paired-difference estimator.
 
     Parameters
     ----------
@@ -144,13 +152,16 @@ def run(
     from_pseudobulk : bool
         If True, data is a pseudobulk DataFrame with columns:
         participant, arm, visit, gene_0, gene_1, ...
+    design_type : str
+        "two_arm" (DiD: Welch t on Δ_treat vs Δ_ctrl) or
+        "single_arm" (paired: one-sample t on Δ vs 0).
 
     Returns
     -------
     dict : gene → {"beta", "pvalue", "ci_lo", "ci_hi", "converged", "failure_mode"}
     """
     if from_pseudobulk:
-        return _run_from_pseudobulk(data, gene_cols)
+        return _run_from_pseudobulk(data, gene_cols, design_type=design_type)
 
     # Original cell-level path via sctrial.stats.did
     from sctrial.design import TrialDesign

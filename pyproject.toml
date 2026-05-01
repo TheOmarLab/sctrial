@@ -4,15 +4,17 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sctrial"
-version = "0.3.0"
-description = "Trial-aware inference utilities for single-cell AnnData: DiD, crossover, module scoring, pseudobulk, and abundance."
+version = "0.3.3"
+description = "Participant-level differential analysis for longitudinal single-cell experiments: DiD, paired comparisons, module scoring, pseudobulk, and power analysis."
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.9"
 license = {  text = "MIT" }
-authors = [{ name = "Contributors" }]
-keywords = ["single-cell", "anndata", "trial", "difference-in-differences", "crossover", "pseudobulk"]
+authors = [
+  { name = "Mohamed Omar", email = "mohamed.omar@csmc.edu" },
+]
+keywords = ["single-cell", "anndata", "clinical-trial", "longitudinal", "difference-in-differences", "pseudobulk", "scRNA-seq"]
 classifiers = [
-  "Development Status :: 3 - Alpha",
+  "Development Status :: 4 - Beta",
   "Intended Audience :: Science/Research",
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3",
@@ -37,7 +39,7 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/TheOmarLab/sctrial"
-Documentation = "https://sctrial.readthedocs.io"
+Documentation = "https://www.omar-lab.com/sctrial/"
 Repository = "https://github.com/TheOmarLab/sctrial"
 Issues = "https://github.com/TheOmarLab/sctrial/issues"
 
@@ -64,6 +66,7 @@ docs = [
   "sphinx-design>=0.5",
   "sphinx-copybutton>=0.5",
   "nbsphinx>=0.9",
+  "myst-parser>=2.0",
   "pandoc",
 ]
 dev = [
