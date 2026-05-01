@@ -1,8 +1,12 @@
 """
-Supplementary Figure 4 — Sensitivity and Robustness.
-=====================================================
+Supplementary Figure 4 — Sensitivity, Robustness, and Benchmarking.
+===================================================================
 
-Show how DiD results change under different analytical decisions.
+Panels A–G characterize the sensitivity and robustness of sctrial's
+participant-level inference on real datasets.  Panels H–N benchmark
+sctrial against established multi-subject methods (dreamlet, NEBULA,
+Wilcoxon on change scores) on a hierarchical gamma-Poisson simulator
+across gene-panel sizes (50–2000) and signal fractions (1–20%).
 
 Panels
 ------
@@ -36,6 +40,7 @@ import matplotlib.transforms as mtransforms
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from matplotlib.ticker import MultipleLocator
 from matplotlib.ticker import MultipleLocator
 from scipy import stats as sp_stats
 
@@ -968,8 +973,14 @@ def _load_benchmark_data():
             f"Benchmark results not found at {_BENCHMARK_CSV}.\n"
             "Run the signal-fraction sensitivity benchmark on HPC first, "
             "then rsync results locally."
+            "Run the signal-fraction sensitivity benchmark on HPC first, "
+            "then rsync results locally."
         )
     df = pd.read_csv(_BENCHMARK_CSV, low_memory=False)
+    df["n_genes"] = df["scenario"].str.extract(r"_g(\d+)")[0].astype(int)
+    frac = df["scenario"].str.extract(r"_f(\d+)")
+    df["signal_pct"] = pd.to_numeric(frac[0], errors="coerce").fillna(0).astype(int)
+    df["is_null_scenario"] = df["scenario"].str.contains("sens_null")
     df["n_genes"] = df["scenario"].str.extract(r"_g(\d+)")[0].astype(int)
     frac = df["scenario"].str.extract(r"_f(\d+)")
     df["signal_pct"] = pd.to_numeric(frac[0], errors="coerce").fillna(0).astype(int)
@@ -1012,11 +1023,18 @@ def _compute_null_fpr_table(bench_df):
     rows = []
     for (method, n_g, frac), grp in null.groupby(
         ["method", "n_genes", "signal_pct"]
+    for (method, n_g, frac), grp in null.groupby(
+        ["method", "n_genes", "signal_pct"]
     ):
         pvals = grp["pvalue"].dropna().values
         if len(pvals) == 0:
             continue
         rows.append({
+            "method": method,
+            "n_genes": int(n_g),
+            "signal_pct": int(frac),
+            "fpr": float((pvals < 0.05).mean()),
+            "n_tests": int(len(pvals)),
             "method": method,
             "n_genes": int(n_g),
             "signal_pct": int(frac),
@@ -1331,12 +1349,15 @@ def _panel_bench_fpr(ax, bench_df, *, composite: bool = False):
     for (method, design, n, it), grp in null_data.groupby(
         ["method", "design", "n_per_arm", "iteration"]
     ):
-        pvals = grp["pvalue"].dropna().values
-        if len(pvals) == 0:
+        if grp.empty:
             continue
         rows.append({
-            "method": method, "design": design, "n_per_arm": n,
-            "fpr": (pvals < 0.05).mean(),
+            "method": method,
+            "n_genes": int(n_g),
+            "signal_pct": int(frac),
+            "bias": float(grp["err"].mean()),
+            "rmse": float(np.sqrt(grp["sq_err"].mean())),
+            "n_tests": int(len(grp)),
         })
         rows.append({
             "method": method, "design": design, "n_per_arm": n,
@@ -1427,9 +1448,9 @@ def _panel_bench_lambda(ax, bench_df, *, composite: bool = False):
     pure_null = null_data[null_data["true_beta"] == 0.0]
 
     rows = []
-    for (method, n), grp in pure_null.groupby(["method", "n_per_arm"]):
+    for (method, n_g), grp in pvals_pure.groupby(["method", "n_genes"]):
         pvals = grp["pvalue"].dropna().values
-        if len(pvals) == 0:
+        if len(pvals) < 50:
             continue
         chi2_obs = sp_stats.chi2.ppf(1 - pvals.clip(1e-300, 1), df=1)
         lambda_gc = np.median(chi2_obs) / sp_stats.chi2.ppf(0.5, df=1)
@@ -1446,15 +1467,17 @@ def _panel_bench_lambda(ax, bench_df, *, composite: bool = False):
         sub = lambda_df[lambda_df["method"] == method].sort_values("n_per_arm")
         if sub.empty:
             continue
-        is_sctrial = method == "sctrial_did"
+        is_focal = method == "sctrial_did"
+        style = _method_style(method, is_focal=is_focal)
+        xs = [n_to_x[int(n)] for n in sub["n_genes"].values]
         ax.plot(
             sub["n_per_arm"], sub["lambda_gc"],
             marker=_BENCH_METHOD_MARKERS[method],
             markersize=_ms_hi if is_sctrial else _ms_lo,
             linewidth=_lw_hi if is_sctrial else _lw_lo,
             label=_BENCH_METHOD_LABELS[method],
-            color=_BENCH_METHOD_COLORS[method],
-            zorder=10 if is_sctrial else zi + 1,
+            zorder=10 if is_focal else 3,
+            **style,
         )
 
     ax.axhline(1.0, color="red", linestyle="--", linewidth=_lw_ref, alpha=0.7,
@@ -1532,6 +1555,7 @@ def _panel_bench_pure_null_fpr(ax, bench_df):
     null = bench_df[(bench_df["is_null_scenario"]) & (bench_df["true_beta"] == 0.0)]
     rows = []
     for (method, n_g), grp in null.groupby(["method", "n_genes"]):
+    for (method, n_g), grp in null.groupby(["method", "n_genes"]):
         pvals = grp["pvalue"].dropna().values
         if len(pvals) == 0:
             continue
@@ -1540,6 +1564,8 @@ def _panel_bench_pure_null_fpr(ax, bench_df):
         p = k / n
         ci = sp_stats.binomtest(k, n, p=0.05).proportion_ci(confidence_level=0.95, method="wilson")
         rows.append({
+            "method": method, "n_genes": int(n_g),
+            "fpr": p, "ci_lo": ci.low, "ci_hi": ci.high,
             "method": method, "n_genes": int(n_g),
             "fpr": p, "ci_lo": ci.low, "ci_hi": ci.high,
         })
@@ -1684,40 +1710,55 @@ def _panel_bench_runtime(ax, bench_df):
 
 
 def _panel_bench_runtime(ax, bench_df):
-    """Panel M: Runtime comparison across methods.
+    """Per-iteration runtime by method × panel size (log y).
 
-    Boxplot of per-iteration runtime (seconds) grouped by method.
-    Runtime is recorded per method × iteration (duplicated across genes).
+    X-axis uses evenly-spaced categorical positions so the 4 panel sizes
+    are ticked at equal intervals, independent of their raw values.
     """
-    # Deduplicate: one runtime per method × scenario × iteration
     rt = (
-        bench_df.groupby(["method", "scenario", "iteration"])["runtime_seconds"]
-        .first().reset_index()
+        bench_df.groupby(["method", "scenario", "n_genes", "iteration"])[
+            "runtime_seconds"
+        ]
+        .first()
+        .reset_index()
     )
 
-    import matplotlib.patches as mpatches
+    summary = (
+        rt.groupby(["method", "n_genes"])["runtime_seconds"]
+        .median()
+        .reset_index()
+    )
 
-    methods_data = []
-    labels = []
-    colors = []
+    x_positions = np.arange(len(_PANEL_SIZES), dtype=float)
+    n_to_x = dict(zip(_PANEL_SIZES, x_positions))
+
     for method in _BENCH_METHODS:
-        sub = rt[rt["method"] == method]["runtime_seconds"].dropna()
-        if len(sub) == 0:
+        sub = summary[summary["method"] == method].sort_values("n_genes")
+        if sub.empty:
             continue
-        methods_data.append(sub.values)
-        labels.append(_BENCH_METHOD_LABELS[method])
-        colors.append(_BENCH_METHOD_COLORS[method])
-
-    bp = ax.boxplot(methods_data, labels=labels, patch_artist=True,
-                    showfliers=False, widths=0.6)
-    for patch, color in zip(bp["boxes"], colors):
-        patch.set_facecolor(color)
-        patch.set_alpha(0.6)
+        is_focal = method == "sctrial_did"
+        style = _method_style(method, is_focal=is_focal)
+        xs = [n_to_x[int(n)] for n in sub["n_genes"].values]
+        ax.plot(
+            xs, sub["runtime_seconds"],
+            label=_BENCH_METHOD_LABELS[method],
+            zorder=10 if is_focal else 3,
+            **style,
+        )
 
     ax.set_yscale("log")
-    ax.set_ylabel("Runtime per iteration (seconds, log scale)")
-    ax.set_title("Computational Cost", fontweight="bold")
-    despine(ax)
+    ax.set_xticks(x_positions)
+    ax.set_xticklabels([f"{p:,}" for p in _PANEL_SIZES])
+    ax.set_xlim(-0.35, len(_PANEL_SIZES) - 0.65)
+    ax.set_xlabel("Panel size (genes)", fontsize=11)
+    ax.set_ylabel("Median runtime per iteration (s)", fontsize=11)
+    ax.set_title("Computational cost",
+                 fontsize=12, fontweight="bold", pad=10)
+    ax.legend(
+        loc="upper left", frameon=True, framealpha=0.95,
+        edgecolor="#cccccc", fontsize=9,
+    )
+    _style_axis(ax)
 
 
 # ======================================================================
