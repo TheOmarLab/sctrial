@@ -40,6 +40,7 @@ import matplotlib.transforms as mtransforms
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from matplotlib.patches import Patch
 from matplotlib.ticker import MultipleLocator
 from matplotlib.ticker import MultipleLocator
 from scipy import stats as sp_stats
@@ -431,12 +432,11 @@ def _panel_bootstrap_multi(fig, boot_data: dict, *, composite: bool = False):
                 ax.set_xlabel("")
         despine(ax)
 
-    if composite:
-        fig.suptitle("Analytical vs Bootstrap SE", fontweight="bold",
-                     fontsize=5.5, y=1.06)
-    else:
+    if not composite:
         fig.suptitle("Analytical vs Bootstrap SE", fontweight="bold",
                      fontsize=11)
+    # Composite: title is drawn on the parent figure via
+    # _figure_title_above_subfig (SubFigure.suptitle can anchor incorrectly).
 
 
 # ── Panel C: Standardised vs Unstandardised ───────────────────────
@@ -988,14 +988,26 @@ def _load_benchmark_data():
     return df
 
 
-def _method_style(method, is_focal=False, alpha=1.0):
+def _method_style(method, is_focal=False, alpha=1.0, *, composite=False):
+    """Line/marker style for benchmark method curves.
+
+    *composite*: smaller glyphs for the tight multi-panel artboard.
+    """
+    if composite:
+        ms_hi, ms_lo = 5.6, 4.3
+        lw_hi, lw_lo = 1.45, 1.1
+        mew = 0.48
+    else:
+        ms_hi, ms_lo = 9, 7
+        lw_hi, lw_lo = 2.5, 1.8
+        mew = 0.6
     return {
         "color": _BENCH_METHOD_COLORS[method],
         "marker": _BENCH_METHOD_MARKERS[method],
-        "markersize": 9 if is_focal else 7,
+        "markersize": ms_hi if is_focal else ms_lo,
         "markeredgecolor": "white",
-        "markeredgewidth": 0.6,
-        "linewidth": 2.5 if is_focal else 1.8,
+        "markeredgewidth": mew,
+        "linewidth": lw_hi if is_focal else lw_lo,
         "alpha": alpha,
     }
 
@@ -1023,18 +1035,11 @@ def _compute_null_fpr_table(bench_df):
     rows = []
     for (method, n_g, frac), grp in null.groupby(
         ["method", "n_genes", "signal_pct"]
-    for (method, n_g, frac), grp in null.groupby(
-        ["method", "n_genes", "signal_pct"]
     ):
         pvals = grp["pvalue"].dropna().values
         if len(pvals) == 0:
             continue
         rows.append({
-            "method": method,
-            "n_genes": int(n_g),
-            "signal_pct": int(frac),
-            "fpr": float((pvals < 0.05).mean()),
-            "n_tests": int(len(pvals)),
             "method": method,
             "n_genes": int(n_g),
             "signal_pct": int(frac),
@@ -1068,12 +1073,17 @@ def _compute_signal_bias_rmse_table(bench_df):
     return pd.DataFrame(rows)
 
 
-def _panel_bench_fpr_curves(fig, bench_df):
+def _panel_bench_fpr_curves(fig, bench_df, *, composite: bool = False):
     fpr_df = _compute_null_fpr_table(bench_df)
     fpr_df = fpr_df[fpr_df["signal_pct"] > 0].copy()
     axes = fig.subplots(1, 4, sharey=True)
     if not hasattr(axes, "__len__"):
         axes = [axes]
+
+    _ttl_fs = 5.75 if composite else 12
+    _ax_fs = 5.15 if composite else 11
+    _tk_fs = 4.65 if composite else 10
+    _leg_fs = 3.5 if composite else 8
 
     x_positions = np.arange(len(_SIGNAL_FRACTIONS), dtype=float)
     frac_to_x = dict(zip(_SIGNAL_FRACTIONS, x_positions))
@@ -1091,7 +1101,7 @@ def _panel_bench_fpr_curves(fig, bench_df):
             if m.empty:
                 continue
             is_focal = method == "sctrial_did"
-            style = _method_style(method, is_focal=is_focal)
+            style = _method_style(method, is_focal=is_focal, composite=composite)
             x = np.array([frac_to_x[int(f)] for f in m["signal_pct"].values]) + method_offsets[method]
             ax.plot(
                 x, m["fpr"],
@@ -1101,28 +1111,66 @@ def _panel_bench_fpr_curves(fig, bench_df):
             )
         _add_nominal_band(ax)
         ax.set_xticks(x_positions)
-        ax.set_xticklabels([f"{f}%" for f in _SIGNAL_FRACTIONS])
+        ax.set_xticklabels([f"{f}%" for f in _SIGNAL_FRACTIONS], fontsize=_tk_fs)
         ax.set_xlim(-0.4, len(_SIGNAL_FRACTIONS) - 0.6)
-        ax.set_xlabel("Signal fraction")
-        ax.set_title(f"{n_g:,} genes", fontsize=12, fontweight="bold", color="#222222", pad=8)
+        ax.set_xlabel("Signal fraction", fontsize=_ax_fs)
+        ax.set_title(
+            f"{n_g:,} genes", fontsize=_ttl_fs, fontweight="bold",
+            color="#222222", pad=4 if composite else 8,
+        )
         ax.set_ylim(0.0, 0.7)
         ax.yaxis.set_major_locator(MultipleLocator(0.1))
+        ax.tick_params(axis="y", labelsize=_tk_fs)
         _style_axis(ax)
 
-    axes[0].set_ylabel("Null-gene FPR (p < 0.05)", fontsize=11)
-    axes[0].legend(
-        loc="upper left", frameon=True, framealpha=0.95,
-        edgecolor="#cccccc", fontsize=8,
-    )
+    axes[0].set_ylabel("Null-gene FPR (p < 0.05)", fontsize=_ax_fs)
+    if composite:
+        h, lab = axes[0].get_legend_handles_labels()
+        for ax in axes:
+            leg = ax.get_legend()
+            if leg is not None:
+                leg.remove()
+        axes[0].legend(
+            h, lab, loc="upper left", bbox_to_anchor=(0.02, 0.98),
+            ncol=1, frameon=True, framealpha=0.95, edgecolor="#cccccc",
+            fontsize=_leg_fs, handlelength=0.85, columnspacing=0.55,
+            markerscale=0.65,
+        )
+    else:
+        axes[0].legend(
+            loc="upper left", frameon=True, framealpha=0.95,
+            edgecolor="#cccccc", fontsize=_leg_fs,
+        )
 
 
-def _panel_bench_fpr_heatmap(fig, bench_df):
+def _panel_bench_fpr_heatmap(fig, bench_df, *, composite: bool = False):
     fpr_df = _compute_null_fpr_table(bench_df)
     mixed = fpr_df[fpr_df["signal_pct"] > 0].copy()
     n_methods = len(_BENCH_METHODS)
-    axes = fig.subplots(1, n_methods, sharey=False)
-    if not hasattr(axes, "__len__"):
-        axes = [axes]
+
+    _ann_fs = 3.75 if composite else 10
+    _tk_fs = 4.85 if composite else 9
+    _lbl_fs = 5.4 if composite else 10
+    _ttl_fs = 5.85 if composite else 12
+    _ttl_pad = 4 if composite else 8
+    _ylab_fs = 5.85 if composite else 11
+
+    if composite:
+        # Dedicated colorbar column avoids mpl stretching a shared colorbar
+        # across a narrow nested SubFigure (looks like oversized “pillars”).
+        gs = fig.add_gridspec(
+            1, n_methods + 1,
+            width_ratios=[1.0] * n_methods + [0.092],
+            wspace=0.09,
+        )
+        axes = [fig.add_subplot(gs[0, j]) for j in range(n_methods)]
+        cax = fig.add_subplot(gs[0, n_methods])
+    else:
+        axes = fig.subplots(1, n_methods, sharey=False)
+        if not hasattr(axes, "__len__"):
+            axes = [axes]
+        cax = None
+
     fractions = sorted(_SIGNAL_FRACTIONS)
     panel_sizes = sorted(_PANEL_SIZES)
     cmap = plt.cm.RdYlGn_r
@@ -1150,19 +1198,25 @@ def _panel_bench_fpr_heatmap(fig, bench_df):
                     continue
                 text_color = "white" if (v > 0.35 or v < 0.02) else "#1a1a1a"
                 ax.text(pi, fi, f"{v:.2f}", ha="center", va="center",
-                        fontsize=10, color=text_color, fontweight="bold")
+                        fontsize=_ann_fs, color=text_color, fontweight="bold")
 
         ax.set_xticks(range(len(panel_sizes)))
-        ax.set_xticklabels([f"{p:,}" for p in panel_sizes], fontsize=9)
-        ax.set_xlabel("Panel size (genes)", fontsize=10)
+        ax.set_xticklabels([f"{p:,}" for p in panel_sizes], fontsize=_tk_fs)
+        ax.set_xlabel("" if composite else "Panel size (genes)", fontsize=_lbl_fs)
         ax.set_yticks(range(len(fractions)))
-        ax.set_yticklabels([f"{f}%" for f in fractions], fontsize=9)
+        if composite:
+            if mi == 0:
+                ax.set_yticklabels([f"{f}%" for f in fractions], fontsize=_tk_fs)
+            else:
+                ax.set_yticklabels([])
+        else:
+            ax.set_yticklabels([f"{f}%" for f in fractions], fontsize=_tk_fs)
         if mi == 0:
-            ax.set_ylabel("Signal fraction", fontsize=11, fontweight="bold")
+            ax.set_ylabel("Signal fraction", fontsize=_ylab_fs, fontweight="bold")
         ax.set_title(
             _BENCH_METHOD_LABELS[method],
-            fontsize=12, fontweight="bold",
-            color=_BENCH_METHOD_COLORS[method], pad=8,
+            fontsize=_ttl_fs, fontweight="bold",
+            color=_BENCH_METHOD_COLORS[method], pad=_ttl_pad,
         )
         for spine in ax.spines.values():
             spine.set_visible(True)
@@ -1170,14 +1224,29 @@ def _panel_bench_fpr_heatmap(fig, bench_df):
             spine.set_linewidth(0.9)
         ax.tick_params(axis="both", which="major", length=0)
 
-    cbar = fig.colorbar(im, ax=axes, shrink=0.78, pad=0.015, aspect=20)
-    cbar.set_label("Null-gene FPR (p < 0.05)", fontsize=10, rotation=270, labelpad=16)
-    cbar.ax.tick_params(labelsize=8)
+    # Composite shared x-label for panel I is placed by `generate()` in
+    # figure coordinates using panel-I subfigure bounds.
+
+    _cb_lab_fs = 5.85 if composite else 10
+    _cb_tick_fs = 4.9 if composite else 8
+    if composite:
+        cbar = fig.colorbar(im, cax=cax, fraction=1.0, pad=0.01)
+        cbar.set_label(
+            "Null-gene FPR (p < 0.05)",
+            fontsize=_cb_lab_fs, rotation=270, labelpad=4 if composite else 16,
+        )
+    else:
+        cbar = fig.colorbar(im, ax=axes, shrink=0.78, pad=0.015, aspect=20)
+        cbar.set_label(
+            "Null-gene FPR (p < 0.05)",
+            fontsize=_cb_lab_fs, rotation=270, labelpad=16,
+        )
+    cbar.ax.tick_params(labelsize=_cb_tick_fs)
     cbar.outline.set_linewidth(0.8)
     cbar.outline.set_edgecolor("#333333")
 
 
-def _panel_bench_lambda_gc(ax, bench_df):
+def _panel_bench_lambda_gc(ax, bench_df, *, composite: bool = False):
     null_scenarios = bench_df[bench_df["is_null_scenario"]]
     pvals_pure = null_scenarios[null_scenarios["true_beta"] == 0.0]
     rows = []
@@ -1195,12 +1264,17 @@ def _panel_bench_lambda_gc(ax, bench_df):
     x_positions = np.arange(len(_PANEL_SIZES), dtype=float)
     n_to_x = dict(zip(_PANEL_SIZES, x_positions))
 
+    _lbl_fs = 5.15 if composite else 11
+    _ttl_fs = 6.0 if composite else 12
+    _ttl_pad = 5 if composite else 10
+    _leg_fs = 3.45 if composite else 9
+
     for method in _BENCH_METHODS:
         sub = lam_df[lam_df["method"] == method].sort_values("n_genes")
         if sub.empty:
             continue
         is_focal = method == "sctrial_did"
-        style = _method_style(method, is_focal=is_focal)
+        style = _method_style(method, is_focal=is_focal, composite=composite)
         xs = [n_to_x[int(n)] for n in sub["n_genes"].values]
         ax.plot(xs, sub["lambda_gc"], label=_BENCH_METHOD_LABELS[method],
                 zorder=10 if is_focal else 3, **style)
@@ -1208,14 +1282,31 @@ def _panel_bench_lambda_gc(ax, bench_df):
     ax.axhline(1.0, color="#d62728", linestyle="--", linewidth=1.0, alpha=0.65, zorder=1)
     ax.axhspan(0.95, 1.05, color="#d62728", alpha=0.06, zorder=0)
     ax.set_xticks(x_positions)
-    ax.set_xticklabels([f"{p:,}" for p in _PANEL_SIZES])
+    ax.set_xticklabels([f"{p:,}" for p in _PANEL_SIZES], fontsize=_lbl_fs)
     ax.set_xlim(-0.35, len(_PANEL_SIZES) - 0.65)
-    ax.set_xlabel("Panel size (genes)", fontsize=11)
-    ax.set_ylabel(r"Genomic inflation factor ($\lambda_{\mathrm{GC}}$)", fontsize=11)
-    ax.set_title("Pure-null calibration across panel sizes", fontsize=12, fontweight="bold", pad=10)
+    ax.set_xlabel("Panel size (genes)", fontsize=_lbl_fs)
+    ax.set_ylabel(r"Genomic inflation factor ($\lambda_{\mathrm{GC}}$)", fontsize=_lbl_fs)
+    ax.set_title(
+        "Pure-null calibration across panel sizes",
+        fontsize=_ttl_fs, fontweight="bold", pad=_ttl_pad,
+    )
     ax.set_ylim(0.88, 1.18)
     ax.yaxis.set_major_locator(MultipleLocator(0.05))
-    ax.legend(loc="upper left", frameon=True, framealpha=0.95, edgecolor="#cccccc", fontsize=9)
+    ax.tick_params(axis="y", labelsize=_lbl_fs)
+    if composite:
+        ax.legend(
+            loc="lower right",
+            bbox_to_anchor=(0.99, 0.03),
+            frameon=True, framealpha=0.95, edgecolor="#cccccc",
+            fontsize=_leg_fs, markerscale=0.52,
+            handlelength=1.0,
+            ncol=1,
+        )
+    else:
+        ax.legend(
+            loc="upper left", frameon=True, framealpha=0.95, edgecolor="#cccccc",
+            fontsize=_leg_fs, markerscale=1.0, handlelength=1.5,
+        )
     _style_axis(ax)
 
 
@@ -1346,26 +1437,17 @@ def _panel_bench_fpr(ax, bench_df, *, composite: bool = False):
     rows = []
     for (method, design, n, it), grp in null_data.groupby(
         ["method", "design", "n_per_arm", "iteration"]
-    for (method, design, n, it), grp in null_data.groupby(
-        ["method", "design", "n_per_arm", "iteration"]
     ):
         if grp.empty:
             continue
-        rows.append({
-            "method": method,
-            "n_genes": int(n_g),
-            "signal_pct": int(frac),
-            "bias": float(grp["err"].mean()),
-            "rmse": float(np.sqrt(grp["sq_err"].mean())),
-            "n_tests": int(len(grp)),
-        })
+        pvals = grp["pvalue"].dropna().values
+        if len(pvals) == 0:
+            continue
         rows.append({
             "method": method, "design": design, "n_per_arm": n,
             "fpr": (pvals < 0.05).mean(),
         })
     fpr_df = pd.DataFrame(rows)
-
-    # Aggregate across iterations (pool both designs for cleaner plot)
 
     # Aggregate across iterations (pool both designs for cleaner plot)
     fpr_agg = (
@@ -1439,78 +1521,53 @@ def _panel_bench_fpr(ax, bench_df, *, composite: bool = False):
 
 
 def _panel_bench_lambda(ax, bench_df, *, composite: bool = False):
-    """Panel J: Genomic inflation factor (λ_GC) under null.
-
-    λ_GC = median(χ²_obs) / 0.456 per method × n. Well-calibrated ≈ 1.0.
-    Uses two-arm null scenarios only.
-    """
-    null_data = _filter_bench(bench_df, "two_arm", r"null_n\d+$")
-    pure_null = null_data[null_data["true_beta"] == 0.0]
-
-    rows = []
-    for (method, n_g), grp in pvals_pure.groupby(["method", "n_genes"]):
-        pvals = grp["pvalue"].dropna().values
-        if len(pvals) < 50:
-            continue
-        chi2_obs = sp_stats.chi2.ppf(1 - pvals.clip(1e-300, 1), df=1)
-        lambda_gc = np.median(chi2_obs) / sp_stats.chi2.ppf(0.5, df=1)
-        rows.append({"method": method, "n_per_arm": n, "lambda_gc": lambda_gc})
-
-    lambda_df = pd.DataFrame(rows)
-    ns = sorted(lambda_df["n_per_arm"].unique())
-    _ms_hi, _ms_lo = (3.2, 2.6) if composite else (10, 8)
-    _lw_hi, _lw_lo = (1.35, 0.95) if composite else (2.5, 1.8)
-    _lw_ref = 0.85 if composite else 1.2
-    _leg_fs = 3.6 if composite else 7  # match panel I (composite)
-
-    for zi, method in enumerate(_BENCH_METHODS):
-        sub = lambda_df[lambda_df["method"] == method].sort_values("n_per_arm")
-        if sub.empty:
-            continue
-        is_focal = method == "sctrial_did"
-        style = _method_style(method, is_focal=is_focal)
-        xs = [n_to_x[int(n)] for n in sub["n_genes"].values]
-        ax.plot(
-            sub["n_per_arm"], sub["lambda_gc"],
-            marker=_BENCH_METHOD_MARKERS[method],
-            markersize=_ms_hi if is_sctrial else _ms_lo,
-            linewidth=_lw_hi if is_sctrial else _lw_lo,
-            label=_BENCH_METHOD_LABELS[method],
-            zorder=10 if is_focal else 3,
-            **style,
-        )
-
-    ax.axhline(1.0, color="red", linestyle="--", linewidth=_lw_ref, alpha=0.7,
-               label=r"Ideal ($\lambda$ = 1)")
-    ax.axhspan(0.95, 1.05, color="red", alpha=0.06)
-    ax.set_xlabel("Sample size (participants per arm)")
-    ax.set_ylabel(r"Genomic inflation factor ($\lambda_{\mathrm{GC}}$)")
-    ax.set_title("Null Calibration Summary (two-arm)", fontweight="bold")
-    ax.set_xticks(ns)
-    if composite:
-        ax.set_ylim(0.86, 1.20)
-    else:
-        ax.set_ylim(0.90, 1.15)
-    if composite:
-        ax.legend(
-            fontsize=_leg_fs, ncol=2, loc="upper right",
-            markerscale=0.45,
-        )
-    else:
-        ax.legend(fontsize=_leg_fs, markerscale=1.0)
-    despine(ax)
+    """Legacy name for panel J — delegates to `_panel_bench_lambda_gc`."""
+    _panel_bench_lambda_gc(ax, bench_df, composite=composite)
 
 
-def _panel_bench_qq(fig, bench_df, n_genes=200, signal_pct=10):
+def _panel_bench_qq(
+    fig, bench_df,
+    n_genes: int = 200,
+    signal_pct: int = 10,
+    *,
+    composite: bool = False,
+):
     scenario_name = f"two_arm__sens_g{n_genes}_f{signal_pct}"
     sub_all = bench_df[bench_df["scenario"] == scenario_name]
     if sub_all.empty:
         print(f"    WARNING: scenario {scenario_name} not found for panel K")
         return
     null = sub_all[sub_all["true_beta"] == 0.0]
-    axes = fig.subplots(1, len(_BENCH_METHODS), sharex=True, sharey=True)
-    if not hasattr(axes, "__len__"):
-        axes = [axes]
+    if hasattr(fig, "set_constrained_layout"):
+        fig.set_constrained_layout(False)
+    if composite:
+        # Faceted 2×2 (same spirit as panel M’s row×column faceting); narrower than 1×4 strip.
+        ax_grid = fig.subplots(
+            2,
+            2,
+            sharex=True,
+            sharey=True,
+            gridspec_kw={
+                "hspace": 0.32,
+                "wspace": 0.18,
+                "left": 0.125,
+                "right": 0.98,
+                "top": 0.84,
+                "bottom": 0.26,
+            },
+        )
+        axes = ax_grid.flatten()
+    else:
+        axes = fig.subplots(1, len(_BENCH_METHODS), sharex=True, sharey=True)
+        if not hasattr(axes, "__len__"):
+            axes = [axes]
+
+    _sct = 5.5 if composite else 8
+    _ttl_fs = 6.0 if composite else 12
+    _ttl_pad = 1 if composite else 8
+    _axlbl_fs = 5.1 if composite else 10
+    _leg_fs = 3.95 if composite else 8
+
     for mi, (ax, method) in enumerate(zip(axes, _BENCH_METHODS)):
         pvals = (
             null.loc[null["method"] == method, "pvalue"]
@@ -1528,33 +1585,92 @@ def _panel_bench_qq(fig, bench_df, n_genes=200, signal_pct=10):
         lo_env = -np.log10(sp_stats.beta.ppf(0.975, ranks, n - ranks + 1) + 1e-300)
         hi_env = -np.log10(sp_stats.beta.ppf(0.025, ranks, n - ranks + 1) + 1e-300)
         ax.fill_between(
-            exp_log, lo_env, hi_env, color="#b0b0b0", alpha=0.22, zorder=1,
-            label="95% Beta envelope" if mi == 0 else None,
+            exp_log, lo_env, hi_env, color="#9a9a9a",
+            alpha=0.32 if composite else 0.22, zorder=1,
+            label=None if composite else ("95% Beta envelope" if mi == 0 else None),
         )
         ax.scatter(
-            exp_log, obs_log, s=8, alpha=0.55,
+            exp_log, obs_log, s=_sct, alpha=0.55,
             color=_BENCH_METHOD_COLORS[method], edgecolors="none",
             rasterized=True, zorder=3,
         )
         lim = max(exp_log.max(), obs_log.max()) * 1.05
         ax.plot([0, lim], [0, lim], color="#333333", linestyle="--", linewidth=0.8, alpha=0.7, zorder=2)
-        ax.set_title(_BENCH_METHOD_LABELS[method], fontsize=12, fontweight="bold",
-                     color=_BENCH_METHOD_COLORS[method], pad=8)
-        ax.set_xlabel(r"Expected $-\log_{10}(p)$", fontsize=10)
-        if mi == 0:
-            ax.set_ylabel(r"Observed $-\log_{10}(p)$", fontsize=10)
+        ax.set_title(
+            _BENCH_METHOD_LABELS[method], fontsize=_ttl_fs, fontweight="bold",
+            color=_BENCH_METHOD_COLORS[method], pad=_ttl_pad,
+        )
+        if composite:
+            if mi >= 2:
+                ax.set_xlabel(r"Expected $-\log_{10}(p)$", fontsize=_axlbl_fs)
+            else:
+                ax.set_xlabel("")
+            ax.set_ylabel("")
+        else:
+            ax.set_xlabel(r"Expected $-\log_{10}(p)$", fontsize=_axlbl_fs)
+            if mi == 0:
+                ax.set_ylabel(r"Observed $-\log_{10}(p)$", fontsize=_axlbl_fs)
         _style_axis(ax)
-    fig.suptitle(
-        f"Null-gene p-value calibration at {n_genes:,} genes, {signal_pct}% signal",
-        fontsize=13, fontweight="bold", y=1.03,
-    )
-    axes[0].legend(loc="upper left", frameon=True, framealpha=0.95, edgecolor="#cccccc", fontsize=8)
+        ax.tick_params(axis="both", which="major", labelsize=_axlbl_fs - 0.5)
+        if composite:
+            ax.tick_params(axis="x", labelbottom=(mi >= 2))
+            ax.tick_params(axis="y", labelleft=(mi in (0, 2)))
+    if not composite:
+        fig.suptitle(
+            f"Null-gene p-value calibration at {n_genes:,} genes, {signal_pct}% signal",
+            fontsize=13, fontweight="bold", y=1.03,
+        )
+        leg = axes[0].legend(
+            loc="upper left",
+            bbox_to_anchor=(0.02, 0.98),
+            frameon=True, framealpha=0.92, edgecolor="#cccccc",
+            fontsize=_leg_fs,
+        )
+    else:
+        # One shared y-label for both QQ rows, anchored in subfigure coordinates.
+        fig.text(
+            0.065,
+            0.5,
+            r"Observed $-\log_{10}(p)$",
+            rotation=90,
+            fontsize=_axlbl_fs,
+            ha="center",
+            va="center",
+            transform=fig.transSubfigure,
+            clip_on=False,
+        )
+        # Place the envelope key inside the upper-left of the first QQ panel —
+        # that corner has no scatter points, so the legend is always visible
+        # (subfigure-level fig.legend gets clipped behind the panel letter/title).
+        leg = axes[0].legend(
+            handles=[
+                Patch(
+                    facecolor="#9a9a9a",
+                    alpha=0.32,
+                    edgecolor="none",
+                    label="95% Beta envelope",
+                ),
+            ],
+            loc="upper left",
+            bbox_to_anchor=(0.03, 0.98),
+            ncol=1,
+            frameon=True,
+            framealpha=0.9,
+            edgecolor="#cccccc",
+            fontsize=_leg_fs,
+            handleheight=0.6,
+            handlelength=1.0,
+            handletextpad=0.35,
+            borderpad=0.3,
+            borderaxespad=0.0,
+        )
+    if composite and leg is not None:
+        leg.get_frame().set_linewidth(0.55)
 
 
-def _panel_bench_pure_null_fpr(ax, bench_df):
+def _panel_bench_pure_null_fpr(ax, bench_df, *, composite: bool = False):
     null = bench_df[(bench_df["is_null_scenario"]) & (bench_df["true_beta"] == 0.0)]
     rows = []
-    for (method, n_g), grp in null.groupby(["method", "n_genes"]):
     for (method, n_g), grp in null.groupby(["method", "n_genes"]):
         pvals = grp["pvalue"].dropna().values
         if len(pvals) == 0:
@@ -1566,12 +1682,16 @@ def _panel_bench_pure_null_fpr(ax, bench_df):
         rows.append({
             "method": method, "n_genes": int(n_g),
             "fpr": p, "ci_lo": ci.low, "ci_hi": ci.high,
-            "method": method, "n_genes": int(n_g),
-            "fpr": p, "ci_lo": ci.low, "ci_hi": ci.high,
         })
     df = pd.DataFrame(rows)
-    ax.axhspan(0.03, 0.07, color="#d62728", alpha=0.08, zorder=0, label="Nominal 5% ± 2%")
-    ax.axhline(0.05, color="#d62728", linestyle="--", linewidth=1.0, alpha=0.7, zorder=1)
+    ax.axhspan(
+        0.03, 0.07, color="#d62728", alpha=0.08, zorder=0,
+        label=None if composite else "Nominal 5% ± 2%",
+    )
+    ax.axhline(
+        0.05, color="#d62728", linestyle="--", linewidth=1.0, alpha=0.7, zorder=1,
+        label=("Nominal 5%" if composite else None),
+    )
     panel_sizes = sorted(_PANEL_SIZES)
     x_positions = np.arange(len(panel_sizes), dtype=float)
     n_to_x = dict(zip(panel_sizes, x_positions))
@@ -1590,37 +1710,77 @@ def _panel_bench_pure_null_fpr(ax, bench_df):
         lo = sub["ci_lo"].values
         hi = sub["ci_hi"].values
         is_focal = method == "sctrial_did"
+        _ms_hi, _ms_lo = (5.6, 4.3) if composite else (10, 8)
+        _lw_hi, _lw_lo = (1.25, 0.95) if composite else (2.0, 1.4)
+        _cap_w = (2.0, 0.85) if composite else (4, 1.2)
         ax.errorbar(
             xs, ys, yerr=[ys - lo, hi - ys], fmt=_BENCH_METHOD_MARKERS[method],
-            markersize=10 if is_focal else 8, color=_BENCH_METHOD_COLORS[method],
+            markersize=_ms_hi if is_focal else _ms_lo,
+            color=_BENCH_METHOD_COLORS[method],
             markerfacecolor=_BENCH_METHOD_COLORS[method], markeredgecolor="white",
-            markeredgewidth=0.8, ecolor=_BENCH_METHOD_COLORS[method],
-            elinewidth=1.4, capsize=4, capthick=1.2,
-            linestyle="-", linewidth=2.0 if is_focal else 1.4,
+            markeredgewidth=0.6 if composite else 0.8,
+            ecolor=_BENCH_METHOD_COLORS[method],
+            elinewidth=1.0 if composite else 1.4,
+            capsize=_cap_w[0], capthick=_cap_w[1],
+            linestyle="-",
+            linewidth=_lw_hi if is_focal else _lw_lo,
             label=_BENCH_METHOD_LABELS[method], alpha=0.92,
             zorder=10 if is_focal else 4,
         )
+    _tk_fs = 5.05 if composite else 11
+    _ttl_fs = 6.0 if composite else 12
+    _leg_fs = 3.45 if composite else 8
+
     ax.set_xticks(x_positions)
-    ax.set_xticklabels([f"{p:,}" for p in panel_sizes])
+    ax.set_xticklabels([f"{p:,}" for p in panel_sizes], fontsize=_tk_fs, rotation=0)
     ax.set_xlim(-0.35, len(panel_sizes) - 0.65)
-    ax.set_xlabel("Panel size (genes)", fontsize=11)
-    ax.set_ylabel("Pure-null Type I error (p < 0.05)", fontsize=11)
+    ax.set_xlabel("Panel size (genes)", fontsize=_tk_fs)
+    ax.set_ylabel("Pure-null Type I error (p < 0.05)", fontsize=_tk_fs)
     ax.set_ylim(0.025, 0.085)
     ax.yaxis.set_major_locator(MultipleLocator(0.01))
-    ax.set_title("All methods are calibrated under pure-null conditions", fontsize=12, fontweight="bold", pad=10)
-    ax.legend(loc="upper left", frameon=True, framealpha=0.95, edgecolor="#cccccc", fontsize=8)
+    ax.tick_params(axis="y", labelsize=_tk_fs)
+    ax.set_title(
+        "All methods are calibrated under pure-null conditions",
+        fontsize=_ttl_fs, fontweight="bold", pad=(5 if composite else 10),
+    )
+    if composite:
+        ax.legend(
+            loc="upper center",
+            bbox_to_anchor=(0.5, -0.28),
+            ncol=5,
+            frameon=True, framealpha=0.93, edgecolor="#cccccc",
+            fontsize=_leg_fs, columnspacing=0.75, handlelength=0.85,
+            markerscale=0.55,
+        )
+    else:
+        ax.legend(
+            loc="upper left", frameon=True, framealpha=0.95,
+            edgecolor="#cccccc", fontsize=_leg_fs,
+        )
     _style_axis(ax)
 
 
-def _panel_bench_signal_rmse(fig, bench_df):
+def _panel_bench_signal_rmse(fig, bench_df, *, composite: bool = False):
     df = _compute_signal_bias_rmse_table(bench_df)
     if hasattr(fig, "set_constrained_layout"):
         fig.set_constrained_layout(False)
-    gs = fig.add_gridspec(
-        2, 4,
-        hspace=0.38, wspace=0.22,
-        left=0.08, right=0.985, top=0.84, bottom=0.11,
-    )
+    if composite:
+        gs = fig.add_gridspec(
+            2, 4,
+            hspace=0.26, wspace=0.15,
+            # Extra room under the 2×4 grid for the method legend below the subfigure.
+            left=0.07, right=0.99, top=0.72, bottom=0.41,
+        )
+    else:
+        gs = fig.add_gridspec(
+            2, 4,
+            hspace=0.38, wspace=0.22,
+            left=0.08, right=0.985, top=0.84, bottom=0.11,
+        )
+    _ttl_fs = 6.35 if composite else 12
+    _yl_fs = 6.2 if composite else 11
+    _axis_fs = 5.35 if composite else 10
+    _xlab_fs = 5.45 if composite else 10
     bar_width = 0.20
     method_order = ["sctrial_did", "wilcoxon_paired", "nebula", "dreamlet"]
     x_positions = np.arange(len(_SIGNAL_FRACTIONS))
@@ -1658,58 +1818,60 @@ def _panel_bench_signal_rmse(fig, bench_df):
         ax_bias.set_xticklabels([])
         ax_bias.set_ylim(bias_lo, bias_hi)
         ax_bias.yaxis.set_major_locator(MultipleLocator(0.05))
-        ax_bias.set_title(f"{n_g:,} genes", fontsize=12, fontweight="bold", color="#222222", pad=8)
+        ax_bias.set_title(
+            f"{n_g:,} genes",
+            fontsize=_ttl_fs, fontweight="bold", color="#1a1a1a",
+            pad=(4 if composite else 8),
+        )
         _style_axis(ax_bias)
         ax_rmse.set_xticks(x_positions)
-        ax_rmse.set_xticklabels([f"{f}%" for f in _SIGNAL_FRACTIONS])
-        ax_rmse.set_xlabel("Signal fraction")
+        ax_rmse.set_xticklabels(
+            [f"{f}%" for f in _SIGNAL_FRACTIONS], fontsize=_axis_fs,
+        )
+        ax_rmse.set_xlabel("Signal fraction", fontsize=_xlab_fs)
         ax_rmse.set_ylim(0, rmse_hi)
         ax_rmse.yaxis.set_major_locator(MultipleLocator(0.05))
+        ax_rmse.tick_params(axis="both", labelsize=_axis_fs)
         _style_axis(ax_rmse)
+        ax_bias.tick_params(axis="y", labelsize=_axis_fs)
         if col > 0:
             ax_bias.set_yticklabels([])
             ax_rmse.set_yticklabels([])
-    bias_axes[0].set_ylabel(r"Mean bias ($\hat{\beta} - \beta$)", fontsize=11)
-    rmse_axes[0].set_ylabel(r"RMSE of $\hat{\beta}$", fontsize=11)
+    bias_axes[0].set_ylabel(
+        r"Mean bias ($\hat{\beta} - \beta$)", fontsize=_yl_fs,
+    )
+    rmse_axes[0].set_ylabel(r"RMSE of $\hat{\beta}$", fontsize=_yl_fs)
     legend_handles = [
         plt.Rectangle((0, 0), 1, 1, facecolor=_BENCH_METHOD_COLORS[m], edgecolor="white", linewidth=0.6,
                       label=_BENCH_METHOD_LABELS[m])
         for m in method_order
     ]
-    fig.legend(handles=legend_handles, loc="upper center", ncol=4, bbox_to_anchor=(0.53, 0.94),
-               frameon=True, framealpha=0.95, edgecolor="#cccccc", fontsize=9)
+    _leg_fs = 3.45 if composite else 9
+    if composite:
+        # Single-row legend below the 2×4 grid (transFigure coords of this subfig).
+        fig.legend(
+            handles=legend_handles,
+            loc="lower center",
+            ncol=4,
+            bbox_to_anchor=(0.56, 0.015),
+            bbox_transform=fig.transFigure,
+            frameon=True, framealpha=0.93, edgecolor="#cccccc",
+            fontsize=_leg_fs,
+            handlelength=0.85,
+            handleheight=0.42,
+            handletextpad=0.35,
+            columnspacing=0.55,
+            borderpad=0.35,
+        )
+    else:
+        fig.legend(
+            handles=legend_handles, loc="upper center", ncol=4,
+            bbox_to_anchor=(0.53, 0.94),
+            frameon=True, framealpha=0.95, edgecolor="#cccccc", fontsize=_leg_fs,
+        )
 
 
-def _panel_bench_runtime(ax, bench_df):
-    rt = (
-        bench_df.groupby(["method", "scenario", "n_genes", "iteration"])["runtime_seconds"]
-        .first()
-        .reset_index()
-    )
-    summary = rt.groupby(["method", "n_genes"])["runtime_seconds"].median().reset_index()
-    x_positions = np.arange(len(_PANEL_SIZES), dtype=float)
-    n_to_x = dict(zip(_PANEL_SIZES, x_positions))
-    for method in _BENCH_METHODS:
-        sub = summary[summary["method"] == method].sort_values("n_genes")
-        if sub.empty:
-            continue
-        is_focal = method == "sctrial_did"
-        style = _method_style(method, is_focal=is_focal)
-        xs = [n_to_x[int(n)] for n in sub["n_genes"].values]
-        ax.plot(xs, sub["runtime_seconds"], label=_BENCH_METHOD_LABELS[method],
-                zorder=10 if is_focal else 3, **style)
-    ax.set_yscale("log")
-    ax.set_xticks(x_positions)
-    ax.set_xticklabels([f"{p:,}" for p in _PANEL_SIZES])
-    ax.set_xlim(-0.35, len(_PANEL_SIZES) - 0.65)
-    ax.set_xlabel("Panel size (genes)", fontsize=11)
-    ax.set_ylabel("Median runtime per iteration (s)", fontsize=11)
-    ax.set_title("Computational cost", fontsize=12, fontweight="bold", pad=10)
-    ax.legend(loc="upper left", frameon=True, framealpha=0.95, edgecolor="#cccccc", fontsize=9)
-    _style_axis(ax)
-
-
-def _panel_bench_runtime(ax, bench_df):
+def _panel_bench_runtime(ax, bench_df, *, composite: bool = False):
     """Per-iteration runtime by method × panel size (log y).
 
     X-axis uses evenly-spaced categorical positions so the 4 panel sizes
@@ -1732,12 +1894,17 @@ def _panel_bench_runtime(ax, bench_df):
     x_positions = np.arange(len(_PANEL_SIZES), dtype=float)
     n_to_x = dict(zip(_PANEL_SIZES, x_positions))
 
+    _lbl_fs = 5.05 if composite else 11
+    _ttl_fs = 6.0 if composite else 12
+    _ttl_pad = 5 if composite else 10
+    _leg_fs = 3.45 if composite else 9
+
     for method in _BENCH_METHODS:
         sub = summary[summary["method"] == method].sort_values("n_genes")
         if sub.empty:
             continue
         is_focal = method == "sctrial_did"
-        style = _method_style(method, is_focal=is_focal)
+        style = _method_style(method, is_focal=is_focal, composite=composite)
         xs = [n_to_x[int(n)] for n in sub["n_genes"].values]
         ax.plot(
             xs, sub["runtime_seconds"],
@@ -1748,16 +1915,27 @@ def _panel_bench_runtime(ax, bench_df):
 
     ax.set_yscale("log")
     ax.set_xticks(x_positions)
-    ax.set_xticklabels([f"{p:,}" for p in _PANEL_SIZES])
+    ax.set_xticklabels([f"{p:,}" for p in _PANEL_SIZES], fontsize=_lbl_fs)
     ax.set_xlim(-0.35, len(_PANEL_SIZES) - 0.65)
-    ax.set_xlabel("Panel size (genes)", fontsize=11)
-    ax.set_ylabel("Median runtime per iteration (s)", fontsize=11)
-    ax.set_title("Computational cost",
-                 fontsize=12, fontweight="bold", pad=10)
-    ax.legend(
-        loc="upper left", frameon=True, framealpha=0.95,
-        edgecolor="#cccccc", fontsize=9,
+    ax.set_xlabel("Panel size (genes)", fontsize=_lbl_fs)
+    ax.set_ylabel("Median runtime per iteration (s)", fontsize=_lbl_fs)
+    ax.set_title(
+        "Computational cost", fontsize=_ttl_fs, fontweight="bold", pad=_ttl_pad,
     )
+    ax.tick_params(axis="y", labelsize=_lbl_fs)
+    if composite:
+        ax.legend(
+            loc="upper left",
+            bbox_to_anchor=(0.02, 0.72),
+            frameon=True, framealpha=0.95, edgecolor="#cccccc", fontsize=_leg_fs,
+            markerscale=0.52, handlelength=1.0,
+        )
+    else:
+        ax.legend(
+            loc="upper left", frameon=True, framealpha=0.95,
+            edgecolor="#cccccc", fontsize=_leg_fs,
+            markerscale=1.0, handlelength=1.5,
+        )
     _style_axis(ax)
 
 
@@ -1909,10 +2087,10 @@ def generate():
         "axes.labelsize": _COMPOSITE_E_AXIS_LABEL_FS,
         "xtick.labelsize": _COMPOSITE_E_XTICK_FS,
         "ytick.labelsize": _COMPOSITE_E_YTICK_FS,
-        "legend.fontsize": 4,
-        "legend.title_fontsize": 4,
+        "legend.fontsize": 4.25,
+        "legend.title_fontsize": 4.25,
     }
-    _MAX_FONT = 6
+    _MAX_FONT = 6.5
 
     def _cap_fontsize(fig_obj, maximum):
         for ax_i in fig_obj.get_axes():
@@ -1929,6 +2107,13 @@ def generate():
                 t = leg.get_title()
                 if t and t.get_fontsize() > maximum:
                     t.set_fontsize(maximum)
+        for leg in list(getattr(fig_obj, "legends", []) or []):
+            for txt in leg.get_texts():
+                if txt.get_fontsize() > maximum:
+                    txt.set_fontsize(maximum)
+            t = leg.get_title()
+            if t and t.get_fontsize() > maximum:
+                t.set_fontsize(maximum)
 
     _prev_rc = {k: plt.rcParams[k] for k in _SMALL_RC}
     plt.rcParams.update(_SMALL_RC)
@@ -1941,18 +2126,25 @@ def generate():
     outer = fig_c.add_gridspec(
         2, 1,
         height_ratios=[0.48 + 2.15, 0.46],
-        hspace=0.18,
-        left=0.065, right=0.985, top=0.97, bottom=0.028,
+        hspace=0.16,
+        # Extra bottom margin for panel L legend (below x-axis).
+        left=0.065, right=0.985, top=0.97, bottom=0.068,
     )
     top_stack = outer[0].subgridspec(
         2, 1,
         height_ratios=[0.48, 2.15],
-        hspace=0.16,
+        hspace=0.18,
     )
-    mid = top_stack[1].subgridspec(
-        3, 1,
-        height_ratios=[0.44, 0.46, 0.46],
-        hspace=0.52,
+    # Split mid-rows so we can tune the (row 3 ↔ row 4) gap independently.
+    mid23 = top_stack[1].subgridspec(
+        2, 1,
+        height_ratios=[0.44, 0.92],
+        hspace=0.33,  # spacing between rows 2 and 3
+    )
+    mid34 = mid23[1].subgridspec(
+        2, 1,
+        height_ratios=[0.46, 0.46],
+        hspace=0.46,  # spacing between rows 3 and 4
     )
 
     # ── Row 1: A (forest plot) ───────────────────────────────────────
@@ -1966,7 +2158,7 @@ def generate():
     subfig_a.subplots_adjust(wspace=0.42, left=0.04, right=0.98, top=0.88, bottom=0.14)
 
     # ── Row 2: B | C | D | E ─────────────────────────────────────────
-    gs_r2 = mid[0].subgridspec(1, 4, wspace=0.52)
+    gs_r2 = mid23[0].subgridspec(1, 4, wspace=0.52)
     ax_b = fig_c.add_subplot(gs_r2[0])
     ax_cc = fig_c.add_subplot(gs_r2[1])
     ax_d = fig_c.add_subplot(gs_r2[2])
@@ -1978,7 +2170,7 @@ def generate():
     _panel_ct_heatmap(ax_e, data, composite=True)
 
     # ── Row 3: F | G | H (cols 1 & 3 are spacers: tighter F–G, wider G–H)
-    gs_r3 = mid[1].subgridspec(
+    gs_r3 = mid34[0].subgridspec(
         1, 5,
         wspace=0.32,
         width_ratios=[0.72, 0.035, 1.0, 0.12, 1.42],
@@ -1996,51 +2188,71 @@ def generate():
     else:
         ax_g.text(0.5, 0.5, "No LOO data", ha="center", va="center",
                   transform=ax_g.transAxes)
-    _panel_bench_fpr_curves(subfig_h, bench_df)
-    subfig_h.subplots_adjust(left=0.11, right=0.985, top=0.82, bottom=0.18)
+    _panel_bench_fpr_curves(subfig_h, bench_df, composite=True)
+    subfig_h.subplots_adjust(left=0.09, right=0.982, top=0.74, bottom=0.22)
 
-    # ── Row 4: I | J | K (spacers: tighter I–J, wider J–K)
-    gs_r4 = mid[2].subgridspec(
+    # ── Row 4: I | J | K (slightly narrower I, slightly wider I–J gap)
+    gs_r4 = mid34[1].subgridspec(
         1, 5,
-        wspace=0.28,
-        width_ratios=[0.78, 0.012, 0.68, 0.22, 1.46],
+        wspace=0.42,
+        width_ratios=[1.44, 0.22, 0.80, 0.04, 1.05],
     )
     subfig_i = fig_c.add_subfigure(gs_r4[0])
     ax_j = fig_c.add_subplot(gs_r4[2])
     subfig_k = fig_c.add_subfigure(gs_r4[4])
 
-    _panel_bench_fpr_heatmap(subfig_i, bench_df)
-    _panel_bench_lambda_gc(ax_j, bench_df)
-    _panel_bench_qq(subfig_k, bench_df, n_genes=200, signal_pct=10)
-    subfig_i.subplots_adjust(left=0.03, right=0.99, top=0.82, bottom=0.16)
-    subfig_k.subplots_adjust(left=0.05, right=0.992, top=0.82, bottom=0.46)
+    _panel_bench_fpr_heatmap(subfig_i, bench_df, composite=True)
+    _panel_bench_lambda_gc(ax_j, bench_df, composite=True)
+    _panel_bench_qq(
+        subfig_k, bench_df, n_genes=200, signal_pct=10, composite=True,
+    )
+    subfig_i.subplots_adjust(left=0.06, right=0.965, top=0.90, bottom=0.27)
+    subfig_k.subplots_adjust(left=0.10, right=0.98, top=0.89, bottom=0.19)
 
     # ── Row 5: L | M | N ────────────────────────────────────────────
-    gs_r5 = outer[1].subgridspec(1, 3, wspace=0.45, width_ratios=[0.9, 1.22, 0.92])
+    # Wider L (was 0.95): trim mostly from N so M stays comparable.
+    gs_r5 = outer[1].subgridspec(1, 3, wspace=0.52, width_ratios=[1.12, 1.22, 0.75])
     ax_l = fig_c.add_subplot(gs_r5[0])
     subfig_m = fig_c.add_subfigure(gs_r5[1])
     ax_n = fig_c.add_subplot(gs_r5[2])
 
-    _panel_bench_pure_null_fpr(ax_l, bench_df)
-    _panel_bench_signal_rmse(subfig_m, bench_df)
-    subfig_m.subplots_adjust(left=0.11, right=0.985, top=0.80, bottom=0.22)
-    _panel_bench_runtime(ax_n, bench_df)
+    _panel_bench_pure_null_fpr(ax_l, bench_df, composite=True)
+    _panel_bench_signal_rmse(subfig_m, bench_df, composite=True)
+    # Reserve subfigure margin so the single-row fig.legend (y≈0.02) stays below the grid.
+    subfig_m.subplots_adjust(left=0.11, right=0.985, top=0.80, bottom=0.26)
+    _panel_bench_runtime(ax_n, bench_df, composite=True)
     # Final layout so get_position() is correct; shrink faceted subfigures to
-    # match same-row neighbour axis height (G for H; J for K; L for M).
+    # match same-row neighbour axis height (G for H; J for I & K; L for M).
     fig_c.canvas.draw()
     _COMP_HM_HEIGHT_FRAC = 0.88
     _match_subfig_axes_height_to_ref(
         ax_g, subfig_h, height_frac=_COMP_HM_HEIGHT_FRAC,
     )
-    _match_subfig_axes_height_to_ref(ax_j, subfig_k)
+    _match_subfig_axes_height_to_ref(ax_j, subfig_i)
+    _match_subfig_axes_height_to_ref(ax_j, subfig_k, height_frac=0.88)
     _match_subfig_axes_height_to_ref(
         ax_l, subfig_m, height_frac=_COMP_HM_HEIGHT_FRAC,
+    )
+    # Put panel-I shared x-label directly under panel I (not under row 5).
+    _bb_i = _subfig_bbox_in_figure_coords(fig_c, subfig_i)
+    fig_c.text(
+        _bb_i.x0 + 0.5 * _bb_i.width,
+        _bb_i.y0 - 0.018,
+        "Panel size (genes)",
+        ha="center",
+        va="top",
+        fontsize=_COMPOSITE_E_AXIS_LABEL_FS,
+        transform=fig_c.transFigure,
     )
 
     # ── Post-processing ───────────────────────────────────────────────
     for ax_pp in fig_c.get_axes():
         leg = ax_pp.get_legend()
         if leg:
+            leg.get_frame().set_alpha(0.85)
+            leg.get_frame().set_edgecolor("#CCCCCC")
+    for _sf in (subfig_a, subfig_h, subfig_i, subfig_k, subfig_m):
+        for leg in list(getattr(_sf, "legends", []) or []):
             leg.get_frame().set_alpha(0.85)
             leg.get_frame().set_edgecolor("#CCCCCC")
 
@@ -2069,7 +2281,7 @@ def generate():
         (ax_j, "J"),
         (ax_l, "L"), (ax_n, "N"),
     ]:
-        _x = _lbl_x_left if lbl in ("B", "F") else _lbl_xy[0]
+        _x = _lbl_x_left if lbl in ("B", "F") else (_lbl_xy[0] - 0.05 if lbl == "J" else _lbl_xy[0])
         ax_lbl.text(
             _x, _lbl_xy[1], lbl,
             transform=ax_lbl.transAxes,
@@ -2086,9 +2298,9 @@ def generate():
             )
 
     _label_subfig_panel(subfig_h, "H", y=1.20)
-    _label_subfig_panel(subfig_i, "I", x=-0.30, y=1.15)
-    _label_subfig_panel(subfig_k, "K", x=-0.46, y=1.06)
-    _label_subfig_panel(subfig_m, "M", x=_lbl_x_left, y=1.20)
+    _label_subfig_panel(subfig_i, "I", x=-0.30, y=1.12)
+    _label_subfig_panel(subfig_k, "K", x=-0.30, y=1.14)
+    _label_subfig_panel(subfig_m, "M", x=_lbl_x_left, y=1.14)
 
     # E & G: heatmaps — label slightly lower to clear title/colorbar
     _heat_y = 1.08
@@ -2106,10 +2318,24 @@ def generate():
     # H/M row titles: same size as panel G axis title (axes.titlesize in composite).
     _figure_title_above_subfig(
         fig_c,
+        subfig_a,
+        "Analytical vs Bootstrap SE",
+        fontsize=_SMALL_RC["axes.titlesize"],
+        pad_frac=0.006,
+    )
+    _figure_title_above_subfig(
+        fig_c,
         subfig_h,
         "Null-gene FPR vs signal fraction",
         fontsize=_SMALL_RC["axes.titlesize"],
         pad_frac=0.004,
+    )
+    _figure_title_above_subfig(
+        fig_c,
+        subfig_k,
+        "Null-gene p-value calibration at 200 genes, 10% signal",
+        fontsize=_SMALL_RC["axes.titlesize"],
+        pad_frac=0.006,
     )
     _figure_title_above_subfig(
         fig_c,
