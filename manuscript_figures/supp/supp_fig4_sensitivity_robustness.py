@@ -3,10 +3,13 @@ Supplementary Figure 4 — Sensitivity, Robustness, and Benchmarking.
 ===================================================================
 
 Panels A–G characterize the sensitivity and robustness of sctrial's
-participant-level inference on real datasets.  Panels H–N benchmark
-sctrial against established multi-subject methods (dreamlet, NEBULA,
-Wilcoxon on change scores) on a hierarchical gamma-Poisson simulator
-across gene-panel sizes (50–2000) and signal fractions (1–20%).
+participant-level inference on real datasets.  Panels H–J carry the
+remaining NatMeth benchmark results against established multi-subject
+methods (dreamlet, NEBULA, Wilcoxon on change scores) on a
+hierarchical gamma-Poisson simulator (panel sizes 50–2000, signal
+fractions 1–20%); the FPR-curve, λ_GC, and signal-RMSE benchmark
+panels were promoted to Figure 3. Panel K shows empirical power
+curves on real datasets (formerly Figure 3 panel C).
 
 Panels
 ------
@@ -18,13 +21,11 @@ Panels
   F  Rank-order concordance across preprocessing choices (Melanoma).
   G  Leave-one-out stability matrix (max influence, all datasets).
   --- NatMeth benchmark (sctrial_did, dreamlet, NEBULA, Wilcoxon) ---
-  H  Benchmark: two-arm signal-gene power curves (faceted by n).
-  I  Benchmark: null calibration FPR (dot-and-whisker, both designs).
-  J  Benchmark: genomic inflation factor λ_GC (two-arm null).
-  K  Benchmark: faceted p-value QQ plots with 95% Beta envelope (two-arm, n=40).
-  L  Benchmark: null-gene FPR in DE scenarios (dreamlet inflation finding).
-  M  Benchmark: single-arm signal-gene power curves.
-  N  Benchmark: runtime comparison across methods.
+  H  Benchmark: faceted p-value QQ plots with 95% Beta envelope (two-arm, n=40).
+  I  Benchmark: pure-null Type I error vs panel size.
+  J  Benchmark: runtime comparison across methods.
+  --- Empirical power on real datasets ---
+  K  Empirical power curves (participant subsampling).
 
 Non-overlap guardrail: methodological sensitivity only, not biological claims.
 """
@@ -32,6 +33,7 @@ Non-overlap guardrail: methodological sensitivity only, not biological claims.
 from __future__ import annotations
 
 import gc
+import hashlib
 import pickle
 from pathlib import Path
 
@@ -42,16 +44,18 @@ import pandas as pd
 import seaborn as sns
 from matplotlib.patches import Patch
 from matplotlib.ticker import MultipleLocator
-from matplotlib.ticker import MultipleLocator
 from scipy import stats as sp_stats
 
 from .._shared import (
     COLORS,
     SUPP_OUTPUT,
+    TrialDesign,
     add_log1p_cpm_layer,
     apply_style,
+    between_arm_comparison,
     clear_cache,
     despine,
+    did_table,
     get_aml,
     get_cart,
     get_sade_feldman,
@@ -59,6 +63,8 @@ from .._shared import (
     get_vaccine,
     harmonize_response,
     save_panel,
+    score_signatures,
+    within_arm_comparison,
 )
 
 FIGURE_NAME = "SuppFig4_sensitivity_robustness"
@@ -870,7 +876,7 @@ def _panel_loo_stability(ax):
 
 
 # ======================================================================
-# Legacy dataset config (shared by panels G, H, and bootstrap)
+# Legacy dataset config (shared by panel G LOO heatmap and panel A bootstrap)
 # ======================================================================
 
 _MDE_DATASET_CFG = {
@@ -933,7 +939,543 @@ _MDE_DATASET_CFG = {
 }
 
 
+# ======================================================================
+# Multi-dataset power constants, loaders, and helpers (panel K)
+# (duplicated from manuscript_figures/main/figure3_robustness_benchmarking.py
+#  per design choice; json cache helpers renamed to *_json_* to avoid
+#  collision with the pickle-based _load_cache/_save_cache above)
+# ======================================================================
 
+N_POWER_ITERATIONS = 200
+POWER_ALPHA = 0.05
+RNG_SEED = 42
+_CODE_VERSION = "v14"
+
+DatasetInfo = tuple[str, object, object, tuple, list[str], str]
+
+_DATASET_TAGS: dict[str, str] = {
+    "Sade-Feldman": "SF",
+    "AML": "AML",
+    "CAR-T": "CAR-T",
+    "Vaccine": "VAX",
+    "COVID-19": "COVID",
+}
+
+_METHOD_FAMILY: dict[str, str] = {
+    "two_arm_did": "did_table",
+    "paired": "did_table",
+    "cross_sectional": "between_arm",
+}
+
+_PRESPECIFIED_ENDPOINTS = [
+    "sig_Cytotoxic T Cell Activity",
+    "sig_Interferon Response",
+    "sig_Immune Exhaustion",
+    "sig_T Cell Activation",
+    "sig_Inflammatory Response",
+]
+
+_DATASET_PRIMARY_ENDPOINT: dict[str, str] = {
+    "Sade-Feldman": "sig_Interferon Response",
+    "AML":          "sig_Cytotoxic T Cell Activity",
+    "CAR-T":        "sig_Cytotoxic T Cell Activity",
+    "Vaccine":      "sig_Cytotoxic T Cell Activity",
+    "COVID-19":     "sig_Inflammatory Response",
+}
+
+DATASET_COLORS = {
+    "Sade-Feldman": COLORS["control"],
+    "Vaccine":      COLORS["treated"],
+    "AML":          COLORS["success"],
+    "CAR-T":        COLORS["neutral"],
+    "COVID-19":     COLORS["highlight"],
+}
+
+_DATASET_DISPLAY_NAMES: dict[str, str] = {
+    "Sade-Feldman": "Melanoma",
+}
+
+SF_DESIGN = TrialDesign(
+    participant_col="participant_id",
+    visit_col="visit",
+    arm_col="response_harmonized",
+    arm_treated="Responder",
+    arm_control="Non-responder",
+)
+SF_VISITS: tuple[str, str] = ("Pre", "Post")
+
+
+# ---- JSON cache helpers (separate from pickle cache above) -------------
+
+_JSON_CACHE_DIR = Path(__file__).resolve().parent.parent / "_cache"
+
+
+def _cache_key_json(*args: str) -> str:
+    payload = "|".join([_CODE_VERSION] + list(args))
+    return hashlib.md5(payload.encode()).hexdigest()[:12]
+
+
+def _load_json_cache(tag: str) -> pd.DataFrame | None:
+    path = _JSON_CACHE_DIR / f"{tag}.json"
+    if path.exists():
+        try:
+            return pd.read_json(path, orient="records")
+        except Exception:
+            return None
+    return None
+
+
+def _save_json_cache(tag: str, df: pd.DataFrame) -> None:
+    _JSON_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    df.to_json(_JSON_CACHE_DIR / f"{tag}.json", orient="records", indent=2)
+
+
+# ---- Per-dataset loaders (memory-efficient, one at a time) -------------
+
+def _load_sf() -> DatasetInfo:
+    sf = get_sade_feldman()
+    sf = harmonize_response(sf)
+    sf, sf_sigs = score_signatures(sf, layer="log1p_tpm")
+    return ("Sade-Feldman", sf, SF_DESIGN, SF_VISITS, sf_sigs, "two_arm_did")
+
+
+def _load_vaccine() -> DatasetInfo:
+    vacc = get_vaccine()
+    vacc, vacc_sigs = score_signatures(vacc, layer="counts")
+    vacc_design = TrialDesign(
+        participant_col="participant_id", visit_col="visit", arm_col=None,
+    )
+    return ("Vaccine", vacc, vacc_design, ("Pre", "Post"), vacc_sigs, "paired")
+
+
+def _load_aml() -> DatasetInfo:
+    aml = get_aml()
+    aml, aml_sigs = score_signatures(aml, layer="counts")
+    pid_col = "participant_id" if "participant_id" in aml.obs.columns else "patient_id"
+    aml_design = TrialDesign(
+        participant_col=pid_col, visit_col="visit", arm_col=None,
+    )
+    return ("AML", aml, aml_design, ("Pre", "Post"), aml_sigs, "paired")
+
+
+def _load_cart() -> DatasetInfo:
+    cart = get_cart()
+    cart, cart_sigs = score_signatures(cart, layer="counts")
+    pid_col = "participant_id" if "participant_id" in cart.obs.columns else "patient_id"
+    cart_design = TrialDesign(
+        participant_col=pid_col, visit_col="visit", arm_col=None,
+    )
+    return ("CAR-T", cart, cart_design, ("Pre", "Post"), cart_sigs, "paired")
+
+
+def _load_covid() -> DatasetInfo:
+    covid = get_stephenson()
+    covid, covid_sigs = score_signatures(covid, layer="counts")
+    if "dfo_bin" in covid.obs.columns:
+        top_bin = covid.obs["dfo_bin"].value_counts().idxmax()
+    else:
+        top_bin = "Pre"
+    covid_design = TrialDesign(
+        participant_col="participant_id",
+        visit_col="dfo_bin",
+        arm_col="severity",
+        arm_treated="Severe",
+        arm_control="Mild",
+    )
+    return ("COVID-19", covid, covid_design, (top_bin,), covid_sigs, "cross_sectional")
+
+
+def _load_dataset_by_index(idx: int) -> DatasetInfo | None:
+    """Load a single dataset by index (0-4), returning None on failure."""
+    loaders = [_load_sf, _load_vaccine, _load_aml, _load_cart, _load_covid]
+    if idx >= len(loaders):
+        return None
+    try:
+        return loaders[idx]()
+    except Exception as exc:
+        print(f"    Dataset {idx}: FAILED to load ({exc})")
+        return None
+
+
+# ---- Power computation helpers -----------------------------------------
+
+def _wilson_ci(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
+    """Wilson score interval for binomial proportion."""
+    if n == 0:
+        return (0.0, 1.0)
+    p_hat = k / n
+    denom = 1 + z**2 / n
+    centre = (p_hat + z**2 / (2 * n)) / denom
+    half_width = (
+        z * np.sqrt(p_hat * (1 - p_hat) / n + z**2 / (4 * n**2)) / denom
+    )
+    return (max(0.0, centre - half_width), min(1.0, centre + half_width))
+
+
+def _stratified_subsample_pids(
+    adata,
+    design: "TrialDesign",
+    dtype: str,
+    n_sub: int,
+    rng: np.random.Generator,
+) -> np.ndarray | None:
+    """Subsample participants preserving arm/visit balance where possible."""
+    pid_col = design.participant_col
+    all_pids = adata.obs[pid_col].unique()
+
+    if dtype in ("two_arm_did", "cross_sectional") and n_sub >= 6:
+        arm_pids: dict[str, np.ndarray] = {}
+        for arm in [design.arm_treated, design.arm_control]:
+            arm_pids[arm] = adata.obs.loc[
+                adata.obs[design.arm_col] == arm, pid_col
+            ].unique()
+        n_t = len(arm_pids[design.arm_treated])
+        n_c = len(arm_pids[design.arm_control])
+        frac_t = n_t / (n_t + n_c)
+        n_sub_t = max(3, round(n_sub * frac_t))
+        n_sub_c = n_sub - n_sub_t
+        if n_sub_c < 3:
+            n_sub_c = 3
+            n_sub_t = n_sub - n_sub_c
+        n_sub_t = min(n_sub_t, n_t)
+        n_sub_c = min(n_sub_c, n_c)
+        if n_sub_t < 3 or n_sub_c < 3:
+            return None
+        sampled = np.concatenate([
+            rng.choice(arm_pids[design.arm_treated], n_sub_t, replace=False),
+            rng.choice(arm_pids[design.arm_control], n_sub_c, replace=False),
+        ])
+        return sampled
+
+    return rng.choice(all_pids, size=min(n_sub, len(all_pids)), replace=False)
+
+
+def _compute_subsampling_power(
+    datasets: list[DatasetInfo],
+) -> pd.DataFrame:
+    """Compute empirical power via participant subsampling on real datasets."""
+    cache_tag = "power_" + _cache_key_json(
+        *[f"{n}:{a.n_obs}" for n, a, *_ in datasets],
+        str(N_POWER_ITERATIONS),
+    )
+    cached = _load_json_cache(cache_tag)
+    if cached is not None:
+        print("  Empirical power curves (cached)")
+        return cached
+
+    print("  Computing empirical power curves (participant subsampling) ...")
+    rng = np.random.default_rng(RNG_SEED)
+    records: list[dict] = []
+    import warnings as _warnings
+
+    for name, adata, design, visits, sigs, dtype in datasets:
+        pid_col = design.participant_col
+        vis_col = design.visit_col
+
+        if dtype in ("paired", "two_arm_did"):
+            pid_visits = adata.obs.groupby(pid_col, observed=True)[vis_col].apply(set)
+            analyzable_pids = pid_visits[
+                pid_visits.apply(lambda s: set(visits).issubset(s))
+            ].index.tolist()
+        else:
+            analyzable_pids = adata.obs[pid_col].unique().tolist()
+
+        n_total = len(analyzable_pids)
+        if n_total < 4:
+            print(f"    {name}: too few analyzable participants ({n_total}), skipping")
+            continue
+
+        adata = adata[adata.obs[pid_col].isin(analyzable_pids)].copy()
+
+        feat = _DATASET_PRIMARY_ENDPOINT.get(name)
+        if feat and feat in sigs and feat in adata.obs.columns:
+            pass
+        else:
+            feat = next((ep for ep in _PRESPECIFIED_ENDPOINTS
+                         if ep in sigs and ep in adata.obs.columns), None)
+        if feat is None:
+            print(f"    {name}: no valid endpoint available, skipping")
+            continue
+        print(f"      Primary endpoint: {feat}")
+
+        adata = adata[:, adata.var_names[:1]].copy()
+        gc.collect()
+
+        min_sub = 6 if dtype in ("two_arm_did", "cross_sectional") else 4
+        max_sub = n_total - 1 if n_total > min_sub else n_total
+        sub_sizes = sorted(set(
+            [min_sub, min_sub + 2, min_sub + 4]
+            + list(range(min_sub, min(max_sub, 30) + 1, 5))
+            + [max_sub]
+        ))
+        sub_sizes = [s for s in sub_sizes if min_sub <= s <= max_sub]
+
+        if adata.n_obs > 100_000:
+            n_iter = 100
+        elif adata.n_obs > 50_000:
+            n_iter = N_POWER_ITERATIONS // 2
+        else:
+            n_iter = N_POWER_ITERATIONS
+
+        print(f"    {name} ({n_total} ppts, {dtype}, feat={feat}, "
+              f"n_iter={n_iter}): ", end="", flush=True)
+
+        for n_sub in sub_sizes:
+            n_sig = 0
+            n_valid = 0
+            n_fail = 0
+            for _ in range(n_iter):
+                sampled_pids = _stratified_subsample_pids(
+                    adata, design, dtype, n_sub, rng,
+                )
+                if sampled_pids is None:
+                    n_fail += 1
+                    continue
+                mask = adata.obs[pid_col].isin(sampled_pids)
+                sub_adata = adata[mask]
+
+                with _warnings.catch_warnings():
+                    _warnings.simplefilter("ignore")
+                    try:
+                        if dtype == "cross_sectional":
+                            res = between_arm_comparison(
+                                sub_adata,
+                                visit=visits[0],
+                                features=[feat],
+                                design=design,
+                                aggregate="participant_visit",
+                                standardize=True,
+                            )
+                        elif dtype == "paired":
+                            res = within_arm_comparison(
+                                sub_adata,
+                                arm="All",
+                                features=[feat],
+                                design=design,
+                                visits=visits,
+                                aggregate="participant_visit",
+                                standardize=True,
+                            )
+                        else:
+                            res = did_table(
+                                sub_adata,
+                                features=[feat],
+                                design=design,
+                                visits=visits,
+                                aggregate="participant_visit",
+                                standardize=True,
+                            )
+                        p_col = next(
+                            (c for c in ("p_time", "p_DiD", "p_arm", "p_value")
+                             if c in res.columns),
+                            None,
+                        )
+                        if p_col is None or res.empty:
+                            n_fail += 1
+                            continue
+                        n_valid += 1
+                        if res[p_col].iloc[0] < POWER_ALPHA:
+                            n_sig += 1
+                    except Exception:
+                        n_fail += 1
+
+            gc.collect()
+            power = n_sig / n_iter
+            records.append({
+                "n_participants": n_sub,
+                "dataset": name,
+                "power": power,
+                "n_valid": n_valid,
+                "n_failures": n_fail,
+                "feature": feat,
+                "design_type": dtype,
+                "n_analyzable": n_total,
+            })
+
+        ds_records = [r for r in records if r["dataset"] == name]
+        powers = [r["power"] for r in ds_records if not np.isnan(r["power"])]
+        total_fail = sum(r["n_failures"] for r in ds_records)
+        if powers:
+            print(f"range [{min(powers):.2f}, {max(powers):.2f}], "
+                  f"{total_fail} fit failures")
+        else:
+            print("no valid results")
+
+    power_df = pd.DataFrame(records)
+    _save_json_cache(cache_tag, power_df)
+    return power_df
+
+
+def _prepare_power_data() -> dict:
+    """Load each dataset, compute power curves, free dataset between iterations."""
+    print("  Loading datasets one at a time for power curves ...")
+
+    power_frames: list[pd.DataFrame] = []
+    for idx in range(5):
+        ds = _load_dataset_by_index(idx)
+        if ds is None:
+            continue
+        name = ds[0]
+        print(f"  {name}: {ds[1].n_obs:,} cells, {ds[1].n_vars:,} genes")
+
+        pdf = _compute_subsampling_power([ds])
+        if pdf is not None and not pdf.empty:
+            power_frames.append(pdf)
+
+        del ds
+        gc.collect()
+
+    return {
+        "power_df": pd.concat(power_frames, ignore_index=True) if power_frames else pd.DataFrame(),
+    }
+
+
+# ---- Power-curve panel functions ---------------------------------------
+
+def _panel_power_grid(
+    fig: plt.Figure,
+    gs_parent,
+    data: dict,
+    *,
+    inner_wspace: float = 0.30,
+) -> list[plt.Axes]:
+    """Draw power curves into a gridspec area, returning created axes.
+
+    Styling is intentionally matched to Figure 3C (legacy `fig3_c.py`), with
+    only the panel arrangement changed to support a 2-row 3+2 layout when
+    five datasets are present.
+    """
+    from sklearn.isotonic import IsotonicRegression
+    from matplotlib.ticker import MaxNLocator
+
+    power_data = data.get("power_data")
+    if power_data is None:
+        ax = fig.add_subplot(gs_parent)
+        ax.text(0.5, 0.5, "Power data unavailable",
+                ha="center", va="center", transform=ax.transAxes)
+        despine(ax)
+        return [ax]
+
+    power_df = power_data["power_df"]
+    if power_df.empty:
+        ax = fig.add_subplot(gs_parent)
+        ax.text(0.5, 0.5, "No power data",
+                ha="center", va="center", transform=ax.transAxes)
+        despine(ax)
+        return [ax]
+
+    _DESIGN_LABELS = {
+        "two_arm_did": "Two-arm DiD",
+        "paired": "Paired pre/post",
+        "cross_sectional": "Cross-sectional",
+    }
+
+    ds_names = list(dict.fromkeys(power_df["dataset"]))
+    n_ds = len(ds_names)
+
+    if n_ds == 5:
+        # 2-row 3+2 arrangement (requested), with centered second row.
+        gs_inner = gs_parent.subgridspec(2, 8, wspace=inner_wspace, hspace=1.3)
+        slots = [
+            gs_inner[0, 0:2], gs_inner[0, 3:5], gs_inner[0, 6:8],
+            gs_inner[1, 1:3], gs_inner[1, 5:7],
+        ]
+    else:
+        gs_inner = gs_parent.subgridspec(1, n_ds, wspace=inner_wspace)
+        slots = [gs_inner[0, i] for i in range(n_ds)]
+
+    axes: list[plt.Axes] = []
+
+    for i, ds_name in enumerate(ds_names):
+        ax = fig.add_subplot(slots[i])
+        axes.append(ax)
+        grp = power_df[power_df["dataset"] == ds_name].sort_values("n_participants")
+        color = DATASET_COLORS.get(ds_name, COLORS["gray"])
+
+        x = grp["n_participants"].values.astype(float)
+        y = grp["power"].values.astype(float)
+
+        ci_lo, ci_hi = [], []
+        for _, row in grp.iterrows():
+            n_total_iter = int(row.get("n_valid", 0)) + int(row.get("n_failures", 0))
+            if n_total_iter == 0:
+                n_total_iter = N_POWER_ITERATIONS
+            k = round(row["power"] * n_total_iter) if not np.isnan(row["power"]) else 0
+            lo, hi = _wilson_ci(k, n_total_iter)
+            ci_lo.append(lo)
+            ci_hi.append(hi)
+
+        ax.fill_between(x, ci_lo, ci_hi, color=color, alpha=0.15, zorder=1, linewidth=0)
+        ax.plot(x, y, color=color, linewidth=2.0, zorder=3,
+                solid_capstyle="round", marker="o", markersize=3.5)
+
+        if len(x) >= 3:
+            iso = IsotonicRegression(increasing=True, y_min=0.0, y_max=1.0,
+                                     out_of_bounds="clip")
+            y_iso = iso.fit_transform(x, y)
+            ax.plot(x, y_iso, color=color, linewidth=1.2, linestyle="--",
+                    alpha=0.5, zorder=2)
+
+        ax.axhline(0.80, color="#bbb", linewidth=0.7,
+                   linestyle="--", zorder=1, alpha=0.5)
+        ax.set_xlim(x.min() - 0.5, x.max() + 0.5)
+        ax.set_ylim(-0.02, 1.05)
+
+        if "feature" in grp.columns and not grp.empty:
+            feat = grp["feature"].iloc[0].replace("sig_", "").replace("_", " ")
+        else:
+            feat = ""
+        dtype = grp["design_type"].iloc[0] if "design_type" in grp.columns else ""
+        design_label = _DESIGN_LABELS.get(dtype, dtype)
+        analyzable_n = int(grp["n_analyzable"].iloc[0]) if "n_analyzable" in grp.columns else int(x.max()) + 1
+
+        display_name = _DATASET_DISPLAY_NAMES.get(ds_name, ds_name)
+        title_lines = display_name
+        if feat:
+            title_lines += f"\n{feat}"
+        title_lines += f"\n{design_label}, n={analyzable_n}"
+
+        ax.set_title(title_lines, fontsize=3.5, fontweight="bold",
+                     color=color, pad=3, linespacing=1.3)
+
+        ax.set_xlabel("Analyzable participants", fontsize=9.5)
+        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+        ax.set_ylabel(r"Power (1 − $\beta$)", fontsize=10)
+        ax.tick_params(axis="both", which="major", labelsize=8.5, labelleft=True)
+
+        ax.grid(True, which="major", axis="y", color="#f0f0f0", linewidth=0.3, zorder=0)
+        ax.set_axisbelow(True)
+        despine(ax)
+        ax.spines["bottom"].set_linewidth(1.0)
+        ax.spines["left"].set_linewidth(1.0)
+
+    return axes
+
+
+def _panel_power_curves(data: dict) -> plt.Figure | None:
+    """Standalone figure for panel K: power curves across datasets."""
+    power_data = data.get("power_data")
+    if power_data is None:
+        return None
+    df = power_data["power_df"]
+    if df.empty:
+        return None
+
+    panel_order = list(dict.fromkeys(df["dataset"]))
+    n_panels = len(panel_order)
+    if n_panels == 0:
+        return None
+
+    fig = plt.figure(figsize=(10.8, 6.3))
+    outer = fig.add_gridspec(1, 1, left=0.07, right=0.985, top=0.88, bottom=0.12)
+    _panel_power_grid(fig, outer[0], data, inner_wspace=0.26)
+    fig.tight_layout()
+    return fig
+
+
+# ======================================================================
+# NatMeth signal-fraction benchmark CSV (panels H, I, J)
+# ======================================================================
 
 _BENCHMARK_CSV = (
     Path(__file__).resolve().parents[4]
@@ -1030,302 +1572,22 @@ def _style_axis(ax):
                    color="#333333", width=0.8, length=4)
 
 
-def _compute_null_fpr_table(bench_df):
-    null = bench_df[bench_df["true_beta"] == 0.0].copy()
-    rows = []
-    for (method, n_g, frac), grp in null.groupby(
-        ["method", "n_genes", "signal_pct"]
-    ):
-        pvals = grp["pvalue"].dropna().values
-        if len(pvals) == 0:
-            continue
-        rows.append({
-            "method": method,
-            "n_genes": int(n_g),
-            "signal_pct": int(frac),
-            "fpr": float((pvals < 0.05).mean()),
-            "n_tests": int(len(pvals)),
-        })
-    return pd.DataFrame(rows)
-
-
-def _compute_signal_bias_rmse_table(bench_df):
-    mixed = bench_df[~bench_df["is_null_scenario"]].copy()
-    sig = mixed[mixed["true_beta"] != 0.0]
-    sig = sig.dropna(subset=["estimated_beta"]).copy()
-    sig["err"] = sig["estimated_beta"] - sig["true_beta"]
-    sig["sq_err"] = sig["err"] ** 2
-
-    rows = []
-    for (method, n_g, frac), grp in sig.groupby(
-        ["method", "n_genes", "signal_pct"]
-    ):
-        if grp.empty:
-            continue
-        rows.append({
-            "method": method,
-            "n_genes": int(n_g),
-            "signal_pct": int(frac),
-            "bias": float(grp["err"].mean()),
-            "rmse": float(np.sqrt(grp["sq_err"].mean())),
-            "n_tests": int(len(grp)),
-        })
-    return pd.DataFrame(rows)
-
-
-def _panel_bench_fpr_curves(fig, bench_df, *, composite: bool = False):
-    fpr_df = _compute_null_fpr_table(bench_df)
-    fpr_df = fpr_df[fpr_df["signal_pct"] > 0].copy()
-    axes = fig.subplots(1, 4, sharey=True)
-    if not hasattr(axes, "__len__"):
-        axes = [axes]
-
-    _ttl_fs = 5.75 if composite else 12
-    _ax_fs = 5.15 if composite else 11
-    _tk_fs = 4.65 if composite else 10
-    _leg_fs = 3.5 if composite else 8
-
-    x_positions = np.arange(len(_SIGNAL_FRACTIONS), dtype=float)
-    frac_to_x = dict(zip(_SIGNAL_FRACTIONS, x_positions))
-    method_offsets = {
-        "wilcoxon_paired": -0.08,
-        "nebula": -0.03,
-        "sctrial_did": +0.03,
-        "dreamlet": +0.08,
-    }
-
-    for ax_idx, (ax, n_g) in enumerate(zip(axes, _PANEL_SIZES)):
-        sub = fpr_df[fpr_df["n_genes"] == n_g]
-        for method in _BENCH_METHODS:
-            m = sub[sub["method"] == method].sort_values("signal_pct")
-            if m.empty:
-                continue
-            is_focal = method == "sctrial_did"
-            style = _method_style(method, is_focal=is_focal, composite=composite)
-            x = np.array([frac_to_x[int(f)] for f in m["signal_pct"].values]) + method_offsets[method]
-            ax.plot(
-                x, m["fpr"],
-                label=_BENCH_METHOD_LABELS[method] if ax_idx == 0 else None,
-                zorder=10 if is_focal else 3,
-                **style,
-            )
-        _add_nominal_band(ax)
-        ax.set_xticks(x_positions)
-        ax.set_xticklabels([f"{f}%" for f in _SIGNAL_FRACTIONS], fontsize=_tk_fs)
-        ax.set_xlim(-0.4, len(_SIGNAL_FRACTIONS) - 0.6)
-        ax.set_xlabel("Signal fraction", fontsize=_ax_fs)
-        ax.set_title(
-            f"{n_g:,} genes", fontsize=_ttl_fs, fontweight="bold",
-            color="#222222", pad=4 if composite else 8,
-        )
-        ax.set_ylim(0.0, 0.7)
-        ax.yaxis.set_major_locator(MultipleLocator(0.1))
-        ax.tick_params(axis="y", labelsize=_tk_fs)
-        _style_axis(ax)
-
-    axes[0].set_ylabel("Null-gene FPR (p < 0.05)", fontsize=_ax_fs)
-    if composite:
-        h, lab = axes[0].get_legend_handles_labels()
-        for ax in axes:
-            leg = ax.get_legend()
-            if leg is not None:
-                leg.remove()
-        axes[0].legend(
-            h, lab, loc="upper left", bbox_to_anchor=(0.02, 0.98),
-            ncol=1, frameon=True, framealpha=0.95, edgecolor="#cccccc",
-            fontsize=_leg_fs, handlelength=0.85, columnspacing=0.55,
-            markerscale=0.65,
-        )
-    else:
-        axes[0].legend(
-            loc="upper left", frameon=True, framealpha=0.95,
-            edgecolor="#cccccc", fontsize=_leg_fs,
-        )
-
-
-def _panel_bench_fpr_heatmap(fig, bench_df, *, composite: bool = False):
-    fpr_df = _compute_null_fpr_table(bench_df)
-    mixed = fpr_df[fpr_df["signal_pct"] > 0].copy()
-    n_methods = len(_BENCH_METHODS)
-
-    _ann_fs = 3.75 if composite else 10
-    _tk_fs = 4.85 if composite else 9
-    _lbl_fs = 5.4 if composite else 10
-    _ttl_fs = 5.85 if composite else 12
-    _ttl_pad = 4 if composite else 8
-    _ylab_fs = 5.85 if composite else 11
-
-    if composite:
-        # Dedicated colorbar column avoids mpl stretching a shared colorbar
-        # across a narrow nested SubFigure (looks like oversized “pillars”).
-        gs = fig.add_gridspec(
-            1, n_methods + 1,
-            width_ratios=[1.0] * n_methods + [0.092],
-            wspace=0.09,
-        )
-        axes = [fig.add_subplot(gs[0, j]) for j in range(n_methods)]
-        cax = fig.add_subplot(gs[0, n_methods])
-    else:
-        axes = fig.subplots(1, n_methods, sharey=False)
-        if not hasattr(axes, "__len__"):
-            axes = [axes]
-        cax = None
-
-    fractions = sorted(_SIGNAL_FRACTIONS)
-    panel_sizes = sorted(_PANEL_SIZES)
-    cmap = plt.cm.RdYlGn_r
-    im = None
-
-    for mi, (ax, method) in enumerate(zip(axes, _BENCH_METHODS)):
-        mat = np.full((len(fractions), len(panel_sizes)), np.nan)
-        for fi, frac in enumerate(fractions):
-            for pi, ps in enumerate(panel_sizes):
-                cell = mixed[
-                    (mixed["method"] == method)
-                    & (mixed["signal_pct"] == frac)
-                    & (mixed["n_genes"] == ps)
-                ]
-                if len(cell) == 1:
-                    mat[fi, pi] = cell["fpr"].iloc[0]
-        im = ax.imshow(
-            mat, aspect="auto", cmap=cmap, vmin=0.0, vmax=0.7,
-            origin="lower", interpolation="nearest",
-        )
-        for fi in range(len(fractions)):
-            for pi in range(len(panel_sizes)):
-                v = mat[fi, pi]
-                if np.isnan(v):
-                    continue
-                text_color = "white" if (v > 0.35 or v < 0.02) else "#1a1a1a"
-                ax.text(pi, fi, f"{v:.2f}", ha="center", va="center",
-                        fontsize=_ann_fs, color=text_color, fontweight="bold")
-
-        ax.set_xticks(range(len(panel_sizes)))
-        ax.set_xticklabels([f"{p:,}" for p in panel_sizes], fontsize=_tk_fs)
-        ax.set_xlabel("" if composite else "Panel size (genes)", fontsize=_lbl_fs)
-        ax.set_yticks(range(len(fractions)))
-        if composite:
-            if mi == 0:
-                ax.set_yticklabels([f"{f}%" for f in fractions], fontsize=_tk_fs)
-            else:
-                ax.set_yticklabels([])
-        else:
-            ax.set_yticklabels([f"{f}%" for f in fractions], fontsize=_tk_fs)
-        if mi == 0:
-            ax.set_ylabel("Signal fraction", fontsize=_ylab_fs, fontweight="bold")
-        ax.set_title(
-            _BENCH_METHOD_LABELS[method],
-            fontsize=_ttl_fs, fontweight="bold",
-            color=_BENCH_METHOD_COLORS[method], pad=_ttl_pad,
-        )
-        for spine in ax.spines.values():
-            spine.set_visible(True)
-            spine.set_color("#333333")
-            spine.set_linewidth(0.9)
-        ax.tick_params(axis="both", which="major", length=0)
-
-    # Composite shared x-label for panel I is placed by `generate()` in
-    # figure coordinates using panel-I subfigure bounds.
-
-    _cb_lab_fs = 5.85 if composite else 10
-    _cb_tick_fs = 4.9 if composite else 8
-    if composite:
-        cbar = fig.colorbar(im, cax=cax, fraction=1.0, pad=0.01)
-        cbar.set_label(
-            "Null-gene FPR (p < 0.05)",
-            fontsize=_cb_lab_fs, rotation=270, labelpad=4 if composite else 16,
-        )
-    else:
-        cbar = fig.colorbar(im, ax=axes, shrink=0.78, pad=0.015, aspect=20)
-        cbar.set_label(
-            "Null-gene FPR (p < 0.05)",
-            fontsize=_cb_lab_fs, rotation=270, labelpad=16,
-        )
-    cbar.ax.tick_params(labelsize=_cb_tick_fs)
-    cbar.outline.set_linewidth(0.8)
-    cbar.outline.set_edgecolor("#333333")
-
-
-def _panel_bench_lambda_gc(ax, bench_df, *, composite: bool = False):
-    null_scenarios = bench_df[bench_df["is_null_scenario"]]
-    pvals_pure = null_scenarios[null_scenarios["true_beta"] == 0.0]
-    rows = []
-    for (method, n_g), grp in pvals_pure.groupby(["method", "n_genes"]):
-        pvals = grp["pvalue"].dropna().values
-        if len(pvals) < 50:
-            continue
-        chi2_obs = sp_stats.chi2.isf(pvals, df=1)
-        chi2_obs = chi2_obs[np.isfinite(chi2_obs)]
-        if len(chi2_obs) < 50:
-            continue
-        lam = float(np.median(chi2_obs) / sp_stats.chi2.ppf(0.5, df=1))
-        rows.append({"method": method, "n_genes": int(n_g), "lambda_gc": lam})
-    lam_df = pd.DataFrame(rows)
-    x_positions = np.arange(len(_PANEL_SIZES), dtype=float)
-    n_to_x = dict(zip(_PANEL_SIZES, x_positions))
-
-    _lbl_fs = 5.15 if composite else 11
-    _ttl_fs = 6.0 if composite else 12
-    _ttl_pad = 5 if composite else 10
-    _leg_fs = 3.45 if composite else 9
-
-    for method in _BENCH_METHODS:
-        sub = lam_df[lam_df["method"] == method].sort_values("n_genes")
-        if sub.empty:
-            continue
-        is_focal = method == "sctrial_did"
-        style = _method_style(method, is_focal=is_focal, composite=composite)
-        xs = [n_to_x[int(n)] for n in sub["n_genes"].values]
-        ax.plot(xs, sub["lambda_gc"], label=_BENCH_METHOD_LABELS[method],
-                zorder=10 if is_focal else 3, **style)
-
-    ax.axhline(1.0, color="#d62728", linestyle="--", linewidth=1.0, alpha=0.65, zorder=1)
-    ax.axhspan(0.95, 1.05, color="#d62728", alpha=0.06, zorder=0)
-    ax.set_xticks(x_positions)
-    ax.set_xticklabels([f"{p:,}" for p in _PANEL_SIZES], fontsize=_lbl_fs)
-    ax.set_xlim(-0.35, len(_PANEL_SIZES) - 0.65)
-    ax.set_xlabel("Panel size (genes)", fontsize=_lbl_fs)
-    ax.set_ylabel(r"Genomic inflation factor ($\lambda_{\mathrm{GC}}$)", fontsize=_lbl_fs)
-    ax.set_title(
-        "Pure-null calibration across panel sizes",
-        fontsize=_ttl_fs, fontweight="bold", pad=_ttl_pad,
-    )
-    ax.set_ylim(0.88, 1.18)
-    ax.yaxis.set_major_locator(MultipleLocator(0.05))
-    ax.tick_params(axis="y", labelsize=_lbl_fs)
-    if composite:
-        ax.legend(
-            loc="lower right",
-            bbox_to_anchor=(0.99, 0.03),
-            frameon=True, framealpha=0.95, edgecolor="#cccccc",
-            fontsize=_leg_fs, markerscale=0.52,
-            handlelength=1.0,
-            ncol=1,
-        )
-    else:
-        ax.legend(
-            loc="upper left", frameon=True, framealpha=0.95, edgecolor="#cccccc",
-            fontsize=_leg_fs, markerscale=1.0, handlelength=1.5,
-        )
-    _style_axis(ax)
-
-
 def _match_subfig_axes_height_to_ref(
-    ref_ax, subfig, *, height_frac: float = 1.0,
+    ref_ax, subfig, *, height_frac: float = 1.0, keep_current_bottom: bool = False,
 ) -> None:
     """Scale axes inside *subfig* to match *ref_ax* height (figure-normalized).
 
     Faceted subfigures (power curves, QQ panels) expand axes to fill the
     subfigure's cell, so they look vertically stretched next to single-axis
-    neighbours. This rescales each child axis's vertical extent and aligns the
-    block's bottom to ``ref_ax``.
+    neighbours. This rescales each child axis's vertical extent.
 
-    *height_frac* (< 1) uses only that fraction of *ref_ax*'s height, bottom
-    aligned, leaving space above (e.g. composite H/M suptitles).
+    By default, the block bottom is aligned to ``ref_ax``. When
+    ``keep_current_bottom=True``, the current subfigure block bottom is
+    preserved, which is useful for cross-row matching (e.g. row-5 K matched to
+    row-2 reference height without shifting K upward into overlap).
     """
     pos_ref = ref_ax.get_position()
     h_ref = pos_ref.height * float(np.clip(height_frac, 0.05, 1.0))
-    y0_ref = pos_ref.y0
     axes_sf = subfig.get_axes()
     if not axes_sf:
         return
@@ -1335,11 +1597,12 @@ def _match_subfig_axes_height_to_ref(
     h_old = y1_u - y0_u
     if h_old <= 1e-9:
         return
+    y0_anchor = y0_u if keep_current_bottom else pos_ref.y0
     for ax in axes_sf:
         p = ax.get_position()
         rel_lo = (p.y0 - y0_u) / h_old
         rel_hi = (p.y1 - y0_u) / h_old
-        new_y0 = y0_ref + rel_lo * h_ref
+        new_y0 = y0_anchor + rel_lo * h_ref
         new_h = (rel_hi - rel_lo) * h_ref
         ax.set_position([p.x0, new_y0, p.width, new_h])
 
@@ -1422,108 +1685,10 @@ def _figure_title_above_subfig(
     )
 
 
-def _panel_bench_fpr(ax, bench_df, *, composite: bool = False):
-    """Panel I: Type I error calibration — dot-and-whisker by method × n.
-
-    Both two-arm and single-arm null scenarios. Methods grouped on y-axis,
-    dots per sample size with Wilson CIs. Red vertical line at 0.05.
-    """
-    # Use only pure-null scenarios (null_n* and null_hetero_n*)
-    null_data = bench_df[
-        (bench_df["true_beta"] == 0.0)
-        & (bench_df["scenario"].str.contains("null"))
-    ].copy()
-
-    rows = []
-    for (method, design, n, it), grp in null_data.groupby(
-        ["method", "design", "n_per_arm", "iteration"]
-    ):
-        if grp.empty:
-            continue
-        pvals = grp["pvalue"].dropna().values
-        if len(pvals) == 0:
-            continue
-        rows.append({
-            "method": method, "design": design, "n_per_arm": n,
-            "fpr": (pvals < 0.05).mean(),
-        })
-    fpr_df = pd.DataFrame(rows)
-
-    # Aggregate across iterations (pool both designs for cleaner plot)
-    fpr_agg = (
-        fpr_df.groupby(["method", "n_per_arm"])["fpr"]
-        .agg(["mean", "std", "count"]).reset_index()
-    )
-    fpr_agg["se"] = fpr_agg["std"] / np.sqrt(fpr_agg["count"])
-    fpr_agg["ci_lo"] = (fpr_agg["mean"] - 1.96 * fpr_agg["se"]).clip(0)
-    fpr_agg["ci_hi"] = fpr_agg["mean"] + 1.96 * fpr_agg["se"]
-
-    ns = sorted(fpr_agg["n_per_arm"].unique())
-    marker_list = ["o", "s", "D", "^", "v"]
-    _ms = 1.75 if composite else 7
-    _caps = 1.2 if composite else 4
-    _lw_e = 1.0 if composite else 1.5
-    _lw_v = 0.85 if composite else 1.2
-    _ms_leg = 1.55 if composite else 6
-    _yt_fs = 7 if composite else 9
-    _leg_fs = 3.6 if composite else 7
-
-    y_pos = 0
-    y_ticks, y_labels = [], []
-    for method in _BENCH_METHODS:
-        for ni, n_val in enumerate(ns):
-            sub = fpr_agg[
-                (fpr_agg["method"] == method) & (fpr_agg["n_per_arm"] == n_val)
-            ]
-            if sub.empty:
-                continue
-            row = sub.iloc[0]
-            ax.errorbar(
-                row["mean"], y_pos,
-                xerr=[[row["mean"] - row["ci_lo"]], [row["ci_hi"] - row["mean"]]],
-                marker=marker_list[ni % len(marker_list)],
-                markersize=_ms, capsize=_caps, linewidth=_lw_e,
-                color=_BENCH_METHOD_COLORS[method],
-                label=f"n={n_val}" if method == _BENCH_METHODS[0] else None,
-            )
-            y_pos += 1
-        center = y_pos - len(ns) / 2
-        y_ticks.append(center)
-        y_labels.append(_BENCH_METHOD_LABELS[method])
-        y_pos += 0.5
-
-    ax.axvline(0.05, color="red", linestyle="--", linewidth=_lw_v, alpha=0.8)
-    ax.axvspan(0.03, 0.07, color="red", alpha=0.06)
-    ax.set_yticks(y_ticks)
-    ax.set_yticklabels(y_labels, fontsize=_yt_fs)
-    ax.set_xlabel("Type I Error Rate (p < 0.05)")
-    ax.set_title("Null Calibration (both designs)", fontweight="bold")
-    _x0 = 0.02 if composite else 0.0
-    if composite:
-        ax.set_xlim(_x0, 0.10)
-    else:
-        ax.set_xlim(_x0, max(0.12, fpr_agg["ci_hi"].max() * 1.1))
-
-    from matplotlib.lines import Line2D
-    handles = [
-        Line2D([0], [0], marker=marker_list[i], color="gray",
-               markersize=_ms_leg, linestyle="none", label=f"n={n}")
-        for i, n in enumerate(ns)
-    ]
-    handles.append(Line2D([0], [0], color="red", linestyle="--",
-                          linewidth=_lw_v, label="Nominal 5%"))
-    ax.legend(
-        handles=handles, fontsize=_leg_fs, loc="upper right",
-        markerscale=0.55 if composite else 1.0,
-    )
-    ax.invert_yaxis()
-    despine(ax)
-
-
-def _panel_bench_lambda(ax, bench_df, *, composite: bool = False):
-    """Legacy name for panel J — delegates to `_panel_bench_lambda_gc`."""
-    _panel_bench_lambda_gc(ax, bench_df, composite=composite)
-
+# ======================================================================
+# Panel H — Faceted p-value QQ plots with 95% Beta envelope
+# (was panel K before reshuffle)
+# ======================================================================
 
 def _panel_bench_qq(
     fig, bench_df,
@@ -1552,8 +1717,8 @@ def _panel_bench_qq(
                 "wspace": 0.18,
                 "left": 0.125,
                 "right": 0.98,
-                "top": 0.84,
-                "bottom": 0.26,
+                "top": 0.80,
+                "bottom": 0.30,
             },
         )
         axes = ax_grid.flatten()
@@ -1627,18 +1792,10 @@ def _panel_bench_qq(
             fontsize=_leg_fs,
         )
     else:
-        # One shared y-label for both QQ rows, anchored in subfigure coordinates.
-        fig.text(
-            0.065,
-            0.5,
-            r"Observed $-\log_{10}(p)$",
-            rotation=90,
-            fontsize=_axlbl_fs,
-            ha="center",
-            va="center",
-            transform=fig.transSubfigure,
-            clip_on=False,
-        )
+        # Keep y-labels attached to the actual left-column y-axes so they align
+        # exactly with panel-H y ticks in the composite layout.
+        for yi in (0, 2):
+            axes[yi].set_ylabel(r"Observed $-\log_{10}(p)$", fontsize=_axlbl_fs)
         # Place the envelope key inside the upper-left of the first QQ panel —
         # that corner has no scatter points, so the legend is always visible
         # (subfigure-level fig.legend gets clipped behind the panel letter/title).
@@ -1667,6 +1824,11 @@ def _panel_bench_qq(
     if composite and leg is not None:
         leg.get_frame().set_linewidth(0.55)
 
+
+# ======================================================================
+# Panel I — Pure-null Type I error vs panel size
+# (was panel L before reshuffle)
+# ======================================================================
 
 def _panel_bench_pure_null_fpr(ax, bench_df, *, composite: bool = False):
     null = bench_df[(bench_df["is_null_scenario"]) & (bench_df["true_beta"] == 0.0)]
@@ -1710,7 +1872,7 @@ def _panel_bench_pure_null_fpr(ax, bench_df, *, composite: bool = False):
         lo = sub["ci_lo"].values
         hi = sub["ci_hi"].values
         is_focal = method == "sctrial_did"
-        _ms_hi, _ms_lo = (5.6, 4.3) if composite else (10, 8)
+        _ms_hi, _ms_lo = (5.0, 3.85) if composite else (9.0, 7.2)
         _lw_hi, _lw_lo = (1.25, 0.95) if composite else (2.0, 1.4)
         _cap_w = (2.0, 0.85) if composite else (4, 1.2)
         ax.errorbar(
@@ -1736,18 +1898,18 @@ def _panel_bench_pure_null_fpr(ax, bench_df, *, composite: bool = False):
     ax.set_xlim(-0.35, len(panel_sizes) - 0.65)
     ax.set_xlabel("Panel size (genes)", fontsize=_tk_fs)
     ax.set_ylabel("Pure-null Type I error (p < 0.05)", fontsize=_tk_fs)
-    ax.set_ylim(0.025, 0.085)
+    ax.set_ylim(0.025, 0.095 if composite else 0.085)
     ax.yaxis.set_major_locator(MultipleLocator(0.01))
     ax.tick_params(axis="y", labelsize=_tk_fs)
     ax.set_title(
-        "All methods are calibrated under pure-null conditions",
+        "Pure-null Type I error",
         fontsize=_ttl_fs, fontweight="bold", pad=(5 if composite else 10),
     )
     if composite:
         ax.legend(
             loc="upper center",
-            bbox_to_anchor=(0.5, -0.28),
-            ncol=5,
+            bbox_to_anchor=(0.5, 0.995),
+            ncol=3,
             frameon=True, framealpha=0.93, edgecolor="#cccccc",
             fontsize=_leg_fs, columnspacing=0.75, handlelength=0.85,
             markerscale=0.55,
@@ -1760,116 +1922,10 @@ def _panel_bench_pure_null_fpr(ax, bench_df, *, composite: bool = False):
     _style_axis(ax)
 
 
-def _panel_bench_signal_rmse(fig, bench_df, *, composite: bool = False):
-    df = _compute_signal_bias_rmse_table(bench_df)
-    if hasattr(fig, "set_constrained_layout"):
-        fig.set_constrained_layout(False)
-    if composite:
-        gs = fig.add_gridspec(
-            2, 4,
-            hspace=0.26, wspace=0.15,
-            # Extra room under the 2×4 grid for the method legend below the subfigure.
-            left=0.07, right=0.99, top=0.72, bottom=0.41,
-        )
-    else:
-        gs = fig.add_gridspec(
-            2, 4,
-            hspace=0.38, wspace=0.22,
-            left=0.08, right=0.985, top=0.84, bottom=0.11,
-        )
-    _ttl_fs = 6.35 if composite else 12
-    _yl_fs = 6.2 if composite else 11
-    _axis_fs = 5.35 if composite else 10
-    _xlab_fs = 5.45 if composite else 10
-    bar_width = 0.20
-    method_order = ["sctrial_did", "wilcoxon_paired", "nebula", "dreamlet"]
-    x_positions = np.arange(len(_SIGNAL_FRACTIONS))
-    bias_lo = min(df["bias"].min(), 0) - 0.02
-    bias_hi = max(df["bias"].max(), 0.02) * 1.12
-    rmse_hi = df["rmse"].max() * 1.18
-    bias_axes = []
-    rmse_axes = []
-    for col, n_g in enumerate(_PANEL_SIZES):
-        ax_bias = fig.add_subplot(gs[0, col])
-        ax_rmse = fig.add_subplot(gs[1, col])
-        bias_axes.append(ax_bias)
-        rmse_axes.append(ax_rmse)
-        sub = df[df["n_genes"] == n_g]
-        for mi, method in enumerate(method_order):
-            bias_vals = []
-            rmse_vals = []
-            for frac in _SIGNAL_FRACTIONS:
-                cell = sub[(sub["method"] == method) & (sub["signal_pct"] == frac)]
-                if len(cell):
-                    bias_vals.append(float(cell["bias"].iloc[0]))
-                    rmse_vals.append(float(cell["rmse"].iloc[0]))
-                else:
-                    bias_vals.append(np.nan)
-                    rmse_vals.append(np.nan)
-            offset = (mi - (len(method_order) - 1) / 2) * bar_width
-            ax_bias.bar(x_positions + offset, bias_vals, bar_width,
-                        color=_BENCH_METHOD_COLORS[method], edgecolor="white",
-                        linewidth=0.6, zorder=3)
-            ax_rmse.bar(x_positions + offset, rmse_vals, bar_width,
-                        color=_BENCH_METHOD_COLORS[method], edgecolor="white",
-                        linewidth=0.6, zorder=3)
-        ax_bias.axhline(0.0, color="#222222", linestyle="--", linewidth=0.9, alpha=0.7, zorder=2)
-        ax_bias.set_xticks(x_positions)
-        ax_bias.set_xticklabels([])
-        ax_bias.set_ylim(bias_lo, bias_hi)
-        ax_bias.yaxis.set_major_locator(MultipleLocator(0.05))
-        ax_bias.set_title(
-            f"{n_g:,} genes",
-            fontsize=_ttl_fs, fontweight="bold", color="#1a1a1a",
-            pad=(4 if composite else 8),
-        )
-        _style_axis(ax_bias)
-        ax_rmse.set_xticks(x_positions)
-        ax_rmse.set_xticklabels(
-            [f"{f}%" for f in _SIGNAL_FRACTIONS], fontsize=_axis_fs,
-        )
-        ax_rmse.set_xlabel("Signal fraction", fontsize=_xlab_fs)
-        ax_rmse.set_ylim(0, rmse_hi)
-        ax_rmse.yaxis.set_major_locator(MultipleLocator(0.05))
-        ax_rmse.tick_params(axis="both", labelsize=_axis_fs)
-        _style_axis(ax_rmse)
-        ax_bias.tick_params(axis="y", labelsize=_axis_fs)
-        if col > 0:
-            ax_bias.set_yticklabels([])
-            ax_rmse.set_yticklabels([])
-    bias_axes[0].set_ylabel(
-        r"Mean bias ($\hat{\beta} - \beta$)", fontsize=_yl_fs,
-    )
-    rmse_axes[0].set_ylabel(r"RMSE of $\hat{\beta}$", fontsize=_yl_fs)
-    legend_handles = [
-        plt.Rectangle((0, 0), 1, 1, facecolor=_BENCH_METHOD_COLORS[m], edgecolor="white", linewidth=0.6,
-                      label=_BENCH_METHOD_LABELS[m])
-        for m in method_order
-    ]
-    _leg_fs = 3.45 if composite else 9
-    if composite:
-        # Single-row legend below the 2×4 grid (transFigure coords of this subfig).
-        fig.legend(
-            handles=legend_handles,
-            loc="lower center",
-            ncol=4,
-            bbox_to_anchor=(0.56, 0.015),
-            bbox_transform=fig.transFigure,
-            frameon=True, framealpha=0.93, edgecolor="#cccccc",
-            fontsize=_leg_fs,
-            handlelength=0.85,
-            handleheight=0.42,
-            handletextpad=0.35,
-            columnspacing=0.55,
-            borderpad=0.35,
-        )
-    else:
-        fig.legend(
-            handles=legend_handles, loc="upper center", ncol=4,
-            bbox_to_anchor=(0.53, 0.94),
-            frameon=True, framealpha=0.95, edgecolor="#cccccc", fontsize=_leg_fs,
-        )
-
+# ======================================================================
+# Panel J — Runtime comparison across methods
+# (was panel N before reshuffle)
+# ======================================================================
 
 def _panel_bench_runtime(ax, bench_df, *, composite: bool = False):
     """Per-iteration runtime by method × panel size (log y).
@@ -1944,7 +2000,7 @@ def _panel_bench_runtime(ax, bench_df, *, composite: bool = False):
 # ======================================================================
 
 def generate():
-    """Create and save Supplementary Figure 4 panels (A–N) + composite.
+    """Create and save Supplementary Figure 4 panels (A–K) + composite.
 
     Layout:
       A  Analytical vs bootstrap SE (all 5 datasets, faceted forest plot)
@@ -1955,15 +2011,14 @@ def generate():
       F  Rank-order concordance across choices (Melanoma)
       G  Leave-one-out stability matrix (all datasets)
       --- NatMeth benchmark (4 methods) ---
-      H  Two-arm signal-gene power (faceted by n)
-      I  Null calibration FPR (both designs)
-      J  Genomic inflation λ_GC (two-arm null)
-      K  Faceted QQ + 95% envelope (two-arm, n=40)
-      L  Null-gene FPR in DE scenarios
-      M  Single-arm signal-gene power
-      N  Runtime comparison
+      H  Faceted QQ + 95% envelope (two-arm, n=40, 200 genes, 10% signal)
+      I  Pure-null Type I error vs panel size
+      J  Runtime comparison
+      --- Empirical power on real datasets ---
+      K  Empirical power curves (participant subsampling)
 
-    Composite (180×215 mm): row1 A | row2 B–E | row3 F–H | row4 I–K | row5 L–N.
+    Composite (180 mm × ≤215 mm): row1 A | row2 B|C|D|E | row3 F|G|H |
+    row4 I|J|K (K is a 3+2 facet grid).
     """
     print("Supplementary Figure 4: Sensitivity to Modeling and Preprocessing")
 
@@ -1975,7 +2030,6 @@ def generate():
         _save_cache("sensitivity", cacheable)
         if "adata" in data:
             del data["adata"]
-    # (cached version never contains adata — panels B–F don't need it)
 
     # ── Bootstrap (panel A) ───────────────────────────────────────────
     boot_data = _load_cache("bootstrap")
@@ -2020,7 +2074,7 @@ def generate():
     fig.tight_layout()
     save_panel(fig, "panel_G", FIGURE_NAME, SUPP_OUTPUT)
 
-    # ── Benchmark (panels H–N) ──────────────────────────────────────
+    # ── Benchmark (panels H–J) ────────────────────────────────────────
     print("  Loading signal-fraction sensitivity benchmark results ...")
     bench_df = _load_benchmark_data()
     print(
@@ -2029,55 +2083,44 @@ def generate():
         f"panel sizes = {sorted(bench_df['n_genes'].unique())}"
     )
 
-    fig_h = plt.figure(figsize=(14, 4.2))
-    _panel_bench_fpr_curves(fig_h, bench_df)
-    fig_h.suptitle(
-        "Null-gene FPR scales with signal fraction, not panel size",
-        fontsize=13, fontweight="bold", y=1.04,
-    )
+    # Panel H: Faceted QQ panels (was panel K)
+    fig_h = plt.figure(figsize=(15.0, 4.0))
+    _panel_bench_qq(fig_h, bench_df, n_genes=200, signal_pct=10)
     fig_h.tight_layout()
     save_panel(fig_h, "panel_H", FIGURE_NAME, SUPP_OUTPUT)
 
-    fig_i = plt.figure(figsize=(15.5, 4.2))
-    _panel_bench_fpr_heatmap(fig_i, bench_df)
+    # Panel I: Pure-null FPR (was panel L)
+    fig_i, ax_i_ind = plt.subplots(figsize=(7.5, 4.8))
+    _panel_bench_pure_null_fpr(ax_i_ind, bench_df)
+    fig_i.tight_layout()
     save_panel(fig_i, "panel_I", FIGURE_NAME, SUPP_OUTPUT)
 
-    fig_j, ax_j = plt.subplots(figsize=(7.2, 5.0))
-    _panel_bench_lambda_gc(ax_j, bench_df)
+    # Panel J: Runtime (was panel N)
+    fig_j, ax_j_ind = plt.subplots(figsize=(7.2, 5.0))
+    _panel_bench_runtime(ax_j_ind, bench_df)
     fig_j.tight_layout()
     save_panel(fig_j, "panel_J", FIGURE_NAME, SUPP_OUTPUT)
 
-    fig_k = plt.figure(figsize=(15.0, 4.0))
-    _panel_bench_qq(fig_k, bench_df, n_genes=200, signal_pct=10)
-    fig_k.tight_layout()
-    save_panel(fig_k, "panel_K", FIGURE_NAME, SUPP_OUTPUT)
+    # ── Empirical power curves on real datasets (panel K) ─────────────
+    print("  Computing empirical power curves (panel K) ...")
+    try:
+        power_data = _prepare_power_data()
+    except Exception as exc:
+        print(f"  Warning: Could not compute power curves: {exc}")
+        power_data = None
+    composite_data = {**data, "power_data": power_data}
 
-    fig_l, ax_l = plt.subplots(figsize=(7.5, 4.8))
-    _panel_bench_pure_null_fpr(ax_l, bench_df)
-    fig_l.tight_layout()
-    save_panel(fig_l, "panel_L", FIGURE_NAME, SUPP_OUTPUT)
-
-    fig_m = plt.figure(figsize=(14, 6.8))
-    _panel_bench_signal_rmse(fig_m, bench_df)
-    fig_m.suptitle(
-        "Effect-size estimation accuracy on signal genes",
-        fontsize=13, fontweight="bold", y=0.995,
-    )
-    save_panel(fig_m, "panel_M", FIGURE_NAME, SUPP_OUTPUT)
-
-    fig_n, ax_n = plt.subplots(figsize=(7.2, 5.0))
-    _panel_bench_runtime(ax_n, bench_df)
-    fig_n.tight_layout()
-    save_panel(fig_n, "panel_N", FIGURE_NAME, SUPP_OUTPUT)
+    fig_k = _panel_power_curves(composite_data)
+    if fig_k is not None:
+        save_panel(fig_k, "panel_K_power_curves", FIGURE_NAME, SUPP_OUTPUT)
 
     # ==================================================================
     # Composite artboard  (180 mm × ≤215 mm)
     # ==================================================================
     #   Row 1: A (full width)
     #   Row 2: B | C | D | E
-    #   Row 3: F | G | H
-    #   Row 4: I | J | K
-    #   Row 5: L | M | N
+    #   Row 3: F | G | H (QQ panels)
+    #   Row 4: I | J | K  (pure-null FPR | runtime | power curves 3+2)
     # ==================================================================
     print("  Building composite figure ...")
 
@@ -2121,34 +2164,16 @@ def generate():
     _mm = 1.0 / 25.4
     fig_c = plt.figure(figsize=(180 * _mm, 215 * _mm))
 
-    # Top: A stacked above rows 2–4 with a *small* hspace (tighter than mid↔LMN).
-    # Bottom: row 5 (L–N); gap from row 4 is outer hspace only.
+    # Four-row composite; row 4 hosts I, J, and faceted K together.
     outer = fig_c.add_gridspec(
-        2, 1,
-        height_ratios=[0.48 + 2.15, 0.46],
-        hspace=0.16,
-        # Extra bottom margin for panel L legend (below x-axis).
+        4, 1,
+        height_ratios=[1.0, 1.0, 1.0, 1.0],
+        hspace=0.42,
         left=0.065, right=0.985, top=0.97, bottom=0.068,
-    )
-    top_stack = outer[0].subgridspec(
-        2, 1,
-        height_ratios=[0.48, 2.15],
-        hspace=0.18,
-    )
-    # Split mid-rows so we can tune the (row 3 ↔ row 4) gap independently.
-    mid23 = top_stack[1].subgridspec(
-        2, 1,
-        height_ratios=[0.44, 0.92],
-        hspace=0.33,  # spacing between rows 2 and 3
-    )
-    mid34 = mid23[1].subgridspec(
-        2, 1,
-        height_ratios=[0.46, 0.46],
-        hspace=0.46,  # spacing between rows 3 and 4
     )
 
     # ── Row 1: A (forest plot) ───────────────────────────────────────
-    subfig_a = fig_c.add_subfigure(top_stack[0])
+    subfig_a = fig_c.add_subfigure(outer[0])
     if boot_ok:
         _panel_bootstrap_multi(subfig_a, boot_ok, composite=True)
     else:
@@ -2158,7 +2183,7 @@ def generate():
     subfig_a.subplots_adjust(wspace=0.42, left=0.04, right=0.98, top=0.88, bottom=0.14)
 
     # ── Row 2: B | C | D | E ─────────────────────────────────────────
-    gs_r2 = mid23[0].subgridspec(1, 4, wspace=0.52)
+    gs_r2 = outer[1].subgridspec(1, 4, wspace=0.52)
     ax_b = fig_c.add_subplot(gs_r2[0])
     ax_cc = fig_c.add_subplot(gs_r2[1])
     ax_d = fig_c.add_subplot(gs_r2[2])
@@ -2169,15 +2194,15 @@ def generate():
     _panel_log_sensitivity(ax_d, data, composite=True)
     _panel_ct_heatmap(ax_e, data, composite=True)
 
-    # ── Row 3: F | G | H (cols 1 & 3 are spacers: tighter F–G, wider G–H)
-    gs_r3 = mid34[0].subgridspec(
+    # ── Row 3: F | G | H  (rank concordance | LOO | QQ panels)
+    gs_r3 = outer[2].subgridspec(
         1, 5,
         wspace=0.32,
         width_ratios=[0.72, 0.035, 1.0, 0.12, 1.42],
     )
     ax_f = fig_c.add_subplot(gs_r3[0])
     ax_g = fig_c.add_subplot(gs_r3[2])
-    subfig_h = fig_c.add_subfigure(gs_r3[4])
+    subfig_qq = fig_c.add_subfigure(gs_r3[4])
 
     _panel_rank_concordance(ax_f, data)
     if loo_mat is not None:
@@ -2188,62 +2213,51 @@ def generate():
     else:
         ax_g.text(0.5, 0.5, "No LOO data", ha="center", va="center",
                   transform=ax_g.transAxes)
-    _panel_bench_fpr_curves(subfig_h, bench_df, composite=True)
-    subfig_h.subplots_adjust(left=0.09, right=0.982, top=0.74, bottom=0.22)
-
-    # ── Row 4: I | J | K (slightly narrower I, slightly wider I–J gap)
-    gs_r4 = mid34[1].subgridspec(
-        1, 5,
-        wspace=0.42,
-        width_ratios=[1.44, 0.22, 0.80, 0.04, 1.05],
-    )
-    subfig_i = fig_c.add_subfigure(gs_r4[0])
-    ax_j = fig_c.add_subplot(gs_r4[2])
-    subfig_k = fig_c.add_subfigure(gs_r4[4])
-
-    _panel_bench_fpr_heatmap(subfig_i, bench_df, composite=True)
-    _panel_bench_lambda_gc(ax_j, bench_df, composite=True)
     _panel_bench_qq(
-        subfig_k, bench_df, n_genes=200, signal_pct=10, composite=True,
+        subfig_qq, bench_df, n_genes=200, signal_pct=10, composite=True,
     )
-    subfig_i.subplots_adjust(left=0.06, right=0.965, top=0.90, bottom=0.27)
-    subfig_k.subplots_adjust(left=0.10, right=0.98, top=0.89, bottom=0.19)
+    subfig_qq.subplots_adjust(left=0.10, right=0.98, top=0.89, bottom=0.19)
 
-    # ── Row 5: L | M | N ────────────────────────────────────────────
-    # Wider L (was 0.95): trim mostly from N so M stays comparable.
-    gs_r5 = outer[1].subgridspec(1, 3, wspace=0.52, width_ratios=[1.12, 1.22, 0.75])
-    ax_l = fig_c.add_subplot(gs_r5[0])
-    subfig_m = fig_c.add_subfigure(gs_r5[1])
-    ax_n = fig_c.add_subplot(gs_r5[2])
+    # ── Row 4: I | J | K  (pure-null FPR | runtime | power curves)
+    gs_r4 = outer[3].subgridspec(
+        1, 4,
+        wspace=0.38,
+        width_ratios=[1.15, 0.95, 0.22, 2.35],
+    )
+    ax_pure_null = fig_c.add_subplot(gs_r4[0])
+    ax_runtime = fig_c.add_subplot(gs_r4[1])
 
-    _panel_bench_pure_null_fpr(ax_l, bench_df, composite=True)
-    _panel_bench_signal_rmse(subfig_m, bench_df, composite=True)
-    # Reserve subfigure margin so the single-row fig.legend (y≈0.02) stays below the grid.
-    subfig_m.subplots_adjust(left=0.11, right=0.985, top=0.80, bottom=0.26)
-    _panel_bench_runtime(ax_n, bench_df, composite=True)
-    # Final layout so get_position() is correct; shrink faceted subfigures to
-    # match same-row neighbour axis height (G for H; J for I & K; L for M).
+    _panel_bench_pure_null_fpr(ax_pure_null, bench_df, composite=True)
+    _panel_bench_runtime(ax_runtime, bench_df, composite=True)
+
+    if power_data is not None and not power_data["power_df"].empty:
+        subfig_power = fig_c.add_subfigure(gs_r4[3])
+        sub_inner = subfig_power.add_gridspec(
+            1, 1, left=0.08, right=0.98, top=0.94, bottom=0.10,
+        )
+        _panel_power_grid(
+            subfig_power, sub_inner[0], composite_data, inner_wspace=0.30,
+        )
+    else:
+        subfig_power = None
+        ax_power_stub = fig_c.add_subplot(gs_r4[3])
+        ax_power_stub.text(
+            0.5, 0.5, "No power data available",
+            ha="center", va="center",
+            transform=ax_power_stub.transAxes,
+            color=COLORS.get("gray", "#666"),
+        )
+        ax_power_stub.set_axis_off()
+
+    # Final layout pass so get_position() is correct.
     fig_c.canvas.draw()
-    _COMP_HM_HEIGHT_FRAC = 0.88
-    _match_subfig_axes_height_to_ref(
-        ax_g, subfig_h, height_frac=_COMP_HM_HEIGHT_FRAC,
-    )
-    _match_subfig_axes_height_to_ref(ax_j, subfig_i)
-    _match_subfig_axes_height_to_ref(ax_j, subfig_k, height_frac=0.88)
-    _match_subfig_axes_height_to_ref(
-        ax_l, subfig_m, height_frac=_COMP_HM_HEIGHT_FRAC,
-    )
-    # Put panel-I shared x-label directly under panel I (not under row 5).
-    _bb_i = _subfig_bbox_in_figure_coords(fig_c, subfig_i)
-    fig_c.text(
-        _bb_i.x0 + 0.5 * _bb_i.width,
-        _bb_i.y0 - 0.018,
-        "Panel size (genes)",
-        ha="center",
-        va="top",
-        fontsize=_COMPOSITE_E_AXIS_LABEL_FS,
-        transform=fig_c.transFigure,
-    )
+    # Keep faceted QQ block aligned to same-row neighbour height.
+    _match_subfig_axes_height_to_ref(ax_g, subfig_qq, height_frac=0.90)
+    # K shares row 4 with I/J; align K's rendered height to row neighbour.
+    if subfig_power is not None:
+        _match_subfig_axes_height_to_ref(
+            ax_pure_null, subfig_power, height_frac=1.0,
+        )
 
     # ── Post-processing ───────────────────────────────────────────────
     for ax_pp in fig_c.get_axes():
@@ -2251,13 +2265,16 @@ def generate():
         if leg:
             leg.get_frame().set_alpha(0.85)
             leg.get_frame().set_edgecolor("#CCCCCC")
-    for _sf in (subfig_a, subfig_h, subfig_i, subfig_k, subfig_m):
+    _composite_subfigs = [subfig_a, subfig_qq]
+    if subfig_power is not None:
+        _composite_subfigs.append(subfig_power)
+    for _sf in _composite_subfigs:
         for leg in list(getattr(_sf, "legends", []) or []):
             leg.get_frame().set_alpha(0.85)
             leg.get_frame().set_edgecolor("#CCCCCC")
 
     _cap_fontsize(fig_c, _MAX_FONT)
-    for _sf in (subfig_a, subfig_h, subfig_i, subfig_k, subfig_m):
+    for _sf in _composite_subfigs:
         _cap_fontsize(_sf, _MAX_FONT)
 
     _apply_composite_axis_typography_panel_e(fig_c)
@@ -2265,7 +2282,7 @@ def generate():
     # Bold panel labels (placed after cap so they stay prominent)
     _lbl_fs = 9
     _lbl_xy = (-0.25, 1.12)
-    _lbl_x_left = -0.38  # B, E, F, K, M nudged further left
+    _lbl_x_left = -0.38  # B, E, F nudged further left
 
     subfig_axes = subfig_a.get_axes()
     if subfig_axes:
@@ -2278,10 +2295,10 @@ def generate():
     for ax_lbl, lbl in [
         (ax_b, "B"), (ax_cc, "C"), (ax_d, "D"),
         (ax_f, "F"),
-        (ax_j, "J"),
-        (ax_l, "L"), (ax_n, "N"),
+        (ax_pure_null, "I"),
+        (ax_runtime, "J"),
     ]:
-        _x = _lbl_x_left if lbl in ("B", "F") else (_lbl_xy[0] - 0.05 if lbl == "J" else _lbl_xy[0])
+        _x = _lbl_x_left if lbl in ("B", "F") else _lbl_xy[0]
         ax_lbl.text(
             _x, _lbl_xy[1], lbl,
             transform=ax_lbl.transAxes,
@@ -2289,6 +2306,8 @@ def generate():
         )
 
     def _label_subfig_panel(sf, letter: str, *, x: float = -0.2, y: float = 1.08):
+        if sf is None:
+            return
         ax0 = sf.get_axes()
         if ax0:
             ax0[0].text(
@@ -2297,10 +2316,8 @@ def generate():
                 fontsize=_lbl_fs, fontweight="bold", va="top", ha="left",
             )
 
-    _label_subfig_panel(subfig_h, "H", y=1.20)
-    _label_subfig_panel(subfig_i, "I", x=-0.30, y=1.12)
-    _label_subfig_panel(subfig_k, "K", x=-0.30, y=1.14)
-    _label_subfig_panel(subfig_m, "M", x=_lbl_x_left, y=1.14)
+    _label_subfig_panel(subfig_qq, "H", x=-0.30, y=1.35)
+    _label_subfig_panel(subfig_power, "K", x=-0.10, y=1.32)
 
     # E & G: heatmaps — label slightly lower to clear title/colorbar
     _heat_y = 1.08
@@ -2315,7 +2332,6 @@ def generate():
         fontsize=_lbl_fs, fontweight="bold", va="top", ha="left",
     )
 
-    # H/M row titles: same size as panel G axis title (axes.titlesize in composite).
     _figure_title_above_subfig(
         fig_c,
         subfig_a,
@@ -2325,23 +2341,10 @@ def generate():
     )
     _figure_title_above_subfig(
         fig_c,
-        subfig_h,
-        "Null-gene FPR vs signal fraction",
-        fontsize=_SMALL_RC["axes.titlesize"],
-        pad_frac=0.004,
-    )
-    _figure_title_above_subfig(
-        fig_c,
-        subfig_k,
+        subfig_qq,
         "Null-gene p-value calibration at 200 genes, 10% signal",
         fontsize=_SMALL_RC["axes.titlesize"],
         pad_frac=0.006,
-    )
-    _figure_title_above_subfig(
-        fig_c,
-        subfig_m,
-        "Effect-size estimation accuracy",
-        fontsize=_SMALL_RC["axes.titlesize"],
     )
 
     plt.rcParams.update(_prev_rc)
@@ -2358,11 +2361,14 @@ def generate():
         del data["adata"]
     data.clear()
     boot_data.clear()
+    composite_data.clear()
     del bench_df, loo_mat
+    if power_data is not None:
+        power_data.clear()
 
     clear_cache()
     gc.collect()
-    print("  SuppFig4 complete: 14 individual panels + combined (A–N)\n")
+    print("  SuppFig4 complete: 11 individual panels + combined (A–K)\n")
 
 
 if __name__ == "__main__":
