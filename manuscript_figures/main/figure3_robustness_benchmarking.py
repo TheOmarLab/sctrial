@@ -737,7 +737,12 @@ def _panel_bench_fpr_curves(
     _ttl_fs = 5.75 if composite else 12
     _ax_fs = 5.15 if composite else 11
     _tk_fs = 4.65 if composite else 10
-    _leg_fs = 3.5 if composite else 8
+    _leg_fs = 4.2 if composite else 9
+    if composite:
+        fig.suptitle(
+            "Null-gene FPR vs signal fraction",
+            x=0.5, y=0.99, fontsize=5.8, fontweight="bold",
+        )
 
     x_positions = np.arange(len(_SIGNAL_FRACTIONS), dtype=float)
     frac_to_x = dict(zip(_SIGNAL_FRACTIONS, x_positions))
@@ -822,7 +827,7 @@ def _panel_bench_lambda_gc(
     _lbl_fs = 5.15 if composite else 11
     _ttl_fs = 6.0 if composite else 12
     _ttl_pad = 5 if composite else 10
-    _leg_fs = 3.45 if composite else 9
+    _leg_fs = 4.2 if composite else 9
 
     for method in _BENCH_METHODS:
         sub = lam_df[lam_df["method"] == method].sort_values("n_genes")
@@ -965,18 +970,20 @@ def _panel_bench_signal_rmse(
                       label=_BENCH_METHOD_LABELS[m])
         for m in method_order
     ]
-    _leg_fs = 3.45 if composite else 9
+    _leg_fs = 4.2 if composite else 10
     if composite:
-        # SubFigure.transFigure delegates to the *parent* figure (legend would
-        # land outside this subfigure). Use the dedicated transSubfigure when
-        # available so the legend stays inside its subfigure regardless of row.
-        _leg_tx = getattr(fig, "transSubfigure", fig.transFigure)
-        fig.legend(
+        # Anchor title + legend to an axis inside panel E so they stay centered
+        # within E and cannot drift into panel B.
+        _host = bias_axes[1] if len(bias_axes) > 1 else bias_axes[0]
+        _host.set_title(
+            "Effect-size estimation accuracy",
+            fontsize=5.9, fontweight="bold", y=1.24, pad=1, loc="center",
+        )
+        _host.legend(
             handles=legend_handles,
-            loc="lower center",
+            loc="upper center",
             ncol=4,
-            bbox_to_anchor=(0.53, 0.02),
-            bbox_transform=_leg_tx,
+            bbox_to_anchor=(0.5, 1.14),
             frameon=True, framealpha=0.93, edgecolor="#cccccc",
             fontsize=_leg_fs,
             handlelength=0.85,
@@ -1021,16 +1028,154 @@ def _panel_a(ax, data: dict) -> None:
 
     lo = min(analytical.min(), bootstrap.min()) * 0.85
     hi = max(analytical.max(), bootstrap.max()) * 1.15
-    ax.plot([lo, hi], [lo, hi], ls="--", color=COLORS["gray"], lw=1, zorder=1)
+    # Slightly wider x range so low analytical-SE markers (and left-placed
+    # labels) sit farther from the spine; upper limit unchanged.
+    x_lo = lo - 0.08 * (hi - lo)
+    ax.plot([x_lo, hi], [x_lo, hi], ls="--", color=COLORS["gray"], lw=1, zorder=1)
 
     ax.scatter(analytical, bootstrap, s=50, color=COLORS["treated"],
                edgecolor="white", linewidth=0.5, zorder=3)
 
-    for feat, x, y in zip(feats, analytical, bootstrap):
+    ax.set_xlabel("Analytical SE (cluster-robust)")
+    ax.set_ylabel("Bootstrap SE (wild cluster)")
+    ax.set_title("Bootstrap vs Analytical SE", fontsize=10, fontweight="bold")
+
+    ax.set_xlim(x_lo, hi)
+    ax.set_ylim(lo, hi)
+    despine(ax)
+
+    # ── Label placement: keep each label adjacent to its marker, no overlaps ──
+    # Many candidate offsets ranked by distance to the marker; greedy pick of
+    # the closest in-bounds non-overlapping slot. No leader lines: text always
+    # ends up next to the marker.
+    fontsize_pt = 6.5
+    dpi = ax.figure.dpi
+    pt2px = dpi / 72.0
+    char_w_px = 0.52 * fontsize_pt * pt2px
+    label_h_px = 1.35 * fontsize_pt * pt2px
+    marker_r_px = 4.5 * pt2px
+    gap_px = 1.5 * pt2px  # uniform, snug spacing on either side of the marker
+
+    # Per-label side overrides (display name -> "left" | "right").
+    # The override is the *preferred* side; the alternate is still used as a
+    # fallback if the preferred placement falls outside the axes box.
+    _label_side_overrides: dict[str, str] = {
+        "Memory T Cells": "left",
+        "T Cell Activation": "left",
+        "NK Cell Activity": "right",
+        "Apoptosis": "left",
+        "Cytotoxic T Cells": "left",
+        "T Cell Exhaustion": "left",
+    }
+
+    def _candidate_offsets(side: str | None = None):
+        # Right or left of the marker, vertically centered. Same physical gap
+        # on both sides: anchor right-side text by its left edge, and
+        # left-side text by its right edge so the whitespace between the
+        # marker and the closest text edge is identical (= gap_px).
+        r, g = marker_r_px, gap_px
+        right = (r + g, 0.0, "left")     # text starts r+g px right of marker
+        left = (-r - g, 0.0, "right")    # text ends   r+g px left of marker
+        if side == "left":
+            return [left, right]
+        if side == "right":
+            return [right, left]
+        return [right, left]
+
+    def _bbox_from(mx_px, my_px, dx_px, dy_px, ha, w_px):
+        """Compute pixel-space bounding box of a label given its anchor."""
+        if ha == "right":
+            rx1 = mx_px + dx_px
+            rx0 = rx1 - w_px
+        else:
+            rx0 = mx_px + dx_px
+            rx1 = rx0 + w_px
+        ry0 = my_px + dy_px - label_h_px / 2.0
+        ry1 = my_px + dy_px + label_h_px / 2.0
+        return rx0, ry0, rx1, ry1
+
+    ax_inv = ax.transAxes.inverted()
+
+    def _within_axes(rx0, ry0, rx1, ry1, pad=0.012):
+        fx0, fy0 = ax_inv.transform((rx0, ry0))
+        fx1, fy1 = ax_inv.transform((rx1, ry1))
+        return (fx0 > pad and fx1 < 1 - pad
+                and fy0 > pad and fy1 < 1 - pad)
+
+    def _overlap_area(rx0, ry0, rx1, ry1, others):
+        total = 0.0
+        for ox0, oy0, ox1, oy1 in others:
+            iw = max(0.0, min(rx1, ox1) - max(rx0, ox0))
+            ih = max(0.0, min(ry1, oy1) - max(ry0, oy0))
+            total += iw * ih
+        return total
+
+    placed_boxes: list[tuple[float, float, float, float]] = []
+    order = sorted(range(len(feats)), key=lambda i: -bootstrap[i])
+
+    for i in order:
+        label = sig_display(feats[i])
+        dx_data, dy_data = float(analytical[i]), float(bootstrap[i])
+        w_px = max(18.0 * pt2px, char_w_px * len(label))
+        mx_px, my_px = ax.transData.transform((dx_data, dy_data))
+
+        side_pref = _label_side_overrides.get(label)
+        candidates = _candidate_offsets(side_pref)
+
+        # Each label box is vertically centered on its marker (dy_px=0 means
+        # the box centre coincides with the marker y).
+        chosen = None
+
+        if side_pref is not None:
+            # Absolute side preference: place the label on the requested side
+            # regardless of overlaps or whether the box sticks slightly out of
+            # the axes. Matplotlib will not clip the text, and the user has
+            # explicitly asked for that side.
+            dx_px, dy_px, ha = candidates[0]
+            rx0, ry0, rx1, ry1 = _bbox_from(mx_px, my_px, dx_px, dy_px, ha, w_px)
+            chosen = (dx_px, dy_px, ha, rx0, ry0, rx1, ry1)
+
+        if chosen is None:
+            # First pass: pick the next candidate that is in-bounds and clean.
+            for dx_px, dy_px, ha in candidates:
+                rx0, ry0, rx1, ry1 = _bbox_from(mx_px, my_px, dx_px, dy_px, ha, w_px)
+                if not _within_axes(rx0, ry0, rx1, ry1):
+                    continue
+                if _overlap_area(rx0, ry0, rx1, ry1, placed_boxes) > 0:
+                    continue
+                chosen = (dx_px, dy_px, ha, rx0, ry0, rx1, ry1)
+                break
+
+        if chosen is None:
+            # Second pass: among in-bounds candidates, take the one with the
+            # smallest overlap (still next to the marker, no leader line).
+            # When a side override is set we still iterate it first so the
+            # preferred side wins ties.
+            best_score = None
+            for dx_px, dy_px, ha in candidates:
+                rx0, ry0, rx1, ry1 = _bbox_from(mx_px, my_px, dx_px, dy_px, ha, w_px)
+                if not _within_axes(rx0, ry0, rx1, ry1):
+                    continue
+                ov = _overlap_area(rx0, ry0, rx1, ry1, placed_boxes)
+                if best_score is None or ov < best_score:
+                    best_score = ov
+                    chosen = (dx_px, dy_px, ha, rx0, ry0, rx1, ry1)
+        if chosen is None:
+            # Last resort: place to the right of the marker, in line.
+            dx_px = marker_r_px + gap_px
+            dy_px = 0.0
+            ha = "left"
+            rx0, ry0, rx1, ry1 = _bbox_from(mx_px, my_px, dx_px, dy_px, ha, w_px)
+            chosen = (dx_px, dy_px, ha, rx0, ry0, rx1, ry1)
+
+        dx_px, dy_px, ha, rx0, ry0, rx1, ry1 = chosen
+        placed_boxes.append((rx0, ry0, rx1, ry1))
+
         ax.annotate(
-            sig_display(feat), (x, y),
-            fontsize=6, ha="left", va="bottom",
-            xytext=(4, 4), textcoords="offset points",
+            label, (dx_data, dy_data),
+            xytext=(dx_px / pt2px, dy_px / pt2px),
+            textcoords="offset points",
+            fontsize=fontsize_pt, ha=ha, va="center",
         )
 
     r, p = stats.pearsonr(analytical, bootstrap)
@@ -1039,11 +1184,6 @@ def _panel_a(ax, data: dict) -> None:
         transform=ax.transAxes, fontsize=8, va="top", ha="left",
         bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="none", alpha=0.8),
     )
-
-    ax.set_xlabel("Analytical SE (cluster-robust)")
-    ax.set_ylabel("Bootstrap SE (wild cluster)")
-    ax.set_title("Bootstrap vs Analytical SE", fontsize=10)
-    despine(ax)
 
 
 # ======================================================================
@@ -1084,7 +1224,7 @@ def _panel_b(ax, data: dict) -> None:
             s=20, color=color, alpha=0.6, edgecolor="none", zorder=2,
         )
         ax.scatter(
-            full_beta, idx, s=80, color=color, marker="D",
+            full_beta, idx, s=64, color=color, marker="D",
             edgecolor="black", linewidth=0.8, zorder=4,
         )
         ax.hlines(
@@ -1096,28 +1236,28 @@ def _panel_b(ax, data: dict) -> None:
     ax.set_yticklabels([sig_display(s) for s in top_sigs], fontsize=8)
     ax.axvline(0, ls=":", color=COLORS["gray"], lw=0.8, zorder=0)
     ax.set_xlabel(r"$\beta_{\mathrm{DiD}}$ (standardized)")
-    ax.set_title("Leave-One-Out Sensitivity", fontsize=10)
+    ax.set_title("Leave-One-Out Sensitivity", fontsize=10, fontweight="bold")
 
     from matplotlib.lines import Line2D
+    from matplotlib.patches import Patch
     # Signature-color legend entries
     handles = []
     for idx, feat in enumerate(top_sigs):
         color = palette[idx % len(palette)]
         handles.append(
-            Line2D([0], [0], marker="D", color="w", markerfacecolor=color,
-                   markeredgecolor="black", markersize=6,
-                   label=sig_display(feat)),
+            Patch(facecolor=color, edgecolor="#333333",
+                  linewidth=0.5, label=sig_display(feat)),
         )
     # Marker-type legend entries
     handles.append(
         Line2D([0], [0], marker="o", color="w", markerfacecolor=COLORS["gray"],
-               markersize=5, label="LOO estimate"),
+               markersize=4.0, label="LOO estimate"),
     )
     handles.append(
         Line2D([0], [0], marker="D", color="w", markerfacecolor=COLORS["gray"],
-               markeredgecolor="black", markersize=6, label="Full sample"),
+               markeredgecolor="black", markersize=4.8, label="Full sample"),
     )
-    ax.legend(handles=handles, fontsize=6.5, loc="lower right",
+    ax.legend(handles=handles, fontsize=7.6, loc="lower right",
               frameon=True, framealpha=0.9)
     despine(ax)
 
@@ -1247,8 +1387,8 @@ def _panel_d_se_comparison(ax, data: dict) -> None:
     ax.set_yticks(y_pos)
     ax.set_yticklabels(merged["display"].values, fontsize=8)
     ax.set_xlabel("Standard Error")
-    ax.set_title("Precision: Cell vs Participant Level", fontsize=10)
-    ax.legend(fontsize=7, loc="lower right", frameon=True, framealpha=0.9)
+    ax.set_title("Precision: Cell vs Participant Level", fontsize=10, fontweight="bold")
+    ax.legend(fontsize=8, loc="lower right", frameon=True, framealpha=0.9)
     despine(ax)
 
 
@@ -1256,7 +1396,7 @@ def _panel_d_se_comparison(ax, data: dict) -> None:
 # Panel G: Cross-dataset Cohen's d forest
 # ======================================================================
 
-def _panel_e_cross_dataset(ax, data: dict) -> None:
+def _panel_e_cross_dataset(ax, data: dict, *, composite: bool = False) -> None:
     """Forest plot of signed Cohen's d for pre-specified endpoints."""
     scale_data = data.get("scale_data")
     if scale_data is None:
@@ -1327,19 +1467,28 @@ def _panel_e_cross_dataset(ax, data: dict) -> None:
     ax.axvline(0, color="#444", linewidth=1.0, linestyle="-",
                zorder=1, alpha=0.5)
 
+    _pt_size = 46 if composite else 80
+    _ci_lw = 1.7 if composite else 2.2
+    _ann_fs = 5.0 if composite else 7
+    _yt_fs = 6.4 if composite else 8.5
+    _yt_grp_fs = 7.2 if composite else 9.5
+    _xl_fs = 7.6 if composite else 11
+    _ttl_fs = 8.6 if composite else 13
+    _xt_fs = 6.4 if composite else 9.5
+
     for idx, row in data_rows:
         yp = y_positions[idx]
         color = DATASET_COLORS.get(row["dataset"], COLORS["gray"])
 
         ax.hlines(yp, row["d_lower"], row["d_upper"],
-                  color=color, linewidth=2.2, zorder=2, alpha=0.7)
-        ax.scatter(row["d"], yp, color=color, s=80, zorder=3,
+                  color=color, linewidth=_ci_lw, zorder=2, alpha=0.7)
+        ax.scatter(row["d"], yp, color=color, s=_pt_size, zorder=3,
                    edgecolors="white", linewidths=1.0)
 
         x_annot = row["d_upper"] + 0.08
         ax.text(x_annot, yp,
                 f"{row['d']:+.2f}  (n\u2090={row['n_participants']})",
-                fontsize=7, va="center", ha="left", color="#444")
+                fontsize=_ann_fs, va="center", ha="left", color="#444")
 
     for i, lbl in enumerate(y_labels):
         is_group = lbl in ds_order
@@ -1349,12 +1498,12 @@ def _panel_e_cross_dataset(ax, data: dict) -> None:
                        linestyle="-", alpha=0.3, xmin=0.0, xmax=1.0)
 
     ax.set_yticks(y_positions)
-    ax.set_yticklabels(y_labels, fontsize=8.5)
+    ax.set_yticklabels(y_labels, fontsize=_yt_fs)
     for tick_label in ax.get_yticklabels():
         text = tick_label.get_text()
         if text in ds_order:
             tick_label.set_fontweight("bold")
-            tick_label.set_fontsize(9.5)
+            tick_label.set_fontsize(_yt_grp_fs)
             color = DATASET_COLORS.get(text, COLORS["gray"])
             tick_label.set_color(color)
 
@@ -1362,10 +1511,10 @@ def _panel_e_cross_dataset(ax, data: dict) -> None:
         ax.axvline(ref_d, color=COLORS["gray"], linewidth=0.4,
                    linestyle=":", zorder=0, alpha=0.25)
 
-    ax.set_xlabel("Cohen's d  (signed effect size)", fontsize=11)
+    ax.set_xlabel("Cohen's d  (signed effect size)", fontsize=_xl_fs)
     ax.set_title("Effect sizes — pre-specified endpoints",
-                 fontsize=13, fontweight="bold", pad=12)
-    ax.tick_params(axis="x", which="major", labelsize=9.5)
+                 fontsize=_ttl_fs, fontweight="bold", pad=12 if not composite else 8)
+    ax.tick_params(axis="x", which="major", labelsize=_xt_fs)
 
     all_vals = effect_df[["d_lower", "d_upper", "d"]].values.flatten()
     x_margin = max(abs(all_vals.min()), abs(all_vals.max())) + 0.5
@@ -1473,21 +1622,45 @@ def generate() -> None:
             if txt.get_fontsize() > maximum:
                 txt.set_fontsize(maximum)
 
+    def _match_subfig_axes_height_to_ref(ref_ax, subfig, *, height_frac: float = 1.0):
+        """Scale visible axes inside *subfig* to match *ref_ax* height.
+
+        This keeps faceted subfigures (like panel E's 2x4 grid) from looking
+        vertically stretched when they share a row with a single-axis panel.
+        """
+        axes = [ax for ax in subfig.get_axes() if ax.get_visible()]
+        if not axes:
+            return
+
+        ref_bb = ref_ax.get_position()
+        target_h = max(ref_bb.height * height_frac, 1e-6)
+
+        block_y0 = min(ax.get_position().y0 for ax in axes)
+        block_y1 = max(ax.get_position().y1 for ax in axes)
+        block_h = max(block_y1 - block_y0, 1e-6)
+        scale = target_h / block_h
+
+        # Align bottoms so both panels sit on the same baseline in the row.
+        target_y0 = ref_bb.y0
+        for ax in axes:
+            bb = ax.get_position()
+            new_y0 = target_y0 + (bb.y0 - block_y0) * scale
+            ax.set_position([bb.x0, new_y0, bb.width, bb.height * scale])
+
     _prev_rc = {k: plt.rcParams[k] for k in _SMALL_RC}
     plt.rcParams.update(_SMALL_RC)
 
     _mm = 1.0 / 25.4
-    fig_c = plt.figure(figsize=(180 * _mm, 250 * _mm))
+    fig_c = plt.figure(figsize=(180 * _mm, 235 * _mm))
 
     # Row 0: A | B
     # Row 1: C — null-gene FPR curves (full width)
-    # Row 2: D — λ_GC (centered, half-width)
-    # Row 3: E — bias + RMSE 2×4 grid (full width)
-    # Row 4: F | G — SE bars | forest
+    # Row 2: D | E — λ_GC | bias+RMSE grid
+    # Row 3: F | G — SE bars | forest
     outer = fig_c.add_gridspec(
-        5, 1,
-        height_ratios=[1.0, 0.95, 0.85, 1.55, 1.25],
-        hspace=0.55,
+        4, 1,
+        height_ratios=[1.0, 0.95, 1.28, 1.25],
+        hspace=0.42,
         left=0.07, right=0.97, top=0.97, bottom=0.04,
     )
 
@@ -1499,7 +1672,7 @@ def generate() -> None:
     if bench_df is not None:
         _panel_bench_fpr_curves(sub_c, bench_df, composite=True)
         sub_c.subplots_adjust(
-            left=0.06, right=0.985, top=0.86, bottom=0.22, wspace=0.18,
+            left=0.06, right=0.985, top=0.82, bottom=0.22, wspace=0.18,
         )
     else:
         ax_sc = sub_c.subplots(1, 1)
@@ -1509,12 +1682,9 @@ def generate() -> None:
         )
         ax_sc.set_axis_off()
 
-    gs_d = outer[2].subgridspec(
-        1, 3, wspace=0.0, width_ratios=[0.22, 0.56, 0.22],
-    )
-    ax_lambda = fig_c.add_subplot(gs_d[1])
-
-    sub_e = fig_c.add_subfigure(outer[3])
+    gs_mid = outer[2].subgridspec(1, 2, wspace=0.34, width_ratios=[0.95, 1.35])
+    ax_lambda = fig_c.add_subplot(gs_mid[0])
+    sub_e = fig_c.add_subfigure(gs_mid[1])
     if bench_df is not None:
         _panel_bench_lambda_gc(ax_lambda, bench_df, composite=True)
         _panel_bench_signal_rmse(sub_e, bench_df, composite=True)
@@ -1527,14 +1697,19 @@ def generate() -> None:
         ax_se = sub_e.subplots(1, 1)
         ax_se.set_axis_off()
 
-    gs_bot = outer[4].subgridspec(1, 2, wspace=0.38, width_ratios=[1, 1.45])
+    gs_bot = outer[3].subgridspec(1, 2, wspace=0.38, width_ratios=[1, 1.45])
     ax_f = fig_c.add_subplot(gs_bot[0])
     ax_g = fig_c.add_subplot(gs_bot[1])
 
     _panel_a(ax_a, data)
     _panel_b(ax_b, data)
     _panel_d_se_comparison(ax_f, data)
-    _panel_e_cross_dataset(ax_g, data)
+    _panel_e_cross_dataset(ax_g, data, composite=True)
+
+    # Faceted panel E can appear taller than single-axis panel D in the same
+    # row. Match E's total axes-block height to D's axis height.
+    fig_c.canvas.draw()
+    _match_subfig_axes_height_to_ref(ax_lambda, sub_e, height_frac=1.0)
 
     # ── Combined-panel-only adjustments ──
 
@@ -1552,7 +1727,7 @@ def generate() -> None:
             leg.remove()
             ax_target.legend(
                 handles=handles, labels=labels,
-                fontsize=3.5, loc=loc,
+                fontsize=4.6, loc=loc,
                 frameon=True, framealpha=0.85,
                 handlelength=1, handletextpad=0.3,
                 borderpad=0.3, labelspacing=0.2,
@@ -1568,6 +1743,28 @@ def generate() -> None:
 
     # Cap hard-coded font sizes to composite maximum
     _cap_fontsize(fig_c, _MAX_FONT_COMPOSITE)
+
+    # Requested emphasis: make A and D slightly more readable in composite.
+    def _raise_axis_fonts(ax, *, title_fs, label_fs, tick_fs, legend_fs, text_fs):
+        ax.title.set_fontsize(max(ax.title.get_fontsize(), title_fs))
+        ax.xaxis.label.set_fontsize(max(ax.xaxis.label.get_fontsize(), label_fs))
+        ax.yaxis.label.set_fontsize(max(ax.yaxis.label.get_fontsize(), label_fs))
+        ax.tick_params(axis="both", labelsize=tick_fs)
+        for txt in ax.texts:
+            txt.set_fontsize(max(txt.get_fontsize(), text_fs))
+        leg = ax.get_legend()
+        if leg is not None:
+            for txt in leg.get_texts():
+                txt.set_fontsize(max(txt.get_fontsize(), legend_fs))
+
+    _raise_axis_fonts(
+        ax_a,
+        title_fs=6.8, label_fs=6.0, tick_fs=5.4, legend_fs=4.0, text_fs=4.6,
+    )
+    _raise_axis_fonts(
+        ax_lambda,
+        title_fs=6.7, label_fs=6.0, tick_fs=5.4, legend_fs=4.0, text_fs=4.6,
+    )
 
     _lbl_fs = 7
     for ax, lbl in [
@@ -1586,7 +1783,7 @@ def generate() -> None:
     ax_e_list = sub_e.get_axes()
     if ax_e_list:
         ax_e_list[0].text(
-            -0.06, 1.22, "E", transform=ax_e_list[0].transAxes,
+            -0.03, 1.18, "E", transform=ax_e_list[0].transAxes,
             fontsize=_lbl_fs, fontweight="bold", va="top", ha="left",
         )
 
