@@ -737,7 +737,7 @@ def _panel_bench_fpr_curves(
     _ttl_fs = 5.75 if composite else 12
     _ax_fs = 5.15 if composite else 11
     _tk_fs = 4.65 if composite else 10
-    _leg_fs = 4.2 if composite else 9
+    _leg_fs = 5.2 if composite else 9
     if composite:
         fig.suptitle(
             "Null-gene FPR vs signal fraction",
@@ -827,7 +827,7 @@ def _panel_bench_lambda_gc(
     _lbl_fs = 5.15 if composite else 11
     _ttl_fs = 6.0 if composite else 12
     _ttl_pad = 5 if composite else 10
-    _leg_fs = 4.2 if composite else 9
+    _leg_fs = 5.2 if composite else 9
 
     for method in _BENCH_METHODS:
         sub = lam_df[lam_df["method"] == method].sort_values("n_genes")
@@ -882,12 +882,13 @@ def _panel_bench_signal_rmse(
     if hasattr(fig, "set_constrained_layout"):
         fig.set_constrained_layout(False)
     if composite:
-        # Use most of the subfigure for plots; leave a thin strip at the
-        # bottom (y < 0.10) for the method legend.
+        # Compact gridspec; title + legend are anchored to axis coords below so
+        # they cannot drift into neighbouring composite panels (see SubFigure
+        # transforms — avoid fig.text(..., transSubfigure) for decorations).
         gs = fig.add_gridspec(
             2, 4,
-            hspace=0.42, wspace=0.18,
-            left=0.07, right=0.99, top=0.90, bottom=0.16,
+            hspace=0.52, wspace=0.18,
+            left=0.07, right=0.99, top=0.82, bottom=0.16,
         )
     else:
         gs = fig.add_gridspec(
@@ -944,7 +945,7 @@ def _panel_bench_signal_rmse(
         ax_bias.set_title(
             f"{n_g:,} genes",
             fontsize=_ttl_fs, fontweight="bold", color="#1a1a1a",
-            pad=(4 if composite else 8),
+            pad=(-7 if composite else 8),
         )
         _style_axis(ax_bias)
         ax_rmse.set_xticks(x_positions)
@@ -970,20 +971,27 @@ def _panel_bench_signal_rmse(
                       label=_BENCH_METHOD_LABELS[m])
         for m in method_order
     ]
-    _leg_fs = 4.2 if composite else 10
+    _leg_fs = 5.2 if composite else 10
     if composite:
-        # Anchor title + legend to an axis inside panel E so they stay centered
-        # within E and cannot drift into panel B.
-        _host = bias_axes[1] if len(bias_axes) > 1 else bias_axes[0]
-        _host.set_title(
+        # Main title + legend centered over all four facet columns: use column-0
+        # axes coordinates where one column width = 1.0, so x=2.0 is the row
+        # midpoint (does not replace any facet title).
+        _anchor = bias_axes[0]
+        _cx = 2.0
+        _anchor.text(
+            _cx, 1.25,
             "Effect-size estimation accuracy",
-            fontsize=5.9, fontweight="bold", y=1.24, pad=1, loc="center",
+            transform=_anchor.transAxes,
+            ha="center", va="bottom",
+            fontsize=5.9, fontweight="bold",
         )
-        _host.legend(
+        # Legend in the gridspec gap between bias and RMSE rows.
+        _anchor.legend(
             handles=legend_handles,
             loc="upper center",
             ncol=4,
-            bbox_to_anchor=(0.5, 1.14),
+            bbox_to_anchor=(_cx, -0.15),
+            bbox_transform=_anchor.transAxes,
             frameon=True, framealpha=0.93, edgecolor="#cccccc",
             fontsize=_leg_fs,
             handlelength=0.85,
@@ -1654,13 +1662,16 @@ def generate() -> None:
     fig_c = plt.figure(figsize=(180 * _mm, 235 * _mm))
 
     # Row 0: A | B
-    # Row 1: C — null-gene FPR curves (full width)
-    # Row 2: D | E — λ_GC | bias+RMSE grid
-    # Row 3: F | G — SE bars | forest
+    # Row 1: (spacer — extra gap before C)
+    # Row 2: C — null-gene FPR curves
+    # Row 3: D | E
+    # Row 4: (spacer — extra gap before F|G)
+    # Row 5: F | G
+    # Spacer height_ratios add whitespace; hspace is the remaining inter-row pad.
     outer = fig_c.add_gridspec(
-        4, 1,
-        height_ratios=[1.0, 0.95, 1.28, 1.25],
-        hspace=0.42,
+        6, 1,
+        height_ratios=[1.0, 0.11, 0.95, 1.28, 0.11, 1.25],
+        hspace=0.28,
         left=0.07, right=0.97, top=0.97, bottom=0.04,
     )
 
@@ -1668,7 +1679,10 @@ def generate() -> None:
     ax_a = fig_c.add_subplot(gs0[0])
     ax_b = fig_c.add_subplot(gs0[1])
 
-    sub_c = fig_c.add_subfigure(outer[1])
+    _ax_sp_top = fig_c.add_subplot(outer[1])
+    _ax_sp_top.set_axis_off()
+
+    sub_c = fig_c.add_subfigure(outer[2])
     if bench_df is not None:
         _panel_bench_fpr_curves(sub_c, bench_df, composite=True)
         sub_c.subplots_adjust(
@@ -1682,7 +1696,7 @@ def generate() -> None:
         )
         ax_sc.set_axis_off()
 
-    gs_mid = outer[2].subgridspec(1, 2, wspace=0.34, width_ratios=[0.95, 1.35])
+    gs_mid = outer[3].subgridspec(1, 2, wspace=0.50, width_ratios=[0.95, 1.35])
     ax_lambda = fig_c.add_subplot(gs_mid[0])
     sub_e = fig_c.add_subfigure(gs_mid[1])
     if bench_df is not None:
@@ -1697,7 +1711,10 @@ def generate() -> None:
         ax_se = sub_e.subplots(1, 1)
         ax_se.set_axis_off()
 
-    gs_bot = outer[3].subgridspec(1, 2, wspace=0.38, width_ratios=[1, 1.45])
+    _ax_sp_bot = fig_c.add_subplot(outer[4])
+    _ax_sp_bot.set_axis_off()
+
+    gs_bot = outer[5].subgridspec(1, 2, wspace=0.38, width_ratios=[1, 1.45])
     ax_f = fig_c.add_subplot(gs_bot[0])
     ax_g = fig_c.add_subplot(gs_bot[1])
 
@@ -1719,15 +1736,20 @@ def generate() -> None:
         ax_f: "lower right",
         ax_g: "lower right",
     }
+    _leg_fs_inside = {
+        ax_b: 5.2,
+        ax_f: 5.2,
+    }
     for ax_target, loc in _inside.items():
         leg = ax_target.get_legend()
         if leg:
             handles = leg.legend_handles
             labels = [t.get_text() for t in leg.get_texts()]
             leg.remove()
+            _fs = _leg_fs_inside.get(ax_target, 4.6)
             ax_target.legend(
                 handles=handles, labels=labels,
-                fontsize=4.6, loc=loc,
+                fontsize=_fs, loc=loc,
                 frameon=True, framealpha=0.85,
                 handlelength=1, handletextpad=0.3,
                 borderpad=0.3, labelspacing=0.2,
@@ -1763,7 +1785,7 @@ def generate() -> None:
     )
     _raise_axis_fonts(
         ax_lambda,
-        title_fs=6.7, label_fs=6.0, tick_fs=5.4, legend_fs=4.0, text_fs=4.6,
+        title_fs=6.7, label_fs=6.0, tick_fs=5.4, legend_fs=5.2, text_fs=4.6,
     )
 
     _lbl_fs = 7
@@ -1783,7 +1805,7 @@ def generate() -> None:
     ax_e_list = sub_e.get_axes()
     if ax_e_list:
         ax_e_list[0].text(
-            -0.03, 1.18, "E", transform=ax_e_list[0].transAxes,
+            -0.08, 1.14, "E", transform=ax_e_list[0].transAxes,
             fontsize=_lbl_fs, fontweight="bold", va="top", ha="left",
         )
 
