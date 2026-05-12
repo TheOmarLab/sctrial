@@ -4,7 +4,7 @@ Figure 3 — Statistical Robustness & Method Benchmarking
 
 Seven-panel figure combining bootstrap validation, leave-one-out
 sensitivity, NatMeth signal-fraction benchmark summaries (null-gene FPR
-curves, genomic inflation λ_GC, signal-gene effect-size RMSE), and
+curves, signal-gene effect-size RMSE, genomic inflation λ_GC), and
 real-data precision / effect-size panels.
 
 Panels
@@ -12,8 +12,10 @@ Panels
 A   Bootstrap vs analytical SE (Sade–Feldman).
 B   Leave-one-out participant sensitivity.
 C   Null-gene FPR vs signal fraction (simulator benchmark; faceted by panel size).
-D   Genomic inflation λ_GC under pure null (simulator benchmark).
-E   Effect-size bias and RMSE on signal genes (simulator benchmark).
+D   Effect-size bias and RMSE on signal genes (simulator benchmark). Combined artboard:
+    **left** column of the benchmark row (faceted bias/RMSE grid).
+E   Genomic inflation λ_GC under pure null (simulator benchmark). Combined artboard:
+    **right** column of the benchmark row (single-axis λ_GC plot).
 F   Standard-error comparison (cell vs participant level).
 G   Cross-dataset signed Cohen's d forest (pre-specified endpoints).
 
@@ -143,7 +145,7 @@ def _save_cache(tag: str, df: pd.DataFrame) -> None:
 
 
 # ======================================================================
-# Sade-Feldman data preparation (panels A, B, E-G)
+# Sade-Feldman data preparation (panels A, B, F)
 # ======================================================================
 
 def _prepare_sf_data() -> dict:
@@ -806,7 +808,7 @@ def _panel_bench_fpr_curves(
 def _panel_bench_lambda_gc(
     ax, bench_df: pd.DataFrame, *, composite: bool = False,
 ) -> None:
-    """Panel D — same implementation as fig3.py panel J (λ_GC)."""
+    """Panel E — same implementation as fig3.py panel J (λ_GC)."""
     null_scenarios = bench_df[bench_df["is_null_scenario"]]
     pvals_pure = null_scenarios[null_scenarios["true_beta"] == 0.0]
     rows = []
@@ -877,7 +879,7 @@ def _panel_bench_lambda_gc(
 def _panel_bench_signal_rmse(
     fig, bench_df: pd.DataFrame, *, composite: bool = False,
 ) -> None:
-    """Panel E — same implementation as fig3.py panel M (bias + RMSE grids)."""
+    """Panel D — same implementation as fig3.py panel M (bias + RMSE grids)."""
     df = _compute_signal_bias_rmse_table(bench_df)
     if hasattr(fig, "set_constrained_layout"):
         fig.set_constrained_layout(False)
@@ -1579,18 +1581,18 @@ def generate() -> None:
         fig_c.tight_layout()
         save_panel(fig_c, "panel_C_benchmark_fpr_curves", FIGURE_NAME, MAIN_OUTPUT)
 
-        fig_d, ax_d = plt.subplots(figsize=(7.2, 5.0))
-        _panel_bench_lambda_gc(ax_d, bench_df)
-        fig_d.tight_layout()
-        save_panel(fig_d, "panel_D_benchmark_lambda_gc", FIGURE_NAME, MAIN_OUTPUT)
-
-        fig_e = plt.figure(figsize=(14, 6.8))
-        _panel_bench_signal_rmse(fig_e, bench_df)
-        fig_e.suptitle(
+        fig_d = plt.figure(figsize=(14, 6.8))
+        _panel_bench_signal_rmse(fig_d, bench_df)
+        fig_d.suptitle(
             "Effect-size estimation accuracy on signal genes",
             fontsize=13, fontweight="bold", y=0.995,
         )
-        save_panel(fig_e, "panel_E_benchmark_signal_rmse", FIGURE_NAME, MAIN_OUTPUT)
+        save_panel(fig_d, "panel_D_benchmark_signal_rmse", FIGURE_NAME, MAIN_OUTPUT)
+
+        fig_e, ax_e = plt.subplots(figsize=(7.2, 5.0))
+        _panel_bench_lambda_gc(ax_e, bench_df)
+        fig_e.tight_layout()
+        save_panel(fig_e, "panel_E_benchmark_lambda_gc", FIGURE_NAME, MAIN_OUTPUT)
 
     fig, ax = plt.subplots(figsize=(6.5, 5))
     _panel_d_se_comparison(ax, data)
@@ -1633,7 +1635,7 @@ def generate() -> None:
     def _match_subfig_axes_height_to_ref(ref_ax, subfig, *, height_frac: float = 1.0):
         """Scale visible axes inside *subfig* to match *ref_ax* height.
 
-        This keeps faceted subfigures (like panel E's 2x4 grid) from looking
+        This keeps faceted subfigures (like panel D's 2x4 grid) from looking
         vertically stretched when they share a row with a single-axis panel.
         """
         axes = [ax for ax in subfig.get_axes() if ax.get_visible()]
@@ -1664,7 +1666,7 @@ def generate() -> None:
     # Row 0: A | B
     # Row 1: (spacer — extra gap before C)
     # Row 2: C — null-gene FPR curves
-    # Row 3: D | E
+    # Row 3: D | E — bias+RMSE grid | λ_GC (left to right)
     # Row 4: (spacer — extra gap before F|G)
     # Row 5: F | G
     # Spacer height_ratios add whitespace; hspace is the remaining inter-row pad.
@@ -1696,20 +1698,20 @@ def generate() -> None:
         )
         ax_sc.set_axis_off()
 
-    gs_mid = outer[3].subgridspec(1, 2, wspace=0.50, width_ratios=[0.95, 1.35])
-    ax_lambda = fig_c.add_subplot(gs_mid[0])
-    sub_e = fig_c.add_subfigure(gs_mid[1])
+    gs_mid = outer[3].subgridspec(1, 2, wspace=0.50, width_ratios=[1.35, 0.95])
+    sub_d = fig_c.add_subfigure(gs_mid[0])
+    ax_e = fig_c.add_subplot(gs_mid[1])
     if bench_df is not None:
-        _panel_bench_lambda_gc(ax_lambda, bench_df, composite=True)
-        _panel_bench_signal_rmse(sub_e, bench_df, composite=True)
+        _panel_bench_signal_rmse(sub_d, bench_df, composite=True)
+        _panel_bench_lambda_gc(ax_e, bench_df, composite=True)
     else:
-        ax_lambda.text(
+        ax_e.text(
             0.5, 0.5, "—", ha="center", va="center",
-            transform=ax_lambda.transAxes, fontsize=6,
+            transform=ax_e.transAxes, fontsize=6,
         )
-        ax_lambda.set_axis_off()
-        ax_se = sub_e.subplots(1, 1)
-        ax_se.set_axis_off()
+        ax_e.set_axis_off()
+        ax_sd = sub_d.subplots(1, 1)
+        ax_sd.set_axis_off()
 
     _ax_sp_bot = fig_c.add_subplot(outer[4])
     _ax_sp_bot.set_axis_off()
@@ -1723,10 +1725,10 @@ def generate() -> None:
     _panel_d_se_comparison(ax_f, data)
     _panel_e_cross_dataset(ax_g, data, composite=True)
 
-    # Faceted panel E can appear taller than single-axis panel D in the same
-    # row. Match E's total axes-block height to D's axis height.
+    # Faceted panel D (bias/RMSE) can appear taller than single-axis λ_GC (E).
+    # Match D's total axes-block height to E's axis height.
     fig_c.canvas.draw()
-    _match_subfig_axes_height_to_ref(ax_lambda, sub_e, height_frac=1.0)
+    _match_subfig_axes_height_to_ref(ax_e, sub_d, height_frac=1.0)
 
     # ── Combined-panel-only adjustments ──
 
@@ -1766,7 +1768,7 @@ def generate() -> None:
     # Cap hard-coded font sizes to composite maximum
     _cap_fontsize(fig_c, _MAX_FONT_COMPOSITE)
 
-    # Requested emphasis: make A and D slightly more readable in composite.
+    # Requested emphasis: make A and E (λ_GC, right column) slightly more readable.
     def _raise_axis_fonts(ax, *, title_fs, label_fs, tick_fs, legend_fs, text_fs):
         ax.title.set_fontsize(max(ax.title.get_fontsize(), title_fs))
         ax.xaxis.label.set_fontsize(max(ax.xaxis.label.get_fontsize(), label_fs))
@@ -1784,14 +1786,14 @@ def generate() -> None:
         title_fs=6.8, label_fs=6.0, tick_fs=5.4, legend_fs=4.0, text_fs=4.6,
     )
     _raise_axis_fonts(
-        ax_lambda,
+        ax_e,
         title_fs=6.7, label_fs=6.0, tick_fs=5.4, legend_fs=5.2, text_fs=4.6,
     )
 
     _lbl_fs = 7
     for ax, lbl in [
         (ax_a, "A"), (ax_b, "B"),
-        (ax_lambda, "D"),
+        (ax_e, "E"),
         (ax_f, "F"), (ax_g, "G"),
     ]:
         ax.text(-0.15, 1.12, lbl, transform=ax.transAxes,
@@ -1802,10 +1804,10 @@ def generate() -> None:
             -0.02, 1.18, "C", transform=ax_c_list[0].transAxes,
             fontsize=_lbl_fs, fontweight="bold", va="top", ha="left",
         )
-    ax_e_list = sub_e.get_axes()
-    if ax_e_list:
-        ax_e_list[0].text(
-            -0.08, 1.14, "E", transform=ax_e_list[0].transAxes,
+    ax_d_list = sub_d.get_axes()
+    if ax_d_list:
+        ax_d_list[0].text(
+            -0.08, 1.14, "D", transform=ax_d_list[0].transAxes,
             fontsize=_lbl_fs, fontweight="bold", va="top", ha="left",
         )
 

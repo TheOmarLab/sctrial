@@ -3,16 +3,16 @@ Supplementary Figure 4 — Sensitivity, Robustness, and Benchmarking.
 ===================================================================
 
 Panels A–G characterize the sensitivity and robustness of sctrial's
-participant-level inference on real datasets.  Panels H–J carry the
-remaining NatMeth benchmark results against established multi-subject
-methods (dreamlet, NEBULA, Wilcoxon on change scores) on a
-hierarchical gamma-Poisson simulator (panel sizes 50–2000, signal
-fractions 1–20%); the FPR-curve, λ_GC, and signal-RMSE benchmark
-panels were promoted to Figure 3. Panel K shows empirical power
-curves on real datasets (formerly Figure 3 panel C).
+participant-level inference on real datasets.  NatMeth benchmark
+panels H–J (pure-null FPR, runtime, faceted QQ) use the same four
+methods (dreamlet, NEBULA, Wilcoxon on change scores, sctrial DiD) on
+a hierarchical gamma-Poisson simulator (panel sizes 50–2000,
+signal fractions 1–20%); the FPR-curve, λ_GC, and signal-RMSE
+benchmark panels were promoted to Figure 3.  Panel K shows empirical
+power curves on real datasets (formerly Figure 3 panel C).
 
-Panels
-------
+Panels (letters match the composite artboard, left-to-right and top-to-bottom)
+--------------------------------------------------------------------------------
   A  Analytical vs bootstrap SE (all 5 datasets, forest plot).
   B  Standardised vs unstandardised effect sizes (Melanoma).
   C  Mean vs median aggregation comparison (Melanoma).
@@ -20,12 +20,12 @@ Panels
   E  Cell-type-stratified DiD heatmap (Melanoma).
   F  Rank-order concordance across preprocessing choices (Melanoma).
   G  Leave-one-out stability matrix (max influence, all datasets).
-  --- NatMeth benchmark (sctrial_did, dreamlet, NEBULA, Wilcoxon) ---
-  H  Benchmark: faceted p-value QQ plots with 95% Beta envelope (two-arm, n=40).
-  I  Benchmark: pure-null Type I error vs panel size.
-  J  Benchmark: runtime comparison across methods.
-  --- Empirical power on real datasets ---
-  K  Empirical power curves (participant subsampling).
+  --- composite row 3 (right of F|G) ---
+  H  Benchmark: pure-null Type I error vs panel size.
+  I  Benchmark: runtime comparison across methods.
+  --- composite row 4 ---
+  J  Benchmark: faceted p-value QQ plots with 95% Beta envelope (two-arm, n=40).
+  K  Empirical power curves (participant subsampling; 3+2 facet grid).
 
 Non-overlap guardrail: methodological sensitivity only, not biological claims.
 """
@@ -640,7 +640,7 @@ def _panel_ct_heatmap(ax, data: dict, *, composite: bool = False):
 
 # ── Panel G: Rank concordance ────────────────────────────────────
 
-def _panel_rank_concordance(ax, data: dict):
+def _panel_rank_concordance(ax, data: dict, *, composite: bool = False):
     """Bar chart: Spearman rank correlation of feature rankings
     across preprocessing choices."""
     # Get rankings from different configs
@@ -705,16 +705,20 @@ def _panel_rank_concordance(ax, data: dict):
     ax.barh(y, rhos, color=colors, edgecolor="white", alpha=0.85, height=0.6)
     ax.axvline(1.0, color="grey", linewidth=0.5, alpha=0.3)
     ax.set_yticks(y)
-    ax.set_yticklabels(labels, fontsize=8)
+    _yt_fs = 6 if composite else 8
+    ax.set_yticklabels(labels, fontsize=_yt_fs)
     ax.set_xlabel(f"Spearman ρ (vs {ref_key})")
     ax.set_xlim(0, 1.15)
     ax.set_title("Rank Concordance Across Choices (Melanoma)",
                  fontweight="bold")
 
+    _rho_lbl_fs = 5.0 if composite else 7
     for i, rho in enumerate(rhos):
-        ax.text(rho + 0.02, i, f"{rho:.2f}", va="center", fontsize=7)
+        ax.text(rho + 0.02, i, f"{rho:.2f}", va="center", fontsize=_rho_lbl_fs)
 
     despine(ax)
+    if composite:
+        ax.tick_params(axis="x", labelsize=5.0)
 
 
 # ── Panel G: Leave-one-out stability ──────────────────────────────
@@ -1338,6 +1342,7 @@ def _panel_power_grid(
     data: dict,
     *,
     inner_wspace: float = 0.30,
+    composite: bool = False,
 ) -> list[plt.Axes]:
     """Draw power curves into a gridspec area, returning created axes.
 
@@ -1374,8 +1379,13 @@ def _panel_power_grid(
     n_ds = len(ds_names)
 
     if n_ds == 5:
-        # 2-row 3+2 arrangement (requested), with centered second row.
-        gs_inner = gs_parent.subgridspec(2, 8, wspace=inner_wspace, hspace=1.3)
+        _hspace = 1.08 if composite else 1.3
+        gs_inner = gs_parent.subgridspec(
+            2, 8,
+            wspace=inner_wspace,
+            hspace=_hspace,
+            height_ratios=[1.0, 1.0],
+        )
         slots = [
             gs_inner[0, 0:2], gs_inner[0, 3:5], gs_inner[0, 6:8],
             gs_inner[1, 1:3], gs_inner[1, 5:7],
@@ -1435,13 +1445,18 @@ def _panel_power_grid(
             title_lines += f"\n{feat}"
         title_lines += f"\n{design_label}, n={analyzable_n}"
 
-        ax.set_title(title_lines, fontsize=3.5, fontweight="bold",
-                     color=color, pad=3, linespacing=1.3)
+        _title_fs = 3.15 if composite else 3.5
+        _title_pad = 2 if composite else 3
+        ax.set_title(title_lines, fontsize=_title_fs, fontweight="bold",
+                     color=color, pad=_title_pad, linespacing=1.25 if composite else 1.3)
 
-        ax.set_xlabel("Analyzable participants", fontsize=9.5)
+        _x_fs = 8.5 if composite else 9.5
+        _y_fs = 9 if composite else 10
+        _tick_fs = 7.5 if composite else 8.5
+        ax.set_xlabel("Analyzable participants", fontsize=_x_fs)
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-        ax.set_ylabel(r"Power (1 − $\beta$)", fontsize=10)
-        ax.tick_params(axis="both", which="major", labelsize=8.5, labelleft=True)
+        ax.set_ylabel(r"Power (1 − $\beta$)", fontsize=_y_fs)
+        ax.tick_params(axis="both", which="major", labelsize=_tick_fs, labelleft=True)
 
         ax.grid(True, which="major", axis="y", color="#f0f0f0", linewidth=0.3, zorder=0)
         ax.set_axisbelow(True)
@@ -1474,7 +1489,7 @@ def _panel_power_curves(data: dict) -> plt.Figure | None:
 
 
 # ======================================================================
-# NatMeth signal-fraction benchmark CSV (panels H, I, J)
+# NatMeth signal-fraction benchmark CSV (H: pure-null FPR; I: runtime; J: QQ)
 # ======================================================================
 
 _BENCHMARK_CSV = (
@@ -1572,41 +1587,6 @@ def _style_axis(ax):
                    color="#333333", width=0.8, length=4)
 
 
-def _match_subfig_axes_height_to_ref(
-    ref_ax, subfig, *, height_frac: float = 1.0, keep_current_bottom: bool = False,
-) -> None:
-    """Scale axes inside *subfig* to match *ref_ax* height (figure-normalized).
-
-    Faceted subfigures (power curves, QQ panels) expand axes to fill the
-    subfigure's cell, so they look vertically stretched next to single-axis
-    neighbours. This rescales each child axis's vertical extent.
-
-    By default, the block bottom is aligned to ``ref_ax``. When
-    ``keep_current_bottom=True``, the current subfigure block bottom is
-    preserved, which is useful for cross-row matching (e.g. row-5 K matched to
-    row-2 reference height without shifting K upward into overlap).
-    """
-    pos_ref = ref_ax.get_position()
-    h_ref = pos_ref.height * float(np.clip(height_frac, 0.05, 1.0))
-    axes_sf = subfig.get_axes()
-    if not axes_sf:
-        return
-    positions = [ax.get_position() for ax in axes_sf]
-    y0_u = min(p.y0 for p in positions)
-    y1_u = max(p.y1 for p in positions)
-    h_old = y1_u - y0_u
-    if h_old <= 1e-9:
-        return
-    y0_anchor = y0_u if keep_current_bottom else pos_ref.y0
-    for ax in axes_sf:
-        p = ax.get_position()
-        rel_lo = (p.y0 - y0_u) / h_old
-        rel_hi = (p.y1 - y0_u) / h_old
-        new_y0 = y0_anchor + rel_lo * h_ref
-        new_h = (rel_hi - rel_lo) * h_ref
-        ax.set_position([p.x0, new_y0, p.width, new_h])
-
-
 def _subfig_bbox_in_figure_coords(fig, subfig) -> mtransforms.Bbox:
     """Return *subfig* bounds in normalized figure coordinates (0–1).
 
@@ -1686,7 +1666,7 @@ def _figure_title_above_subfig(
 
 
 # ======================================================================
-# Panel H — Faceted p-value QQ plots with 95% Beta envelope
+# Panel J — Faceted p-value QQ plots with 95% Beta envelope
 # (was panel K before reshuffle)
 # ======================================================================
 
@@ -1696,29 +1676,46 @@ def _panel_bench_qq(
     signal_pct: int = 10,
     *,
     composite: bool = False,
+    gs_parent=None,
 ):
+    """Draw faceted null QQ panels.
+
+    If *gs_parent* (a SubplotSpec) is provided, axes are created via a nested
+    gridspec inside it — preferred for composite use because plain SubFigures in
+    narrow cells stretch their internal gridspecs using figure-coord
+    subplotpars and overflow neighbouring rows.
+    """
     scenario_name = f"two_arm__sens_g{n_genes}_f{signal_pct}"
     sub_all = bench_df[bench_df["scenario"] == scenario_name]
     if sub_all.empty:
-        print(f"    WARNING: scenario {scenario_name} not found for panel K")
-        return
+        print(f"    WARNING: scenario {scenario_name} not found for panel J")
+        return []
     null = sub_all[sub_all["true_beta"] == 0.0]
     if hasattr(fig, "set_constrained_layout"):
         fig.set_constrained_layout(False)
-    if composite:
-        # Faceted 2×2 (same spirit as panel M’s row×column faceting); narrower than 1×4 strip.
+    if gs_parent is not None:
+        gs_inner = gs_parent.subgridspec(2, 2, hspace=0.35, wspace=0.28)
+        axes = []
+        ref_ax = None
+        for r in range(2):
+            for c in range(2):
+                kw = {}
+                if ref_ax is not None:
+                    kw["sharex"] = ref_ax
+                    kw["sharey"] = ref_ax
+                ax = fig.add_subplot(gs_inner[r, c], **kw)
+                if ref_ax is None:
+                    ref_ax = ax
+                axes.append(ax)
+    elif composite:
         ax_grid = fig.subplots(
             2,
             2,
             sharex=True,
             sharey=True,
             gridspec_kw={
-                "hspace": 0.32,
-                "wspace": 0.18,
-                "left": 0.125,
-                "right": 0.98,
-                "top": 0.80,
-                "bottom": 0.30,
+                "hspace": 0.35,
+                "wspace": 0.28,
             },
         )
         axes = ax_grid.flatten()
@@ -1793,7 +1790,7 @@ def _panel_bench_qq(
         )
     else:
         # Keep y-labels attached to the actual left-column y-axes so they align
-        # exactly with panel-H y ticks in the composite layout.
+        # exactly with panel-J y ticks in the composite layout.
         for yi in (0, 2):
             axes[yi].set_ylabel(r"Observed $-\log_{10}(p)$", fontsize=_axlbl_fs)
         # Place the envelope key inside the upper-left of the first QQ panel —
@@ -1823,10 +1820,11 @@ def _panel_bench_qq(
         )
     if composite and leg is not None:
         leg.get_frame().set_linewidth(0.55)
+    return list(axes)
 
 
 # ======================================================================
-# Panel I — Pure-null Type I error vs panel size
+# Panel H — Pure-null Type I error vs panel size
 # (was panel L before reshuffle)
 # ======================================================================
 
@@ -1923,7 +1921,7 @@ def _panel_bench_pure_null_fpr(ax, bench_df, *, composite: bool = False):
 
 
 # ======================================================================
-# Panel J — Runtime comparison across methods
+# Panel I — Runtime comparison across methods
 # (was panel N before reshuffle)
 # ======================================================================
 
@@ -2002,7 +2000,7 @@ def _panel_bench_runtime(ax, bench_df, *, composite: bool = False):
 def generate():
     """Create and save Supplementary Figure 4 panels (A–K) + composite.
 
-    Layout:
+    Layout (same order as the composite artboard):
       A  Analytical vs bootstrap SE (all 5 datasets, faceted forest plot)
       B  Standardised vs unstandardised effect sizes (Melanoma)
       C  Mean vs median aggregation comparison (Melanoma)
@@ -2010,15 +2008,13 @@ def generate():
       E  Cell-type-stratified DiD heatmap (Melanoma)
       F  Rank-order concordance across choices (Melanoma)
       G  Leave-one-out stability matrix (all datasets)
-      --- NatMeth benchmark (4 methods) ---
-      H  Faceted QQ + 95% envelope (two-arm, n=40, 200 genes, 10% signal)
-      I  Pure-null Type I error vs panel size
-      J  Runtime comparison
-      --- Empirical power on real datasets ---
-      K  Empirical power curves (participant subsampling)
+      H  Pure-null Type I error vs panel size (NatMeth benchmark, 4 methods)
+      I  Runtime comparison (NatMeth benchmark)
+      J  Faceted QQ + 95% envelope (two-arm, n=40, 200 genes, 10% signal)
+      K  Empirical power curves (participant subsampling; 3+2 facet grid)
 
-    Composite (180 mm × ≤215 mm): row1 A | row2 B|C|D|E | row3 F|G|H |
-    row4 I|J|K (K is a 3+2 facet grid).
+    Composite (180 mm × ≤215 mm): row1 A | row2 B|C|D|E | row3 F|G|H|I |
+    row4 J|K.
     """
     print("Supplementary Figure 4: Sensitivity to Modeling and Preprocessing")
 
@@ -2074,7 +2070,7 @@ def generate():
     fig.tight_layout()
     save_panel(fig, "panel_G", FIGURE_NAME, SUPP_OUTPUT)
 
-    # ── Benchmark (panels H–J) ────────────────────────────────────────
+    # ── Benchmark (panels H–J) — H: pure-null FPR; I: runtime; J: QQ ───
     print("  Loading signal-fraction sensitivity benchmark results ...")
     bench_df = _load_benchmark_data()
     print(
@@ -2083,21 +2079,21 @@ def generate():
         f"panel sizes = {sorted(bench_df['n_genes'].unique())}"
     )
 
-    # Panel H: Faceted QQ panels (was panel K)
-    fig_h = plt.figure(figsize=(15.0, 4.0))
-    _panel_bench_qq(fig_h, bench_df, n_genes=200, signal_pct=10)
+    # Panel H: Pure-null FPR
+    fig_h, ax_h_ind = plt.subplots(figsize=(7.5, 4.8))
+    _panel_bench_pure_null_fpr(ax_h_ind, bench_df)
     fig_h.tight_layout()
     save_panel(fig_h, "panel_H", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel I: Pure-null FPR (was panel L)
-    fig_i, ax_i_ind = plt.subplots(figsize=(7.5, 4.8))
-    _panel_bench_pure_null_fpr(ax_i_ind, bench_df)
+    # Panel I: Runtime
+    fig_i, ax_i_ind = plt.subplots(figsize=(7.2, 5.0))
+    _panel_bench_runtime(ax_i_ind, bench_df)
     fig_i.tight_layout()
     save_panel(fig_i, "panel_I", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel J: Runtime (was panel N)
-    fig_j, ax_j_ind = plt.subplots(figsize=(7.2, 5.0))
-    _panel_bench_runtime(ax_j_ind, bench_df)
+    # Panel J: Faceted QQ panels
+    fig_j = plt.figure(figsize=(15.0, 4.0))
+    _panel_bench_qq(fig_j, bench_df, n_genes=200, signal_pct=10)
     fig_j.tight_layout()
     save_panel(fig_j, "panel_J", FIGURE_NAME, SUPP_OUTPUT)
 
@@ -2119,8 +2115,8 @@ def generate():
     # ==================================================================
     #   Row 1: A (full width)
     #   Row 2: B | C | D | E
-    #   Row 3: F | G | H (QQ panels)
-    #   Row 4: I | J | K  (pure-null FPR | runtime | power curves 3+2)
+    #   Row 3: F | G | H | I  (rank concordance | LOO | pure-null FPR | runtime)
+    #   Row 4: J | K  (QQ panels | power curves 3+2)
     # ==================================================================
     print("  Building composite figure ...")
 
@@ -2164,7 +2160,6 @@ def generate():
     _mm = 1.0 / 25.4
     fig_c = plt.figure(figsize=(180 * _mm, 215 * _mm))
 
-    # Four-row composite; row 4 hosts I, J, and faceted K together.
     outer = fig_c.add_gridspec(
         4, 1,
         height_ratios=[1.0, 1.0, 1.0, 1.0],
@@ -2180,7 +2175,7 @@ def generate():
         ax_a_tmp = subfig_a.subplots(1, 1)
         ax_a_tmp.text(0.5, 0.5, "No bootstrap data", ha="center",
                       va="center", transform=ax_a_tmp.transAxes)
-    subfig_a.subplots_adjust(wspace=0.42, left=0.04, right=0.98, top=0.88, bottom=0.14)
+    subfig_a.subplots_adjust(wspace=0.42, left=0.04, right=0.98, top=0.80, bottom=0.24)
 
     # ── Row 2: B | C | D | E ─────────────────────────────────────────
     gs_r2 = outer[1].subgridspec(1, 4, wspace=0.52)
@@ -2194,17 +2189,17 @@ def generate():
     _panel_log_sensitivity(ax_d, data, composite=True)
     _panel_ct_heatmap(ax_e, data, composite=True)
 
-    # ── Row 3: F | G | H  (rank concordance | LOO | QQ panels)
-    gs_r3 = outer[2].subgridspec(
-        1, 5,
-        wspace=0.32,
-        width_ratios=[0.72, 0.035, 1.0, 0.12, 1.42],
-    )
-    ax_f = fig_c.add_subplot(gs_r3[0])
-    ax_g = fig_c.add_subplot(gs_r3[2])
-    subfig_qq = fig_c.add_subfigure(gs_r3[4])
+    # ── Row 3: F | G | H | I  (nested so F–G wspace can exceed G–H / H–I)
+    _w_fg, _w_hi, _w_mid = 0.77, 0.32, 0.24
+    gs_r3 = outer[2].subgridspec(1, 2, width_ratios=[1.72, 2.0], wspace=_w_mid)
+    gs_fg = gs_r3[0].subgridspec(1, 2, width_ratios=[0.72, 1.0], wspace=_w_fg)
+    gs_hi = gs_r3[1].subgridspec(1, 2, width_ratios=[0.92, 0.82], wspace=_w_hi)
+    ax_f = fig_c.add_subplot(gs_fg[0])
+    ax_g = fig_c.add_subplot(gs_fg[1])
+    ax_pure_null = fig_c.add_subplot(gs_hi[0])
+    ax_runtime = fig_c.add_subplot(gs_hi[1])
 
-    _panel_rank_concordance(ax_f, data)
+    _panel_rank_concordance(ax_f, data, composite=True)
     if loo_mat is not None:
         _draw_loo_heatmap(
             ax_g, loo_mat, annot_fs=4,
@@ -2213,34 +2208,33 @@ def generate():
     else:
         ax_g.text(0.5, 0.5, "No LOO data", ha="center", va="center",
                   transform=ax_g.transAxes)
-    _panel_bench_qq(
-        subfig_qq, bench_df, n_genes=200, signal_pct=10, composite=True,
-    )
-    subfig_qq.subplots_adjust(left=0.10, right=0.98, top=0.89, bottom=0.19)
-
-    # ── Row 4: I | J | K  (pure-null FPR | runtime | power curves)
-    gs_r4 = outer[3].subgridspec(
-        1, 4,
-        wspace=0.38,
-        width_ratios=[1.15, 0.95, 0.22, 2.35],
-    )
-    ax_pure_null = fig_c.add_subplot(gs_r4[0])
-    ax_runtime = fig_c.add_subplot(gs_r4[1])
-
     _panel_bench_pure_null_fpr(ax_pure_null, bench_df, composite=True)
     _panel_bench_runtime(ax_runtime, bench_df, composite=True)
 
+    # ── Row 4: J | K — plain nested gridspecs (no SubFigures).
+    # SubFigures in narrow half-row cells inherit figure-coord subplotpars for
+    # their internal gridspecs and overflow neighbouring rows. Direct nested
+    # subgridspecs respect their parent SubplotSpec bounds → no overflow.
+    #
+    # _R4_INSET controls J/K vertical inset within row 4 (blank top, content,
+    # blank bottom). Edit the first/last values to grow/shrink J,K together.
+    _R4_INSET = (0.08, 1.0, 0.12)
+    gs_r4_outer = outer[3].subgridspec(3, 1, height_ratios=list(_R4_INSET), hspace=0)
+    gs_r4 = gs_r4_outer[1].subgridspec(1, 2, wspace=0.22, width_ratios=[1.0, 1.0])
+
+    qq_axes = _panel_bench_qq(
+        fig_c, bench_df, n_genes=200, signal_pct=10,
+        composite=True, gs_parent=gs_r4[0],
+    )
+
     if power_data is not None and not power_data["power_df"].empty:
-        subfig_power = fig_c.add_subfigure(gs_r4[3])
-        sub_inner = subfig_power.add_gridspec(
-            1, 1, left=0.08, right=0.98, top=0.94, bottom=0.10,
-        )
-        _panel_power_grid(
-            subfig_power, sub_inner[0], composite_data, inner_wspace=0.30,
+        power_axes = _panel_power_grid(
+            fig_c, gs_r4[1], composite_data,
+            inner_wspace=0.30, composite=True,
         )
     else:
-        subfig_power = None
-        ax_power_stub = fig_c.add_subplot(gs_r4[3])
+        power_axes = None
+        ax_power_stub = fig_c.add_subplot(gs_r4[1])
         ax_power_stub.text(
             0.5, 0.5, "No power data available",
             ha="center", va="center",
@@ -2249,15 +2243,7 @@ def generate():
         )
         ax_power_stub.set_axis_off()
 
-    # Final layout pass so get_position() is correct.
     fig_c.canvas.draw()
-    # Keep faceted QQ block aligned to same-row neighbour height.
-    _match_subfig_axes_height_to_ref(ax_g, subfig_qq, height_frac=0.90)
-    # K shares row 4 with I/J; align K's rendered height to row neighbour.
-    if subfig_power is not None:
-        _match_subfig_axes_height_to_ref(
-            ax_pure_null, subfig_power, height_frac=1.0,
-        )
 
     # ── Post-processing ───────────────────────────────────────────────
     for ax_pp in fig_c.get_axes():
@@ -2265,9 +2251,7 @@ def generate():
         if leg:
             leg.get_frame().set_alpha(0.85)
             leg.get_frame().set_edgecolor("#CCCCCC")
-    _composite_subfigs = [subfig_a, subfig_qq]
-    if subfig_power is not None:
-        _composite_subfigs.append(subfig_power)
+    _composite_subfigs = [subfig_a]
     for _sf in _composite_subfigs:
         for leg in list(getattr(_sf, "legends", []) or []):
             leg.get_frame().set_alpha(0.85)
@@ -2282,6 +2266,7 @@ def generate():
     # Bold panel labels (placed after cap so they stay prominent)
     _lbl_fs = 9
     _lbl_xy = (-0.25, 1.12)
+    _lbl_y_r3 = 1.17  # F, G, H, I — slightly above default row-2 y
     _lbl_x_left = -0.38  # B, E, F nudged further left
 
     subfig_axes = subfig_a.get_axes()
@@ -2295,12 +2280,13 @@ def generate():
     for ax_lbl, lbl in [
         (ax_b, "B"), (ax_cc, "C"), (ax_d, "D"),
         (ax_f, "F"),
-        (ax_pure_null, "I"),
-        (ax_runtime, "J"),
+        (ax_pure_null, "H"),
+        (ax_runtime, "I"),
     ]:
         _x = _lbl_x_left if lbl in ("B", "F") else _lbl_xy[0]
+        _y = _lbl_y_r3 if lbl in ("F", "H", "I") else _lbl_xy[1]
         ax_lbl.text(
-            _x, _lbl_xy[1], lbl,
+            _x, _y, lbl,
             transform=ax_lbl.transAxes,
             fontsize=_lbl_fs, fontweight="bold", va="top", ha="left",
         )
@@ -2316,18 +2302,28 @@ def generate():
                 fontsize=_lbl_fs, fontweight="bold", va="top", ha="left",
             )
 
-    _label_subfig_panel(subfig_qq, "H", x=-0.30, y=1.35)
-    _label_subfig_panel(subfig_power, "K", x=-0.10, y=1.32)
+    def _label_axes_panel(axes_list, letter: str, *, x: float = -0.22, y: float = 1.10):
+        if not axes_list:
+            return
+        axes_list[0].text(
+            x, y, letter,
+            transform=axes_list[0].transAxes,
+            fontsize=_lbl_fs, fontweight="bold", va="top", ha="left",
+        )
+
+    _label_axes_panel(qq_axes, "J", x=-0.30, y=1.31)
+    _label_axes_panel(power_axes, "K", x=-0.30, y=1.31)
 
     # E & G: heatmaps — label slightly lower to clear title/colorbar
     _heat_y = 1.08
+    _heat_y_g = _lbl_y_r3
     ax_e.text(
         _lbl_x_left, _heat_y, "E",
         transform=ax_e.transAxes,
         fontsize=_lbl_fs, fontweight="bold", va="top", ha="left",
     )
     ax_g.text(
-        _lbl_xy[0], _heat_y, "G",
+        _lbl_xy[0], _heat_y_g, "G",
         transform=ax_g.transAxes,
         fontsize=_lbl_fs, fontweight="bold", va="top", ha="left",
     )
@@ -2339,13 +2335,25 @@ def generate():
         fontsize=_SMALL_RC["axes.titlesize"],
         pad_frac=0.006,
     )
-    _figure_title_above_subfig(
-        fig_c,
-        subfig_qq,
-        "Null-gene p-value calibration at 200 genes, 10% signal",
-        fontsize=_SMALL_RC["axes.titlesize"],
-        pad_frac=0.006,
-    )
+    # Anchor J's figure title just above its QQ axes (inside row 4), so the
+    # text stays clear of row 3 / panel F.
+    if qq_axes:
+        _qq_top_y = max(ax.get_position().y1 for ax in qq_axes)
+        _qq_xs = [ax.get_position().x0 for ax in qq_axes] + [
+            ax.get_position().x1 for ax in qq_axes
+        ]
+        _qq_xc = 0.5 * (min(_qq_xs) + max(_qq_xs))
+        fig_c.text(
+            _qq_xc,
+            _qq_top_y + 0.014,
+            "Null-gene p-value calibration at 200 genes, 10% signal",
+            ha="center",
+            va="bottom",
+            fontsize=_SMALL_RC["axes.titlesize"],
+            fontweight="bold",
+            transform=fig_c.transFigure,
+            clip_on=False,
+        )
 
     plt.rcParams.update(_prev_rc)
 
