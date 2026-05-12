@@ -1,5 +1,5 @@
 """
-Figure 6 — Validation, Heterogeneity & Temporal Dynamics
+Figure 5 — Validation, Heterogeneity & Temporal Dynamics
 =========================================================
 
 Eight-panel figure combining permutation validation on Sade-Feldman,
@@ -48,7 +48,7 @@ from .._shared import (
 
 warnings.filterwarnings("ignore")
 
-FIGURE_NAME = "Figure6_validation_dynamics"
+FIGURE_NAME = "Figure5_validation_dynamics"
 VISITS: tuple[str, str] = ("Pre", "Post")
 N_PERM = 999
 
@@ -277,13 +277,13 @@ def _panel_a(ax, data: dict) -> None:
         color = hist_colors[idx % len(hist_colors)]
         y_label = y_top * (0.93 - idx * 0.15)
         ax.text(
-            obs_beta, y_label, f"  p = {perm_p:.3f}",
+            obs_beta, y_label, f"    p = {perm_p:.3f}",
             fontsize=7, color=color, ha="left", fontweight="bold",
         )
 
     ax.set_xlabel(r"$\beta_{\mathrm{DiD}}$ (null distribution)")
     ax.set_ylabel("Density")
-    ax.set_title("Permutation Null Distributions (Top 3)", fontsize=10)
+    ax.set_title("Permutation Null Distributions (Top 3)", fontsize=10, fontweight="bold")
     ax.legend(fontsize=7, loc="upper right", frameon=True, framealpha=0.9)
     despine(ax)
 
@@ -335,7 +335,7 @@ def _panel_b(ax, data: dict) -> None:
         for sig in rec_df["significant"]
     ]
     ax.scatter(
-        rec_df["obs_beta"], y_pos, c=colors, s=55,
+        rec_df["obs_beta"], y_pos, c=colors, s=30,
         edgecolor="white", linewidth=0.5, zorder=3,
     )
 
@@ -343,14 +343,14 @@ def _panel_b(ax, data: dict) -> None:
     ax.set_yticks(y_pos)
     ax.set_yticklabels(rec_df["display"].values, fontsize=8)
     ax.set_xlabel(r"$\beta_{\mathrm{DiD}}$ (standardized)")
-    ax.set_title("Observed Effects vs Null Range", fontsize=10)
+    ax.set_title("Observed Effects vs Null Range", fontsize=10, fontweight="bold")
 
     handles = [
         Line2D([0], [0], marker="o", color="w",
-               markerfacecolor=COLORS["highlight"], markersize=7,
+               markerfacecolor=COLORS["highlight"], markersize=4,
                label="Outside 95% null"),
         Line2D([0], [0], marker="o", color="w",
-               markerfacecolor=COLORS["treated"], markersize=7,
+               markerfacecolor=COLORS["treated"], markersize=4,
                label="Within 95% null"),
         plt.Rectangle((0, 0), 1, 1, fc=COLORS["gray"], alpha=0.25,
                        label="95% null range"),
@@ -393,7 +393,7 @@ def _panel_c(ax, data: dict) -> None:
             continue
         x = sub["feature"].map(x_map).values + rng.uniform(-0.2, 0.2, len(sub))
         ax.scatter(
-            x, sub["effect"].values, s=18, alpha=0.55,
+            x, sub["effect"].values, s=10, alpha=0.55,
             c=color, edgecolors="none", label=arm,
         )
 
@@ -405,7 +405,7 @@ def _panel_c(ax, data: dict) -> None:
     ax.set_xticks(range(len(feat_order)))
     ax.set_xticklabels(feat_order, rotation=40, ha="right", fontsize=8)
     ax.set_ylabel("Participant Effect (Post − Pre)")
-    ax.set_title("Individual Treatment Effects", fontsize=10)
+    ax.set_title("Individual Treatment Effects", fontsize=10, fontweight="bold")
     ax.legend(fontsize=8, frameon=True, framealpha=0.9)
     despine(ax)
 
@@ -444,7 +444,7 @@ def _panel_d(ax, data: dict) -> None:
         tick.set_ha("right")
         tick.set_fontsize(8)
     ax.set_ylabel("Participant Effect (Post − Pre)")
-    ax.set_title("Response-Stratified Heterogeneity", fontsize=10)
+    ax.set_title("Response-Stratified Heterogeneity", fontsize=10, fontweight="bold")
     ax.legend(fontsize=7, frameon=True, title="Arm")
     despine(ax)
 
@@ -480,12 +480,12 @@ def _panel_e(ax, steph_data: dict) -> None:
                 markersize=6, markeredgecolor="white", markeredgewidth=0.5,
                 alpha=0.85,
             )
-            if not np.isnan(means[-1]):
+            if not np.isnan(means[-1]) and sev == "Mild":
                 ax.annotate(
-                    sig_display(col) if sev == "Severe" else "",
+                    sig_display(col),
                     (len(DFO_BINS) - 1, means[-1]),
                     fontsize=6, ha="left", va="center",
-                    xytext=(6, 0), textcoords="offset points",
+                    xytext=(6, -2), textcoords="offset points",
                     color=color,
                 )
 
@@ -493,7 +493,7 @@ def _panel_e(ax, steph_data: dict) -> None:
     ax.set_xticklabels(DFO_LABELS)
     ax.set_xlabel("Days from Onset")
     ax.set_ylabel("Mean Signature Score")
-    ax.set_title("Signature Trajectories by Severity", fontsize=10)
+    ax.set_title("Signature Trajectories by Severity", fontsize=10, fontweight="bold")
 
     handles = [
         Line2D([0], [0], color=COL_SEVERE, lw=2, ls="-", label="Severe"),
@@ -537,7 +537,7 @@ def _panel_f(ax, steph_data: dict) -> None:
         ax.plot(
             range(len(DFO_BINS)), divs,
             color=palette[idx], lw=2, marker=markers[idx],
-            markersize=7, markeredgecolor="white", markeredgewidth=0.5,
+            markersize=6, markeredgecolor="white", markeredgewidth=0.5,
             label=sig_display(col),
         )
 
@@ -546,7 +546,7 @@ def _panel_f(ax, steph_data: dict) -> None:
     ax.set_xticklabels(DFO_LABELS)
     ax.set_xlabel("Days from Onset")
     ax.set_ylabel("Divergence (Severe − Mild)")
-    ax.set_title("Severity Divergence Over Time", fontsize=10)
+    ax.set_title("Severity Divergence Over Time", fontsize=10, fontweight="bold")
     ax.legend(fontsize=7, loc="best", frameon=True, framealpha=0.9)
     despine(ax)
 
@@ -595,7 +595,7 @@ def _panel_g(ax, steph_data: dict) -> None:
     )
     ax.set_xlabel("Days from Onset")
     ax.set_ylabel("")
-    ax.set_title("Temporal Divergence Heatmap", fontsize=10)
+    ax.set_title("Temporal Divergence Heatmap", fontsize=10, fontweight="bold")
     ax.tick_params(axis="y", labelsize=8)
 
 
@@ -665,7 +665,7 @@ def _panel_h(ax, steph_data: dict) -> None:
     ax.set_yticks(y_pos)
     ax.set_yticklabels(pivot.index, fontsize=7)
     ax.set_xlabel("Hedges' g (Severe − Mild)")
-    ax.set_title("Time-Specific Effect Sizes", fontsize=10)
+    ax.set_title("Time-Specific Effect Sizes", fontsize=10, fontweight="bold")
     ax.legend(fontsize=7, loc="lower right", frameon=True, framealpha=0.9)
     despine(ax)
 
@@ -673,9 +673,9 @@ def _panel_h(ax, steph_data: dict) -> None:
 # ── Composite generation ────────────────────────────────────────────────
 
 def generate() -> None:
-    """Create and save all Figure 6 panels."""
+    """Create and save all Figure 5 panels."""
     apply_style()
-    print("Figure 6: Validation, Heterogeneity & Temporal Dynamics")
+    print("Figure 5: Validation, Heterogeneity & Temporal Dynamics")
 
     # Sade-Feldman data (panels A-D)
     sf_data = _prepare_sf_data()
@@ -709,6 +709,149 @@ def generate() -> None:
         fig.tight_layout()
         save_panel(fig, panel_name, FIGURE_NAME, MAIN_OUTPUT)
 
+    # ── Combined artboard (180 × ≤215 mm) ────────────────────────────────
+    _SMALL_RC = {
+        "font.size": 5,
+        "axes.titlesize": 5.5,
+        "axes.labelsize": 5,
+        "xtick.labelsize": 4.5,
+        "ytick.labelsize": 4.5,
+        "legend.fontsize": 4,
+        "legend.title_fontsize": 4,
+    }
+    _MAX_FONT_COMPOSITE = 6
+
+    def _cap_fontsize(fig, maximum):
+        for ax in fig.get_axes():
+            for txt in ([ax.title, ax.xaxis.label, ax.yaxis.label]
+                        + ax.get_xticklabels() + ax.get_yticklabels()
+                        + ax.texts):
+                if txt.get_fontsize() > maximum:
+                    txt.set_fontsize(maximum)
+            if ax.get_legend():
+                for txt in ax.get_legend().get_texts():
+                    if txt.get_fontsize() > maximum:
+                        txt.set_fontsize(maximum)
+        for txt in fig.texts:
+            if txt.get_fontsize() > maximum:
+                txt.set_fontsize(maximum)
+
+    _prev_rc = {k: plt.rcParams[k] for k in _SMALL_RC}
+    plt.rcParams.update(_SMALL_RC)
+
+    _mm = 1.0 / 25.4
+    fig_c = plt.figure(figsize=(180 * _mm, 200 * _mm))
+
+    #   Row 0: A | B     (permutation)
+    #   Row 1: C | D     (heterogeneity)
+    #   Row 2: E | F     (temporal lines)
+    #   Row 3: G | H     (heatmap + bar)
+    outer = fig_c.add_gridspec(
+        4, 1,
+        height_ratios=[1, 1, 1, 1],
+        hspace=0.55,
+        left=0.10, right=0.95, top=0.97, bottom=0.06,
+    )
+
+    gs0 = outer[0].subgridspec(1, 2, wspace=0.45)
+    ax_a = fig_c.add_subplot(gs0[0])
+    ax_b = fig_c.add_subplot(gs0[1])
+
+    gs1 = outer[1].subgridspec(1, 2, wspace=0.45, width_ratios=[1.3, 1])
+    ax_cc = fig_c.add_subplot(gs1[0])
+    ax_d = fig_c.add_subplot(gs1[1])
+
+    gs2 = outer[2].subgridspec(1, 2, wspace=0.45)
+    ax_e = fig_c.add_subplot(gs2[0])
+    ax_f = fig_c.add_subplot(gs2[1])
+
+    gs3 = outer[3].subgridspec(1, 2, wspace=0.45)
+    ax_g = fig_c.add_subplot(gs3[0])
+    ax_h = fig_c.add_subplot(gs3[1])
+
+    # Panels A–D: Sade-Feldman data
+    _panel_a(ax_a, sf_data)
+    _panel_b(ax_b, sf_data)
+    _panel_c(ax_cc, sf_data)
+    _panel_d(ax_d, sf_data)
+
+    # Panels E–H: Stephenson data
+    _panel_e(ax_e, steph_data)
+    _panel_f(ax_f, steph_data)
+    _panel_g(ax_g, steph_data)
+    _panel_h(ax_h, steph_data)
+
+    # Move legends inside plots for the composite
+    _inside = {
+        ax_a: "upper right", ax_b: "lower right",
+        ax_cc: "upper right", ax_d: "upper right",
+        ax_e: "upper right", ax_f: "upper right",
+        ax_h: "lower right",
+    }
+    for ax_target, loc in _inside.items():
+        leg = ax_target.get_legend()
+        if leg:
+            handles = leg.legend_handles
+            labels = [t.get_text() for t in leg.get_texts()]
+            leg.remove()
+            ax_target.legend(
+                handles=handles, labels=labels,
+                fontsize=3.5, loc=loc,
+                frameon=True, framealpha=0.85,
+                edgecolor="#CCCCCC", borderpad=0.3,
+                handlelength=1, handletextpad=0.3,
+                labelspacing=0.2,
+            )
+
+    # Panel F: reduce legend marker size
+    leg_f = ax_f.get_legend()
+    if leg_f:
+        for handle in leg_f.legend_handles:
+            handle.set_markersize(3)
+
+    # Panel E: extend x-axis right to make room for signature text
+    xl = ax_e.get_xlim()
+    ax_e.set_xlim(xl[0], xl[1] + 0.8)
+    for txt in ax_e.texts:
+        txt.set_fontsize(4)
+
+    # Panel G: increase heatmap annotation font and xtick/xlabel
+    for txt in ax_g.texts:
+        txt.set_fontsize(5.5)
+    ax_g.tick_params(axis="x", labelsize=5.5)
+    ax_g.set_xlabel("Days from Onset", fontsize=6)
+
+    # Match xlabel, ylabel, legend font size to G (6pt) across all panels
+    _label_fs = 6
+    for ax in [ax_a, ax_b, ax_cc, ax_d, ax_e, ax_f, ax_g, ax_h]:
+        ax.xaxis.label.set_fontsize(_label_fs)
+        ax.yaxis.label.set_fontsize(_label_fs)
+        leg = ax.get_legend()
+        if leg:
+            for txt in leg.get_texts():
+                txt.set_fontsize(4.5)
+
+    _cap_fontsize(fig_c, _MAX_FONT_COMPOSITE)
+
+    # Bold panel labels (after cap so they stay prominent)
+    _lbl_fs = 9
+    for ax, lbl in [
+        (ax_a, "A"), (ax_b, "B"), (ax_cc, "C"),
+        (ax_d, "D"), (ax_e, "E"), (ax_f, "F"),
+        (ax_g, "G"), (ax_h, "H"),
+    ]:
+        ax.text(-0.25, 1.12, lbl, transform=ax.transAxes,
+                fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+
+    plt.rcParams.update(_prev_rc)
+
+    save_panel(fig_c, FIGURE_NAME, FIGURE_NAME, MAIN_OUTPUT, close=False)
+    pdf_path = MAIN_OUTPUT / f"{FIGURE_NAME}_panels" / f"{FIGURE_NAME}.pdf"
+    fig_c.savefig(str(pdf_path), format="pdf", bbox_inches="tight",
+                  facecolor="white")
+    plt.close(fig_c)
+    print(f"    Saved combined artboard (PNG + PDF)")
+
     # Cleanup
     for d in [sf_data, steph_data]:
         adata = d.get("adata")
@@ -717,7 +860,7 @@ def generate() -> None:
     del sf_data, steph_data
     gc.collect()
 
-    print(f"  Figure 6 complete: {FIGURE_NAME}")
+    print(f"  Figure 5 complete: 8 individual panels + combined (A–H)\n")
 
 
 if __name__ == "__main__":

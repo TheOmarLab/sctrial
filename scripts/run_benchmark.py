@@ -52,7 +52,6 @@ def phase_validate(n_jobs: int):
     from sctrial.benchmark.simulator import (
         SimulationConfig,
         calibrate_from_real_data,
-        simulate_trial,
         validate_simulator,
     )
 
@@ -313,7 +312,7 @@ def phase_simulate(n_jobs: int, n_iterations: int):
 
     out_dir = OUTPUT_DIR / "simulation"
     print("=" * 60)
-    print(f"PHASE 2: Simulation Benchmark")
+    print("PHASE 2: Simulation Benchmark")
     print(f"  {n_iterations} iterations × 2 designs × ~30 scenarios × 6 methods")
     print(f"  Workers: {n_jobs}")
     print(f"  Output: {out_dir}")
@@ -372,18 +371,48 @@ def phase_realdata(n_jobs: int):
     )
 
 
+def phase_sensitivity(n_jobs: int, n_iterations: int):
+    """Phase 5: Signal-fraction sensitivity benchmark.
+
+    Tests how null-gene FPR depends on gene-panel size (50-2000) and
+    signal fraction (1-20%). Answers the key reviewer question: does
+    dreamlet inflation attenuate with larger, more realistic panels?
+
+    Grid: 4 panel sizes × (4 signal fractions + 1 null) = 20 scenarios
+    per design, × 200 iterations × 4 methods.
+    """
+    from sctrial.benchmark.orchestrator import run_sensitivity_benchmark
+
+    out_dir = OUTPUT_DIR / "sensitivity"
+    print("=" * 60)
+    print("PHASE 5: Signal-Fraction Sensitivity Benchmark")
+    print(f"  {n_iterations} iterations × 20 scenarios × 4 methods")
+    print("  Panel sizes: 50, 200, 500, 2000 genes")
+    print("  Signal fractions: 1%, 5%, 10%, 20% + pure null")
+    print(f"  Workers: {n_jobs}")
+    print(f"  Output: {out_dir}")
+    print("=" * 60)
+
+    run_sensitivity_benchmark(
+        designs=["two_arm"],
+        n_iterations=n_iterations,
+        n_jobs=n_jobs,
+        output_dir=out_dir,
+        resume=True,
+    )
+
+
 def phase_ablation(n_jobs: int):
     """Phase 4: Ablation study.
 
     Uses TNBC-calibrated simulator params (same family as Phase 2)
     to ensure ablation results support the same manuscript claims.
     """
-    import time
 
     import numpy as np
     import pandas as pd
 
-    from sctrial.benchmark.ablation import ABLATION_VARIANTS, run_ablation
+    from sctrial.benchmark.ablation import run_ablation
     from sctrial.benchmark.metrics import summarize_iteration
     from sctrial.benchmark.simulator import SimulationConfig, simulate_trial
 
@@ -462,7 +491,7 @@ def main():
     )
     parser.add_argument(
         "--phase",
-        choices=["validate", "simulate", "realdata", "ablation", "all"],
+        choices=["validate", "simulate", "sensitivity", "realdata", "ablation", "all"],
         required=True,
         help="Which phase to run",
     )
@@ -480,6 +509,9 @@ def main():
 
     if args.phase in ("simulate", "all"):
         phase_simulate(args.n_jobs, args.n_iterations)
+
+    if args.phase in ("sensitivity", "all"):
+        phase_sensitivity(args.n_jobs, args.n_iterations)
 
     if args.phase in ("realdata", "all"):
         phase_realdata(args.n_jobs)

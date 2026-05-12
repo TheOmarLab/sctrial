@@ -223,7 +223,8 @@ def _load_all() -> dict[str, dict]:
 
 
 def _panel_raincloud(ax, effects: pd.DataFrame, features: list[str],
-                     treated: str, control: str, title: str):
+                     treated: str, control: str, title: str,
+                     composite: bool = False):
     """Raincloud plot: half-violin + jittered strip + narrow boxplot."""
     if effects is None or effects.empty:
         ax.text(0.5, 0.5, "No paired effects", ha="center", va="center",
@@ -239,18 +240,21 @@ def _panel_raincloud(ax, effects: pd.DataFrame, features: list[str],
     if treated == control:
         palette = {treated: COLORS["treated"]}
 
-    # Layer 1: half-violin (cut at 0 to avoid tails beyond data)
+    _vln_lw = 0.3 if composite else 0.5
+    _strip_s = 1.5 if composite else 2
+    _box_w = 0.25 if composite else 0.12
+    _box_lw = 0.4 if composite else 0.7
+    _leg_fs = 5 if composite else 8
+
     sns.violinplot(data=long, x="feature", y="effect", hue="arm",
-                   palette=palette, inner=None, cut=0, linewidth=0.5,
+                   palette=palette, inner=None, cut=0, linewidth=_vln_lw,
                    order=feat_order, ax=ax, alpha=0.45, dodge=True)
-    # Layer 2: strip
     sns.stripplot(data=long, x="feature", y="effect", hue="arm",
-                  palette=palette, size=2, alpha=0.3, jitter=0.12,
+                  palette=palette, size=_strip_s, alpha=0.3, jitter=0.12,
                   order=feat_order, dodge=True, ax=ax, legend=False)
-    # Layer 3: narrow boxplot
     sns.boxplot(data=long, x="feature", y="effect", hue="arm",
-                palette=palette, width=0.12, showfliers=False,
-                order=feat_order, ax=ax, linewidth=0.7,
+                palette=palette, width=_box_w, showfliers=False,
+                order=feat_order, ax=ax, linewidth=_box_lw,
                 boxprops=dict(zorder=5), legend=False)
 
     ax.axhline(0, color="black", lw=0.8, ls="--", alpha=0.5)
@@ -258,13 +262,12 @@ def _panel_raincloud(ax, effects: pd.DataFrame, features: list[str],
     ax.set_xticklabels(feat_order, rotation=40, ha="right", fontsize=8)
     ax.set_ylabel("Participant effect (Post − Pre)")
     ax.set_title(title, fontweight="bold")
-    # De-duplicate legend entries from the violin layer
     handles, labels = ax.get_legend_handles_labels()
     seen = {}
     for h, lbl in zip(handles, labels):
         if lbl not in seen:
             seen[lbl] = h
-    ax.legend(seen.values(), seen.keys(), fontsize=8, frameon=True)
+    ax.legend(seen.values(), seen.keys(), fontsize=_leg_fs, frameon=True)
     despine(ax)
 
 
@@ -313,7 +316,8 @@ def _hedges_g(x: np.ndarray, y: np.ndarray) -> float:
 
 
 def _panel_response_box(ax, effects: pd.DataFrame, features: list[str],
-                        treated: str, control: str, title: str):
+                        treated: str, control: str, title: str,
+                        composite: bool = False):
     if effects is None or effects.empty:
         ax.text(0.5, 0.5, "No paired effects", ha="center", va="center",
                 transform=ax.transAxes)
@@ -332,7 +336,6 @@ def _panel_response_box(ax, effects: pd.DataFrame, features: list[str],
                 linewidth=0.8, fliersize=1.5, ax=ax)
     ax.axhline(0, color="black", lw=0.8, ls="--")
 
-    # Annotate Hedges' g between treated and control for each feature
     if treated != control:
         for i, feat in enumerate(top):
             t_vals = effects.loc[effects["arm"] == treated, feat].dropna().values
@@ -349,16 +352,15 @@ def _panel_response_box(ax, effects: pd.DataFrame, features: list[str],
         tick.set_ha("right")
         tick.set_fontsize(8)
     ax.set_title(title, fontweight="bold")
-    ax.legend(fontsize=7, frameon=True, title="Arm")
+    _leg_fs = 5 if composite else 7
+    _leg_loc = "lower right" if composite else "best"
+    ax.legend(fontsize=_leg_fs, frameon=True, title="Arm", loc=_leg_loc)
     despine(ax)
 
 
-def _panel_variance_decomp(ax, effects: pd.DataFrame, features: list[str], title: str):
-    """One-way ANOVA decomposition: SS_between / SS_total per feature.
-
-    Uses group-size-weighted sums of squares (type I ANOVA) so that
-    unbalanced arm sizes are handled correctly.
-    """
+def _panel_variance_decomp(ax, effects: pd.DataFrame, features: list[str], title: str,
+                           composite: bool = False):
+    """One-way ANOVA decomposition: SS_between / SS_total per feature."""
     if effects is None or effects.empty:
         ax.text(0.5, 0.5, "No paired effects", ha="center", va="center", transform=ax.transAxes)
         ax.axis("off")
@@ -376,9 +378,7 @@ def _panel_variance_decomp(ax, effects: pd.DataFrame, features: list[str], title
         if len(vals) < 4:
             continue
         grand = vals[feat].mean()
-        # SS_total = sum((x_i - grand_mean)^2)
         ss_total = float(((vals[feat] - grand) ** 2).sum())
-        # SS_between = sum(n_k * (mean_k - grand_mean)^2)  [group-size weighted]
         ss_between = 0.0
         for arm in arms:
             g = vals[vals["arm"] == arm][feat]
@@ -400,24 +400,23 @@ def _panel_variance_decomp(ax, effects: pd.DataFrame, features: list[str], title
     ax.barh(y, df["between"], color=COLORS["highlight"], alpha=0.85, label="Between-arm (η²)")
     ax.barh(y, df["within"], left=df["between"], color=COLORS["gray"], alpha=0.8, label="Within-arm")
     ax.set_yticks(y)
-    ax.set_yticklabels(df["feature"], fontsize=8)
+    _xtk_fs = 5 if composite else 8
+    ax.set_yticklabels(df["feature"], fontsize=_xtk_fs)
     ax.set_xlim(0, 1)
     ax.set_xlabel("Fraction of total SS (η²)")
     ax.set_title(title, fontweight="bold")
-    ax.legend(fontsize=8, frameon=True)
+    if composite:
+        ax.legend(fontsize=5, frameon=True, loc="lower right", ncol=2)
+    else:
+        ax.legend(fontsize=8, frameon=True)
     ax.invert_yaxis()
     despine(ax)
 
 
 def _panel_direction_diversity(ax, effects: pd.DataFrame, features: list[str],
-                               title: str, *, effect_threshold: float = 0.05):
-    """Direction-diversity bar chart with effect-size threshold.
-
-    Only participant deltas with |Δ| > *effect_threshold* are counted,
-    preventing near-zero noise from inflating agreement.  Genes are sorted
-    by absolute net imbalance (|frac_pos − frac_neg|) so the most polarised
-    features appear at the top.
-    """
+                               title: str, *, effect_threshold: float = 0.05,
+                               composite: bool = False):
+    """Direction-diversity bar chart with effect-size threshold."""
     if effects is None or effects.empty:
         ax.text(0.5, 0.5, "No paired effects", ha="center", va="center", transform=ax.transAxes)
         ax.axis("off")
@@ -428,7 +427,6 @@ def _panel_direction_diversity(ax, effects: pd.DataFrame, features: list[str],
         vals = effects[feat].dropna()
         if len(vals) < 3:
             continue
-        # Apply effect-size threshold to filter near-zero noise
         pos = (vals > effect_threshold).sum()
         neg = (vals < -effect_threshold).sum()
         if pos + neg == 0:
@@ -441,7 +439,6 @@ def _panel_direction_diversity(ax, effects: pd.DataFrame, features: list[str],
         return
 
     df = pd.DataFrame(rows)
-    # Sort by absolute net imbalance — most polarised features at top
     df["imbalance"] = (df["pos"] - df["neg"]).abs()
     df = df.sort_values("imbalance", ascending=True)
     y = np.arange(len(df))
@@ -449,15 +446,18 @@ def _panel_direction_diversity(ax, effects: pd.DataFrame, features: list[str],
     ax.barh(y, df["pos"], color=COLORS["treated"], alpha=0.85, label="Positive")
     ax.axvline(0, color="black", lw=0.8)
     ax.set_yticks(y)
-    ax.set_yticklabels(df["feature"], fontsize=8)
+    _ytk_fs = 5 if composite else 8
+    ax.set_yticklabels(df["feature"], fontsize=_ytk_fs)
     ax.set_xlim(-1.05, 1.05)
     ax.set_xlabel("Fraction of participants")
     ax.set_title(title, fontweight="bold")
-    ax.legend(fontsize=8, frameon=True)
+    _leg_fs = 5 if composite else 8
+    _leg_loc = "lower right" if composite else "best"
+    ax.legend(fontsize=_leg_fs, frameon=True, loc=_leg_loc)
     despine(ax)
 
 
-def _panel_sd_bars(ax, data: dict[str, dict]):
+def _panel_sd_bars(ax, data: dict[str, dict], composite: bool = False):
     sd_map = {}
     for name, ds in data.items():
         eff = ds.get("delta")
@@ -483,14 +483,15 @@ def _panel_sd_bars(ax, data: dict[str, dict]):
                 label=_ds_label(name))
 
     ax.set_yticks(y)
-    ax.set_yticklabels(top_feats, fontsize=8)
+    _ytk_fs = 5 if composite else 8
+    ax.set_yticklabels(top_feats, fontsize=_ytk_fs)
     ax.set_xlabel("SD of participant effects")
     ax.set_title("Cross-dataset heterogeneity magnitude", fontweight="bold")
-    ax.legend(fontsize=7, frameon=True)
+    ax.legend(fontsize=5 if composite else 7, frameon=True)
     despine(ax)
 
 
-def _panel_sd_scatter(ax, data: dict[str, dict]):
+def _panel_sd_scatter(ax, data: dict[str, dict], composite: bool = False):
     sd_map = {}
     for name, ds in data.items():
         eff = ds.get("delta")
@@ -516,9 +517,11 @@ def _panel_sd_scatter(ax, data: dict[str, dict]):
         x = ref_sd[common].values
         y = s[common].values
         max_lim = max(max_lim, float(np.nanmax(np.r_[x, y])))
-        ax.scatter(x, y, s=45, alpha=0.85, marker=_DS_MARKERS.get(name, "o"),
+        _s = 18 if composite else 45
+        _lw = 0.3 if composite else 0.4
+        ax.scatter(x, y, s=_s, alpha=0.85, marker=_DS_MARKERS.get(name, "o"),
                    color=_DS_COLORS.get(name, COLORS["neutral"]), edgecolors="white",
-                   linewidth=0.4, label=_ds_label(name))
+                   linewidth=_lw, label=_ds_label(name))
 
     if max_lim <= 0:
         max_lim = 1.0
@@ -529,11 +532,16 @@ def _panel_sd_scatter(ax, data: dict[str, dict]):
     ax.set_xlabel(f"SD ({ref})")
     ax.set_ylabel("SD (other dataset)")
     ax.set_title("Cross-dataset SD concordance", fontweight="bold")
-    ax.legend(fontsize=7, frameon=True)
+    if composite:
+        ax.legend(fontsize=5, frameon=True, markerscale=0.6,
+                  loc="upper center", ncol=2)
+    else:
+        ax.legend(fontsize=7, frameon=True)
     despine(ax)
 
 
-def _panel_within_arm_profile(ax, effects: pd.DataFrame, features: list[str], title: str):
+def _panel_within_arm_profile(ax, effects: pd.DataFrame, features: list[str], title: str,
+                              composite: bool = False):
     if effects is None or effects.empty:
         ax.text(0.5, 0.5, "No paired effects", ha="center", va="center", transform=ax.transAxes)
         return
@@ -555,11 +563,11 @@ def _panel_within_arm_profile(ax, effects: pd.DataFrame, features: list[str], ti
     ax.set_xticklabels(feat_order, rotation=35, ha="right", fontsize=8)
     ax.set_ylabel("Mean participant effect")
     ax.set_title(title, fontweight="bold")
-    ax.legend(fontsize=7, frameon=True)
+    ax.legend(fontsize=5 if composite else 7, frameon=True)
     despine(ax)
 
 
-def _panel_aml_cart_profile(ax, data: dict[str, dict]):
+def _panel_aml_cart_profile(ax, data: dict[str, dict], composite: bool = False):
     # Include all single-arm datasets (AML, CAR-T, Vaccine, etc.)
     datasets = [d for d in data if d != "Melanoma" and d != "COVID-19"]
     if not datasets:
@@ -612,7 +620,7 @@ def _panel_aml_cart_profile(ax, data: dict[str, dict]):
     ax.set_xticklabels(top_feats, rotation=35, ha="right", fontsize=8)
     ax.set_ylabel("Mean participant effect")
     ax.set_title("Single-arm within-arm change profiles", fontweight="bold")
-    ax.legend(fontsize=8, frameon=True)
+    ax.legend(fontsize=5 if composite else 8, frameon=True)
     despine(ax)
 
 
@@ -713,13 +721,160 @@ def generate():
             print(f"    {panel_name}: failed ({exc})")
             plt.close("all")
 
+    # ==================================================================
+    # Composite artboard  (180 mm × ≤ 215 mm)
+    # ==================================================================
+    #   Row 0: A | B       (raincloud + heatmap)
+    #   Row 1: C | D       (response box + variance decomp)
+    #   Row 2: E | F       (direction diversity + SD bars)
+    #   Row 3: G | J       (SD scatter + FC concordance)
+    #   Row 4: H | I       (within-arm + single-arm profiles)
+    # ==================================================================
+    print("  Building composite figure ...")
+
+    _SMALL_RC = {
+        "font.size": 5,
+        "axes.titlesize": 5.5,
+        "axes.labelsize": 5,
+        "xtick.labelsize": 4.5,
+        "ytick.labelsize": 4.5,
+        "legend.fontsize": 4,
+        "legend.title_fontsize": 4,
+    }
+    _MAX_FONT = 6
+
+    def _cap_fontsize(fig_obj, maximum):
+        for ax_i in fig_obj.get_axes():
+            for txt in ([ax_i.title, ax_i.xaxis.label, ax_i.yaxis.label]
+                        + ax_i.get_xticklabels() + ax_i.get_yticklabels()
+                        + ax_i.texts):
+                if txt.get_fontsize() > maximum:
+                    txt.set_fontsize(maximum)
+            leg = ax_i.get_legend()
+            if leg:
+                for txt in leg.get_texts():
+                    if txt.get_fontsize() > maximum:
+                        txt.set_fontsize(maximum)
+                t = leg.get_title()
+                if t and t.get_fontsize() > maximum:
+                    t.set_fontsize(maximum)
+
+    _prev_rc = {k: plt.rcParams[k] for k in _SMALL_RC}
+    plt.rcParams.update(_SMALL_RC)
+
+    _mm = 1.0 / 25.4
+    fig_c = plt.figure(figsize=(180 * _mm, 215 * _mm))
+
+    # 9 rows: 5 content rows interleaved with 4 spacer rows
+    outer = fig_c.add_gridspec(
+        9, 1,
+        height_ratios=[
+            0.60,   # row 0: A | B
+            0.45,   # spacer
+            0.60,   # row 2: C | D
+            0.42,   # spacer
+            0.62,   # row 4: E | F
+            0.35,   # spacer
+            0.65,   # row 6: G | J
+            0.35,   # spacer
+            0.65,   # row 8: H | I
+        ],
+        hspace=0.0,
+        left=0.06, right=0.98, top=0.97, bottom=0.04,
+    )
+
+    # ── Row 0: A | B ─────────────────────────────────────────────────
+    gs0 = outer[0].subgridspec(1, 2, width_ratios=[1.2, 1.0], wspace=0.45)
+    ax_a = fig_c.add_subplot(gs0[0])
+    ax_b = fig_c.add_subplot(gs0[1])
+
+    _panel_raincloud(ax_a, feat_eff, feat_feats, feat_treated, feat_control,
+                     f"{best_name} individual effects", composite=True)
+    _panel_heatmap(ax_b, feat_eff, feat_feats,
+                   f"{best_name} participant x feature map")
+
+    # ── Row 2: C | D ─────────────────────────────────────────────────
+    gs1 = outer[2].subgridspec(1, 2, width_ratios=[1.2, 1.0], wspace=0.45)
+    ax_c = fig_c.add_subplot(gs1[0])
+    ax_d = fig_c.add_subplot(gs1[1])
+
+    _panel_response_box(ax_c, ta_eff, ta_feats, ta_treated, ta_control,
+                        f"{twoarm_name} response-stratified effects",
+                        composite=True)
+    _panel_variance_decomp(ax_d, ta_eff, ta_feats,
+                           f"{twoarm_name} variance decomposition",
+                           composite=True)
+
+    # ── Row 4: E | F ─────────────────────────────────────────────────
+    gs2 = outer[4].subgridspec(1, 2, width_ratios=[1.0, 1.1], wspace=0.45)
+    ax_e = fig_c.add_subplot(gs2[0])
+    ax_f = fig_c.add_subplot(gs2[1])
+
+    _panel_direction_diversity(ax_e, feat_eff, feat_feats,
+                               f"{best_name} effect direction diversity",
+                               composite=True)
+    _panel_sd_bars(ax_f, data, composite=True)
+
+    # ── Row 6: G | J ─────────────────────────────────────────────────
+    gs3 = outer[6].subgridspec(1, 2, width_ratios=[1.0, 1.0], wspace=0.45)
+    ax_g = fig_c.add_subplot(gs3[0])
+    ax_j = fig_c.add_subplot(gs3[1])
+
+    _panel_sd_scatter(ax_g, data, composite=True)
+    _panel_treated_fc_concordance(ax_j, data)
+
+    # ── Row 8: H | I ─────────────────────────────────────────────────
+    gs4 = outer[8].subgridspec(1, 2, width_ratios=[1.0, 1.0], wspace=0.45)
+    ax_h = fig_c.add_subplot(gs4[0])
+    ax_i = fig_c.add_subplot(gs4[1])
+
+    _panel_within_arm_profile(ax_h, feat_eff, feat_feats,
+                              f"{best_name} within-arm change profile",
+                              composite=True)
+    _panel_aml_cart_profile(ax_i, data, composite=True)
+
+    # ── Post-processing ───────────────────────────────────────────────
+    for ax_pp in fig_c.get_axes():
+        leg = ax_pp.get_legend()
+        if leg:
+            leg.get_frame().set_alpha(0.85)
+            leg.get_frame().set_edgecolor("#CCCCCC")
+
+    _cap_fontsize(fig_c, _MAX_FONT)
+
+    # Bold panel labels — consistent offset
+    _lbl_fs = 9
+    _lbl_x = -0.10
+    _lbl_y = 1.12
+
+    for ax_lbl, lbl in [
+        (ax_a, "A"), (ax_b, "B"), (ax_c, "C"), (ax_d, "D"),
+        (ax_e, "E"), (ax_f, "F"), (ax_g, "G"), (ax_h, "H"),
+        (ax_i, "I"), (ax_j, "J"),
+    ]:
+        ax_lbl.text(
+            _lbl_x, _lbl_y, lbl,
+            transform=ax_lbl.transAxes,
+            fontsize=_lbl_fs, fontweight="bold", va="top", ha="left",
+        )
+
+    plt.rcParams.update(_prev_rc)
+
+    save_panel(fig_c, FIGURE_NAME, FIGURE_NAME, SUPP_OUTPUT, close=False)
+    pdf_path = SUPP_OUTPUT / f"{FIGURE_NAME}_panels" / f"{FIGURE_NAME}.pdf"
+    fig_c.savefig(str(pdf_path), format="pdf", bbox_inches="tight",
+                  facecolor="white")
+    plt.close(fig_c)
+    print("    Saved combined artboard (PNG + PDF)")
+
+    # ── Cleanup ───────────────────────────────────────────────────────
     for ds in data.values():
         if "adata" in ds:
             del ds["adata"]
     data.clear()
     clear_cache()
     gc.collect()
-    print("  Done.\n")
+    print("  SuppFig6 complete: 10 individual panels + combined (A–J)\n")
 
 
 if __name__ == "__main__":

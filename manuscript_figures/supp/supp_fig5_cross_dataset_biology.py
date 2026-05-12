@@ -340,7 +340,9 @@ def _panel_gs_distributions(ax, data: dict[str, dict]):
                    cut=0, linewidth=0.6, ax=ax)
     ax.set_title("Gene-set score distributions (within-dataset z-score)", fontweight="bold")
     ax.tick_params(axis="x", rotation=20)
-    ax.legend(fontsize=7, frameon=True, ncol=2)
+    ylo, yhi = ax.get_ylim()
+    ax.set_ylim(ylo, yhi + (yhi - ylo) * 0.25)
+    ax.legend(fontsize=4, frameon=True, ncol=2, loc="upper right")
     despine(ax)
 
 
@@ -372,6 +374,8 @@ def _panel_pairwise_corr(ax, data: dict[str, dict]):
                 linewidths=0.5, linecolor="white",
                 cbar_kws={"label": r"Spearman $\rho$"}, ax=ax)
     ax.set_title("All-pairs cross-dataset effect correlation", fontweight="bold")
+    ax.tick_params(axis="x", rotation=30)
+    ax.tick_params(axis="y", rotation=0)
 
 
 def _panel_concordant_top_genes(ax, data: dict[str, dict]):
@@ -446,7 +450,7 @@ def _panel_gene_dist(ax, data: dict[str, dict]):
     import matplotlib.patches as mpatches
     handles = [mpatches.Patch(facecolor=_DS_PALETTE[n], label=_ds_label(n))
                for n in _DS_PALETTE if _ds_label(n) in df["Dataset"].values]
-    ax.legend(handles=handles, fontsize=7, frameon=True, loc="upper right")
+    ax.legend(handles=handles, fontsize=5, frameon=True, loc="lower right")
     despine(ax)
 
 
@@ -517,12 +521,12 @@ def _panel_exhaustion_by_celltype(ax, data: dict[str, dict]):
     colors = [_DS_PALETTE.get(d, "grey") for d in df["Dataset"]]
     ax.errorbar(df["Effect"], y, xerr=1.96 * df["SE"], fmt="none",
                 ecolor="grey", capsize=2, lw=0.8, zorder=1)
-    ax.scatter(df["Effect"], y, c=colors, s=40, edgecolors="white",
-               linewidth=0.5, zorder=3)
+    ax.scatter(df["Effect"], y, c=colors, s=12, edgecolors="white",
+               linewidth=0.3, zorder=3)
     ax.axvline(0, color="black", lw=0.8, ls="--")
     ax.set_yticks(y)
     ax.set_yticklabels([f"{r['Cell type']} [{r['Dataset']}]" for _, r in df.iterrows()],
-                       fontsize=6)
+                       fontsize=4)
     ax.set_xlabel("Exhaustion effect (treatment)")
     ax.set_title("T cell exhaustion effects by cell type", fontweight="bold")
 
@@ -530,7 +534,7 @@ def _panel_exhaustion_by_celltype(ax, data: dict[str, dict]):
     import matplotlib.patches as mpatches
     handles = [mpatches.Patch(facecolor=_DS_PALETTE[n], label=_ds_label(n))
                for n in _DS_PALETTE if n in df["Dataset"].values]
-    ax.legend(handles=handles, fontsize=6, loc="best", frameon=True)
+    ax.legend(handles=handles, fontsize=4, loc="best", frameon=True)
     despine(ax)
 
 
@@ -591,7 +595,7 @@ def _panel_paired_trajectories(ax, data: dict[str, dict]):
         return
 
     ax.set_xticks(x_tick)
-    ax.set_xticklabels(x_tick_lab, rotation=30, ha="right", fontsize=7)
+    ax.set_xticklabels(x_tick_lab, rotation=30, ha="right", fontsize=4.5)
     ax.set_ylabel("Exhaustion score")
     ax.set_title("Participant-level paired trajectories (Exhaustion)", fontweight="bold")
     despine(ax)
@@ -625,17 +629,20 @@ def _panel_enrichment_heatmap(ax, data: dict[str, dict]):
     sns.heatmap(piv, cmap="RdBu_r", center=0, linewidths=0.3, linecolor="white",
                 ax=ax, cbar_kws={"label": "Mean z-score (within-dataset)"})
     ax.set_title("Enrichment summary (within-dataset z-score)", fontweight="bold")
-    ax.tick_params(axis="x", labelsize=7, rotation=45)
-    ax.tick_params(axis="y", labelsize=8)
+    ax.tick_params(axis="x", labelsize=4.5, rotation=45)
+    ax.tick_params(axis="y", labelsize=5)
 
 
 def generate():
+    """Create and save Supplementary Figure 5 panels (A–H) + composite."""
     print("Supplementary Figure 5: Cross-Dataset Biological Consistency")
+
     data = _load_all()
     if not data:
         print("  No datasets available; skipping.")
         return
 
+    # ── Individual panels ─────────────────────────────────────────────
     panels = [
         ("panel_A", _panel_gs_distributions, (11.0, 5.8)),
         ("panel_B", _panel_pairwise_corr, (6.8, 6.0)),
@@ -646,20 +653,148 @@ def generate():
         ("panel_G", _panel_paired_trajectories, (12.0, 6.2)),
         ("panel_H", _panel_enrichment_heatmap, (12.0, 6.5)),
     ]
-
     for panel_name, fn, size in panels:
         fig, ax = plt.subplots(figsize=size)
         fn(ax, data)
         fig.tight_layout()
         save_panel(fig, panel_name, FIGURE_NAME, SUPP_OUTPUT)
 
-    for ds in data.values():
-        if "adata" in ds:
-            del ds["adata"]
+    # ==================================================================
+    # Composite artboard  (180 mm × ≤ 215 mm)
+    # ==================================================================
+    #   Row 0: A | B
+    #   Row 1: C | D
+    #   Row 2: E | F
+    #   Row 3: G  (full width)
+    #   Row 4: H  (full width)
+    # ==================================================================
+    print("  Building composite figure ...")
+
+    _SMALL_RC = {
+        "font.size": 5,
+        "axes.titlesize": 5.5,
+        "axes.labelsize": 5,
+        "xtick.labelsize": 4.5,
+        "ytick.labelsize": 4.5,
+        "legend.fontsize": 4,
+        "legend.title_fontsize": 4,
+    }
+    _MAX_FONT = 6
+
+    def _cap_fontsize(fig_obj, maximum):
+        for ax_i in fig_obj.get_axes():
+            for txt in ([ax_i.title, ax_i.xaxis.label, ax_i.yaxis.label]
+                        + ax_i.get_xticklabels() + ax_i.get_yticklabels()
+                        + ax_i.texts):
+                if txt.get_fontsize() > maximum:
+                    txt.set_fontsize(maximum)
+            leg = ax_i.get_legend()
+            if leg:
+                for txt in leg.get_texts():
+                    if txt.get_fontsize() > maximum:
+                        txt.set_fontsize(maximum)
+                t = leg.get_title()
+                if t and t.get_fontsize() > maximum:
+                    t.set_fontsize(maximum)
+
+    _prev_rc = {k: plt.rcParams[k] for k in _SMALL_RC}
+    plt.rcParams.update(_SMALL_RC)
+
+    _mm = 1.0 / 25.4
+    fig_c = plt.figure(figsize=(180 * _mm, 215 * _mm))
+
+    # 9 rows: 5 content rows interleaved with 4 spacer rows
+    outer = fig_c.add_gridspec(
+        9, 1,
+        height_ratios=[
+            0.60,   # row 0: A | B
+            0.40,   # spacer
+            0.60,   # row 2: C | D
+            0.30,   # spacer
+            0.65,   # row 4: E | F
+            0.35,   # spacer
+            0.55,   # row 6: G (full width)
+            0.35,   # spacer
+            0.55,   # row 8: H (full width)
+        ],
+        hspace=0.0,
+        left=0.04, right=0.99, top=0.97, bottom=0.04,
+    )
+
+    # ── Row 0: A | B ─────────────────────────────────────────────────
+    gs0 = outer[0].subgridspec(1, 2, width_ratios=[1.4, 1.0], wspace=0.50)
+    ax_a = fig_c.add_subplot(gs0[0])
+    ax_b = fig_c.add_subplot(gs0[1])
+
+    _panel_gs_distributions(ax_a, data)
+    _panel_pairwise_corr(ax_b, data)
+
+    # ── Row 2: C | D ─────────────────────────────────────────────────
+    gs1 = outer[2].subgridspec(1, 2, width_ratios=[1.1, 1.0], wspace=0.50)
+    ax_cc = fig_c.add_subplot(gs1[0])
+    ax_d = fig_c.add_subplot(gs1[1])
+
+    _panel_concordant_top_genes(ax_cc, data)
+    _panel_gene_dist(ax_d, data)
+
+    # ── Row 4: E | F (shifted right with left padding) ────────────
+    gs2 = outer[4].subgridspec(1, 3, width_ratios=[0.01, 1.0, 1.2],
+                               wspace=0.45)
+    ax_e = fig_c.add_subplot(gs2[1])
+    ax_f = fig_c.add_subplot(gs2[2])
+
+    _panel_exhaustion_by_celltype(ax_e, data)
+    _panel_effect_heatmap(ax_f, data)
+
+    # ── Row 6: G (full width) ────────────────────────────────────────
+    ax_g = fig_c.add_subplot(outer[6])
+    _panel_paired_trajectories(ax_g, data)
+
+    # ── Row 8: H (right-aligned with left padding) ────────────────
+    gs3 = outer[8].subgridspec(1, 2, width_ratios=[0.10, 1.0], wspace=0.0)
+    ax_h = fig_c.add_subplot(gs3[1])
+    _panel_enrichment_heatmap(ax_h, data)
+
+    # ── Post-processing ───────────────────────────────────────────────
+    for ax_pp in fig_c.get_axes():
+        leg = ax_pp.get_legend()
+        if leg:
+            leg.get_frame().set_alpha(0.85)
+            leg.get_frame().set_edgecolor("#CCCCCC")
+
+    _cap_fontsize(fig_c, _MAX_FONT)
+
+    # Bold panel labels — consistent offset for all panels
+    _lbl_fs = 9
+    _lbl_y = 1.12
+    _lbl_x = -0.10
+
+    for ax_lbl, lbl, lx in [
+        (ax_a, "A", _lbl_x), (ax_b, "B", _lbl_x),
+        (ax_cc, "C", _lbl_x), (ax_d, "D", _lbl_x),
+        (ax_e, "E", -0.16), (ax_f, "F", _lbl_x),
+        (ax_g, "G", -0.05), (ax_h, "H", _lbl_x),
+    ]:
+        ax_lbl.text(
+            lx, _lbl_y, lbl,
+            transform=ax_lbl.transAxes,
+            fontsize=_lbl_fs, fontweight="bold", va="top", ha="left",
+        )
+
+    plt.rcParams.update(_prev_rc)
+
+    save_panel(fig_c, FIGURE_NAME, FIGURE_NAME, SUPP_OUTPUT, close=False)
+    pdf_path = SUPP_OUTPUT / f"{FIGURE_NAME}_panels" / f"{FIGURE_NAME}.pdf"
+    fig_c.savefig(str(pdf_path), format="pdf", bbox_inches="tight",
+                  facecolor="white")
+    plt.close(fig_c)
+    print("    Saved combined artboard (PNG + PDF)")
+
+    # ── Cleanup ───────────────────────────────────────────────────────
     data.clear()
     clear_cache()
     gc.collect()
-    print("  Done.\n")
+    print("  SuppFig5 complete: 8 individual panels + combined (A–H)\n")
 
 
 if __name__ == "__main__":

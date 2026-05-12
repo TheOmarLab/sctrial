@@ -25,9 +25,8 @@ from ._shared import MAIN_OUTPUT, SUPP_OUTPUT, apply_style
 MAIN_FIGURES = {
     2: ("Figure 2: Pseudoreplication Bias & Melanoma Analysis", "main.figure2_melanoma_analysis"),
     3: ("Figure 3: Robustness & Benchmarking", "main.figure3_robustness_benchmarking"),
-    4: ("Figure 4: Biological Discovery", "main.figure4_biological_discovery"),
-    5: ("Figure 5: Multi-Dataset Generalization", "main.figure5_multi_dataset"),
-    6: ("Figure 6: Validation & Dynamics", "main.figure6_validation_dynamics"),
+    4: ("Figure 4: Biological Discovery & Multi-Dataset Generalization", "main.figure4_biological_discovery_multi_dataset"),
+    5: ("Figure 5: Validation & Dynamics", "main.figure5_validation_dynamics"),
 }
 
 SUPP_TABLES = {

@@ -348,10 +348,10 @@ def _panel_pairing(ax, loaded: dict):
                     fontsize=7, fontweight="bold")
 
     ax.set_xticks(x)
-    ax.set_xticklabels(ds_names, fontsize=9)
+    ax.set_xticklabels(ds_names, fontsize=9, rotation=25, ha="right")
     ax.set_ylabel("Number of participants")
     ax.set_title("Participant Pairing Structure", fontweight="bold")
-    ax.legend(fontsize=8, frameon=True)
+    ax.legend(fontsize=8, frameon=True, loc="upper left")
     despine(ax)
 
 
@@ -475,10 +475,10 @@ def _panel_cells_per_pid_arm(ax, loaded: dict):
     df["Cells_log"] = np.log10(df["Cells"] + 1)
 
     sns.boxplot(data=df, x="Dataset", y="Cells_log", hue="Arm",
-                order=list(loaded.keys()), fliersize=0, linewidth=0.5,
-                palette="Dark2", ax=ax)
+                order=list(loaded.keys()), fliersize=0, linewidth=1.0,
+                width=0.85, palette="Dark2", ax=ax)
     sns.stripplot(data=df, x="Dataset", y="Cells_log", hue="Arm",
-                  order=list(loaded.keys()), dodge=True, size=2, alpha=0.5,
+                  order=list(loaded.keys()), dodge=True, size=3.5, alpha=0.5,
                   palette="Dark2", ax=ax, legend=False)
 
     ax.set_xlabel("")
@@ -576,8 +576,7 @@ def _panel_counts_dist(ax, loaded: dict):
     ax.set_xlabel("")
     ax.set_ylabel(r"$\log_{10}$(total counts + 1)")
     ax.set_title("Sequencing Depth by Dataset & Group", fontweight="bold")
-    ax.legend(fontsize=6, loc="upper right", title="Group", title_fontsize=7,
-              frameon=True, ncol=2)
+    ax.legend(fontsize=6, loc="upper right", frameon=True, ncol=2)
     ax.tick_params(axis="x", rotation=15)
     despine(ax)
 
@@ -624,7 +623,7 @@ def _panel_mito_ribo(ax, loaded: dict):
     ax.set_xlabel("")
     ax.set_ylabel("Percentage")
     ax.set_title("Mitochondrial & Ribosomal Content", fontweight="bold")
-    ax.legend(fontsize=6, loc="upper right", frameon=True)
+    ax.legend(fontsize=6, loc="upper right", frameon=True, ncol=2)
     ax.tick_params(axis="x", rotation=15)
     despine(ax)
 
@@ -677,20 +676,26 @@ def _panel_qc_waterfall(ax, loaded: dict):
             counts_at_stage.append(int(mask.sum()))
 
         color = _DS_PALETTE.get(name, "grey")
+        is_orange = (color == "#d95f02")
         bars = ax.bar(x + offsets[di], counts_at_stage, width,
                       color=color, edgecolor="white", label=name)
         for bar, cnt in zip(bars, counts_at_stage):
             ax.text(bar.get_x() + bar.get_width() / 2, cnt + cnt * 0.01,
                     f"{cnt:,}", ha="center", va="bottom", fontsize=5,
-                    rotation=90)
+                    rotation=0 if is_orange else 90)
 
     ax.set_xticks(x)
-    ax.set_xticklabels([t[0] for t in thresholds], fontsize=8)
+    ax.set_xticklabels([t[0] for t in thresholds], fontsize=8,
+                       rotation=20, ha="right")
     ax.set_ylabel("Cells meeting threshold")
     ax.set_title("Post-QC Threshold Compliance", fontweight="bold")
     ax.yaxis.set_major_formatter(
         FuncFormatter(lambda v, _: f"{int(v):,}" if v >= 1 else "0"))
-    ax.legend(fontsize=7, frameon=True, ncol=2)
+    ymin, ymax = ax.get_ylim()
+    ax.set_ylim(ymin, ymax * 1.30)
+    ax.legend(fontsize=5, frameon=True, ncol=len(ds_names),
+              loc="upper center", borderpad=0.2,
+              handlelength=0.8, handletextpad=0.2, columnspacing=0.5)
     despine(ax)
 
 
@@ -783,7 +788,7 @@ def _panel_completeness_detailed(ax, loaded: dict):
                 va="center", ha="left", fontsize=6)
 
     ax.set_yticks(y_pos)
-    ax.set_yticklabels(df["Label"], fontsize=6)
+    ax.set_yticklabels(df["Label"], fontsize=4.5)
     ax.set_xlim(0, 1.15)
     ax.set_xlabel("Fraction of participants with cells")
     ax.set_title("Visit Completeness", fontweight="bold")
@@ -798,16 +803,15 @@ def _panel_completeness_detailed(ax, loaded: dict):
 def generate():
     """Create and save Supplementary Figure 1 panels.
 
-    Layout (9 panels):
-      A  Study design summary table (matplotlib table)
-      B  Participant pairing structure
-      C  Participant counts per arm × visit
-      D  Cells per participant by arm
-      E  Genes detected per cell distributions
-      F  Total counts + mito/ribo QC merged (1×2)
-      G  Lorenz curve + Gini inequality
-      H  Post-QC threshold compliance
-      I  Visit completeness
+    Layout (8 panels):
+      A  Participant pairing structure
+      B  Participant counts per arm × visit
+      C  Cells per participant by arm
+      D  Genes detected per cell distributions
+      E  Total counts + mito/ribo QC merged (1×2)
+      F  Lorenz curve + Gini inequality
+      G  Post-QC threshold compliance
+      H  Visit completeness
     """
     print("Supplementary Figure 1: Data Quality & Cohort Characterisation")
     loaded = _load_all()
@@ -816,60 +820,311 @@ def generate():
         print("  No datasets loaded; skipping figure.")
         return
 
-    # Panel A: Study design summary table
-    fig, ax = plt.subplots(figsize=(16, 3.5))
-    _panel_design_table(ax, loaded)
-    fig.tight_layout()
-    save_panel(fig, "panel_A", FIGURE_NAME, SUPP_OUTPUT)
-
-    # Panel B: Participant pairing structure
+    # Panel A: Participant pairing structure
     fig, ax = plt.subplots(figsize=(7, 5))
     _panel_pairing(ax, loaded)
     fig.tight_layout()
-    save_panel(fig, "panel_B", FIGURE_NAME, SUPP_OUTPUT)
+    save_panel(fig, "panel_A", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel C: Participant counts per arm × visit (faceted)
-    ncols_c = len(loaded)
-    fig = plt.figure(figsize=(3.5 * ncols_c, 4))
+    # Panel B: Participant counts per arm × visit (faceted)
+    ncols_b = len(loaded)
+    fig = plt.figure(figsize=(3.5 * ncols_b, 4))
     _panel_participant_counts(fig, loaded)
     fig.tight_layout(rect=[0, 0, 1, 0.93])
-    save_panel(fig, "panel_C", FIGURE_NAME, SUPP_OUTPUT)
+    save_panel(fig, "panel_B", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel D: Cells per participant by arm
+    # Panel C: Cells per participant by arm
     fig, ax = plt.subplots(figsize=(9, 5))
     _panel_cells_per_pid_arm(ax, loaded)
     fig.tight_layout()
-    save_panel(fig, "panel_D", FIGURE_NAME, SUPP_OUTPUT)
+    save_panel(fig, "panel_C", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel E: Genes detected per cell distributions
+    # Panel D: Genes detected per cell distributions
     fig, ax = plt.subplots(figsize=(9, 5))
     _panel_ngenes_dist(ax, loaded)
     fig.tight_layout()
-    save_panel(fig, "panel_E", FIGURE_NAME, SUPP_OUTPUT)
+    save_panel(fig, "panel_D", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel F: Total counts + mito/ribo QC merged (1×2)
+    # Panel E: Total counts + mito/ribo QC merged (1×2)
     fig = plt.figure(figsize=(18, 5.5))
     _panel_counts_mito_merged(fig, loaded)
     fig.tight_layout()
-    save_panel(fig, "panel_F", FIGURE_NAME, SUPP_OUTPUT)
+    save_panel(fig, "panel_E", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel G: Lorenz curve + Gini inequality
+    # Panel F: Lorenz curve + Gini inequality
     fig, ax = plt.subplots(figsize=(6, 6))
     _panel_lorenz_gini(ax, loaded)
     fig.tight_layout()
-    save_panel(fig, "panel_G", FIGURE_NAME, SUPP_OUTPUT)
+    save_panel(fig, "panel_F", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel H: QC threshold compliance
+    # Panel G: QC threshold compliance
     fig, ax = plt.subplots(figsize=(10, 5.5))
     _panel_qc_waterfall(ax, loaded)
     fig.tight_layout()
-    save_panel(fig, "panel_H", FIGURE_NAME, SUPP_OUTPUT)
+    save_panel(fig, "panel_G", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel I: Visit completeness
+    # Panel H: Visit completeness
     fig, ax = plt.subplots(figsize=(8, 5.5))
     _panel_completeness_detailed(ax, loaded)
     fig.tight_layout()
-    save_panel(fig, "panel_I", FIGURE_NAME, SUPP_OUTPUT)
+    save_panel(fig, "panel_H", FIGURE_NAME, SUPP_OUTPUT)
+
+    # ── Combined artboard (180 × ≤215 mm) ────────────────────────────────
+    _SMALL_RC = {
+        "font.size": 5,
+        "axes.titlesize": 5.5,
+        "axes.labelsize": 5,
+        "xtick.labelsize": 4.5,
+        "ytick.labelsize": 4.5,
+        "legend.fontsize": 4,
+        "legend.title_fontsize": 4,
+    }
+    _MAX_FONT_COMPOSITE = 6
+
+    def _cap_fontsize(fig_obj, maximum):
+        for ax_i in fig_obj.get_axes():
+            for txt in ([ax_i.title, ax_i.xaxis.label, ax_i.yaxis.label]
+                        + ax_i.get_xticklabels() + ax_i.get_yticklabels()
+                        + ax_i.texts):
+                if txt.get_fontsize() > maximum:
+                    txt.set_fontsize(maximum)
+            if ax_i.get_legend():
+                for txt in ax_i.get_legend().get_texts():
+                    if txt.get_fontsize() > maximum:
+                        txt.set_fontsize(maximum)
+        for txt in fig_obj.texts:
+            if txt.get_fontsize() > maximum:
+                txt.set_fontsize(maximum)
+
+    _prev_rc = {k: plt.rcParams[k] for k in _SMALL_RC}
+    plt.rcParams.update(_SMALL_RC)
+
+    _mm = 1.0 / 25.4
+    fig_c = plt.figure(figsize=(180 * _mm, 215 * _mm))
+
+    #   Row 0: A (pairing)   | B (Melanoma, COVID-19, Vaccine)
+    #   Row 1: C (cells/pid) | B (AML, CAR-T centred)
+    #   Row 2: D (genes) | E_counts | E_mito
+    #   Row 3: F (Lorenz) | G (QC waterfall) | H (completeness)
+    import math
+    n_ds = len(loaded)
+    ds_names = list(loaded.keys())
+    n_b_cols = math.ceil(n_ds / 2)  # datasets per row (3 for 5 datasets)
+    b_rows = [ds_names[i:i + n_b_cols] for i in range(0, n_ds, n_b_cols)]
+
+    outer = fig_c.add_gridspec(
+        4, 1,
+        height_ratios=[1, 1, 1, 1],
+        hspace=0.50,
+        left=0.08, right=0.95, top=0.97, bottom=0.04,
+    )
+
+    # Rows 0–1: left panel (A/C) | right B subfigs
+    # Every row uses width_ratios that sum identically so left panel
+    # widths are equal and each B subplot has the same width.
+    ax_b_list = []
+
+    # Row 0: A | B (full — 3 datasets)
+    _left_w = 2.2   # wider left panel → narrower B subplots
+    b_row0 = b_rows[0]
+    gs0 = outer[0].subgridspec(
+        1, 1 + n_b_cols, wspace=0.40,
+        width_ratios=[_left_w] + [1] * n_b_cols,
+    )
+    ax_a = fig_c.add_subplot(gs0[0])
+    for j, nm in enumerate(b_row0):
+        ax_b_list.append((fig_c.add_subplot(gs0[1 + j]), nm))
+
+    # Row 1: C | B (partial — 2 datasets, centred)
+    b_row1 = b_rows[1] if len(b_rows) > 1 else []
+    n_have = len(b_row1)
+    n_gap = n_b_cols - n_have
+    if n_gap == 0:
+        gs1 = outer[1].subgridspec(
+            1, 1 + n_b_cols, wspace=0.40,
+            width_ratios=[_left_w] + [1] * n_b_cols,
+        )
+        ax_c = fig_c.add_subplot(gs1[0])
+        for j, nm in enumerate(b_row1):
+            ax_b_list.append((fig_c.add_subplot(gs1[1 + j]), nm))
+    else:
+        half_pad = n_gap / 2.0
+        ratios = [_left_w, half_pad] + [1] * n_have + [half_pad]
+        n_cols = len(ratios)
+        gs1 = outer[1].subgridspec(
+            1, n_cols, wspace=0.40,
+            width_ratios=ratios,
+        )
+        ax_c = fig_c.add_subplot(gs1[0])
+        ax_pad_l = fig_c.add_subplot(gs1[1])
+        ax_pad_l.axis("off")
+        for j, nm in enumerate(b_row1):
+            ax_b_list.append((fig_c.add_subplot(gs1[2 + j]), nm))
+        ax_pad_r = fig_c.add_subplot(gs1[n_cols - 1])
+        ax_pad_r.axis("off")
+
+    # Row 2: D | E_counts | E_mito
+    gs2 = outer[2].subgridspec(1, 3, wspace=0.45)
+    ax_d = fig_c.add_subplot(gs2[0])
+    ax_e1 = fig_c.add_subplot(gs2[1])
+    ax_e2 = fig_c.add_subplot(gs2[2])
+
+    # Row 3: F | G | H
+    gs3 = outer[3].subgridspec(1, 3, wspace=0.50)
+    ax_f = fig_c.add_subplot(gs3[0])
+    ax_g = fig_c.add_subplot(gs3[1])
+    ax_h = fig_c.add_subplot(gs3[2])
+
+    # Draw left panels
+    _panel_pairing(ax_a, loaded)
+    _panel_cells_per_pid_arm(ax_c, loaded)
+    _panel_ngenes_dist(ax_d, loaded)
+
+    # Draw Panel B subfigs across 3 rows
+    for ax_bi, name_bi in ax_b_list:
+        data_bi = loaded[name_bi]
+        obs_bi = data_bi["adata"].obs
+        pid_bi = data_bi["pid_col"]
+        arm_bi = data_bi["arm_col"]
+        vis_bi = data_bi["visit_col"]
+        if pid_bi is None:
+            ax_bi.set_title(name_bi, fontweight="bold", fontsize=5)
+            ax_bi.axis("off")
+            continue
+        if arm_bi and vis_bi and arm_bi in obs_bi.columns and vis_bi in obs_bi.columns:
+            grp = (obs_bi.assign(**{arm_bi: obs_bi[arm_bi].astype(str),
+                                     vis_bi: obs_bi[vis_bi].astype(str)})
+                   .groupby([arm_bi, vis_bi], observed=True)[pid_bi]
+                   .nunique().reset_index(name="N"))
+            grp.rename(columns={arm_bi: "Arm", vis_bi: "Visit"}, inplace=True)
+            sns.barplot(data=grp, x="Visit", y="N", hue="Arm",
+                        palette="Dark2", edgecolor="white", ax=ax_bi)
+            leg_bi = ax_bi.get_legend()
+            if leg_bi:
+                leg_bi.set_visible(False)
+        elif vis_bi and vis_bi in obs_bi.columns:
+            grp = (obs_bi.assign(**{vis_bi: obs_bi[vis_bi].astype(str)})
+                   .groupby(vis_bi, observed=True)[pid_bi]
+                   .nunique().reset_index(name="N"))
+            grp.rename(columns={vis_bi: "Visit"}, inplace=True)
+            sns.barplot(data=grp, x="Visit", y="N", width=0.4,
+                        color="#1b9e77", edgecolor="white", ax=ax_bi)
+        elif arm_bi and arm_bi in obs_bi.columns:
+            grp = (obs_bi.assign(**{arm_bi: obs_bi[arm_bi].astype(str)})
+                   .groupby(arm_bi, observed=True)[pid_bi]
+                   .nunique().reset_index(name="N"))
+            grp.rename(columns={arm_bi: "Arm"}, inplace=True)
+            sns.barplot(data=grp, x="Arm", y="N", width=0.4,
+                        color="#1b9e77", edgecolor="white", ax=ax_bi)
+        else:
+            ax_bi.axis("off")
+            continue
+        ax_bi.set_title(name_bi, fontweight="bold", fontsize=5)
+        ax_bi.set_xlabel("")
+        ax_bi.set_ylabel("")
+        ax_bi.tick_params(axis="x", rotation=30, labelsize=4)
+        despine(ax_bi)
+    # Add "Participants" ylabel only on the first B subplot of each row
+    if ax_b_list:
+        ax_b_list[0][0].set_ylabel("Participants")
+
+    # Increase font sizes in B panels
+    _b_font_boost = 1.5
+    for ax_bi, _ in ax_b_list:
+        for txt in ([ax_bi.title, ax_bi.xaxis.label, ax_bi.yaxis.label]
+                    + ax_bi.get_xticklabels() + ax_bi.get_yticklabels()
+                    + ax_bi.texts):
+            txt.set_fontsize(txt.get_fontsize() * _b_font_boost)
+
+    # Draw remaining panels
+    _panel_counts_dist(ax_e1, loaded)
+    _panel_mito_ribo(ax_e2, loaded)
+    _panel_lorenz_gini(ax_f, loaded)
+    _panel_qc_waterfall(ax_g, loaded)
+    _panel_completeness_detailed(ax_h, loaded)
+
+    # Move legends inside plots for the composite
+    _inside = {
+        ax_a: dict(loc="upper left", ncol=1),
+        ax_c: dict(loc="upper right", ncol=2),
+        ax_d: dict(loc="upper right", ncol=2),
+        ax_f: dict(loc="upper left", ncol=1),
+    }
+    for ax_target, kw in _inside.items():
+        leg = ax_target.get_legend()
+        if leg:
+            handles = leg.legend_handles
+            labels = [t.get_text() for t in leg.get_texts()]
+            leg.remove()
+            ax_target.legend(
+                handles=handles, labels=labels,
+                fontsize=3.5,
+                frameon=True, framealpha=0.85,
+                edgecolor="#CCCCCC", borderpad=0.3,
+                handlelength=1, handletextpad=0.3,
+                labelspacing=0.2,
+                **kw,
+            )
+
+    # G legend: single horizontal row along top
+    leg_g = ax_g.get_legend()
+    if leg_g:
+        handles_g = leg_g.legend_handles
+        labels_g = [t.get_text() for t in leg_g.get_texts()]
+        leg_g.remove()
+        ax_g.legend(
+            handles=handles_g, labels=labels_g,
+            fontsize=3.5, loc="upper center",
+            ncol=len(labels_g),
+            frameon=True, framealpha=0.85,
+            edgecolor="#CCCCCC", borderpad=0.2,
+            handlelength=0.8, handletextpad=0.2,
+            columnspacing=0.5, labelspacing=0.2,
+        )
+
+    # Shrink legends in E subpanels
+    for ax_ei in [ax_e1, ax_e2]:
+        leg = ax_ei.get_legend()
+        if leg:
+            handles_e = leg.legend_handles
+            labels_e = [t.get_text() for t in leg.get_texts()]
+            leg.remove()
+            ax_ei.legend(
+                handles=handles_e, labels=labels_e,
+                fontsize=5, loc="upper right",
+                frameon=True, framealpha=0.85,
+                edgecolor="#CCCCCC", borderpad=0.3,
+                handlelength=0.6, handleheight=0.5,
+                handletextpad=0.3, labelspacing=0.2,
+                ncol=2,
+            )
+
+    _cap_fontsize(fig_c, _MAX_FONT_COMPOSITE)
+
+    # Bold panel labels (after cap so they stay prominent)
+    _lbl_fs = 9
+    for ax_lbl, lbl in [
+        (ax_a, "A"), (ax_c, "C"), (ax_d, "D"),
+        (ax_e1, "E"), (ax_f, "F"), (ax_g, "G"),
+        (ax_h, "H"),
+    ]:
+        ax_lbl.text(-0.20, 1.12, lbl, transform=ax_lbl.transAxes,
+                    fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+
+    # Panel B label on the first B axes
+    if ax_b_list:
+        ax_b_list[0][0].text(-0.30, 1.12, "B", transform=ax_b_list[0][0].transAxes,
+                             fontsize=_lbl_fs, fontweight="bold", va="top",
+                             ha="left")
+
+    plt.rcParams.update(_prev_rc)
+
+    save_panel(fig_c, FIGURE_NAME, FIGURE_NAME, SUPP_OUTPUT, close=False)
+    pdf_path = SUPP_OUTPUT / f"{FIGURE_NAME}_panels" / f"{FIGURE_NAME}.pdf"
+    fig_c.savefig(str(pdf_path), format="pdf", bbox_inches="tight",
+                  facecolor="white")
+    plt.close(fig_c)
+    print(f"    Saved combined artboard (PNG + PDF)")
 
     # Cleanup
     for data in loaded.values():
@@ -877,7 +1132,7 @@ def generate():
     loaded.clear()
     clear_cache()
     gc.collect()
-    print("  Done.\n")
+    print("  SuppFig1 complete: 8 individual panels + combined (A–H)\n")
 
 
 if __name__ == "__main__":
