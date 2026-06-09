@@ -333,6 +333,7 @@ __all__ = [
     "load_vaccine_gse171964",
     "load_aml",
     "load_cart",
+    "load_tnbc_zhang",
     "harmonize_response",
     "count_paired",
     "verify_paired_participants",
@@ -1710,6 +1711,400 @@ def load_cart(
     logger.info(f"Loaded CAR-T dataset (GSE290722): {adata.n_obs:,} cells, {adata.n_vars:,} genes")
     return adata
 
+def _process_tnbc_raw(
+    raw_dir: Path,
+    max_cells_per_participant_visit: int | None = None,
+    seed: int = 42,
+) -> ad.AnnData:
+    """Process raw GSE169246 TNBC files into an AnnData object.
+
+    Reads MTX expression matrix, barcodes, features, and GEO metadata CSV,
+    applies QC, normalisation, computes embeddings, and annotates cell types.
+    Processing is identical to the AML and CAR-T pipelines.
+    """
+    import scanpy as sc
+
+    logger.info("Loading MTX matrix...")
+    mat = mmread(str(raw_dir / "GSE169246_TNBC_RNA.counts.mtx.gz")).T.tocsc()
+    logger.info(f"  Raw matrix: {mat.shape[0]} cells x {mat.shape[1]} genes")
+
+    with gzip.open(str(raw_dir / "GSE169246_TNBC_RNA.barcode.tsv.gz"), "rt") as f:
+        barcodes = [line.strip() for line in f]
+    with gzip.open(str(raw_dir / "GSE169246_TNBC_RNA.feature.tsv.gz"), "rt") as f:
+        features_raw = [line.strip().split("\t") for line in f]
+    gene_ids   = [feat[0] for feat in features_raw]
+    gene_names = [feat[1] if len(feat) > 1 else feat[0] for feat in features_raw]
+
+    adata = ad.AnnData(
+        X=mat,
+        obs=pd.DataFrame(index=barcodes),
+        var=pd.DataFrame(index=gene_names),
+    )
+    adata.var["gene_ids"] = gene_ids
+    adata.var_names_make_unique()
+
+    obs = adata.obs.copy()
+    obs["barcode_full"]  = obs.index
+    obs["sample_id"]     = obs["barcode_full"].str.split(".").str[1]
+    obs["timepoint_raw"] = obs["sample_id"].str.split("_").str[0]
+    obs["patient_id"]    = obs["sample_id"].str.extract(r"(P\d+)")
+    obs["tissue_type"]   = obs["sample_id"].str.split("_").str[-1]
+
+    # Treatment arm from GEO metadata CSV
+    # (generated from GSE169246_family.soft.gz via parse_geo_soft.py)
+    geo_meta_path = raw_dir / "geo_metadata.csv"
+    if not geo_meta_path.exists():
+        raise FileNotFoundError(
+            f"geo_metadata.csv not found at {geo_meta_path}. "
+            "This file maps patient IDs to treatment arms and must be present "
+            "alongside the MTX files. See the TNBC tutorial for instructions "
+            "on generating it using parse_geo_soft.py."
+        )
+    geo_meta = pd.read_csv(geo_meta_path)
+    geo_meta["treatment"] = geo_meta["treatment"].replace(
+        {"Anti-PD-L1+Chemo": "anti-PDL1+Chemo"}
+    )
+    geo_meta["patient_id"] = geo_meta["title"].str.extract(r"_?(P\d+)_")
+    patient_arm = (
+        geo_meta.drop_duplicates("patient_id")
+        .set_index("patient_id")["treatment"]
+    )
+    obs["arm"] = obs["patient_id"].map(patient_arm)
+    adata.obs = obs
+    logger.info(f"  All cells: {adata.n_obs:,}")
+
+    # ── 5. Filter to tumor biopsies, Pre/Post only ────────────────
+    adata = adata[adata.obs["tissue_type"] == "t"].copy()
+    logger.info(f"  Tumor biopsies: {adata.n_obs:,}")
+
+    adata = adata[adata.obs["timepoint_raw"].isin(["Pre", "Post"])].copy()
+    logger.info(f"  Pre+Post only: {adata.n_obs:,}")
+
+    adata.obs["visit"]          = adata.obs["timepoint_raw"].astype(str)
+    adata.obs["participant_id"] = adata.obs["patient_id"].astype(str)
+
+    # Remove participants with <50 cells in any visit (unreliable data)
+    remove_pids: set[str] = set()
+    for pid in adata.obs["participant_id"].unique():
+        for visit in ["Pre", "Post"]:
+            n = int(
+                ((adata.obs["participant_id"] == pid) &
+                 (adata.obs["visit"] == visit)).sum()
+            )
+            if 0 < n < 50:
+                remove_pids.add(pid)
+                logger.warning(
+                    f"  {pid} {visit}: only {n} cells -- removing participant"
+                )
+    if remove_pids:
+        adata = adata[~adata.obs["participant_id"].isin(remove_pids)].copy()
+
+    # Keep only paired participants (have both Pre and Post)
+    paired: set[str] = set()
+    for pid in adata.obs["participant_id"].unique():
+        visits = set(
+            adata.obs.loc[adata.obs["participant_id"] == pid, "visit"].unique()
+        )
+        if {"Pre", "Post"}.issubset(visits):
+            paired.add(pid)
+    adata = adata[adata.obs["participant_id"].isin(paired)].copy()
+    logger.info(f"  Paired participants: {len(paired)}")
+    logger.info(f"  Cells after pairing filter: {adata.n_obs:,}")
+
+    # Optional: subsample to max_cells_per_participant_visit
+    if max_cells_per_participant_visit is not None:
+        rng = np.random.default_rng(seed)
+        keep: list = []
+        for (pid, visit), grp in adata.obs.groupby(
+            ["participant_id", "visit"], observed=True
+        ):
+            if len(grp) > max_cells_per_participant_visit:
+                chosen = rng.choice(
+                    grp.index,
+                    size=max_cells_per_participant_visit,
+                    replace=False,
+                )
+            else:
+                chosen = grp.index.values
+            keep.extend(chosen)
+        adata = adata[keep].copy()
+        logger.info(
+            f"  After subsampling (max {max_cells_per_participant_visit} "
+            f"per participant-visit): {adata.n_obs:,} cells"
+        )
+
+    logger.info("QC filtering...")
+    adata.var["mt"] = adata.var_names.str.startswith("MT-")
+    sc.pp.calculate_qc_metrics(
+        adata, qc_vars=["mt"], percent_top=None, inplace=True
+    )
+
+    n_before = adata.n_obs
+    sc.pp.filter_cells(adata, min_genes=200)
+    sc.pp.filter_cells(adata, max_genes=6000)
+    adata = adata[adata.obs["pct_counts_mt"] < 20].copy()
+    sc.pp.filter_genes(adata, min_cells=10)
+    logger.info(
+        f"  QC: {n_before:,} -> {adata.n_obs:,} cells, {adata.n_vars:,} genes"
+    )
+
+    logger.info("Normalising (normalize_total 1e4 + log1p)...")
+    adata.layers["counts"]     = adata.X.copy()
+    sc.pp.normalize_total(adata, target_sum=1e4)
+    sc.pp.log1p(adata)
+    adata.layers["log1p_norm"] = adata.X.copy()
+
+    logger.info("Computing embeddings (HVG -> PCA -> neighbors -> UMAP)...")
+    sc.pp.highly_variable_genes(
+        adata, n_top_genes=2000, flavor="seurat", subset=False
+    )
+    sc.tl.pca(adata, n_comps=50, use_highly_variable=True)
+    sc.pp.neighbors(adata, n_neighbors=15, n_pcs=30)
+    sc.tl.umap(adata)
+
+    # Clustering -- try Leiden, fallback to KMeans
+    # (flavor="igraph" may be needed on newer scanpy versions;
+    #  KMeans fallback ensures the loader works across environments)
+    logger.info("Leiden clustering (resolution=0.8)...")
+    try:
+        sc.tl.leiden(adata, resolution=0.8)
+    except Exception:
+        try:
+            sc.tl.leiden(adata, resolution=0.8, flavor="igraph")
+        except Exception:
+            from sklearn.cluster import MiniBatchKMeans
+            X_pca = adata.obsm["X_pca"][:, :20]
+            kmeans = MiniBatchKMeans(n_clusters=15, random_state=seed, batch_size=1000)
+            clusters = kmeans.fit_predict(X_pca)
+            adata.obs["leiden"] = pd.Categorical([str(c) for c in clusters])
+
+    # Cell type annotation
+    logger.info("Annotating cell types (Wilcoxon + weighted scoring)...")
+    adata.obs["cell_type"] = _annotate_immune_celltypes(adata)
+
+    # Dataset metadata
+    adata.uns["dataset"]     = "GSE169246"
+    adata.uns["paper"]       = "Zhang et al., Cell 2025"
+    adata.uns["description"] = (
+        "TNBC immunotherapy trial: anti-PDL1+Chemo vs Chemo, "
+        "12 paired patients, Pre/Post tumor biopsies"
+    )
+
+    # Log final summary
+    logger.info(f"  Final: {adata.n_obs:,} cells, {adata.n_vars:,} genes")
+    logger.info(f"  Participants: {adata.obs['participant_id'].nunique()}")
+    logger.info(f"  Arms: {dict(adata.obs['arm'].value_counts())}")
+    logger.info(f"  Visits: {dict(adata.obs['visit'].value_counts())}")
+    logger.info("  Cell types:")
+    for ct, n in adata.obs["cell_type"].value_counts().items():
+        logger.info(f"    {ct}: {n:,}")
+
+    gc.collect()
+    return adata
+
+
+def load_tnbc_zhang(
+    data_dir: str | None = None,
+    processed_name: str = "tnbc_zhang_processed.h5ad",
+    max_cells_per_participant_visit: int | None = None,
+    seed: int = 42,
+    allow_download: bool = False,
+    force_reprocess: bool = False,
+) -> ad.AnnData:
+    """Load and preprocess Zhang et al. TNBC immunotherapy dataset (GSE169246).
+
+    Randomized trial comparing anti-PDL1+Chemo vs Chemo in triple-negative
+    breast cancer. 12 paired patients with Pre- and Post-treatment tumor biopsies.
+
+    Processing pipeline (identical to AML and CAR-T loaders):
+    - QC: min_genes=200, max_genes=6000, pct_mt<20, min_cells=10
+    - Normalization: normalize_total(1e4) + log1p -> log1p_norm layer
+    - Embedding: HVG(2000) -> PCA(50) -> neighbors(15, 30PCs) -> UMAP
+    - Clustering: Leiden(0.8)
+    - Cell type annotation: Wilcoxon markers + weighted scoring
+
+    Parameters
+    ----------
+    data_dir : str or None
+        Directory containing (or to store) the raw data files.
+        Raw files go in ``<data_dir>/raw/`` and the processed cache in
+        ``<data_dir>/processed/``. Defaults to ``datasets/tnbc_zhang/``
+        relative to the repository root.
+    processed_name : str
+        Filename for the cached processed h5ad file.
+    max_cells_per_participant_visit : int or None
+        Maximum number of cells to retain per participant-visit pair.
+        If None, all cells are kept (recommended for full analysis).
+    seed : int
+        Random seed for reproducibility.
+    allow_download : bool
+        If True, download missing raw files from GEO automatically.
+        Note: geo_metadata.csv cannot be auto-downloaded and must be
+        generated manually. See the TNBC tutorial for instructions.
+    force_reprocess : bool
+        If True, reprocess from raw files even when a valid cache exists.
+
+    Returns
+    -------
+    AnnData
+        Processed AnnData with the following structure:
+
+        - ``adata.X``: log1p-normalized expression (same as log1p_norm layer)
+        - ``adata.layers["counts"]``: raw counts
+        - ``adata.layers["log1p_norm"]``: log1p-normalized expression
+        - ``adata.obs["participant_id"]``: patient ID (e.g. "P01")
+        - ``adata.obs["visit"]``: "Pre" or "Post"
+        - ``adata.obs["arm"]``: "anti-PDL1+Chemo" or "Chemo"
+        - ``adata.obs["cell_type"]``: annotated immune cell type
+        - ``adata.obsm["X_pca"]``, ``adata.obsm["X_umap"]``: embeddings
+
+    Notes
+    -----
+    Unlike the melanoma dataset, no response harmonization is needed --
+    arm labels are assigned at randomization and are clean.
+
+    Raw files required in ``<data_dir>/raw/``:
+
+    - ``GSE169246_TNBC_RNA.counts.mtx.gz``   (auto-downloadable)
+    - ``GSE169246_TNBC_RNA.barcode.tsv.gz``  (auto-downloadable)
+    - ``GSE169246_TNBC_RNA.feature.tsv.gz``  (auto-downloadable)
+    - ``geo_metadata.csv``                   (must be generated manually)
+
+    Download raw files from:
+    https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE169246
+
+    Reference: Zhang et al., Cell 2025.
+
+    Examples
+    --------
+    >>> import sctrial as st
+    >>> adata = st.load_tnbc_zhang(allow_download=True)
+    >>> print(adata)
+    """
+    processing_params = {
+        "version": "v1",
+        "max_cells_per_participant_visit": max_cells_per_participant_visit,
+        "seed": seed,
+    }
+
+    data_dir       = data_dir or _default_data_dir("tnbc_zhang")
+    data_dir_path  = Path(data_dir)
+    processed_path = data_dir_path / "processed" / processed_name
+
+    # ── Try to load cached processed file ─────────────────────────
+    if not force_reprocess and processed_path.exists():
+        adata = ad.read_h5ad(processed_path)
+        prev  = adata.uns.get("processing_params", {})
+        if prev:
+            if _params_match(prev, processing_params):
+                logger.info(
+                    f"Loaded TNBC Zhang dataset (GSE169246): "
+                    f"{adata.n_obs:,} cells, {adata.n_vars:,} genes"
+                )
+                return adata
+            logger.info("Processed file parameters differ; reprocessing.")
+            logger.debug(f"  Stored:  {prev}")
+            logger.debug(f"  Current: {processing_params}")
+        else:
+            warnings.warn(
+                "Cached file lacks processing_params metadata; cannot verify it "
+                "matches current settings. Consider reprocessing with "
+                "force_reprocess=True.",
+                UserWarning,
+                stacklevel=2,
+            )
+            logger.info(
+                f"Loaded TNBC Zhang dataset (GSE169246): "
+                f"{adata.n_obs:,} cells, {adata.n_vars:,} genes"
+            )
+            return adata
+
+    # Check scanpy is available before downloading
+    try:
+        import scanpy  # noqa: F401
+    except ImportError:
+        raise ImportError(
+            "scanpy is required for TNBC dataset processing. "
+            "Install with: pip install sctrial[plots]  or  pip install scanpy"
+        ) from None
+
+    #_ Locate or download raw files
+    raw_dir = data_dir_path / "raw"
+    _REQUIRED_RAW = [
+        "GSE169246_TNBC_RNA.counts.mtx.gz",
+        "GSE169246_TNBC_RNA.barcode.tsv.gz",
+        "GSE169246_TNBC_RNA.feature.tsv.gz",
+        "geo_metadata.csv",
+    ]
+    raw_dir_resolved = _resolve_dir_with_files(str(raw_dir), _REQUIRED_RAW)
+    missing = [f for f in _REQUIRED_RAW if not (raw_dir_resolved / f).exists()]
+
+    if missing:
+        if not allow_download:
+            raise FileNotFoundError(
+                f"Missing raw file(s): {missing}\n"
+                f"Expected in: {raw_dir_resolved}\n"
+                "Download from GEO: "
+                "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE169246\n"
+                "Or set allow_download=True to fetch automatically.\n\n"
+                "Note: geo_metadata.csv must be generated manually from the GEO "
+                "SOFT file. See the TNBC tutorial for instructions."
+            )
+
+        # Download the three GEO MTX files (geo_metadata.csv cannot be auto-downloaded)
+        raw_dir_resolved.mkdir(parents=True, exist_ok=True)
+        _GEO_BASE = (
+            "https://www.ncbi.nlm.nih.gov/geo/download/"
+            "?acc=GSE169246&format=file&file="
+        )
+        _tnbc_geo_files = [
+            (
+                "GSE169246_TNBC_RNA.counts.mtx.gz",
+                _GEO_BASE + "GSE169246%5FTNBC%5FRNA%2Ecounts%2Emtx%2Egz",
+                "counts matrix",
+            ),
+            (
+                "GSE169246_TNBC_RNA.barcode.tsv.gz",
+                _GEO_BASE + "GSE169246%5FTNBC%5FRNA%2Ebarcode%2Etsv%2Egz",
+                "barcodes file",
+            ),
+            (
+                "GSE169246_TNBC_RNA.feature.tsv.gz",
+                _GEO_BASE + "GSE169246%5FTNBC%5FRNA%2Efeature%2Etsv%2Egz",
+                "features file",
+            ),
+        ]
+        for fname, url, label in _tnbc_geo_files:
+            dest = raw_dir_resolved / fname
+            if not dest.exists():
+                _download_file(url, dest, label)
+
+        # geo_metadata.csv cannot be auto-downloaded -- raise a clear error
+        if not (raw_dir_resolved / "geo_metadata.csv").exists():
+            raise FileNotFoundError(
+                "geo_metadata.csv is missing and cannot be downloaded automatically.\n"
+                "This file maps patient IDs to treatment arms and must be generated "
+                "from the GEO SOFT file (GSE169246_family.soft.gz).\n"
+                "See the TNBC tutorial notebook for instructions on generating it "
+                "using parse_geo_soft.py."
+            )
+
+    logger.info("Processing raw TNBC data (this may take several minutes)...")
+    adata = _process_tnbc_raw(
+        raw_dir_resolved,
+        max_cells_per_participant_visit=max_cells_per_participant_visit,
+        seed=seed,
+    )
+    adata.uns["processing_params"] = processing_params
+
+    processed_path.parent.mkdir(parents=True, exist_ok=True)
+    adata.write_h5ad(processed_path)
+    logger.info(f"Saved processed file: {processed_path}")
+    logger.info(
+        f"Loaded TNBC Zhang dataset (GSE169246): "
+        f"{adata.n_obs:,} cells, {adata.n_vars:,} genes"
+    )
+    return adata
 
 def harmonize_response(adata: ad.AnnData, *, force: bool = False) -> ad.AnnData:
     """Create a ``response_harmonized`` column with consistent labels.

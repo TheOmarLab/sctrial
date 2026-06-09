@@ -27,7 +27,7 @@ class TrialWorkflow:
     def add_log1p_cpm_layer(self, counts_layer: str = "counts") -> TrialWorkflow:
         """Add a log1p-CPM layer to the workflow AnnData.
 
-        Parameters
+        ParametersW
         ----------
         counts_layer
             Layer name in `adata.layers` to use for counts data.

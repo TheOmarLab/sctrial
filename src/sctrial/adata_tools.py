@@ -15,7 +15,7 @@ __all__ = ["subset_primary", "subset_cells", "profile_features"]
 import logging
 
 logger = logging.getLogger(__name__)
-
+s
 
 def _require_cols(obs: pd.DataFrame, cols: list[str]) -> None:
     """Require specific columns in the DataFrame."""

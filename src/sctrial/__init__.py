@@ -18,6 +18,7 @@ from .datasets import (
     load_sade_feldman,
     load_stephenson_data,
     load_vaccine_gse171964,
+    load_tnbc_zhang,
     verify_paired_participants,
 )
 from .design import TrialDesign
@@ -142,6 +143,7 @@ __all__ = [
     "load_vaccine_gse171964",
     "load_aml",
     "load_cart",
+    "load_tnbc_zhang",
     "harmonize_response",
     "count_paired",
     "verify_paired_participants",
