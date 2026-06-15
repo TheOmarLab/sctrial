@@ -186,15 +186,16 @@ def run(
         script_file.write_text(script)
         import os
         r_env = os.environ.copy()
-        r_env["LD_LIBRARY_PATH"] = (
-            "/apps/spack/opt/spack/linux-rhel8-haswell/gcc-11.2.0/"
-            "libiconv-1.16-myo6dp2rszjfqkp7w456qrt4aqdtcnis/lib:"
-            "/cm/shared/apps/openblas/0.3.18/lib:"
-            + r_env.get("LD_LIBRARY_PATH", "")
-        )
+        _extra_libs = [
+            "/apps/spack/opt/spack/linux-rhel8-haswell/gcc-11.2.0/libiconv-1.16-myo6dp2rszjfqkp7w456qrt4aqdtcnis/lib",
+            "/cm/shared/apps/openblas/0.3.18/lib",
+        ]
+        _extra = ":".join(p for p in _extra_libs if Path(p).exists())
+        if _extra:
+            r_env["LD_LIBRARY_PATH"] = _extra + ":" + r_env.get("LD_LIBRARY_PATH", "")
         try:
             proc = subprocess.run(
-                ["/apps/R/4.4.2/bin/Rscript", str(script_file)],
+                [(str(Path("/apps/R/4.4.2/bin/Rscript")) if Path("/apps/R/4.4.2/bin/Rscript").exists() else "Rscript"), str(script_file)],
                 capture_output=True, text=True, timeout=2400,
                 env=r_env,
             )
