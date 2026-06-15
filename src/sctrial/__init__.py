@@ -17,8 +17,8 @@ from .datasets import (
     load_cart,
     load_sade_feldman,
     load_stephenson_data,
-    load_vaccine_gse171964,
     load_tnbc_zhang,
+    load_vaccine_gse171964,
     verify_paired_participants,
 )
 from .design import TrialDesign

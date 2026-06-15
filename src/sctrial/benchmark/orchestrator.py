@@ -323,7 +323,7 @@ def _dispatch_method(
 
     if method == "sctrial_did":
         from .runners import sctrial_did
-        
+
         return sctrial_did.run(pb_log, gene_cols, from_pseudobulk=True, design_type=design_type,
                            treated_label=treated_label, control_label=control_label)
     elif method == "edger_qlf":
