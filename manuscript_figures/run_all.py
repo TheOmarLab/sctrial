@@ -24,9 +24,11 @@ from ._shared import MAIN_OUTPUT, SUPP_OUTPUT, apply_style
 
 MAIN_FIGURES = {
     2: ("Figure 2: Pseudoreplication Bias & Melanoma Analysis", "main.figure2_melanoma_analysis"),
-    3: ("Figure 3: Robustness & Benchmarking", "main.figure3_robustness_benchmarking"),
-    4: ("Figure 4: Biological Discovery & Multi-Dataset Generalization", "main.figure4_biological_discovery_multi_dataset"),
-    5: ("Figure 5: Validation & Dynamics", "main.figure5_validation_dynamics"),
+    3: ("Figure 3: TNBC Immunotherapy Primary Analysis", "main.figure3_tnbc_analysis"),
+    4: ("Figure 4: Robustness & Benchmarking (Melanoma)", "main.figure4_robustness_benchmarking_melanoma"),
+    5: ("Figure 5: Robustness & Benchmarking (TNBC)", "main.figure5_robustness_benchmarking_tnbc"),
+    6: ("Figure 6: Biological Discovery & Multi-Dataset Generalization", "main.figure6_biological_discovery_multi_dataset"),
+    7: ("Figure 7: Validation & Dynamics", "main.figure7_validation_dynamics"),
 }
 
 SUPP_TABLES = {

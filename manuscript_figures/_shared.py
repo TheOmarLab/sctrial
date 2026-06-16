@@ -322,6 +322,21 @@ def get_sade_feldman():
     _DATA_CACHE["sf"] = adata
     return adata
 
+def get_tnbc_zhang():
+    """Zhang TNBC chemotherapy dataset (GSE161529, ~22 K cells)."""
+    if "tnbc" in _DATA_CACHE:
+        return _DATA_CACHE["tnbc"]
+    from sctrial.datasets import load_tnbc_zhang
+    adata = load_tnbc_zhang(
+        max_cells_per_participant_visit=None,
+        processed_name="tnbc_zhang_processed.h5ad",
+        force_reprocess=False,
+        allow_download=True,
+    )
+    print(f"  TNBC (Zhang): {adata.n_obs:,} cells, {adata.n_vars:,} genes")
+    _DATA_CACHE["tnbc"] = adata
+    return adata
+
 
 def get_stephenson():
     """Stephenson COVID-19 (~205 K cells)."""
