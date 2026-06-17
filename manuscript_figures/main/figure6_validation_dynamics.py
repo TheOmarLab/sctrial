@@ -796,7 +796,7 @@ def _panel_g(ax, steph_data: dict) -> None:
     ax.set_xticklabels(DFO_LABELS)
     ax.set_xlabel("Days from Onset")
     ax.set_ylabel("Mean Signature Score")
-    ax.set_title("Signature Trajectories by Severity", fontsize=10, fontweight="bold")
+    ax.set_title("Signature Trajectories by Severity - COVID-19", fontsize=10, fontweight="bold")
 
     handles = [
         Line2D([0], [0], color=COL_SEVERE, lw=2, ls="-", label="Severe"),
@@ -849,7 +849,7 @@ def _panel_h(ax, steph_data: dict) -> None:
     ax.set_xticklabels(DFO_LABELS)
     ax.set_xlabel("Days from Onset")
     ax.set_ylabel("Divergence (Severe − Mild)")
-    ax.set_title("Severity Divergence Over Time", fontsize=10, fontweight="bold")
+    ax.set_title("Severity Divergence Over Time - COVID-19", fontsize=10, fontweight="bold")
     ax.legend(fontsize=7, loc="best", frameon=True, framealpha=0.9)
     despine(ax)
 
@@ -898,7 +898,7 @@ def _panel_i(ax, steph_data: dict) -> None:
     )
     ax.set_xlabel("Days from Onset")
     ax.set_ylabel("")
-    ax.set_title("Temporal Divergence Heatmap", fontsize=10, fontweight="bold")
+    ax.set_title("Temporal Divergence Heatmap - COVID-19", fontsize=10, fontweight="bold")
     ax.tick_params(axis="y", labelsize=8)
 
 
@@ -968,7 +968,7 @@ def _panel_j(ax, steph_data: dict) -> None:
     ax.set_yticks(y_pos)
     ax.set_yticklabels(pivot.index, fontsize=7)
     ax.set_xlabel("Hedges' g (Severe − Mild)")
-    ax.set_title("Time-Specific Effect Sizes", fontsize=10, fontweight="bold")
+    ax.set_title("Time-Specific Effect Sizes - COVID-19", fontsize=10, fontweight="bold")
     ax.legend(fontsize=7, loc="lower right", frameon=True, framealpha=0.9)
     despine(ax)
 
