@@ -1,5 +1,5 @@
 """
-Figure 3 — Statistical Robustness & Method Benchmarking
+Figure 4 — Statistical Robustness & Method Benchmarking
 ========================================================
 
 Seven-panel figure combining bootstrap validation, leave-one-out
@@ -62,7 +62,7 @@ from .._shared import (
 
 warnings.filterwarnings("ignore")
 
-FIGURE_NAME = "Figure3_robustness_benchmarking"
+FIGURE_NAME = "Figure4_robustness_benchmarking"
 VISITS: tuple[str, str] = ("Pre", "Post")
 N_BOOT = 999
 
@@ -1273,7 +1273,7 @@ def _panel_b(ax, data: dict) -> None:
 
 
 # ======================================================================
-# Runtime scaling (exported for Supp Fig 3; not part of Figure 3 layout)
+# Runtime scaling (exported for Supp Fig 3; not part of Figure 4 layout)
 # ======================================================================
 
 def _panel_c(ax, data: dict) -> None:
@@ -1540,9 +1540,9 @@ def _panel_e_cross_dataset(ax, data: dict, *, composite: bool = False) -> None:
 # ======================================================================
 
 def generate() -> None:
-    """Create and save all Figure 3 panels (A–G) plus combined artboard."""
+    """Create and save all Figure 4 panels (A–G) plus combined artboard."""
     apply_style()
-    print("Figure 3: Robustness & Benchmarking")
+    print("Figure 4: Robustness & Benchmarking")
 
     data = _prepare_sf_data()
 
@@ -1828,7 +1828,7 @@ def generate() -> None:
     clear_cache()
     gc.collect()
 
-    print("  Figure 3 complete: 7 individual panels + combined (A–G)")
+    print("  Figure 4 complete: 7 individual panels + combined (A–G)")
 
 
 # ── CLI entry point ────────────────────────────────────────────────────

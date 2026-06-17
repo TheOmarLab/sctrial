@@ -20,24 +20,11 @@ E : Small-multiple interaction plots for the top 6 signatures.
 F : Per-participant change heatmap across signatures.
 G : Bar plot of mean delta score (post - pre) by arm.
 H : Cohen's d effect sizes (anti-PDL1+Chemo - Chemo) on delta scores.
+I : Response-stratified second-order DiD forest plot (DID₂ = DID_R − DID_NR).
+J : Signature changes by arm and response (four-group bar chart).
+K : Within-arm response DID forest plot — Chemo arm.
+L : Within-arm response DID forest plot — anti-PDL1+Chemo arm.
 
-Changes from v1
----------------
-- Fixed citation: Cancer Cell 2021, not Cell 2025
-- Fixed bootstrap CI: uses percentile method not 1.96 × SE
-- Fixed scoring: uses st.score_gene_sets(method="zmean") not sc.tl.score_genes
-- Fixed Panel B: uses Spearman rho not Pearson r
-- Fixed Panel D: percentile CI with fallback, no crash on missing columns
-- Fixed Panel E: explicit permutation p-value column, same fallback as melanoma
-- Fixed Panel H: uses st.cohens_d_from_did not local reimplementation
-- Fixed seed handling: single RNG outside loop, SeedSequence per feature
-- Fixed redundant participant filter in _prepare_data
-- Added verify_paired_participants for Panel A annotation
-- Added combined artboard (180 x 215 mm, PNG + PDF)
-- Added apply_style() CLI entry point
-- Imports COLORS from _shared.py (falls back to local if _shared not yet present)
-- save_panel signature matches melanoma (fig, name, figure_name, output_dir)
-- Permutation p-values stored in p_DiD_perm column, not overwriting p_DiD
 """
 
 from __future__ import annotations

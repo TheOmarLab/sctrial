@@ -1,25 +1,31 @@
 """
-Figure 4 — Biological Discovery & Multi-Dataset Generalization
+Figure 5 — Biological Discovery & Multi-Dataset Generalization
 ===============================================================
 
-Twelve-panel combined figure integrating gene/pathway-level biological
-discovery from the melanoma cohort (panels A–E) with cross-dataset
-generalization analyses (panels F–L).
+Eighteen-panel combined figure integrating gene/pathway-level biological
+discovery from the melanoma cohort (panels A–E) and TNBC cohort (panels F–J)
+with cross-dataset generalization analyses (panels K–R).
 
 Panels
 ------
 A  Gene-level volcano plot (melanoma DiD).
-B  Top genes ranked by effect size (waterfall).
-C  GSEA enrichment bar chart (pathway enrichment).
-D  Leading-edge gene overlap heatmap (transposed: genes on X, pathways on Y).
-E  Cell-type-resolved DiD effect heatmap.
-F  COVID-19 cross-sectional forest plot.
-G  Vaccine paired forest plot.
-H  AML within-arm forest plot.
-I  CAR-T forest plot.
-J  Melanoma DiD forest plot.
-K  Cross-dataset effect-size heatmap.
-L  Cross-dataset GSEA heatmap (replicated pathways).
+B  Top genes ranked by effect size (waterfall, melanoma).
+C  GSEA enrichment bar chart (pathway enrichment, melanoma).
+D  Leading-edge gene overlap heatmap (melanoma).
+E  Cell-type-resolved DiD effect heatmap (melanoma).
+F  Gene-level volcano plot (TNBC within-arm).
+G  Top genes ranked by effect size (waterfall, TNBC).
+H  GSEA enrichment bar chart (pathway enrichment, TNBC).
+I  Leading-edge gene overlap heatmap (TNBC).
+J  Cell-type-resolved within-arm effect heatmap (TNBC).
+K  COVID-19 cross-sectional forest plot.
+L  Vaccine paired forest plot.
+M  AML within-arm forest plot.
+N  CAR-T forest plot.
+O  Melanoma DiD forest plot.
+P  TNBC within-arm forest plot.
+Q  Cross-dataset effect-size heatmap (includes TNBC).
+R  Cross-dataset GSEA heatmap — replicated pathways (includes TNBC).
 """
 
 from __future__ import annotations
@@ -54,6 +60,7 @@ from .._shared import (
     get_cart,
     get_sade_feldman,
     get_stephenson,
+    get_tnbc_zhang,
     get_vaccine,
     harmonize_response,
     hedges_g,
@@ -67,11 +74,11 @@ from .._shared import (
 )
 
 
-FIGURE_NAME = "Figure4_biological_discovery_multi_dataset"
+FIGURE_NAME = "Figure5_biological_discovery_multi_dataset"
 
 
 # ======================================================================
-# FIGURE 4 — Biological Discovery (Melanoma)
+# FIGURE 5 — Biological Discovery (Melanoma)
 # ======================================================================
 
 # ── Cache directory for expensive computations ─────────────────────────
@@ -170,7 +177,7 @@ def _prepare_bio_discovery_data(*, use_cache: bool = True) -> dict:
     _code_hash = hashlib.md5(  # noqa: S324 — not security, just cache tag
         Path(__file__).read_bytes()
     ).hexdigest()[:8]
-    cache_key = f"figure4_sade_feldman_v4_{_code_hash}"
+    cache_key = f"figure5_sade_feldman_v4_{_code_hash}"
     cache_path = _CACHE_DIR / f"{cache_key}.pkl"
 
     if use_cache and cache_path.exists():
@@ -486,6 +493,163 @@ def _prepare_bio_discovery_data(*, use_cache: bool = True) -> dict:
 
 
 # ======================================================================
+# TNBC biological discovery data preparation (within-arm)
+# ======================================================================
+
+_TNBC_TREATED_ARM  = "anti-PDL1+Chemo"
+_TNBC_CONTROL_ARM  = "Chemo"
+
+
+def _prepare_tnbc_bio_discovery_data(*, use_cache: bool = True) -> dict:
+    """Load TNBC dataset, run two-arm DiD (anti-PDL1+Chemo vs Chemo).
+
+    DiD = (anti-PDL1+Chemo Post−Pre) − (Chemo Post−Pre), irrespective of
+    response status.  Uses did_table / load_or_run_gsea_did, matching the
+    melanoma workflow exactly.
+    """
+    _code_hash = hashlib.md5(
+        Path(__file__).read_bytes()
+    ).hexdigest()[:8]
+    cache_key = f"figure5_tnbc_did_v1_{_code_hash}"
+    cache_path = _CACHE_DIR / f"{cache_key}.pkl"
+
+    if use_cache and cache_path.exists():
+        print(f"  Loading cached TNBC DiD data from {cache_path.name}")
+        with open(cache_path, "rb") as f:
+            cached = pickle.load(f)  # noqa: S301
+        adata = get_tnbc_zhang()
+        _tnbc_layer = "log1p_norm" if "log1p_norm" in adata.layers else None
+        adata, sig_cols = score_signatures(adata, layer=_tnbc_layer)
+        cached["adata"] = adata
+        cached["sig_cols"] = sig_cols
+        return cached
+
+    adata = get_tnbc_zhang()
+    _tnbc_layer = "log1p_norm" if "log1p_norm" in adata.layers else None
+    adata, sig_cols = score_signatures(adata, layer=_tnbc_layer)
+
+    pid_col = ("participant_id" if "participant_id" in adata.obs.columns
+               else "patient_id")
+    arm_col = "arm" if "arm" in adata.obs.columns else None
+
+    # Two-arm DiD design (anti-PDL1+Chemo vs Chemo), response-status agnostic
+    design = TrialDesign(
+        participant_col=pid_col,
+        visit_col="visit",
+        arm_col=arm_col or "arm",
+        arm_treated=_TNBC_TREATED_ARM,
+        arm_control=_TNBC_CONTROL_ARM,
+    )
+    visits = ("Pre", "Post")
+
+    # -- Signature-level DiD with bootstrap CIs --
+    did_sig = did_table(
+        adata,
+        features=sig_cols,
+        design=design,
+        visits=visits,
+        layer=_tnbc_layer,
+        standardize=True,
+        aggregate="participant_visit",
+        use_bootstrap=True,
+        n_boot=999,
+        seed=42,
+    )
+
+    # -- GSEA DiD --
+    gsea_results = load_or_run_gsea_did(
+        adata, design, visits, _tnbc_layer, "TNBC",
+    )
+
+    if gsea_results is not None and len(gsea_results) > 0:
+        term_col = None
+        for c in gsea_results.columns:
+            if c.lower().strip() == "term":
+                term_col = c
+                break
+        if term_col is None:
+            for c in gsea_results.columns:
+                if c.lower() in ("name", "pathway"):
+                    term_col = c
+                    break
+            if term_col is None:
+                term_col = gsea_results.columns[0]
+
+        n_before = len(gsea_results)
+        gsea_results = gsea_results[
+            gsea_results[term_col].apply(_is_immune_or_metabolic)
+        ].reset_index(drop=True)
+        print(f"  TNBC GSEA immune/metabolic filter: "
+              f"{len(gsea_results)}/{n_before} pathways retained")
+
+    # -- Gene-level DiD (top variable genes) --
+    gene_results = None
+    try:
+        import scanpy as sc
+
+        adata_genes = adata.copy()
+        if _tnbc_layer is not None:
+            sc.pp.highly_variable_genes(
+                adata_genes, n_top_genes=2000,
+                layer=_tnbc_layer, flavor="seurat",
+            )
+        else:
+            sc.pp.highly_variable_genes(adata_genes, n_top_genes=2000,
+                                        flavor="seurat")
+        top_genes = adata_genes.var_names[
+            adata_genes.var["highly_variable"]
+        ].tolist()
+        print(f"  TNBC: {len(top_genes)} variable genes selected")
+
+        gene_results = did_table(
+            adata_genes,
+            features=top_genes,
+            design=design,
+            visits=visits,
+            layer=_tnbc_layer,
+            standardize=True,
+            aggregate="participant_visit",
+        )
+
+        n_total = len(gene_results)
+        n_degenerate = gene_results["p_DiD"].isna().sum()
+        if n_degenerate > 0:
+            gene_results = gene_results.dropna(
+                subset=["beta_DiD", "se_DiD", "p_DiD"]
+            ).reset_index(drop=True)
+            print(f"  TNBC gene-level: dropped {n_degenerate}/{n_total} "
+                  f"genes with degenerate fits")
+
+        del adata_genes
+        gc.collect()
+
+    except Exception as exc:
+        print(f"  TNBC gene-level DiD unavailable: {exc}")
+        traceback.print_exc()
+        gene_results = None
+
+    result = dict(
+        adata=adata,
+        sig_cols=sig_cols,
+        design=design,
+        visits=visits,
+        did_sig=did_sig,
+        gsea_results=gsea_results,
+        gene_results=gene_results,
+    )
+
+    if use_cache:
+        _CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        to_cache = {k: v for k, v in result.items()
+                    if k not in ("adata", "sig_cols")}
+        with open(cache_path, "wb") as f:
+            pickle.dump(to_cache, f, protocol=pickle.HIGHEST_PROTOCOL)
+        print(f"  Cached TNBC DiD results to {cache_path.name}")
+
+    return result
+
+
+# ======================================================================
 # Multi-dataset GSEA for pathway replication
 # ======================================================================
 
@@ -628,7 +792,33 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
     except Exception as exc:
         print(f"    CAR-T: FAILED ({exc})")
     
-    # 5. COVID-19 (cross-sectional - use between_arm_comparison)
+    # 5. TNBC two-arm DiD (anti-PDL1+Chemo vs Chemo, response-agnostic)
+    try:
+        tnbc = get_tnbc_zhang()
+        _tnbc_layer = "log1p_norm" if "log1p_norm" in tnbc.layers else None
+        tnbc, _ = score_signatures(tnbc, layer=_tnbc_layer)
+        pid_col_tnbc = ("participant_id" if "participant_id" in tnbc.obs.columns
+                        else "patient_id")
+        tnbc_design = TrialDesign(
+            participant_col=pid_col_tnbc,
+            visit_col="visit",
+            arm_col="arm" if "arm" in tnbc.obs.columns else pid_col_tnbc,
+            arm_treated=_TNBC_TREATED_ARM,
+            arm_control=_TNBC_CONTROL_ARM,
+        )
+        tnbc_results = load_or_run_gsea_did(
+            tnbc, tnbc_design, ("Pre", "Post"), _tnbc_layer, "TNBC",
+        )
+        if tnbc_results is not None and len(tnbc_results) > 0:
+            tnbc_results["dataset"] = "TNBC"
+            if "Library" in tnbc_results.columns and "library" not in tnbc_results.columns:
+                tnbc_results = tnbc_results.rename(columns={"Library": "library"})
+            gsea_multi["TNBC"] = tnbc_results
+            print(f"    TNBC: {len(tnbc_results)} pathways")
+    except Exception as exc:
+        print(f"    TNBC: FAILED ({exc})")
+
+    # 6. COVID-19 (cross-sectional - use between_arm_comparison)
     try:
         covid = get_stephenson()
         # Add log1p_cpm layer if not present (consistent with Figure 5A / Supp Table 3)
@@ -1635,89 +1825,127 @@ def panel_C_replicated(ax, data: dict):
     
     for i, pathway in enumerate(all_pathways):
         for j, dataset in enumerate(all_datasets):
-            subset = combined[(combined["pathway"] == pathway) & 
+            subset = combined[(combined["pathway"] == pathway) &
                              (combined["dataset"] == dataset)]
             if len(subset) > 0:
                 # If multiple entries, take the one with highest |NES|
                 row = subset.loc[subset["NES"].abs().idxmax()]
                 nes_matrix[i, j] = row["NES"]
                 fdr_matrix[i, j] = row["FDR"]
-    
-    # Filter pathways: prioritize ≥5 datasets, fallback to ≥4, then ≥3
-    # Rank by absolute average NES across datasets
-    pathway_counts = (~np.isnan(nes_matrix)).sum(axis=1)
+
+    # Save full results (all pathways, all datasets) as wide-format CSV
+    try:
+        csv_dir = MAIN_OUTPUT / f"{FIGURE_NAME}_panels"
+        csv_dir.mkdir(parents=True, exist_ok=True)
+        _csv_df = pd.DataFrame({"pathway": all_pathways})
+        for _j, _ds in enumerate(all_datasets):
+            _csv_df[f"NES_{_ds}"] = [
+                float(nes_matrix[_i, _j]) if not np.isnan(nes_matrix[_i, _j]) else None
+                for _i in range(len(all_pathways))
+            ]
+            _csv_df[f"FDR_{_ds}"] = [
+                float(fdr_matrix[_i, _j]) if not np.isnan(fdr_matrix[_i, _j]) else None
+                for _i in range(len(all_pathways))
+            ]
+        _csv_df.to_csv(csv_dir / "panel_R_replicated_pathways.csv", index=False)
+        print(f"  Panel R: saved all {len(all_pathways)} pathways × "
+              f"{len(all_datasets)} datasets → panel_R_replicated_pathways.csv")
+    except Exception as _exc:
+        print(f"  Panel R: CSV save failed ({_exc})")
+
+    # ── Coverage-constrained greedy pathway selection ────────────────────
+    # Goal: ≥50% of the top_n selected pathways must be non-NaN for every
+    # dataset.  Within that constraint, prefer significant (FDR<0.25) entries
+    # over present-but-not-significant over NaN.
+    #
+    # Per-(pathway, dataset) score:
+    #   2 = significant   (NES not NaN AND FDR < 0.25)
+    #   1 = present       (NES not NaN, FDR ≥ 0.25 or FDR NaN)
+    #   0 = absent / NaN
+    n_pw_all  = len(all_pathways)
     n_datasets = len(all_datasets)
-    top_n = 15
-    
-    # Calculate average NES for all pathways
-    avg_nes_all = np.nanmean(nes_matrix, axis=1)
-    abs_avg_nes_all = np.abs(avg_nes_all)
-    
-    # First try: pathways in ≥5 datasets, ranked by absolute NES
-    keep_5plus = pathway_counts >= min(5, n_datasets)
-    
-    if keep_5plus.sum() > 0:
-        indices_5plus = np.where(keep_5plus)[0]
-        abs_nes_5plus = abs_avg_nes_all[indices_5plus]
-        order_5plus = indices_5plus[np.argsort(-abs_nes_5plus)]
-        selected_5plus = order_5plus[:top_n].tolist()
-    else:
-        selected_5plus = []
-    
-    # Initialize all_selected with pathways from ≥5 datasets
-    all_selected = selected_5plus
-    
-    # If we need more pathways, get from ≥4 datasets
-    if len(all_selected) < top_n:
-        keep_4plus = pathway_counts >= min(4, n_datasets)
-        keep_4plus_only = keep_4plus & (~keep_5plus)
-        
-        if keep_4plus_only.sum() > 0:
-            indices_4plus = np.where(keep_4plus_only)[0]
-            abs_nes_4plus = abs_avg_nes_all[indices_4plus]
-            order_4plus = indices_4plus[np.argsort(-abs_nes_4plus)]
-            
-            remaining = top_n - len(all_selected)
-            selected_4plus = order_4plus[:remaining].tolist()
-            
-            all_selected = all_selected + selected_4plus
-    
-    # If we still need more pathways, get from ≥3 datasets
-    if len(all_selected) < top_n:
-        keep_3plus = pathway_counts >= min(3, n_datasets)
-        keep_3plus_only = keep_3plus & (~keep_5plus) & (~keep_4plus)
-        
-        if keep_3plus_only.sum() > 0:
-            indices_3plus = np.where(keep_3plus_only)[0]
-            abs_nes_3plus = abs_avg_nes_all[indices_3plus]
-            order_3plus = indices_3plus[np.argsort(-abs_nes_3plus)]
-            
-            remaining = top_n - len(all_selected)
-            selected_3plus = order_3plus[:remaining].tolist()
-            
-            all_selected = all_selected + selected_3plus
-    
-    if len(all_selected) == 0:
-        ax.text(0.5, 0.5, "No pathways replicated across ≥3 datasets",
+    top_n      = 15
+    min_coverage = int(np.ceil(top_n * 0.5))   # ≥50% non-NaN per dataset
+
+    score_matrix = np.zeros((n_pw_all, n_datasets), dtype=int)
+    for _i in range(n_pw_all):
+        for _j in range(n_datasets):
+            _nes = nes_matrix[_i, _j]
+            _fdr = fdr_matrix[_i, _j]
+            if np.isnan(_nes):
+                score_matrix[_i, _j] = 0
+            elif not np.isnan(_fdr) and _fdr < 0.25:
+                score_matrix[_i, _j] = 2
+            else:
+                score_matrix[_i, _j] = 1
+
+    # Global score per pathway: sum across all datasets (higher = better covered)
+    global_scores = score_matrix.sum(axis=1)
+
+    # Greedy selection with per-dataset coverage tracking.
+    # At each step:
+    #   1. Identify "underserved" datasets (coverage < min_coverage).
+    #   2. Rank candidates by:
+    #       a. How much they help underserved datasets (sum of scores there)
+    #       b. Their global coverage score (all datasets)
+    #       c. Maximum |NES| across datasets (stronger effects preferred)
+    #   3. Pick the best candidate, update coverage counters.
+    coverage          = np.zeros(n_datasets, dtype=int)
+    selected_indices  = []
+    remaining         = list(range(n_pw_all))
+
+    for _step in range(top_n):
+        if not remaining:
+            break
+
+        underserved = np.where(coverage < min_coverage)[0]
+
+        best = max(
+            remaining,
+            key=lambda p, _us=underserved: (
+                int(score_matrix[p, _us].sum()) if len(_us) else 0,
+                int(global_scores[p]),
+                float(np.nanmax(np.abs(nes_matrix[p])))
+                    if not np.all(np.isnan(nes_matrix[p])) else 0.0,
+            ),
+        )
+        selected_indices.append(best)
+        remaining.remove(best)
+
+        for _d in range(n_datasets):
+            if score_matrix[best, _d] >= 1:
+                coverage[_d] += 1
+
+    # Report per-dataset coverage so sparse datasets are visible in logs
+    for _d, _ds in enumerate(all_datasets):
+        n_sig  = int((score_matrix[selected_indices, _d] == 2).sum())
+        n_pres = int((score_matrix[selected_indices, _d] >= 1).sum())
+        print(f"  Panel R: {_ds:12s}  non-NaN {n_pres}/{top_n}  "
+              f"(significant {n_sig})")
+        if n_pres < min_coverage:
+            print(f"    ↳ WARNING: below 50% target — GSEA results are "
+                  f"sparse for {_ds}")
+
+    if not selected_indices:
+        ax.text(0.5, 0.5, "No pathways found",
                 transform=ax.transAxes, ha="center", va="center",
                 fontsize=12, color=COLORS["gray"])
         ax.set_title("Replicated Pathways", fontsize=11, fontweight="bold")
         ax.axis("off")
         return
-    
-    # Extract selected pathways
-    nes_matrix = nes_matrix[all_selected]
-    fdr_matrix = fdr_matrix[all_selected]
-    all_pathways = [all_pathways[i] for i in all_selected]
-    
-    # Calculate average NES for final sorting
-    avg_nes = np.nanmean(nes_matrix, axis=1)
+
+    # Extract and sort by average NES (ascending) for display
+    nes_matrix  = nes_matrix[selected_indices]
+    fdr_matrix  = fdr_matrix[selected_indices]
+    all_pathways = [all_pathways[i] for i in selected_indices]
+
+    avg_nes     = np.nanmean(nes_matrix, axis=1)
     final_order = np.argsort(avg_nes)
-    
-    nes_matrix = nes_matrix[final_order]
-    fdr_matrix = fdr_matrix[final_order]
+
+    nes_matrix   = nes_matrix[final_order]
+    fdr_matrix   = fdr_matrix[final_order]
     all_pathways = [all_pathways[i] for i in final_order]
-    
+
     # Custom colormap: blue (negative) to white/gray (zero) to red (positive)
     import matplotlib.colors as mcolors
     colors_neg = [(0.122, 0.471, 0.706), (0.95, 0.95, 0.95)]  # blue to light gray
@@ -1961,6 +2189,146 @@ def panel_F(ax, data: dict):
 
 
 # ======================================================================
+# Panel J — TNBC cell-type within-arm effect heatmap
+# ======================================================================
+
+def _panel_tnbc_celltype_hm(ax, data_tnbc: dict):
+    """Cell-type-resolved within-arm effect heatmap for TNBC.
+
+    Rows = top genes by |β_within|, columns = cell types.
+    Color = mean Post-Pre expression change within the treatment arm,
+    per cell type.  Analogous to panel_F (melanoma) but for within-arm.
+    """
+    gene_results = data_tnbc.get("gene_results")
+    adata = data_tnbc.get("adata")
+
+    if gene_results is None or adata is None or len(gene_results) == 0:
+        ax.text(0.5, 0.5, "TNBC gene-level results unavailable",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=12, color=COLORS["gray"])
+        ax.set_title("Cell-Type Within-Arm Effects (TNBC)", fontsize=11,
+                     fontweight="bold")
+        ax.axis("off")
+        return
+
+    df = gene_results.copy()
+    beta_col = "beta_DiD"  # renamed from beta_time
+    df = df.dropna(subset=[beta_col])
+    df = df[df["feature"].apply(_is_likely_protein_coding)]
+
+    n_per_dir = 8
+    df_pos = df[df[beta_col] > 0].nlargest(n_per_dir, beta_col)
+    df_neg = df[df[beta_col] < 0].nsmallest(n_per_dir - 1, beta_col)
+    top_genes_df = pd.concat([df_pos, df_neg])
+    top_genes = top_genes_df["feature"].tolist()
+
+    available = [g for g in top_genes if g in adata.var_names]
+    if len(available) == 0:
+        ax.text(0.5, 0.5, "No top genes in adata",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=12, color=COLORS["gray"])
+        ax.axis("off")
+        return
+
+    ct_col = "cell_type"
+    if ct_col not in adata.obs.columns:
+        ct_col = next(
+            (c for c in adata.obs.columns
+             if "cell" in c.lower() and "type" in c.lower()),
+            None,
+        )
+    if ct_col is None:
+        ax.text(0.5, 0.5, "No cell type column in TNBC data",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=12, color=COLORS["gray"])
+        ax.axis("off")
+        return
+
+    arm_col = "arm" if "arm" in adata.obs.columns else None
+    _tnbc_layer = "log1p_norm" if "log1p_norm" in adata.layers else None
+
+    cell_types = sorted(adata.obs[ct_col].dropna().unique())
+    ct_counts = adata.obs[ct_col].value_counts()
+    cell_types = [ct for ct in cell_types if ct_counts.get(ct, 0) >= 20]
+
+    effect_mat = pd.DataFrame(np.nan, index=available, columns=cell_types)
+
+    sub_adata = adata[:, available].copy()
+    if _tnbc_layer and _tnbc_layer in sub_adata.layers:
+        X = sub_adata.layers[_tnbc_layer]
+    else:
+        X = sub_adata.X
+
+    import scipy.sparse as sp
+    if sp.issparse(X):
+        X = X.toarray()
+
+    obs = sub_adata.obs.copy()
+    expr_df = pd.DataFrame(X, index=obs.index, columns=available)
+    expr_df["_visit"] = obs["visit"].values
+    expr_df["_ct"] = obs[ct_col].values
+    expr_df["_arm"] = obs[arm_col].values if arm_col else _TNBC_TREATED_ARM
+
+    for ct in cell_types:
+        ct_mask = expr_df["_ct"] == ct
+        ct_data = expr_df[ct_mask]
+        for gene in available:
+            try:
+                means = {}
+                for arm in [_TNBC_TREATED_ARM, _TNBC_CONTROL_ARM]:
+                    for vis in ["Pre", "Post"]:
+                        mask = (ct_data["_arm"] == arm) & (ct_data["_visit"] == vis)
+                        vals = ct_data.loc[mask, gene]
+                        means[(arm, vis)] = vals.mean() if len(vals) > 0 else np.nan
+                # DiD = (treated Post−Pre) − (control Post−Pre)
+                treated_delta = means[(_TNBC_TREATED_ARM, "Post")] - means[(_TNBC_TREATED_ARM, "Pre")]
+                control_delta = means[(_TNBC_CONTROL_ARM,  "Post")] - means[(_TNBC_CONTROL_ARM,  "Pre")]
+                did_val = treated_delta - control_delta
+                if np.isfinite(did_val):
+                    effect_mat.loc[gene, ct] = did_val
+            except Exception:
+                pass
+
+    gene_order = (
+        top_genes_df.set_index("feature")
+        .loc[available]
+        .sort_values(beta_col, ascending=True)
+        .index.tolist()
+    )
+    effect_mat = effect_mat.loc[gene_order]
+    effect_mat = effect_mat.dropna(axis=1, how="all")
+
+    if effect_mat.shape[1] == 0:
+        ax.text(0.5, 0.5, "Insufficient TNBC cell-type data",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=12, color=COLORS["gray"])
+        ax.axis("off")
+        return
+
+    import matplotlib.colors as mcolors
+    vmax = max(np.nanmax(np.abs(effect_mat.values)), 0.01)
+    cmap = mcolors.LinearSegmentedColormap.from_list(
+        "tnbc_div",
+        [COLORS["control"], "#f0f0f0", COLORS["treated"]],
+        N=256,
+    )
+    im = ax.imshow(
+        effect_mat.values.astype(float),
+        aspect="auto", cmap=cmap, vmin=-vmax, vmax=vmax,
+        interpolation="nearest",
+    )
+    ax.set_xticks(np.arange(effect_mat.shape[1]))
+    ax.set_xticklabels(effect_mat.columns, rotation=30, ha="right", fontsize=6.5)
+    ax.set_yticks(np.arange(effect_mat.shape[0]))
+    ax.set_yticklabels(effect_mat.index, fontsize=7)
+    ax.set_title("Cell-Type DiD Effects — TNBC", fontsize=11,
+                 fontweight="bold")
+    cbar = ax.figure.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    cbar.set_label(r"$\Delta\Delta$ expression (DiD)", fontsize=8)
+    cbar.ax.tick_params(labelsize=7)
+
+
+# ======================================================================
 # Composite figure
 
 
@@ -1983,6 +2351,7 @@ _DATASET_COLORS = {
     "AML":       "#8E44AD",
     "CAR-T":     "#E67E22",
     "Melanoma":  "#E74C3C",
+    "TNBC":      "#16A085",
 }
 
 
@@ -2032,7 +2401,7 @@ def _forest_plot(
         color = color_pos if es > 0 else color_neg
 
         lw = 1.2
-        ms = 4.5
+        ms = 3.0
 
         ax.plot([lo, hi], [i, i], color=color, lw=lw, solid_capstyle="round")
         ax.plot(
@@ -2413,7 +2782,6 @@ def _prepare_multi_dataset_data() -> dict[str, Any]:
     # ── Compute CIs for melanoma DiD results ────────────────────────────
     if data.get("mel_effects") is not None:
         mel = data["mel_effects"]
-        # Prefer bootstrap CIs, fall back to analytical per-row
         analytical_lo = mel["beta_DiD"] - 1.96 * mel["se_DiD"]
         analytical_hi = mel["beta_DiD"] + 1.96 * mel["se_DiD"]
         if "ci_lo_boot" in mel.columns and "ci_hi_boot" in mel.columns:
@@ -2422,14 +2790,59 @@ def _prepare_multi_dataset_data() -> dict[str, Any]:
         else:
             mel["ci_lo"] = analytical_lo
             mel["ci_hi"] = analytical_hi
-        # Prefer bootstrap p-values / FDR where available
         if "p_DiD_boot" in mel.columns:
             mel["p_DiD"] = mel["p_DiD_boot"].fillna(mel["p_DiD"])
         if "FDR_DiD_boot" in mel.columns:
             mel["FDR_DiD"] = mel["FDR_DiD_boot"].fillna(mel["FDR_DiD"])
         data["mel_effects"] = mel
 
-    # ── Panel F: cross-dataset effect-size matrix ─────────────────────────
+    # ── Panel P: TNBC two-arm DiD signature forest ───────────────────────
+    try:
+        print("  [P] Loading TNBC (Zhang) for DiD analysis ...")
+        adata_tnbc = get_tnbc_zhang()
+        _tnbc_layer_p = "log1p_norm" if "log1p_norm" in adata_tnbc.layers else None
+        adata_tnbc, sig_cols_tnbc = score_signatures(adata_tnbc, layer=_tnbc_layer_p)
+
+        pid_col_tnbc = ("participant_id"
+                        if "participant_id" in adata_tnbc.obs.columns
+                        else "patient_id")
+        tnbc_design_p = TrialDesign(
+            participant_col=pid_col_tnbc,
+            visit_col="visit",
+            arm_col="arm" if "arm" in adata_tnbc.obs.columns else pid_col_tnbc,
+            arm_treated=_TNBC_TREATED_ARM,
+            arm_control=_TNBC_CONTROL_ARM,
+        )
+        res_tnbc = did_table(
+            adata_tnbc,
+            features=sig_cols_tnbc,
+            design=tnbc_design_p,
+            visits=("Pre", "Post"),
+            layer=_tnbc_layer_p,
+            standardize=True,
+            aggregate="participant_visit",
+            use_bootstrap=True,
+        )
+        res_tnbc["label"] = res_tnbc["feature"].apply(sig_display)
+        analytical_lo = res_tnbc["beta_DiD"] - 1.96 * res_tnbc["se_DiD"]
+        analytical_hi = res_tnbc["beta_DiD"] + 1.96 * res_tnbc["se_DiD"]
+        if "ci_lo_boot" in res_tnbc.columns and "ci_hi_boot" in res_tnbc.columns:
+            res_tnbc["ci_lo"] = res_tnbc["ci_lo_boot"].fillna(analytical_lo)
+            res_tnbc["ci_hi"] = res_tnbc["ci_hi_boot"].fillna(analytical_hi)
+        else:
+            res_tnbc["ci_lo"] = analytical_lo
+            res_tnbc["ci_hi"] = analytical_hi
+        data["tnbc_effects"] = res_tnbc
+        print(f"       {adata_tnbc.n_obs:,} cells, "
+              f"{adata_tnbc.obs[pid_col_tnbc].nunique()} participants "
+              f"(DiD: {_TNBC_TREATED_ARM} vs {_TNBC_CONTROL_ARM})")
+    except Exception as exc:
+        print(f"  [P] TNBC error: {exc}")
+        import traceback
+        traceback.print_exc()
+        data["tnbc_effects"] = None
+
+    # ── Cross-dataset effect-size matrix (Q) ─────────────────────────────
     data["heatmap_matrix"], data["heatmap_stars"] = _build_heatmap_data(data)
 
     return data
@@ -2498,6 +2911,18 @@ def _build_heatmap_data(
                 "p": row.get("FDR_DiD", row.get("p_DiD", np.nan)),
             })
 
+    # TNBC: two-arm DiD beta (anti-PDL1+Chemo vs Chemo)
+    df = data.get("tnbc_effects")
+    if df is not None and len(df):
+        for _, row in df.iterrows():
+            lbl = row.get("label", sig_display(row["feature"]))
+            records.append({
+                "dataset": "TNBC",
+                "signature": lbl,
+                "effect": row.get("beta_DiD", np.nan),
+                "p": row.get("FDR_DiD", row.get("p_DiD", np.nan)),
+            })
+
     if not records:
         return None, None
 
@@ -2512,7 +2937,7 @@ def _build_heatmap_data(
     )
 
     # Order datasets consistently
-    ds_order = [d for d in ["COVID-19", "Vaccine", "AML", "CAR-T", "Melanoma"]
+    ds_order = [d for d in ["COVID-19", "Vaccine", "AML", "CAR-T", "Melanoma", "TNBC"]
                 if d in mat.index]
     mat = mat.loc[ds_order]
     pmat = pmat.loc[ds_order]
@@ -2660,8 +3085,36 @@ def panel_e_melanoma(ax, data: dict[str, Any]) -> None:
     )
 
 
+def panel_p_tnbc(ax, data: dict[str, Any]) -> None:
+    """Panel P: TNBC within-arm (anti-PDL1+Chemo) Pre→Post forest plot."""
+    ax.set_title("TNBC", fontsize=6, fontweight="bold",
+                 loc="left", pad=8)
+    ax.text(-0.12, 1.05, "P", transform=ax.transAxes, fontsize=14,
+            fontweight="bold", va="bottom")
+
+    df = data.get("tnbc_effects")
+    if df is None or len(df) == 0:
+        ax.text(0.5, 0.5, "TNBC data not available",
+                ha="center", va="center", transform=ax.transAxes)
+        ax.axis("off")
+        return
+
+    _forest_plot(
+        ax, df,
+        effect_col="beta_DiD",
+        ci_lo_col="ci_lo",
+        ci_hi_col="ci_hi",
+        label_col="label",
+        xlabel="DiD effect (anti-PDL1+Chemo vs Chemo)",
+        color_pos=COLORS["treated"],
+        color_neg=COLORS["control"],
+        legend_pos_label="anti-PDL1+Chemo $\\uparrow$",
+        legend_neg_label="Chemo $\\uparrow$",
+    )
+
+
 def panel_f_heatmap(ax, data: dict[str, Any]) -> None:
-    """Panel F: Cross-dataset standardised effect-size heatmap."""
+    """Panel Q (was F): Cross-dataset standardised effect-size heatmap."""
     import seaborn as sns
 
     ax.set_title("Cross-Dataset Effect Sizes", fontsize=8, fontweight="bold", loc="center", pad=8)
@@ -2742,45 +3195,68 @@ def _cap_fontsize(fig, maximum):
 
 
 # ── Panel aliases for composite ───────────────────────────────────────────
-fig4_volcano = panel_E
-fig4_waterfall = panel_A
-fig4_gsea_bars = panel_B
-fig4_leading_edge = panel_C
-fig4_celltype_hm = panel_F
-fig4_gsea_cross = panel_C_replicated
+fig4_volcano = panel_E        # Melanoma: A
+fig4_waterfall = panel_A      # Melanoma: B
+fig4_gsea_bars = panel_B      # Melanoma: C
+fig4_leading_edge = panel_C   # Melanoma: D
+fig4_celltype_hm = panel_F    # Melanoma: E
+# TNBC panels F–J reuse existing functions with TNBC data dict
+tnbc_volcano = panel_E        # TNBC: F
+tnbc_waterfall = panel_A      # TNBC: G
+tnbc_gsea_bars = panel_B      # TNBC: H
+tnbc_leading_edge = panel_C   # TNBC: I
+tnbc_celltype_hm = _panel_tnbc_celltype_hm  # TNBC: J
+fig4_gsea_cross = panel_C_replicated        # R
 
 
 # ── Individual panel saving ───────────────────────────────────────────────
 
-def _save_individual_panels(data4: dict, data5: dict) -> None:
-    """Save each panel A–L as a standalone figure."""
+def _save_individual_panels(data4: dict, data_tnbc: dict, data5: dict) -> None:
+    """Save each panel A–R as a standalone figure."""
     print("  Saving individual panels...")
 
-    # Fig4 panels (A–E)
-    fig4_panels = [
-        ("A", fig4_volcano, data4, (8, 6), dict(composite=False)),
-        ("B", fig4_waterfall, data4, (8, 6), {}),
-        ("C", fig4_gsea_bars, data4, (8, 6), {}),
+    # Panels A–E: Melanoma biological discovery
+    mel_panels = [
+        ("A", fig4_volcano,    data4, (8, 6), dict(composite=False)),
+        ("B", fig4_waterfall,  data4, (8, 6), {}),
+        ("C", fig4_gsea_bars,  data4, (8, 6), {}),
         ("D", fig4_leading_edge, data4, (10, 7), {}),
-        ("E", fig4_celltype_hm, data4, (8, 6), {}),
+        ("E", fig4_celltype_hm,  data4, (8, 6), {}),
     ]
-    for label, fn, data, fsize, kwargs in fig4_panels:
+    for label, fn, data, fsize, kwargs in mel_panels:
         fig_p, ax_p = plt.subplots(figsize=fsize)
         fn(ax_p, data, **kwargs)
         if label != "D":
             fig_p.tight_layout()
         save_panel(fig_p, f"panel_{label}", FIGURE_NAME, MAIN_OUTPUT)
 
-    # Fig5 panels (F–K)
-    fig5_panels = [
-        (panel_a_covid,    "F_covid_severity",   data5, 6.5),
-        (panel_b_vaccine,  "G_vaccine_paired",   data5, 6.5),
-        (panel_c_aml,      "H_aml_clinical",     data5, 6.5),
-        (panel_d_cart,      "I_cart_clinical",    data5, 6.5),
-        (panel_e_melanoma, "J_melanoma_did",      data5, 6.5),
-        (panel_f_heatmap,  "K_heatmap",           data5, 6.5),
+    # Panels F–J: TNBC biological discovery
+    tnbc_panels = [
+        ("F", tnbc_volcano,    data_tnbc, (8, 6), dict(composite=False)),
+        ("G", tnbc_waterfall,  data_tnbc, (8, 6), {}),
+        ("H", tnbc_gsea_bars,  data_tnbc, (8, 6), {}),
+        ("I", tnbc_leading_edge, data_tnbc, (10, 7), {}),
+        ("J", tnbc_celltype_hm,  data_tnbc, (8, 6), {}),
     ]
-    for fn, name, data, w in fig5_panels:
+    for label, fn, data, fsize, kwargs in tnbc_panels:
+        fig_p, ax_p = plt.subplots(figsize=fsize)
+        fn(ax_p, data, **kwargs)
+        if label in ("F", "G", "H", "I"):
+            _fix_tnbc_labels(ax_p)
+        if label != "I":
+            fig_p.tight_layout()
+        save_panel(fig_p, f"panel_{label}", FIGURE_NAME, MAIN_OUTPUT)
+
+    # Panels K–P: multi-dataset forest plots (previously F–J plus new TNBC)
+    forest_panels = [
+        (panel_a_covid,    "K_covid_severity",  data5, 6.5),
+        (panel_b_vaccine,  "L_vaccine_paired",  data5, 6.5),
+        (panel_c_aml,      "M_aml_clinical",    data5, 6.5),
+        (panel_d_cart,     "N_cart_clinical",   data5, 6.5),
+        (panel_e_melanoma, "O_melanoma_did",    data5, 6.5),
+        (panel_p_tnbc,     "P_tnbc_within_arm", data5, 6.5),
+    ]
+    for fn, name, data, w in forest_panels:
         n_feat = 8
         h = max(2.8, 0.38 * n_feat + 1.1)
         fig_p, ax_p = plt.subplots(figsize=(w, h))
@@ -2788,262 +3264,344 @@ def _save_individual_panels(data4: dict, data5: dict) -> None:
         fig_p.tight_layout(pad=0.6)
         save_panel(fig_p, f"panel_{name}", FIGURE_NAME, MAIN_OUTPUT)
 
-    # Panel L — cross-dataset GSEA heatmap
+    # Panel Q — cross-dataset effect-size heatmap (was K)
+    fig_p, ax_p = plt.subplots(figsize=(9.5, max(2.8, 0.38 * 10 + 1.1)))
+    panel_f_heatmap(ax_p, data5)
+    fig_p.tight_layout(pad=0.6)
+    save_panel(fig_p, "panel_Q_cross_dataset_heatmap", FIGURE_NAME, MAIN_OUTPUT)
+
+    # Panel R — cross-dataset GSEA heatmap (was L)
     fig_p, ax_p = plt.subplots(figsize=(9.5, max(2.8, 0.38 * 10 + 1.1)))
     fig4_gsea_cross(ax_p, data5)
     fig_p.tight_layout(pad=0.6)
-    save_panel(fig_p, "panel_L_cross_dataset_gsea", FIGURE_NAME, MAIN_OUTPUT)
+    save_panel(fig_p, "panel_R_cross_dataset_gsea", FIGURE_NAME, MAIN_OUTPUT)
 
-    print("    Individual panels saved (A–L)")
+    print("    Individual panels saved (A–R)")
 
 
 # ── Composite artboard ────────────────────────────────────────────────────
 
-def _build_composite(data4: dict, data5: dict) -> None:
-    """Build and save the combined 12-panel artboard (180 × 215 mm)."""
+def _swap_leading_edge_axes(ax) -> None:
+    """Transpose a leading-edge heatmap in-place (genes→X, pathways→Y)."""
+    imgs = ax.get_images()
+    if not imgs:
+        return
+    arr = np.array(imgs[0].get_array())
+    arr_t = np.transpose(arr, (1, 0) + tuple(range(2, arr.ndim)))
+    xticks = [t.get_text() for t in ax.get_xticklabels()]
+    yticks = [t.get_text() for t in ax.get_yticklabels()]
+    xtick_colors = [t.get_color() for t in ax.get_xticklabels()]
+    title = ax.get_title()
+    leg = ax.get_legend()
+    leg_handles = leg.legend_handles if leg else []
+    leg_labels = [t.get_text() for t in leg.get_texts()] if leg else []
+
+    ax.clear()
+    ax.imshow(arr_t, aspect="auto", interpolation="nearest", origin="lower")
+    n_y, n_x = arr_t.shape[:2]
+    for gi in range(n_y + 1):
+        ax.axhline(gi - 0.5, color="white", linewidth=0.8, zorder=2)
+    for gj in range(n_x + 1):
+        ax.axvline(gj - 0.5, color="white", linewidth=0.8, zorder=2)
+    ax.set_xticks(range(len(yticks)))
+    ax.set_xticklabels(yticks, rotation=35, ha="right", fontsize=4,
+                       style="italic")
+    ax.set_yticks(range(len(xticks)))
+    ax.set_yticklabels(xticks, fontsize=3.5)
+    for lbl, clr in zip(ax.get_yticklabels(), xtick_colors):
+        lbl.set_color(clr)
+        lbl.set_fontweight("bold")
+    ax.tick_params(axis="both", length=0)
+    ax.set_title(title, fontweight="bold")
+    for sp in ax.spines.values():
+        sp.set_visible(False)
+    if leg_handles:
+        ax.legend(
+            handles=leg_handles, labels=leg_labels,
+            fontsize=3.5, loc="upper left",
+            frameon=True, framealpha=0.9,
+            handlelength=1.0, handleheight=0.7,
+        )
+
+
+def _shrink_colorbars(fig, axes_before: set, fs: float = 3.5) -> None:
+    """Shrink tick/label fonts on any colorbar axes added since `axes_before`."""
+    for _cb_ax in set(fig.get_axes()) - axes_before:
+        _cb_ax.tick_params(labelsize=fs)
+        if _cb_ax.get_ylabel():
+            _cb_ax.set_ylabel(_cb_ax.get_ylabel(), fontsize=fs)
+        if _cb_ax.get_xlabel():
+            _cb_ax.set_xlabel(_cb_ax.get_xlabel(), fontsize=fs)
+
+
+def _compact_legend(ax, loc: str, fs: float = 3.0) -> None:
+    """Replace the current legend with a compact version at `loc`."""
+    leg = ax.get_legend()
+    if not leg:
+        return
+    handles = leg.legend_handles
+    labels  = [t.get_text() for t in leg.get_texts()]
+    leg.remove()
+    ax.legend(
+        handles=handles, labels=labels,
+        fontsize=fs, loc=loc,
+        frameon=True, framealpha=0.85,
+        edgecolor="#CCCCCC",
+        handlelength=1, handletextpad=0.3,
+        borderpad=0.3, labelspacing=0.2,
+    )
+
+
+def _fix_tnbc_labels(ax) -> None:
+    """Replace melanoma arm labels with TNBC arm names in legend + title."""
+    _rep = {
+        "Responder ↑":     "anti-PDL1+Chemo ↑",
+        "Non-responder ↑": "Chemo ↑",
+        "Resp. ↑":         "anti-PDL1+Chemo ↑",
+        "Non-resp. ↑":     "Chemo ↑",
+        "Melanoma DiD":    "TNBC DiD",
+    }
+    leg = ax.get_legend()
+    if leg:
+        for t in leg.get_texts():
+            txt = t.get_text()
+            for old, new in _rep.items():
+                txt = txt.replace(old, new)
+            t.set_text(txt)
+    title = ax.get_title()
+    for old, new in _rep.items():
+        title = title.replace(old, new)
+    ax.set_title(title, fontsize=ax.title.get_fontsize(),
+                 fontweight=ax.title.get_fontweight())
+
+
+def _build_composite(data4: dict, data_tnbc: dict, data5: dict) -> None:
+    """Build and save the combined 18-panel artboard (180 × 215 mm).
+
+    Layout (13-row grid, ≤215 mm tall):
+      Row  0: A | B | C(wide)         Melanoma: volcano | waterfall | GSEA bars
+      Row  2: D(wide) | E             Melanoma: leading-edge | cell-type HM
+      Row  4: F | G | H(wide)         TNBC: volcano | waterfall | GSEA bars
+      Row  6: I(wide) | J             TNBC: leading-edge | cell-type HM
+      Row  8: K | L | M               COVID | Vaccine | AML forest plots
+      Row 10: N | O | P               CAR-T | Melanoma | TNBC forest plots
+      Row 12: Q | R                   effect heatmap | GSEA cross-dataset
+    """
     print("  Building composite artboard...")
 
     _SMALL_RC = {
-        "font.size": 4.5,
-        "axes.titlesize": 5,
-        "axes.labelsize": 4.5,
-        "xtick.labelsize": 4,
-        "ytick.labelsize": 4,
-        "legend.fontsize": 3.5,
-        "legend.title_fontsize": 3.5,
+        "font.size": 4.0,
+        "axes.titlesize": 4.5,
+        "axes.labelsize": 4.0,
+        "xtick.labelsize": 3.5,
+        "ytick.labelsize": 3.5,
+        "legend.fontsize": 3.0,
+        "legend.title_fontsize": 3.0,
     }
-    _MAX_FONT = 6
+    _MAX_FONT = 5.5
 
     _prev_rc = {k: plt.rcParams[k] for k in _SMALL_RC}
     plt.rcParams.update(_SMALL_RC)
 
     fig_c = plt.figure(figsize=(180 * _mm, 215 * _mm))
 
-    # Layout (9 rows: 5 content + 4 spacers):
-    #   Row 0:  A (volcano) | B (waterfall)
-    #   Row 2:  C (GSEA bars, narrow) | D (leading-edge, transposed)
-    #   Row 4:  E (cell-type hm, narrow) | F (COVID) | G (Vaccine)
-    #   Row 6:  H (AML) | I (CAR-T) | J (Melanoma)
-    #   Row 8:  K (heatmap, ~square) | L (GSEA cross, narrow)
+    # 13 rows; height sum ≈ 9.05  →  215 mm / 9.05 ≈ 24 mm per unit
     outer = fig_c.add_gridspec(
-        9, 1,
+        13, 1,
         height_ratios=[
-            1.2,    # row 0: A | B
-            0.55,   # spacer
-            1.2,    # row 2: C | D
-            0.55,   # spacer
-            1.0,    # row 4: E | F | G
-            0.65,   # spacer (extra between rows 3–4)
-            1.0,    # row 6: H | I | J
-            0.55,   # spacer
-            1.2,    # row 8: K | L
+            1.50,  # 0:  A | B | C   — Melanoma (taller panels)
+            0.70,  # 1:  spacer
+            0.90,  # 2:  D | E       — Melanoma
+            0.80,  # 3:  section spacer
+            1.50,  # 4:  F | G | H   — TNBC (taller panels)
+            0.90,  # 5:  spacer (increased)
+            0.90,  # 6:  I | J       — TNBC
+            0.90,  # 7:  section spacer
+            0.75,  # 8:  K | L | M
+            0.90,  # 9:  spacer
+            0.75,  # 10: N | O | P
+            0.90,  # 11: spacer
+            1.05,  # 12: Q | R
         ],
         hspace=0.0,
-        left=0.08, right=0.96, top=0.98, bottom=0.03,
+        left=0.07, right=0.97, top=0.98, bottom=0.03,
     )
 
-    # ── Row 0: A | B ────────────────────────────────────────────────
-    gs0 = outer[0].subgridspec(1, 2, wspace=0.35)
+    # ── Row 0: A(wide) | B(wider) | spacer | C(narrow) ──────────────
+    # A reduced further; B widened; spacer keeps B-C gap
+    gs0 = outer[0].subgridspec(1, 4, wspace=0.40,
+                                width_ratios=[1.0, 0.85, 0.18, 0.7])
     ax_a = fig_c.add_subplot(gs0[0])
     ax_b = fig_c.add_subplot(gs0[1])
+    ax_c = fig_c.add_subplot(gs0[3])
 
-    # ── Row 2: C (narrower, shifted right) | D ───────────────────────
-    gs2 = outer[2].subgridspec(1, 3, wspace=0.55, width_ratios=[0.01, 0.10, 0.15])
-    ax_c = fig_c.add_subplot(gs2[1])
-    ax_d = fig_c.add_subplot(gs2[2])
+    # ── Row 2: D(wide) | E ───────────────────────────────────────────
+    # Reduced D width and wspace to close the D-E gap
+    gs2 = outer[2].subgridspec(1, 2, wspace=0.30,
+                                width_ratios=[1.1, 0.95])
+    ax_d = fig_c.add_subplot(gs2[0])
+    ax_e = fig_c.add_subplot(gs2[1])
 
-    # ── Row 4: E (narrow) | F | G ───────────────────────────────────
-    gs4 = outer[4].subgridspec(
-        1, 3, wspace=0.90, width_ratios=[0.8, 1, 1],
-    )
-    ax_e = fig_c.add_subplot(gs4[0])
-    ax_f = fig_c.add_subplot(gs4[1])
-    ax_g = fig_c.add_subplot(gs4[2])
+    # ── Row 4: F(wide) | G(wider) | spacer | H(narrow) ──────────────
+    # F reduced further; G widened; spacer keeps G-H gap
+    gs4 = outer[4].subgridspec(1, 4, wspace=0.40,
+                                width_ratios=[1.0, 0.85, 0.18, 0.7])
+    ax_f = fig_c.add_subplot(gs4[0])
+    ax_g = fig_c.add_subplot(gs4[1])
+    ax_h = fig_c.add_subplot(gs4[3])
 
-    # ── Row 6: H | I | J ────────────────────────────────────────────
-    gs6 = outer[6].subgridspec(1, 3, wspace=1.05)
-    ax_h = fig_c.add_subplot(gs6[0])
-    ax_i = fig_c.add_subplot(gs6[1])
-    ax_j = fig_c.add_subplot(gs6[2])
+    # ── Row 6: I(wide) | J ───────────────────────────────────────────
+    # Reduced I width and wspace to close the I-J gap
+    gs6 = outer[6].subgridspec(1, 2, wspace=0.30,
+                                width_ratios=[1.1, 0.95])
+    ax_i = fig_c.add_subplot(gs6[0])
+    ax_j = fig_c.add_subplot(gs6[1])
 
-    # ── Row 8: K | L ────────────────────────────────────────────────
-    gs8 = outer[8].subgridspec(1, 2, wspace=0.90, width_ratios=[1.2, 0.9])
+    # ── Row 8: K | L | M ─────────────────────────────────────────────
+    gs8 = outer[8].subgridspec(1, 3, wspace=1.05)
     ax_k = fig_c.add_subplot(gs8[0])
     ax_l = fig_c.add_subplot(gs8[1])
+    ax_m = fig_c.add_subplot(gs8[2])
 
-    # ── Draw Fig4 panels (A–E) ──────────────────────────────────────
+    # ── Row 10: N | O | P ────────────────────────────────────────────
+    gs10 = outer[10].subgridspec(1, 3, wspace=1.05)
+    ax_n = fig_c.add_subplot(gs10[0])
+    ax_o = fig_c.add_subplot(gs10[1])
+    ax_p = fig_c.add_subplot(gs10[2])
+
+    # ── Row 12: Q | R ────────────────────────────────────────────────
+    gs12 = outer[12].subgridspec(1, 2, wspace=0.90, width_ratios=[1.2, 0.9])
+    ax_q = fig_c.add_subplot(gs12[0])
+    ax_r = fig_c.add_subplot(gs12[1])
+
+    # ── Draw Melanoma panels A, B, C, D, E ───────────────────────────
     fig4_volcano(ax_a, data4, composite=True)
     fig4_waterfall(ax_b, data4)
-    ax_b.tick_params(axis='y', labelsize=3.5)
-    if ax_b.get_ylabel():
-        ax_b.yaxis.label.set_fontsize(4)
+    ax_b.tick_params(axis='y', labelsize=3.0)
+    # Thin crowded gene labels — show every other tick
+    _b_lbls = [t.get_text() for t in ax_b.get_yticklabels()]
+    if _b_lbls:
+        ax_b.set_yticklabels(
+            [t if _k % 2 == 0 else "" for _k, t in enumerate(_b_lbls)],
+            fontsize=3.0,
+        )
 
     fig4_gsea_bars(ax_c, data4)
+    ax_c.set_title(ax_c.get_title().replace("Melanoma", "").strip(" —–-") +
+                   " — Melanoma", fontsize=4.5, fontweight="bold")
     ax_c.tick_params(axis='y', labelsize=3.5)
-    if ax_c.get_ylabel():
-        ax_c.yaxis.label.set_fontsize(4)
+    ax_c.set_xticks([-2, 0, 2])
 
     fig4_leading_edge(ax_d, data4, composite=True)
+    _swap_leading_edge_axes(ax_d)
+    ax_d.set_title(ax_d.get_title().replace("Melanoma", "").strip(" —–-") +
+                   " — Melanoma", fontsize=4.5, fontweight="bold")
 
-    # Swap x/y axes of D: pathways → Y, genes → X
-    _d_imgs = ax_d.get_images()
-    if _d_imgs:
-        _d_arr = np.array(_d_imgs[0].get_array())
-        _d_arr_t = np.transpose(
-            _d_arr, (1, 0) + tuple(range(2, _d_arr.ndim)),
-        )
-        _d_xticks = [t.get_text() for t in ax_d.get_xticklabels()]
-        _d_yticks = [t.get_text() for t in ax_d.get_yticklabels()]
-        _d_xtick_colors = [t.get_color() for t in ax_d.get_xticklabels()]
-        _d_title = ax_d.get_title()
-        _d_leg = ax_d.get_legend()
-        _d_leg_handles = _d_leg.legend_handles if _d_leg else []
-        _d_leg_labels = (
-            [t.get_text() for t in _d_leg.get_texts()] if _d_leg else []
-        )
-
-        ax_d.clear()
-        ax_d.imshow(
-            _d_arr_t, aspect="auto", interpolation="nearest", origin="lower",
-        )
-        _n_y, _n_x = _d_arr_t.shape[:2]
-        for _gi in range(_n_y + 1):
-            ax_d.axhline(_gi - 0.5, color="white", linewidth=0.8, zorder=2)
-        for _gj in range(_n_x + 1):
-            ax_d.axvline(_gj - 0.5, color="white", linewidth=0.8, zorder=2)
-        ax_d.set_xticks(range(len(_d_yticks)))
-        ax_d.set_xticklabels(
-            _d_yticks, rotation=35, ha="right", fontsize=4, style="italic",
-        )
-        ax_d.set_yticks(range(len(_d_xticks)))
-        ax_d.set_yticklabels(_d_xticks, fontsize=3.5)
-        for _lbl, _clr in zip(ax_d.get_yticklabels(), _d_xtick_colors):
-            _lbl.set_color(_clr)
-            _lbl.set_fontweight("bold")
-        ax_d.tick_params(axis="both", length=0)
-        ax_d.set_title(_d_title, fontweight="bold")
-        for _sp in ax_d.spines.values():
-            _sp.set_visible(False)
-        if _d_leg_handles:
-            ax_d.legend(
-                handles=_d_leg_handles, labels=_d_leg_labels,
-                fontsize=3.5, loc="upper left",
-                frameon=True, framealpha=0.9,
-                handlelength=1.0, handleheight=0.7,
-            )
-
-    # E colorbar font
     _axes_before_e = set(fig_c.get_axes())
     fig4_celltype_hm(ax_e, data4)
-    _axes_after_e = set(fig_c.get_axes())
-    for _cb_ax in _axes_after_e - _axes_before_e:
-        _cb_ax.tick_params(labelsize=4)
-        if _cb_ax.get_ylabel():
-            _cb_ax.set_ylabel(_cb_ax.get_ylabel(), fontsize=4)
-        if _cb_ax.get_xlabel():
-            _cb_ax.set_xlabel(_cb_ax.get_xlabel(), fontsize=4)
-    ax_e.tick_params(axis='x', labelsize=3.5)
-    ax_e.tick_params(axis='y', labelsize=4.0)
+    _shrink_colorbars(fig_c, _axes_before_e, fs=3.5)
+    ax_e.set_title(ax_e.get_title().replace("Melanoma", "").strip(" —–-") +
+                   " — Melanoma", fontsize=4.5, fontweight="bold")
+    ax_e.tick_params(axis='x', labelsize=4.0)
+    ax_e.tick_params(axis='y', labelsize=3.5)
 
-    # ── Draw Fig5 panels (F–L) ──────────────────────────────────────
-    _fj_tick = 4.0
-    _fj_lbl = 4.0
-    panel_a_covid(ax_f, data5)
-    panel_b_vaccine(ax_g, data5)
-    panel_c_aml(ax_h, data5)
-    panel_d_cart(ax_i, data5)
-    panel_e_melanoma(ax_j, data5)
-    for _ax_fj in [ax_f, ax_g, ax_h, ax_i, ax_j]:
-        _ax_fj.tick_params(axis='both', labelsize=_fj_tick)
-        if _ax_fj.get_xlabel():
-            _ax_fj.xaxis.label.set_fontsize(_fj_lbl)
-        if _ax_fj.get_ylabel():
-            _ax_fj.yaxis.label.set_fontsize(_fj_lbl)
+    # ── Draw TNBC panels F, G, H, I, J ───────────────────────────────
+    tnbc_volcano(ax_f, data_tnbc, composite=True)
+    ax_f.set_title("Gene-Level Volcano (TNBC DiD)", fontsize=4.5,
+                   fontweight="bold")
+    _fix_tnbc_labels(ax_f)
 
-    # K — heatmap with colorbar
-    _axes_before_k = set(fig_c.get_axes())
-    panel_f_heatmap(ax_k, data5)
-    _axes_after_k = set(fig_c.get_axes())
-    _cb_k_size = 4.5
-    for _cb_ax in _axes_after_k - _axes_before_k:
-        _cb_ax.tick_params(labelsize=_cb_k_size)
-        if _cb_ax.get_ylabel():
-            _cb_ax.set_ylabel(_cb_ax.get_ylabel(), fontsize=_cb_k_size)
-        if _cb_ax.get_xlabel():
-            _cb_ax.set_xlabel(_cb_ax.get_xlabel(), fontsize=_cb_k_size)
-    if ax_k.get_ylabel():
-        ax_k.yaxis.label.set_fontsize(5.5)
+    tnbc_waterfall(ax_g, data_tnbc)
+    ax_g.set_title("Top Genes — TNBC DiD", fontsize=4.5, fontweight="bold")
+    ax_g.tick_params(axis='y', labelsize=3.0)
+    # Thin crowded gene labels — show every other tick
+    _g_lbls = [t.get_text() for t in ax_g.get_yticklabels()]
+    if _g_lbls:
+        ax_g.set_yticklabels(
+            [t if _k % 2 == 0 else "" for _k, t in enumerate(_g_lbls)],
+            fontsize=3.0,
+        )
+    _fix_tnbc_labels(ax_g)
 
-    # L — cross-dataset GSEA with colorbar
-    _axes_before_l = set(fig_c.get_axes())
-    fig4_gsea_cross(ax_l, data5)
-    _axes_after_l = set(fig_c.get_axes())
-    for _cb_ax in _axes_after_l - _axes_before_l:
-        _cb_ax.tick_params(labelsize=_cb_k_size)
-        if _cb_ax.get_ylabel():
-            _cb_ax.set_ylabel(_cb_ax.get_ylabel(), fontsize=_cb_k_size)
-        if _cb_ax.get_xlabel():
-            _cb_ax.set_xlabel(_cb_ax.get_xlabel(), fontsize=_cb_k_size)
-    ax_l.set_ylabel("")
+    tnbc_gsea_bars(ax_h, data_tnbc)
+    ax_h.set_title("Pathway Enrichment — TNBC", fontsize=4.5, fontweight="bold")
+    ax_h.tick_params(axis='y', labelsize=3.5)
+    ax_h.set_xticks([-2, 0, 2])
+    _fix_tnbc_labels(ax_h)
 
-    # ── Post-processing ──────────────────────────────────────────────
+    tnbc_leading_edge(ax_i, data_tnbc, composite=True)
+    ax_i.set_title("Leading-Edge — TNBC", fontsize=4.5, fontweight="bold")
+    _swap_leading_edge_axes(ax_i)
+    _fix_tnbc_labels(ax_i)
 
-    # Remove single-letter panel labels added by panel functions
-    for _ax in [ax_f, ax_g, ax_h, ax_i, ax_j, ax_k, ax_l]:
-        to_remove = [
-            t for t in _ax.texts
-            if len(t.get_text()) == 1 and t.get_text().isupper()
-        ]
-        for t in to_remove:
+    _axes_before_j = set(fig_c.get_axes())
+    tnbc_celltype_hm(ax_j, data_tnbc)
+    _shrink_colorbars(fig_c, _axes_before_j, fs=3.5)
+    ax_j.tick_params(axis='x', labelsize=4.0)
+    ax_j.tick_params(axis='y', labelsize=3.5)
+
+    # ── Draw forest plots K–P ────────────────────────────────────────
+    _fp_tick = 3.5
+    panel_a_covid(ax_k, data5)
+    panel_b_vaccine(ax_l, data5)
+    panel_c_aml(ax_m, data5)
+    panel_d_cart(ax_n, data5)
+    panel_e_melanoma(ax_o, data5)
+    panel_p_tnbc(ax_p, data5)
+    for _ax_fp in [ax_k, ax_l, ax_m, ax_n, ax_o, ax_p]:
+        _ax_fp.tick_params(axis='both', labelsize=_fp_tick)
+        if _ax_fp.get_xlabel():
+            _ax_fp.xaxis.label.set_fontsize(3.5)
+
+    # ── Q — effect-size heatmap ───────────────────────────────────────
+    _axes_before_q = set(fig_c.get_axes())
+    panel_f_heatmap(ax_q, data5)
+    _shrink_colorbars(fig_c, _axes_before_q, fs=4.0)
+    ax_q.tick_params(axis='both', labelsize=4.0)
+
+    # ── R — cross-dataset GSEA heatmap ───────────────────────────────
+    _axes_before_r = set(fig_c.get_axes())
+    fig4_gsea_cross(ax_r, data5)
+    _shrink_colorbars(fig_c, _axes_before_r, fs=4.0)
+    ax_r.set_ylabel("")
+    ax_r.tick_params(axis='x', labelsize=3.5)
+    ax_r.tick_params(axis='y', labelsize=3.5)
+
+    # ── Post-processing ───────────────────────────────────────────────
+
+    # Strip auto-added single-letter labels from panel functions
+    _forest_axes = [ax_k, ax_l, ax_m, ax_n, ax_o, ax_p]
+    for _ax in _forest_axes + [ax_q, ax_r]:
+        for t in [tt for tt in _ax.texts
+                  if len(tt.get_text()) == 1 and tt.get_text().isupper()]:
             t.remove()
 
-    # Legends — Fig4: A/B default, C/D top-left
-    for ax_target, loc in {
-        ax_a: "upper right", ax_b: "lower right",
-        ax_c: "upper left", ax_d: "upper left",
-    }.items():
-        leg = ax_target.get_legend()
-        if leg:
-            handles = leg.legend_handles
-            labels = [t.get_text() for t in leg.get_texts()]
-            leg.remove()
-            ax_target.legend(
-                handles=handles, labels=labels,
-                fontsize=3.5, loc=loc,
-                frameon=True, framealpha=0.85,
-                handlelength=1, handletextpad=0.3,
-                borderpad=0.3, labelspacing=0.2,
-            )
+    # Compact legends — biological panels
+    _bio_locs = {
+        ax_a: "upper right", ax_b: "upper left",
+        ax_c: "upper left",  ax_d: "upper left",
+        ax_f: "upper right", ax_g: "upper left",
+        ax_h: "upper left",  ax_i: "upper left",
+    }
+    for ax_target, loc in _bio_locs.items():
+        _compact_legend(ax_target, loc, fs=3.5)
 
-    # Legends — Fig5 forest panels
-    for ax_target in [ax_f, ax_g, ax_h, ax_i, ax_j]:
-        leg = ax_target.get_legend()
-        if leg:
-            handles = leg.legend_handles
-            labels = [t.get_text() for t in leg.get_texts()]
-            leg.remove()
-            ax_target.legend(
-                handles=handles, labels=labels,
-                fontsize=3.5, loc="lower right",
-                frameon=True, framealpha=0.85,
-                edgecolor="#CCCCCC", borderpad=0.3,
-                handlelength=1, handletextpad=0.3,
-                labelspacing=0.2,
-            )
+    # Compact legends — forest plots
+    for ax_target in _forest_axes:
+        _compact_legend(ax_target, "lower right", fs=3.5)
 
-    # Shrink annotation text in volcano/waterfall
-    for _ax in [ax_a, ax_b]:
+    # Shrink gene-label annotations in volcano/waterfall
+    for _ax in [ax_a, ax_b, ax_f, ax_g]:
         for txt in _ax.texts:
-            if txt.get_fontsize() > 5:
-                txt.set_fontsize(max(txt.get_fontsize() * 0.55, 3.0))
+            if txt.get_fontsize() > 4:
+                txt.set_fontsize(max(txt.get_fontsize() * 0.50, 2.5))
 
-    # Reduce heatmap annotation font in K
-    for txt in ax_k.texts:
-        txt.set_fontsize(max(txt.get_fontsize() * 0.55, 2.5))
-    ax_k.tick_params(axis='both', labelsize=4.5)
+    # Q heatmap annotation font
+    for txt in ax_q.texts:
+        txt.set_fontsize(max(txt.get_fontsize() * 0.50, 2.0))
 
-    # L: center-align stars in each cell, black color
-    for txt in ax_l.texts:
+    # R: center-align significance stars
+    for txt in ax_r.texts:
         _tstr = txt.get_text().strip()
         if _tstr and all(c in "*†✱★" for c in _tstr):
             _tx, _ty = txt.get_position()
@@ -3051,45 +3609,80 @@ def _build_composite(data4: dict, data5: dict) -> None:
             txt.set_ha("center")
             txt.set_va("center_baseline")
             txt.set_color("black")
-    ax_l.tick_params(axis='x', labelsize=4)
-    ax_l.tick_params(axis='y', labelsize=4.0)
 
-    # Standardize all titles: center-aligned, uniform font size
-    _title_fs = 5
+    # Uniform title font for bio/heatmap panels
+    _title_fs = 4.5
     for _ax in [ax_a, ax_b, ax_c, ax_d, ax_e,
                 ax_f, ax_g, ax_h, ax_i, ax_j,
-                ax_k, ax_l]:
+                ax_q, ax_r]:
         _ax.set_title(_ax.get_title(), fontsize=_title_fs, fontweight="bold",
                       loc="center")
 
+    # Forest plots K–P: move left-aligned titles to center, match J font size
+    for _ax_fp in _forest_axes:
+        _left_txt = _ax_fp.get_title(loc='left')
+        if _left_txt:
+            _ax_fp.set_title("", loc='left')
+            _ax_fp.set_title(_left_txt, fontsize=_title_fs, fontweight="bold",
+                             loc="center")
+
     _cap_fontsize(fig_c, _MAX_FONT)
 
-    # Bold panel labels A–L (E–J further left & higher; E, I extra left)
-    _lbl_fs = 7
-    _lbl_x, _lbl_y = -0.12, 1.12
-    _lbl_x_far, _lbl_y_far = -0.25, 1.16
-    _lbl_x_extra = -0.35
-    for _ax, lbl in [
-        (ax_a, "A"), (ax_b, "B"), (ax_c, "C"), (ax_d, "D"),
-        (ax_k, "K"),
+    # ── Bold panel labels A–R ─────────────────────────────────────────
+    _lbl_fs = 6.5
+    # Row 0/4 — 3-panel (A/B narrow, C/H wide): use left-of-axis offset
+    _x3a, _y3a = -0.26, 1.16   # narrow panels (A, B, F, G)
+    _x3c, _y3c = -0.10, 1.14   # wide panels (C, H)
+    # Row 2/6 — 2-panel (D/I wide, E/J narrow)
+    _xw,  _yw  = -0.10, 1.14   # wide leading-edge (D, I)
+    _xn,  _yn  = -0.32, 1.16   # narrow cell-type HM (E, J)
+    # 3-panel rows (K–P)
+    _x3, _y3   = -0.22, 1.16
+    # 2-panel rows (Q, R)
+    _x2, _y2   = -0.12, 1.14
+
+    # Row 0: A B C
+    for _ax, lbl, _x, _y in [
+        (ax_a, "A", _x3a, _y3a),
+        (ax_b, "B", _x3a, _y3a),
+        (ax_c, "C", _x3c, _y3c),
     ]:
-        _ax.text(_lbl_x, _lbl_y, lbl, transform=_ax.transAxes,
+        _ax.text(_x, _y, lbl, transform=_ax.transAxes,
                  fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    ax_l.text(-0.55, _lbl_y, "L", transform=ax_l.transAxes,
+    # Row 2: D E
+    ax_d.text(_xw, _yw, "D", transform=ax_d.transAxes,
               fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    for _ax, lbl in [
-        (ax_f, "F"), (ax_g, "G"),
-        (ax_h, "H"), (ax_j, "J"),
+    ax_e.text(_xn, _yn, "E", transform=ax_e.transAxes,
+              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    # Row 4: F G H
+    for _ax, lbl, _x, _y in [
+        (ax_f, "F", _x3a, _y3a),
+        (ax_g, "G", _x3a, _y3a),
+        (ax_h, "H", _x3c, _y3c),
     ]:
-        _ax.text(_lbl_x_far, _lbl_y_far, lbl, transform=_ax.transAxes,
+        _ax.text(_x, _y, lbl, transform=_ax.transAxes,
                  fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    for _ax, lbl in [(ax_e, "E"), (ax_i, "I")]:
-        _ax.text(_lbl_x_extra, _lbl_y_far, lbl, transform=_ax.transAxes,
+    # Row 6: I J
+    ax_i.text(_xw, _yw, "I", transform=ax_i.transAxes,
+              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    ax_j.text(_xn, _yn, "J", transform=ax_j.transAxes,
+              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    # Row 8: K L M
+    for _ax, lbl in [(ax_k, "K"), (ax_l, "L"), (ax_m, "M")]:
+        _ax.text(_x3, _y3, lbl, transform=_ax.transAxes,
                  fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    # Row 10: N O P
+    for _ax, lbl in [(ax_n, "N"), (ax_o, "O"), (ax_p, "P")]:
+        _ax.text(_x3, _y3, lbl, transform=_ax.transAxes,
+                 fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    # Row 12: Q R
+    ax_q.text(_x2, _y2, "Q", transform=ax_q.transAxes,
+              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    ax_r.text(-0.48, _y2, "R", transform=ax_r.transAxes,
+              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
 
     plt.rcParams.update(_prev_rc)
 
-    # Save composite
     save_panel(fig_c, FIGURE_NAME, FIGURE_NAME, MAIN_OUTPUT, close=False)
     pdf_path = MAIN_OUTPUT / f"{FIGURE_NAME}_panels" / f"{FIGURE_NAME}.pdf"
     fig_c.savefig(str(pdf_path), format="pdf", bbox_inches="tight",
@@ -3101,17 +3694,19 @@ def _build_composite(data4: dict, data5: dict) -> None:
 # ── Public entry point ────────────────────────────────────────────────────
 
 def generate() -> None:
-    """Generate individual panels A–L and the combined composite."""
+    """Generate individual panels A–R and the combined composite."""
     print("=" * 60)
-    print("Figure 4: Biological Discovery & Multi-Dataset Generalization")
+    print("Figure 5: Biological Discovery & Multi-Dataset Generalization")
     print("=" * 60)
 
-    print("  Preparing Figure 4 data...")
+    print("  Preparing Melanoma (Fig4) data...")
     data4 = _prepare_bio_discovery_data()
-    print("  Preparing Figure 5 data...")
+    print("  Preparing TNBC biological discovery data...")
+    data_tnbc = _prepare_tnbc_bio_discovery_data()
+    print("  Preparing multi-dataset (Fig5) data...")
     data5 = _prepare_multi_dataset_data()
 
-    # Reuse multi-dataset GSEA from Fig4 data prep (already cached)
+    # Reuse multi-dataset GSEA (includes TNBC) from Fig4 data prep / cache
     gsea_multi = data4.get("gsea_multi_dataset")
     if gsea_multi is None:
         gsea_multi = _run_multi_dataset_gsea(
@@ -3119,12 +3714,13 @@ def generate() -> None:
         )
     data5["gsea_multi_dataset"] = gsea_multi
 
-    _save_individual_panels(data4, data5)
-    _build_composite(data4, data5)
+    _save_individual_panels(data4, data_tnbc, data5)
+    _build_composite(data4, data_tnbc, data5)
 
-    if "adata" in data4:
-        del data4["adata"]
-    del data4, data5
+    for d in (data4, data_tnbc):
+        if "adata" in d:
+            del d["adata"]
+    del data4, data_tnbc, data5
     gc.collect()
     print("  Done.\n")
 
