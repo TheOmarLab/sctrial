@@ -2,9 +2,9 @@
 Figure 6 — Validation, Heterogeneity & Temporal Dynamics
 =========================================================
 
-Eight-panel figure combining permutation validation on Sade-Feldman,
-participant-level heterogeneity analysis, and temporal severity
-dynamics from the Stephenson COVID-19 cohort.
+Ten-panel figure combining permutation validation on Sade-Feldman,
+participant-level heterogeneity analysis (Sade-Feldman and TNBC),
+and temporal severity dynamics from the Stephenson COVID-19 cohort.
 
 Panels
 ------
@@ -12,16 +12,24 @@ A  Permutation null distributions (top 3 most significant signatures).
 B  Observed effects vs 95 % null range for all signatures.
 C  Individual-effect strip plot (Sade-Feldman).
 D  Response-stratified heterogeneity boxplots (Sade-Feldman).
-E  Signature trajectories by severity (Stephenson, DFO bins).
-F  Severity divergence over DFO bins (4 representative signatures).
-G  Temporal divergence heatmap (all signatures × DFO bins).
-H  Time-specific Hedges' g effect sizes (all signatures × DFO bins).
+E  Individual-effect strip plot (TNBC), colored by treatment arm; responders
+   marked with black outline, non-responders with grey outline.
+F  Response- and arm-stratified heterogeneity boxplots (TNBC): 4 groups per
+   gene (Chemo-Responder, Chemo-Non-responder, anti-PDL1+Chemo-Responder,
+   anti-PDL1+Chemo-Non-responder).
+G  Signature trajectories by severity (Stephenson, DFO bins).
+H  Severity divergence over DFO bins (4 representative signatures).
+I  Temporal divergence heatmap (all signatures × DFO bins).
+J  Time-specific Hedges' g effect sizes (all signatures × DFO bins).
 """
 
 from __future__ import annotations
 
 import gc
+import hashlib
+import pickle  # noqa: S403 — local dev cache of our own DataFrames
 import warnings
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -40,6 +48,7 @@ from .._shared import (
     did_table,
     get_sade_feldman,
     get_stephenson,
+    get_tnbc_zhang,
     harmonize_response,
     save_panel,
     score_signatures,
@@ -51,6 +60,9 @@ warnings.filterwarnings("ignore")
 FIGURE_NAME = "Figure6_validation_dynamics"
 VISITS: tuple[str, str] = ("Pre", "Post")
 N_PERM = 999
+
+_CACHE_DIR = Path(__file__).resolve().parent.parent / "_cache"
+_CACHE_DIR.mkdir(exist_ok=True)
 
 DESIGN = TrialDesign(
     participant_col="participant_id",
@@ -73,6 +85,23 @@ HETERO_FEATURES = [
     "CD14", "LYZ", "NKG7", "IL7R",
 ]
 
+# TNBC arm labels and visual encoding
+TNBC_ARM_CHEMO = "Chemo"
+TNBC_ARM_COMBO = "anti-PDL1+Chemo"
+TNBC_ARM_COLORS = {
+    TNBC_ARM_CHEMO: COLORS["control"],   # orange
+    TNBC_ARM_COMBO: COLORS["treated"],   # blue
+}
+# Outline color encodes response status
+TNBC_RESP_EDGE = {"Responder": "black", "Non-responder": "none"}
+# Four-group colors for boxplots (full and lighter tints per arm)
+TNBC_GROUP_PALETTE = {
+    f"{TNBC_ARM_CHEMO} – Responder":     COLORS["control"],   # orange
+    f"{TNBC_ARM_CHEMO} – Non-responder": "#F0B97A",           # light orange
+    f"{TNBC_ARM_COMBO} – Responder":     COLORS["treated"],   # blue
+    f"{TNBC_ARM_COMBO} – Non-responder": "#9AB3D6",           # light blue
+}
+
 
 # ── data preparation ─────────────────────────────────────────────────────
 
@@ -80,8 +109,20 @@ def _to_array(mat) -> np.ndarray:
     return mat.toarray() if hasattr(mat, "toarray") else np.asarray(mat)
 
 
-def _prepare_sf_data() -> dict:
-    """Load Sade-Feldman, run permutation test and compute participant deltas."""
+def _prepare_sf_data(*, use_cache: bool = True) -> dict:
+    """Load Sade-Feldman, run permutation test and compute participant deltas.
+
+    The permutation results and participant DiD are cached to disk because the
+    999-permutation loop takes several minutes.  Pass ``use_cache=False`` to
+    force recomputation (e.g. after changing N_PERM or DESIGN).
+    """
+    _code_hash = hashlib.md5(  # noqa: S324 — cache tag, not security
+        Path(__file__).read_bytes()
+    ).hexdigest()[:8]
+    cache_key = f"figure6_sf_perm_v1_{_code_hash}"
+    cache_path = _CACHE_DIR / f"{cache_key}.pkl"
+
+    # ── load adata fresh every time (too large to pickle) ────────────────
     adata = get_sade_feldman()
     if "log1p_tpm" not in adata.layers:
         if "tpm" in adata.layers:
@@ -90,7 +131,19 @@ def _prepare_sf_data() -> dict:
             raise RuntimeError("No tpm layer for log1p_tpm creation.")
     adata = harmonize_response(adata)
     adata, sig_cols = score_signatures(adata, layer="log1p_tpm")
+    hetero_feats = [f for f in HETERO_FEATURES if f in adata.var_names]
 
+    # ── try to restore expensive results from cache ───────────────────────
+    if use_cache and cache_path.exists():
+        print(f"  Loading cached SF permutation results from {cache_path.name}")
+        with open(cache_path, "rb") as fh:
+            cached = pickle.load(fh)  # noqa: S301 — trusted local cache
+        cached["adata"] = adata
+        cached["sig_cols"] = sig_cols
+        cached["hetero_feats"] = hetero_feats
+        return cached
+
+    # ── compute from scratch ──────────────────────────────────────────────
     common_kw = dict(
         features=sig_cols,
         design=DESIGN,
@@ -104,7 +157,7 @@ def _prepare_sf_data() -> dict:
     df_part = did_table(adata, aggregate="participant_visit", **common_kw)
 
     # Permutation test
-    print("  Running permutation test ...")
+    print(f"  Running {N_PERM} permutations ...")
     np.random.seed(42)
     arm_col = DESIGN.arm_col
     original_arm = adata.obs[arm_col].copy()
@@ -132,17 +185,24 @@ def _prepare_sf_data() -> dict:
     print(f"  Completed {df_perm_all['permutation'].nunique()} permutations")
 
     # Participant-level deltas for heterogeneity panels
-    hetero_feats = [f for f in HETERO_FEATURES if f in adata.var_names]
     delta_df = _compute_participant_delta(adata, hetero_feats)
 
-    return {
+    result = {
         "df_part": df_part,
         "df_perm_all": df_perm_all,
-        "sig_cols": sig_cols,
-        "adata": adata,
         "delta_df": delta_df,
-        "hetero_feats": hetero_feats,
     }
+
+    # ── persist to disk (adata excluded — too large) ──────────────────────
+    if use_cache:
+        with open(cache_path, "wb") as fh:
+            pickle.dump(result, fh, protocol=pickle.HIGHEST_PROTOCOL)
+        print(f"  Cached SF permutation results to {cache_path.name}")
+
+    result["adata"] = adata
+    result["sig_cols"] = sig_cols
+    result["hetero_feats"] = hetero_feats
+    return result
 
 
 def _compute_participant_delta(
@@ -185,6 +245,66 @@ def _compute_participant_delta(
     delta["arm"] = pre.loc[common, arm_col]
     delta = delta.reset_index().rename(columns={pid_col: "participant_id"})
     return delta
+
+
+def _compute_tnbc_participant_delta(
+    adata, features: list[str], layer: str | None,
+) -> pd.DataFrame | None:
+    """Per-participant pre→post delta for TNBC, retaining arm and response."""
+    pid_col = "participant_id"
+    visit_col = "visit"
+    arm_col = "arm"
+    response_col = "response_harmonized"
+    pre_v, post_v = VISITS
+
+    if not features:
+        return None
+
+    X = _to_array(
+        adata[:, features].layers[layer]
+        if layer and layer in adata.layers
+        else adata[:, features].X
+    )
+    df = pd.DataFrame(X, columns=features, index=adata.obs_names)
+    df[pid_col] = adata.obs[pid_col].values
+    df[visit_col] = adata.obs[visit_col].values
+    df[arm_col] = adata.obs[arm_col].values
+    df[response_col] = adata.obs[response_col].values
+
+    pv = (
+        df.groupby([pid_col, visit_col, arm_col, response_col], observed=True)[features]
+        .mean()
+        .reset_index()
+    )
+    pv = pv[pv[visit_col].isin([pre_v, post_v])].copy()
+
+    pre = pv[pv[visit_col] == pre_v].set_index(pid_col)
+    post = pv[pv[visit_col] == post_v].set_index(pid_col)
+    common = pre.index.intersection(post.index)
+    if len(common) < 3:
+        return None
+
+    delta = post.loc[common, features] - pre.loc[common, features]
+    delta["arm"] = pre.loc[common, arm_col]
+    delta["response"] = pre.loc[common, response_col]
+    delta = delta.reset_index().rename(columns={pid_col: "participant_id"})
+    return delta
+
+
+def _prepare_tnbc_data() -> dict:
+    """Load TNBC (Zhang), harmonize response, compute participant deltas."""
+    adata = get_tnbc_zhang()
+    adata = harmonize_response(adata)
+    layer = "log1p_norm" if "log1p_norm" in adata.layers else None
+
+    hetero_feats = [f for f in HETERO_FEATURES if f in adata.var_names]
+    delta_df = _compute_tnbc_participant_delta(adata, hetero_feats, layer)
+
+    return {
+        "adata": adata,
+        "delta_df": delta_df,
+        "hetero_feats": hetero_feats,
+    }
 
 
 def _prepare_stephenson_data() -> dict:
@@ -405,7 +525,7 @@ def _panel_c(ax, data: dict) -> None:
     ax.set_xticks(range(len(feat_order)))
     ax.set_xticklabels(feat_order, rotation=40, ha="right", fontsize=8)
     ax.set_ylabel("Participant Effect (Post − Pre)")
-    ax.set_title("Individual Treatment Effects", fontsize=10, fontweight="bold")
+    ax.set_title("Individual Treatment Effects - Melanoma", fontsize=10, fontweight="bold")
     ax.legend(fontsize=8, frameon=True, framealpha=0.9)
     despine(ax)
 
@@ -444,14 +564,197 @@ def _panel_d(ax, data: dict) -> None:
         tick.set_ha("right")
         tick.set_fontsize(8)
     ax.set_ylabel("Participant Effect (Post − Pre)")
-    ax.set_title("Response-Stratified Heterogeneity", fontsize=10, fontweight="bold")
+    ax.set_title("Response-Stratified Heterogeneity - Melanoma", fontsize=10, fontweight="bold")
     ax.legend(fontsize=7, frameon=True, title="Arm")
     despine(ax)
 
 
-# ── Panel E: Temporal trajectories by severity ───────────────────────────
+# ── Panel E: TNBC individual-effect strip plot ───────────────────────────
 
-def _panel_e(ax, steph_data: dict) -> None:
+def _panel_e(ax, tnbc_data: dict) -> None:
+    """Strip plot of per-participant pre→post effects for TNBC.
+
+    Markers are colored by treatment arm. Responders carry a black outline;
+    non-responders have no outline.
+    """
+    effects = tnbc_data["delta_df"]
+    features = tnbc_data["hetero_feats"]
+
+    if effects is None or effects.empty:
+        ax.text(0.5, 0.5, "No TNBC paired effects",
+                ha="center", va="center", transform=ax.transAxes)
+        despine(ax)
+        return
+
+    avail = [f for f in features if f in effects.columns]
+    # Use SF-derived order when available (matches panel C), else fall back to TNBC mean
+    feat_order = effects[avail].mean().sort_values().index.tolist()
+    long = effects.melt(
+        id_vars=["participant_id", "arm", "response"], value_vars=feat_order,
+        var_name="feature", value_name="effect",
+    )
+
+    x_map = {f: i for i, f in enumerate(feat_order)}
+    rng = np.random.default_rng(42)
+
+    for arm, arm_color in TNBC_ARM_COLORS.items():
+        for resp, edge_color in TNBC_RESP_EDGE.items():
+            sub = long[(long["arm"] == arm) & (long["response"] == resp)]
+            if sub.empty:
+                continue
+            x = sub["feature"].map(x_map).values + rng.uniform(-0.2, 0.2, len(sub))
+            lw = 0.8 if edge_color != "none" else 0.0
+            ax.scatter(
+                x, sub["effect"].values, s=9, alpha=0.75,
+                c=arm_color, edgecolors=edge_color, linewidths=lw,
+                zorder=3,
+            )
+
+    for feat, i in x_map.items():
+        mu = long[long["feature"] == feat]["effect"].mean()
+        ax.hlines(mu, i - 0.35, i + 0.35, color="black", lw=2)
+
+    ax.axhline(0, color="black", lw=0.8, ls="--", alpha=0.5)
+    ax.set_xticks(range(len(feat_order)))
+    ax.set_xticklabels(feat_order, rotation=40, ha="right", fontsize=8)
+    ax.set_ylabel("Participant Effect (Post − Pre)")
+    ax.set_title("Individual Treatment Effects - TNBC", fontsize=10, fontweight="bold")
+
+    handles = [
+        Line2D([0], [0], marker="o", color="w",
+               markerfacecolor=TNBC_ARM_COLORS[TNBC_ARM_CHEMO],
+               markeredgecolor="none", markersize=4, label=TNBC_ARM_CHEMO),
+        Line2D([0], [0], marker="o", color="w",
+               markerfacecolor=TNBC_ARM_COLORS[TNBC_ARM_COMBO],
+               markeredgecolor="none", markersize=4, label=TNBC_ARM_COMBO),
+        Line2D([0], [0], marker="o", color="w",
+               markerfacecolor="#BBBBBB",
+               markeredgecolor="black", markeredgewidth=0.8, markersize=4,
+               label="Responder"),
+        Line2D([0], [0], marker="o", color="w",
+               markerfacecolor="#BBBBBB",
+               markeredgecolor="none", markersize=4,
+               label="Non-responder"),
+    ]
+    ax.legend(handles=handles, fontsize=7, frameon=True, framealpha=0.9,
+              loc="upper left", ncol=2)
+    despine(ax)
+
+
+# ── Panel F: TNBC response- and arm-stratified boxplots ──────────────────
+
+def _panel_f(ax, tnbc_data: dict) -> None:
+    """4-group per gene: boxplot when n≥2, diamond marker when n=1.
+
+    Groups: Chemo-R, Chemo-NR (n=1 → marker), anti-PDL1+Chemo-R, anti-PDL1+Chemo-NR.
+    """
+    effects = tnbc_data["delta_df"]
+    features = tnbc_data["hetero_feats"]
+
+    if effects is None or effects.empty:
+        ax.text(0.5, 0.5, "No TNBC paired effects",
+                ha="center", va="center", transform=ax.transAxes)
+        despine(ax)
+        return
+
+    avail = [f for f in features if f in effects.columns]
+    # Use SF-derived top-gene order when available (matches panel D)
+    top = effects[avail].std().sort_values(ascending=False).head(8).index.tolist()
+
+    effects = effects.copy()
+    effects["group"] = (
+        effects["arm"].astype(str) + " – "
+        + effects["response"].astype(str)
+    )
+
+    long = effects.melt(
+        id_vars=["participant_id", "arm", "response", "group"], value_vars=top,
+        var_name="feature", value_name="effect",
+    )
+
+    group_order = [g for g in TNBC_GROUP_PALETTE if g in long["group"].unique()]
+    palette_map = {g: TNBC_GROUP_PALETTE[g] for g in group_order}
+
+    n_groups = len(group_order)
+    n_feats = len(top)
+    box_w = 0.16
+    offsets = np.linspace(-(n_groups - 1) / 2, (n_groups - 1) / 2, n_groups) * box_w
+
+    # Separate data into box-eligible (n≥2) and single-sample (n=1)
+    box_positions, box_data, box_colors = [], [], []
+    single_xs, single_ys, single_colors = [], [], []
+
+    for feat_idx, feat in enumerate(top):
+        feat_data = long[long["feature"] == feat]
+        for grp_idx, grp in enumerate(group_order):
+            vals = feat_data[feat_data["group"] == grp]["effect"].dropna().values
+            color = palette_map[grp]
+            x_pos = feat_idx + offsets[grp_idx]
+            if len(vals) == 0:
+                continue
+            elif len(vals) == 1:
+                single_xs.append(x_pos)
+                single_ys.append(vals[0])
+                single_colors.append(color)
+            else:
+                box_positions.append(x_pos)
+                box_data.append(vals)
+                box_colors.append(color)
+
+    # Draw boxes
+    if box_data:
+        bp = ax.boxplot(
+            box_data, positions=box_positions, widths=box_w * 0.85,
+            patch_artist=True, notch=False, showfliers=False,
+            medianprops=dict(color="black", linewidth=1.0),
+            whiskerprops=dict(linewidth=0.6),
+            capprops=dict(linewidth=0.6),
+        )
+        for patch, color in zip(bp["boxes"], box_colors):
+            patch.set_facecolor(color)
+            patch.set_alpha(0.85)
+            patch.set_linewidth(0.6)
+
+    # Draw diamond markers for single-sample groups
+    if single_xs:
+        ax.scatter(
+            single_xs, single_ys, marker="D", s=12,
+            c=single_colors, edgecolors="white", linewidths=0.3, zorder=4,
+        )
+
+    ax.axhline(0, color="black", lw=0.8, ls="--")
+    ax.set_xticks(range(n_feats))
+    ax.set_xticklabels(top, rotation=35, ha="right", fontsize=8)
+    ax.set_xlim(-0.5, n_feats - 0.5)
+    ylo, yhi = ax.get_ylim()
+    ax.set_ylim(ylo - 0.25 * (yhi - ylo), yhi)
+    ax.set_ylabel("Participant Effect (Post − Pre)")
+    ax.set_title("Response-Stratified Heterogeneity - TNBC", fontsize=10, fontweight="bold")
+
+    # Legend: box patch for multi-sample groups, diamond for single-sample
+    grp_ns = {g: effects[effects["group"] == g].shape[0] for g in group_order}
+    legend_handles = []
+    for grp in group_order:
+        color = palette_map[grp]
+        if grp_ns[grp] <= 1:
+            legend_handles.append(
+                Line2D([0], [0], marker="D", color="w",
+                       markerfacecolor=color, markeredgecolor="none",
+                       markersize=4, label=grp)
+            )
+        else:
+            legend_handles.append(
+                plt.Rectangle((0, 0), 1, 1, fc=color, alpha=0.85, label=grp)
+            )
+
+    ax.legend(handles=legend_handles, fontsize=7, frameon=True,
+              loc="lower right", ncol=2)
+    despine(ax)
+
+
+# ── Panel G: Temporal trajectories by severity ───────────────────────────
+
+def _panel_g(ax, steph_data: dict) -> None:
     """Line plot of mean signature score over DFO bins for Mild vs Severe."""
     pb = steph_data["pb"]
     sig_cols = steph_data["sig_cols"]
@@ -503,9 +806,9 @@ def _panel_e(ax, steph_data: dict) -> None:
     despine(ax)
 
 
-# ── Panel F: Severity divergence ─────────────────────────────────────────
+# ── Panel H: Severity divergence ─────────────────────────────────────────
 
-def _panel_f(ax, steph_data: dict) -> None:
+def _panel_h(ax, steph_data: dict) -> None:
     """Line plot of (Severe − Mild) mean per DFO bin for 4 signatures."""
     pb = steph_data["pb"]
     sig_cols = steph_data["sig_cols"]
@@ -551,9 +854,9 @@ def _panel_f(ax, steph_data: dict) -> None:
     despine(ax)
 
 
-# ── Panel G: Temporal divergence heatmap ─────────────────────────────────
+# ── Panel I: Temporal divergence heatmap ─────────────────────────────────
 
-def _panel_g(ax, steph_data: dict) -> None:
+def _panel_i(ax, steph_data: dict) -> None:
     """Heatmap of severity divergence (Severe − Mild) × DFO bin."""
     pb = steph_data["pb"]
     sig_cols = steph_data["sig_cols"]
@@ -599,7 +902,7 @@ def _panel_g(ax, steph_data: dict) -> None:
     ax.tick_params(axis="y", labelsize=8)
 
 
-# ── Panel H: Time-specific Hedges' g ────────────────────────────────────
+# ── Panel J: Time-specific Hedges' g ────────────────────────────────────
 
 def _hedges_g(x: np.ndarray, y: np.ndarray) -> float:
     """Hedges' g  (x − y)  with small-sample correction."""
@@ -617,7 +920,7 @@ def _hedges_g(x: np.ndarray, y: np.ndarray) -> float:
     return g * correction
 
 
-def _panel_h(ax, steph_data: dict) -> None:
+def _panel_j(ax, steph_data: dict) -> None:
     """Grouped horizontal bar chart of Hedges' g per signature × DFO bin."""
     pb = steph_data["pb"]
     sig_cols = steph_data["sig_cols"]
@@ -677,13 +980,16 @@ def generate() -> None:
     apply_style()
     print("Figure 6: Validation, Heterogeneity & Temporal Dynamics")
 
-    # Sade-Feldman data (panels A-D)
+    # Sade-Feldman data (panels A–D) — permutation results cached to disk
     sf_data = _prepare_sf_data()
 
-    # Stephenson data (panels E-G)
+    # TNBC data (panels E–F)
+    tnbc_data = _prepare_tnbc_data()
+
+    # Stephenson data (panels G–J)
     steph_data = _prepare_stephenson_data()
 
-    # Panels A-D use Sade-Feldman
+    # Panels A–D: Sade-Feldman
     sf_panels = [
         ("panel_A_permutation_null", _panel_a, (6.5, 5)),
         ("panel_B_observed_vs_null", _panel_b, (6.5, 5)),
@@ -696,12 +1002,23 @@ def generate() -> None:
         fig.tight_layout()
         save_panel(fig, panel_name, FIGURE_NAME, MAIN_OUTPUT)
 
-    # Panels E-H use Stephenson
+    # Panels E–F: TNBC
+    tnbc_panels = [
+        ("panel_E_tnbc_individual_effects", _panel_e, (11.5, 6.0)),
+        ("panel_F_tnbc_response_stratified", _panel_f, (10.5, 6.0)),
+    ]
+    for panel_name, func, size in tnbc_panels:
+        fig, ax = plt.subplots(figsize=size)
+        func(ax, tnbc_data)
+        fig.tight_layout()
+        save_panel(fig, panel_name, FIGURE_NAME, MAIN_OUTPUT)
+
+    # Panels G–J: Stephenson
     steph_panels = [
-        ("panel_E_temporal_trajectories", _panel_e, (7, 5.5)),
-        ("panel_F_severity_divergence", _panel_f, (7, 5.5)),
-        ("panel_G_temporal_heatmap", _panel_g, (7, 5.5)),
-        ("panel_H_time_specific_effect_sizes", _panel_h, (7, 5.5)),
+        ("panel_G_temporal_trajectories", _panel_g, (7, 5.5)),
+        ("panel_H_severity_divergence", _panel_h, (7, 5.5)),
+        ("panel_I_temporal_heatmap", _panel_i, (7, 5.5)),
+        ("panel_J_time_specific_effect_sizes", _panel_j, (7, 5.5)),
     ]
     for panel_name, func, size in steph_panels:
         fig, ax = plt.subplots(figsize=size)
@@ -709,7 +1026,7 @@ def generate() -> None:
         fig.tight_layout()
         save_panel(fig, panel_name, FIGURE_NAME, MAIN_OUTPUT)
 
-    # ── Combined artboard (180 × ≤215 mm) ────────────────────────────────
+    # ── Combined artboard (180 × 260 mm) ─────────────────────────────────
     _SMALL_RC = {
         "font.size": 5,
         "axes.titlesize": 5.5,
@@ -740,28 +1057,29 @@ def generate() -> None:
     plt.rcParams.update(_SMALL_RC)
 
     _mm = 1.0 / 25.4
-    fig_c = plt.figure(figsize=(180 * _mm, 200 * _mm))
+    fig_c = plt.figure(figsize=(180 * _mm, 215 * _mm))
 
     #   Row 0: A | B     (permutation)
-    #   Row 1: C | D     (heterogeneity)
-    #   Row 2: E | F     (temporal lines)
-    #   Row 3: G | H     (heatmap + bar)
+    #   Row 1: C | D     (SF heterogeneity)
+    #   Row 2: E | F     (TNBC heterogeneity)
+    #   Row 3: G | H     (temporal lines)
+    #   Row 4: I | J     (heatmap + bar)
     outer = fig_c.add_gridspec(
-        4, 1,
-        height_ratios=[1, 1, 1, 1],
-        hspace=0.55,
-        left=0.10, right=0.95, top=0.97, bottom=0.06,
+        5, 1,
+        height_ratios=[1, 1, 1, 1, 1],
+        hspace=0.70,
+        left=0.10, right=0.95, top=0.97, bottom=0.05,
     )
 
     gs0 = outer[0].subgridspec(1, 2, wspace=0.45)
     ax_a = fig_c.add_subplot(gs0[0])
     ax_b = fig_c.add_subplot(gs0[1])
 
-    gs1 = outer[1].subgridspec(1, 2, wspace=0.45, width_ratios=[1.3, 1])
+    gs1 = outer[1].subgridspec(1, 2, wspace=0.45, width_ratios=[1, 1.2])
     ax_cc = fig_c.add_subplot(gs1[0])
     ax_d = fig_c.add_subplot(gs1[1])
 
-    gs2 = outer[2].subgridspec(1, 2, wspace=0.45)
+    gs2 = outer[2].subgridspec(1, 2, wspace=0.45, width_ratios=[1, 1.2])
     ax_e = fig_c.add_subplot(gs2[0])
     ax_f = fig_c.add_subplot(gs2[1])
 
@@ -769,24 +1087,32 @@ def generate() -> None:
     ax_g = fig_c.add_subplot(gs3[0])
     ax_h = fig_c.add_subplot(gs3[1])
 
+    gs4 = outer[4].subgridspec(1, 2, wspace=0.45)
+    ax_i = fig_c.add_subplot(gs4[0])
+    ax_j = fig_c.add_subplot(gs4[1])
+
     # Panels A–D: Sade-Feldman data
     _panel_a(ax_a, sf_data)
     _panel_b(ax_b, sf_data)
     _panel_c(ax_cc, sf_data)
     _panel_d(ax_d, sf_data)
 
-    # Panels E–H: Stephenson data
-    _panel_e(ax_e, steph_data)
-    _panel_f(ax_f, steph_data)
+    # Panels E–F: TNBC data
+    _panel_e(ax_e, tnbc_data)
+    _panel_f(ax_f, tnbc_data)
+
+    # Panels G–J: Stephenson data
     _panel_g(ax_g, steph_data)
     _panel_h(ax_h, steph_data)
+    _panel_i(ax_i, steph_data)
+    _panel_j(ax_j, steph_data)
 
     # Move legends inside plots for the composite
     _inside = {
         ax_a: "upper right", ax_b: "lower right",
         ax_cc: "upper right", ax_d: "upper right",
-        ax_e: "upper right", ax_f: "upper right",
-        ax_h: "lower right",
+        ax_g: "upper right", ax_h: "upper right",
+        ax_j: "lower right",
     }
     for ax_target, loc in _inside.items():
         leg = ax_target.get_legend()
@@ -803,27 +1129,56 @@ def generate() -> None:
                 labelspacing=0.2,
             )
 
-    # Panel F: reduce legend marker size
+    # Panels E and F: 2-column legends placed at the top
+    leg_e = ax_e.get_legend()
+    if leg_e:
+        handles = leg_e.legend_handles
+        labels = [t.get_text() for t in leg_e.get_texts()]
+        leg_e.remove()
+        ax_e.legend(
+            handles=handles, labels=labels,
+            fontsize=3.5, loc="upper left", ncol=2,
+            frameon=True, framealpha=0.85,
+            edgecolor="#CCCCCC", borderpad=0.3,
+            handlelength=1, handletextpad=0.3,
+            labelspacing=0.2,
+        )
+
     leg_f = ax_f.get_legend()
     if leg_f:
-        for handle in leg_f.legend_handles:
+        handles = leg_f.legend_handles
+        labels = [t.get_text() for t in leg_f.get_texts()]
+        leg_f.remove()
+        ax_f.legend(
+            handles=handles, labels=labels,
+            fontsize=3.5, loc="lower right", ncol=2,
+            frameon=True, framealpha=0.85,
+            edgecolor="#CCCCCC", borderpad=0.3,
+            handlelength=1, handletextpad=0.3,
+            labelspacing=0.2,
+        )
+
+    # Panel H: reduce legend marker size
+    leg_h = ax_h.get_legend()
+    if leg_h:
+        for handle in leg_h.legend_handles:
             handle.set_markersize(3)
 
-    # Panel E: extend x-axis right to make room for signature text
-    xl = ax_e.get_xlim()
-    ax_e.set_xlim(xl[0], xl[1] + 0.8)
-    for txt in ax_e.texts:
+    # Panel G: extend x-axis right to make room for signature text
+    xl = ax_g.get_xlim()
+    ax_g.set_xlim(xl[0], xl[1] + 0.8)
+    for txt in ax_g.texts:
         txt.set_fontsize(4)
 
-    # Panel G: increase heatmap annotation font and xtick/xlabel
-    for txt in ax_g.texts:
+    # Panel I: increase heatmap annotation font and xtick/xlabel
+    for txt in ax_i.texts:
         txt.set_fontsize(5.5)
-    ax_g.tick_params(axis="x", labelsize=5.5)
-    ax_g.set_xlabel("Days from Onset", fontsize=6)
+    ax_i.tick_params(axis="x", labelsize=5.5)
+    ax_i.set_xlabel("Days from Onset", fontsize=6)
 
-    # Match xlabel, ylabel, legend font size to G (6pt) across all panels
+    # Match xlabel, ylabel, legend font size across all panels
     _label_fs = 6
-    for ax in [ax_a, ax_b, ax_cc, ax_d, ax_e, ax_f, ax_g, ax_h]:
+    for ax in [ax_a, ax_b, ax_cc, ax_d, ax_e, ax_f, ax_g, ax_h, ax_i, ax_j]:
         ax.xaxis.label.set_fontsize(_label_fs)
         ax.yaxis.label.set_fontsize(_label_fs)
         leg = ax.get_legend()
@@ -836,9 +1191,9 @@ def generate() -> None:
     # Bold panel labels (after cap so they stay prominent)
     _lbl_fs = 9
     for ax, lbl in [
-        (ax_a, "A"), (ax_b, "B"), (ax_cc, "C"),
-        (ax_d, "D"), (ax_e, "E"), (ax_f, "F"),
-        (ax_g, "G"), (ax_h, "H"),
+        (ax_a, "A"), (ax_b, "B"), (ax_cc, "C"), (ax_d, "D"),
+        (ax_e, "E"), (ax_f, "F"),
+        (ax_g, "G"), (ax_h, "H"), (ax_i, "I"), (ax_j, "J"),
     ]:
         ax.text(-0.25, 1.12, lbl, transform=ax.transAxes,
                 fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
@@ -853,14 +1208,14 @@ def generate() -> None:
     print(f"    Saved combined artboard (PNG + PDF)")
 
     # Cleanup
-    for d in [sf_data, steph_data]:
+    for d in [sf_data, tnbc_data, steph_data]:
         adata = d.get("adata")
         if adata is not None:
             del adata
-    del sf_data, steph_data
+    del sf_data, tnbc_data, steph_data
     gc.collect()
 
-    print(f"  Figure 6 complete: 8 individual panels + combined (A–H)\n")
+    print(f"  Figure 6 complete: 10 individual panels + combined (A–J)\n")
 
 
 if __name__ == "__main__":

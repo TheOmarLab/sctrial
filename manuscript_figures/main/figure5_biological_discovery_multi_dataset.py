@@ -3414,14 +3414,14 @@ def _build_composite(data4: dict, data_tnbc: dict, data5: dict) -> None:
             0.90,  # 2:  D | E       — Melanoma
             0.80,  # 3:  section spacer
             1.50,  # 4:  F | G | H   — TNBC (taller panels)
-            0.90,  # 5:  spacer (increased)
+            0.65,  # 5:  spacer
             0.90,  # 6:  I | J       — TNBC
             0.90,  # 7:  section spacer
-            0.75,  # 8:  K | L | M
-            0.90,  # 9:  spacer
-            0.75,  # 10: N | O | P
-            0.90,  # 11: spacer
-            1.05,  # 12: Q | R
+            0.95,  # 8:  K | L | M
+            0.70,  # 9:  spacer
+            0.95,  # 10: N | O | P
+            0.70,  # 11: spacer
+            1.25,  # 12: Q | R
         ],
         hspace=0.0,
         left=0.07, right=0.97, top=0.98, bottom=0.03,
@@ -3435,12 +3435,11 @@ def _build_composite(data4: dict, data_tnbc: dict, data5: dict) -> None:
     ax_b = fig_c.add_subplot(gs0[1])
     ax_c = fig_c.add_subplot(gs0[3])
 
-    # ── Row 2: D(wide) | E ───────────────────────────────────────────
-    # Reduced D width and wspace to close the D-E gap
-    gs2 = outer[2].subgridspec(1, 2, wspace=0.30,
-                                width_ratios=[1.1, 0.95])
-    ax_d = fig_c.add_subplot(gs2[0])
-    ax_e = fig_c.add_subplot(gs2[1])
+    # ── Row 2: left-spacer | D | mid-spacer | E ─────────────────────
+    gs2 = outer[2].subgridspec(1, 4, wspace=0.30,
+                                width_ratios=[0.10, 0.95, 0.25, 0.95])
+    ax_d = fig_c.add_subplot(gs2[1])
+    ax_e = fig_c.add_subplot(gs2[3])
 
     # ── Row 4: F(wide) | G(wider) | spacer | H(narrow) ──────────────
     # F reduced further; G widened; spacer keeps G-H gap
@@ -3450,12 +3449,11 @@ def _build_composite(data4: dict, data_tnbc: dict, data5: dict) -> None:
     ax_g = fig_c.add_subplot(gs4[1])
     ax_h = fig_c.add_subplot(gs4[3])
 
-    # ── Row 6: I(wide) | J ───────────────────────────────────────────
-    # Reduced I width and wspace to close the I-J gap
-    gs6 = outer[6].subgridspec(1, 2, wspace=0.30,
-                                width_ratios=[1.1, 0.95])
-    ax_i = fig_c.add_subplot(gs6[0])
-    ax_j = fig_c.add_subplot(gs6[1])
+    # ── Row 6: left-spacer | I | mid-spacer | J ─────────────────────
+    gs6 = outer[6].subgridspec(1, 4, wspace=0.30,
+                                width_ratios=[0.10, 0.95, 0.25, 0.95])
+    ax_i = fig_c.add_subplot(gs6[1])
+    ax_j = fig_c.add_subplot(gs6[3])
 
     # ── Row 8: K | L | M ─────────────────────────────────────────────
     gs8 = outer[8].subgridspec(1, 3, wspace=1.05)
@@ -3579,9 +3577,9 @@ def _build_composite(data4: dict, data_tnbc: dict, data5: dict) -> None:
     # Compact legends — biological panels
     _bio_locs = {
         ax_a: "upper right", ax_b: "upper left",
-        ax_c: "upper left",  ax_d: "upper left",
+        ax_c: "upper left",  ax_d: "lower right",
         ax_f: "upper right", ax_g: "upper left",
-        ax_h: "upper left",  ax_i: "upper left",
+        ax_h: "upper left",  ax_i: "lower right",
     }
     for ax_target, loc in _bio_locs.items():
         _compact_legend(ax_target, loc, fs=3.5)
@@ -3634,8 +3632,8 @@ def _build_composite(data4: dict, data_tnbc: dict, data5: dict) -> None:
     _x3a, _y3a = -0.26, 1.16   # narrow panels (A, B, F, G)
     _x3c, _y3c = -0.10, 1.14   # wide panels (C, H)
     # Row 2/6 — 2-panel (D/I wide, E/J narrow)
-    _xw,  _yw  = -0.10, 1.14   # wide leading-edge (D, I)
-    _xn,  _yn  = -0.32, 1.16   # narrow cell-type HM (E, J)
+    _xw,  _yw  = -0.18, 1.14   # wide leading-edge (D, I)
+    _xn,  _yn  = -0.18, 1.16   # narrow cell-type HM (E, J)
     # 3-panel rows (K–P)
     _x3, _y3   = -0.22, 1.16
     # 2-panel rows (Q, R)
@@ -3643,27 +3641,27 @@ def _build_composite(data4: dict, data_tnbc: dict, data5: dict) -> None:
 
     # Row 0: A B C
     for _ax, lbl, _x, _y in [
-        (ax_a, "A", _x3a, _y3a),
+        (ax_a, "A", _x3,  _y3a),
         (ax_b, "B", _x3a, _y3a),
         (ax_c, "C", _x3c, _y3c),
     ]:
         _ax.text(_x, _y, lbl, transform=_ax.transAxes,
                  fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
     # Row 2: D E
-    ax_d.text(_xw, _yw, "D", transform=ax_d.transAxes,
+    ax_d.text(_x3, _yw, "D", transform=ax_d.transAxes,
               fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
     ax_e.text(_xn, _yn, "E", transform=ax_e.transAxes,
               fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
     # Row 4: F G H
     for _ax, lbl, _x, _y in [
-        (ax_f, "F", _x3a, _y3a),
+        (ax_f, "F", _x3,  _y3a),
         (ax_g, "G", _x3a, _y3a),
         (ax_h, "H", _x3c, _y3c),
     ]:
         _ax.text(_x, _y, lbl, transform=_ax.transAxes,
                  fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
     # Row 6: I J
-    ax_i.text(_xw, _yw, "I", transform=ax_i.transAxes,
+    ax_i.text(_x3, _yw, "I", transform=ax_i.transAxes,
               fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
     ax_j.text(_xn, _yn, "J", transform=ax_j.transAxes,
               fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
