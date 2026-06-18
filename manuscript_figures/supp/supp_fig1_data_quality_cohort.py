@@ -135,7 +135,7 @@ def _visit_col(obs):
 
 
 def _arm_col(obs):
-    for c in ("response", "severity", "therapy", "condition", "arm"):
+    for c in ("arm", "response", "severity", "therapy", "condition"):
         if c in obs.columns and obs[c].nunique() > 1:
             return c
     return None
