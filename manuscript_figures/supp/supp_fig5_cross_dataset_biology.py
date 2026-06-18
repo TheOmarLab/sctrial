@@ -12,7 +12,7 @@ Panels:
   H  Enrichment summary heatmap (within-dataset z-score).
 
 Design-type handling:
-  Two-arm datasets (Sade-Feldman, Stephenson) use DiD estimand
+  Two-arm datasets (Sade-Feldman, Stephenson, TNBC) use DiD estimand
   (treated Δ − control Δ).  Single-arm datasets (AML, CAR-T, Vaccine)
   use within-arm pre→post change (Δ).  Panels mixing both estimands
   label each dataset with (DiD) or (Δ) to avoid silent conflation.
@@ -41,6 +41,7 @@ from .._shared import (
     harmonize_response,
     get_aml,
     get_cart,
+    get_tnbc_zhang,
     save_panel,
 )
 
@@ -116,10 +117,22 @@ _DATASET_CFG = {
         "arm_col": None,
         "visits": ("Pre", "Post"),
     },
+    "TNBC": {
+        "design": "two_arm",
+        "loader": get_tnbc_zhang,
+        "harmonize": False,
+        "layer": "log1p_norm",
+        "participant_col": "participant_id",
+        "visit_col": "visit",
+        "arm_col": "arm",
+        "arm_treated": "anti-PDL1+Chemo",
+        "arm_control": "Chemo",
+        "visits": ("Pre", "Post"),
+    },
 }
 
 _DS_PALETTE = dict(zip(_DATASET_CFG.keys(),
-    ["#1b9e77", "#d95f02", "#7570b3", "#e7298a", "#66a61e"]))
+    ["#1b9e77", "#d95f02", "#7570b3", "#e7298a", "#66a61e", "#e6ab02"]))
 
 # Design-type label for legend annotations: DiD = two-arm difference-in-differences,
 # Δ = single-arm pre/post change.
@@ -129,6 +142,7 @@ _DESIGN_LABEL: dict[str, str] = {
     "AML": "Δ",
     "CAR-T": "Δ",
     "Vaccine": "Δ",
+    "TNBC": "DiD",
 }
 
 
@@ -450,7 +464,7 @@ def _panel_gene_dist(ax, data: dict[str, dict]):
     import matplotlib.patches as mpatches
     handles = [mpatches.Patch(facecolor=_DS_PALETTE[n], label=_ds_label(n))
                for n in _DS_PALETTE if _ds_label(n) in df["Dataset"].values]
-    ax.legend(handles=handles, fontsize=5, frameon=True, loc="lower right")
+    ax.legend(handles=handles, fontsize=5, frameon=True, loc="lower right", ncol=2)
     despine(ax)
 
 
@@ -595,7 +609,8 @@ def _panel_paired_trajectories(ax, data: dict[str, dict]):
         return
 
     ax.set_xticks(x_tick)
-    ax.set_xticklabels(x_tick_lab, rotation=30, ha="right", fontsize=4.5)
+    ax.set_xticklabels(x_tick_lab, rotation=30, ha="right")
+    ax.tick_params(axis="x", labelsize=3.5)
     ax.set_ylabel("Exhaustion score")
     ax.set_title("Participant-level paired trajectories (Exhaustion)", fontweight="bold")
     despine(ax)
@@ -627,9 +642,9 @@ def _panel_enrichment_heatmap(ax, data: dict[str, dict]):
     df = pd.DataFrame(rows)
     piv = df.pivot(index="Gene set", columns="Group", values="Score")
     sns.heatmap(piv, cmap="RdBu_r", center=0, linewidths=0.3, linecolor="white",
-                ax=ax, cbar_kws={"label": "Mean z-score (within-dataset)"})
+                ax=ax, cbar_kws={"label": "Mean z-score (within-dataset)", "pad": 0.01})
     ax.set_title("Enrichment summary (within-dataset z-score)", fontweight="bold")
-    ax.tick_params(axis="x", labelsize=4.5, rotation=45)
+    ax.tick_params(axis="x", labelsize=3.5, rotation=45)
     ax.tick_params(axis="y", labelsize=5)
 
 
@@ -711,7 +726,7 @@ def generate():
             0.40,   # spacer
             0.60,   # row 2: C | D
             0.30,   # spacer
-            0.65,   # row 4: E | F
+            0.85,   # row 4: E | F
             0.35,   # spacer
             0.55,   # row 6: G (full width)
             0.35,   # spacer
@@ -722,7 +737,7 @@ def generate():
     )
 
     # ── Row 0: A | B ─────────────────────────────────────────────────
-    gs0 = outer[0].subgridspec(1, 2, width_ratios=[1.4, 1.0], wspace=0.50)
+    gs0 = outer[0].subgridspec(1, 2, width_ratios=[1.8, 1.0], wspace=0.50)
     ax_a = fig_c.add_subplot(gs0[0])
     ax_b = fig_c.add_subplot(gs0[1])
 
@@ -738,7 +753,7 @@ def generate():
     _panel_gene_dist(ax_d, data)
 
     # ── Row 4: E | F (shifted right with left padding) ────────────
-    gs2 = outer[4].subgridspec(1, 3, width_ratios=[0.01, 1.0, 1.2],
+    gs2 = outer[4].subgridspec(1, 3, width_ratios=[0.0, 1.0, 1.2],
                                wspace=0.45)
     ax_e = fig_c.add_subplot(gs2[1])
     ax_f = fig_c.add_subplot(gs2[2])
@@ -750,8 +765,8 @@ def generate():
     ax_g = fig_c.add_subplot(outer[6])
     _panel_paired_trajectories(ax_g, data)
 
-    # ── Row 8: H (right-aligned with left padding) ────────────────
-    gs3 = outer[8].subgridspec(1, 2, width_ratios=[0.10, 1.0], wspace=0.0)
+    # ── Row 8: H (centred with equal side margins) ────────────────
+    gs3 = outer[8].subgridspec(1, 3, width_ratios=[0.06, 1.0, 0.0], wspace=0.0)
     ax_h = fig_c.add_subplot(gs3[1])
     _panel_enrichment_heatmap(ax_h, data)
 

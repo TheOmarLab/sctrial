@@ -117,7 +117,7 @@ def _prepare_sf_data(*, use_cache: bool = True) -> dict:
     force recomputation (e.g. after changing N_PERM or DESIGN).
     """
     _code_hash = hashlib.md5(  # noqa: S324 — cache tag, not security
-        Path(__file__).read_bytes()
+        f"{N_PERM}|{DESIGN}|{VISITS}|{HETERO_FEATURES}".encode()
     ).hexdigest()[:8]
     cache_key = f"figure6_sf_perm_v1_{_code_hash}"
     cache_path = _CACHE_DIR / f"{cache_key}.pkl"
@@ -563,8 +563,21 @@ def _panel_d(ax, data: dict) -> None:
         tick.set_rotation(35)
         tick.set_ha("right")
         tick.set_fontsize(8)
+    for i, feat in enumerate(top):
+        t_vals = effects.loc[effects["arm"] == DESIGN.arm_treated, feat].dropna().values
+        c_vals = effects.loc[effects["arm"] == DESIGN.arm_control, feat].dropna().values
+        g = _hedges_g(t_vals, c_vals)
+        if np.isfinite(g):
+            ymax = long.loc[long["feature"] == feat, "effect"].max()
+            ax.text(i, ymax + 0.02 * (ax.get_ylim()[1] - ax.get_ylim()[0]),
+                    f"g={g:.2f}", ha="center", va="bottom", fontsize=6.5,
+                    fontstyle="italic", color="grey")
+    ax.set_xlabel("")
     ax.set_ylabel("Participant Effect (Post − Pre)")
-    ax.set_title("Response-Stratified Heterogeneity - Melanoma", fontsize=10, fontweight="bold")
+    ax.set_title(
+        "Response-Stratified Heterogeneity - Melanoma\n(g: Hedges' g, Responder vs Non-responder)",
+        fontsize=10, fontweight="bold",
+    )
     ax.legend(fontsize=7, frameon=True, title="Arm")
     despine(ax)
 
@@ -727,9 +740,23 @@ def _panel_f(ax, tnbc_data: dict) -> None:
     ax.set_xticklabels(top, rotation=35, ha="right", fontsize=8)
     ax.set_xlim(-0.5, n_feats - 0.5)
     ylo, yhi = ax.get_ylim()
-    ax.set_ylim(ylo - 0.25 * (yhi - ylo), yhi)
+    # Hedges' g annotations: Chemo vs anti-PDL1+Chemo (pooled across response)
+    for feat_idx, feat in enumerate(top):
+        chemo_vals = effects.loc[effects["arm"] == TNBC_ARM_CHEMO, feat].dropna().values
+        combo_vals = effects.loc[effects["arm"] == TNBC_ARM_COMBO, feat].dropna().values
+        g = _hedges_g(chemo_vals, combo_vals)
+        if np.isfinite(g):
+            feat_data = long.loc[long["feature"] == feat, "effect"].dropna()
+            ymax_feat = float(np.nanpercentile(feat_data, 90)) if not feat_data.empty else yhi
+            ax.text(feat_idx, ymax_feat + 0.12 * (yhi - ylo),
+                    f"g={g:.2f}", ha="center", va="bottom", fontsize=6.5,
+                    fontstyle="italic", color="grey")
+    ax.set_ylim(ylo - 0.25 * (yhi - ylo), yhi + 0.25 * (yhi - ylo))
     ax.set_ylabel("Participant Effect (Post − Pre)")
-    ax.set_title("Response-Stratified Heterogeneity - TNBC", fontsize=10, fontweight="bold")
+    ax.set_title(
+        "Response-Stratified Heterogeneity - TNBC\n(Hedges' g: Chemo vs anti-PDL1+Chemo)",
+        fontsize=10, fontweight="bold",
+    )
 
     # Legend: box patch for multi-sample groups, diamond for single-sample
     grp_ns = {g: effects[effects["group"] == g].shape[0] for g in group_order}
