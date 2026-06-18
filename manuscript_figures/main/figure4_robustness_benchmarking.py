@@ -9,15 +9,17 @@ real-data precision / effect-size panels.
 
 Panels
 ------
-A   Bootstrap vs analytical SE (Sade–Feldman).
-B   Leave-one-out participant sensitivity.
+A   Bootstrap vs analytical SE (Sade–Feldman, top) and TNBC (bottom).
+B   Leave-one-out participant sensitivity (Sade–Feldman, top) and TNBC (bottom).
 C   Null-gene FPR vs signal fraction (simulator benchmark; faceted by panel size).
 D   Effect-size bias and RMSE on signal genes (simulator benchmark). Combined artboard:
     **left** column of the benchmark row (faceted bias/RMSE grid).
 E   Genomic inflation λ_GC under pure null (simulator benchmark). Combined artboard:
     **right** column of the benchmark row (single-axis λ_GC plot).
-F   Standard-error comparison (cell vs participant level).
-G   Cross-dataset signed Cohen's d forest (pre-specified endpoints).
+F   Standard-error comparison (cell vs participant level): Sade–Feldman (top)
+    and TNBC (bottom).
+G   Cross-dataset signed Cohen's d forest (pre-specified endpoints), now
+    including TNBC as a sixth dataset group.
 
 Cell-vs-participant effect-size scatter and p-value comparison moved
 to Figure 2 panels B–C.
@@ -49,6 +51,7 @@ from .._shared import (
     despine,
     did_table,
     get_sade_feldman,
+    get_tnbc_zhang,
     get_stephenson,
     get_vaccine,
     harmonize_response,
@@ -74,6 +77,18 @@ DESIGN = TrialDesign(
     arm_control="Non-responder",
 )
 
+# TNBC (Zhang) trial design: treatment-arm DiD (anti-PD-L1+Chemo vs Chemo),
+# not a response-outcome split like Sade-Feldman.
+TNBC_DESIGN = TrialDesign(
+    participant_col="participant_id",
+    visit_col="visit",
+    arm_col="arm",
+    arm_treated="anti-PDL1+Chemo",
+    arm_control="Chemo",
+    celltype_col="cell_type",
+)
+TNBC_VISITS: tuple[str, str] = ("Pre", "Post")
+
 # ── Multi-dataset cache (effect sizes + optional runtime for supp imports) ─
 
 N_BENCHMARK_REPLICATES = 5
@@ -93,6 +108,7 @@ _DATASET_TAGS: dict[str, str] = {
     "CAR-T": "CAR-T",
     "Vaccine": "VAX",
     "COVID-19": "COVID",
+    "TNBC": "TNBC",
 }
 
 _PRESPECIFIED_ENDPOINTS = [
@@ -109,6 +125,7 @@ DATASET_COLORS = {
     "AML":          COLORS["success"],
     "CAR-T":        COLORS["neutral"],
     "COVID-19":     COLORS["highlight"],
+    "TNBC":         "#996633",
 }
 
 # Display names for figure panels (internal keys unchanged)
@@ -193,9 +210,58 @@ def _prepare_sf_data() -> dict:
     }
 
 
+# ======================================================================
+# TNBC (Zhang) data preparation (panels A, B, F — second row)
+# ======================================================================
+
+def _prepare_tnbc_data() -> dict:
+    """Load TNBC (Zhang) and run the same analyses as Sade-Feldman.
+
+    Mirrors ``_prepare_sf_data`` but for the TNBC two-arm (anti-PD-L1+Chemo
+    vs Chemo) treatment design rather than a response-outcome split.
+    """
+    adata = get_tnbc_zhang()
+    if "log1p_norm" not in adata.layers:
+        raise RuntimeError("No log1p_norm layer found for TNBC dataset.")
+    adata, sig_cols = score_signatures(adata, layer="log1p_norm")
+
+    common_kw = dict(
+        features=sig_cols,
+        design=TNBC_DESIGN,
+        visits=TNBC_VISITS,
+        layer="log1p_norm",
+        standardize=True,
+    )
+
+    print("  [TNBC] Running cell-level DiD ...")
+    df_cell = did_table(adata, aggregate="cell", **common_kw)
+
+    print("  [TNBC] Running participant-level DiD ...")
+    df_part = did_table(adata, aggregate="participant_visit", **common_kw)
+
+    print("  [TNBC] Running bootstrap DiD ...")
+    df_boot = did_table(
+        adata, aggregate="participant_visit",
+        use_bootstrap=True, n_boot=N_BOOT, seed=42,
+        **common_kw,
+    )
+
+    print("  [TNBC] Running leave-one-out analysis ...")
+    loo_records = _run_loo(adata, sig_cols, common_kw)
+
+    return {
+        "df_cell": df_cell,
+        "df_part": df_part,
+        "df_boot": df_boot,
+        "loo_records": loo_records,
+        "sig_cols": sig_cols,
+        "adata": adata,
+    }
+
+
 def _run_loo(adata, sig_cols: list[str], common_kw: dict) -> pd.DataFrame:
     """Drop each participant one at a time and re-run DiD."""
-    pid_col = DESIGN.participant_col
+    pid_col = common_kw["design"].participant_col
     all_pids = adata.obs[pid_col].unique()
     records = []
 
@@ -475,12 +541,13 @@ def _compute_effect_sizes_across_datasets(
 
 
 def _load_dataset_by_index(idx: int) -> DatasetInfo | None:
-    """Load a single dataset by index (0-4), returning None on failure.
+    """Load a single dataset by index (0-5), returning None on failure.
 
     Keeps only one dataset in memory at a time.
     """
     loaders = [
         lambda: _load_sf(),
+        lambda: _load_tnbc(),
         lambda: _load_vaccine(),
         lambda: _load_aml(),
         lambda: _load_cart(),
@@ -548,6 +615,12 @@ def _load_covid() -> DatasetInfo:
     return ("COVID-19", covid, covid_design, (top_bin,), covid_sigs, "cross_sectional")
 
 
+def _load_tnbc() -> DatasetInfo:
+    tnbc = get_tnbc_zhang()
+    tnbc, tnbc_sigs = score_signatures(tnbc, layer="log1p_norm")
+    return ("TNBC", tnbc, TNBC_DESIGN, TNBC_VISITS, tnbc_sigs, "two_arm_did")
+
+
 def _prepare_scalability_data() -> dict:
     """One dataset at a time: runtime/memory (for supp imports) + effect sizes (panel G)."""
     print("  Loading and processing datasets one at a time ...")
@@ -556,7 +629,7 @@ def _prepare_scalability_data() -> dict:
     memory_frames: list[pd.DataFrame] = []
     effect_frames: list[pd.DataFrame] = []
 
-    for idx in range(5):
+    for idx in range(6):
         ds = _load_dataset_by_index(idx)
         if ds is None:
             continue
@@ -1014,9 +1087,19 @@ def _panel_bench_signal_rmse(
 # Panel A: Bootstrap vs Analytical SE
 # ======================================================================
 
-def _panel_a(ax, data: dict) -> None:
-    """Bootstrap SE scatter (analytical vs bootstrap)."""
+def _panel_a_single(
+    ax, data: dict, *, title: str = "Bootstrap vs Analytical SE",
+    composite: bool = False, dataset: str = "melanoma",
+) -> None:
+    """Bootstrap SE scatter (analytical vs bootstrap) for one dataset."""
     df_boot = data["df_boot"]
+
+    if df_boot is None or len(df_boot) == 0:
+        ax.text(0.5, 0.5, "Data unavailable",
+                ha="center", va="center", transform=ax.transAxes)
+        ax.set_title(title, fontsize=10, fontweight="bold")
+        despine(ax)
+        return
 
     feats, analytical, bootstrap = [], [], []
     for _, row in df_boot.iterrows():
@@ -1036,8 +1119,15 @@ def _panel_a(ax, data: dict) -> None:
         despine(ax)
         return
 
-    lo = min(analytical.min(), bootstrap.min()) * 0.85
-    hi = max(analytical.max(), bootstrap.max()) * 1.15
+    raw_lo = min(analytical.min(), bootstrap.min())
+    raw_hi = max(analytical.max(), bootstrap.max())
+    data_range = raw_hi - raw_lo
+    # Margin scales with the data range, not the minimum value itself —
+    # using a value-proportional margin (e.g. lo * 0.85) leaves almost no
+    # headroom when the lowest point sits near zero, causing it to visually
+    # touch the x-axis spine.
+    lo = raw_lo - 0.12 * data_range
+    hi = raw_hi + 0.12 * data_range
     # Slightly wider x range so low analytical-SE markers (and left-placed
     # labels) sit farther from the spine; upper limit unchanged.
     x_lo = lo - 0.08 * (hi - lo)
@@ -1048,7 +1138,7 @@ def _panel_a(ax, data: dict) -> None:
 
     ax.set_xlabel("Analytical SE (cluster-robust)")
     ax.set_ylabel("Bootstrap SE (wild cluster)")
-    ax.set_title("Bootstrap vs Analytical SE", fontsize=10, fontweight="bold")
+    ax.set_title(title, fontsize=10, fontweight="bold")
 
     ax.set_xlim(x_lo, hi)
     ax.set_ylim(lo, hi)
@@ -1058,25 +1148,40 @@ def _panel_a(ax, data: dict) -> None:
     # Many candidate offsets ranked by distance to the marker; greedy pick of
     # the closest in-bounds non-overlapping slot. No leader lines: text always
     # ends up next to the marker.
-    fontsize_pt = 6.5
+    fontsize_pt = 4.4 if composite else 6.5
     dpi = ax.figure.dpi
     pt2px = dpi / 72.0
-    char_w_px = 0.52 * fontsize_pt * pt2px
+    char_w_px = 0.50 * fontsize_pt * pt2px
     label_h_px = 1.35 * fontsize_pt * pt2px
-    marker_r_px = 4.5 * pt2px
-    gap_px = 1.5 * pt2px  # uniform, snug spacing on either side of the marker
+    marker_r_px = 3.2 * pt2px if composite else 4.5 * pt2px
+    gap_px = 2.6 * pt2px if composite else 1.5 * pt2px  # snug spacing on either side of the marker
 
     # Per-label side overrides (display name -> "left" | "right").
     # The override is the *preferred* side; the alternate is still used as a
     # fallback if the preferred placement falls outside the axes box.
-    _label_side_overrides: dict[str, str] = {
-        "Memory T Cells": "left",
-        "T Cell Activation": "left",
-        "NK Cell Activity": "right",
-        "Apoptosis": "left",
-        "Cytotoxic T Cells": "left",
-        "T Cell Exhaustion": "left",
+    _label_side_overrides_by_dataset: dict[str, dict[str, str]] = {
+        "melanoma": {
+            "Memory T Cells": "left",
+            "T Cell Activation": "left",
+            "NK Cell Activity": "right",
+            "Apoptosis": "left",
+            "Cytotoxic T Cells": "left",
+            "T Cell Exhaustion": "left",
+        },
+        "tnbc": {
+            "NK Cell Activity": "left",
+            "Oxidative Stress": "left",
+            "T Cell Activation": "right",
+            "Inflammation": "right",
+            "IFN Response": "left",
+            "Regulatory T Cells": "right",
+            "Memory T Cells": "left",
+            "T Cell Exhaustion": "left",
+        },
     }
+    _label_side_overrides: dict[str, str] = _label_side_overrides_by_dataset.get(
+        dataset, {}
+    )
 
     def _candidate_offsets(side: str | None = None):
         # Right or left of the marker, vertically centered. Same physical gap
@@ -1106,7 +1211,7 @@ def _panel_a(ax, data: dict) -> None:
 
     ax_inv = ax.transAxes.inverted()
 
-    def _within_axes(rx0, ry0, rx1, ry1, pad=0.012):
+    def _within_axes(rx0, ry0, rx1, ry1, pad=(0.006 if composite else 0.012)):
         fx0, fy0 = ax_inv.transform((rx0, ry0))
         fx1, fy1 = ax_inv.transform((rx1, ry1))
         return (fx0 > pad and fx1 < 1 - pad
@@ -1126,7 +1231,7 @@ def _panel_a(ax, data: dict) -> None:
     for i in order:
         label = sig_display(feats[i])
         dx_data, dy_data = float(analytical[i]), float(bootstrap[i])
-        w_px = max(18.0 * pt2px, char_w_px * len(label))
+        w_px = max((11.0 if composite else 18.0) * pt2px, char_w_px * len(label))
         mx_px, my_px = ax.transData.transform((dx_data, dy_data))
 
         side_pref = _label_side_overrides.get(label)
@@ -1196,18 +1301,46 @@ def _panel_a(ax, data: dict) -> None:
     )
 
 
+def _panel_a(ax_top, ax_bottom, data_sf: dict, data_tnbc: dict, *, composite: bool = False) -> None:
+    """Panel A — Melanoma (top axes) and TNBC (bottom axes)."""
+    _panel_a_single(ax_top, data_sf, title="Bootstrap vs Analytical SE (Melanoma)", composite=composite, dataset="melanoma")
+    _panel_a_single(ax_bottom, data_tnbc, title="Bootstrap vs Analytical SE (TNBC)", composite=composite, dataset="tnbc")
+
+
 # ======================================================================
 # Panel B: Leave-one-out sensitivity
 # ======================================================================
 
-def _panel_b(ax, data: dict) -> None:
-    """LOO influence plot: effect of dropping each participant."""
+_PANEL_B_PALETTE = [
+    COLORS["treated"], COLORS["control"], COLORS["highlight"], COLORS["neutral"],
+    COLORS["success"], "#996633", "#17becf", "#bcbd22",
+]
+_panel_b_color_map: dict[str, str] = {}
+
+
+def _panel_b_color(feat: str) -> str:
+    """Return a stable color for *feat*, assigned the first time it's seen.
+
+    Shared across both Melanoma and TNBC calls within a single figure run,
+    so the same signature always renders in the same color, and different
+    signatures never collide on the same color.
+    """
+    if feat not in _panel_b_color_map:
+        _panel_b_color_map[feat] = _PANEL_B_PALETTE[
+            len(_panel_b_color_map) % len(_PANEL_B_PALETTE)
+        ]
+    return _panel_b_color_map[feat]
+
+
+def _panel_b_single(ax, data: dict, *, title: str = "Leave-One-Out Sensitivity") -> None:
+    """LOO influence plot for one dataset: effect of dropping each participant."""
     loo_df = data["loo_records"]
     df_part = data["df_part"]
 
-    if loo_df is None or len(loo_df) == 0:
+    if loo_df is None or len(loo_df) == 0 or df_part is None or len(df_part) == 0:
         ax.text(0.5, 0.5, "LOO results unavailable",
                 ha="center", va="center", transform=ax.transAxes)
+        ax.set_title(title, fontsize=10, fontweight="bold")
         despine(ax)
         return
 
@@ -1216,8 +1349,7 @@ def _panel_b(ax, data: dict) -> None:
         .nlargest(4, "_abs")["feature"].tolist()
     )
 
-    palette = [COLORS["treated"], COLORS["control"],
-               COLORS["highlight"], COLORS["neutral"]]
+    _all_vals: list[float] = []
 
     for idx, feat in enumerate(top_sigs):
         full_beta = df_part.loc[df_part["feature"] == feat, "beta_DiD"].values[0]
@@ -1226,7 +1358,9 @@ def _panel_b(ax, data: dict) -> None:
         if len(loo_betas) == 0:
             continue
 
-        color = palette[idx % len(palette)]
+        color = _panel_b_color(feat)
+        _all_vals.extend(loo_betas.tolist())
+        _all_vals.append(float(full_beta))
 
         jitter = np.random.default_rng(42).uniform(-0.15, 0.15, len(loo_betas))
         ax.scatter(
@@ -1242,18 +1376,25 @@ def _panel_b(ax, data: dict) -> None:
             colors=color, lw=1.5, alpha=0.4, zorder=1,
         )
 
+    if _all_vals:
+        _v_lo, _v_hi = min(_all_vals), max(_all_vals)
+        _v_range = max(_v_hi - _v_lo, 1e-6)
+        ax.set_xlim(_v_lo - 0.15 * _v_range, _v_hi + 0.15 * _v_range)
+
     ax.set_yticks(range(len(top_sigs)))
     ax.set_yticklabels([sig_display(s) for s in top_sigs], fontsize=8)
+    if top_sigs:
+        ax.set_ylim(-0.6, len(top_sigs) - 1 + 0.6)
     ax.axvline(0, ls=":", color=COLORS["gray"], lw=0.8, zorder=0)
     ax.set_xlabel(r"$\beta_{\mathrm{DiD}}$ (standardized)")
-    ax.set_title("Leave-One-Out Sensitivity", fontsize=10, fontweight="bold")
+    ax.set_title(title, fontsize=10, fontweight="bold")
 
     from matplotlib.lines import Line2D
     from matplotlib.patches import Patch
     # Signature-color legend entries
     handles = []
     for idx, feat in enumerate(top_sigs):
-        color = palette[idx % len(palette)]
+        color = _panel_b_color(feat)
         handles.append(
             Patch(facecolor=color, edgecolor="#333333",
                   linewidth=0.5, label=sig_display(feat)),
@@ -1270,6 +1411,12 @@ def _panel_b(ax, data: dict) -> None:
     ax.legend(handles=handles, fontsize=7.6, loc="lower right",
               frameon=True, framealpha=0.9)
     despine(ax)
+
+
+def _panel_b(ax_top, ax_bottom, data_sf: dict, data_tnbc: dict) -> None:
+    """Panel B — Melanoma (top axes) and TNBC (bottom axes)."""
+    _panel_b_single(ax_top, data_sf, title="Leave-One-Out Sensitivity (Melanoma)")
+    _panel_b_single(ax_bottom, data_tnbc, title="Leave-One-Out Sensitivity (TNBC)")
 
 
 # ======================================================================
@@ -1365,10 +1512,23 @@ def _panel_c(ax, data: dict) -> None:
 # Panel F: Standard-error comparison
 # ======================================================================
 
-def _panel_d_se_comparison(ax, data: dict) -> None:
-    """Paired horizontal bars of SE at cell vs participant level."""
-    df_cell = data["df_cell"]
-    df_boot = data["df_boot"]
+def _panel_d_se_comparison_single(ax, data: dict, *, title: str = "Precision: Cell vs Participant Level") -> None:
+    """Paired horizontal bars of SE at cell vs participant level for one dataset."""
+    df_cell = data.get("df_cell")
+    df_boot = data.get("df_boot")
+
+    if (
+        df_cell is None or len(df_cell) == 0
+        or df_boot is None or len(df_boot) == 0
+        or "feature" not in df_cell.columns
+        or "se_DiD" not in df_cell.columns
+        or "feature" not in df_boot.columns
+    ):
+        ax.text(0.5, 0.5, "Data unavailable",
+                ha="center", va="center", transform=ax.transAxes)
+        ax.set_title(title, fontsize=10, fontweight="bold")
+        despine(ax)
+        return
 
     se_cell = df_cell[["feature", "se_DiD"]].copy()
     se_cell = se_cell.rename(columns={"se_DiD": "se_cell"})
@@ -1377,6 +1537,14 @@ def _panel_d_se_comparison(ax, data: dict) -> None:
     se_part["se_part"] = df_boot.get("se_DiD_boot", df_boot["se_DiD"])
 
     merged = se_cell.merge(se_part, on="feature")
+
+    if merged.empty:
+        ax.text(0.5, 0.5, "No overlapping features",
+                ha="center", va="center", transform=ax.transAxes)
+        ax.set_title(title, fontsize=10, fontweight="bold")
+        despine(ax)
+        return
+
     merged["display"] = merged["feature"].apply(sig_display)
     merged = merged.sort_values("se_part", ascending=True)
 
@@ -1397,9 +1565,19 @@ def _panel_d_se_comparison(ax, data: dict) -> None:
     ax.set_yticks(y_pos)
     ax.set_yticklabels(merged["display"].values, fontsize=8)
     ax.set_xlabel("Standard Error")
-    ax.set_title("Precision: Cell vs Participant Level", fontsize=10, fontweight="bold")
+    ax.set_title(title, fontsize=10, fontweight="bold")
     ax.legend(fontsize=8, loc="lower right", frameon=True, framealpha=0.9)
     despine(ax)
+
+
+def _panel_d_se_comparison(ax_top, ax_bottom, data_sf: dict, data_tnbc: dict) -> None:
+    """Panel F — Melanoma (top axes) and TNBC (bottom axes)."""
+    _panel_d_se_comparison_single(
+        ax_top, data_sf, title="Precision: Cell vs Participant Level (Melanoma)",
+    )
+    _panel_d_se_comparison_single(
+        ax_bottom, data_tnbc, title="Precision: Cell vs Participant Level (TNBC)",
+    )
 
 
 # ======================================================================
@@ -1425,7 +1603,11 @@ def _panel_e_cross_dataset(ax, data: dict, *, composite: bool = False) -> None:
         despine(ax)
         return
 
-    ds_order = list(dict.fromkeys(effect_df["dataset"]))
+    _natural_order = list(dict.fromkeys(effect_df["dataset"]))
+    _priority = ["TNBC", "Sade-Feldman"]
+    ds_order = [d for d in _priority if d in _natural_order] + [
+        d for d in _natural_order if d not in _priority
+    ]
 
     _SIG_ORDER = [
         "Cytotoxic T Cell Activity",
@@ -1547,6 +1729,14 @@ def generate() -> None:
     data = _prepare_sf_data()
 
     try:
+        data_tnbc = _prepare_tnbc_data()
+    except Exception as exc:
+        print(f"  Warning: Could not prepare TNBC data for panels A/B/F: {exc}")
+        data_tnbc = {"df_cell": pd.DataFrame(), "df_part": pd.DataFrame(),
+                     "df_boot": pd.DataFrame(), "loo_records": pd.DataFrame(),
+                     "sig_cols": [], "adata": None}
+
+    try:
         data["scale_data"] = _prepare_scalability_data()
     except Exception as exc:
         print(f"  Warning: Could not load multi-dataset effect sizes: {exc}")
@@ -1562,14 +1752,16 @@ def generate() -> None:
     except FileNotFoundError as exc:
         print(f"  Warning: {exc}")
 
-    for panel_name, func, size in [
-        ("panel_A_bootstrap_validation", _panel_a, (6.5, 5)),
-        ("panel_B_loo_sensitivity", _panel_b, (6.5, 5)),
-    ]:
-        fig, ax = plt.subplots(figsize=size)
-        func(ax, data)
-        fig.tight_layout()
-        save_panel(fig, panel_name, FIGURE_NAME, MAIN_OUTPUT)
+    # ── Panels A, B, F: Melanoma + TNBC stacked (two-row standalone panels) ──
+    fig, (ax_top, ax_bottom) = plt.subplots(2, 1, figsize=(6.5, 9.5))
+    _panel_a(ax_top, ax_bottom, data, data_tnbc)
+    fig.tight_layout()
+    save_panel(fig, "panel_A_bootstrap_validation", FIGURE_NAME, MAIN_OUTPUT)
+
+    fig, (ax_top, ax_bottom) = plt.subplots(2, 1, figsize=(6.5, 9.5))
+    _panel_b(ax_top, ax_bottom, data, data_tnbc)
+    fig.tight_layout()
+    save_panel(fig, "panel_B_loo_sensitivity", FIGURE_NAME, MAIN_OUTPUT)
 
     if bench_df is not None:
         fig_c = plt.figure(figsize=(14, 4.2))
@@ -1594,12 +1786,12 @@ def generate() -> None:
         fig_e.tight_layout()
         save_panel(fig_e, "panel_E_benchmark_lambda_gc", FIGURE_NAME, MAIN_OUTPUT)
 
-    fig, ax = plt.subplots(figsize=(6.5, 5))
-    _panel_d_se_comparison(ax, data)
+    fig, (ax_top, ax_bottom) = plt.subplots(2, 1, figsize=(6.5, 9.5))
+    _panel_d_se_comparison(ax_top, ax_bottom, data, data_tnbc)
     fig.tight_layout()
     save_panel(fig, "panel_F_se_comparison", FIGURE_NAME, MAIN_OUTPUT)
 
-    fig, ax = plt.subplots(figsize=(10, 7))
+    fig, ax = plt.subplots(figsize=(10, 9))
     _panel_e_cross_dataset(ax, data)
     fig.tight_layout()
     save_panel(fig, "panel_G_cross_dataset_effects", FIGURE_NAME, MAIN_OUTPUT)
@@ -1661,25 +1853,30 @@ def generate() -> None:
     plt.rcParams.update(_SMALL_RC)
 
     _mm = 1.0 / 25.4
-    fig_c = plt.figure(figsize=(180 * _mm, 235 * _mm))
+    fig_c = plt.figure(figsize=(180 * _mm, 290 * _mm))
 
-    # Row 0: A | B
-    # Row 1: (spacer — extra gap before C)
-    # Row 2: C — null-gene FPR curves
-    # Row 3: D | E — bias+RMSE grid | λ_GC (left to right)
+    # Row 0: [A: Melanoma/TNBC stacked] | [B: Melanoma/TNBC stacked]
+    # Row 1: (spacer — extra gap before C/D/E)
+    # Row 2: C — null-gene FPR curves (full width)
+    # Row 3: D | E — bias+RMSE grid | λ_GC (full width)
     # Row 4: (spacer — extra gap before F|G)
-    # Row 5: F | G
+    # Row 5: [F: Melanoma/TNBC stacked] | [G: forest plot]
     # Spacer height_ratios add whitespace; hspace is the remaining inter-row pad.
     outer = fig_c.add_gridspec(
         6, 1,
-        height_ratios=[1.0, 0.11, 0.95, 1.28, 0.11, 1.25],
-        hspace=0.28,
-        left=0.07, right=0.97, top=0.97, bottom=0.04,
+        height_ratios=[2.0, 0.035, 0.95, 1.28, 0.035, 2.55],
+        hspace=0.22,
+        left=0.07, right=0.97, top=0.975, bottom=0.035,
     )
 
-    gs0 = outer[0].subgridspec(1, 2, wspace=0.35)
-    ax_a = fig_c.add_subplot(gs0[0])
-    ax_b = fig_c.add_subplot(gs0[1])
+    # ── Row 0: A (left, stacked) | B (right, stacked) ──
+    gs_ab = outer[0].subgridspec(1, 2, wspace=0.35)
+    gs_a = gs_ab[0].subgridspec(2, 1, hspace=0.55)
+    ax_a_top = fig_c.add_subplot(gs_a[0])
+    ax_a_bot = fig_c.add_subplot(gs_a[1])
+    gs_b = gs_ab[1].subgridspec(2, 1, hspace=0.55)
+    ax_b_top = fig_c.add_subplot(gs_b[0])
+    ax_b_bot = fig_c.add_subplot(gs_b[1])
 
     _ax_sp_top = fig_c.add_subplot(outer[1])
     _ax_sp_top.set_axis_off()
@@ -1716,13 +1913,17 @@ def generate() -> None:
     _ax_sp_bot = fig_c.add_subplot(outer[4])
     _ax_sp_bot.set_axis_off()
 
-    gs_bot = outer[5].subgridspec(1, 2, wspace=0.38, width_ratios=[1, 1.45])
-    ax_f = fig_c.add_subplot(gs_bot[0])
-    ax_g = fig_c.add_subplot(gs_bot[1])
+    # ── Row 5: F (left, stacked) | G (right, single forest plot) ──
+    gs_fg = outer[5].subgridspec(1, 2, wspace=0.38, width_ratios=[1.0, 1.0])
+    gs_f = gs_fg[0].subgridspec(2, 1, hspace=0.55)
+    ax_f_top = fig_c.add_subplot(gs_f[0])
+    ax_f_bot = fig_c.add_subplot(gs_f[1])
 
-    _panel_a(ax_a, data)
-    _panel_b(ax_b, data)
-    _panel_d_se_comparison(ax_f, data)
+    ax_g = fig_c.add_subplot(gs_fg[1])
+
+    _panel_a(ax_a_top, ax_a_bot, data, data_tnbc, composite=True)
+    _panel_b(ax_b_top, ax_b_bot, data, data_tnbc)
+    _panel_d_se_comparison(ax_f_top, ax_f_bot, data, data_tnbc)
     _panel_e_cross_dataset(ax_g, data, composite=True)
 
     # Faceted panel D (bias/RMSE) can appear taller than single-axis λ_GC (E).
@@ -1733,14 +1934,19 @@ def generate() -> None:
     # ── Combined-panel-only adjustments ──
 
     _inside = {
-        ax_a: "upper right",
-        ax_b: "lower right",
-        ax_f: "lower right",
+        ax_a_top: "upper right",
+        ax_a_bot: "upper right",
+        ax_b_top: "lower right",
+        ax_b_bot: "lower right",
+        ax_f_top: "lower right",
+        ax_f_bot: "lower right",
         ax_g: "lower right",
     }
     _leg_fs_inside = {
-        ax_b: 5.2,
-        ax_f: 5.2,
+        ax_b_top: 5.2,
+        ax_b_bot: 5.2,
+        ax_f_top: 5.2,
+        ax_f_bot: 5.2,
     }
     for ax_target, loc in _inside.items():
         leg = ax_target.get_legend()
@@ -1758,17 +1964,16 @@ def generate() -> None:
             )
 
     # Shrink annotation text in composite
-    for txt in ax_a.texts:
-        if txt.get_fontsize() > 5:
-            txt.set_fontsize(max(txt.get_fontsize() * 0.55, 3.0))
-    for txt in ax_b.texts:
-        if txt.get_fontsize() > 5:
-            txt.set_fontsize(max(txt.get_fontsize() * 0.55, 3.0))
+    for ax_ in (ax_a_top, ax_a_bot, ax_b_top, ax_b_bot):
+        for txt in ax_.texts:
+            if txt.get_fontsize() > 5:
+                txt.set_fontsize(max(txt.get_fontsize() * 0.55, 3.0))
 
     # Cap hard-coded font sizes to composite maximum
     _cap_fontsize(fig_c, _MAX_FONT_COMPOSITE)
 
-    # Requested emphasis: make A and E (λ_GC, right column) slightly more readable.
+    # Requested emphasis: make A (top, melanoma) and E (λ_GC, right column)
+    # slightly more readable.
     def _raise_axis_fonts(ax, *, title_fs, label_fs, tick_fs, legend_fs, text_fs):
         ax.title.set_fontsize(max(ax.title.get_fontsize(), title_fs))
         ax.xaxis.label.set_fontsize(max(ax.xaxis.label.get_fontsize(), label_fs))
@@ -1782,7 +1987,11 @@ def generate() -> None:
                 txt.set_fontsize(max(txt.get_fontsize(), legend_fs))
 
     _raise_axis_fonts(
-        ax_a,
+        ax_a_top,
+        title_fs=6.8, label_fs=6.0, tick_fs=5.4, legend_fs=4.0, text_fs=4.6,
+    )
+    _raise_axis_fonts(
+        ax_a_bot,
         title_fs=6.8, label_fs=6.0, tick_fs=5.4, legend_fs=4.0, text_fs=4.6,
     )
     _raise_axis_fonts(
@@ -1792,12 +2001,14 @@ def generate() -> None:
 
     _lbl_fs = 7
     for ax, lbl in [
-        (ax_a, "A"), (ax_b, "B"),
+        (ax_a_top, "A"), (ax_b_top, "B"),
         (ax_e, "E"),
-        (ax_f, "F"), (ax_g, "G"),
+        (ax_f_top, "F"),
     ]:
         ax.text(-0.15, 1.12, lbl, transform=ax.transAxes,
                 fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    ax_g.text(-0.07, 1.05, "G", transform=ax_g.transAxes,
+              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
     ax_c_list = sub_c.get_axes()
     if ax_c_list:
         ax_c_list[0].text(
@@ -1824,7 +2035,11 @@ def generate() -> None:
     adata = data.get("adata")
     if adata is not None:
         del adata
+    adata_tnbc = data_tnbc.get("adata")
+    if adata_tnbc is not None:
+        del adata_tnbc
     del data
+    del data_tnbc
     clear_cache()
     gc.collect()
 
