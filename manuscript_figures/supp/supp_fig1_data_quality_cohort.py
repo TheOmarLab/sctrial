@@ -7,15 +7,14 @@ inference.  Supports Main Figure 1 (Problem & Framework).
 
 Panels
 ------
-  A  Study design summary table (matplotlib table).
-  B  Participant pairing structure per dataset.
-  C  Participant counts per arm × visit (grouped bar chart).
-  D  Cells per participant by arm (box + strip).
-  E  Genes detected per cell distributions by dataset and group.
-  F  Total counts + mito/ribo QC merged (1×2).
-  G  Lorenz curve + Gini inequality per dataset.
-  H  Post-QC threshold compliance per dataset.
-  I  Visit completeness per dataset.
+  A  Participant pairing structure per dataset.
+  B  Participant counts per arm × visit (grouped bar chart).
+  C  Cells per participant by arm (box + strip).
+  D  Genes detected per cell distributions by dataset and group.
+  E  Total counts + mito/ribo QC merged (1×2).
+  F  Lorenz curve + Gini inequality per dataset.
+  G  Post-QC threshold compliance per dataset.
+  H  Visit completeness per dataset.
 
 Non-overlap guardrail: no treatment-effect claims, no DiD estimates.
 """
@@ -23,6 +22,7 @@ Non-overlap guardrail: no treatment-effect claims, no DiD estimates.
 from __future__ import annotations
 
 import gc
+import math
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -41,6 +41,7 @@ from .._shared import (
     harmonize_response,
     get_aml,
     get_cart,
+    get_tnbc_zhang,
     save_panel,
 )
 
@@ -49,11 +50,12 @@ FIGURE_NAME = "SuppFig1_data_quality_cohort"
 # ── dataset registry ─────────────────────────────────────────────────
 
 _DS_PALETTE = dict(zip(
-    ["Melanoma", "COVID-19", "Vaccine", "AML", "CAR-T"],
-    ["#1b9e77", "#d95f02", "#7570b3", "#e7298a", "#66a61e"],
+    ["TNBC", "Melanoma", "COVID-19", "Vaccine", "AML", "CAR-T"],
+    ["#996633", "#1b9e77", "#d95f02", "#7570b3", "#e7298a", "#66a61e"],
 ))
 
 DATASETS = [
+    ("TNBC", lambda: get_tnbc_zhang()),
     ("Melanoma", get_sade_feldman),
     ("COVID-19", get_stephenson),
     ("Vaccine", get_vaccine),
@@ -104,7 +106,16 @@ _DESIGN_META = {
         "visits": "Pre, Post",
         "estimand": "Δ (single-arm)",
     },
+    "TNBC": {
+        "design": "Pre/post anti-PD-L1 + chemo vs chemo",
+        "pairing": "Paired",
+        "arms": "anti-PDL1+Chemo vs Chemo",
+        "indication": "Triple-negative breast cancer",
+        "visits": "Pre, Post",
+        "estimand": "DiD (two-arm)",
+    },
 }
+
 
 # ── helpers ──────────────────────────────────────────────────────────
 
@@ -124,10 +135,41 @@ def _visit_col(obs):
 
 
 def _arm_col(obs):
-    for c in ("response", "severity", "therapy", "condition"):
+    for c in ("response", "severity", "therapy", "condition", "arm"):
         if c in obs.columns and obs[c].nunique() > 1:
             return c
     return None
+
+
+# Known chronological visit-label orderings. Plain alphabetical sort puts
+# "Post" before "Pre" (P-o < P-r), which is backwards — this table lets
+# panel B (and anywhere else ordering matters) request the correct order.
+_VISIT_ORDER_KNOWN = [
+    ["Pre", "Post"],
+    ["Baseline", "Pre", "Post"],
+    ["D0", "D28"],
+]
+
+
+def _visit_sort_order(values) -> list:
+    """Return *values* in chronological order.
+
+    Checks known pre/post-style orderings first; falls back to natural
+    (numeric-aware) sort for things like day-numbered visits not already
+    covered, so e.g. "D2" sorts before "D10".
+    """
+    vals = list(values)
+    val_set = set(vals)
+    for known in _VISIT_ORDER_KNOWN:
+        if val_set == set(known):
+            return known
+
+    def _natural_key(v):
+        import re
+        parts = re.split(r"(\d+)", str(v))
+        return [int(p) if p.isdigit() else p for p in parts]
+
+    return sorted(vals, key=_natural_key)
 
 
 def _get_ngenes(adata) -> np.ndarray:
@@ -246,54 +288,7 @@ def _load_all() -> dict:
     return loaded
 
 
-# ── Panel A: Study design summary table ──────────────────────────────
-
-
-def _panel_design_table(ax, loaded: dict):
-    """Render _DESIGN_META as a matplotlib table."""
-    col_labels = ["Dataset", "Design", "Arms", "Visits", "Pairing",
-                  "Estimand", "Indication", "Participants", "Cells"]
-    rows = []
-    for name in loaded:
-        meta = _DESIGN_META.get(name, {})
-        rows.append([
-            name,
-            meta.get("design", "—"),
-            meta.get("arms", "—"),
-            meta.get("visits", "—"),
-            meta.get("pairing", "—"),
-            meta.get("estimand", "—"),
-            meta.get("indication", "—"),
-            f"{loaded[name]['n_participants']:,}",
-            f"{loaded[name]['n_cells']:,}",
-        ])
-
-    ax.axis("off")
-    table = ax.table(
-        cellText=rows, colLabels=col_labels,
-        loc="center", cellLoc="center",
-    )
-    table.auto_set_font_size(False)
-    table.set_fontsize(8)
-    table.scale(1.0, 1.6)
-
-    # Style header row
-    for j in range(len(col_labels)):
-        cell = table[0, j]
-        cell.set_facecolor("#2c3e50")
-        cell.set_text_props(color="white", fontweight="bold")
-
-    # Alternate row colors
-    for i in range(1, len(rows) + 1):
-        color = "#ecf0f1" if i % 2 == 0 else "white"
-        for j in range(len(col_labels)):
-            table[i, j].set_facecolor(color)
-
-    ax.set_title("Study Design and Cohort Summary", fontweight="bold",
-                 fontsize=11, pad=12)
-
-
-# ── Panel B: Participant pairing structure ────────────────────────────
+# ── Panel A: Participant pairing structure ────────────────────────────
 
 
 def _panel_pairing(ax, loaded: dict):
@@ -334,17 +329,17 @@ def _panel_pairing(ax, loaded: dict):
     x = np.arange(len(ds_names))
     w = 0.35
 
-    ax.bar(x - w/2, n_paired_list, w, color="#2ecc71", edgecolor="white",
+    ax.bar(x - w / 2, n_paired_list, w, color="#2ecc71", edgecolor="white",
            label="Paired (\u22652 visits)")
-    ax.bar(x + w/2, n_unpaired_list, w, color="#e74c3c", edgecolor="white",
+    ax.bar(x + w / 2, n_unpaired_list, w, color="#e74c3c", edgecolor="white",
            label="Unpaired (1 visit)")
 
     for i, (p, u) in enumerate(zip(n_paired_list, n_unpaired_list)):
         if p > 0:
-            ax.text(i - w/2, p + 0.5, str(p), ha="center", va="bottom",
+            ax.text(i - w / 2, p + 0.5, str(p), ha="center", va="bottom",
                     fontsize=7, fontweight="bold")
         if u > 0:
-            ax.text(i + w/2, u + 0.5, str(u), ha="center", va="bottom",
+            ax.text(i + w / 2, u + 0.5, str(u), ha="center", va="bottom",
                     fontsize=7, fontweight="bold")
 
     ax.set_xticks(x)
@@ -355,7 +350,7 @@ def _panel_pairing(ax, loaded: dict):
     despine(ax)
 
 
-# ── Panel C: Participant counts per arm × visit ──────────────────────
+# ── Panel B: Participant counts per arm × visit ──────────────────────
 
 
 def _panel_participant_counts(fig, loaded: dict):
@@ -409,13 +404,15 @@ def _panel_participant_counts(fig, loaded: dict):
         # Drop zero-count bins from unobserved categorical combos
         grp = grp[grp["N"] > 0]
 
+        _order = _visit_sort_order(grp[x_col].unique()) if x_col == "Visit" else None
+
         if hue_col:
-            sns.barplot(data=grp, x=x_col, y="N", hue=hue_col,
+            sns.barplot(data=grp, x=x_col, y="N", hue=hue_col, order=_order,
                         palette="Dark2", edgecolor="white", ax=ax)
             ax.legend(fontsize=6, title=hue_col, title_fontsize=7,
                       loc="upper right", frameon=True)
         else:
-            sns.barplot(data=grp, x=x_col, y="N",
+            sns.barplot(data=grp, x=x_col, y="N", order=_order,
                         color="#1b9e77", edgecolor="white", ax=ax)
 
         # Annotate bar values
@@ -437,7 +434,7 @@ def _panel_participant_counts(fig, loaded: dict):
     fig.suptitle("Participants per Arm × Visit", fontweight="bold", fontsize=11)
 
 
-# ── Panel D: Cells per participant per arm ────────────────────────────
+# ── Panel C: Cells per participant per arm ────────────────────────────
 
 
 def _panel_cells_per_pid_arm(ax, loaded: dict):
@@ -490,7 +487,7 @@ def _panel_cells_per_pid_arm(ax, loaded: dict):
     despine(ax)
 
 
-# ── Panel E: n_genes distributions ──────────────────────────────────
+# ── Panel D: n_genes distributions ──────────────────────────────────
 
 
 def _panel_ngenes_dist(ax, loaded: dict):
@@ -507,7 +504,9 @@ def _panel_ngenes_dist(ax, loaded: dict):
 
         split_col = vis if vis and vis in obs.columns and obs[vis].nunique() > 1 else arm
         if split_col and split_col in obs.columns:
-            for val in sorted(obs[split_col].dropna().unique()):
+            _vals = obs[split_col].dropna().unique()
+            _ordered = _visit_sort_order(_vals) if split_col == vis else sorted(_vals)
+            for val in _ordered:
                 mask = obs[split_col].values == val
                 sub_idx = idx[mask[idx]]
                 if len(sub_idx) > 0:
@@ -536,7 +535,7 @@ def _panel_ngenes_dist(ax, loaded: dict):
     despine(ax)
 
 
-# ── Panel F helper: total_counts distributions ──────────────────────
+# ── Panel E helper: total_counts distributions ──────────────────────
 
 
 def _panel_counts_dist(ax, loaded: dict):
@@ -553,7 +552,9 @@ def _panel_counts_dist(ax, loaded: dict):
 
         split_col = vis if vis and vis in obs.columns and obs[vis].nunique() > 1 else arm
         if split_col and split_col in obs.columns:
-            for val in sorted(obs[split_col].dropna().unique()):
+            _vals = obs[split_col].dropna().unique()
+            _ordered = _visit_sort_order(_vals) if split_col == vis else sorted(_vals)
+            for val in _ordered:
                 mask = obs[split_col].values == val
                 sub_idx = idx[mask[idx]]
                 if len(sub_idx) > 0:
@@ -581,7 +582,7 @@ def _panel_counts_dist(ax, loaded: dict):
     despine(ax)
 
 
-# ── Panel F: % mito and % ribosomal ─────────────────────────────────
+# ── Panel E: % mito and % ribosomal ─────────────────────────────────
 
 
 def _panel_mito_ribo(ax, loaded: dict):
@@ -628,17 +629,17 @@ def _panel_mito_ribo(ax, loaded: dict):
     despine(ax)
 
 
-# ── Panel F merged: Total counts + mito/ribo in 1×2 ──────────────────
+# ── Panel E merged: Total counts + mito/ribo in 1×2 ──────────────────
 
 
 def _panel_counts_mito_merged(fig_merged, loaded: dict):
-    """F: Combined total counts + mito/ribo QC in 1×2 subplot."""
+    """E: Combined total counts + mito/ribo QC in 1×2 subplot."""
     ax1, ax2 = fig_merged.subplots(1, 2)
     _panel_counts_dist(ax1, loaded)
     _panel_mito_ribo(ax2, loaded)
 
 
-# ── Panel H: QC attrition waterfall ──────────────────────────────────
+# ── Panel G: QC attrition waterfall ──────────────────────────────────
 
 
 def _panel_qc_waterfall(ax, loaded: dict):
@@ -699,7 +700,7 @@ def _panel_qc_waterfall(ax, loaded: dict):
     despine(ax)
 
 
-# ── Panel G: Lorenz curve + Gini per dataset ─────────────────────────
+# ── Panel F: Lorenz curve + Gini per dataset ─────────────────────────
 
 
 def _panel_lorenz_gini(ax, loaded: dict):
@@ -718,7 +719,7 @@ def _panel_lorenz_gini(ax, loaded: dict):
             gini = 1 - 2 * np.trapz(y_lorenz, x_lorenz)
         except Exception:
             gini = 1 - 2 * np.trapezoid(y_lorenz, x_lorenz)
-            
+
         ax.plot(x_lorenz, y_lorenz, linewidth=1.5,
                 color=_DS_PALETTE.get(name, "black"),
                 label=f"{name} (Gini={gini:.2f})")
@@ -736,7 +737,7 @@ def _panel_lorenz_gini(ax, loaded: dict):
     despine(ax)
 
 
-# ── Panel I: Visit completeness ──────────────────────────────────────
+# ── Panel H: Visit completeness ──────────────────────────────────────
 
 
 def _panel_completeness_detailed(ax, loaded: dict):
@@ -750,7 +751,7 @@ def _panel_completeness_detailed(ax, loaded: dict):
             continue
 
         if vis and vis in obs.columns and obs[vis].nunique() > 1:
-            visits = sorted(obs[vis].dropna().unique())
+            visits = _visit_sort_order(obs[vis].dropna().unique())
             participants = sorted(obs[pid].dropna().unique())
             for v in visits:
                 n_total = len(participants)
@@ -792,6 +793,7 @@ def _panel_completeness_detailed(ax, loaded: dict):
     ax.set_xlim(0, 1.15)
     ax.set_xlabel("Fraction of participants with cells")
     ax.set_title("Visit Completeness", fontweight="bold")
+    ax.invert_yaxis()
     despine(ax)
 
 
@@ -803,7 +805,7 @@ def _panel_completeness_detailed(ax, loaded: dict):
 def generate():
     """Create and save Supplementary Figure 1 panels.
 
-    Layout (8 panels):
+    Layout (8 panels, A–H):
       A  Participant pairing structure
       B  Participant counts per arm × visit
       C  Cells per participant by arm
@@ -902,14 +904,13 @@ def generate():
     _mm = 1.0 / 25.4
     fig_c = plt.figure(figsize=(180 * _mm, 215 * _mm))
 
-    #   Row 0: A (pairing)   | B (Melanoma, COVID-19, Vaccine)
-    #   Row 1: C (cells/pid) | B (AML, CAR-T centred)
+    #   Row 0: A (pairing)   | B (first half of datasets)
+    #   Row 1: C (cells/pid) | B (remaining datasets, centred)
     #   Row 2: D (genes) | E_counts | E_mito
     #   Row 3: F (Lorenz) | G (QC waterfall) | H (completeness)
-    import math
     n_ds = len(loaded)
     ds_names = list(loaded.keys())
-    n_b_cols = math.ceil(n_ds / 2)  # datasets per row (3 for 5 datasets)
+    n_b_cols = math.ceil(n_ds / 2)  # datasets per row
     b_rows = [ds_names[i:i + n_b_cols] for i in range(0, n_ds, n_b_cols)]
 
     outer = fig_c.add_gridspec(
@@ -924,8 +925,8 @@ def generate():
     # widths are equal and each B subplot has the same width.
     ax_b_list = []
 
-    # Row 0: A | B (full — 3 datasets)
-    _left_w = 2.2   # wider left panel → narrower B subplots
+    # Row 0: A | B (full row of datasets)
+    _left_w = 2.2  # wider left panel → narrower B subplots
     b_row0 = b_rows[0]
     gs0 = outer[0].subgridspec(
         1, 1 + n_b_cols, wspace=0.40,
@@ -935,7 +936,7 @@ def generate():
     for j, nm in enumerate(b_row0):
         ax_b_list.append((fig_c.add_subplot(gs0[1 + j]), nm))
 
-    # Row 1: C | B (partial — 2 datasets, centred)
+    # Row 1: C | B (remaining datasets, centred if fewer than n_b_cols)
     b_row1 = b_rows[1] if len(b_rows) > 1 else []
     n_have = len(b_row1)
     n_gap = n_b_cols - n_have
@@ -980,7 +981,7 @@ def generate():
     _panel_cells_per_pid_arm(ax_c, loaded)
     _panel_ngenes_dist(ax_d, loaded)
 
-    # Draw Panel B subfigs across 3 rows
+    # Draw Panel B subfigs across rows
     for ax_bi, name_bi in ax_b_list:
         data_bi = loaded[name_bi]
         obs_bi = data_bi["adata"].obs
@@ -993,11 +994,12 @@ def generate():
             continue
         if arm_bi and vis_bi and arm_bi in obs_bi.columns and vis_bi in obs_bi.columns:
             grp = (obs_bi.assign(**{arm_bi: obs_bi[arm_bi].astype(str),
-                                     vis_bi: obs_bi[vis_bi].astype(str)})
+                                    vis_bi: obs_bi[vis_bi].astype(str)})
                    .groupby([arm_bi, vis_bi], observed=True)[pid_bi]
                    .nunique().reset_index(name="N"))
             grp.rename(columns={arm_bi: "Arm", vis_bi: "Visit"}, inplace=True)
             sns.barplot(data=grp, x="Visit", y="N", hue="Arm",
+                        order=_visit_sort_order(grp["Visit"].unique()),
                         palette="Dark2", edgecolor="white", ax=ax_bi)
             leg_bi = ax_bi.get_legend()
             if leg_bi:
@@ -1008,6 +1010,7 @@ def generate():
                    .nunique().reset_index(name="N"))
             grp.rename(columns={vis_bi: "Visit"}, inplace=True)
             sns.barplot(data=grp, x="Visit", y="N", width=0.4,
+                        order=_visit_sort_order(grp["Visit"].unique()),
                         color="#1b9e77", edgecolor="white", ax=ax_bi)
         elif arm_bi and arm_bi in obs_bi.columns:
             grp = (obs_bi.assign(**{arm_bi: obs_bi[arm_bi].astype(str)})
@@ -1124,7 +1127,7 @@ def generate():
     fig_c.savefig(str(pdf_path), format="pdf", bbox_inches="tight",
                   facecolor="white")
     plt.close(fig_c)
-    print(f"    Saved combined artboard (PNG + PDF)")
+    print("    Saved combined artboard (PNG + PDF)")
 
     # Cleanup
     for data in loaded.values():
