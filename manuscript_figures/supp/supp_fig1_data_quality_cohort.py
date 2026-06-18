@@ -471,18 +471,58 @@ def _panel_cells_per_pid_arm(ax, loaded: dict):
     df = pd.concat(rows, ignore_index=True)
     df["Cells_log"] = np.log10(df["Cells"] + 1)
 
-    sns.boxplot(data=df, x="Dataset", y="Cells_log", hue="Arm",
-                order=list(loaded.keys()), fliersize=0, linewidth=1.0,
-                width=0.85, palette="Dark2", ax=ax)
-    sns.stripplot(data=df, x="Dataset", y="Cells_log", hue="Arm",
-                  order=list(loaded.keys()), dodge=True, size=3.5, alpha=0.5,
-                  palette="Dark2", ax=ax, legend=False)
+    # Use categorical positions explicitly to avoid seaborn 0.13 dodge centering bug
+    ds_order = list(loaded.keys())
+    arms_present = sorted(df["Arm"].unique())
+    n_arms = len(arms_present)
+    arm_colors = dict(zip(arms_present, sns.color_palette("Dark2", n_arms)))
 
+    # Box width based on max arms any single dataset has
+    max_arms_per_ds = max(
+        len(df[df["Dataset"] == ds]["Arm"].unique())
+        for ds in ds_order
+    )
+    box_width = 0.7 / max_arms_per_ds
+    for tick_idx, ds_name in enumerate(ds_order):
+        ds_df = df[df["Dataset"] == ds_name]
+        ds_arms = sorted(ds_df["Arm"].unique())
+        n_ds_arms = len(ds_arms)
+        # Center this dataset's boxes around tick_idx
+        offsets = np.linspace(-(n_ds_arms - 1) / 2 * box_width,
+                              (n_ds_arms - 1) / 2 * box_width,
+                              n_ds_arms)
+        for arm, off in zip(ds_arms, offsets):
+            arm_df = ds_df[ds_df["Arm"] == arm]["Cells_log"].dropna()
+            if len(arm_df) == 0:
+                continue
+            color = arm_colors.get(arm, "grey")
+            bp = ax.boxplot(arm_df, positions=[tick_idx + off],
+                            widths=box_width * 0.85,
+                            patch_artist=True,
+                            showfliers=False,
+                            medianprops=dict(color="black", linewidth=1.5),
+                            boxprops=dict(facecolor=color, alpha=0.8,
+                                          linewidth=0.8),
+                            whiskerprops=dict(linewidth=0.8),
+                            capprops=dict(linewidth=0.8))
+            # Strip dots
+            jitter = np.random.default_rng(42).uniform(
+                -box_width * 0.3, box_width * 0.3, len(arm_df))
+            ax.scatter(tick_idx + off + jitter, arm_df.values,
+                       s=4, color=color, alpha=0.5, zorder=3)
+
+    ax.set_xticks(range(len(ds_order)))
+    ax.set_xticklabels(ds_order)
+
+    ax.set_xticks(range(len(ds_order)))
+    ax.set_xticklabels(ds_order)
     ax.set_xlabel("")
     ax.set_ylabel(r"$\log_{10}$(cells per participant + 1)")
     ax.set_title("Cells per Participant by Arm", fontweight="bold")
-    ax.legend(fontsize=6, title="Arm", title_fontsize=7, loc="upper right",
-              frameon=True, ncol=2)
+    from matplotlib.patches import Patch
+    handles = [Patch(facecolor=arm_colors[a], label=a) for a in arms_present]
+    ax.legend(handles=handles, fontsize=6, title="Arm", title_fontsize=7,
+              loc="upper right", frameon=True, ncol=3)
     ax.tick_params(axis="x", rotation=15)
     despine(ax)
 
@@ -525,7 +565,38 @@ def _panel_ngenes_dist(ax, loaded: dict):
 
     sns.violinplot(data=df, x="Dataset", y="Genes", hue="Group",
                    order=order, cut=0, inner="quartile", linewidth=0.5,
-                   palette="Dark2", density_norm="width", ax=ax)
+                   palette="Dark2", density_norm="width", width=0.8, ax=ax)
+
+    # Re-center violins: seaborn 0.13 offsets groups as if all hue levels
+    # are present at every tick; shift each dataset's violin block to center.
+    from matplotlib.collections import PolyCollection
+    n_datasets = len(order)
+    polys = [c for c in ax.collections if isinstance(c, PolyCollection)]
+    # Compute offset per poly and store (original_center -> offset) mapping
+    offsets_map = {}
+    for tick_idx in range(n_datasets):
+        tick_polys = [p for p in polys
+                      if abs(p.get_paths()[0].vertices[:, 0].mean() - tick_idx) < 0.6]
+        if not tick_polys:
+            continue
+        xs = [p.get_paths()[0].vertices[:, 0].mean() for p in tick_polys]
+        group_center = (min(xs) + max(xs)) / 2
+        offset = tick_idx - group_center
+        for p in tick_polys:
+            orig_center = p.get_paths()[0].vertices[:, 0].mean()
+            offsets_map[round(orig_center, 6)] = offset
+            verts = p.get_paths()[0].vertices
+            verts[:, 0] += offset
+    # Shift quartile lines stored in ax.lines
+    for line in ax.lines:
+        xdata = np.array(line.get_xdata(), dtype=float)
+        if len(xdata) == 0:
+            continue
+        x_center = round(float(xdata.mean()), 6)
+        # Find closest key in offsets_map
+        best_key = min(offsets_map.keys(), key=lambda k: abs(k - x_center), default=None)
+        if best_key is not None and abs(best_key - x_center) < 0.5:
+            line.set_xdata(xdata + offsets_map[best_key])
     ax.set_xlabel("")
     ax.set_ylabel("Genes detected per cell")
     ax.set_title("Gene Detection by Dataset & Group", fontweight="bold")
@@ -573,7 +644,34 @@ def _panel_counts_dist(ax, loaded: dict):
 
     sns.violinplot(data=df, x="Dataset", y="Counts", hue="Group",
                    order=order, cut=0, inner="quartile", linewidth=0.5,
-                   palette="Dark2", density_norm="width", ax=ax)
+                   palette="Dark2", density_norm="width", width=0.8, ax=ax)
+
+    # Re-center violins per dataset tick
+    from matplotlib.collections import PolyCollection
+    n_datasets = len(order)
+    polys = [c for c in ax.collections if isinstance(c, PolyCollection)]
+    offsets_map = {}
+    for tick_idx in range(n_datasets):
+        tick_polys = [p for p in polys
+                      if abs(p.get_paths()[0].vertices[:, 0].mean() - tick_idx) < 0.6]
+        if not tick_polys:
+            continue
+        xs = [p.get_paths()[0].vertices[:, 0].mean() for p in tick_polys]
+        group_center = (min(xs) + max(xs)) / 2
+        offset = tick_idx - group_center
+        for p in tick_polys:
+            orig_center = p.get_paths()[0].vertices[:, 0].mean()
+            offsets_map[round(orig_center, 6)] = offset
+            verts = p.get_paths()[0].vertices
+            verts[:, 0] += offset
+    for line in ax.lines:
+        xdata = np.array(line.get_xdata(), dtype=float)
+        if len(xdata) == 0:
+            continue
+        x_center = round(float(xdata.mean()), 6)
+        best_key = min(offsets_map.keys(), key=lambda k: abs(k - x_center), default=None)
+        if best_key is not None and abs(best_key - x_center) < 0.5:
+            line.set_xdata(xdata + offsets_map[best_key])
     ax.set_xlabel("")
     ax.set_ylabel(r"$\log_{10}$(total counts + 1)")
     ax.set_title("Sequencing Depth by Dataset & Group", fontweight="bold")
@@ -836,8 +934,7 @@ def generate():
     save_panel(fig, "panel_B", FIGURE_NAME, SUPP_OUTPUT)
 
     # Panel C: Cells per participant by arm
-    fig, ax = plt.subplots(figsize=(9, 5))
-    _panel_cells_per_pid_arm(ax, loaded)
+    fig, ax = plt.subplots(figsize=(13, 5))
     fig.tight_layout()
     save_panel(fig, "panel_C", FIGURE_NAME, SUPP_OUTPUT)
 
@@ -1049,8 +1146,8 @@ def generate():
     # Move legends inside plots for the composite
     _inside = {
         ax_a: dict(loc="upper left", ncol=1),
-        ax_c: dict(loc="upper right", ncol=2),
-        ax_d: dict(loc="upper right", ncol=2),
+        ax_c: dict(loc="upper right", ncol=3),
+        ax_d: dict(loc="upper right", ncol=3),
         ax_f: dict(loc="upper left", ncol=1),
     }
     for ax_target, kw in _inside.items():
