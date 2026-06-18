@@ -2,16 +2,24 @@
 Supplementary Figure 6 - Participant heterogeneity and temporal dynamics.
 
 Panels:
-  A  Sade-Feldman individual-effect raincloud (violin+strip+boxplot).
-  B  Sade-Feldman participant x feature heatmap.
-  C  Sade-Feldman response-stratified boxplots with Hedges' g.
-  D  Sade-Feldman variance decomposition.
-  E  Sade-Feldman direction-diversity profile.
-  F  Cross-dataset SD bars.
-  G  Cross-dataset heterogeneity scatter.
-  H  Sade-Feldman within-arm change profile.
-  I  Single-arm datasets within-arm profile.
-  J  Cross-dataset treated-arm fold-change concordance.
+  Row 1 — Melanoma (Sade-Feldman):
+  A  Sade-Feldman participant x feature heatmap.
+  B  Sade-Feldman variance decomposition.
+  C  Sade-Feldman direction-diversity profile.
+
+  Row 2 — TNBC (Zhang):
+  D  TNBC participant x feature heatmap.
+  E  TNBC variance decomposition.
+  F  TNBC direction-diversity profile.
+
+  Row 3 — Cross-dataset + temporal:
+  G  Cross-dataset SD bars.
+  H  Cross-dataset heterogeneity scatter.
+  I  Sade-Feldman within-arm change profile.
+
+  Row 4 — Single-arm + concordance:
+  J  Single-arm datasets within-arm profile.
+  K  Cross-dataset treated-arm fold-change concordance.
 """
 
 from __future__ import annotations
@@ -37,6 +45,7 @@ from .._shared import (
     harmonize_response,
     get_aml,
     get_cart,
+    get_tnbc_zhang,
     save_panel,
 )
 
@@ -55,7 +64,7 @@ _DATASET_CFG = {
         "layer": "log1p_tpm",
         "participant_col": "participant_id",
         "visit_col": "visit",
-        "arm_col": "response",
+        "arm_col": "response_harmonized",
         "arm_treated": "Responder",
         "arm_control": "Non-responder",
         "visits": ("Pre", "Post"),
@@ -107,12 +116,25 @@ _DATASET_CFG = {
         "arm_treated": None,
         "visits": ("Pre", "Post"),
     },
+    "TNBC": {
+        "design": "two_arm",
+        "loader": get_tnbc_zhang,
+        "harmonize": False,
+        "layer": "log1p_norm",
+        "participant_col": "participant_id",
+        "visit_col": "visit",
+        "arm_col": "arm",
+        "arm_treated": "anti-PDL1+Chemo",
+        "arm_control": "Chemo",
+        "visits": ("Pre", "Post"),
+    },
 }
 
 # Design-type label for legend annotations
 _DESIGN_LABEL: dict[str, str] = {
     "Melanoma": "DiD",
     "COVID-19": "DiD",
+    "TNBC": "DiD",
     "AML": "Δ",
     "CAR-T": "Δ",
     "Vaccine": "Δ",
@@ -125,13 +147,14 @@ def _ds_label(name: str) -> str:
     return f"{name} ({tag})" if tag else name
 
 _DS_COLORS = dict(zip(_DATASET_CFG.keys(),
-    ["#1b9e77", "#d95f02", "#7570b3", "#e7298a", "#66a61e"]))
+    ["#1b9e77", "#d95f02", "#7570b3", "#e7298a", "#66a61e", "#a6761d"]))
 _DS_MARKERS = {
     "Melanoma": "o",
     "AML": "s",
     "CAR-T": "D",
     "COVID-19": "P",
     "Vaccine": "X",
+    "TNBC": "^",
 }
 
 
@@ -222,56 +245,8 @@ def _load_all() -> dict[str, dict]:
     return out
 
 
-def _panel_raincloud(ax, effects: pd.DataFrame, features: list[str],
-                     treated: str, control: str, title: str,
-                     composite: bool = False):
-    """Raincloud plot: half-violin + jittered strip + narrow boxplot."""
-    if effects is None or effects.empty:
-        ax.text(0.5, 0.5, "No paired effects", ha="center", va="center",
-                transform=ax.transAxes)
-        ax.axis("off")
-        return
-
-    feat_order = effects[features].mean().sort_values().index.tolist()
-    long = effects.melt(id_vars=["participant_id", "arm"], value_vars=feat_order,
-                        var_name="feature", value_name="effect")
-
-    palette = {treated: COLORS["treated"], control: COLORS["control"]}
-    if treated == control:
-        palette = {treated: COLORS["treated"]}
-
-    _vln_lw = 0.3 if composite else 0.5
-    _strip_s = 1.5 if composite else 2
-    _box_w = 0.25 if composite else 0.12
-    _box_lw = 0.4 if composite else 0.7
-    _leg_fs = 5 if composite else 8
-
-    sns.violinplot(data=long, x="feature", y="effect", hue="arm",
-                   palette=palette, inner=None, cut=0, linewidth=_vln_lw,
-                   order=feat_order, ax=ax, alpha=0.45, dodge=True)
-    sns.stripplot(data=long, x="feature", y="effect", hue="arm",
-                  palette=palette, size=_strip_s, alpha=0.3, jitter=0.12,
-                  order=feat_order, dodge=True, ax=ax, legend=False)
-    sns.boxplot(data=long, x="feature", y="effect", hue="arm",
-                palette=palette, width=_box_w, showfliers=False,
-                order=feat_order, ax=ax, linewidth=_box_lw,
-                boxprops=dict(zorder=5), legend=False)
-
-    ax.axhline(0, color="black", lw=0.8, ls="--", alpha=0.5)
-    ax.set_xticks(range(len(feat_order)))
-    ax.set_xticklabels(feat_order, rotation=40, ha="right", fontsize=8)
-    ax.set_ylabel("Participant effect (Post − Pre)")
-    ax.set_title(title, fontweight="bold")
-    handles, labels = ax.get_legend_handles_labels()
-    seen = {}
-    for h, lbl in zip(handles, labels):
-        if lbl not in seen:
-            seen[lbl] = h
-    ax.legend(seen.values(), seen.keys(), fontsize=_leg_fs, frameon=True)
-    despine(ax)
-
-
-def _panel_heatmap(ax, effects: pd.DataFrame, features: list[str], title: str):
+def _panel_heatmap(ax, effects: pd.DataFrame, features: list[str], title: str,
+                   composite: bool = False, responder_ids=None):
     if effects is None or effects.empty:
         ax.text(0.5, 0.5, "No paired effects", ha="center", va="center", transform=ax.transAxes)
         ax.axis("off")
@@ -294,68 +269,33 @@ def _panel_heatmap(ax, effects: pd.DataFrame, features: list[str], title: str):
         linewidths=0.2,
         linecolor="white",
     )
-    ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right", fontsize=8)
+    _xtk_fs = 5 if composite else 8
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right", fontsize=_xtk_fs)
     ax.set_title(title, fontweight="bold")
     ax.set_ylabel("Participants")
 
-
-def _hedges_g(x: np.ndarray, y: np.ndarray) -> float:
-    """Hedges' g (bias-corrected standardised mean difference)."""
-    nx, ny = len(x), len(y)
-    if nx < 2 or ny < 2:
-        return np.nan
-    pooled = np.sqrt(((nx - 1) * np.var(x, ddof=1) + (ny - 1) * np.var(y, ddof=1))
-                     / (nx + ny - 2))
-    if pooled < 1e-12:
-        return 0.0
-    d = (np.mean(x) - np.mean(y)) / pooled
-    # Hedges' correction factor
-    df = nx + ny - 2
-    cf = 1 - 3 / (4 * df - 1) if df > 1 else 1.0
-    return float(d * cf)
-
-
-def _panel_response_box(ax, effects: pd.DataFrame, features: list[str],
-                        treated: str, control: str, title: str,
-                        composite: bool = False):
-    if effects is None or effects.empty:
-        ax.text(0.5, 0.5, "No paired effects", ha="center", va="center",
-                transform=ax.transAxes)
-        ax.axis("off")
-        return
-
-    avail = [f for f in features if f in effects.columns]
-    top = effects[avail].std().sort_values(ascending=False).head(8).index.tolist()
-    long = effects.melt(id_vars=["participant_id", "arm"], value_vars=top,
-                        var_name="feature", value_name="effect")
-    palette = {treated: COLORS["treated"], control: COLORS["control"]}
-    if treated == control:
-        palette = {treated: COLORS["treated"]}
-
-    sns.boxplot(data=long, x="feature", y="effect", hue="arm", palette=palette,
-                linewidth=0.8, fliersize=1.5, ax=ax)
-    ax.axhline(0, color="black", lw=0.8, ls="--")
-
-    if treated != control:
-        for i, feat in enumerate(top):
-            t_vals = effects.loc[effects["arm"] == treated, feat].dropna().values
-            c_vals = effects.loc[effects["arm"] == control, feat].dropna().values
-            g = _hedges_g(t_vals, c_vals)
-            if np.isfinite(g):
-                ymax = long.loc[long["feature"] == feat, "effect"].max()
-                ax.text(i, ymax + 0.02 * (ax.get_ylim()[1] - ax.get_ylim()[0]),
-                        f"g={g:.2f}", ha="center", va="bottom", fontsize=6.5,
-                        fontstyle="italic", color="grey")
-
-    for tick in ax.get_xticklabels():
-        tick.set_rotation(35)
-        tick.set_ha("right")
-        tick.set_fontsize(8)
-    ax.set_title(title, fontweight="bold")
-    _leg_fs = 5 if composite else 7
-    _leg_loc = "lower right" if composite else "best"
-    ax.legend(fontsize=_leg_fs, frameon=True, title="Arm", loc=_leg_loc)
-    despine(ax)
+    if responder_ids is not None:
+        pid_order = mat.index.tolist()
+        n = len(pid_order)
+        # seaborn heatmap: row i sits at y = n - i - 0.5 (top-to-bottom)
+        resp_y = [n - i - 0.5 for i, pid in enumerate(pid_order) if pid in set(responder_ids)]
+        if resp_y:
+            _star_s = 14 if composite else 30
+            _leg_fs = 4 if composite else 7
+            ax.scatter(
+                [-0.6] * len(resp_y), resp_y,
+                marker="*", color="#FFD700", edgecolors="#B8860B",
+                linewidths=0.3, s=_star_s, zorder=6, clip_on=False,
+                label="Responder",
+            )
+            from matplotlib.lines import Line2D
+            ax.legend(
+                handles=[Line2D([0], [0], marker="*", color="w",
+                                markerfacecolor="#FFD700", markeredgecolor="#B8860B",
+                                markeredgewidth=0.3,
+                                markersize=5 if composite else 8, label="Responder")],
+                fontsize=_leg_fs, frameon=True, loc="lower right",
+            )
 
 
 def _panel_variance_decomp(ax, effects: pd.DataFrame, features: list[str], title: str,
@@ -533,8 +473,8 @@ def _panel_sd_scatter(ax, data: dict[str, dict], composite: bool = False):
     ax.set_ylabel("SD (other dataset)")
     ax.set_title("Cross-dataset SD concordance", fontweight="bold")
     if composite:
-        ax.legend(fontsize=5, frameon=True, markerscale=0.6,
-                  loc="upper center", ncol=2)
+        ax.legend(fontsize=5, frameon=True, markerscale=1.0,
+                  loc="upper left", ncol=1)
     else:
         ax.legend(fontsize=7, frameon=True)
     despine(ax)
@@ -560,7 +500,8 @@ def _panel_within_arm_profile(ax, effects: pd.DataFrame, features: list[str], ti
 
     ax.axhline(0, color="black", lw=0.8, ls="--")
     ax.set_xticks(x)
-    ax.set_xticklabels(feat_order, rotation=35, ha="right", fontsize=8)
+    _xtk_fs = 5 if composite else 8
+    ax.set_xticklabels(feat_order, rotation=35, ha="right", fontsize=_xtk_fs)
     ax.set_ylabel("Mean participant effect")
     ax.set_title(title, fontweight="bold")
     ax.legend(fontsize=5 if composite else 7, frameon=True)
@@ -669,46 +610,50 @@ def generate():
         print("  No data loaded; skipping.")
         return
 
-    # Explicit dataset selection for reproducibility (CODEX #1).
-    # Sade-Feldman is the flagship two-arm dataset (melanoma immunotherapy).
-    best_name = "Melanoma"
-    if best_name not in data or data[best_name].get("delta") is None:
-        # Fallback: pick first dataset with paired data
-        best_name = next(
+    # ── Melanoma (Sade-Feldman) — flagship two-arm reference ──────────
+    mel_name = "Melanoma"
+    if mel_name not in data or data[mel_name].get("delta") is None:
+        mel_name = next(
             (n for n, ds in data.items() if ds.get("delta") is not None),
             None,
         )
-    if best_name is None:
+    if mel_name is None:
         print("  No datasets with paired data; skipping.")
         return
 
-    feat_ds = data[best_name]
-    feat_eff = feat_ds.get("delta")
-    feat_feats = feat_ds.get("features", FEATURES)
-    feat_cfg = feat_ds.get("cfg", {})
-    feat_treated = feat_cfg.get("arm_treated", "Treated")
-    feat_control = feat_cfg.get("arm_control", "Control")
+    mel_ds = data[mel_name]
+    mel_eff = mel_ds.get("delta")
+    mel_feats = mel_ds.get("features", FEATURES)
 
-    # Two-arm dataset for panels C/D: Sade-Feldman (Responder vs Non-responder)
-    twoarm_name = best_name  # same dataset — it's the two-arm reference
-    ta_ds = data[twoarm_name]
-    ta_eff = ta_ds.get("delta")
-    ta_feats = ta_ds.get("features", FEATURES)
-    ta_cfg = ta_ds.get("cfg", {})
-    ta_treated = ta_cfg.get("arm_treated", "Treated")
-    ta_control = ta_cfg.get("arm_control", "Control")
+    # ── TNBC (Zhang) — second two-arm dataset ─────────────────────────
+    tnbc_name = "TNBC"
+    tnbc_ds = data.get(tnbc_name, {})
+    tnbc_eff = tnbc_ds.get("delta")
+    tnbc_feats = tnbc_ds.get("features", FEATURES)
+    tnbc_responder_ids: set = set()
+    if tnbc_eff is not None:
+        tnbc_arm_treated = _DATASET_CFG["TNBC"]["arm_treated"]
+        tnbc_responder_ids = set(
+            tnbc_eff.loc[tnbc_eff["arm"] == tnbc_arm_treated, "participant_id"]
+        )
 
     panels = [
-        ("panel_A", lambda ax: _panel_raincloud(ax, feat_eff, feat_feats, feat_treated, feat_control, f"{best_name} individual effects"), (11.5, 6.0)),
-        ("panel_B", lambda ax: _panel_heatmap(ax, feat_eff, feat_feats, f"{best_name} participant x feature map"), (9.5, 6.8)),
-        ("panel_C", lambda ax: _panel_response_box(ax, ta_eff, ta_feats, ta_treated, ta_control, f"{twoarm_name} response-stratified effects"), (10.5, 6.0)),
-        ("panel_D", lambda ax: _panel_variance_decomp(ax, ta_eff, ta_feats, f"{twoarm_name} variance decomposition"), (8.2, 6.8)),
-        ("panel_E", lambda ax: _panel_direction_diversity(ax, feat_eff, feat_feats, f"{best_name} effect direction diversity"), (8.2, 6.8)),
-        ("panel_F", lambda ax: _panel_sd_bars(ax, data), (8.8, 6.8)),
-        ("panel_G", lambda ax: _panel_sd_scatter(ax, data), (7.6, 6.8)),
-        ("panel_H", lambda ax: _panel_within_arm_profile(ax, feat_eff, feat_feats, f"{best_name} within-arm change profile"), (10.2, 6.0)),
-        ("panel_I", lambda ax: _panel_aml_cart_profile(ax, data), (10.2, 6.0)),
-        ("panel_J", lambda ax: _panel_treated_fc_concordance(ax, data), (7.0, 6.2)),
+        # Row 1 — Melanoma
+        ("panel_A", lambda ax: _panel_heatmap(ax, mel_eff, mel_feats, f"{mel_name} participant × feature map"), (9.5, 6.8)),
+        ("panel_B", lambda ax: _panel_variance_decomp(ax, mel_eff, mel_feats, f"{mel_name} variance decomposition"), (8.2, 6.8)),
+        ("panel_C", lambda ax: _panel_direction_diversity(ax, mel_eff, mel_feats, f"{mel_name} effect direction diversity"), (8.2, 6.8)),
+        # Row 2 — TNBC
+        ("panel_D", lambda ax: _panel_heatmap(ax, tnbc_eff, tnbc_feats, f"{tnbc_name} participant × feature map", responder_ids=tnbc_responder_ids), (9.5, 6.8)),
+        ("panel_E", lambda ax: _panel_variance_decomp(ax, tnbc_eff, tnbc_feats, f"{tnbc_name} variance decomposition"), (8.2, 6.8)),
+        ("panel_F", lambda ax: _panel_direction_diversity(ax, tnbc_eff, tnbc_feats, f"{tnbc_name} effect direction diversity"), (8.2, 6.8)),
+        # Row 3 — Cross-dataset
+        ("panel_G", lambda ax: _panel_sd_bars(ax, data), (8.8, 6.8)),
+        ("panel_H", lambda ax: _panel_sd_scatter(ax, data), (7.6, 6.8)),
+        # Row 4 — Temporal
+        ("panel_I", lambda ax: _panel_within_arm_profile(ax, mel_eff, mel_feats, f"{mel_name} within-arm change profile"), (10.2, 6.0)),
+        ("panel_J", lambda ax: _panel_aml_cart_profile(ax, data), (10.2, 6.0)),
+        # Row 5
+        ("panel_K", lambda ax: _panel_treated_fc_concordance(ax, data), (7.0, 6.2)),
     ]
 
     for panel_name, fn, size in panels:
@@ -722,13 +667,12 @@ def generate():
             plt.close("all")
 
     # ==================================================================
-    # Composite artboard  (180 mm × ≤ 215 mm)
+    # Composite artboard  (180 mm × ≤ 270 mm)
     # ==================================================================
-    #   Row 0: A | B       (raincloud + heatmap)
-    #   Row 1: C | D       (response box + variance decomp)
-    #   Row 2: E | F       (direction diversity + SD bars)
-    #   Row 3: G | J       (SD scatter + FC concordance)
-    #   Row 4: H | I       (within-arm + single-arm profiles)
+    #   Row 0: A | B | C   (Melanoma: heatmap | variance | direction)
+    #   Row 2: D | E | F   (TNBC:     heatmap | variance | direction)
+    #   Row 4: G | H | I   (SD bars | SD scatter | within-arm profile)
+    #   Row 6: J | K       (single-arm profile | FC concordance)
     # ==================================================================
     print("  Building composite figure ...")
 
@@ -763,75 +707,67 @@ def generate():
     plt.rcParams.update(_SMALL_RC)
 
     _mm = 1.0 / 25.4
-    fig_c = plt.figure(figsize=(180 * _mm, 215 * _mm))
+    fig_c = plt.figure(figsize=(180 * _mm, 200 * _mm))
 
-    # 9 rows: 5 content rows interleaved with 4 spacer rows
+    # 7 rows: 4 content rows interleaved with 3 spacer rows
     outer = fig_c.add_gridspec(
-        9, 1,
+        7, 1,
         height_ratios=[
-            0.60,   # row 0: A | B
-            0.45,   # spacer
-            0.60,   # row 2: C | D
-            0.42,   # spacer
-            0.62,   # row 4: E | F
-            0.35,   # spacer
-            0.65,   # row 6: G | J
-            0.35,   # spacer
-            0.65,   # row 8: H | I
+            0.50,   # row 0: A | B | C  (Melanoma)
+            0.18,   # spacer
+            0.50,   # row 2: D | E | F  (TNBC)
+            0.18,   # spacer
+            0.50,   # row 4: G | H | I  (cross-dataset + within-arm)
+            0.18,   # spacer
+            0.50,   # row 6: J | K      (single-arm + FC concordance)
         ],
         hspace=0.0,
         left=0.06, right=0.98, top=0.97, bottom=0.04,
     )
 
-    # ── Row 0: A | B ─────────────────────────────────────────────────
-    gs0 = outer[0].subgridspec(1, 2, width_ratios=[1.2, 1.0], wspace=0.45)
+    # ── Row 0: A | B | C  (Melanoma) ─────────────────────────────────
+    gs0 = outer[0].subgridspec(1, 3, width_ratios=[1.1, 1.0, 1.0], wspace=0.50)
     ax_a = fig_c.add_subplot(gs0[0])
     ax_b = fig_c.add_subplot(gs0[1])
+    ax_c = fig_c.add_subplot(gs0[2])
 
-    _panel_raincloud(ax_a, feat_eff, feat_feats, feat_treated, feat_control,
-                     f"{best_name} individual effects", composite=True)
-    _panel_heatmap(ax_b, feat_eff, feat_feats,
-                   f"{best_name} participant x feature map")
+    _panel_heatmap(ax_a, mel_eff, mel_feats, f"{mel_name} participant × feature map", composite=True)
+    _panel_variance_decomp(ax_b, mel_eff, mel_feats,
+                           f"{mel_name} variance decomposition", composite=True)
+    _panel_direction_diversity(ax_c, mel_eff, mel_feats,
+                               f"{mel_name} effect direction diversity", composite=True)
 
-    # ── Row 2: C | D ─────────────────────────────────────────────────
-    gs1 = outer[2].subgridspec(1, 2, width_ratios=[1.2, 1.0], wspace=0.45)
-    ax_c = fig_c.add_subplot(gs1[0])
-    ax_d = fig_c.add_subplot(gs1[1])
+    # ── Row 2: D | E | F  (TNBC) ─────────────────────────────────────
+    gs1 = outer[2].subgridspec(1, 3, width_ratios=[1.1, 1.0, 1.0], wspace=0.50)
+    ax_d = fig_c.add_subplot(gs1[0])
+    ax_e = fig_c.add_subplot(gs1[1])
+    ax_f = fig_c.add_subplot(gs1[2])
 
-    _panel_response_box(ax_c, ta_eff, ta_feats, ta_treated, ta_control,
-                        f"{twoarm_name} response-stratified effects",
-                        composite=True)
-    _panel_variance_decomp(ax_d, ta_eff, ta_feats,
-                           f"{twoarm_name} variance decomposition",
-                           composite=True)
+    _panel_heatmap(ax_d, tnbc_eff, tnbc_feats, f"{tnbc_name} participant × feature map",
+                   composite=True, responder_ids=tnbc_responder_ids)
+    _panel_variance_decomp(ax_e, tnbc_eff, tnbc_feats,
+                           f"{tnbc_name} variance decomposition", composite=True)
+    _panel_direction_diversity(ax_f, tnbc_eff, tnbc_feats,
+                               f"{tnbc_name} effect direction diversity", composite=True)
 
-    # ── Row 4: E | F ─────────────────────────────────────────────────
-    gs2 = outer[4].subgridspec(1, 2, width_ratios=[1.0, 1.1], wspace=0.45)
-    ax_e = fig_c.add_subplot(gs2[0])
-    ax_f = fig_c.add_subplot(gs2[1])
+    # ── Row 4: G | H | I  (cross-dataset + within-arm) ───────────────
+    gs2 = outer[4].subgridspec(1, 3, width_ratios=[1.1, 1.0, 1.1], wspace=0.50)
+    ax_g = fig_c.add_subplot(gs2[0])
+    ax_h = fig_c.add_subplot(gs2[1])
+    ax_i = fig_c.add_subplot(gs2[2])
 
-    _panel_direction_diversity(ax_e, feat_eff, feat_feats,
-                               f"{best_name} effect direction diversity",
-                               composite=True)
-    _panel_sd_bars(ax_f, data, composite=True)
+    _panel_sd_bars(ax_g, data, composite=True)
+    _panel_sd_scatter(ax_h, data, composite=True)
+    _panel_within_arm_profile(ax_i, mel_eff, mel_feats,
+                              f"{mel_name} within-arm change profile", composite=True)
 
-    # ── Row 6: G | J ─────────────────────────────────────────────────
+    # ── Row 6: J | K  (single-arm profile + FC concordance) ──────────
     gs3 = outer[6].subgridspec(1, 2, width_ratios=[1.0, 1.0], wspace=0.45)
-    ax_g = fig_c.add_subplot(gs3[0])
-    ax_j = fig_c.add_subplot(gs3[1])
+    ax_j = fig_c.add_subplot(gs3[0])
+    ax_k = fig_c.add_subplot(gs3[1])
 
-    _panel_sd_scatter(ax_g, data, composite=True)
-    _panel_treated_fc_concordance(ax_j, data)
-
-    # ── Row 8: H | I ─────────────────────────────────────────────────
-    gs4 = outer[8].subgridspec(1, 2, width_ratios=[1.0, 1.0], wspace=0.45)
-    ax_h = fig_c.add_subplot(gs4[0])
-    ax_i = fig_c.add_subplot(gs4[1])
-
-    _panel_within_arm_profile(ax_h, feat_eff, feat_feats,
-                              f"{best_name} within-arm change profile",
-                              composite=True)
-    _panel_aml_cart_profile(ax_i, data, composite=True)
+    _panel_aml_cart_profile(ax_j, data, composite=True)
+    _panel_treated_fc_concordance(ax_k, data)
 
     # ── Post-processing ───────────────────────────────────────────────
     for ax_pp in fig_c.get_axes():
@@ -848,9 +784,10 @@ def generate():
     _lbl_y = 1.12
 
     for ax_lbl, lbl in [
-        (ax_a, "A"), (ax_b, "B"), (ax_c, "C"), (ax_d, "D"),
-        (ax_e, "E"), (ax_f, "F"), (ax_g, "G"), (ax_h, "H"),
-        (ax_i, "I"), (ax_j, "J"),
+        (ax_a, "A"), (ax_b, "B"), (ax_c, "C"),
+        (ax_d, "D"), (ax_e, "E"), (ax_f, "F"),
+        (ax_g, "G"), (ax_h, "H"), (ax_i, "I"),
+        (ax_j, "J"), (ax_k, "K"),
     ]:
         ax_lbl.text(
             _lbl_x, _lbl_y, lbl,
@@ -874,7 +811,7 @@ def generate():
     data.clear()
     clear_cache()
     gc.collect()
-    print("  SuppFig6 complete: 10 individual panels + combined (A–J)\n")
+    print("  SuppFig6 complete: 11 individual panels + combined (A–K)\n")
 
 
 if __name__ == "__main__":
