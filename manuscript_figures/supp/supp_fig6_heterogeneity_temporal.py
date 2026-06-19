@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import gc
 
+import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -245,12 +246,71 @@ def _load_all() -> dict[str, dict]:
     return out
 
 
+def _draw_heatmap_row_annotations(ax, pid_order, annotations, n_features, composite):
+    """Colored row-annotation strips drawn to the left of a seaborn heatmap.
+
+    Each annotation dict: {mapping: {pid: label}, palette: {label: color}, label: str}.
+    Index-0 is the outermost (leftmost) strip.
+    """
+    strip_w = 0.35
+    gap_between = 0.08
+    gap_to_heatmap = 0.15
+    n_strips = len(annotations)
+
+    all_handles: list = []
+    seen: set = set()
+
+    for s_idx, ann in enumerate(annotations):
+        # outermost strip (s_idx=0) sits furthest left
+        x_right = -(gap_to_heatmap + s_idx * (strip_w + gap_between))
+        x_left = x_right - strip_w
+        mapping = ann["mapping"]
+        palette = ann["palette"]
+
+        for j, pid in enumerate(pid_order):
+            lbl = mapping.get(pid)
+            color = palette.get(lbl, "#DDDDDD") if lbl is not None else "#DDDDDD"
+            ax.add_patch(plt.Rectangle(
+                (x_left, j), strip_w, 1,
+                facecolor=color, edgecolor="white",
+                linewidth=0.2, zorder=4, clip_on=False,
+            ))
+
+        for lbl, color in palette.items():
+            if lbl not in seen:
+                all_handles.append(mpatches.Patch(facecolor=color, label=lbl, linewidth=0))
+                seen.add(lbl)
+
+    total_left = gap_to_heatmap + n_strips * strip_w + (n_strips - 1) * gap_between
+    ax.set_xlim(-total_left, n_features)
+
+    _leg_fs = 5 if composite else 6
+    ax.legend(handles=all_handles, fontsize=_leg_fs, frameon=True,
+              loc="lower center", ncol=2,
+              handlelength=0.7, handleheight=0.7,
+              borderpad=0.3, labelspacing=0.15,
+              bbox_to_anchor=(0.5, 1.01),
+              bbox_transform=ax.transAxes)
+
+
 def _panel_heatmap(ax, effects: pd.DataFrame, features: list[str], title: str,
-                   composite: bool = False, responder_ids=None):
+                   composite: bool = False, annotations=None):
     if effects is None or effects.empty:
         ax.text(0.5, 0.5, "No paired effects", ha="center", va="center", transform=ax.transAxes)
         ax.axis("off")
         return
+
+    # Sort rows by the first annotation that specifies a group_order
+    if annotations:
+        _sort_ann = next((a for a in annotations if a.get("group_order")), None)
+        if _sort_ann:
+            _mapping = _sort_ann["mapping"]
+            _rank = {g: i for i, g in enumerate(_sort_ann["group_order"])}
+            effects = effects.copy()
+            effects["_sort"] = effects["participant_id"].map(
+                lambda p: _rank.get(_mapping.get(p), len(_rank))
+            )
+            effects = effects.sort_values("_sort").drop(columns=["_sort"])
 
     # NaN masking instead of fillna(0) — zeros would fabricate absent data
     mat = effects.set_index("participant_id")[features]
@@ -274,28 +334,10 @@ def _panel_heatmap(ax, effects: pd.DataFrame, features: list[str], title: str,
     ax.set_title(title, fontweight="bold")
     ax.set_ylabel("Participants")
 
-    if responder_ids is not None:
-        pid_order = mat.index.tolist()
-        n = len(pid_order)
-        # seaborn heatmap: row i sits at y = n - i - 0.5 (top-to-bottom)
-        resp_y = [n - i - 0.5 for i, pid in enumerate(pid_order) if pid in set(responder_ids)]
-        if resp_y:
-            _star_s = 14 if composite else 30
-            _leg_fs = 4 if composite else 7
-            ax.scatter(
-                [-0.6] * len(resp_y), resp_y,
-                marker="*", color="#FFD700", edgecolors="#B8860B",
-                linewidths=0.3, s=_star_s, zorder=6, clip_on=False,
-                label="Responder",
-            )
-            from matplotlib.lines import Line2D
-            ax.legend(
-                handles=[Line2D([0], [0], marker="*", color="w",
-                                markerfacecolor="#FFD700", markeredgecolor="#B8860B",
-                                markeredgewidth=0.3,
-                                markersize=5 if composite else 8, label="Responder")],
-                fontsize=_leg_fs, frameon=True, loc="lower right",
-            )
+    if annotations:
+        _draw_heatmap_row_annotations(ax, mat.index.tolist(), annotations, len(features), composite)
+    else:
+        ax.yaxis.set_label_coords(-0.06, 0.5)
 
 
 def _panel_variance_decomp(ax, effects: pd.DataFrame, features: list[str], title: str,
@@ -355,7 +397,7 @@ def _panel_variance_decomp(ax, effects: pd.DataFrame, features: list[str], title
 
 def _panel_direction_diversity(ax, effects: pd.DataFrame, features: list[str],
                                title: str, *, effect_threshold: float = 0.05,
-                               composite: bool = False):
+                               composite: bool = False, legend_loc: str | None = None):
     """Direction-diversity bar chart with effect-size threshold."""
     if effects is None or effects.empty:
         ax.text(0.5, 0.5, "No paired effects", ha="center", va="center", transform=ax.transAxes)
@@ -392,7 +434,7 @@ def _panel_direction_diversity(ax, effects: pd.DataFrame, features: list[str],
     ax.set_xlabel("Fraction of participants")
     ax.set_title(title, fontweight="bold")
     _leg_fs = 5 if composite else 8
-    _leg_loc = "lower right" if composite else "best"
+    _leg_loc = legend_loc if legend_loc else ("lower right" if composite else "best")
     ax.legend(fontsize=_leg_fs, frameon=True, loc=_leg_loc)
     despine(ax)
 
@@ -600,6 +642,7 @@ def _panel_treated_fc_concordance(ax, data: dict[str, dict]):
 
     sns.heatmap(corr, cmap="RdBu_r", vmin=-1, vmax=1, annot=True, fmt=".2f",
                 linewidths=0.5, linecolor="white", cbar_kws={"label": "Pearson r"}, ax=ax)
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")
     ax.set_title("Treated-arm fold-change concordance", fontweight="bold")
 
 
@@ -630,22 +673,60 @@ def generate():
     tnbc_ds = data.get(tnbc_name, {})
     tnbc_eff = tnbc_ds.get("delta")
     tnbc_feats = tnbc_ds.get("features", FEATURES)
-    tnbc_responder_ids: set = set()
+    # ── Annotation strips ─────────────────────────────────────────────
+    # Panel A: one strip — Responder / Non-responder (arm IS response for Melanoma)
+    mel_annotations = []
+    if mel_eff is not None:
+        mel_annotations = [
+            {
+                "mapping": dict(zip(mel_eff["participant_id"], mel_eff["arm"])),
+                "palette": {
+                    "Responder": "#2ECC71",       # green
+                    "Non-responder": "#E91E8C",   # magenta
+                },
+                "label": "Response",
+                "group_order": ["Responder", "Non-responder"],
+            }
+        ]
+
+    # Panel D: two strips — treatment arm + response (R/NR from adata)
+    tnbc_annotations = []
     if tnbc_eff is not None:
-        tnbc_arm_treated = _DATASET_CFG["TNBC"]["arm_treated"]
-        tnbc_responder_ids = set(
-            tnbc_eff.loc[tnbc_eff["arm"] == tnbc_arm_treated, "participant_id"]
-        )
+        _tnbc_resp_map: dict = {}
+        _tnbc_ad = tnbc_ds.get("adata")
+        if _tnbc_ad is not None and "response" in _tnbc_ad.obs.columns:
+            _tnbc_resp_map = (
+                _tnbc_ad.obs.groupby("participant_id")["response"].first().to_dict()
+            )
+        tnbc_annotations = [
+            {
+                "mapping": dict(zip(tnbc_eff["participant_id"], tnbc_eff["arm"])),
+                "palette": {
+                    "anti-PDL1+Chemo": "#9B59B6",  # purple
+                    "Chemo": "#F39C12",             # amber
+                },
+                "label": "Arm",
+                "group_order": ["Chemo", "anti-PDL1+Chemo"],
+            },
+            {
+                "mapping": _tnbc_resp_map,
+                "palette": {
+                    "R": "#2ECC71",    # green
+                    "NR": "#E91E8C",   # magenta
+                },
+                "label": "Response",
+            },
+        ]
 
     panels = [
         # Row 1 — Melanoma
-        ("panel_A", lambda ax: _panel_heatmap(ax, mel_eff, mel_feats, f"{mel_name} participant × feature map"), (9.5, 6.8)),
+        ("panel_A", lambda ax: _panel_heatmap(ax, mel_eff, mel_feats, f"{mel_name} participant × feature map", annotations=mel_annotations), (9.5, 6.8)),
         ("panel_B", lambda ax: _panel_variance_decomp(ax, mel_eff, mel_feats, f"{mel_name} variance decomposition"), (8.2, 6.8)),
         ("panel_C", lambda ax: _panel_direction_diversity(ax, mel_eff, mel_feats, f"{mel_name} effect direction diversity"), (8.2, 6.8)),
         # Row 2 — TNBC
-        ("panel_D", lambda ax: _panel_heatmap(ax, tnbc_eff, tnbc_feats, f"{tnbc_name} participant × feature map", responder_ids=tnbc_responder_ids), (9.5, 6.8)),
+        ("panel_D", lambda ax: _panel_heatmap(ax, tnbc_eff, tnbc_feats, f"{tnbc_name} participant × feature map", annotations=tnbc_annotations), (9.5, 6.8)),
         ("panel_E", lambda ax: _panel_variance_decomp(ax, tnbc_eff, tnbc_feats, f"{tnbc_name} variance decomposition"), (8.2, 6.8)),
-        ("panel_F", lambda ax: _panel_direction_diversity(ax, tnbc_eff, tnbc_feats, f"{tnbc_name} effect direction diversity"), (8.2, 6.8)),
+        ("panel_F", lambda ax: _panel_direction_diversity(ax, tnbc_eff, tnbc_feats, f"{tnbc_name} effect direction diversity", legend_loc="upper right"), (8.2, 6.8)),
         # Row 3 — Cross-dataset
         ("panel_G", lambda ax: _panel_sd_bars(ax, data), (8.8, 6.8)),
         ("panel_H", lambda ax: _panel_sd_scatter(ax, data), (7.6, 6.8)),
@@ -715,7 +796,7 @@ def generate():
         height_ratios=[
             0.50,   # row 0: A | B | C  (Melanoma)
             0.18,   # spacer
-            0.50,   # row 2: D | E | F  (TNBC)
+            0.43,   # row 2: D | E | F  (TNBC)
             0.18,   # spacer
             0.50,   # row 4: G | H | I  (cross-dataset + within-arm)
             0.18,   # spacer
@@ -731,7 +812,23 @@ def generate():
     ax_b = fig_c.add_subplot(gs0[1])
     ax_c = fig_c.add_subplot(gs0[2])
 
-    _panel_heatmap(ax_a, mel_eff, mel_feats, f"{mel_name} participant × feature map", composite=True)
+    _HEAT_SHRINK_A = 0.90   # larger heatmap for A
+    _HEAT_SHRINK_D = 0.80   # D unchanged
+    _panel_heatmap(ax_a, mel_eff, mel_feats, f"{mel_name} participant × feature map",
+                   composite=True, annotations=mel_annotations)
+    # Shrink ax_a from the top only, freeing space for the legend above the heatmap
+    _pos = ax_a.get_position()
+    ax_a.set_position([_pos.x0, _pos.y0, _pos.width, _pos.height * _HEAT_SHRINK_A])
+    # Re-issue set_title with explicit y so it lands at the original row top
+    ax_a.set_title(ax_a.get_title(), fontweight="bold", y=1.16, pad=0)
+    # Align colorbar to shrunken heatmap bounds
+    try:
+        _cbar_ax = ax_a.collections[0].colorbar.ax
+        _cp = _cbar_ax.get_position()
+        _np = ax_a.get_position()
+        _cbar_ax.set_position([_cp.x0, _np.y0, _cp.width, _np.height])
+    except (IndexError, AttributeError):
+        pass
     _panel_variance_decomp(ax_b, mel_eff, mel_feats,
                            f"{mel_name} variance decomposition", composite=True)
     _panel_direction_diversity(ax_c, mel_eff, mel_feats,
@@ -744,11 +841,24 @@ def generate():
     ax_f = fig_c.add_subplot(gs1[2])
 
     _panel_heatmap(ax_d, tnbc_eff, tnbc_feats, f"{tnbc_name} participant × feature map",
-                   composite=True, responder_ids=tnbc_responder_ids)
+                   composite=True, annotations=tnbc_annotations)
+    # Shrink ax_d from the top only, freeing space for the legend above the heatmap
+    _pos = ax_d.get_position()
+    ax_d.set_position([_pos.x0, _pos.y0, _pos.width, _pos.height * _HEAT_SHRINK_D])
+    ax_d.set_title(ax_d.get_title(), fontweight="bold", y=1.30, pad=0)
+    # Align colorbar to shrunken heatmap bounds
+    try:
+        _cbar_ax = ax_d.collections[0].colorbar.ax
+        _cp = _cbar_ax.get_position()
+        _np = ax_d.get_position()
+        _cbar_ax.set_position([_cp.x0, _np.y0, _cp.width, _np.height])
+    except (IndexError, AttributeError):
+        pass
     _panel_variance_decomp(ax_e, tnbc_eff, tnbc_feats,
                            f"{tnbc_name} variance decomposition", composite=True)
     _panel_direction_diversity(ax_f, tnbc_eff, tnbc_feats,
-                               f"{tnbc_name} effect direction diversity", composite=True)
+                               f"{tnbc_name} effect direction diversity", composite=True,
+                               legend_loc="upper right")
 
     # ── Row 4: G | H | I  (cross-dataset + within-arm) ───────────────
     gs2 = outer[4].subgridspec(1, 3, width_ratios=[1.1, 1.0, 1.1], wspace=0.50)
@@ -782,6 +892,8 @@ def generate():
     _lbl_fs = 9
     _lbl_x = -0.10
     _lbl_y = 1.12
+    _lbl_y_heat_a = _lbl_y / _HEAT_SHRINK_A
+    _lbl_y_heat_d = _lbl_y / _HEAT_SHRINK_D
 
     for ax_lbl, lbl in [
         (ax_a, "A"), (ax_b, "B"), (ax_c, "C"),
@@ -789,8 +901,14 @@ def generate():
         (ax_g, "G"), (ax_h, "H"), (ax_i, "I"),
         (ax_j, "J"), (ax_k, "K"),
     ]:
+        if ax_lbl is ax_a:
+            _y = _lbl_y_heat_a
+        elif ax_lbl is ax_d:
+            _y = _lbl_y_heat_d
+        else:
+            _y = _lbl_y
         ax_lbl.text(
-            _lbl_x, _lbl_y, lbl,
+            _lbl_x, _y, lbl,
             transform=ax_lbl.transAxes,
             fontsize=_lbl_fs, fontweight="bold", va="top", ha="left",
         )
