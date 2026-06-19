@@ -603,7 +603,7 @@ def _panel_aml_cart_profile(ax, data: dict[str, dict], composite: bool = False):
     ax.set_xticklabels(top_feats, rotation=35, ha="right", fontsize=8)
     ax.set_ylabel("Mean participant effect")
     ax.set_title("Single-arm within-arm change profiles", fontweight="bold")
-    ax.legend(fontsize=5 if composite else 8, frameon=True)
+    ax.legend(fontsize=5 if composite else 7, frameon=True)
     despine(ax)
 
 
