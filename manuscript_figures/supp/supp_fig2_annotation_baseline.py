@@ -254,9 +254,10 @@ def _panel_umap_grouping(fig, axes, loaded: dict):
 
         handles = [mpatches.Patch(facecolor=palette[v], edgecolor="none",
                                   label=v) for v in unique_vals]
-        ax.legend(handles=handles, fontsize=6.5, loc="best", frameon=True,
-                  framealpha=0.8, handlelength=0.8, handleheight=0.7,
-                  borderpad=0.4, labelspacing=0.2)
+        leg_loc = "upper left" if name == "TNBC" else "upper right" if name == "COVID-19" else "lower left"
+        ax.legend(handles=handles, fontsize=6.5, loc=leg_loc, frameon=True,
+                  framealpha=0.8, handlelength=0.6, handleheight=0.5,
+                  borderpad=0.2, labelspacing=0.1, handletextpad=0.3)
 
         grp_label = "arm" if arm else "visit"
         ax.set_title(f"{name} ({grp_label})", fontweight="bold", fontsize=9)
@@ -336,13 +337,6 @@ def _panel_marker_dotplot(fig, ax, loaded: dict):
                 transform=ax.transAxes, fontsize=10, fontstyle="italic")
         ax.set_title("Marker Gene Expression", fontweight="bold")
         return
-
-    # TEMP DIAGNOSTIC: confirm TNBC actually contributed rows to panel C.
-    _tnbc_rows = [r for r in rows if r["Dataset"] == "TNBC"]
-    print(f"    [panel C diagnostic] TNBC contributed {len(_tnbc_rows)} "
-          f"(marker, cell type) rows out of {len(rows)} total.")
-    if _tnbc_rows:
-        print(f"    [panel C diagnostic] TNBC sample rows: {_tnbc_rows[:3]}")
 
     df = pd.DataFrame(rows)
     agg = df.groupby(["Marker", "Cell type"]).agg(
@@ -764,7 +758,7 @@ def _make_plotly_parcats(ds_name: str, obs_sub, right_col: str, ct_col: str,
     )
     fig.update_layout(
         coloraxis_showscale=False,
-        font=dict(size=32),
+        font=dict(size=42, color="black"),
         #title=dict(text=ds_name, font=dict(size=22, family="Arial"),
         #           x=0.5, xanchor="center", y=0.98, yanchor="top"),
         margin=dict(l=160, r=100, t=70, b=30),
@@ -920,7 +914,8 @@ def _build_composite(loaded: dict):
     gs_b = outer[2].subgridspec(1, n_ds, wspace=0.30)
     axes_b = [fig_c.add_subplot(gs_b[0, i]) for i in range(n_ds)]
     _panel_umap_grouping(fig_c, axes_b, loaded)
-    for _ax in axes_b:
+    _ds_names_b = list(loaded.keys())
+    for _i, _ax in enumerate(axes_b):
         for _coll in _ax.collections:
             if hasattr(_coll, "set_sizes"):
                 _coll.set_sizes([0.15])
@@ -928,6 +923,9 @@ def _build_composite(loaded: dict):
         if _leg_b:
             for _txt in _leg_b.get_texts():
                 _txt.set_fontsize(3.5)
+            _bname = _ds_names_b[_i] if _i < len(_ds_names_b) else ""
+            _bloc = "upper left" if _bname == "TNBC" else "upper right" if _bname == "COVID-19" else "lower left"
+            _leg_b.set_loc(_bloc)
 
     # ── Row 4: C (marker dot plot, left) | D (sil + purity, right) ─
     gs_cd = outer[4].subgridspec(1, 2, width_ratios=[0.55, 0.45],
