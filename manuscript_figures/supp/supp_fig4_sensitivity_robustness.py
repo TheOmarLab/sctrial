@@ -60,6 +60,7 @@ from .._shared import (
     get_cart,
     get_sade_feldman,
     get_stephenson,
+    get_tnbc_zhang,
     get_vaccine,
     harmonize_response,
     save_panel,
@@ -160,8 +161,11 @@ def _add_gene_labels(ax, features, x_series, y_series, *, fontsize=7):
             )
         _adjust_text(
             texts, ax=ax,
-            force_text=(2.5, 2.5), force_points=(2.5, 2.5),
-            expand=(1.8, 1.8),
+            force_text=(1.2, 1.2), force_static=(0.3, 0.3),
+            force_explode=(0.3, 0.3),
+            expand=(1.3, 1.5),
+            max_move=(40, 40),
+            time_lim=5,
             arrowprops=dict(arrowstyle="-", color="gray", lw=0.6),
         )
     else:
@@ -276,7 +280,7 @@ def _run_sensitivity():
 # ── Panel A: Multi-dataset analytical vs bootstrap SE ──────────────
 
 def _run_multi_bootstrap():
-    """Run analytical + bootstrap DiD on all 5 datasets."""
+    """Run analytical + bootstrap DiD on all datasets."""
     import sctrial
 
     results = {}
@@ -286,8 +290,8 @@ def _run_multi_bootstrap():
             if cfg.get("harmonize", False):
                 adata = harmonize_response(adata)
             layer = cfg["layer"]
-            if layer == "log1p_cpm" and "log1p_cpm" not in adata.layers:
-                if "counts" in adata.layers:
+            if layer not in adata.layers:
+                if layer == "log1p_cpm" and "counts" in adata.layers:
                     adata = add_log1p_cpm_layer(
                         adata, counts_layer="counts", out_layer="log1p_cpm",
                     )
@@ -346,6 +350,7 @@ def _run_multi_bootstrap():
                 )
                 results[name] = {"part": part, "boot": boot}
             del adata
+            gc.collect()
         except Exception as exc:
             print(f"  bootstrap {name}: failed ({exc})")
     return results
@@ -422,21 +427,56 @@ def _panel_bootstrap_multi(fig, boot_data: dict, *, composite: bool = False):
         ax.set_yticks(y)
         ax.set_yticklabels(df["feature"], fontsize=_ytick_fs)
         ax.set_title(name, fontweight="bold", fontsize=_title_fs)
+        ax.set_xlabel("")
 
         if composite:
             if name == "Vaccine":
                 ax.legend(fontsize=4, loc="lower right", frameon=True)
-            if name == "CAR-T":
-                ax.set_xlabel("β with 95% CI", fontsize=5)
-            else:
-                ax.set_xlabel("")
         else:
             if ax == axes[0]:
-                ax.set_xlabel("β with 95% CI", fontsize=8)
                 ax.legend(fontsize=6, loc="lower right", frameon=True)
-            else:
-                ax.set_xlabel("")
         despine(ax)
+
+    # Centered x-axis label under the full row, rather than anchored to one
+    # subplot — robust to dataset count/order changes (e.g. adding TNBC),
+    # unlike hardcoding a specific dataset as the "middle" anchor.
+    #
+    # NOTE: in composite mode, *fig* here is a SubFigure (subfig_a). Calling
+    # subfig.text(..., transform=subfig.transFigure) does NOT position
+    # relative to the subfigure's own local 0-1 space as the name implies —
+    # it resolves in the parent figure's coordinate frame, landing the label
+    # at the bottom of the whole page instead of just below panel A. The fix
+    # (same pattern as _figure_title_above_subfig elsewhere in this file) is
+    # to get axes positions, which ARE local to the subfigure, then place the
+    # text on the true parent figure using those same local coordinates only
+    # when fig is a real top-level Figure; for a SubFigure we must instead
+    # anchor using the parent figure's transform directly.
+    _xlbl_fs = 5 if composite else 8
+    fig.canvas.draw()
+    _ax_xs = [a.get_position().x0 for a in axes] + [
+        a.get_position().x1 for a in axes
+    ]
+    _xc = 0.5 * (min(_ax_xs) + max(_ax_xs))
+    _y0 = min(a.get_position().y0 for a in axes)
+    _parent_fig = getattr(fig, "figure", fig)
+    if _parent_fig is not fig:
+        # fig is a SubFigure: translate its local axes-position fractions
+        # into true parent-figure fractions before placing text, then draw
+        # on the parent figure (not the subfigure) so the transform behaves.
+        _sf_pos = _subfig_bbox_in_figure_coords(_parent_fig, fig)
+        _xc_parent = _sf_pos.x0 + _xc * _sf_pos.width
+        _y0_parent = _sf_pos.y0 + _y0 * _sf_pos.height
+        _parent_fig.text(
+            _xc_parent, _y0_parent - 0.028, "β with 95% CI",
+            ha="center", va="top", fontsize=_xlbl_fs,
+            transform=_parent_fig.transFigure,
+        )
+    else:
+        fig.text(
+            _xc, _y0 - (0.06 if composite else 0.09), "β with 95% CI",
+            ha="center", va="top", fontsize=_xlbl_fs,
+            transform=fig.transFigure,
+        )
 
     if not composite:
         fig.suptitle("Analytical vs Bootstrap SE", fontweight="bold",
@@ -612,16 +652,21 @@ def _panel_ct_heatmap(ax, data: dict, *, composite: bool = False):
     sns.heatmap(mat, ax=ax, cmap="RdBu_r", center=0, linewidths=0.5,
                 linecolor="white", cbar_kws={"shrink": 0.6, "label": "β"},
                 annot=True, fmt=".2f", annot_kws={"fontsize": _annot_fs})
-    ax.set_xlabel("Cell type")
     ax.set_ylabel("Feature")
     ax.set_title("Cell-Type Stratified DiD (Melanoma)",
                  fontweight="bold")
     if composite:
-        ax.tick_params(axis="x", labelsize=4, rotation=25, pad=1.0)
+        ax.tick_params(axis="x", labelsize=3.2, rotation=35, pad=1.0)
         ax.tick_params(axis="y", labelsize=4.5)
+        for _tl in ax.get_xticklabels():
+            _tl.set_ha("right")
+        ax.set_xlabel("Cell type", labelpad=-3)
     else:
-        ax.tick_params(axis="x", labelsize=7, rotation=45, pad=1.5)
+        ax.tick_params(axis="x", labelsize=5.5, rotation=55, pad=1.5)
         ax.tick_params(axis="y", labelsize=7)
+        for _tl in ax.get_xticklabels():
+            _tl.set_ha("right")
+        ax.set_xlabel("Cell type")
 
     # Slight extra nudge for this long label only (toward the x-axis).
     _mono_ct = "Monocyte/Macrophage"
@@ -710,7 +755,7 @@ def _panel_rank_concordance(ax, data: dict, *, composite: bool = False):
     ax.set_xlabel(f"Spearman ρ (vs {ref_key})")
     ax.set_xlim(0, 1.15)
     ax.set_title("Rank Concordance Across Choices (Melanoma)",
-                 fontweight="bold")
+                 fontweight="bold", fontsize=5.5 if composite else 11)
 
     _rho_lbl_fs = 5.0 if composite else 7
     for i, rho in enumerate(rhos):
@@ -745,8 +790,8 @@ def _compute_loo_data():
             if cfg.get("harmonize", False):
                 adata = harmonize_response(adata)
             layer = cfg["layer"]
-            if layer == "log1p_cpm" and "log1p_cpm" not in adata.layers:
-                if "counts" in adata.layers:
+            if layer not in adata.layers:
+                if layer == "log1p_cpm" and "counts" in adata.layers:
                     adata = add_log1p_cpm_layer(
                         adata, counts_layer="counts", out_layer="log1p_cpm",
                     )
@@ -758,6 +803,20 @@ def _compute_loo_data():
                 continue
 
             adata = adata[:, feats].copy()
+
+            # Safety cap: LOO refits the model once per dropped participant,
+            # so very large datasets (e.g. TNBC at 140K+ cells) multiply cell
+            # count by n_participants worth of repeated model fits. Cap total
+            # cells here to keep memory bounded; participant-level estimates
+            # are stable well below this size.
+            _LOO_MAX_CELLS = 40_000
+            if adata.n_obs > _LOO_MAX_CELLS:
+                _rng = np.random.default_rng(42)
+                _keep_idx = _rng.choice(
+                    adata.n_obs, size=_LOO_MAX_CELLS, replace=False,
+                )
+                adata = adata[_keep_idx].copy()
+                gc.collect()
 
             arm_col = cfg.get("arm_col")
             design_type = cfg.get("design", "two_arm")
@@ -828,6 +887,9 @@ def _compute_loo_data():
                         )
                 except Exception:
                     pass
+                finally:
+                    del sub
+                    gc.collect()
 
             if len(loo_betas) < 3:
                 continue
@@ -838,6 +900,7 @@ def _compute_loo_data():
             rows[name] = max_dev
             print(f"  LOO {name}: {len(pids)} pids, {len(feats)} feats")
             del adata
+            gc.collect()
         except Exception as exc:
             print(f"  LOO {name}: failed ({exc})")
 
@@ -848,6 +911,7 @@ def _compute_loo_data():
 
 def _draw_loo_heatmap(
     ax, mat, *, annot_fs: float = 7, cbar_label_fs: float | None = None,
+    title_fs: float | None = None, xlabel_pad: float | None = None,
 ):
     """Draw LOO stability heatmap on *ax*.
 
@@ -857,10 +921,13 @@ def _draw_loo_heatmap(
                 linecolor="white",
                 cbar_kws={"shrink": 0.7, "label": "Max LOO deviation"},
                 annot=True, fmt=".2f", annot_kws={"fontsize": annot_fs})
-    ax.set_xlabel("Dataset")
+    ax.set_xlabel("Dataset", labelpad=xlabel_pad)
     ax.set_ylabel("Feature")
-    ax.set_title("Leave-One-Out Stability (max influence)", fontweight="bold")
-    ax.tick_params(axis="x", labelsize=8, rotation=30)
+    ax.set_title("Leave-One-Out Stability (max influence)", fontweight="bold",
+                 fontsize=title_fs)
+    ax.tick_params(axis="x", labelsize=8, rotation=55)
+    for _tl in ax.get_xticklabels():
+        _tl.set_ha("right")
     ax.tick_params(axis="y", labelsize=8)
     if cbar_label_fs is not None and ax.collections:
         cb = getattr(ax.collections[0], "colorbar", None)
@@ -884,6 +951,18 @@ def _panel_loo_stability(ax):
 # ======================================================================
 
 _MDE_DATASET_CFG = {
+    "TNBC": {
+        "design": "two_arm",
+        "loader": get_tnbc_zhang,
+        "harmonize": False,
+        "layer": "log1p_norm",
+        "participant_col": "participant_id",
+        "visit_col": "visit",
+        "arm_col": "arm",
+        "arm_treated": "anti-PDL1+Chemo",
+        "arm_control": "Chemo",
+        "visits": ("Pre", "Post"),
+    },
     "Melanoma": {
         "design": "two_arm",
         "loader": get_sade_feldman,
@@ -953,12 +1032,13 @@ _MDE_DATASET_CFG = {
 N_POWER_ITERATIONS = 200
 POWER_ALPHA = 0.05
 RNG_SEED = 42
-_CODE_VERSION = "v14"
+_CODE_VERSION = "v15"
 
 DatasetInfo = tuple[str, object, object, tuple, list[str], str]
 
 _DATASET_TAGS: dict[str, str] = {
     "Sade-Feldman": "SF",
+    "TNBC": "TNBC",
     "AML": "AML",
     "CAR-T": "CAR-T",
     "Vaccine": "VAX",
@@ -981,6 +1061,7 @@ _PRESPECIFIED_ENDPOINTS = [
 
 _DATASET_PRIMARY_ENDPOINT: dict[str, str] = {
     "Sade-Feldman": "sig_Interferon Response",
+    "TNBC":         "sig_Cytotoxic T Cell Activity",
     "AML":          "sig_Cytotoxic T Cell Activity",
     "CAR-T":        "sig_Cytotoxic T Cell Activity",
     "Vaccine":      "sig_Cytotoxic T Cell Activity",
@@ -989,6 +1070,7 @@ _DATASET_PRIMARY_ENDPOINT: dict[str, str] = {
 
 DATASET_COLORS = {
     "Sade-Feldman": COLORS["control"],
+    "TNBC":         "#996633",
     "Vaccine":      COLORS["treated"],
     "AML":          COLORS["success"],
     "CAR-T":        COLORS["neutral"],
@@ -1007,6 +1089,16 @@ SF_DESIGN = TrialDesign(
     arm_control="Non-responder",
 )
 SF_VISITS: tuple[str, str] = ("Pre", "Post")
+
+TNBC_DESIGN = TrialDesign(
+    participant_col="participant_id",
+    visit_col="visit",
+    arm_col="arm",
+    arm_treated="anti-PDL1+Chemo",
+    arm_control="Chemo",
+    celltype_col="cell_type",
+)
+TNBC_VISITS: tuple[str, str] = ("Pre", "Post")
 
 
 # ---- JSON cache helpers (separate from pickle cache above) -------------
@@ -1041,6 +1133,12 @@ def _load_sf() -> DatasetInfo:
     sf = harmonize_response(sf)
     sf, sf_sigs = score_signatures(sf, layer="log1p_tpm")
     return ("Sade-Feldman", sf, SF_DESIGN, SF_VISITS, sf_sigs, "two_arm_did")
+
+
+def _load_tnbc() -> DatasetInfo:
+    tnbc = get_tnbc_zhang()
+    tnbc, tnbc_sigs = score_signatures(tnbc, layer="log1p_norm")
+    return ("TNBC", tnbc, TNBC_DESIGN, TNBC_VISITS, tnbc_sigs, "two_arm_did")
 
 
 def _load_vaccine() -> DatasetInfo:
@@ -1090,8 +1188,8 @@ def _load_covid() -> DatasetInfo:
 
 
 def _load_dataset_by_index(idx: int) -> DatasetInfo | None:
-    """Load a single dataset by index (0-4), returning None on failure."""
-    loaders = [_load_sf, _load_vaccine, _load_aml, _load_cart, _load_covid]
+    """Load a single dataset by index (0-5), returning None on failure."""
+    loaders = [_load_tnbc, _load_sf, _load_vaccine, _load_aml, _load_cart, _load_covid]
     if idx >= len(loaders):
         return None
     try:
@@ -1315,7 +1413,7 @@ def _prepare_power_data() -> dict:
     print("  Loading datasets one at a time for power curves ...")
 
     power_frames: list[pd.DataFrame] = []
-    for idx in range(5):
+    for idx in range(6):
         ds = _load_dataset_by_index(idx)
         if ds is None:
             continue
@@ -1347,8 +1445,8 @@ def _panel_power_grid(
     """Draw power curves into a gridspec area, returning created axes.
 
     Styling is intentionally matched to Figure 3C (legacy `fig3_c.py`), with
-    only the panel arrangement changed to support a 2-row 3+2 layout when
-    five datasets are present.
+    only the panel arrangement changed to support a 2-row 3+3 layout when
+    six datasets are present (previously 3+2 for five).
     """
     from sklearn.isotonic import IsotonicRegression
     from matplotlib.ticker import MaxNLocator
@@ -1378,7 +1476,20 @@ def _panel_power_grid(
     ds_names = list(dict.fromkeys(power_df["dataset"]))
     n_ds = len(ds_names)
 
-    if n_ds == 5:
+    if n_ds == 6:
+        _hspace = 1.6 if composite else 1.9
+        _wspace_6 = 0.42 if composite else 0.5
+        gs_inner = gs_parent.subgridspec(
+            2, 9,
+            wspace=_wspace_6,
+            hspace=_hspace,
+            height_ratios=[1.0, 1.0],
+        )
+        slots = [
+            gs_inner[0, 0:3], gs_inner[0, 3:6], gs_inner[0, 6:9],
+            gs_inner[1, 0:3], gs_inner[1, 3:6], gs_inner[1, 6:9],
+        ]
+    elif n_ds == 5:
         _hspace = 1.08 if composite else 1.3
         gs_inner = gs_parent.subgridspec(
             2, 8,
@@ -1440,23 +1551,44 @@ def _panel_power_grid(
         analyzable_n = int(grp["n_analyzable"].iloc[0]) if "n_analyzable" in grp.columns else int(x.max()) + 1
 
         display_name = _DATASET_DISPLAY_NAMES.get(ds_name, ds_name)
-        title_lines = display_name
-        if feat:
-            title_lines += f"\n{feat}"
-        title_lines += f"\n{design_label}, n={analyzable_n}"
+        if composite:
+            # Tighter 2-line title for the composite artboard, where row 4
+            # has far less vertical room than the standalone figure.
+            title_lines = display_name
+            if feat:
+                title_lines += f", {feat}"
+            title_lines += f"\n{design_label}, n={analyzable_n}"
+        else:
+            title_lines = display_name
+            if feat:
+                title_lines += f"\n{feat}"
+            title_lines += f"\n{design_label}, n={analyzable_n}"
 
-        _title_fs = 3.15 if composite else 3.5
-        _title_pad = 2 if composite else 3
+        _title_fs = 3.6 if composite else 6.0
+        _title_pad = 3 if composite else 8
         ax.set_title(title_lines, fontsize=_title_fs, fontweight="bold",
-                     color=color, pad=_title_pad, linespacing=1.25 if composite else 1.3)
+                     color=color, pad=_title_pad, linespacing=1.3 if composite else 1.4)
 
-        _x_fs = 8.5 if composite else 9.5
-        _y_fs = 9 if composite else 10
-        _tick_fs = 7.5 if composite else 8.5
+        _x_fs = 5.0 if composite else 9.5
+        _y_fs = 5.2 if composite else 10
+        _tick_fs = 4.6 if composite else 8.5
         ax.set_xlabel("Analyzable participants", fontsize=_x_fs)
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-        ax.set_ylabel(r"Power (1 − $\beta$)", fontsize=_y_fs)
-        ax.tick_params(axis="both", which="major", labelsize=_tick_fs, labelleft=True)
+
+        # For the 6-dataset 3-wide grid, only the leftmost column in each row
+        # keeps a y-axis label/ticks — duplicating a full y-axis on every
+        # subplot left no room between columns and caused titles/labels to
+        # visually collide with the neighboring subplot's y-axis.
+        _is_left_col = (n_ds != 6) or (i % 3 == 0)
+        if _is_left_col:
+            ax.set_ylabel(r"Power (1 − $\beta$)", fontsize=_y_fs,
+                           labelpad=6 if composite else 4)
+            ax.tick_params(axis="y", which="major", labelsize=_tick_fs, labelleft=True,
+                            pad=2.5 if composite else 2)
+        else:
+            ax.set_ylabel("")
+            ax.tick_params(axis="y", which="major", labelleft=False)
+        ax.tick_params(axis="x", which="major", labelsize=_tick_fs)
 
         ax.grid(True, which="major", axis="y", color="#f0f0f0", linewidth=0.3, zorder=0)
         ax.set_axisbelow(True)
@@ -1481,9 +1613,9 @@ def _panel_power_curves(data: dict) -> plt.Figure | None:
     if n_panels == 0:
         return None
 
-    fig = plt.figure(figsize=(10.8, 6.3))
+    fig = plt.figure(figsize=(13.5, 8.5))
     outer = fig.add_gridspec(1, 1, left=0.07, right=0.985, top=0.88, bottom=0.12)
-    _panel_power_grid(fig, outer[0], data, inner_wspace=0.26)
+    _panel_power_grid(fig, outer[0], data, inner_wspace=0.42)
     fig.tight_layout()
     return fig
 
@@ -1530,14 +1662,8 @@ def _load_benchmark_data():
             f"Benchmark results not found at {_BENCHMARK_CSV}.\n"
             "Run the signal-fraction sensitivity benchmark on HPC first, "
             "then rsync results locally."
-            "Run the signal-fraction sensitivity benchmark on HPC first, "
-            "then rsync results locally."
         )
     df = pd.read_csv(_BENCHMARK_CSV, low_memory=False)
-    df["n_genes"] = df["scenario"].str.extract(r"_g(\d+)")[0].astype(int)
-    frac = df["scenario"].str.extract(r"_f(\d+)")
-    df["signal_pct"] = pd.to_numeric(frac[0], errors="coerce").fillna(0).astype(int)
-    df["is_null_scenario"] = df["scenario"].str.contains("sens_null")
     df["n_genes"] = df["scenario"].str.extract(r"_g(\d+)")[0].astype(int)
     frac = df["scenario"].str.extract(r"_f(\d+)")
     df["signal_pct"] = pd.to_numeric(frac[0], errors="coerce").fillna(0).astype(int)
@@ -2001,7 +2127,7 @@ def generate():
     """Create and save Supplementary Figure 4 panels (A–K) + composite.
 
     Layout (same order as the composite artboard):
-      A  Analytical vs bootstrap SE (all 5 datasets, faceted forest plot)
+      A  Analytical vs bootstrap SE (all datasets, faceted forest plot)
       B  Standardised vs unstandardised effect sizes (Melanoma)
       C  Mean vs median aggregation comparison (Melanoma)
       D  Log-transform sensitivity (Melanoma)
@@ -2011,7 +2137,7 @@ def generate():
       H  Pure-null Type I error vs panel size (NatMeth benchmark, 4 methods)
       I  Runtime comparison (NatMeth benchmark)
       J  Faceted QQ + 95% envelope (two-arm, n=40, 200 genes, 10% signal)
-      K  Empirical power curves (participant subsampling; 3+2 facet grid)
+      K  Empirical power curves (participant subsampling; 3+3 facet grid)
 
     Composite (180 mm × ≤215 mm): row1 A | row2 B|C|D|E | row3 F|G|H|I |
     row4 J|K.
@@ -2116,7 +2242,7 @@ def generate():
     #   Row 1: A (full width)
     #   Row 2: B | C | D | E
     #   Row 3: F | G | H | I  (rank concordance | LOO | pure-null FPR | runtime)
-    #   Row 4: J | K  (QQ panels | power curves 3+2)
+    #   Row 4: J | K  (QQ panels | power curves 3+3)
     # ==================================================================
     print("  Building composite figure ...")
 
@@ -2190,7 +2316,7 @@ def generate():
     _panel_ct_heatmap(ax_e, data, composite=True)
 
     # ── Row 3: F | G | H | I  (nested so F–G wspace can exceed G–H / H–I)
-    _w_fg, _w_hi, _w_mid = 0.77, 0.32, 0.24
+    _w_fg, _w_hi, _w_mid = 0.95, 0.32, 0.24
     gs_r3 = outer[2].subgridspec(1, 2, width_ratios=[1.72, 2.0], wspace=_w_mid)
     gs_fg = gs_r3[0].subgridspec(1, 2, width_ratios=[0.72, 1.0], wspace=_w_fg)
     gs_hi = gs_r3[1].subgridspec(1, 2, width_ratios=[0.92, 0.82], wspace=_w_hi)
@@ -2204,6 +2330,7 @@ def generate():
         _draw_loo_heatmap(
             ax_g, loo_mat, annot_fs=4,
             cbar_label_fs=_COMPOSITE_G_CBAR_LABEL_FS,
+            title_fs=5.5, xlabel_pad=-1,
         )
     else:
         ax_g.text(0.5, 0.5, "No LOO data", ha="center", va="center",
@@ -2218,7 +2345,7 @@ def generate():
     #
     # _R4_INSET controls J/K vertical inset within row 4 (blank top, content,
     # blank bottom). Edit the first/last values to grow/shrink J,K together.
-    _R4_INSET = (0.08, 1.0, 0.12)
+    _R4_INSET = (0.02, 0.95, 0.25)
     gs_r4_outer = outer[3].subgridspec(3, 1, height_ratios=list(_R4_INSET), hspace=0)
     gs_r4 = gs_r4_outer[1].subgridspec(1, 2, wspace=0.22, width_ratios=[1.0, 1.0])
 
@@ -2312,7 +2439,7 @@ def generate():
         )
 
     _label_axes_panel(qq_axes, "J", x=-0.30, y=1.31)
-    _label_axes_panel(power_axes, "K", x=-0.30, y=1.31)
+    _label_axes_panel(power_axes, "K", x=-0.42, y=1.32)
 
     # E & G: heatmaps — label slightly lower to clear title/colorbar
     _heat_y = 1.08

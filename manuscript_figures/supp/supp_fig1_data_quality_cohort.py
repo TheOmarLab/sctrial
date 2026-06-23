@@ -7,15 +7,14 @@ inference.  Supports Main Figure 1 (Problem & Framework).
 
 Panels
 ------
-  A  Study design summary table (matplotlib table).
-  B  Participant pairing structure per dataset.
-  C  Participant counts per arm × visit (grouped bar chart).
-  D  Cells per participant by arm (box + strip).
-  E  Genes detected per cell distributions by dataset and group.
-  F  Total counts + mito/ribo QC merged (1×2).
-  G  Lorenz curve + Gini inequality per dataset.
-  H  Post-QC threshold compliance per dataset.
-  I  Visit completeness per dataset.
+  A  Participant pairing structure per dataset.
+  B  Participant counts per arm × visit (grouped bar chart).
+  C  Cells per participant by arm (box + strip).
+  D  Genes detected per cell distributions by dataset and group.
+  E  Total counts + mito/ribo QC merged (1×2).
+  F  Lorenz curve + Gini inequality per dataset.
+  G  Post-QC threshold compliance per dataset.
+  H  Visit completeness per dataset.
 
 Non-overlap guardrail: no treatment-effect claims, no DiD estimates.
 """
@@ -23,6 +22,7 @@ Non-overlap guardrail: no treatment-effect claims, no DiD estimates.
 from __future__ import annotations
 
 import gc
+import math
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -41,6 +41,7 @@ from .._shared import (
     harmonize_response,
     get_aml,
     get_cart,
+    get_tnbc_zhang,
     save_panel,
 )
 
@@ -49,11 +50,12 @@ FIGURE_NAME = "SuppFig1_data_quality_cohort"
 # ── dataset registry ─────────────────────────────────────────────────
 
 _DS_PALETTE = dict(zip(
-    ["Melanoma", "COVID-19", "Vaccine", "AML", "CAR-T"],
-    ["#1b9e77", "#d95f02", "#7570b3", "#e7298a", "#66a61e"],
+    ["TNBC", "Melanoma", "COVID-19", "Vaccine", "AML", "CAR-T"],
+    ["#996633", "#1b9e77", "#d95f02", "#7570b3", "#e7298a", "#66a61e"],
 ))
 
 DATASETS = [
+    ("TNBC", lambda: get_tnbc_zhang()),
     ("Melanoma", get_sade_feldman),
     ("COVID-19", get_stephenson),
     ("Vaccine", get_vaccine),
@@ -104,7 +106,16 @@ _DESIGN_META = {
         "visits": "Pre, Post",
         "estimand": "Δ (single-arm)",
     },
+    "TNBC": {
+        "design": "Pre/post anti-PD-L1 + chemo vs chemo",
+        "pairing": "Paired",
+        "arms": "anti-PDL1+Chemo vs Chemo",
+        "indication": "Triple-negative breast cancer",
+        "visits": "Pre, Post",
+        "estimand": "DiD (two-arm)",
+    },
 }
+
 
 # ── helpers ──────────────────────────────────────────────────────────
 
@@ -124,10 +135,41 @@ def _visit_col(obs):
 
 
 def _arm_col(obs):
-    for c in ("response", "severity", "therapy", "condition"):
+    for c in ("arm", "response", "severity", "therapy", "condition"):
         if c in obs.columns and obs[c].nunique() > 1:
             return c
     return None
+
+
+# Known chronological visit-label orderings. Plain alphabetical sort puts
+# "Post" before "Pre" (P-o < P-r), which is backwards — this table lets
+# panel B (and anywhere else ordering matters) request the correct order.
+_VISIT_ORDER_KNOWN = [
+    ["Pre", "Post"],
+    ["Baseline", "Pre", "Post"],
+    ["D0", "D28"],
+]
+
+
+def _visit_sort_order(values) -> list:
+    """Return *values* in chronological order.
+
+    Checks known pre/post-style orderings first; falls back to natural
+    (numeric-aware) sort for things like day-numbered visits not already
+    covered, so e.g. "D2" sorts before "D10".
+    """
+    vals = list(values)
+    val_set = set(vals)
+    for known in _VISIT_ORDER_KNOWN:
+        if val_set == set(known):
+            return known
+
+    def _natural_key(v):
+        import re
+        parts = re.split(r"(\d+)", str(v))
+        return [int(p) if p.isdigit() else p for p in parts]
+
+    return sorted(vals, key=_natural_key)
 
 
 def _get_ngenes(adata) -> np.ndarray:
@@ -246,54 +288,7 @@ def _load_all() -> dict:
     return loaded
 
 
-# ── Panel A: Study design summary table ──────────────────────────────
-
-
-def _panel_design_table(ax, loaded: dict):
-    """Render _DESIGN_META as a matplotlib table."""
-    col_labels = ["Dataset", "Design", "Arms", "Visits", "Pairing",
-                  "Estimand", "Indication", "Participants", "Cells"]
-    rows = []
-    for name in loaded:
-        meta = _DESIGN_META.get(name, {})
-        rows.append([
-            name,
-            meta.get("design", "—"),
-            meta.get("arms", "—"),
-            meta.get("visits", "—"),
-            meta.get("pairing", "—"),
-            meta.get("estimand", "—"),
-            meta.get("indication", "—"),
-            f"{loaded[name]['n_participants']:,}",
-            f"{loaded[name]['n_cells']:,}",
-        ])
-
-    ax.axis("off")
-    table = ax.table(
-        cellText=rows, colLabels=col_labels,
-        loc="center", cellLoc="center",
-    )
-    table.auto_set_font_size(False)
-    table.set_fontsize(8)
-    table.scale(1.0, 1.6)
-
-    # Style header row
-    for j in range(len(col_labels)):
-        cell = table[0, j]
-        cell.set_facecolor("#2c3e50")
-        cell.set_text_props(color="white", fontweight="bold")
-
-    # Alternate row colors
-    for i in range(1, len(rows) + 1):
-        color = "#ecf0f1" if i % 2 == 0 else "white"
-        for j in range(len(col_labels)):
-            table[i, j].set_facecolor(color)
-
-    ax.set_title("Study Design and Cohort Summary", fontweight="bold",
-                 fontsize=11, pad=12)
-
-
-# ── Panel B: Participant pairing structure ────────────────────────────
+# ── Panel A: Participant pairing structure ────────────────────────────
 
 
 def _panel_pairing(ax, loaded: dict):
@@ -334,17 +329,17 @@ def _panel_pairing(ax, loaded: dict):
     x = np.arange(len(ds_names))
     w = 0.35
 
-    ax.bar(x - w/2, n_paired_list, w, color="#2ecc71", edgecolor="white",
+    ax.bar(x - w / 2, n_paired_list, w, color="#2ecc71", edgecolor="white",
            label="Paired (\u22652 visits)")
-    ax.bar(x + w/2, n_unpaired_list, w, color="#e74c3c", edgecolor="white",
+    ax.bar(x + w / 2, n_unpaired_list, w, color="#e74c3c", edgecolor="white",
            label="Unpaired (1 visit)")
 
     for i, (p, u) in enumerate(zip(n_paired_list, n_unpaired_list)):
         if p > 0:
-            ax.text(i - w/2, p + 0.5, str(p), ha="center", va="bottom",
+            ax.text(i - w / 2, p + 0.5, str(p), ha="center", va="bottom",
                     fontsize=7, fontweight="bold")
         if u > 0:
-            ax.text(i + w/2, u + 0.5, str(u), ha="center", va="bottom",
+            ax.text(i + w / 2, u + 0.5, str(u), ha="center", va="bottom",
                     fontsize=7, fontweight="bold")
 
     ax.set_xticks(x)
@@ -355,7 +350,7 @@ def _panel_pairing(ax, loaded: dict):
     despine(ax)
 
 
-# ── Panel C: Participant counts per arm × visit ──────────────────────
+# ── Panel B: Participant counts per arm × visit ──────────────────────
 
 
 def _panel_participant_counts(fig, loaded: dict):
@@ -409,13 +404,15 @@ def _panel_participant_counts(fig, loaded: dict):
         # Drop zero-count bins from unobserved categorical combos
         grp = grp[grp["N"] > 0]
 
+        _order = _visit_sort_order(grp[x_col].unique()) if x_col == "Visit" else None
+
         if hue_col:
-            sns.barplot(data=grp, x=x_col, y="N", hue=hue_col,
+            sns.barplot(data=grp, x=x_col, y="N", hue=hue_col, order=_order,
                         palette="Dark2", edgecolor="white", ax=ax)
             ax.legend(fontsize=6, title=hue_col, title_fontsize=7,
                       loc="upper right", frameon=True)
         else:
-            sns.barplot(data=grp, x=x_col, y="N",
+            sns.barplot(data=grp, x=x_col, y="N", order=_order,
                         color="#1b9e77", edgecolor="white", ax=ax)
 
         # Annotate bar values
@@ -437,7 +434,7 @@ def _panel_participant_counts(fig, loaded: dict):
     fig.suptitle("Participants per Arm × Visit", fontweight="bold", fontsize=11)
 
 
-# ── Panel D: Cells per participant per arm ────────────────────────────
+# ── Panel C: Cells per participant per arm ────────────────────────────
 
 
 def _panel_cells_per_pid_arm(ax, loaded: dict):
@@ -474,23 +471,63 @@ def _panel_cells_per_pid_arm(ax, loaded: dict):
     df = pd.concat(rows, ignore_index=True)
     df["Cells_log"] = np.log10(df["Cells"] + 1)
 
-    sns.boxplot(data=df, x="Dataset", y="Cells_log", hue="Arm",
-                order=list(loaded.keys()), fliersize=0, linewidth=1.0,
-                width=0.85, palette="Dark2", ax=ax)
-    sns.stripplot(data=df, x="Dataset", y="Cells_log", hue="Arm",
-                  order=list(loaded.keys()), dodge=True, size=3.5, alpha=0.5,
-                  palette="Dark2", ax=ax, legend=False)
+    # Use categorical positions explicitly to avoid seaborn 0.13 dodge centering bug
+    ds_order = list(loaded.keys())
+    arms_present = sorted(df["Arm"].unique())
+    n_arms = len(arms_present)
+    arm_colors = dict(zip(arms_present, sns.color_palette("Dark2", n_arms)))
 
+    # Box width based on max arms any single dataset has
+    max_arms_per_ds = max(
+        len(df[df["Dataset"] == ds]["Arm"].unique())
+        for ds in ds_order
+    )
+    box_width = 0.7 / max_arms_per_ds
+    for tick_idx, ds_name in enumerate(ds_order):
+        ds_df = df[df["Dataset"] == ds_name]
+        ds_arms = sorted(ds_df["Arm"].unique())
+        n_ds_arms = len(ds_arms)
+        # Center this dataset's boxes around tick_idx
+        offsets = np.linspace(-(n_ds_arms - 1) / 2 * box_width,
+                              (n_ds_arms - 1) / 2 * box_width,
+                              n_ds_arms)
+        for arm, off in zip(ds_arms, offsets):
+            arm_df = ds_df[ds_df["Arm"] == arm]["Cells_log"].dropna()
+            if len(arm_df) == 0:
+                continue
+            color = arm_colors.get(arm, "grey")
+            bp = ax.boxplot(arm_df, positions=[tick_idx + off],
+                            widths=box_width * 0.85,
+                            patch_artist=True,
+                            showfliers=False,
+                            medianprops=dict(color="black", linewidth=1.5),
+                            boxprops=dict(facecolor=color, alpha=0.8,
+                                          linewidth=0.8),
+                            whiskerprops=dict(linewidth=0.8),
+                            capprops=dict(linewidth=0.8))
+            # Strip dots
+            jitter = np.random.default_rng(42).uniform(
+                -box_width * 0.3, box_width * 0.3, len(arm_df))
+            ax.scatter(tick_idx + off + jitter, arm_df.values,
+                       s=4, color=color, alpha=0.5, zorder=3)
+
+    ax.set_xticks(range(len(ds_order)))
+    ax.set_xticklabels(ds_order)
+
+    ax.set_xticks(range(len(ds_order)))
+    ax.set_xticklabels(ds_order)
     ax.set_xlabel("")
     ax.set_ylabel(r"$\log_{10}$(cells per participant + 1)")
     ax.set_title("Cells per Participant by Arm", fontweight="bold")
-    ax.legend(fontsize=6, title="Arm", title_fontsize=7, loc="upper right",
-              frameon=True, ncol=2)
+    from matplotlib.patches import Patch
+    handles = [Patch(facecolor=arm_colors[a], label=a) for a in arms_present]
+    ax.legend(handles=handles, fontsize=6, title="Arm", title_fontsize=7,
+              loc="upper right", frameon=True, ncol=3)
     ax.tick_params(axis="x", rotation=15)
     despine(ax)
 
 
-# ── Panel E: n_genes distributions ──────────────────────────────────
+# ── Panel D: n_genes distributions ──────────────────────────────────
 
 
 def _panel_ngenes_dist(ax, loaded: dict):
@@ -507,7 +544,9 @@ def _panel_ngenes_dist(ax, loaded: dict):
 
         split_col = vis if vis and vis in obs.columns and obs[vis].nunique() > 1 else arm
         if split_col and split_col in obs.columns:
-            for val in sorted(obs[split_col].dropna().unique()):
+            _vals = obs[split_col].dropna().unique()
+            _ordered = _visit_sort_order(_vals) if split_col == vis else sorted(_vals)
+            for val in _ordered:
                 mask = obs[split_col].values == val
                 sub_idx = idx[mask[idx]]
                 if len(sub_idx) > 0:
@@ -526,7 +565,38 @@ def _panel_ngenes_dist(ax, loaded: dict):
 
     sns.violinplot(data=df, x="Dataset", y="Genes", hue="Group",
                    order=order, cut=0, inner="quartile", linewidth=0.5,
-                   palette="Dark2", density_norm="width", ax=ax)
+                   palette="Dark2", density_norm="width", width=0.8, ax=ax)
+
+    # Re-center violins: seaborn 0.13 offsets groups as if all hue levels
+    # are present at every tick; shift each dataset's violin block to center.
+    from matplotlib.collections import PolyCollection
+    n_datasets = len(order)
+    polys = [c for c in ax.collections if isinstance(c, PolyCollection)]
+    # Compute offset per poly and store (original_center -> offset) mapping
+    offsets_map = {}
+    for tick_idx in range(n_datasets):
+        tick_polys = [p for p in polys
+                      if abs(p.get_paths()[0].vertices[:, 0].mean() - tick_idx) < 0.6]
+        if not tick_polys:
+            continue
+        xs = [p.get_paths()[0].vertices[:, 0].mean() for p in tick_polys]
+        group_center = (min(xs) + max(xs)) / 2
+        offset = tick_idx - group_center
+        for p in tick_polys:
+            orig_center = p.get_paths()[0].vertices[:, 0].mean()
+            offsets_map[round(orig_center, 6)] = offset
+            verts = p.get_paths()[0].vertices
+            verts[:, 0] += offset
+    # Shift quartile lines stored in ax.lines
+    for line in ax.lines:
+        xdata = np.array(line.get_xdata(), dtype=float)
+        if len(xdata) == 0:
+            continue
+        x_center = round(float(xdata.mean()), 6)
+        # Find closest key in offsets_map
+        best_key = min(offsets_map.keys(), key=lambda k: abs(k - x_center), default=None)
+        if best_key is not None and abs(best_key - x_center) < 0.5:
+            line.set_xdata(xdata + offsets_map[best_key])
     ax.set_xlabel("")
     ax.set_ylabel("Genes detected per cell")
     ax.set_title("Gene Detection by Dataset & Group", fontweight="bold")
@@ -536,7 +606,7 @@ def _panel_ngenes_dist(ax, loaded: dict):
     despine(ax)
 
 
-# ── Panel F helper: total_counts distributions ──────────────────────
+# ── Panel E helper: total_counts distributions ──────────────────────
 
 
 def _panel_counts_dist(ax, loaded: dict):
@@ -553,7 +623,9 @@ def _panel_counts_dist(ax, loaded: dict):
 
         split_col = vis if vis and vis in obs.columns and obs[vis].nunique() > 1 else arm
         if split_col and split_col in obs.columns:
-            for val in sorted(obs[split_col].dropna().unique()):
+            _vals = obs[split_col].dropna().unique()
+            _ordered = _visit_sort_order(_vals) if split_col == vis else sorted(_vals)
+            for val in _ordered:
                 mask = obs[split_col].values == val
                 sub_idx = idx[mask[idx]]
                 if len(sub_idx) > 0:
@@ -572,7 +644,34 @@ def _panel_counts_dist(ax, loaded: dict):
 
     sns.violinplot(data=df, x="Dataset", y="Counts", hue="Group",
                    order=order, cut=0, inner="quartile", linewidth=0.5,
-                   palette="Dark2", density_norm="width", ax=ax)
+                   palette="Dark2", density_norm="width", width=0.8, ax=ax)
+
+    # Re-center violins per dataset tick
+    from matplotlib.collections import PolyCollection
+    n_datasets = len(order)
+    polys = [c for c in ax.collections if isinstance(c, PolyCollection)]
+    offsets_map = {}
+    for tick_idx in range(n_datasets):
+        tick_polys = [p for p in polys
+                      if abs(p.get_paths()[0].vertices[:, 0].mean() - tick_idx) < 0.6]
+        if not tick_polys:
+            continue
+        xs = [p.get_paths()[0].vertices[:, 0].mean() for p in tick_polys]
+        group_center = (min(xs) + max(xs)) / 2
+        offset = tick_idx - group_center
+        for p in tick_polys:
+            orig_center = p.get_paths()[0].vertices[:, 0].mean()
+            offsets_map[round(orig_center, 6)] = offset
+            verts = p.get_paths()[0].vertices
+            verts[:, 0] += offset
+    for line in ax.lines:
+        xdata = np.array(line.get_xdata(), dtype=float)
+        if len(xdata) == 0:
+            continue
+        x_center = round(float(xdata.mean()), 6)
+        best_key = min(offsets_map.keys(), key=lambda k: abs(k - x_center), default=None)
+        if best_key is not None and abs(best_key - x_center) < 0.5:
+            line.set_xdata(xdata + offsets_map[best_key])
     ax.set_xlabel("")
     ax.set_ylabel(r"$\log_{10}$(total counts + 1)")
     ax.set_title("Sequencing Depth by Dataset & Group", fontweight="bold")
@@ -581,7 +680,7 @@ def _panel_counts_dist(ax, loaded: dict):
     despine(ax)
 
 
-# ── Panel F: % mito and % ribosomal ─────────────────────────────────
+# ── Panel E: % mito and % ribosomal ─────────────────────────────────
 
 
 def _panel_mito_ribo(ax, loaded: dict):
@@ -628,17 +727,17 @@ def _panel_mito_ribo(ax, loaded: dict):
     despine(ax)
 
 
-# ── Panel F merged: Total counts + mito/ribo in 1×2 ──────────────────
+# ── Panel E merged: Total counts + mito/ribo in 1×2 ──────────────────
 
 
 def _panel_counts_mito_merged(fig_merged, loaded: dict):
-    """F: Combined total counts + mito/ribo QC in 1×2 subplot."""
+    """E: Combined total counts + mito/ribo QC in 1×2 subplot."""
     ax1, ax2 = fig_merged.subplots(1, 2)
     _panel_counts_dist(ax1, loaded)
     _panel_mito_ribo(ax2, loaded)
 
 
-# ── Panel H: QC attrition waterfall ──────────────────────────────────
+# ── Panel G: QC attrition waterfall ──────────────────────────────────
 
 
 def _panel_qc_waterfall(ax, loaded: dict):
@@ -699,7 +798,7 @@ def _panel_qc_waterfall(ax, loaded: dict):
     despine(ax)
 
 
-# ── Panel G: Lorenz curve + Gini per dataset ─────────────────────────
+# ── Panel F: Lorenz curve + Gini per dataset ─────────────────────────
 
 
 def _panel_lorenz_gini(ax, loaded: dict):
@@ -718,7 +817,7 @@ def _panel_lorenz_gini(ax, loaded: dict):
             gini = 1 - 2 * np.trapz(y_lorenz, x_lorenz)
         except Exception:
             gini = 1 - 2 * np.trapezoid(y_lorenz, x_lorenz)
-            
+
         ax.plot(x_lorenz, y_lorenz, linewidth=1.5,
                 color=_DS_PALETTE.get(name, "black"),
                 label=f"{name} (Gini={gini:.2f})")
@@ -736,7 +835,7 @@ def _panel_lorenz_gini(ax, loaded: dict):
     despine(ax)
 
 
-# ── Panel I: Visit completeness ──────────────────────────────────────
+# ── Panel H: Visit completeness ──────────────────────────────────────
 
 
 def _panel_completeness_detailed(ax, loaded: dict):
@@ -750,7 +849,7 @@ def _panel_completeness_detailed(ax, loaded: dict):
             continue
 
         if vis and vis in obs.columns and obs[vis].nunique() > 1:
-            visits = sorted(obs[vis].dropna().unique())
+            visits = _visit_sort_order(obs[vis].dropna().unique())
             participants = sorted(obs[pid].dropna().unique())
             for v in visits:
                 n_total = len(participants)
@@ -792,6 +891,7 @@ def _panel_completeness_detailed(ax, loaded: dict):
     ax.set_xlim(0, 1.15)
     ax.set_xlabel("Fraction of participants with cells")
     ax.set_title("Visit Completeness", fontweight="bold")
+    ax.invert_yaxis()
     despine(ax)
 
 
@@ -803,7 +903,7 @@ def _panel_completeness_detailed(ax, loaded: dict):
 def generate():
     """Create and save Supplementary Figure 1 panels.
 
-    Layout (8 panels):
+    Layout (8 panels, A–H):
       A  Participant pairing structure
       B  Participant counts per arm × visit
       C  Cells per participant by arm
@@ -834,8 +934,7 @@ def generate():
     save_panel(fig, "panel_B", FIGURE_NAME, SUPP_OUTPUT)
 
     # Panel C: Cells per participant by arm
-    fig, ax = plt.subplots(figsize=(9, 5))
-    _panel_cells_per_pid_arm(ax, loaded)
+    fig, ax = plt.subplots(figsize=(13, 5))
     fig.tight_layout()
     save_panel(fig, "panel_C", FIGURE_NAME, SUPP_OUTPUT)
 
@@ -902,14 +1001,13 @@ def generate():
     _mm = 1.0 / 25.4
     fig_c = plt.figure(figsize=(180 * _mm, 215 * _mm))
 
-    #   Row 0: A (pairing)   | B (Melanoma, COVID-19, Vaccine)
-    #   Row 1: C (cells/pid) | B (AML, CAR-T centred)
+    #   Row 0: A (pairing)   | B (first half of datasets)
+    #   Row 1: C (cells/pid) | B (remaining datasets, centred)
     #   Row 2: D (genes) | E_counts | E_mito
     #   Row 3: F (Lorenz) | G (QC waterfall) | H (completeness)
-    import math
     n_ds = len(loaded)
     ds_names = list(loaded.keys())
-    n_b_cols = math.ceil(n_ds / 2)  # datasets per row (3 for 5 datasets)
+    n_b_cols = math.ceil(n_ds / 2)  # datasets per row
     b_rows = [ds_names[i:i + n_b_cols] for i in range(0, n_ds, n_b_cols)]
 
     outer = fig_c.add_gridspec(
@@ -924,8 +1022,8 @@ def generate():
     # widths are equal and each B subplot has the same width.
     ax_b_list = []
 
-    # Row 0: A | B (full — 3 datasets)
-    _left_w = 2.2   # wider left panel → narrower B subplots
+    # Row 0: A | B (full row of datasets)
+    _left_w = 2.2  # wider left panel → narrower B subplots
     b_row0 = b_rows[0]
     gs0 = outer[0].subgridspec(
         1, 1 + n_b_cols, wspace=0.40,
@@ -935,7 +1033,7 @@ def generate():
     for j, nm in enumerate(b_row0):
         ax_b_list.append((fig_c.add_subplot(gs0[1 + j]), nm))
 
-    # Row 1: C | B (partial — 2 datasets, centred)
+    # Row 1: C | B (remaining datasets, centred if fewer than n_b_cols)
     b_row1 = b_rows[1] if len(b_rows) > 1 else []
     n_have = len(b_row1)
     n_gap = n_b_cols - n_have
@@ -980,7 +1078,7 @@ def generate():
     _panel_cells_per_pid_arm(ax_c, loaded)
     _panel_ngenes_dist(ax_d, loaded)
 
-    # Draw Panel B subfigs across 3 rows
+    # Draw Panel B subfigs across rows
     for ax_bi, name_bi in ax_b_list:
         data_bi = loaded[name_bi]
         obs_bi = data_bi["adata"].obs
@@ -993,11 +1091,12 @@ def generate():
             continue
         if arm_bi and vis_bi and arm_bi in obs_bi.columns and vis_bi in obs_bi.columns:
             grp = (obs_bi.assign(**{arm_bi: obs_bi[arm_bi].astype(str),
-                                     vis_bi: obs_bi[vis_bi].astype(str)})
+                                    vis_bi: obs_bi[vis_bi].astype(str)})
                    .groupby([arm_bi, vis_bi], observed=True)[pid_bi]
                    .nunique().reset_index(name="N"))
             grp.rename(columns={arm_bi: "Arm", vis_bi: "Visit"}, inplace=True)
             sns.barplot(data=grp, x="Visit", y="N", hue="Arm",
+                        order=_visit_sort_order(grp["Visit"].unique()),
                         palette="Dark2", edgecolor="white", ax=ax_bi)
             leg_bi = ax_bi.get_legend()
             if leg_bi:
@@ -1008,6 +1107,7 @@ def generate():
                    .nunique().reset_index(name="N"))
             grp.rename(columns={vis_bi: "Visit"}, inplace=True)
             sns.barplot(data=grp, x="Visit", y="N", width=0.4,
+                        order=_visit_sort_order(grp["Visit"].unique()),
                         color="#1b9e77", edgecolor="white", ax=ax_bi)
         elif arm_bi and arm_bi in obs_bi.columns:
             grp = (obs_bi.assign(**{arm_bi: obs_bi[arm_bi].astype(str)})
@@ -1046,8 +1146,8 @@ def generate():
     # Move legends inside plots for the composite
     _inside = {
         ax_a: dict(loc="upper left", ncol=1),
-        ax_c: dict(loc="upper right", ncol=2),
-        ax_d: dict(loc="upper right", ncol=2),
+        ax_c: dict(loc="upper right", ncol=3),
+        ax_d: dict(loc="upper right", ncol=3),
         ax_f: dict(loc="upper left", ncol=1),
     }
     for ax_target, kw in _inside.items():
@@ -1124,7 +1224,7 @@ def generate():
     fig_c.savefig(str(pdf_path), format="pdf", bbox_inches="tight",
                   facecolor="white")
     plt.close(fig_c)
-    print(f"    Saved combined artboard (PNG + PDF)")
+    print("    Saved combined artboard (PNG + PDF)")
 
     # Cleanup
     for data in loaded.values():

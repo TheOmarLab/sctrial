@@ -16,7 +16,7 @@ Panels:
   H  Observed rejection rate vs nominal alpha (signal excess over null).
   I  Runtime scaling across datasets (Cleveland dot plot).
   J  Pseudoreplication diagnostics: cell-level vs participant-level
-     inference comparison across all 5 datasets (β scatter, −log10(p),
+     inference comparison across all datasets (β scatter, −log10(p),
      SE bars).
 
 Non-overlap guardrail: no sensitivity analysis (→ SF4), no cross-dataset
@@ -47,6 +47,7 @@ from .._shared import (
     get_cart,
     get_sade_feldman,
     get_stephenson,
+    get_tnbc_zhang,
     get_vaccine,
     harmonize_response,
     save_panel,
@@ -61,6 +62,19 @@ _TEST_FEATURES = [
 ]
 
 _DATASET_CFG = {
+    "TNBC": {
+        # Two-arm DiD: anti-PDL1+Chemo vs Chemo, Pre vs Post (paired).
+        "design": "two_arm",
+        "loader": lambda: get_tnbc_zhang(),
+        "harmonize": False,
+        "layer": "log1p_norm",
+        "participant_col": "participant_id",
+        "visit_col": "visit",
+        "arm_col": "arm",
+        "arm_treated": "anti-PDL1+Chemo",
+        "arm_control": "Chemo",
+        "visits": ("Pre", "Post"),
+    },
     "Melanoma": {
         # Two-arm DiD: Responder vs Non-responder, Pre vs Post (paired).
         "design": "two_arm",
@@ -126,7 +140,7 @@ _DATASET_CFG = {
 }
 
 _DS_PALETTE = dict(
-    zip(_DATASET_CFG.keys(), ["#1b9e77", "#d95f02", "#7570b3", "#e7298a", "#66a61e"])
+    zip(_DATASET_CFG.keys(), ["#996633", "#1b9e77", "#d95f02", "#7570b3", "#e7298a", "#66a61e"])
 )
 
 
@@ -246,12 +260,7 @@ def _ols_interaction(y: np.ndarray, post: np.ndarray, treated: np.ndarray | None
 
 
 def _fit_dataset(name: str, adata, cfg: dict) -> dict | None:
-    """Run OLS for each feature and return effect + residual tables.
-
-    Supports two designs via cfg["design"]:
-      "two_arm"           — Y ~ 1 + post + treated + post:treated  (DiD)
-      "single_arm_paired" — Y ~ 1 + post  (within-arm pre/post)
-    """
+    """Run OLS for each feature and return effect + residual tables."""
     design = cfg.get("design", "two_arm")
     features = [f for f in _TEST_FEATURES if f in adata.var_names]
     if len(features) < 4:
@@ -263,16 +272,14 @@ def _fit_dataset(name: str, adata, cfg: dict) -> dict | None:
 
     pid_col = cfg["participant_col"]
     visit_col = cfg["visit_col"]
-    arm_col = cfg.get("arm_col")  # None for single-arm without arm column
+    arm_col = cfg.get("arm_col")
     pre_v, post_v = cfg["visits"]
 
-    # Restrict to requested visits.
     pv = pv[pv[visit_col].isin([pre_v, post_v])].copy()
     if pv.empty:
         return None
 
     if design == "two_arm":
-        # Two-arm DiD: filter to the two arms.
         pv = pv[
             pv[arm_col].isin([cfg["arm_treated"], cfg["arm_control"]])
         ].copy()
@@ -294,7 +301,6 @@ def _fit_dataset(name: str, adata, cfg: dict) -> dict | None:
             return None
         treated = (pv[arm_col].values == cfg["arm_treated"]).astype(float)
     else:
-        # Single-arm: no arm covariate.
         n_per_group = int(pv[pid_col].nunique())
         if n_per_group < 2:
             return None
@@ -336,7 +342,6 @@ def _fit_dataset(name: str, adata, cfg: dict) -> dict | None:
     effect_df = pd.DataFrame(effect_rows)
     resid_df = pd.concat(resid_rows, axis=0, ignore_index=True)
 
-    # Permutation null.
     null_abs = _permutation_null(pv, features, cfg, n_perm=200)
 
     design_label = "DiD" if design == "two_arm" else "pre–post"
@@ -360,11 +365,7 @@ def _permutation_null(
     cfg: dict,
     n_perm: int = 200,
 ) -> np.ndarray:
-    """Generate null distribution of |beta| by permuting labels.
-
-    Two-arm: permute arm assignment across participants.
-    Single-arm: permute visit assignment across participants.
-    """
+    """Generate null distribution of |beta| by permuting labels."""
     design = cfg.get("design", "two_arm")
     pid_col = cfg["participant_col"]
     visit_col = cfg["visit_col"]
@@ -397,7 +398,6 @@ def _permutation_null(
                 if fit is not None and np.isfinite(fit["beta"]):
                     out.append(abs(fit["beta"]))
     else:
-        # Single-arm: permute visit labels WITHIN each participant.
         pids = pv[pid_col].values
         unique_pids = np.unique(pids)
         for _ in range(n_perm):
@@ -423,7 +423,6 @@ def _load_results() -> dict[str, dict]:
             adata = cfg["loader"]()
             if cfg.get("harmonize", False):
                 adata = harmonize_response(adata)
-            # Create log1p_cpm layer if needed but missing.
             layer = cfg["layer"]
             if layer == "log1p_cpm" and "log1p_cpm" not in adata.layers:
                 if "counts" in adata.layers:
@@ -441,9 +440,7 @@ def _load_results() -> dict[str, dict]:
                     f"n/group={res['n_per_group']}"
                 )
             else:
-                print(
-                    f"  {name}: skipped (insufficient paired data)"
-                )
+                print(f"  {name}: skipped (insufficient paired data)")
         except Exception as exc:
             print(f"  {name}: failed ({exc})")
     return out
@@ -501,7 +498,6 @@ def _panel_resid_fitted(fig_faceted, results: dict[str, dict]):
         ax.set_ylabel("Residual", fontsize=8)
         ax.set_title(name, fontsize=10, fontweight="bold")
         despine(ax)
-    # Hide unused axes
     for idx in range(n_ds, nrows * ncols):
         r, c = divmod(idx, ncols)
         axes[r][c].set_visible(False)
@@ -548,7 +544,6 @@ def _panel_influence(ax, results: dict[str, dict]):
         data=df, x="Dataset", y="Cook's D",
         ax=ax, color="black", size=2.0, alpha=0.25, jitter=0.2,
     )
-    # 4/n threshold per dataset + participant-level flagged rate annotation
     for i, name in enumerate(df["Dataset"].unique()):
         n = results[name]["effects"]["n_obs"].median()
         n_features = len(results[name]["features"])
@@ -558,7 +553,6 @@ def _panel_influence(ax, results: dict[str, dict]):
                 [i - 0.35, i + 0.35], [thr, thr],
                 color="red", lw=1.0, ls="--",
             )
-            # Count participants flagged in ≥1 feature (not pooled obs)
             resid_df = results[name]["residuals"]
             pid_col = results[name]["cfg"]["participant_col"]
             if pid_col in resid_df.columns:
@@ -575,7 +569,6 @@ def _panel_influence(ax, results: dict[str, dict]):
                     fontstyle="italic",
                 )
             else:
-                # Fallback: pooled observation count
                 ds_vals = df.loc[df["Dataset"] == name, "Cook's D"].values
                 n_flagged = int(np.sum(ds_vals > thr))
                 n_total = len(ds_vals)
@@ -594,20 +587,7 @@ def _panel_influence(ax, results: dict[str, dict]):
 def _panel_baseline_comparability(
     fig, axes, results: dict[str, dict], *, composite: bool = False,
 ):
-    """D: Baseline mean comparability.
-
-    Two-arm datasets: scatter of (control pre-mean, treated pre-mean) per
-    feature.  Points near diagonal → arms have similar baseline expression.
-
-    Single-arm datasets: scatter of (Pre mean, Post mean) per feature to
-    show the magnitude/direction of change.
-
-    Parameters
-    ----------
-    composite : bool
-        When True, draw labels at the small composite fontsize and tune
-        adjust_text for that scale so positions are geometrically correct.
-    """
+    """D: Baseline mean comparability."""
     names = list(results)
     for i, ax in enumerate(np.ravel(axes)):
         if i >= len(names):
@@ -641,11 +621,11 @@ def _panel_baseline_comparability(
             x_label = f"{cfg['arm_control']} mean"
             y_label = f"{cfg['arm_treated']} mean"
             subtitle = {
+                "TNBC": "TNBC — anti-PDL1+Chemo vs Chemo",
                 "Melanoma": "Melanoma — responder vs non-responder",
                 "COVID-19": "COVID-19 — severe vs mild",
             }.get(name, f"{name} — baseline comparability")
         else:
-            # Single-arm: compare Pre vs Post means.
             pre_data = pv[pv[visit_col] == pre_v]
             post_data = pv[pv[visit_col] == post_v]
             if pre_data.empty or post_data.empty:
@@ -710,17 +690,13 @@ def _panel_baseline_comparability(
 
         ax.set_xlabel(x_label, fontsize=8)
         ax.set_ylabel(y_label, fontsize=8)
-        ax.set_title(subtitle, fontsize=10, fontweight="bold")
+        ax.set_title(subtitle, fontsize=4.0 if composite else 10, fontweight="bold")
         ax.set_aspect("equal", adjustable="datalim")
         despine(ax)
 
 
 def _panel_signal_enrichment(ax, results: dict[str, dict]):
-    """E: Observed |effect| quantiles vs permutation null quantiles.
-
-    Points above the diagonal indicate features with effects larger than
-    expected under the null (signal enrichment), NOT type-I error calibration.
-    """
+    """E: Observed |effect| quantiles vs permutation null quantiles."""
     for name, res in results.items():
         label = f"{name} ({res['design_label']})"
         obs = np.sort(np.abs(res["effects"]["beta"].dropna().values))
@@ -745,14 +721,8 @@ def _panel_signal_enrichment(ax, results: dict[str, dict]):
     despine(ax)
 
 
-
 def _panel_normality_tests(ax, results: dict[str, dict]):
-    """F-left: Per-feature Shapiro-Wilk, summarised as median W per dataset.
-
-    Tests are run on each feature's residuals separately (not pooled across
-    features), since pooling residuals from different models violates the
-    independence assumption of the Shapiro-Wilk test.
-    """
+    """F-left: Per-feature Shapiro-Wilk, summarised as median W per dataset."""
     rows = []
     for name, res in results.items():
         rdf = res["residuals"]
@@ -785,14 +755,13 @@ def _panel_normality_tests(ax, results: dict[str, dict]):
     y = np.arange(len(df))
     colors = [_DS_PALETTE.get(n, "grey") for n in df["Dataset"]]
 
-    # Main: median Shapiro W statistic bars
     ax.barh(y, df["Median W"], color=colors, edgecolor="white",
             height=0.6, alpha=0.85)
     for i, (_, row) in enumerate(df.iterrows()):
         label = (f"med W={row['Median W']:.3f}, "
                  f"{row['Frac W>0.95']:.0%} pass "
                  f"({int(row['n_features'])} features)")
-        ax.text(row["Median W"] + 0.002, i, label, va="center",
+        ax.text(row["Median W"] + 0.002, i - 0.45, label, va="bottom",
                 fontsize=7, fontweight="bold")
 
     ax.set_yticks(y)
@@ -802,6 +771,7 @@ def _panel_normality_tests(ax, results: dict[str, dict]):
     ax.axvline(0.95, color="red", ls="--", lw=0.8, alpha=0.7,
                label="W=0.95 reference")
     ax.legend(fontsize=6, frameon=True)
+    ax.invert_yaxis()
     despine(ax)
 
 
@@ -817,7 +787,7 @@ def _panel_funnel(ax, results: dict[str, dict]):
             edgecolors="white", linewidth=0.5, label=label,
         )
     ax.axvline(0, color="black", lw=0.8, ls="--")
-    ax.invert_yaxis()  # convention: SE=0 at top
+    ax.invert_yaxis()
     ax.set_xlabel("Model effect (β)")
     ax.set_ylabel("Standard error")
     ax.set_title("Effect Size vs Standard Error (Funnel)", fontweight="bold")
@@ -833,13 +803,7 @@ def _panel_assumptions_merged(fig_merged, results: dict[str, dict]):
 
 
 def _panel_rejection_vs_alpha(ax, results: dict[str, dict]):
-    """H: Observed rejection rate vs nominal alpha.
-
-    For alphas in [0.01..0.20], compute the fraction of features where
-    |observed effect| > quantile(|null effects|, 1-alpha).  Above the
-    diagonal indicates more signal than expected under the null (not
-    type-I error calibration, since observed effects may contain true signal).
-    """
+    """H: Observed rejection rate vs nominal alpha."""
     alphas = np.arange(0.01, 0.205, 0.01)
     for name, res in results.items():
         label = f"{name} ({res['design_label']})"
@@ -865,16 +829,11 @@ def _panel_rejection_vs_alpha(ax, results: dict[str, dict]):
     despine(ax)
 
 
-# ── Heteroscedasticity helper (used by merged panel F) ─────────────
+# ── Heteroscedasticity helper ─────────────────────────────────────
 
 
 def _panel_heteroscedasticity(ax, results: dict[str, dict]):
-    """F-right: Per-feature Breusch-Pagan, summarised per dataset.
-
-    Tests are run on each feature's residuals separately (not pooled),
-    since pooling residuals from different models violates i.i.d. assumptions.
-    Reports median BP statistic and fraction with p < 0.05.
-    """
+    """F-right: Per-feature Breusch-Pagan, summarised per dataset."""
     rows = []
     for name, res in results.items():
         rdf = res["residuals"]
@@ -928,7 +887,7 @@ def _panel_heteroscedasticity(ax, results: dict[str, dict]):
         label = (f"med BP={row['Median BP']:.2f}, "
                  f"{row['Frac p<0.05']:.0%} sig "
                  f"({int(row['n_features'])} features)")
-        ax.text(row["Median BP"] + 0.05, i, label, va="center",
+        ax.text(row["Median BP"] + 0.05, i - 0.45, label, va="bottom",
                 fontsize=7, fontweight="bold")
 
     ax.set_yticks(y)
@@ -938,22 +897,15 @@ def _panel_heteroscedasticity(ax, results: dict[str, dict]):
     ax.axvline(3.84, color="red", ls="--", lw=0.8, alpha=0.7,
                label=r"$\chi^2$(1) = 3.84 reference")
     ax.legend(fontsize=6, frameon=True)
+    ax.invert_yaxis()
     despine(ax)
 
 
-# ── Generate ──────────────────────────────────────────────────────
-
-
-# ── Pseudoreplication panels (I) ──────────────────────────────────
+# ── Pseudoreplication panels ──────────────────────────────────────
 
 
 def _naive_cell_prepost(expr_df, features, visit_col, visits):
-    """Naive cell-level pre-vs-post: two-sample t-test ignoring participant.
-
-    This intentionally ignores participant structure — every cell is treated
-    as independent, which is exactly the pseudoreplication fallacy.
-    Returns DataFrame with columns (feature, beta, pval, se).
-    """
+    """Naive cell-level pre-vs-post: two-sample t-test ignoring participant."""
     visit_pre, visit_post = visits
     pre = expr_df[expr_df[visit_col] == visit_pre]
     post = expr_df[expr_df[visit_col] == visit_post]
@@ -966,8 +918,6 @@ def _naive_cell_prepost(expr_df, features, visit_col, visits):
                          "pval": np.nan, "se": np.nan})
             continue
         beta = x_post.mean() - x_pre.mean()
-        # Welch's t-test (unequal variance) for consistency:
-        # SE uses separate variances, df uses Welch-Satterthwaite.
         t_res = stats.ttest_ind(x_post, x_pre, equal_var=False)
         se = abs(beta / t_res.statistic) if t_res.statistic != 0 else 0.0
         pval = float(t_res.pvalue)
@@ -976,11 +926,7 @@ def _naive_cell_prepost(expr_df, features, visit_col, visits):
 
 
 def _participant_paired_delta(expr_df, features, pid_col, visit_col, visits):
-    """Participant-level paired Δ: per-participant pre-post change.
-
-    Proper inference: Δ_i = post_i − pre_i, then one-sample t-test on Δ_i.
-    Returns DataFrame with columns (feature, beta, pval, se).
-    """
+    """Participant-level paired Δ: per-participant pre-post change."""
     visit_pre, visit_post = visits
     pre = (expr_df[expr_df[visit_col] == visit_pre]
            .set_index(pid_col)[features])
@@ -991,7 +937,7 @@ def _participant_paired_delta(expr_df, features, pid_col, visit_col, visits):
         return pd.DataFrame(
             [{"feature": f, "beta": np.nan, "pval": np.nan, "se": np.nan}
              for f in features])
-    delta = post.loc[shared] - pre.loc[shared]  # (n_participants, n_features)
+    delta = post.loc[shared] - pre.loc[shared]
     rows = []
     for feat in features:
         d = delta[feat].dropna().values
@@ -1005,10 +951,8 @@ def _participant_paired_delta(expr_df, features, pid_col, visit_col, visits):
             t_stat = mean_d / se_d
             pval = 2 * (1 - stats.t.cdf(abs(t_stat), df=len(d) - 1))
         elif mean_d == 0:
-            # No variance, no effect — undefined test
             pval = np.nan
         else:
-            # No variance but nonzero mean — infinitely significant
             pval = 0.0
         rows.append({"feature": feat, "beta": mean_d, "pval": pval,
                      "se": se_d})
@@ -1018,13 +962,7 @@ def _participant_paired_delta(expr_df, features, pid_col, visit_col, visits):
 def _pseudorep_data_for_dataset(
     name: str, cfg: dict,
 ) -> dict | None:
-    """Run cell-level and participant-level inference for one dataset.
-
-    Two-arm designs use DiD (beta_DiD).
-    Single-arm designs use pre-vs-post OLS: y ~ time + participant_FE.
-    Both return normalised columns (feature, beta, pval, se) so that
-    cell vs participant comparisons are on equal footing.
-    """
+    """Run cell-level and participant-level inference for one dataset."""
     try:
         adata = cfg["loader"]()
         if cfg.get("harmonize", False):
@@ -1050,7 +988,6 @@ def _pseudorep_data_for_dataset(
         design_type = cfg.get("design", "two_arm")
 
         if design_type == "two_arm":
-            # ── Two-arm: use did_table for DiD interaction ──
             arm_col_val = cfg.get("arm_col", "response")
             design = TrialDesign(
                 participant_col=cfg["participant_col"],
@@ -1070,13 +1007,11 @@ def _pseudorep_data_for_dataset(
             df_part = did_table(
                 adata, aggregate="participant_visit", **common_kw,
             )
-            # Rename DiD columns to normalised names
             for df in [df_cell, df_part]:
                 df.rename(columns={
                     "beta_DiD": "beta", "p_DiD": "pval", "se_DiD": "se",
                 }, inplace=True)
         else:
-            # ── Single-arm: naive cell pre/post vs participant paired Δ ──
             arm_filter = cfg.get("arm_filter")
             arm_col_val = cfg.get("arm_col")
             if arm_filter and arm_col_val:
@@ -1086,7 +1021,6 @@ def _pseudorep_data_for_dataset(
             visit_col = cfg["visit_col"]
             visits = cfg["visits"]
 
-            # Build cell-level expression DataFrame
             mat = _matrix_from_layer(adata, features, layer)
             expr_cell = pd.DataFrame(
                 mat, columns=features, index=adata.obs_names,
@@ -1094,12 +1028,10 @@ def _pseudorep_data_for_dataset(
             expr_cell[pid_col] = adata.obs[pid_col].values
             expr_cell[visit_col] = adata.obs[visit_col].values
 
-            # Cell-level: naive two-sample pre-vs-post (pseudoreplication)
             df_cell = _naive_cell_prepost(
                 expr_cell, features, visit_col, visits,
             )
 
-            # Participant-level: pseudobulk means → paired Δ with t-test
             expr_part = (
                 expr_cell.groupby([pid_col, visit_col], observed=True)[features]
                 .mean()
@@ -1121,15 +1053,10 @@ def _pseudorep_data_for_dataset(
 
 
 def _panel_pseudoreplication_single(ds_name, res, design_type="two_arm"):
-    """One-dataset pseudoreplication panel: 1×3 (β scatter, −log10(p), SE).
-
-    Returns figure or None if data is invalid.
-    design_type controls axis labels: "two_arm" → DiD, else → Δ (pre-post).
-    """
+    """One-dataset pseudoreplication panel: 1×3 (β scatter, −log10(p), SE)."""
     df_cell = res["df_cell"]
     df_part = res["df_part"]
 
-    # Drop features where either level has NaN
     merged = df_cell[["feature", "beta", "pval", "se"]].merge(
         df_part[["feature", "beta", "pval", "se"]],
         on="feature", suffixes=("_cell", "_part"),
@@ -1141,7 +1068,6 @@ def _panel_pseudoreplication_single(ds_name, res, design_type="two_arm"):
     if len(merged) < 3:
         return None
 
-    # Axis labels depend on design
     if design_type == "two_arm":
         beta_label = r"$\beta_{\mathrm{DiD}}$"
         method_tag = "DiD"
@@ -1152,7 +1078,6 @@ def _panel_pseudoreplication_single(ds_name, res, design_type="two_arm"):
     color = _DS_PALETTE.get(ds_name, "#555555")
     fig, axes = plt.subplots(1, 3, figsize=(16, 5.0))
 
-    # Col 0: β scatter (cell vs participant) with adjustText
     ax = axes[0]
     x = merged["beta_cell"].values
     y = merged["beta_part"].values
@@ -1190,7 +1115,6 @@ def _panel_pseudoreplication_single(ds_name, res, design_type="two_arm"):
     ax.set_title("Effect Size Correlation", fontsize=10, fontweight="bold")
     despine(ax)
 
-    # Col 1: −log10(p) bars — use log scale so both levels are visible
     ax = axes[1]
     merged["nlog10_cell"] = -np.log10(
         merged["pval_cell"].clip(lower=1e-300))
@@ -1199,11 +1123,8 @@ def _panel_pseudoreplication_single(ds_name, res, design_type="two_arm"):
     m_sorted = merged.sort_values("nlog10_part", ascending=True)
     y_pos = np.arange(len(m_sorted))
     bar_h = 0.35
-    # Use log1p transform: log10(1 + nlog10p) — compresses large values,
-    # keeps small values visible
     nlog_cell_vals = m_sorted["nlog10_cell"].values
     nlog_part_vals = m_sorted["nlog10_part"].values
-    # Check if scale ratio is extreme (>20x) — use log x-axis
     max_cell = np.nanmax(nlog_cell_vals) if len(nlog_cell_vals) else 1
     max_part = np.nanmax(nlog_part_vals) if len(nlog_part_vals) else 1
     use_log_x = (max_cell / max(max_part, 0.01) > 20) or \
@@ -1215,12 +1136,10 @@ def _panel_pseudoreplication_single(ds_name, res, design_type="two_arm"):
     ax.barh(y_pos + bar_h / 2, nlog_part_vals,
             height=bar_h, color=color, alpha=0.9,
             label="Participant-level", edgecolor="none")
-    # α = 0.05 threshold
     thresh = -np.log10(0.05)
     ax.axvline(thresh, ls="--", color="#999999", lw=0.8)
     if use_log_x:
         ax.set_xscale("symlog", linthresh=1.0)
-        # Nice tick placement for symlog
         ax.set_xlim(left=0)
     ax.set_yticks(y_pos)
     ax.set_yticklabels(m_sorted["feature"].values, fontsize=6.5)
@@ -1230,7 +1149,6 @@ def _panel_pseudoreplication_single(ds_name, res, design_type="two_arm"):
     ax.legend(fontsize=7, loc="lower right", frameon=True, framealpha=0.9)
     despine(ax)
 
-    # Col 2: SE bars — use log x-axis when scale ratio is extreme
     ax = axes[2]
     m_sorted2 = merged.sort_values("se_part", ascending=True)
     y_pos2 = np.arange(len(m_sorted2))
@@ -1265,6 +1183,10 @@ def _panel_pseudoreplication_single(ds_name, res, design_type="two_arm"):
     return fig
 
 
+
+
+
+
 def generate():
     """Create and save all Supplementary Figure 3 panels."""
     print("Supplementary Figure 3: Model Diagnostics and Assumption Checks")
@@ -1295,7 +1217,7 @@ def generate():
     fig.tight_layout()
     save_panel(fig, "panel_B", FIGURE_NAME, SUPP_OUTPUT)
 
-    # B (faceted version, for reference)
+    # B (faceted version)
     ncols_b = min(n_ds, 3)
     nrows_b = max(1, (n_ds + ncols_b - 1) // ncols_b)
     fig = plt.figure(figsize=(5.2 * ncols_b, 4.8 * nrows_b))
@@ -1350,7 +1272,7 @@ def generate():
     fig.tight_layout()
     save_panel(fig, "panel_H", FIGURE_NAME, SUPP_OUTPUT)
 
-    # I: Pseudoreplication — cell-level vs participant-level (separate per dataset)
+    # I: Pseudoreplication — cell-level vs participant-level
     print("  Computing pseudoreplication comparisons ...")
     pseudo_idx = 0
     all_pseudo: dict[str, dict] = {}
@@ -1360,7 +1282,6 @@ def generate():
         if pr is None:
             print(f"    {ds_name}: skipped (data unavailable)")
             continue
-        # Skip datasets where cell-level inference is degenerate (all NaN)
         if pr["df_cell"]["beta"].isna().all():
             print(f"    {ds_name}: skipped (cell-level stats degenerate)")
             continue
@@ -1376,33 +1297,22 @@ def generate():
     if pseudo_idx == 0:
         print("  Pseudoreplication: no datasets had valid cell+participant stats.")
 
-    # J: Runtime scaling (Cleveland dot plot, moved from Figure 3)
+    # I: Runtime scaling (Cleveland dot plot, from figure4_robustness_benchmarking)
     try:
-        from ..main.figure3_robustness_benchmarking import (
-            _panel_c as _fig3_panel_c,
-        )
-        from ..main.figure3_robustness_benchmarking import (
+        from ..main.figure4_robustness_benchmarking import (
+            _panel_c as _fig4_panel_c,
             _prepare_scalability_data,
         )
         scale_data = _prepare_scalability_data()
         fig_rt, ax_rt = plt.subplots(figsize=(8, 5.5))
-        _fig3_panel_c(ax_rt, {"scale_data": scale_data})
+        _fig4_panel_c(ax_rt, {"scale_data": scale_data})
         fig_rt.tight_layout()
-        save_panel(fig_rt, "panel_J_runtime_scaling", FIGURE_NAME, SUPP_OUTPUT)
+        save_panel(fig_rt, "panel_I_runtime_scaling", FIGURE_NAME, SUPP_OUTPUT)
     except Exception as exc:
-        print(f"  Warning: Could not generate runtime panel J: {exc}")
+        print(f"  Warning: Could not generate runtime panel I: {exc}")
 
     # ==================================================================
-    # Composite artboard  (180 mm × 215 mm)  —  ALL panels A–J
-    # ==================================================================
-    #   Row  0: A   — Q-Q plots (1×5, small markers)
-    #   Row  2: B (combined scatter) | C (Cook's distance)
-    #   Row  4: D   — Baseline comparability (1×5)
-    #   Row  6: E (signal enrichment) | F (normality/heterosc. vert)
-    #   Row  8: G | H | I (runtime)
-    #   Row 10: J row 1 (pseudorep ds 0+1)
-    #   Row 12: J row 2 (pseudorep ds 2+3)
-    #   Row 14: J row 3 (pseudorep ds 4)
+    # Composite artboard  (180 mm × 215 mm)
     # ==================================================================
     print("  Building composite figure (all panels A–J) ...")
 
@@ -1455,7 +1365,6 @@ def generate():
         beta_lbl = (r"$\beta_{\mathrm{DiD}}$" if design_type == "two_arm"
                     else r"$\Delta$")
 
-        # Col 0: β scatter
         ax0 = axes_3[0]
         x_b = merged["beta_cell"].values
         y_b = merged["beta_part"].values
@@ -1480,7 +1389,6 @@ def generate():
         ax0.set_title(ds_name, fontweight="bold")
         despine(ax0)
 
-        # Col 1: −log₁₀(p) bars
         ax1 = axes_3[1]
         merged["nlp_cell"] = -np.log10(merged["pval_cell"].clip(1e-300))
         merged["nlp_part"] = -np.log10(merged["pval_part"].clip(1e-300))
@@ -1506,7 +1414,6 @@ def generate():
         ax1.legend(fontsize=2.5, loc="lower right", frameon=True)
         despine(ax1)
 
-        # Col 2: SE bars
         ax2 = axes_3[2]
         ms2 = merged.sort_values("se_part", ascending=True)
         yp2 = np.arange(len(ms2))
@@ -1540,20 +1447,20 @@ def generate():
         15, 1,
         height_ratios=[
             0.34,   # row  0: A (Q-Q)
-            0.34,   # spacer (increased A → B|C)
-            0.40,   # row  2: B (combined scatter) | C (Cook's)
-            0.34,   # spacer (increased B|C → D)
-            0.58,   # row  4: D (baseline, 1×5, taller)
-            0.36,   # spacer (increased D → E|F)
+            0.34,   # spacer
+            0.40,   # row  2: B | C
+            0.34,   # spacer
+            0.58,   # row  4: D (baseline, 1×n_ds, taller)
+            0.36,   # spacer
             0.50,   # row  6: E | F1 | F2
-            0.36,   # spacer (E|F → G|H|I)
+            0.36,   # spacer
             0.42,   # row  8: G | H | I
-            0.40,   # spacer (increased H|I → J)
-            0.52,   # row 10: J row 1 (pseudorep ds 0+1)
-            0.36,   # spacer (increased within J)
-            0.52,   # row 12: J row 2 (pseudorep ds 2+3)
-            0.36,   # spacer (increased within J)
-            0.52,   # row 14: J row 3 (pseudorep ds 4)
+            0.40,   # spacer
+            0.52,   # row 10: J row 1
+            0.36,   # spacer
+            0.52,   # row 12: J row 2
+            0.36,   # spacer
+            0.52,   # row 14: J row 3
         ],
         hspace=0.0,
         left=0.06, right=0.98, top=0.97, bottom=0.03,
@@ -1561,7 +1468,7 @@ def generate():
 
     import re as _re
 
-    # ── Row 0: A — Q-Q (1 × n_ds, small markers) ─────────────────────
+    # ── Row 0: A — Q-Q ───────────────────────────────────────────────
     gs_a = outer[0].subgridspec(1, n_ds, wspace=0.35)
     axes_a = np.array(
         [fig_c.add_subplot(gs_a[0, i]) for i in range(n_ds)]
@@ -1574,9 +1481,8 @@ def generate():
         _aq.set_xlabel(_aq.get_xlabel(), labelpad=1)
         _aq.set_ylabel(_aq.get_ylabel(), labelpad=1)
 
-    # ── Row 2: B (combined scatter, left) | C (Cook's, right) ────────
-    gs_bc = outer[2].subgridspec(1, 2, width_ratios=[0.5, 0.5],
-                                 wspace=0.35)
+    # ── Row 2: B | C ─────────────────────────────────────────────────
+    gs_bc = outer[2].subgridspec(1, 2, width_ratios=[0.5, 0.5], wspace=0.35)
     ax_b = fig_c.add_subplot(gs_bc[0])
     _panel_resid_fitted_combined(ax_b, results)
     for _coll in ax_b.collections:
@@ -1627,7 +1533,23 @@ def generate():
         _axd_i.set_xlabel(_axd_i.get_xlabel(), labelpad=1, fontsize=4.5)
         _axd_i.set_ylabel(_axd_i.get_ylabel(), labelpad=1, fontsize=4.5)
 
-    # Melanoma (axes_d[0]): nudge specific gene labels
+    # Dataset order: TNBC[0], Melanoma[1], AML[2], CAR-T[3], COVID-19[4], Vaccine[5]
+    # TNBC (axes_d[0]): nudge specific gene labels
+    _tnbc_nudge = {
+        "CD8A": (0.0, 0.05),
+        "HAVCR2": (0.08, 0.0),
+        "LAG3": (0.0, -0.05),
+        "PDCD1": (-0.10, 0.0),
+        "IL2": (0.0, 0.06),
+    }
+    for _ann in list(axes_d[0].texts):
+        _gene = _ann.get_text()
+        if _gene in _tnbc_nudge:
+            _cx, _cy = _ann.get_position()
+            _dx, _dy = _tnbc_nudge[_gene]
+            _ann.set_position((_cx + _dx, _cy + _dy))
+
+    # Melanoma (axes_d[1])
     _mel_nudge = {
         "IL2": (-0.22, 0.0),
         "CD4": (0.0, 0.05),
@@ -1635,7 +1557,7 @@ def generate():
         "NKG7": (0.08, 0.0),
     }
     _mel_ha = {"IL2": "right"}
-    for _ann in list(axes_d[0].texts):
+    for _ann in list(axes_d[1].texts):
         _gene = _ann.get_text()
         if _gene in _mel_nudge:
             _cx, _cy = _ann.get_position()
@@ -1644,7 +1566,7 @@ def generate():
         if _gene in _mel_ha:
             _ann.set_ha(_mel_ha[_gene])
 
-    # AML (axes_d[1]): nudge specific gene labels
+    # AML (axes_d[2])
     _aml_nudge = {
         "LAG3": (-0.10, 0.05),
         "CD14": (-0.18, 0.05),
@@ -1653,7 +1575,7 @@ def generate():
         "CTLA4": (0.0, -0.02),
     }
     _aml_ha = {"CD14": "right"}
-    for _ann in list(axes_d[1].texts):
+    for _ann in list(axes_d[2].texts):
         _gene = _ann.get_text()
         if _gene in _aml_nudge:
             _cx, _cy = _ann.get_position()
@@ -1662,7 +1584,7 @@ def generate():
         if _gene in _aml_ha:
             _ann.set_ha(_aml_ha[_gene])
 
-    # CAR-T (axes_d[2]): nudge specific gene labels
+    # CAR-T (axes_d[3])
     _cart_nudge = {
         "IL7R": (-0.08, 0.05),
         "CD8A": (0.08, 0.0),
@@ -1673,14 +1595,14 @@ def generate():
         "IL2": (0.0, 0.08),
         "CD4": (0.0, -0.06),
     }
-    for _ann in list(axes_d[2].texts):
+    for _ann in list(axes_d[3].texts):
         _gene = _ann.get_text()
         if _gene in _cart_nudge:
             _cx, _cy = _ann.get_position()
             _dx, _dy = _cart_nudge[_gene]
             _ann.set_position((_cx + _dx, _cy + _dy))
 
-    # COVID-19 (axes_d[3]): nudge specific gene labels
+    # COVID-19 (axes_d[4])
     _covid_nudge = {
         "FOXP3": (-0.15, 0.0),
         "LAG3": (0.10, 0.0),
@@ -1688,14 +1610,14 @@ def generate():
         "HAVCR2": (0.0, 0.06),
         "CD4": (0.0, -0.05),
     }
-    for _ann in list(axes_d[3].texts):
+    for _ann in list(axes_d[4].texts):
         _gene = _ann.get_text()
         if _gene in _covid_nudge:
             _cx, _cy = _ann.get_position()
             _dx, _dy = _covid_nudge[_gene]
             _ann.set_position((_cx + _dx, _cy + _dy))
 
-    # Vaccine (axes_d[4]): nudge specific gene labels
+    # Vaccine (axes_d[5])
     _vacc_nudge = {
         "CD14": (0.10, 0.0),
         "CTLA4": (-0.10, 0.0),
@@ -1705,14 +1627,14 @@ def generate():
         "FOXP3": (0.0, 0.02),
         "PDCD1": (-0.10, 0.0),
     }
-    for _ann in list(axes_d[4].texts):
+    for _ann in list(axes_d[5].texts):
         _gene = _ann.get_text()
         if _gene in _vacc_nudge:
             _cx, _cy = _ann.get_position()
             _dx, _dy = _vacc_nudge[_gene]
             _ann.set_position((_cx + _dx, _cy + _dy))
 
-    # ── Row 6: E | F1 | F2 (horizontal) ──────────────────────────
+    # ── Row 6: E | F1 | F2 ───────────────────────────────────────────
     gs_row6 = outer[6].subgridspec(
         1, 3, width_ratios=[0.34, 0.33, 0.33], wspace=0.35,
     )
@@ -1767,7 +1689,7 @@ def generate():
         fontsize=3.2, color="red", ha="left", va="center", rotation=90,
     )
 
-    # ── Row 8: G | H | I ───────────────────────────────────────────
+    # ── Row 8: G | H | I ─────────────────────────────────────────────
     gs_row8 = outer[8].subgridspec(
         1, 3, width_ratios=[0.34, 0.33, 0.33], wspace=0.35,
     )
@@ -1807,14 +1729,12 @@ def generate():
 
     ax_i = fig_c.add_subplot(gs_row8[2])
     try:
-        from ..main.figure3_robustness_benchmarking import (
-            _panel_c as _fig3_panel_c,
-        )
-        from ..main.figure3_robustness_benchmarking import (
+        from ..main.figure4_robustness_benchmarking import (
+            _panel_c as _fig4_panel_c,
             _prepare_scalability_data,
         )
         _scale_data = _prepare_scalability_data()
-        _fig3_panel_c(ax_i, {"scale_data": _scale_data})
+        _fig4_panel_c(ax_i, {"scale_data": _scale_data})
     except Exception:
         ax_i.text(
             0.5, 0.5, "Runtime data unavailable",
@@ -1840,14 +1760,15 @@ def generate():
         )
     despine(ax_i)
 
-    # ── Rows 10–14: J (per-dataset pseudorep, was old I) ─────────────
+    # ── Rows 10–14: J (pseudorep) ─────────────────────────────────────
     pseudo_names = list(all_pseudo.keys())
     n_pseudo = len(pseudo_names)
     _ax_j_first = None
     _all_j_axes: list[plt.Axes] = []
-    _j_group_mid_axes: list[tuple] = []  # (mid_ax, ds_name) per study
+    _j_group_mid_axes: list[tuple] = []
 
     _j_study_titles = {
+        "TNBC": "TNBC (DiD)",
         "Melanoma": "Melanoma (DiD)",
         "AML": r"AML ($\Delta$, within-arm)",
         "CAR-T": r"CAR-T ($\Delta$, within-arm)",
@@ -1856,13 +1777,12 @@ def generate():
     }
 
     def _draw_j_group(gs_parent, slot, pi):
-        """Draw one 1×3 pseudorep group, return axes list or None."""
         nonlocal _ax_j_first
         if pi >= n_pseudo:
             _ax_empty = fig_c.add_subplot(gs_parent[slot])
             _ax_empty.set_visible(False)
             return None
-        _gsj = gs_parent[slot].subgridspec(1, 3, wspace=0.55)
+        _gsj = gs_parent[slot].subgridspec(1, 3, wspace=0.45)
         _axes_j = [fig_c.add_subplot(_gsj[0, j]) for j in range(3)]
         _dn = pseudo_names[pi]
         _draw_pseudorep_compact(
@@ -1876,17 +1796,21 @@ def generate():
         return _axes_j
 
     # Row 10: datasets 0, 1
-    gs_jr1 = outer[10].subgridspec(1, 2, wspace=0.35)
+    gs_jr1 = outer[10].subgridspec(1, 2, wspace=0.10)
     _draw_j_group(gs_jr1, 0, 0)
     _draw_j_group(gs_jr1, 1, 1)
 
     # Row 12: datasets 2, 3
-    gs_jr2 = outer[12].subgridspec(1, 2, wspace=0.35)
+    gs_jr2 = outer[12].subgridspec(1, 2, wspace=0.10)
     _draw_j_group(gs_jr2, 0, 2)
     _draw_j_group(gs_jr2, 1, 3)
 
-    # Row 14: dataset 4 (centered)
-    if n_pseudo >= 5:
+    # Row 14: datasets 4, 5 (or centred single if only 5 total)
+    if n_pseudo >= 6:
+        gs_jr3 = outer[14].subgridspec(1, 2, wspace=0.10)
+        _draw_j_group(gs_jr3, 0, 4)
+        _draw_j_group(gs_jr3, 1, 5)
+    elif n_pseudo == 5:
         gs_jr3 = outer[14].subgridspec(
             1, 3, width_ratios=[1, 2, 1], wspace=0.0,
         )
@@ -1913,18 +1837,16 @@ def generate():
     for _axj in _all_j_axes:
         _axj.set_xlabel(_axj.get_xlabel(), labelpad=1)
         _axj.set_ylabel(_axj.get_ylabel(), labelpad=1)
-        _axj.set_title("")  # remove individual subplot titles
+        _axj.set_title("")
         _leg_j = _axj.get_legend()
         if _leg_j:
             for _lt in _leg_j.get_texts():
                 _lt.set_fontsize(3.5)
 
-    # Add study-level title centered above each group of 3 panels
     for _mid_ax, _dn in _j_group_mid_axes:
         _stitle = _j_study_titles.get(_dn, _dn)
         _mid_ax.set_title(_stitle, fontsize=4.5, fontweight="bold", pad=3)
 
-    # Super title for J section — centered across the full figure width
     if _ax_j_first is not None:
         _j_top_y = _ax_j_first.get_position().y1
         fig_c.text(

@@ -6,7 +6,7 @@ Establish cell-type annotation quality and demonstrate that pre-treatment
 groups are comparable before DiD analysis.
 
 Panels:
-  A  UMAP per dataset coloured by cell type (5 mini-UMAPs).
+  A  UMAP per dataset coloured by cell type (mini-UMAPs).
   B  UMAP per dataset coloured by grouping variable (arm/visit).
   C  Marker gene dot plot (top 3 markers per cell type, pooled).
   D  Embedding quality: silhouette + kNN purity (merged 1×2).
@@ -41,6 +41,7 @@ from .._shared import (
     harmonize_response,
     get_aml,
     get_cart,
+    get_tnbc_zhang,
     save_panel,
 )
 
@@ -49,11 +50,12 @@ FIGURE_NAME = "SuppFig2_annotation_baseline"
 DOT_SIZE = 1.8
 
 _DS_PALETTE = dict(zip(
-    ["Melanoma", "COVID-19", "Vaccine", "AML", "CAR-T"],
-    ["#1b9e77", "#d95f02", "#7570b3", "#e7298a", "#66a61e"],
+    ["TNBC", "Melanoma", "COVID-19", "Vaccine", "AML", "CAR-T"],
+    ["#996633", "#1b9e77", "#d95f02", "#7570b3", "#e7298a", "#66a61e"],
 ))
 
 DATASETS = [
+    ("TNBC", lambda: get_tnbc_zhang()),
     ("Melanoma", get_sade_feldman),
     ("COVID-19", get_stephenson),
     ("Vaccine", get_vaccine),
@@ -160,16 +162,16 @@ def _visit_col(obs):
 
 
 def _arm_col(obs):
-    for c in ("response", "severity", "therapy", "condition"):
+    for c in ("arm", "response", "severity", "therapy", "condition"):
         if c in obs.columns and obs[c].nunique() > 1:
             return c
     return None
 
 
-# ── Panel A: UMAP per dataset (5 mini-UMAPs) ─────────────────────
+# ── Panel A: UMAP per dataset (mini-UMAPs) ─────────────────────
 
 def _panel_umap_grid(fig, axes, loaded: dict):
-    """5 mini-UMAPs coloured by cell type."""
+    """Mini-UMAPs coloured by cell type."""
     ds_names = list(loaded.keys())
     for i, name in enumerate(ds_names):
         ax = axes[i]
@@ -220,7 +222,7 @@ def _panel_umap_grid(fig, axes, loaded: dict):
 # ── Panel B: UMAP per dataset coloured by grouping variable ──────
 
 def _panel_umap_grouping(fig, axes, loaded: dict):
-    """5 mini-UMAPs coloured by arm_col or visit_col."""
+    """Mini-UMAPs coloured by arm_col or visit_col."""
     ds_names = list(loaded.keys())
     for i, name in enumerate(ds_names):
         ax = axes[i]
@@ -334,6 +336,13 @@ def _panel_marker_dotplot(fig, ax, loaded: dict):
                 transform=ax.transAxes, fontsize=10, fontstyle="italic")
         ax.set_title("Marker Gene Expression", fontweight="bold")
         return
+
+    # TEMP DIAGNOSTIC: confirm TNBC actually contributed rows to panel C.
+    _tnbc_rows = [r for r in rows if r["Dataset"] == "TNBC"]
+    print(f"    [panel C diagnostic] TNBC contributed {len(_tnbc_rows)} "
+          f"(marker, cell type) rows out of {len(rows)} total.")
+    if _tnbc_rows:
+        print(f"    [panel C diagnostic] TNBC sample rows: {_tnbc_rows[:3]}")
 
     df = pd.DataFrame(rows)
     agg = df.groupby(["Marker", "Cell type"]).agg(
@@ -483,11 +492,16 @@ def _panel_knn_purity(ax, loaded: dict):
             if conn is None:
                 continue
             conn = conn.tocsr()
+            conn.eliminate_zeros()  # ensure .data matches structural nnz exactly
             labels = pd.Categorical(adata.obs[ct_col].astype(str)).codes
             # Vectorised kNN purity: build same-label weight matrix, row-sum
             label_arr = np.asarray(labels)
-            # For each non-zero entry, check if source and target share a label
-            rows, cols = conn.nonzero()
+            # Derive row/col indices from the CSR structure itself so they are
+            # guaranteed to align 1:1 with conn.data (conn.nonzero() instead
+            # value-filters and can return a different length if a matrix has
+            # explicit zero entries stored, causing a shape mismatch).
+            cols = conn.indices
+            rows = np.repeat(np.arange(conn.shape[0]), np.diff(conn.indptr))
             same_label = label_arr[rows] == label_arr[cols]
             # Build sparse matrix of same-label weights only
             from scipy import sparse as sp
@@ -917,7 +931,7 @@ def _build_composite(loaded: dict):
 
     # ── Row 4: C (marker dot plot, left) | D (sil + purity, right) ─
     gs_cd = outer[4].subgridspec(1, 2, width_ratios=[0.55, 0.45],
-                                 wspace=0.35)
+                                 wspace=0.15)
     ax_c = fig_c.add_subplot(gs_cd[0])
     _panel_marker_dotplot(fig_c, ax_c, loaded)
     ax_c.tick_params(axis="x", labelsize=4)
@@ -948,7 +962,7 @@ def _build_composite(loaded: dict):
 
     # ── Row 6: E (ct × ds heatmap, left) | F (arm mixing, right) ──
     gs_ef = outer[6].subgridspec(1, 2, width_ratios=[0.55, 0.45],
-                                 wspace=0.35)
+                                 wspace=0.15)
     ax_e = fig_c.add_subplot(gs_ef[0])
     _panel_ct_crosstab(ax_e, loaded)
     ax_f = fig_c.add_subplot(gs_ef[1])
@@ -1053,7 +1067,7 @@ def generate():
         print("  No datasets available; skipping.")
         return
 
-    # Panel A: UMAP grid coloured by cell type (5 mini-UMAPs)
+    # Panel A: UMAP grid coloured by cell type (mini-UMAPs)
     n_ds = len(loaded)
     ncols = min(n_ds, 3)
     nrows = (n_ds + ncols - 1) // ncols
@@ -1070,8 +1084,9 @@ def generate():
         _panel_umap_grid(fig_ind, [ax_ind], {name: data})
         _leg_ind = ax_ind.get_legend()
         if _leg_ind:
+            _h = _leg_ind.legend_handles
+            _l = [t.get_text() for t in _leg_ind.get_texts()]
             _leg_ind.remove()
-            _h, _l = ax_ind.get_legend_handles_labels()
             ax_ind.legend(
                 handles=_h, labels=_l,
                 fontsize=7, loc="upper center",
