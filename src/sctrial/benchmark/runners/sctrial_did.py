@@ -32,8 +32,6 @@ def _run_from_pseudobulk(
     pb: pd.DataFrame,
     gene_cols: list[str],
     design_type: str = "two_arm",
-    treated_label: str = "Treated",
-    control_label: str = "Control",
 ) -> dict:
     """Participant-level first-difference estimator on log-pseudobulk.
 
@@ -137,8 +135,6 @@ def run(
     visits: tuple[str, str] = ("Pre", "Post"),
     from_pseudobulk: bool = False,
     design_type: str = "two_arm",
-    treated_label: str = "Treated",
-    control_label: str = "Control",
 ) -> dict[str, dict]:
     """Run sctrial DiD / paired-difference estimator.
 
@@ -165,9 +161,7 @@ def run(
     dict : gene → {"beta", "pvalue", "ci_lo", "ci_hi", "converged", "failure_mode"}
     """
     if from_pseudobulk:
-        return _run_from_pseudobulk(data, gene_cols, design_type=design_type,
-                                    treated_label=treated_label,
-                                    control_label=control_label)
+        return _run_from_pseudobulk(data, gene_cols, design_type=design_type)
 
     # Original cell-level path via sctrial.stats.did
     from sctrial.design import TrialDesign
