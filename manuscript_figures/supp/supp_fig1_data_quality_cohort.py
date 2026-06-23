@@ -475,14 +475,20 @@ def _panel_cells_per_pid_arm(ax, loaded: dict):
     ds_order = list(loaded.keys())
     arms_present = sorted(df["Arm"].unique())
     n_arms = len(arms_present)
-    arm_colors = dict(zip(arms_present, sns.color_palette("Dark2", n_arms)))
+    # "All" is a placeholder for single-arm datasets; keep it neutral grey
+    # so it never clashes with real arm labels like "anti-PDL1+Chemo".
+    _non_all = sorted(a for a in arms_present if a != "All")
+    _arm_pal = sns.color_palette("Dark2", max(len(_non_all), 1))
+    arm_colors = {"All": "#AAAAAA"}
+    for _a, _c in zip(_non_all, _arm_pal):
+        arm_colors[_a] = _c
 
     # Box width based on max arms any single dataset has
     max_arms_per_ds = max(
         len(df[df["Dataset"] == ds]["Arm"].unique())
         for ds in ds_order
     )
-    box_width = 0.7 / max_arms_per_ds
+    box_width = 0.9 / max_arms_per_ds
     for tick_idx, ds_name in enumerate(ds_order):
         ds_df = df[df["Dataset"] == ds_name]
         ds_arms = sorted(ds_df["Arm"].unique())
@@ -525,6 +531,7 @@ def _panel_cells_per_pid_arm(ax, loaded: dict):
               loc="upper right", frameon=True, ncol=3)
     ax.tick_params(axis="x", rotation=15)
     despine(ax)
+    ax.set_ylim(ax.get_ylim()[0], 5.7)
 
 
 # ── Panel D: n_genes distributions ──────────────────────────────────
@@ -999,7 +1006,7 @@ def generate():
     plt.rcParams.update(_SMALL_RC)
 
     _mm = 1.0 / 25.4
-    fig_c = plt.figure(figsize=(180 * _mm, 215 * _mm))
+    fig_c = plt.figure(figsize=(180 * _mm, 190 * _mm))
 
     #   Row 0: A (pairing)   | B (first half of datasets)
     #   Row 1: C (cells/pid) | B (remaining datasets, centred)
@@ -1012,9 +1019,9 @@ def generate():
 
     outer = fig_c.add_gridspec(
         4, 1,
-        height_ratios=[1, 1, 1, 1],
-        hspace=0.50,
-        left=0.08, right=0.95, top=0.97, bottom=0.04,
+        height_ratios=[0.75, 0.75, 1, 1],
+        hspace=0.32,
+        left=0.08, right=0.95, top=0.97, bottom=0.05,
     )
 
     # Rows 0–1: left panel (A/C) | right B subfigs
@@ -1032,6 +1039,14 @@ def generate():
     ax_a = fig_c.add_subplot(gs0[0])
     for j, nm in enumerate(b_row0):
         ax_b_list.append((fig_c.add_subplot(gs0[1 + j]), nm))
+
+    # Spanning invisible axis used only to display a common B title
+    ax_b_title = fig_c.add_subplot(gs0[0, 1:])
+    ax_b_title.axis("off")
+    ax_b_title.text(0.5, 1.10, "Participants per Arm × Visit",
+                    transform=ax_b_title.transAxes,
+                    ha="center", va="bottom",
+                    fontsize=6, fontweight="bold")
 
     # Row 1: C | B (remaining datasets, centred if fewer than n_b_cols)
     b_row1 = b_rows[1] if len(b_rows) > 1 else []
@@ -1086,21 +1101,93 @@ def generate():
         arm_bi = data_bi["arm_col"]
         vis_bi = data_bi["visit_col"]
         if pid_bi is None:
-            ax_bi.set_title(name_bi, fontweight="bold", fontsize=5)
+            ax_bi.set_title(name_bi, fontweight="bold", fontsize=5, pad=-8)
             ax_bi.axis("off")
             continue
         if arm_bi and vis_bi and arm_bi in obs_bi.columns and vis_bi in obs_bi.columns:
-            grp = (obs_bi.assign(**{arm_bi: obs_bi[arm_bi].astype(str),
-                                    vis_bi: obs_bi[vis_bi].astype(str)})
-                   .groupby([arm_bi, vis_bi], observed=True)[pid_bi]
-                   .nunique().reset_index(name="N"))
-            grp.rename(columns={arm_bi: "Arm", vis_bi: "Visit"}, inplace=True)
-            sns.barplot(data=grp, x="Visit", y="N", hue="Arm",
-                        order=_visit_sort_order(grp["Visit"].unique()),
-                        palette="Dark2", edgecolor="white", ax=ax_bi)
-            leg_bi = ax_bi.get_legend()
-            if leg_bi:
-                leg_bi.set_visible(False)
+            if name_bi == "TNBC" and "response" in obs_bi.columns:
+                # Stacked bars: arm × visit × R/NR
+                grp3 = (obs_bi
+                        .assign(**{arm_bi: obs_bi[arm_bi].astype(str),
+                                   vis_bi: obs_bi[vis_bi].astype(str),
+                                   "response": obs_bi["response"].astype(object).fillna("unknown").astype(str)})
+                        .groupby([arm_bi, vis_bi, "response"], observed=True)[pid_bi]
+                        .nunique().reset_index(name="N"))
+                grp3.rename(columns={arm_bi: "Arm", vis_bi: "Visit", "response": "Response"}, inplace=True)
+                grp3 = grp3[grp3["N"] > 0]
+
+                visits_t = _visit_sort_order(grp3["Visit"].unique())
+                arms_t = sorted(grp3["Arm"].unique())
+                _known_resp = [r for r in ("R", "NR") if r in grp3["Response"].unique()]
+                resps_t = _known_resp + sorted(r for r in grp3["Response"].unique()
+                                               if r not in _known_resp)
+                n_arms_t = len(arms_t)
+                bar_w_t = 0.30
+                _arm_pal_t = sns.color_palette("Dark2", n_arms_t)
+                _arm_colors_t = dict(zip(sorted(arms_t), _arm_pal_t))
+                _hatch_t = {"R": "", "NR": "///"}
+
+                from matplotlib.patches import Patch as _Patch
+                for ai, arm_t in enumerate(arms_t):
+                    _off_t = (ai - (n_arms_t - 1) / 2) * bar_w_t
+                    for vi_t, visit_t in enumerate(visits_t):
+                        bottom_t = 0
+                        for resp_t in resps_t:
+                            row_t = grp3[(grp3["Arm"] == arm_t) &
+                                         (grp3["Visit"] == visit_t) &
+                                         (grp3["Response"] == resp_t)]
+                            n_t = int(row_t["N"].values[0]) if len(row_t) > 0 else 0
+                            if n_t > 0:
+                                ax_bi.bar(vi_t + _off_t, n_t, bar_w_t,
+                                          bottom=bottom_t,
+                                          color=_arm_colors_t[arm_t],
+                                          hatch=_hatch_t.get(resp_t, "xx"),
+                                          alpha=1.0 if resp_t == "R" else 0.50,
+                                          edgecolor="white", linewidth=0.5)
+                                bottom_t += n_t
+
+                ax_bi.set_xticks(range(len(visits_t)))
+                ax_bi.set_xticklabels(visits_t)
+
+                _tnbc_handles = (
+                    [_Patch(facecolor=_arm_colors_t[a], edgecolor="#555555", label=a)
+                     for a in arms_t] +
+                    # Use white fill + dark edge so the hatch pattern is unambiguous
+                    [_Patch(facecolor="white",
+                            hatch=_hatch_t.get(r, "xx"),
+                            edgecolor="#333333",
+                            linewidth=0.8,
+                            label="Responder" if r == "R" else "Non-Responder")
+                     for r in resps_t]
+                )
+                ax_bi.legend(handles=_tnbc_handles, fontsize=4.5,
+                             title=None,
+                             loc="upper right", frameon=True, framealpha=0.85,
+                             edgecolor="#CCCCCC", borderpad=0.3,
+                             handlelength=2.5, handletextpad=0.3, labelspacing=0.15,
+                             ncol=1)
+            else:
+                grp = (obs_bi.assign(**{arm_bi: obs_bi[arm_bi].astype(str),
+                                        vis_bi: obs_bi[vis_bi].astype(str)})
+                       .groupby([arm_bi, vis_bi], observed=True)[pid_bi]
+                       .nunique().reset_index(name="N"))
+                grp.rename(columns={arm_bi: "Arm", vis_bi: "Visit"}, inplace=True)
+                sns.barplot(data=grp, x="Visit", y="N", hue="Arm",
+                            order=_visit_sort_order(grp["Visit"].unique()),
+                            palette="Dark2", edgecolor="white", ax=ax_bi)
+                leg_bi = ax_bi.get_legend()
+                if leg_bi:
+                    handles_bi = leg_bi.legend_handles
+                    labels_bi = [t.get_text() for t in leg_bi.get_texts()]
+                    leg_bi.remove()
+                    ax_bi.legend(
+                        handles=handles_bi, labels=labels_bi,
+                        fontsize=5, title=None,
+                        loc="upper right", frameon=True, framealpha=0.85,
+                        edgecolor="#CCCCCC", borderpad=0.3,
+                        handlelength=0.8, handletextpad=0.3,
+                        labelspacing=0.2, ncol=1,
+                    )
         elif vis_bi and vis_bi in obs_bi.columns:
             grp = (obs_bi.assign(**{vis_bi: obs_bi[vis_bi].astype(str)})
                    .groupby(vis_bi, observed=True)[pid_bi]
@@ -1119,22 +1206,18 @@ def generate():
         else:
             ax_bi.axis("off")
             continue
-        ax_bi.set_title(name_bi, fontweight="bold", fontsize=5)
+        ax_bi.set_title(name_bi, fontweight="bold", fontsize=5, pad=-8)
         ax_bi.set_xlabel("")
-        ax_bi.set_ylabel("")
-        ax_bi.tick_params(axis="x", rotation=30, labelsize=4)
+        ax_bi.set_ylabel("Participants", fontsize=5)
+        ax_bi.tick_params(axis="x", rotation=30, labelsize=4.5)
+        ax_bi.tick_params(axis="y", labelsize=4.5)
         despine(ax_bi)
-    # Add "Participants" ylabel only on the first B subplot of each row
-    if ax_b_list:
-        ax_b_list[0][0].set_ylabel("Participants")
 
-    # Increase font sizes in B panels
-    _b_font_boost = 1.5
-    for ax_bi, _ in ax_b_list:
-        for txt in ([ax_bi.title, ax_bi.xaxis.label, ax_bi.yaxis.label]
-                    + ax_bi.get_xticklabels() + ax_bi.get_yticklabels()
-                    + ax_bi.texts):
-            txt.set_fontsize(txt.get_fontsize() * _b_font_boost)
+    # Fixed y-axis limits for TNBC and Melanoma to make space for the legend
+    _b_ylim = {"TNBC": 8.8, "Melanoma": 17.5}
+    for ax_bi, nm_bi in ax_b_list:
+        if nm_bi in _b_ylim:
+            ax_bi.set_ylim(ax_bi.get_ylim()[0], _b_ylim[nm_bi])
 
     # Draw remaining panels
     _panel_counts_dist(ax_e1, loaded)
@@ -1158,7 +1241,7 @@ def generate():
             leg.remove()
             ax_target.legend(
                 handles=handles, labels=labels,
-                fontsize=3.5,
+                fontsize=5,
                 frameon=True, framealpha=0.85,
                 edgecolor="#CCCCCC", borderpad=0.3,
                 handlelength=1, handletextpad=0.3,
@@ -1174,8 +1257,8 @@ def generate():
         leg_g.remove()
         ax_g.legend(
             handles=handles_g, labels=labels_g,
-            fontsize=3.5, loc="upper center",
-            ncol=len(labels_g),
+            fontsize=5, loc="upper center",
+            ncol=3,
             frameon=True, framealpha=0.85,
             edgecolor="#CCCCCC", borderpad=0.2,
             handlelength=0.8, handletextpad=0.2,
@@ -1200,6 +1283,12 @@ def generate():
             )
 
     _cap_fontsize(fig_c, _MAX_FONT_COMPOSITE)
+
+    # Match A and G xtick labelsize to C (4.5) — these panels set explicit
+    # fontsize in their draw functions which the cap doesn't reduce that far.
+    for _ax_fix in (ax_a, ax_g):
+        for _lbl in _ax_fix.get_xticklabels():
+            _lbl.set_fontsize(4.5)
 
     # Bold panel labels (after cap so they stay prominent)
     _lbl_fs = 9
