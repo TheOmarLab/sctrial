@@ -651,7 +651,7 @@ def _panel_baseline_comparability(
                 _cur_yl = ax.get_ylim()
                 ax.set_ylim(min(-0.5, _cur_yl[0]), _cur_yl[1])
             texts = [
-                ax.text(cx, ty, feat, fontsize=2.2, fontweight="bold")
+                ax.text(cx, ty, feat, fontsize=3.0, fontweight="bold")
                 for feat, cx, ty in zip(
                     features, x_vals.values, y_vals.values
                 )
@@ -664,7 +664,7 @@ def _panel_baseline_comparability(
             )
         else:
             texts = [
-                ax.text(cx, ty, feat, fontsize=7, fontweight="bold")
+                ax.text(cx, ty, feat, fontsize=9, fontweight="bold")
                 for feat, cx, ty in zip(
                     features, x_vals.values, y_vals.values
                 )
@@ -684,13 +684,13 @@ def _panel_baseline_comparability(
         r, _ = stats.pearsonr(x_vals.values, y_vals.values)
         ax.text(
             0.05, 0.92, f"r = {r:.3f}",
-            transform=ax.transAxes, fontsize=8,
+            transform=ax.transAxes, fontsize=9 if not composite else 8,
             bbox=dict(boxstyle="round,pad=0.3", fc="white", alpha=0.8),
         )
 
-        ax.set_xlabel(x_label, fontsize=8)
-        ax.set_ylabel(y_label, fontsize=8)
-        ax.set_title(subtitle, fontsize=4.0 if composite else 10, fontweight="bold")
+        ax.set_xlabel(x_label, fontsize=9 if not composite else 8)
+        ax.set_ylabel(y_label, fontsize=9 if not composite else 8)
+        ax.set_title(subtitle, fontsize=4.0 if composite else 11, fontweight="bold")
         ax.set_aspect("equal", adjustable="datalim")
         despine(ax)
 
@@ -1555,6 +1555,8 @@ def generate():
         "CD4": (0.0, 0.05),
         "CD8A": (0.0, 0.05),
         "NKG7": (0.08, 0.0),
+        "FOXP3": (0.08, 0.0),
+        "CD19": (0.08, 0.0),
     }
     _mel_ha = {"IL2": "right"}
     for _ann in list(axes_d[1].texts):
@@ -1590,7 +1592,7 @@ def generate():
         "CD8A": (0.08, 0.0),
         "CD3D": (0.0, -0.06),
         "LAG3": (0.0, 0.06),
-        "CTLA4": (-0.15, 0.0),
+        "CTLA4": (-0.05, 0.0),
         "CD19": (-0.10, 0.0),
         "IL2": (0.0, 0.08),
         "CD4": (0.0, -0.06),
@@ -1607,7 +1609,7 @@ def generate():
         "FOXP3": (-0.15, 0.0),
         "LAG3": (0.10, 0.0),
         "IFNG": (0.10, 0.0),
-        "HAVCR2": (0.0, 0.06),
+        "HAVCR2": (0.10, 0.06),
         "CD4": (0.0, -0.05),
     }
     for _ann in list(axes_d[4].texts):
@@ -1622,10 +1624,10 @@ def generate():
         "CD14": (0.10, 0.0),
         "CTLA4": (-0.10, 0.0),
         "HAVCR2": (0.0, 0.06),
-        "IFNG": (-0.08, 0.0),
+        "IFNG": (0.08, 0.0),
         "CD8A": (0.0, 0.06),
         "FOXP3": (0.0, 0.02),
-        "PDCD1": (-0.10, 0.0),
+        "PDCD1": (0.06, 0.0),
     }
     for _ann in list(axes_d[5].texts):
         _gene = _ann.get_text()
