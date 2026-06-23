@@ -719,8 +719,8 @@ def _panel_bench_lambda_gc(ax, bench_df: pd.DataFrame, *, composite: bool = Fals
     ax.yaxis.set_major_locator(MultipleLocator(0.05))
     ax.tick_params(axis="y", labelsize=_lbl_fs)
     if composite:
-        ax.legend(loc="lower right", bbox_to_anchor=(0.99, 0.03), frameon=True, framealpha=0.95,
-                  edgecolor="#cccccc", fontsize=_leg_fs, markerscale=0.52, handlelength=1.0, ncol=1)
+        ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.01), frameon=True, framealpha=0.95,
+                  edgecolor="#cccccc", fontsize=_leg_fs, markerscale=0.52, handlelength=1.0, ncol=2)
     else:
         ax.legend(loc="upper left", frameon=True, framealpha=0.95, edgecolor="#cccccc",
                   fontsize=_leg_fs, markerscale=1.0, handlelength=1.5)
@@ -857,7 +857,7 @@ def _panel_a_single(
     x_lo = lo - 0.08 * (hi - lo)
     ax.plot([x_lo, hi], [x_lo, hi], ls="--", color=COLORS["gray"], lw=1, zorder=1)
 
-    ax.scatter(analytical, bootstrap, s=50, color=COLORS["treated"],
+    ax.scatter(analytical, bootstrap, s=22, color=COLORS["treated"],
                edgecolor="white", linewidth=0.5, zorder=3)
 
     ax.set_xlabel("Analytical SE (cluster-robust)")
@@ -939,7 +939,7 @@ def _panel_b_single(ax, data: dict, *, title: str = "Leave-One-Out Sensitivity")
         jitter = np.random.default_rng(42).uniform(-0.15, 0.15, len(loo_betas))
         ax.scatter(loo_betas, np.full_like(loo_betas, idx) + jitter,
                    s=20, color=color, alpha=0.6, edgecolor="none", zorder=2)
-        ax.scatter(full_beta, idx, s=64, color=color, marker="D",
+        ax.scatter(full_beta, idx, s=38, color=color, marker="D",
                    edgecolor="black", linewidth=0.8, zorder=4)
         ax.hlines(idx, loo_betas.min(), loo_betas.max(), colors=color, lw=1.5, alpha=0.4, zorder=1)
 
@@ -1161,7 +1161,7 @@ def _panel_e_cross_dataset(ax, data: dict, *, composite: bool = False) -> None:
     ax.set_axisbelow(True)
     ax.axvline(0, color="#444", linewidth=1.0, linestyle="-", zorder=1, alpha=0.5)
 
-    _pt_size = 46 if composite else 80
+    _pt_size = 24 if composite else 50
     _ci_lw = 1.7 if composite else 2.2
     _ann_fs = 5.0 if composite else 7
     _yt_fs = 6.4 if composite else 8.5
@@ -1326,33 +1326,39 @@ def generate() -> None:
     fig_c = plt.figure(figsize=(180 * _mm, 215 * _mm))
 
     # Layout (180 × 215 mm):
-    #   Row 0: A (left, stacked Melanoma+TNBC) | B (right, stacked)   — tall
-    #   Row 1: spacer
-    #   Row 2: C — null-gene FPR curves (full width)                   — medium
-    #   Row 3: D (bias/RMSE) | E (λ_GC)                               — medium
-    #   Row 4: spacer
-    #   Row 5: F (left, stacked) | G (right, forest plot)              — tall
+    #   Row 0: A — Melanoma | TNBC side by side                        — medium
+    #   Row 1: spacer (A–B gap)
+    #   Row 2: B — Melanoma | TNBC side by side                        — medium
+    #   Row 3: spacer
+    #   Row 4: C — null-gene FPR curves (full width)                   — medium
+    #   Row 5: D (bias/RMSE) | E (λ_GC)                               — medium
+    #   Row 6: spacer
+    #   Row 7: F (left, stacked) | G (right, forest plot)              — tall
     outer = fig_c.add_gridspec(
-        6, 1,
-        height_ratios=[1.55, 0.03, 0.70, 0.95, 0.03, 1.85],
-        hspace=0.20,
+        8, 1,
+        height_ratios=[0.78, 0.08, 0.78, 0.22, 0.70, 0.95, 0.06, 1.85],
+        hspace=0.32,
         left=0.07, right=0.97, top=0.975, bottom=0.04,
     )
 
-    # ── Row 0: A (left) | B (right) ──────────────────────────────────
-    gs_ab = outer[0].subgridspec(1, 2, wspace=0.35)
-    gs_a = gs_ab[0].subgridspec(2, 1, hspace=0.55)
+    # ── Row 0: A — both subpanels side by side ───────────────────────
+    gs_a = outer[0].subgridspec(1, 2, wspace=0.35)
     ax_a_top = fig_c.add_subplot(gs_a[0])
     ax_a_bot = fig_c.add_subplot(gs_a[1])
-    gs_b = gs_ab[1].subgridspec(2, 1, hspace=0.55)
+
+    _ax_sp_ab = fig_c.add_subplot(outer[1])
+    _ax_sp_ab.set_axis_off()
+
+    # ── Row 2: B — both subpanels side by side ───────────────────────
+    gs_b = outer[2].subgridspec(1, 2, wspace=0.35)
     ax_b_top = fig_c.add_subplot(gs_b[0])
     ax_b_bot = fig_c.add_subplot(gs_b[1])
 
-    _ax_sp_top = fig_c.add_subplot(outer[1])
+    _ax_sp_top = fig_c.add_subplot(outer[3])
     _ax_sp_top.set_axis_off()
 
-    # ── Row 2: C ─────────────────────────────────────────────────────
-    sub_c = fig_c.add_subfigure(outer[2])
+    # ── Row 4: C ─────────────────────────────────────────────────────
+    sub_c = fig_c.add_subfigure(outer[4])
     if bench_df is not None:
         _panel_bench_fpr_curves(sub_c, bench_df, composite=True)
         sub_c.subplots_adjust(left=0.06, right=0.985, top=0.82, bottom=0.22, wspace=0.18)
@@ -1362,8 +1368,8 @@ def generate() -> None:
                    transform=ax_sc.transAxes, fontsize=6)
         ax_sc.set_axis_off()
 
-    # ── Row 3: D | E ─────────────────────────────────────────────────
-    gs_mid = outer[3].subgridspec(1, 2, wspace=0.50, width_ratios=[1.35, 0.95])
+    # ── Row 5: D | E ─────────────────────────────────────────────────
+    gs_mid = outer[5].subgridspec(1, 2, wspace=0.50, width_ratios=[1.35, 0.95])
     sub_d = fig_c.add_subfigure(gs_mid[0])
     ax_e = fig_c.add_subplot(gs_mid[1])
     if bench_df is not None:
@@ -1375,11 +1381,11 @@ def generate() -> None:
         ax_sd = sub_d.subplots(1, 1)
         ax_sd.set_axis_off()
 
-    _ax_sp_bot = fig_c.add_subplot(outer[4])
+    _ax_sp_bot = fig_c.add_subplot(outer[6])
     _ax_sp_bot.set_axis_off()
 
-    # ── Row 5: F (left) | G (right) ──────────────────────────────────
-    gs_fg = outer[5].subgridspec(1, 2, wspace=0.38, width_ratios=[1.0, 1.0])
+    # ── Row 7: F (left) | G (right) ──────────────────────────────────
+    gs_fg = outer[7].subgridspec(1, 2, wspace=0.38, width_ratios=[1.0, 1.0])
     gs_f = gs_fg[0].subgridspec(2, 1, hspace=0.55)
     ax_f_top = fig_c.add_subplot(gs_f[0])
     ax_f_bot = fig_c.add_subplot(gs_f[1])
@@ -1433,9 +1439,16 @@ def generate() -> None:
             for txt in leg.get_texts():
                 txt.set_fontsize(max(txt.get_fontsize(), legend_fs))
 
-    _raise_axis_fonts(ax_a_top, title_fs=6.8, label_fs=6.0, tick_fs=5.4, legend_fs=4.0, text_fs=4.6)
-    _raise_axis_fonts(ax_a_bot, title_fs=6.8, label_fs=6.0, tick_fs=5.4, legend_fs=4.0, text_fs=4.6)
+    _raise_axis_fonts(ax_a_top, title_fs=6.0, label_fs=6.0, tick_fs=5.4, legend_fs=4.0, text_fs=4.6)
+    _raise_axis_fonts(ax_a_bot, title_fs=6.0, label_fs=6.0, tick_fs=5.4, legend_fs=4.0, text_fs=4.6)
     _raise_axis_fonts(ax_e, title_fs=6.7, label_fs=6.0, tick_fs=5.4, legend_fs=5.2, text_fs=4.6)
+
+    # ── Reduce ytick label sizes for F and G ──────────────────────────
+    for ax_ in (ax_f_top, ax_f_bot):
+        for tl in ax_.get_yticklabels():
+            tl.set_fontsize(5.2)
+    for tl in ax_g.get_yticklabels():
+        tl.set_fontsize(min(tl.get_fontsize(), 5.2))
 
     # ── Panel labels ──────────────────────────────────────────────────
     _lbl_fs = 7
@@ -1446,11 +1459,11 @@ def generate() -> None:
               fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
     ax_c_list = sub_c.get_axes()
     if ax_c_list:
-        ax_c_list[0].text(-0.02, 1.18, "C", transform=ax_c_list[0].transAxes,
+        ax_c_list[0].text(-0.20, 1.30, "C", transform=ax_c_list[0].transAxes,
                           fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
     ax_d_list = sub_d.get_axes()
     if ax_d_list:
-        ax_d_list[0].text(-0.08, 1.14, "D", transform=ax_d_list[0].transAxes,
+        ax_d_list[0].text(-0.22, 1.26, "D", transform=ax_d_list[0].transAxes,
                           fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
 
     plt.rcParams.update(_prev_rc)
