@@ -25,7 +25,6 @@ library(nebula)
 library(Matrix)
 
 counts <- readMM("{mtx_path}")
-counts <- as(counts, "CsparseMatrix")
 genes  <- readLines("{genes_path}")
 rownames(counts) <- genes
 
@@ -42,21 +41,16 @@ res <- nebula(
   pred = design,
   offset = log(colSums(counts)),
   method = "LN",
-  verbose = FALSE,
-  ncore = 1
+  verbose = FALSE
 )
 
 coef_names <- colnames(design)
 interaction_idx <- length(coef_names)
-interaction_term <- coef_names[interaction_idx]
-summary_cols <- colnames(res$summary)
-logfc_match <- match(paste0("logFC_", interaction_term), summary_cols)
-pval_match  <- match(paste0("p_", interaction_term), summary_cols)
 
 out <- data.frame(
   gene = res$summary$gene,
-  logFC = res$summary[, logfc_match],
-  pvalue = res$summary[, pval_match],
+  logFC = res$summary[[paste0("logFC_", coef_names[interaction_idx])]],
+  pvalue = res$summary[[paste0("p_", coef_names[interaction_idx])]],
   converged = res$convergence,
   stringsAsFactors = FALSE
 )
@@ -69,7 +63,6 @@ library(nebula)
 library(Matrix)
 
 counts <- readMM("{mtx_path}")
-counts <- as(counts, "CsparseMatrix")
 genes  <- readLines("{genes_path}")
 rownames(counts) <- genes
 
@@ -85,8 +78,7 @@ res <- nebula(
   pred = design,
   offset = log(colSums(counts)),
   method = "LN",
-  verbose = FALSE,
-  ncore = 1
+  verbose = FALSE
 )
 
 coef_names <- colnames(design)
@@ -114,40 +106,18 @@ def run(
     control_label: str = "Control",
     visits: tuple[str, str] = ("Pre", "Post"),
     design_type: str = "two_arm",
-    batch_size: int = 500,
 ) -> dict[str, dict]:
     """Run NEBULA NBLMM on cell-level counts.
 
     Unlike other runners, NEBULA takes the full cell-level AnnData,
-    NOT pseudobulk. Genes are processed in batches to avoid timeouts.
+    NOT pseudobulk.
     """
-    if len(gene_cols) > batch_size:
-        out = {}
-        for i in range(0, len(gene_cols), batch_size):
-            batch = gene_cols[i:i + batch_size]
-            batch_result = run(
-                adata, batch,
-                arm_col=arm_col, visit_col=visit_col,
-                participant_col=participant_col,
-                treated_label=treated_label,
-                control_label=control_label,
-                visits=visits,
-                design_type=design_type,
-                batch_size=batch_size,
-            )
-            out.update(batch_result)
-        return out
-
     with tempfile.TemporaryDirectory() as _tmpdir:
         td = Path(_tmpdir)
 
         # Subset to requested genes
         adata_sub = adata[:, gene_cols].copy()
-        # Use raw counts if available — adata.X may contain normalized values
-        if "counts" in adata_sub.layers:
-            X = adata_sub.layers["counts"]
-        else:
-            X = adata_sub.X
+        X = adata_sub.X
         if not sparse.issparse(X):
             X = sparse.csr_matrix(X)
 
@@ -184,25 +154,13 @@ def run(
 
         script_file = td / "run_nebula.R"
         script_file.write_text(script)
-        import os
-        r_env = os.environ.copy()
-        _extra_libs = [
-            "/apps/spack/opt/spack/linux-rhel8-haswell/gcc-11.2.0/libiconv-1.16-myo6dp2rszjfqkp7w456qrt4aqdtcnis/lib",
-            "/cm/shared/apps/openblas/0.3.18/lib",
-        ]
-        _extra = ":".join(p for p in _extra_libs if Path(p).exists())
-        if _extra:
-            r_env["LD_LIBRARY_PATH"] = _extra + ":" + r_env.get("LD_LIBRARY_PATH", "")
         try:
             proc = subprocess.run(
-                [(str(Path("/apps/R/4.4.2/bin/Rscript")) if Path("/apps/R/4.4.2/bin/Rscript").exists() else "Rscript"), str(script_file)],
+                ["Rscript", str(script_file)],
                 capture_output=True, text=True, timeout=2400,
-                env=r_env,
             )
             if proc.returncode != 0:
-                logger.warning("NEBULA R error stdout: %s", proc.stdout)
-                logger.warning("NEBULA R error stderr: %s", proc.stderr)
-                logger.warning("NEBULA return code: %s", proc.returncode)
+                logger.warning("NEBULA R error: %s", proc.stderr[-500:])
                 return {g: _fail_result("numerical") for g in gene_cols}
             res = pd.read_csv(output_csv, index_col=0)
         except Exception as exc:

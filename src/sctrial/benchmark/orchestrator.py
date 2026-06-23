@@ -24,11 +24,16 @@ from .simulator import SimulationConfig, simulate_trial
 
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# Scenario definitions (from the locked NatMeth benchmark plan)
+# ---------------------------------------------------------------------------
+
 _N_GENES = 50
 _N_SIGNAL = 10
 _N_ITERATIONS = 200
 _MEAN_CELLS = 500
 
+# Core methods
 CORE_METHODS = [
     "sctrial_did",
     "dreamlet",
@@ -36,10 +41,21 @@ CORE_METHODS = [
     "wilcoxon_paired",
 ]
 
+# Excluded from benchmark:
+# - edger_qlf: no native repeated-measures support; ~arm*visit without
+#   participant blocking is severely conservative (~0% FPR); participant
+#   FE designs are rank-deficient with nested participants.
+# - limma_voom: duplicateCorrelation crashes at n>=40; participant FE
+#   designs are rank-deficient; unblocked ~arm*visit is conservative.
+# Both lack proper paired-design handling. dreamlet (mixed model)
+# represents the count-based pseudobulk class correctly.
+
+# Internal sensitivity (not headline)
 INTERNAL_METHODS = ["sctrial_mixed"]
 
 
 def _make_effects(n_signal: int, beta: float, mixed_sign: bool = False) -> dict:
+    """Create effect dict for n_signal genes."""
     effects = {}
     for i in range(n_signal):
         if mixed_sign and i % 2 == 1:
@@ -50,8 +66,13 @@ def _make_effects(n_signal: int, beta: float, mixed_sign: bool = False) -> dict:
 
 
 def build_scenario_grid(design: str = "two_arm") -> list[dict]:
+    """Build the full scenario grid for one design family.
+
+    Returns list of dicts, each with keys: name, config_kwargs, description.
+    """
     scenarios = []
 
+    # 1. Complete null
     for n in [8, 12, 20, 40, 60]:
         scenarios.append(
             {
@@ -67,6 +88,7 @@ def build_scenario_grid(design: str = "two_arm") -> list[dict]:
             }
         )
 
+    # 2. Null + nuisance heterogeneity
     for n in [20, 40]:
         scenarios.append(
             {
@@ -85,6 +107,7 @@ def build_scenario_grid(design: str = "two_arm") -> list[dict]:
             }
         )
 
+    # 3. Sparse DE (positive)
     for n in [20, 40, 60]:
         for beta in [0.2, 0.5, 1.0]:
             scenarios.append(
@@ -101,6 +124,7 @@ def build_scenario_grid(design: str = "two_arm") -> list[dict]:
                 }
             )
 
+    # 4. Sparse DE (mixed sign)
     for n in [20, 40]:
         for beta in [0.5, 1.0]:
             scenarios.append(
@@ -117,6 +141,7 @@ def build_scenario_grid(design: str = "two_arm") -> list[dict]:
                 }
             )
 
+    # 5. Varying cells
     for n_cells in [200, 1000, 5000]:
         scenarios.append(
             {
@@ -132,6 +157,7 @@ def build_scenario_grid(design: str = "two_arm") -> list[dict]:
             }
         )
 
+    # 6. Unequal arms (two-arm only)
     if design == "two_arm":
         for ratio in [(3, 7), (5, 10), (10, 20)]:
             scenarios.append(
@@ -149,6 +175,7 @@ def build_scenario_grid(design: str = "two_arm") -> list[dict]:
                 }
             )
 
+    # 7. Missing visits
     for rate in [0.1, 0.2]:
         scenarios.append(
             {
@@ -169,6 +196,18 @@ def build_scenario_grid(design: str = "two_arm") -> list[dict]:
 
 
 def build_sensitivity_grid(design: str = "two_arm") -> list[dict]:
+    """Build signal-fraction sensitivity scenarios.
+
+    Tests how null-gene FPR depends on gene-panel size and signal fraction.
+    Fixed at n=40 per arm, beta=0.5 for signal genes.  Grid:
+
+        Total genes:      50,  200,  500,  2000
+        Signal fraction:  1%,  5%,  10%,  20%
+
+    Also includes a matched pure-null for each panel size.
+
+    Returns list of dicts with keys: name, config_kwargs, description.
+    """
     scenarios = []
     n_per_arm = 40
     beta = 0.5
@@ -176,6 +215,7 @@ def build_sensitivity_grid(design: str = "two_arm") -> list[dict]:
     signal_fractions = [0.01, 0.05, 0.10, 0.20]
 
     for n_genes in panel_sizes:
+        # Pure-null for this panel size
         scenarios.append(
             {
                 "name": f"sens_null_g{n_genes}",
@@ -190,6 +230,7 @@ def build_sensitivity_grid(design: str = "two_arm") -> list[dict]:
             }
         )
 
+        # Mixed-signal at each fraction
         for frac in signal_fractions:
             n_signal = max(1, int(round(n_genes * frac)))
             scenarios.append(
@@ -212,6 +253,11 @@ def build_sensitivity_grid(design: str = "two_arm") -> list[dict]:
     return scenarios
 
 
+# ---------------------------------------------------------------------------
+# Single-iteration worker (for multiprocessing)
+# ---------------------------------------------------------------------------
+
+
 def _run_single_iteration(args: tuple) -> list[dict]:
     """Run all methods on one simulated dataset. Called in worker processes."""
     import warnings
@@ -220,6 +266,9 @@ def _run_single_iteration(args: tuple) -> list[dict]:
 
     scenario_name, iteration, seed, config_kwargs, methods = args
 
+    # For single-arm designs, force time_effect=0 so null scenarios are
+    # truly null (the default 0.1 cancels in two-arm DiD but is detected
+    # by single-arm methods testing Δ vs 0).
     kw = dict(config_kwargs)
     if kw.get("design") == "single_arm" and "time_effect" not in kw:
         kw["time_effect"] = 0.0
@@ -282,9 +331,6 @@ def _dispatch_method(
     sim: dict,
     gene_cols: list[str],
     design_type: str = "two_arm",
-    treated_label: str = "Treated",
-    control_label: str = "Control",
-    participant_col: str = "participant",
 ) -> dict:
     """Route to the correct runner with the appropriate data representation.
 
@@ -292,28 +338,22 @@ def _dispatch_method(
     - edgeR, limma-voom, dreamlet: summed-count pseudobulk (true counts)
     - Wilcoxon (paired delta): mean-expression pseudobulk
 
-    FIX 3: always pull pseudobulk_counts and pseudobulk_means from their
-    explicit keys. The old "pseudobulk" fallback key was a single DataFrame
-    used for both, meaning edgeR/dreamlet/limma received means instead of
-    counts. Permutation and subsampling scripts now build both keys too.
+    Parameters
+    ----------
+    design_type : str
+        "two_arm" or "single_arm". Determines the statistical model used
+        by R-based runners (interaction vs paired visit).
     """
-    pb_counts = sim.get("pseudobulk_counts")
-    pb_means = sim.get("pseudobulk_means")
+    # Backwards compat: old sim dicts may have "pseudobulk" instead of split keys
+    pb_counts = sim.get("pseudobulk_counts", sim.get("pseudobulk"))
+    pb_means = sim.get("pseudobulk_means", sim.get("pseudobulk"))
 
-    # FIX 3 (cont): raise clearly if a required key is absent so the caller
-    # gets a loud error rather than silently wrong results.
-    if pb_counts is None and method in ("edger_qlf", "limma_voom", "dreamlet"):
-        raise KeyError(
-            f"Method '{method}' requires 'pseudobulk_counts' in sim dict, "
-            "but the key is missing. Make sure you build the sim dict with "
-            "both 'pseudobulk_counts' and 'pseudobulk_means' keys."
-        )
-    if pb_means is None and method in ("sctrial_did", "wilcoxon_paired"):
-        raise KeyError(
-            f"Method '{method}' requires 'pseudobulk_means' in sim dict, "
-            "but the key is missing."
-        )
-
+    # Log-transformed pseudobulk means for methods that need expression-scale
+    # input (sctrial_did, wilcoxon_paired). This ensures all methods report
+    # betas on a comparable log-fold-change scale:
+    #   - edgeR/limma/dreamlet internally log-transform raw counts
+    #   - NEBULA fits a log-link NB model on raw counts
+    #   - sctrial_did and wilcoxon_paired need log-transformed input explicitly
     if pb_means is not None:
         pb_log = pb_means.copy()
         gene_mask = [c for c in gene_cols if c in pb_log.columns]
@@ -324,8 +364,10 @@ def _dispatch_method(
     if method == "sctrial_did":
         from .runners import sctrial_did
 
-        return sctrial_did.run(pb_log, gene_cols, from_pseudobulk=True, design_type=design_type,
-                           treated_label=treated_label, control_label=control_label)
+        # Pass log-pseudobulk DataFrame instead of raw cell-level AnnData
+        # so that DiD betas are on log-expression scale, comparable to
+        # edgeR/limma/dreamlet log-fold-changes
+        return sctrial_did.run(pb_log, gene_cols, from_pseudobulk=True, design_type=design_type)
     elif method == "edger_qlf":
         from .runners import edger_qlf
 
@@ -337,60 +379,22 @@ def _dispatch_method(
     elif method == "dreamlet":
         from .runners import dreamlet_runner
 
-        return dreamlet_runner.run(pb_counts, gene_cols, design_type=design_type,
-                                   participant_col=participant_col)
+        return dreamlet_runner.run(pb_counts, gene_cols, design_type=design_type)
     elif method == "nebula":
         from .runners import nebula_runner
 
-        return nebula_runner.run(sim["adata"], gene_cols, design_type=design_type, participant_col=participant_col, treated_label=treated_label, control_label=control_label)
+        return nebula_runner.run(sim["adata"], gene_cols, design_type=design_type)
     elif method == "wilcoxon_paired":
         from .runners import wilcoxon_paired
 
-        return wilcoxon_paired.run(pb_log, gene_cols, design_type=design_type,
-                                   participant_col=participant_col)
+        return wilcoxon_paired.run(pb_log, gene_cols, design_type=design_type)
     else:
         raise ValueError(f"Unknown method: {method}")
 
 
-# FIX 4: extracted _run_scenario so the _process_iteration closure is NOT
-# redefined on every loop iteration. Previously the closure captured all_rows
-# and t0 from the enclosing scope, which works but is fragile and confusing.
-# Now the accumulation logic lives in one place with explicit arguments.
-def _run_scenario(
-    task_args: list,
-    n_iterations: int,
-    n_jobs: int,
-    csv_path: Path,
-) -> list[dict]:
-    """Run all iterations for one scenario, flushing to disk periodically.
-
-    Returns the accumulated list of row dicts.
-    """
-    flush_interval = 20
-    all_rows: list[dict] = []
-    t0 = time.time()
-
-    def _on_batch(i: int, batch: list[dict]) -> None:
-        all_rows.extend(batch)
-        if (i + 1) % flush_interval == 0:
-            elapsed = time.time() - t0
-            eta = elapsed / (i + 1) * (n_iterations - i - 1)
-            print(
-                f"    {i + 1}/{n_iterations} iterations "
-                f"({elapsed:.0f}s elapsed, ~{eta:.0f}s remaining)"
-            )
-            pd.DataFrame(all_rows).to_csv(csv_path, index=False)
-
-    if n_jobs == 1:
-        for i, args in enumerate(task_args):
-            _on_batch(i, _run_single_iteration(args))
-    else:
-        ctx = mp.get_context("fork")
-        with ctx.Pool(n_jobs) as pool:
-            for i, batch in enumerate(pool.imap(_run_single_iteration, task_args)):
-                _on_batch(i, batch)
-
-    return all_rows
+# ---------------------------------------------------------------------------
+# Main orchestrator
+# ---------------------------------------------------------------------------
 
 
 def run_benchmark(
@@ -401,7 +405,27 @@ def run_benchmark(
     output_dir: str | Path = "benchmark_results",
     resume: bool = True,
 ) -> pd.DataFrame:
-    """Run the full NatMeth benchmark grid."""
+    """Run the full NatMeth benchmark grid.
+
+    Parameters
+    ----------
+    designs : list of str
+        Design families to run. Default: ["two_arm", "single_arm"].
+    methods : list of str
+        Methods to benchmark. Default: CORE_METHODS.
+    n_iterations : int
+        Monte Carlo iterations per scenario.
+    n_jobs : int
+        Parallel workers. Use -1 for all cores.
+    output_dir : str or Path
+        Directory for output CSVs and figures.
+    resume : bool
+        If True, skip scenarios that already have results in output_dir.
+
+    Returns
+    -------
+    DataFrame with all results concatenated.
+    """
     if designs is None:
         designs = ["two_arm", "single_arm"]
     if methods is None:
@@ -409,10 +433,7 @@ def run_benchmark(
     if n_jobs == -1:
         n_jobs = mp.cpu_count()
 
-    # FIX 5: main benchmark writes to output_dir/main/ to avoid CSV name
-    # collisions with sensitivity results when both are run into the same
-    # parent directory (same scenario names share the same pattern).
-    output_dir = Path(output_dir) / "main"
+    output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     rng = np.random.default_rng(2024)
@@ -430,29 +451,61 @@ def run_benchmark(
             name = f"{design}__{scenario['name']}"
             csv_path = output_dir / f"{name}.csv"
 
+            # Resume support
             if resume and csv_path.exists():
                 print(f"  [{si + 1}/{len(scenarios)}] {name} — CACHED, skipping")
-                all_results.append(pd.read_csv(csv_path))
+                existing = pd.read_csv(csv_path)
+                all_results.append(existing)
                 continue
 
             print(f"  [{si + 1}/{len(scenarios)}] {name}: {scenario['description']}")
 
+            # Pre-generate seeds
             seeds = [int(rng.integers(0, 2**31)) for _ in range(n_iterations)]
+
+            # Build task args
             task_args = [
                 (name, it, seeds[it], scenario["config_kwargs"], methods)
                 for it in range(n_iterations)
             ]
 
             t0 = time.time()
-            # FIX 4 (cont): use extracted helper instead of inline closure
-            all_rows = _run_scenario(task_args, n_iterations, n_jobs, csv_path)
-            elapsed = time.time() - t0
 
+            all_rows: list = []
+            flush_interval = 20  # write to disk every 20 iterations
+
+            def _process_iteration(i: int, batch: list) -> None:
+                all_rows.extend(batch)
+                if (i + 1) % flush_interval == 0:
+                    elapsed = time.time() - t0
+                    eta = elapsed / (i + 1) * (n_iterations - i - 1)
+                    print(
+                        f"    {i + 1}/{n_iterations} iterations "
+                        f"({elapsed:.0f}s elapsed, ~{eta:.0f}s remaining)"
+                    )
+                    # Incremental save — protects against crashes
+                    pd.DataFrame(all_rows).to_csv(csv_path, index=False)
+
+            if n_jobs == 1:
+                for i, args in enumerate(task_args):
+                    _process_iteration(i, _run_single_iteration(args))
+            else:
+                # Use 'spawn' context to avoid fork-inheriting corrupted R/rpy2
+                # state. With 'fork', R subprocess calls inside workers
+                # produce incorrect results (e.g., edgeR FPR=0.002 instead
+                # of 0.05) even when using Rscript subprocess.
+                ctx = mp.get_context("spawn")
+                with ctx.Pool(n_jobs) as pool:
+                    for i, batch in enumerate(pool.imap(_run_single_iteration, task_args)):
+                        _process_iteration(i, batch)
+
+            elapsed = time.time() - t0
             df = pd.DataFrame(all_rows)
             df.to_csv(csv_path, index=False)
             all_results.append(df)
             print(f"    Done in {elapsed:.0f}s → {csv_path.name}")
 
+    # Combine all
     combined = pd.concat(all_results, ignore_index=True)
     combined_path = output_dir / "benchmark_combined.csv"
     combined.to_csv(combined_path, index=False)
@@ -470,7 +523,24 @@ def run_sensitivity_benchmark(
     output_dir: str | Path = "benchmark_results",
     resume: bool = True,
 ) -> pd.DataFrame:
-    """Run the signal-fraction sensitivity benchmark."""
+    """Run the signal-fraction sensitivity benchmark.
+
+    Tests how null-gene FPR depends on gene-panel size (50–2000) and
+    signal fraction (1–20%). Used to determine whether the dreamlet/NEBULA
+    inflation observed in the 50-gene/20%-signal benchmark generalizes
+    or attenuates with more realistic panel compositions.
+
+    Parameters
+    ----------
+    designs : list of str
+        Default: ["two_arm"].
+    methods, n_iterations, n_jobs, output_dir, resume :
+        Same as run_benchmark().
+
+    Returns
+    -------
+    DataFrame with all sensitivity results.
+    """
     if designs is None:
         designs = ["two_arm"]
     if methods is None:
@@ -478,9 +548,7 @@ def run_sensitivity_benchmark(
     if n_jobs == -1:
         n_jobs = mp.cpu_count()
 
-    # FIX 5 (cont): sensitivity writes to output_dir/sensitivity/ so its
-    # per-scenario CSVs never collide with main benchmark CSVs.
-    output_dir = Path(output_dir) / "sensitivity"
+    output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     rng = np.random.default_rng(2025)
@@ -500,7 +568,8 @@ def run_sensitivity_benchmark(
 
             if resume and csv_path.exists():
                 print(f"  [{si + 1}/{len(scenarios)}] {name} — CACHED, skipping")
-                all_results.append(pd.read_csv(csv_path))
+                existing = pd.read_csv(csv_path)
+                all_results.append(existing)
                 continue
 
             print(f"  [{si + 1}/{len(scenarios)}] {name}: {scenario['description']}")
@@ -512,10 +581,30 @@ def run_sensitivity_benchmark(
             ]
 
             t0 = time.time()
-            # FIX 4 (cont): same extracted helper
-            all_rows = _run_scenario(task_args, n_iterations, n_jobs, csv_path)
-            elapsed = time.time() - t0
+            all_rows: list = []
+            flush_interval = 20
 
+            def _process_iteration(i: int, batch: list) -> None:
+                all_rows.extend(batch)
+                if (i + 1) % flush_interval == 0:
+                    elapsed = time.time() - t0
+                    eta = elapsed / (i + 1) * (n_iterations - i - 1)
+                    print(
+                        f"    {i + 1}/{n_iterations} iterations "
+                        f"({elapsed:.0f}s elapsed, ~{eta:.0f}s remaining)"
+                    )
+                    pd.DataFrame(all_rows).to_csv(csv_path, index=False)
+
+            if n_jobs == 1:
+                for i, args in enumerate(task_args):
+                    _process_iteration(i, _run_single_iteration(args))
+            else:
+                ctx = mp.get_context("spawn")
+                with ctx.Pool(n_jobs) as pool:
+                    for i, batch in enumerate(pool.imap(_run_single_iteration, task_args)):
+                        _process_iteration(i, batch)
+
+            elapsed = time.time() - t0
             df = pd.DataFrame(all_rows)
             df.to_csv(csv_path, index=False)
             all_results.append(df)
@@ -530,18 +619,34 @@ def run_sensitivity_benchmark(
     return combined
 
 
+# ---------------------------------------------------------------------------
+# CLI entry point
+# ---------------------------------------------------------------------------
+
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="NatMeth benchmark: simulation grid")
-    parser.add_argument("--n-jobs", type=int, default=1)
-    parser.add_argument("--n-iterations", type=int, default=_N_ITERATIONS)
-    parser.add_argument("--output-dir", type=str, default="benchmark_results")
-    parser.add_argument("--designs", nargs="+", default=["two_arm", "single_arm"])
-    parser.add_argument("--methods", nargs="+", default=None)
-    parser.add_argument("--no-resume", action="store_true")
+    parser.add_argument("--n-jobs", type=int, default=1, help="Parallel workers (-1 = all cores)")
+    parser.add_argument(
+        "--n-iterations",
+        type=int,
+        default=_N_ITERATIONS,
+        help="Monte Carlo iterations per scenario",
+    )
+    parser.add_argument(
+        "--output-dir", type=str, default="benchmark_results", help="Output directory"
+    )
+    parser.add_argument(
+        "--designs", nargs="+", default=["two_arm", "single_arm"], help="Design families"
+    )
+    parser.add_argument(
+        "--methods", nargs="+", default=None, help="Methods to run (default: all core)"
+    )
+    parser.add_argument("--no-resume", action="store_true", help="Don't skip existing results")
 
     args = parser.parse_args()
+
     logging.basicConfig(level=logging.INFO)
 
     run_benchmark(
