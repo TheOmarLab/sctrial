@@ -18,10 +18,10 @@ C : P-value comparison: -log10 scale, illustrating inflation at cell level.
 D : Forest plot of DiD effects across all gene signatures.
 E : Small-multiple interaction plots for the top 6 signatures.
 F : Per-participant change heatmap across signatures.
-G : Bar plot of mean delta score (post - pre) by arm.
+G : Signature changes by arm and response (four-group bar chart).
 H : Cohen's d effect sizes (anti-PDL1+Chemo - Chemo) on delta scores.
 I : Response-stratified second-order DiD forest plot (DID₂ = DID_R − DID_NR).
-J : Signature changes by arm and response (four-group bar chart).
+J : Bar plot of mean delta score (post - pre) by arm.
 K : Within-arm response DID forest plot — Chemo arm.
 L : Within-arm response DID forest plot — anti-PDL1+Chemo arm.
 
@@ -805,9 +805,9 @@ def _panel_f(ax: plt.Axes, data: dict) -> None:
             ha="right", va="center",
             rotation=90, clip_on=False,
         )
-# ── Panel G: Mean delta by arm ────────────────────────────────────────────
+# ── Panel J: Mean delta by arm ────────────────────────────────────────────
 
-def _panel_g(ax: plt.Axes, data: dict) -> None:
+def _panel_j(ax: plt.Axes, data: dict) -> None:
     delta    = data["delta"]
     sig_cols = data["sig_cols"]
     arm      = DESIGN.arm_col
@@ -1026,9 +1026,9 @@ def _panel_i(ax: plt.Axes, data: dict, *, show_note: bool = True) -> None:
     despine(ax)
 
 
-# ── Panel J: Mean delta by arm × response ─────────────────────────────────
+# ── Panel G: Mean delta by arm × response ─────────────────────────────────
 
-def _panel_j(ax: plt.Axes, data: dict) -> None:
+def _panel_g(ax: plt.Axes, data: dict) -> None:
     delta    = data["delta"]
     sig_cols = data["sig_cols"]
 
@@ -1283,7 +1283,8 @@ def generate() -> None:
             ("panel_D_forest",                   _panel_d,  (10, 7)),
             ("panel_H_cohens_d",                 _panel_h,  (8,  6)),
             ("panel_I_response_did_forest",      _panel_i,  (10, 7)),
-            ("panel_J_delta_by_arm_response",    _panel_j,  (10, 8)),
+            ("panel_G_delta_by_arm_response",    _panel_g,  (10, 8)),
+            ("panel_J_mean_delta_by_arm",        _panel_j,  (10, 7)),
             ("panel_K_response_did_chemo",        _panel_k,  (10, 7)),
             ("panel_L_response_did_antipdl1",     _panel_l,  (10, 7)),
         ]
@@ -1354,7 +1355,7 @@ def generate() -> None:
     axes_e = _panel_e(fig_c, gs1[:, 1], data, n_sigs=6,
                       inner_hspace=0.45, inner_wspace=0.40)
     _panel_f(ax_f, data)
-    _panel_j(ax_g, data)
+    _panel_g(ax_g, data)
     _panel_h(ax_h, data)
     _panel_i(ax_i, data, show_note=False)
 
@@ -1380,14 +1381,14 @@ def generate() -> None:
                 columnspacing=0.5,
             )
 
-    # Panel J legend — single row above axes, title pushed up to make room
-    leg_j = ax_g.get_legend()
-    if leg_j:
-        handles_j = leg_j.legend_handles
-        labels_j  = [t.get_text() for t in leg_j.get_texts()]
-        leg_j.remove()
+    # Panel G legend — single row above axes, title pushed up to make room
+    leg_g = ax_g.get_legend()
+    if leg_g:
+        handles_g = leg_g.legend_handles
+        labels_g  = [t.get_text() for t in leg_g.get_texts()]
+        leg_g.remove()
         ax_g.legend(
-            handles=handles_j, labels=labels_j,
+            handles=handles_g, labels=labels_g,
             fontsize=5, loc="lower center", bbox_to_anchor=(0.5, 0.98),
             ncol=4, frameon=True, framealpha=0.85,
             handlelength=0.8, handletextpad=0.2,
