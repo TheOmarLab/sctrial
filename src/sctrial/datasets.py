@@ -1927,7 +1927,7 @@ def _process_tnbc_raw(
 
     # Dataset metadata
     adata.uns["dataset"]     = "GSE169246"
-    adata.uns["paper"]       = "Zhang et al., Cell 2025"
+    adata.uns["paper"]       = "Zhang et al., Cell 2021"
     adata.uns["description"] = (
         "TNBC immunotherapy trial: anti-PDL1+Chemo vs Chemo, "
         "12 paired patients, Pre/Post tumor biopsies"
@@ -2018,7 +2018,7 @@ def load_tnbc_zhang(
     Download raw files from:
     https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE169246
 
-    Reference: Zhang et al., Cell 2025.
+    Reference: Zhang et al., Cell 2021.
 
     Examples
     --------
