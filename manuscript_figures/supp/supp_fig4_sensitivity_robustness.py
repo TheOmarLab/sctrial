@@ -804,20 +804,6 @@ def _compute_loo_data():
 
             adata = adata[:, feats].copy()
 
-            # Safety cap: LOO refits the model once per dropped participant,
-            # so very large datasets (e.g. TNBC at 140K+ cells) multiply cell
-            # count by n_participants worth of repeated model fits. Cap total
-            # cells here to keep memory bounded; participant-level estimates
-            # are stable well below this size.
-            _LOO_MAX_CELLS = 40_000
-            if adata.n_obs > _LOO_MAX_CELLS:
-                _rng = np.random.default_rng(42)
-                _keep_idx = _rng.choice(
-                    adata.n_obs, size=_LOO_MAX_CELLS, replace=False,
-                )
-                adata = adata[_keep_idx].copy()
-                gc.collect()
-
             arm_col = cfg.get("arm_col")
             design_type = cfg.get("design", "two_arm")
             pid_col = cfg["participant_col"]
@@ -1564,7 +1550,7 @@ def _panel_power_grid(
                 title_lines += f"\n{feat}"
             title_lines += f"\n{design_label}, n={analyzable_n}"
 
-        _title_fs = 3.6 if composite else 6.0
+        _title_fs = 4.5 if composite else 6.0
         _title_pad = 3 if composite else 8
         ax.set_title(title_lines, fontsize=_title_fs, fontweight="bold",
                      color=color, pad=_title_pad, linespacing=1.3 if composite else 1.4)
@@ -1854,7 +1840,7 @@ def _panel_bench_qq(
     _ttl_fs = 6.0 if composite else 12
     _ttl_pad = 1 if composite else 8
     _axlbl_fs = 5.1 if composite else 10
-    _leg_fs = 3.95 if composite else 8
+    _leg_fs = 5.0 if composite else 8
 
     for mi, (ax, method) in enumerate(zip(axes, _BENCH_METHODS)):
         pvals = (
@@ -2015,7 +2001,7 @@ def _panel_bench_pure_null_fpr(ax, bench_df, *, composite: bool = False):
         )
     _tk_fs = 5.05 if composite else 11
     _ttl_fs = 6.0 if composite else 12
-    _leg_fs = 3.45 if composite else 8
+    _leg_fs = 4.5 if composite else 8
 
     ax.set_xticks(x_positions)
     ax.set_xticklabels([f"{p:,}" for p in panel_sizes], fontsize=_tk_fs, rotation=0)
@@ -2033,7 +2019,7 @@ def _panel_bench_pure_null_fpr(ax, bench_df, *, composite: bool = False):
         ax.legend(
             loc="upper center",
             bbox_to_anchor=(0.5, 0.995),
-            ncol=3,
+            ncol=2,
             frameon=True, framealpha=0.93, edgecolor="#cccccc",
             fontsize=_leg_fs, columnspacing=0.75, handlelength=0.85,
             markerscale=0.55,
@@ -2041,7 +2027,7 @@ def _panel_bench_pure_null_fpr(ax, bench_df, *, composite: bool = False):
     else:
         ax.legend(
             loc="upper left", frameon=True, framealpha=0.95,
-            edgecolor="#cccccc", fontsize=_leg_fs,
+            edgecolor="#cccccc", fontsize=_leg_fs, ncol=2,
         )
     _style_axis(ax)
 
@@ -2077,7 +2063,7 @@ def _panel_bench_runtime(ax, bench_df, *, composite: bool = False):
     _lbl_fs = 5.05 if composite else 11
     _ttl_fs = 6.0 if composite else 12
     _ttl_pad = 5 if composite else 10
-    _leg_fs = 3.45 if composite else 9
+    _leg_fs = 4.5 if composite else 9
 
     for method in _BENCH_METHODS:
         sub = summary[summary["method"] == method].sort_values("n_genes")
@@ -2301,7 +2287,7 @@ def generate():
         ax_a_tmp = subfig_a.subplots(1, 1)
         ax_a_tmp.text(0.5, 0.5, "No bootstrap data", ha="center",
                       va="center", transform=ax_a_tmp.transAxes)
-    subfig_a.subplots_adjust(wspace=0.42, left=0.04, right=0.98, top=0.80, bottom=0.24)
+    subfig_a.subplots_adjust(wspace=0.42, left=0.04, right=0.98, top=0.80, bottom=0.14)
 
     # ── Row 2: B | C | D | E ─────────────────────────────────────────
     gs_r2 = outer[1].subgridspec(1, 4, wspace=0.52)
@@ -2345,7 +2331,7 @@ def generate():
     #
     # _R4_INSET controls J/K vertical inset within row 4 (blank top, content,
     # blank bottom). Edit the first/last values to grow/shrink J,K together.
-    _R4_INSET = (0.02, 0.95, 0.25)
+    _R4_INSET = (0.15, 0.95, 0.12)
     gs_r4_outer = outer[3].subgridspec(3, 1, height_ratios=list(_R4_INSET), hspace=0)
     gs_r4 = gs_r4_outer[1].subgridspec(1, 2, wspace=0.22, width_ratios=[1.0, 1.0])
 
@@ -2438,8 +2424,8 @@ def generate():
             fontsize=_lbl_fs, fontweight="bold", va="top", ha="left",
         )
 
-    _label_axes_panel(qq_axes, "J", x=-0.30, y=1.31)
-    _label_axes_panel(power_axes, "K", x=-0.42, y=1.32)
+    _label_axes_panel(qq_axes, "J", x=-0.30, y=1.48)
+    _label_axes_panel(power_axes, "K", x=-0.42, y=1.48)
 
     # E & G: heatmaps — label slightly lower to clear title/colorbar
     _heat_y = 1.08
@@ -2474,6 +2460,24 @@ def generate():
             _qq_xc,
             _qq_top_y + 0.014,
             "Null-gene p-value calibration at 200 genes, 10% signal",
+            ha="center",
+            va="bottom",
+            fontsize=_SMALL_RC["axes.titlesize"],
+            fontweight="bold",
+            transform=fig_c.transFigure,
+            clip_on=False,
+        )
+
+    if power_axes:
+        _pw_top_y = max(ax.get_position().y1 for ax in power_axes)
+        _pw_xs = [ax.get_position().x0 for ax in power_axes] + [
+            ax.get_position().x1 for ax in power_axes
+        ]
+        _pw_xc = 0.5 * (min(_pw_xs) + max(_pw_xs))
+        fig_c.text(
+            _pw_xc,
+            _pw_top_y + 0.030,
+            "Empirical power",
             ha="center",
             va="bottom",
             fontsize=_SMALL_RC["axes.titlesize"],
