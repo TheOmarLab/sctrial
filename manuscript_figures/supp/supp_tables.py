@@ -1,5 +1,5 @@
 """
-Supplementary Tables 1–7.
+Supplementary Tables 1–8.
 =========================
 
 Table 1  Gene signature definitions (name, gene count, genes).
@@ -7,8 +7,9 @@ Table 2  Complete effect-size results across all signatures and datasets.
 Table 3  GSEA pre-ranked results (one sheet per dataset).
 Table 4  Permutation test results.
 Table 5  Power analysis results.
-Table 6  Gene-level DiD results (Sade-Feldman).
-Table 7  Dataset metadata summary.
+Table 6  Gene-level DiD results (Sade-Feldman / Melanoma).
+Table 7  Gene-level DiD results (TNBC / Zhang).
+Table 8  Dataset metadata summary.
 """
 
 from __future__ import annotations
@@ -42,6 +43,7 @@ from .._shared import (
     get_did_aggregated_df,
     get_sade_feldman,
     get_stephenson,
+    get_tnbc_zhang,
     get_vaccine,
     get_within_arm_aggregated_df,
     harmonize_response,
@@ -199,6 +201,35 @@ def table2_all_results() -> pd.DataFrame:
         gc.collect()
     except Exception as exc:
         print(f"    Melanoma failed: {exc}")
+
+    # ── TNBC / Zhang (two-arm DiD: anti-PDL1+Chemo vs Chemo) ─────────
+    try:
+        adata_tnbc = get_tnbc_zhang()
+        adata_tnbc, sig_cols_tnbc = score_signatures(adata_tnbc, layer="log1p_norm")
+        try:
+            adata_tnbc, sig_cols_clin = score_clinical_signatures(adata_tnbc, layer="log1p_norm")
+            all_sig_cols_tnbc = list(dict.fromkeys(sig_cols_tnbc + sig_cols_clin))
+        except Exception:
+            all_sig_cols_tnbc = sig_cols_tnbc
+        tnbc_design = TrialDesign(
+            participant_col="participant_id",
+            visit_col="visit",
+            arm_col="arm",
+            arm_treated="anti-PDL1+Chemo",
+            arm_control="Chemo",
+        )
+        res = did_table(
+            adata_tnbc, features=all_sig_cols_tnbc, design=tnbc_design,
+            visits=("Pre", "Post"), layer="log1p_norm",
+            standardize=True, aggregate="participant_visit",
+        )
+        res["label"] = res["feature"].apply(sig_display)
+        all_results.append(_harmonise(res, "TNBC", "DiD"))
+        print(f"    TNBC: {len(res)} features (DiD)")
+        del adata_tnbc
+        gc.collect()
+    except Exception as exc:
+        print(f"    TNBC failed: {exc}")
 
     # ── Stephenson / COVID-19 (cross-sectional Hedges' g at DFO_8-14)
     # Must match Figure 5 exactly: DFO_8-14 bin, log1p_cpm layer,
@@ -405,6 +436,26 @@ def table3_gsea_results() -> dict[str, pd.DataFrame]:
         gc.collect()
     except Exception as exc:
         print(f"    Melanoma GSEA failed: {exc}")
+
+    # ── TNBC / Zhang (two-arm DiD: anti-PDL1+Chemo vs Chemo) ─────────
+    try:
+        adata_tnbc = get_tnbc_zhang()
+        tnbc_design = TrialDesign(
+            participant_col="participant_id",
+            visit_col="visit",
+            arm_col="arm",
+            arm_treated="anti-PDL1+Chemo",
+            arm_control="Chemo",
+        )
+        res = load_or_run_gsea_did(
+            adata_tnbc, tnbc_design, ("Pre", "Post"), "log1p_norm", "TNBC",
+        )
+        if res is not None:
+            sheets["TNBC"] = res
+        del adata_tnbc
+        gc.collect()
+    except Exception as exc:
+        print(f"    TNBC GSEA failed: {exc}")
 
     # ── COVID-19 (cross-sectional: severe vs mild) ───────────────────
     # Must match Figure 5: DFO_8-14 bin, log1p_cpm layer
@@ -636,6 +687,90 @@ def table4_permutation_results(
         gc.collect()
     except Exception as exc:
         print(f"    Melanoma permutation failed: {exc}")
+
+    # ── TNBC (two-arm DiD: permute arm labels) ───────────────────────
+    try:
+        adata_tnbc = get_tnbc_zhang()
+        adata_tnbc, sig_cols_tnbc = score_signatures(adata_tnbc, layer="log1p_norm")
+
+        tnbc_design = TrialDesign(
+            participant_col="participant_id",
+            visit_col="visit",
+            arm_col="arm",
+            arm_treated="anti-PDL1+Chemo",
+            arm_control="Chemo",
+        )
+        obs_res_tnbc = did_table(
+            adata_tnbc, features=sig_cols_tnbc, design=tnbc_design,
+            visits=("Pre", "Post"), layer="log1p_norm",
+            standardize=True, aggregate="participant_visit",
+        )
+        obs_betas_tnbc = dict(zip(obs_res_tnbc["feature"], obs_res_tnbc["beta_DiD"]))
+
+        with warnings.catch_warnings(action="ignore"):
+            df_use_tnbc, unit_tnbc, time_tnbc, arm_bin_tnbc = get_did_aggregated_df(
+                adata_tnbc, sig_cols_tnbc, tnbc_design, ("Pre", "Post"),
+                layer="log1p_norm", aggregate="participant_visit",
+            )
+        pid_arm_tnbc = (
+            adata_tnbc.obs[["participant_id", "arm"]]
+            .drop_duplicates("participant_id")
+        )
+        df_bytes_tnbc = pkl.dumps(df_use_tnbc)
+        pid_arm_tnbc_bytes = pkl.dumps(pid_arm_tnbc)
+
+        def _run_tnbc_perm(args: tuple) -> float | None:
+            perm_idx, db, ft, un, tm, ab, pa_bytes, rs = args
+            df = pkl.loads(db)
+            pa = pkl.loads(pa_bytes)
+            r = np.random.default_rng(rs + perm_idx)
+            shuf = pa.copy()
+            shuf["arm"] = r.permutation(shuf["arm"].values)
+            pid_to_arm = dict(zip(shuf["participant_id"], shuf["arm"]))
+            df_p = df.copy()
+            df_p["arm_bin"] = df_p["participant_id"].map(
+                lambda x, m=pid_to_arm: 1 if m.get(x) == "anti-PDL1+Chemo" else 0
+            )
+            try:
+                out = did_fit(df_p, y=ft, unit=un, time=tm, arm_bin=ab, standardize=True)
+                b = out.get("beta_DiD", np.nan)
+                return float(b) if np.isfinite(b) else None
+            except Exception:
+                return None
+
+        for feat in sig_cols_tnbc:
+            obs_beta = obs_betas_tnbc.get(feat, np.nan)
+            if not np.isfinite(obs_beta):
+                continue
+            tasks = [
+                (i, df_bytes_tnbc, feat, unit_tnbc, time_tnbc, arm_bin_tnbc,
+                 pid_arm_tnbc_bytes, rng_seed)
+                for i in range(n_permutations)
+            ]
+            with warnings.catch_warnings(action="ignore"):
+                null_betas_tnbc = Parallel(n_jobs=n_jobs, backend="loky")(
+                    delayed(_run_tnbc_perm)(t) for t in tasks
+                )
+            null_arr = np.array([b for b in null_betas_tnbc if b is not None], dtype=float)
+            if len(null_arr) > 0:
+                perm_p = (np.sum(np.abs(null_arr) >= np.abs(obs_beta)) + 1) / (len(null_arr) + 1)
+                rows.append({
+                    "dataset": "TNBC",
+                    "feature": feat,
+                    "label": sig_display(feat),
+                    "observed_beta": obs_beta,
+                    "permutation_p": perm_p,
+                    "n_permutations": len(null_arr),
+                    "null_mean": float(np.mean(null_arr)),
+                    "null_sd": float(np.std(null_arr)),
+                    "null_95_lo": float(np.percentile(null_arr, 2.5)),
+                    "null_95_hi": float(np.percentile(null_arr, 97.5)),
+                })
+        print(f"    TNBC: {len([r for r in rows if r['dataset'] == 'TNBC'])} features")
+        del adata_tnbc, df_use_tnbc, df_bytes_tnbc, pid_arm_tnbc_bytes
+        gc.collect()
+    except Exception as exc:
+        print(f"    TNBC permutation failed: {exc}")
 
     # ── Stephenson (cross-sectional: permute Severe/Mild labels) ────
     try:
@@ -981,22 +1116,23 @@ def table6_gene_level_results() -> pd.DataFrame:
 
 
 # ======================================================================
-# Table 7 — Dataset metadata summary
+# Table 8 — Dataset metadata summary
 # ======================================================================
 
 
-def table7_dataset_metadata() -> pd.DataFrame:
-    """Per-participant metadata across all 5 datasets.
+def table8_dataset_metadata() -> pd.DataFrame:
+    """Per-participant metadata across all datasets.
 
     Columns: dataset, participant_id, arm/condition, visit, n_cells,
     response_status (where applicable).
     """
-    print("  Table 7: Dataset metadata summary")
+    print("  Table 8: Dataset metadata summary")
 
     rows: list[dict] = []
 
     datasets_info = [
         ("Melanoma", get_sade_feldman, "participant_id", "visit", "response_harmonized"),
+        ("TNBC", get_tnbc_zhang, "participant_id", "visit", "arm"),
         ("COVID-19", get_stephenson, "participant_id", None, "severity"),
         ("Vaccine", get_vaccine, "participant_id", "visit", None),
         ("AML", get_aml, "participant_id", "visit", None),
@@ -1073,10 +1209,71 @@ def table7_dataset_metadata() -> pd.DataFrame:
         return pd.DataFrame()
 
     df = pd.concat(rows, ignore_index=True)
-    path = SUPP_OUTPUT / "Supp_Table7_dataset_metadata.csv"
+    path = SUPP_OUTPUT / "Supp_Table8_dataset_metadata.csv"
     df.to_csv(path, index=False)
     print(f"    Saved {path.name} ({len(df)} rows)")
     return df
+
+
+# ======================================================================
+# Table 7 — Gene-level DiD results (TNBC / Zhang)
+# ======================================================================
+
+
+def table7_gene_level_tnbc() -> pd.DataFrame:
+    """Gene-level DiD results for the TNBC cohort (Zhang et al.).
+
+    Runs DiD on every expressed gene (not just signatures) to provide
+    the full genome-wide results for reproducibility.
+    """
+    print("  Table 7: Gene-level DiD results (TNBC)")
+
+    if not SCTRIAL_AVAILABLE:
+        print("    Skipped: sctrial not available")
+        return pd.DataFrame()
+
+    try:
+        adata_tnbc = get_tnbc_zhang()
+
+        tnbc_design = TrialDesign(
+            participant_col="participant_id",
+            visit_col="visit",
+            arm_col="arm",
+            arm_treated="anti-PDL1+Chemo",
+            arm_control="Chemo",
+        )
+
+        all_genes = list(adata_tnbc.var_names)
+        print(f"    Running DiD on {len(all_genes)} genes...")
+
+        res = did_table(
+            adata_tnbc, features=all_genes, design=tnbc_design,
+            visits=("Pre", "Post"), layer="log1p_norm",
+            standardize=True, aggregate="participant_visit",
+        )
+        if "beta_DiD" in res.columns and "se_DiD" in res.columns:
+            res["ci_lower"] = res["beta_DiD"] - 1.96 * res["se_DiD"]
+            res["ci_upper"] = res["beta_DiD"] + 1.96 * res["se_DiD"]
+
+        if "p_DiD" in res.columns:
+            res = res.sort_values("p_DiD").reset_index(drop=True)
+
+        if "feature" in res.columns:
+            cols = ["feature"] + [c for c in res.columns if c != "feature"]
+            res = res[cols]
+
+        path = SUPP_OUTPUT / "Supp_Table7_gene_level_DiD_TNBC.csv"
+        res.to_csv(path, index=False)
+        n_sig = (res["FDR_DiD"] < 0.05).sum() if "FDR_DiD" in res.columns else 0
+        n_nom = (res["p_DiD"] < 0.05).sum() if "p_DiD" in res.columns else 0
+        print(f"    Saved {path.name} ({len(res)} genes, {n_nom} nominally significant, {n_sig} FDR < 0.05)")
+
+        del adata_tnbc
+        gc.collect()
+        return res
+    except Exception as exc:
+        print(f"    Gene-level DiD (TNBC) failed: {exc}")
+        return pd.DataFrame()
 
 
 # ======================================================================
@@ -1097,6 +1294,7 @@ def patch_table1_genes_present() -> pd.DataFrame:
 
     datasets_loaders = [
         ("Melanoma", get_sade_feldman),
+        ("TNBC", get_tnbc_zhang),
         ("COVID-19", get_stephenson),
         ("Vaccine", get_vaccine),
         ("AML", get_aml),
@@ -1121,10 +1319,26 @@ def patch_table1_genes_present() -> pd.DataFrame:
             print(f"    {ds_name} genes present failed: {exc}")
 
     t1.to_csv(t1_path, index=False)
-    # Also save as xlsx to prevent Excel from auto-formatting
-    # fraction strings like "11/11" as dates
+
+    # Save xlsx with Genes_Present columns explicitly formatted as Text
+    # so Excel doesn't auto-convert fractions like "11/11" to dates.
     xlsx_path = t1_path.with_suffix(".xlsx")
     t1.to_excel(xlsx_path, index=False, engine="openpyxl")
+
+    from openpyxl import load_workbook
+    wb = load_workbook(xlsx_path)
+    ws = wb.active
+    genes_present_cols = [
+        cell.column for cell in ws[1]
+        if cell.value and str(cell.value).startswith("Genes_Present_")
+    ]
+    for col_idx in genes_present_cols:
+        for row in ws.iter_rows(min_row=2, min_col=col_idx, max_col=col_idx):
+            for cell in row:
+                cell.number_format = "@"
+                cell.value = str(cell.value) if cell.value is not None else ""
+    wb.save(xlsx_path)
+
     print(f"    Updated {t1_path.name} + {xlsx_path.name}")
     return t1
 
@@ -1140,8 +1354,8 @@ def generate(tables: str = "all"):
     Parameters
     ----------
     tables : str
-        Which tables to generate: "all", "1-3" (original), "4-6" (new),
-        or a comma-separated list like "4,5,6".
+        Which tables to generate: "all", "1-3", "4-6", "7-8",
+        or a comma-separated list like "2,7,8".
     """
     print("=" * 60)
     print("Supplementary Tables")
@@ -1149,11 +1363,13 @@ def generate(tables: str = "all"):
 
     to_run = set()
     if tables == "all":
-        to_run = {1, 2, 3, 4, 5, 6}
+        to_run = {1, 2, 3, 4, 5, 6, 7, 8}
     elif tables == "1-3":
         to_run = {1, 2, 3}
     elif tables == "4-6":
         to_run = {4, 5, 6}
+    elif tables == "7-8":
+        to_run = {7, 8}
     else:
         to_run = {int(x.strip()) for x in tables.split(",")}
 
@@ -1169,6 +1385,10 @@ def generate(tables: str = "all"):
         table5_power_analysis()
     if 6 in to_run:
         table6_gene_level_results()
+    if 7 in to_run:
+        table7_gene_level_tnbc()
+    if 8 in to_run:
+        table8_dataset_metadata()
 
     # Patches
     if 1 in to_run:

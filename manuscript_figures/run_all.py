@@ -8,6 +8,7 @@ Usage:
     python -m manuscript_figures.run_all --supp       # supplementary only
     python -m manuscript_figures.run_all --figure 2   # single main figure
     python -m manuscript_figures.run_all --supp-fig 3 # single supp figure
+    python -m manuscript_figures.run_all --supp-tables # supplementary tables only
 """
 
 from __future__ import annotations
@@ -143,6 +144,7 @@ def main():
     parser.add_argument("--supp", action="store_true", help="Supplementary only")
     parser.add_argument("--figure", type=int, help="Single main figure number")
     parser.add_argument("--supp-fig", type=int, help="Single supp figure number")
+    parser.add_argument("--supp-tables", action="store_true", help="Supplementary tables only")
     args = parser.parse_args()
 
     apply_style()
@@ -155,6 +157,9 @@ def main():
         run_main()
     elif args.supp:
         run_supp()
+    elif args.supp_tables:
+        label, mod = SUPP_TABLES["tables"]
+        _run(label, mod)
     else:
         run_all()
 
