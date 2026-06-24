@@ -1,5 +1,5 @@
 """
-Supplementary Figure 4 — Sensitivity, Robustness, and Benchmarking.
+Supplementary Figure 5 — Sensitivity, Robustness, and Benchmarking.
 ===================================================================
 
 Panels A–G characterize the sensitivity and robustness of sctrial's
@@ -68,7 +68,7 @@ from .._shared import (
     within_arm_comparison,
 )
 
-FIGURE_NAME = "SuppFig4_sensitivity_robustness"
+FIGURE_NAME = "SuppFig5_sensitivity_robustness"
 
 # Composite artboard: panel E (_panel_ct_heatmap, composite) uses these sizes.
 _COMPOSITE_E_AXIS_LABEL_FS = 5

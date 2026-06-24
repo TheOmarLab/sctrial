@@ -1,5 +1,5 @@
 """
-Supplementary Figure 1 — Data Quality and Cohort Characterisation.
+Supplementary Figure 2 — Data Quality and Cohort Characterisation.
 ===================================================================
 
 Establish that all datasets are QC-sound and well-characterised before
@@ -45,7 +45,7 @@ from .._shared import (
     save_panel,
 )
 
-FIGURE_NAME = "SuppFig1_data_quality_cohort"
+FIGURE_NAME = "SuppFig2_data_quality_cohort"
 
 # ── dataset registry ─────────────────────────────────────────────────
 

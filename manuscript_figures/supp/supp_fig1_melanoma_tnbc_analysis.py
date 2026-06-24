@@ -1,6 +1,6 @@
 """
-Figure 2 — Pseudoreplication Bias & Melanoma Primary Analysis
-==============================================================
+Supplementary Figure 1 — Pseudoreplication Bias & Melanoma/TNBC Primary Analysis
+==================================================================================
 
 Eleven-panel figure: empirical demonstration of pseudoreplication (A–C),
 TNBC cross-dataset comparison panels (D–F), primary DiD analysis (G–H),
@@ -40,7 +40,7 @@ from scipy import stats
 
 from .._shared import (
     COLORS,
-    MAIN_OUTPUT,
+    SUPP_OUTPUT,
     TrialDesign,
     apply_style,
     despine,
@@ -58,7 +58,7 @@ warnings.filterwarnings("ignore")
 
 # ── Constants ─────────────────────────────────────────────────────────────
 
-FIGURE_NAME = "Figure2_melanoma_analysis"
+FIGURE_NAME = "SuppFig1_melanoma_tnbc_analysis"
 VISITS: tuple[str, str] = ("Pre", "Post")
 
 COL_RESP = COLORS["treated"]     # blue  (Responder)
@@ -1065,7 +1065,7 @@ def _enforce_min_fontsize(fig, minimum: float = _MIN_FONT) -> None:
 
 def generate() -> None:
     """Create and save all Figure 2 panels (A–K)."""
-    print("Figure 2: Pseudoreplication Bias & Melanoma Primary Analysis")
+    print("Supp Fig 1: Pseudoreplication Bias & Melanoma/TNBC Primary Analysis")
     data      = _prepare_data()
     tnbc_data = _prepare_tnbc_data()
 
@@ -1081,35 +1081,35 @@ def generate() -> None:
             func(ax, data)
             _enforce_min_fontsize(fig)
             fig.tight_layout()
-            save_panel(fig, panel_name, FIGURE_NAME, MAIN_OUTPUT)
+            save_panel(fig, panel_name, FIGURE_NAME, SUPP_OUTPUT)
 
         # Panel D: mean Δ by arm (TNBC)
         fig_d, ax_d_solo = plt.subplots(figsize=(10, 7))
         _panel_d_tnbc_mean_delta_by_arm(ax_d_solo, tnbc_data)
         _enforce_min_fontsize(fig_d)
         fig_d.tight_layout()
-        save_panel(fig_d, "panel_D_tnbc_mean_delta_by_arm", FIGURE_NAME, MAIN_OUTPUT)
+        save_panel(fig_d, "panel_D_tnbc_mean_delta_by_arm", FIGURE_NAME, SUPP_OUTPUT)
 
         # Panel E: response DID within Chemo arm (TNBC)
         fig_e, ax_e_solo = plt.subplots(figsize=(10, 7))
         _panel_e_tnbc_response_did_chemo(ax_e_solo, tnbc_data)
         _enforce_min_fontsize(fig_e)
         fig_e.tight_layout()
-        save_panel(fig_e, "panel_E_tnbc_response_did_chemo", FIGURE_NAME, MAIN_OUTPUT)
+        save_panel(fig_e, "panel_E_tnbc_response_did_chemo", FIGURE_NAME, SUPP_OUTPUT)
 
         # Panel F: response DID within anti-PDL1+Chemo arm (TNBC)
         fig_f_tnbc, ax_f_solo = plt.subplots(figsize=(10, 7))
         _panel_f_tnbc_response_did_antipdl1(ax_f_solo, tnbc_data)
         _enforce_min_fontsize(fig_f_tnbc)
         fig_f_tnbc.tight_layout()
-        save_panel(fig_f_tnbc, "panel_F_tnbc_response_did_antipdl1", FIGURE_NAME, MAIN_OUTPUT)
+        save_panel(fig_f_tnbc, "panel_F_tnbc_response_did_antipdl1", FIGURE_NAME, SUPP_OUTPUT)
 
         # Panel G: Forest plot (Melanoma)
         fig_g, ax_g_solo = plt.subplots(figsize=(12, 6))
         _panel_g_forest(ax_g_solo, data)
         _enforce_min_fontsize(fig_g)
         fig_g.tight_layout()
-        save_panel(fig_g, "panel_G_forest", FIGURE_NAME, MAIN_OUTPUT)
+        save_panel(fig_g, "panel_G_forest", FIGURE_NAME, SUPP_OUTPUT)
 
         # Panel H: Interaction grid (Melanoma, needs figure + gridspec)
         fig_h = plt.figure(figsize=(14, 5.5))
@@ -1119,14 +1119,14 @@ def generate() -> None:
                        fontsize=11, fontweight="bold", y=0.97)
         _enforce_min_fontsize(fig_h)
         fig_h.tight_layout(rect=[0, 0, 1, 0.90])
-        save_panel(fig_h, "panel_H_interaction_grid", FIGURE_NAME, MAIN_OUTPUT)
+        save_panel(fig_h, "panel_H_interaction_grid", FIGURE_NAME, SUPP_OUTPUT)
 
         # Panel I: Heatmap (Melanoma)
         fig_i, ax_i_solo = plt.subplots(figsize=(12, 8))
         _panel_i_heatmap(ax_i_solo, data)
         _enforce_min_fontsize(fig_i)
         fig_i.tight_layout()
-        save_panel(fig_i, "panel_I_heatmap", FIGURE_NAME, MAIN_OUTPUT)
+        save_panel(fig_i, "panel_I_heatmap", FIGURE_NAME, SUPP_OUTPUT)
 
         # Panels J, K: simple single-axis panels (Melanoma)
         simple_panels = [
@@ -1138,7 +1138,7 @@ def generate() -> None:
             func(ax, data)
             _enforce_min_fontsize(fig)
             fig.tight_layout()
-            save_panel(fig, panel_name, FIGURE_NAME, MAIN_OUTPUT)
+            save_panel(fig, panel_name, FIGURE_NAME, SUPP_OUTPUT)
 
     # ── Combined artboard (180 × 270 mm, taller to fit new TNBC row) ──────
     _SMALL_RC = {
@@ -1353,8 +1353,8 @@ def generate() -> None:
         )
     plt.rcParams.update(_prev_rc)
 
-    save_panel(fig_c, FIGURE_NAME, FIGURE_NAME, MAIN_OUTPUT, close=False)
-    pdf_path = MAIN_OUTPUT / f"{FIGURE_NAME}_panels" / f"{FIGURE_NAME}.pdf"
+    save_panel(fig_c, FIGURE_NAME, FIGURE_NAME, SUPP_OUTPUT, close=False)
+    pdf_path = SUPP_OUTPUT / f"{FIGURE_NAME}_panels" / f"{FIGURE_NAME}.pdf"
     fig_c.savefig(str(pdf_path), format="pdf", bbox_inches="tight",
                   facecolor="white")
     plt.close(fig_c)
@@ -1364,7 +1364,7 @@ def generate() -> None:
     del data["adata"]
     del data
     gc.collect()
-    print("  Figure 2 complete: 11 individual panels + combined (A–K)\n")
+    print("  Supp Fig 1 complete: 11 individual panels + combined (A–K)\n")
 
 
 # ── CLI entry point ─────────────────────────────────────────────────────

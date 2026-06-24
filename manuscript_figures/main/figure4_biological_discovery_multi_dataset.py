@@ -1,5 +1,5 @@
 """
-Figure 5 — Biological Discovery & Multi-Dataset Generalization
+Figure 4 — Biological Discovery & Multi-Dataset Generalization
 ===============================================================
 
 Eighteen-panel combined figure integrating gene/pathway-level biological
@@ -74,7 +74,7 @@ from .._shared import (
 )
 
 
-FIGURE_NAME = "Figure5_biological_discovery_multi_dataset"
+FIGURE_NAME = "Figure4_biological_discovery_multi_dataset"
 
 
 # ======================================================================
@@ -3694,7 +3694,7 @@ def _build_composite(data4: dict, data_tnbc: dict, data5: dict) -> None:
 def generate() -> None:
     """Generate individual panels A–R and the combined composite."""
     print("=" * 60)
-    print("Figure 5: Biological Discovery & Multi-Dataset Generalization")
+    print("Figure 4: Biological Discovery & Multi-Dataset Generalization")
     print("=" * 60)
 
     print("  Preparing Melanoma (Fig4) data...")

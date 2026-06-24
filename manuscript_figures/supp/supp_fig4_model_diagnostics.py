@@ -1,5 +1,5 @@
 """
-Supplementary Figure 3 — Model Diagnostics and Assumption Checks.
+Supplementary Figure 4 — Model Diagnostics and Assumption Checks.
 =================================================================
 
 Validate that the OLS interaction (DiD) model assumptions hold across
@@ -53,7 +53,7 @@ from .._shared import (
     save_panel,
 )
 
-FIGURE_NAME = "SuppFig3_model_diagnostics"
+FIGURE_NAME = "SuppFig4_model_diagnostics"
 
 _TEST_FEATURES = [
     "CD8A", "CD4", "PDCD1", "HAVCR2", "LAG3", "CTLA4",
@@ -1299,7 +1299,7 @@ def generate():
 
     # I: Runtime scaling (Cleveland dot plot, from figure4_robustness_benchmarking)
     try:
-        from ..main.figure4_robustness_benchmarking import (
+        from ..main.figure3_robustness_benchmarking import (
             _panel_c as _fig4_panel_c,
             _prepare_scalability_data,
         )
@@ -1731,7 +1731,7 @@ def generate():
 
     ax_i = fig_c.add_subplot(gs_row8[2])
     try:
-        from ..main.figure4_robustness_benchmarking import (
+        from ..main.figure3_robustness_benchmarking import (
             _panel_c as _fig4_panel_c,
             _prepare_scalability_data,
         )

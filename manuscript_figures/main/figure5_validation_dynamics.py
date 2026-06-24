@@ -1,5 +1,5 @@
 """
-Figure 6 — Validation, Heterogeneity & Temporal Dynamics
+Figure 5 — Validation, Heterogeneity & Temporal Dynamics
 =========================================================
 
 Ten-panel figure combining permutation validation on Sade-Feldman,
@@ -57,7 +57,7 @@ from .._shared import (
 
 warnings.filterwarnings("ignore")
 
-FIGURE_NAME = "Figure6_validation_dynamics"
+FIGURE_NAME = "Figure5_validation_dynamics"
 VISITS: tuple[str, str] = ("Pre", "Post")
 N_PERM = 999
 
@@ -1005,7 +1005,7 @@ def _panel_j(ax, steph_data: dict) -> None:
 def generate() -> None:
     """Create and save all Figure 6 panels."""
     apply_style()
-    print("Figure 6: Validation, Heterogeneity & Temporal Dynamics")
+    print("Figure 5: Validation, Heterogeneity & Temporal Dynamics")
 
     # Sade-Feldman data (panels A–D) — permutation results cached to disk
     sf_data = _prepare_sf_data()

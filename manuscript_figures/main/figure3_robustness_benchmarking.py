@@ -1,5 +1,5 @@
 """
-Figure 4 — Statistical Robustness & Method Benchmarking
+Figure 3 — Statistical Robustness & Method Benchmarking
 ========================================================
 
 Seven-panel figure combining bootstrap validation, leave-one-out
@@ -65,7 +65,7 @@ from .._shared import (
 
 warnings.filterwarnings("ignore")
 
-FIGURE_NAME = "Figure4_robustness_benchmarking"
+FIGURE_NAME = "Figure3_robustness_benchmarking"
 VISITS: tuple[str, str] = ("Pre", "Post")
 N_BOOT = 999
 
@@ -1215,7 +1215,7 @@ def _panel_e_cross_dataset(ax, data: dict, *, composite: bool = False) -> None:
 
 def generate() -> None:
     apply_style()
-    print("Figure 4: Robustness & Benchmarking")
+    print("Figure 3: Robustness & Benchmarking")
 
     data = _prepare_sf_data()
 

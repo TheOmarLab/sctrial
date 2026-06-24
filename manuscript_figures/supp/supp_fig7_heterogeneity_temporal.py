@@ -1,5 +1,5 @@
 """
-Supplementary Figure 6 - Participant heterogeneity and temporal dynamics.
+Supplementary Figure 7 - Participant heterogeneity and temporal dynamics.
 
 Panels:
   Row 1 — Melanoma (Sade-Feldman):
@@ -50,7 +50,7 @@ from .._shared import (
     save_panel,
 )
 
-FIGURE_NAME = "SuppFig6_heterogeneity_temporal"
+FIGURE_NAME = "SuppFig7_heterogeneity_temporal"
 
 FEATURES = [
     "CD8A", "CD4", "PDCD1", "HAVCR2", "LAG3", "CTLA4",

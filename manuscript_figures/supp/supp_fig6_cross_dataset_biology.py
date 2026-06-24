@@ -1,5 +1,5 @@
 """
-Supplementary Figure 5 - Cross-dataset biological consistency.
+Supplementary Figure 6 - Cross-dataset biological consistency.
 
 Panels:
   A  Gene-set score distributions (within-dataset z-score).
@@ -45,7 +45,7 @@ from .._shared import (
     save_panel,
 )
 
-FIGURE_NAME = "SuppFig5_cross_dataset_biology"
+FIGURE_NAME = "SuppFig6_cross_dataset_biology"
 
 _FEATURES = [
     "CD8A", "CD4", "PDCD1", "HAVCR2", "LAG3", "CTLA4",

@@ -1,8 +1,8 @@
 """
-Figure 3 — TNBC Immunotherapy Primary Analysis
+Figure 2 — TNBC Immunotherapy Primary Analysis
 ===============================================
 
-Eight-panel figure mirroring the melanoma Figure 3 structure,
+Eight-panel figure mirroring the melanoma Figure 2 structure,
 adapted for the Zhang et al. (Cancer Cell 2021) TNBC dataset (GSE169246).
 
 Dataset: PTX ± atezolizumab (anti-PD-L1), 12 paired tumor biopsies (6 per arm).
@@ -147,7 +147,7 @@ except ImportError:
         return adata, sig_cols
 
 
-FIGURE_NAME = "Figure3_tnbc_analysis"
+FIGURE_NAME = "Figure2_tnbc_analysis"
 
 # ── Design & constants ────────────────────────────────────────────────────
 VISITS: tuple[str, str] = ("Pre", "Post")
@@ -1269,7 +1269,7 @@ def _cap_fontsize(fig: plt.Figure, maximum: float) -> None:
 # ── Main generation ───────────────────────────────────────────────────────
 def generate() -> None:
     print("=" * 60)
-    print("Figure 3 -- TNBC Immunotherapy Primary Analysis")
+    print("Figure 2 -- TNBC Immunotherapy Primary Analysis")
     print("Zhang et al., Cancer Cell 2021 (GSE169246)")
     print("=" * 60)
     data = _prepare_data()
@@ -1515,7 +1515,7 @@ def generate() -> None:
     del data
     gc.collect()
     print(f"\nAll panels saved to {MAIN_OUTPUT}")
-    print("Figure 3 complete: 11 individual panels (A-K) + combined artboard\n")
+    print("Figure 2 complete: 11 individual panels (A-K) + combined artboard\n")
 # ── CLI entry point ───────────────────────────────────────────────────────
 
 if __name__ == "__main__":

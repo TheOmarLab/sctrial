@@ -1,5 +1,5 @@
 """
-Supplementary Figure 2 — Cell Annotation and Baseline Comparability.
+Supplementary Figure 3 — Cell Annotation and Baseline Comparability.
 ====================================================================
 
 Establish cell-type annotation quality and demonstrate that pre-treatment
@@ -45,7 +45,7 @@ from .._shared import (
     save_panel,
 )
 
-FIGURE_NAME = "SuppFig2_annotation_baseline"
+FIGURE_NAME = "SuppFig3_annotation_baseline"
 
 DOT_SIZE = 1.8
 
