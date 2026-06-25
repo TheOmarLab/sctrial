@@ -1,5 +1,5 @@
 """
-Supplementary Figure 3 — Cell Annotation and Baseline Comparability.
+Supplementary Figure 2 — Cell Annotation and Baseline Comparability.
 ====================================================================
 
 Establish cell-type annotation quality and demonstrate that pre-treatment

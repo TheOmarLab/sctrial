@@ -1,5 +1,5 @@
 """
-Supplementary Figure 1 — Pseudoreplication Bias & Melanoma/TNBC Primary Analysis
+Supplementary Figure 3 — Pseudoreplication Bias & Melanoma/TNBC Primary Analysis
 ==================================================================================
 
 Eleven-panel figure: empirical demonstration of pseudoreplication (A–C),

@@ -1,5 +1,5 @@
 """
-Supplementary Figure 2 — Data Quality and Cohort Characterisation.
+Supplementary Figure 1 — Data Quality and Cohort Characterisation.
 ===================================================================
 
 Establish that all datasets are QC-sound and well-characterised before
