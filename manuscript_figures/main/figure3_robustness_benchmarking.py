@@ -1392,9 +1392,9 @@ def generate() -> None:
     ax_g = fig_c.add_subplot(gs_fg[1])
 
     # ── Draw all panels ───────────────────────────────────────────────
-    _panel_a(ax_a_top, ax_a_bot, data, data_tnbc, composite=True)
-    _panel_b(ax_b_top, ax_b_bot, data, data_tnbc)
-    _panel_d_se_comparison(ax_f_top, ax_f_bot, data, data_tnbc)
+    _panel_a(ax_a_bot, ax_a_top, data, data_tnbc, composite=True)
+    _panel_b(ax_b_bot, ax_b_top, data, data_tnbc)
+    _panel_d_se_comparison(ax_f_bot, ax_f_top, data, data_tnbc)
     _panel_e_cross_dataset(ax_g, data, composite=True)
 
     fig_c.canvas.draw()
