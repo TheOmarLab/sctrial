@@ -14,11 +14,11 @@ power curves on real datasets (formerly Figure 3 panel C).
 Panels (letters match the composite artboard, left-to-right and top-to-bottom)
 --------------------------------------------------------------------------------
   A  Analytical vs bootstrap SE (all 5 datasets, forest plot).
-  B  Standardised vs unstandardised effect sizes (Melanoma).
-  C  Mean vs median aggregation comparison (Melanoma).
-  D  Log-transform sensitivity (Melanoma).
-  E  Cell-type-stratified DiD heatmap (Melanoma).
-  F  Rank-order concordance across preprocessing choices (Melanoma).
+  B  Standardised vs unstandardised effect sizes (TNBC).
+  C  Mean vs median aggregation comparison (TNBC).
+  D  Log-transform sensitivity (TNBC).
+  E  Cell-type-stratified DiD heatmap (TNBC).
+  F  Rank-order concordance across preprocessing choices (TNBC).
   G  Leave-one-out stability matrix (max influence, all datasets).
   --- composite row 3 (right of F|G) ---
   H  Benchmark: pure-null Type I error vs panel size.
@@ -101,11 +101,26 @@ def _apply_composite_axis_typography_panel_e(fig) -> None:
             _tl.set_fontsize(_yt_fs)
 
 
-# Features for sensitivity tests
+# Features for sensitivity tests — tuned for TNBC TME.
+# Cytokines (IFNG, TNF, IL2) and CD19 were dropped: near-zero expression in most
+# TNBC pseudobulks collapses median-aggregation covariance → NaN betas.
 _FEATURES = [
-    "CD8A", "CD4", "PDCD1", "HAVCR2", "LAG3", "CTLA4",
-    "GZMB", "PRF1", "IFNG", "TNF", "IL2", "CD19",
-    "CD14", "LYZ", "NKG7",
+    # Pan-immune (high, reliable expression across all immune cells)
+    "PTPRC", "CD3E", "CD3D",
+    # T cell / checkpoint
+    "CD8A", "CD4", "PDCD1", "HAVCR2", "LAG3", "CTLA4", "TIGIT",
+    # Treg
+    "FOXP3",
+    # Cytotoxic / effector
+    "GZMB", "PRF1", "NKG7", "CCL5",
+    # Myeloid / innate
+    "CD14", "LYZ", "S100A8", "S100A9", "CD68", "SPP1",
+    # IFN / antigen-presentation pathway (anti-PDL1 relevant)
+    "STAT1", "CXCL9", "CXCL10", "ISG15", "HLA-A", "B2M",
+    # Tumor / proliferation
+    "EPCAM", "KRT18", "MKI67",
+    # PD-L1 (direct drug target) / immune evasion
+    "CD274", "IDO1",
 ]
 
 _PAL = {"cell": COLORS.get("highlight", "#5B9BD5"),
@@ -185,18 +200,16 @@ def _run_sensitivity():
     """Run DiD under several preprocessing choices."""
     import sctrial
 
-    adata = get_sade_feldman()
-    adata = harmonize_response(adata)
+    adata = get_tnbc_zhang()
 
-    if "log1p_tpm" not in adata.layers and "tpm" in adata.layers:
-        adata.layers["log1p_tpm"] = np.log1p(adata.layers["tpm"])
+    _layer = "log1p_norm"
 
     design = sctrial.TrialDesign(
         participant_col="participant_id",
         visit_col="visit",
-        arm_col="response",
-        arm_treated="Responder",
-        arm_control="Non-responder",
+        arm_col="arm",
+        arm_treated="anti-PDL1+Chemo",
+        arm_control="Chemo",
     )
     visits = ("Pre", "Post")
     feats = [f for f in _FEATURES if f in adata.var_names]
@@ -207,21 +220,21 @@ def _run_sensitivity():
     print("  cell-level DiD ...")
     out["cell"] = sctrial.did_table(
         adata, feats, design, visits,
-        layer="log1p_tpm", aggregate="cell", standardize=True,
+        layer=_layer, aggregate="cell", standardize=True,
     )
 
     # 2. Participant-level (analytical SE)
     print("  participant-level DiD ...")
     out["part"] = sctrial.did_table(
         adata, feats, design, visits,
-        layer="log1p_tpm", aggregate="participant_visit", standardize=True,
+        layer=_layer, aggregate="participant_visit", standardize=True,
     )
 
     # 3. Participant-level bootstrap
     print("  participant bootstrap DiD ...")
     out["boot"] = sctrial.did_table(
         adata, feats, design, visits,
-        layer="log1p_tpm", aggregate="participant_visit", standardize=True,
+        layer=_layer, aggregate="participant_visit", standardize=True,
         use_bootstrap=True, n_boot=200, seed=42,
     )
 
@@ -229,23 +242,23 @@ def _run_sensitivity():
     print("  unstandardised DiD ...")
     out["unstd"] = sctrial.did_table(
         adata, feats, design, visits,
-        layer="log1p_tpm", aggregate="participant_visit", standardize=False,
+        layer=_layer, aggregate="participant_visit", standardize=False,
     )
 
     # 5. Median aggregation
     print("  median aggregation DiD ...")
     out["median"] = sctrial.did_table(
         adata, feats, design, visits,
-        layer="log1p_tpm", aggregate="participant_visit", standardize=True,
+        layer=_layer, aggregate="participant_visit", standardize=True,
         agg="median",
     )
 
-    # 6. Raw TPM (no log) — only if tpm layer exists
-    if "tpm" in adata.layers:
-        print("  raw TPM DiD ...")
+    # 6. Raw counts (no log) — only if counts layer exists
+    if "counts" in adata.layers:
+        print("  raw counts DiD ...")
         out["raw"] = sctrial.did_table(
             adata, feats, design, visits,
-            layer="tpm", aggregate="participant_visit", standardize=True,
+            layer="counts", aggregate="participant_visit", standardize=True,
         )
     else:
         out["raw"] = None
@@ -265,7 +278,7 @@ def _run_sensitivity():
                     continue
                 ct_df = sctrial.did_table(
                     sub, short_feats, design, visits,
-                    layer="log1p_tpm", aggregate="participant_visit",
+                    layer=_layer, aggregate="participant_visit",
                     standardize=True,
                 )
                 ct_results[ct] = ct_df
@@ -508,13 +521,13 @@ def _panel_std_vs_unstd(ax, data: dict, *, composite: bool = False):
     _add_gene_labels(ax, common, std, unstd, fontsize=_lbl_fs)
 
     r, _ = sp_stats.pearsonr(x, y)
-    ax.text(0.05, 0.95, f"r = {r:.2f}", transform=ax.transAxes,
-            fontsize=_r_fs, va="top",
+    ax.text(0.95, 0.05, f"r = {r:.2f}", transform=ax.transAxes,
+            fontsize=_r_fs, va="bottom", ha="right",
             bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
                       edgecolor="#ccc", alpha=0.8))
     ax.set_xlabel("β (standardised)")
     ax.set_ylabel("β (unstandardised)")
-    ax.set_title("Standardised vs Unstandardised (Melanoma)",
+    ax.set_title("Standardised vs Unstandardised (TNBC)",
                  fontweight="bold")
     despine(ax)
 
@@ -529,7 +542,7 @@ def _panel_mean_vs_median(ax, data: dict, *, composite: bool = False):
     if med_res is None or med_res.empty:
         ax.text(0.5, 0.5, "No median-aggregation results", ha="center",
                 va="center", transform=ax.transAxes, fontsize=9, color="#888")
-        ax.set_title("Mean vs Median Aggregation (Melanoma)",
+        ax.set_title("Mean vs Median Aggregation (TNBC)",
                  fontweight="bold")
         despine(ax)
         return
@@ -541,7 +554,7 @@ def _panel_mean_vs_median(ax, data: dict, *, composite: bool = False):
     if len(common) < 2:
         ax.text(0.5, 0.5, "Insufficient data", ha="center", va="center",
                 transform=ax.transAxes)
-        ax.set_title("Mean vs Median Aggregation (Melanoma)",
+        ax.set_title("Mean vs Median Aggregation (TNBC)",
                  fontweight="bold")
         despine(ax)
         return
@@ -574,7 +587,7 @@ def _panel_mean_vs_median(ax, data: dict, *, composite: bool = False):
 
     ax.set_xlabel("β (mean aggregation)")
     ax.set_ylabel("β (median aggregation)")
-    ax.set_title("Mean vs Median Aggregation (Melanoma)",
+    ax.set_title("Mean vs Median Aggregation (TNBC)",
                  fontweight="bold")
     despine(ax)
 
@@ -582,13 +595,13 @@ def _panel_mean_vs_median(ax, data: dict, *, composite: bool = False):
 # ── Panel E: Log-transform sensitivity ────────────────────────────
 
 def _panel_log_sensitivity(ax, data: dict, *, composite: bool = False):
-    """Scatter: log1p_tpm betas vs raw TPM betas."""
+    """Scatter: log1p_norm betas vs raw counts betas."""
     log_df = data["part"].set_index("feature")["beta_DiD"]
     raw_res = data.get("raw")
     if raw_res is None or raw_res.empty:
-        ax.text(0.5, 0.5, "No raw-TPM results", ha="center", va="center",
+        ax.text(0.5, 0.5, "No raw counts results", ha="center", va="center",
                 transform=ax.transAxes, fontsize=9, color="#888")
-        ax.set_title("Log-Transform Sensitivity (Melanoma)",
+        ax.set_title("Log-Transform Sensitivity (TNBC)",
                  fontweight="bold")
         despine(ax)
         return
@@ -615,9 +628,9 @@ def _panel_log_sensitivity(ax, data: dict, *, composite: bool = False):
             fontsize=_r_fs, va="top",
             bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
                       edgecolor="#ccc", alpha=0.8))
-    ax.set_xlabel("β (log1p TPM)")
-    ax.set_ylabel("β (raw TPM)")
-    ax.set_title("Log-Transform Sensitivity (Melanoma)",
+    ax.set_xlabel("β (log1p norm)")
+    ax.set_ylabel("β (raw counts)")
+    ax.set_title("Log-Transform Sensitivity (TNBC)",
                  fontweight="bold")
     despine(ax)
 
@@ -630,7 +643,7 @@ def _panel_ct_heatmap(ax, data: dict, *, composite: bool = False):
     if not ct_results:
         ax.text(0.5, 0.5, "No cell-type-stratified results", ha="center",
                 va="center", transform=ax.transAxes, fontsize=9, color="#888")
-        ax.set_title("Cell-Type Stratified DiD (Melanoma)",
+        ax.set_title("Cell-Type Stratified DiD (TNBC)",
                  fontweight="bold")
         despine(ax)
         return
@@ -653,7 +666,7 @@ def _panel_ct_heatmap(ax, data: dict, *, composite: bool = False):
                 linecolor="white", cbar_kws={"shrink": 0.6, "label": "β"},
                 annot=True, fmt=".2f", annot_kws={"fontsize": _annot_fs})
     ax.set_ylabel("Feature")
-    ax.set_title("Cell-Type Stratified DiD (Melanoma)",
+    ax.set_title("Cell-Type Stratified DiD (TNBC)",
                  fontweight="bold")
     if composite:
         ax.tick_params(axis="x", labelsize=3.2, rotation=35, pad=1.0)
@@ -754,7 +767,7 @@ def _panel_rank_concordance(ax, data: dict, *, composite: bool = False):
     ax.set_yticklabels(labels, fontsize=_yt_fs)
     ax.set_xlabel(f"Spearman ρ (vs {ref_key})")
     ax.set_xlim(0, 1.15)
-    ax.set_title("Rank Concordance Across Choices (Melanoma)",
+    ax.set_title("Rank Concordance Across Choices (TNBC)",
                  fontweight="bold", fontsize=5.5 if composite else 11)
 
     _rho_lbl_fs = 5.0 if composite else 7
@@ -2114,11 +2127,11 @@ def generate():
 
     Layout (same order as the composite artboard):
       A  Analytical vs bootstrap SE (all datasets, faceted forest plot)
-      B  Standardised vs unstandardised effect sizes (Melanoma)
-      C  Mean vs median aggregation comparison (Melanoma)
-      D  Log-transform sensitivity (Melanoma)
-      E  Cell-type-stratified DiD heatmap (Melanoma)
-      F  Rank-order concordance across choices (Melanoma)
+      B  Standardised vs unstandardised effect sizes (TNBC)
+      C  Mean vs median aggregation comparison (TNBC)
+      D  Log-transform sensitivity (TNBC)
+      E  Cell-type-stratified DiD heatmap (TNBC)
+      F  Rank-order concordance across choices (TNBC)
       G  Leave-one-out stability matrix (all datasets)
       H  Pure-null Type I error vs panel size (NatMeth benchmark, 4 methods)
       I  Runtime comparison (NatMeth benchmark)
@@ -2131,11 +2144,11 @@ def generate():
     print("Supplementary Figure 4: Sensitivity to Modeling and Preprocessing")
 
     # ── Sensitivity (panels B–F) — cache minus large adata ────────────
-    data = _load_cache("sensitivity")
+    data = _load_cache("sensitivity_tnbc")
     if data is None:
         data = _run_sensitivity()
         cacheable = {k: v for k, v in data.items() if k != "adata"}
-        _save_cache("sensitivity", cacheable)
+        _save_cache("sensitivity_tnbc", cacheable)
         if "adata" in data:
             del data["adata"]
 
@@ -2153,7 +2166,7 @@ def generate():
         fig.tight_layout(rect=[0, 0, 1, 0.93])
         save_panel(fig, "panel_A", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panels B–F: single-dataset sensitivity (Sade-Feldman only)
+    # Panels B–F: single-dataset sensitivity (TNBC)
     panels_bf = [
         ("panel_B", _panel_std_vs_unstd, (7.0, 6.0)),
         ("panel_C", _panel_mean_vs_median, (7.0, 6.0)),
