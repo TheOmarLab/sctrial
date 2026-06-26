@@ -2,30 +2,28 @@
 Figure 4 — Biological Discovery & Multi-Dataset Generalization
 ===============================================================
 
-Eighteen-panel combined figure integrating gene/pathway-level biological
-discovery from the melanoma cohort (panels A–E) and TNBC cohort (panels F–J)
-with cross-dataset generalization analyses (panels K–R).
+Thirteen-panel combined figure integrating gene/pathway-level biological
+discovery from the TNBC cohort (panels A–E) with cross-dataset
+generalization analyses (panels F–M).
+
+Melanoma biological discovery panels have been moved to Supplementary
+Figure 6 (panels A–E).
 
 Panels
 ------
-A  Gene-level volcano plot (melanoma DiD).
-B  Top genes ranked by effect size (waterfall, melanoma).
-C  GSEA enrichment bar chart (pathway enrichment, melanoma).
-D  Leading-edge gene overlap heatmap (melanoma).
-E  Cell-type-resolved DiD effect heatmap (melanoma).
-F  Gene-level volcano plot (TNBC within-arm).
-G  Top genes ranked by effect size (waterfall, TNBC).
-H  GSEA enrichment bar chart (pathway enrichment, TNBC).
-I  Leading-edge gene overlap heatmap (TNBC).
-J  Cell-type-resolved within-arm effect heatmap (TNBC).
-K  COVID-19 cross-sectional forest plot.
-L  Vaccine paired forest plot.
-M  AML within-arm forest plot.
-N  CAR-T forest plot.
-O  Melanoma DiD forest plot.
-P  TNBC within-arm forest plot.
-Q  Cross-dataset effect-size heatmap (includes TNBC).
-R  Cross-dataset GSEA heatmap — replicated pathways (includes TNBC).
+A  Gene-level volcano plot (TNBC DiD).
+B  Top genes ranked by effect size (waterfall, TNBC).
+C  GSEA enrichment bar chart (pathway enrichment, TNBC).
+D  Leading-edge gene overlap heatmap (TNBC).
+E  Cell-type-resolved DiD effect heatmap (TNBC).
+F  COVID-19 cross-sectional forest plot.
+G  Vaccine paired forest plot.
+H  AML within-arm forest plot.
+I  CAR-T forest plot.
+J  Melanoma DiD forest plot.
+K  TNBC within-arm forest plot.
+L  Cross-dataset effect-size heatmap (includes TNBC).
+M  Cross-dataset GSEA heatmap — replicated pathways (includes TNBC).
 """
 
 from __future__ import annotations
@@ -1984,15 +1982,6 @@ def panel_C_replicated(ax, data: dict):
     for j in range(len(all_datasets) + 1):
         ax.axvline(j - 0.5, color="#E0E0E0", linewidth=0.8, zorder=1)
     
-    # Add stars for significant pathways (FDR < 0.25)
-    for i in range(len(all_pathways)):
-        for j in range(len(all_datasets)):
-            if not np.isnan(fdr_matrix[i, j]) and fdr_matrix[i, j] < 0.25:
-                # Add star in the center of the cell
-                ax.text(j, i, "*", ha="center", va="center", 
-                       fontsize=10, fontweight="bold", color="white",
-                       zorder=10)
-    
     # Labels
     ax.set_yticks(range(len(all_pathways)))
     ax.set_yticklabels(all_pathways, fontsize=7.5)
@@ -2001,7 +1990,7 @@ def panel_C_replicated(ax, data: dict):
     
     ax.set_xlabel("Dataset", fontsize=9)
     ax.set_ylabel("Pathway", fontsize=9)
-    ax.set_title("Replicated Pathways Across Datasets (* FDR < 0.25)",
+    ax.set_title("Replicated Pathways Across Datasets (FDR < 0.25)",
                  fontsize=11, fontweight="bold")
     
     ax.tick_params(axis="both", length=0)
@@ -3195,66 +3184,46 @@ def _cap_fontsize(fig, maximum):
 
 
 # ── Panel aliases for composite ───────────────────────────────────────────
-fig4_volcano = panel_E        # Melanoma: A
-fig4_waterfall = panel_A      # Melanoma: B
-fig4_gsea_bars = panel_B      # Melanoma: C
-fig4_leading_edge = panel_C   # Melanoma: D
-fig4_celltype_hm = panel_F    # Melanoma: E
-# TNBC panels F–J reuse existing functions with TNBC data dict
-tnbc_volcano = panel_E        # TNBC: F
-tnbc_waterfall = panel_A      # TNBC: G
-tnbc_gsea_bars = panel_B      # TNBC: H
-tnbc_leading_edge = panel_C   # TNBC: I
-tnbc_celltype_hm = _panel_tnbc_celltype_hm  # TNBC: J
-fig4_gsea_cross = panel_C_replicated        # R
+# TNBC panels A–E reuse existing functions with TNBC data dict
+tnbc_volcano = panel_E        # TNBC: A
+tnbc_waterfall = panel_A      # TNBC: B
+tnbc_gsea_bars = panel_B      # TNBC: C
+tnbc_leading_edge = panel_C   # TNBC: D
+tnbc_celltype_hm = _panel_tnbc_celltype_hm  # TNBC: E
+fig4_gsea_cross = panel_C_replicated        # M
 
 
 # ── Individual panel saving ───────────────────────────────────────────────
 
-def _save_individual_panels(data4: dict, data_tnbc: dict, data5: dict) -> None:
-    """Save each panel A–R as a standalone figure."""
+def _save_individual_panels(data_tnbc: dict, data5: dict) -> None:
+    """Save each panel A–M as a standalone figure."""
     print("  Saving individual panels...")
 
-    # Panels A–E: Melanoma biological discovery
-    mel_panels = [
-        ("A", fig4_volcano,    data4, (8, 6), dict(composite=False)),
-        ("B", fig4_waterfall,  data4, (8, 6), {}),
-        ("C", fig4_gsea_bars,  data4, (8, 6), {}),
-        ("D", fig4_leading_edge, data4, (10, 7), {}),
-        ("E", fig4_celltype_hm,  data4, (8, 6), {}),
-    ]
-    for label, fn, data, fsize, kwargs in mel_panels:
-        fig_p, ax_p = plt.subplots(figsize=fsize)
-        fn(ax_p, data, **kwargs)
-        if label != "D":
-            fig_p.tight_layout()
-        save_panel(fig_p, f"panel_{label}", FIGURE_NAME, MAIN_OUTPUT)
-
-    # Panels F–J: TNBC biological discovery
+    # Panels A–E: TNBC biological discovery
     tnbc_panels = [
-        ("F", tnbc_volcano,    data_tnbc, (8, 6), dict(composite=False)),
-        ("G", tnbc_waterfall,  data_tnbc, (8, 6), {}),
-        ("H", tnbc_gsea_bars,  data_tnbc, (8, 6), {}),
-        ("I", tnbc_leading_edge, data_tnbc, (10, 7), {}),
-        ("J", tnbc_celltype_hm,  data_tnbc, (8, 6), {}),
+        ("A", tnbc_volcano,    data_tnbc, (8, 6), dict(composite=False)),
+        ("B", tnbc_waterfall,  data_tnbc, (8, 6), {}),
+        ("C", tnbc_gsea_bars,  data_tnbc, (8, 6), {}),
+        ("D", tnbc_leading_edge, data_tnbc, (10, 7), {}),
+        ("E", tnbc_celltype_hm,  data_tnbc, (8, 6), {}),
     ]
     for label, fn, data, fsize, kwargs in tnbc_panels:
         fig_p, ax_p = plt.subplots(figsize=fsize)
         fn(ax_p, data, **kwargs)
-        if label in ("F", "G", "H", "I"):
+        if label in ("A", "B", "C", "D"):
             _fix_tnbc_labels(ax_p)
-        if label != "I":
+        if label != "D":
             fig_p.tight_layout()
         save_panel(fig_p, f"panel_{label}", FIGURE_NAME, MAIN_OUTPUT)
 
-    # Panels K–P: multi-dataset forest plots (previously F–J plus new TNBC)
+    # Panels F–K: multi-dataset forest plots
     forest_panels = [
-        (panel_a_covid,    "K_covid_severity",  data5, 6.5),
-        (panel_b_vaccine,  "L_vaccine_paired",  data5, 6.5),
-        (panel_c_aml,      "M_aml_clinical",    data5, 6.5),
-        (panel_d_cart,     "N_cart_clinical",   data5, 6.5),
-        (panel_e_melanoma, "O_melanoma_did",    data5, 6.5),
-        (panel_p_tnbc,     "P_tnbc_within_arm", data5, 6.5),
+        (panel_a_covid,    "F_covid_severity",  data5, 6.5),
+        (panel_b_vaccine,  "G_vaccine_paired",  data5, 6.5),
+        (panel_c_aml,      "H_aml_clinical",    data5, 6.5),
+        (panel_d_cart,     "I_cart_clinical",   data5, 6.5),
+        (panel_e_melanoma, "J_melanoma_did",    data5, 6.5),
+        (panel_p_tnbc,     "K_tnbc_within_arm", data5, 6.5),
     ]
     for fn, name, data, w in forest_panels:
         n_feat = 8
@@ -3264,19 +3233,19 @@ def _save_individual_panels(data4: dict, data_tnbc: dict, data5: dict) -> None:
         fig_p.tight_layout(pad=0.6)
         save_panel(fig_p, f"panel_{name}", FIGURE_NAME, MAIN_OUTPUT)
 
-    # Panel Q — cross-dataset effect-size heatmap (was K)
+    # Panel L — cross-dataset effect-size heatmap
     fig_p, ax_p = plt.subplots(figsize=(9.5, max(2.8, 0.38 * 10 + 1.1)))
     panel_f_heatmap(ax_p, data5)
     fig_p.tight_layout(pad=0.6)
-    save_panel(fig_p, "panel_Q_cross_dataset_heatmap", FIGURE_NAME, MAIN_OUTPUT)
+    save_panel(fig_p, "panel_L_cross_dataset_heatmap", FIGURE_NAME, MAIN_OUTPUT)
 
-    # Panel R — cross-dataset GSEA heatmap (was L)
+    # Panel M — cross-dataset GSEA heatmap
     fig_p, ax_p = plt.subplots(figsize=(9.5, max(2.8, 0.38 * 10 + 1.1)))
     fig4_gsea_cross(ax_p, data5)
     fig_p.tight_layout(pad=0.6)
-    save_panel(fig_p, "panel_R_cross_dataset_gsea", FIGURE_NAME, MAIN_OUTPUT)
+    save_panel(fig_p, "panel_M_cross_dataset_gsea", FIGURE_NAME, MAIN_OUTPUT)
 
-    print("    Individual panels saved (A–R)")
+    print("    Individual panels saved (A–M)")
 
 
 # ── Composite artboard ────────────────────────────────────────────────────
@@ -3375,17 +3344,15 @@ def _fix_tnbc_labels(ax) -> None:
                  fontweight=ax.title.get_fontweight())
 
 
-def _build_composite(data4: dict, data_tnbc: dict, data5: dict) -> None:
-    """Build and save the combined 18-panel artboard (180 × 215 mm).
+def _build_composite(data_tnbc: dict, data5: dict) -> None:
+    """Build and save the combined 13-panel artboard (180 × 175 mm).
 
-    Layout (13-row grid, ≤215 mm tall):
-      Row  0: A | B | C(wide)         Melanoma: volcano | waterfall | GSEA bars
-      Row  2: D(wide) | E             Melanoma: leading-edge | cell-type HM
-      Row  4: F | G | H(wide)         TNBC: volcano | waterfall | GSEA bars
-      Row  6: I(wide) | J             TNBC: leading-edge | cell-type HM
-      Row  8: K | L | M               COVID | Vaccine | AML forest plots
-      Row 10: N | O | P               CAR-T | Melanoma | TNBC forest plots
-      Row 12: Q | R                   effect heatmap | GSEA cross-dataset
+    Layout (9-row grid, ≤175 mm tall):
+      Row  0: A | B | C(wide)         TNBC: volcano | waterfall | GSEA bars
+      Row  2: D(wide) | E             TNBC: leading-edge | cell-type HM
+      Row  4: F | G | H               COVID | Vaccine | AML forest plots
+      Row  6: I | J | K               CAR-T | Melanoma | TNBC forest plots
+      Row  8: L | M                   effect heatmap | GSEA cross-dataset
     """
     print("  Building composite artboard...")
 
@@ -3398,37 +3365,32 @@ def _build_composite(data4: dict, data_tnbc: dict, data5: dict) -> None:
         "legend.fontsize": 3.0,
         "legend.title_fontsize": 3.0,
     }
-    _MAX_FONT = 5.5
+    _MAX_FONT = 6.0
 
     _prev_rc = {k: plt.rcParams[k] for k in _SMALL_RC}
     plt.rcParams.update(_SMALL_RC)
 
-    fig_c = plt.figure(figsize=(180 * _mm, 215 * _mm))
+    fig_c = plt.figure(figsize=(180 * _mm, 195 * _mm))
 
-    # 13 rows; height sum ≈ 9.05  →  215 mm / 9.05 ≈ 24 mm per unit
+    # 9 rows; height sum ≈ 7.55  →  195 mm / 7.55 ≈ 25.8 mm per unit
     outer = fig_c.add_gridspec(
-        13, 1,
+        9, 1,
         height_ratios=[
-            1.50,  # 0:  A | B | C   — Melanoma (taller panels)
-            0.70,  # 1:  spacer
-            0.90,  # 2:  D | E       — Melanoma
-            0.80,  # 3:  section spacer
-            1.50,  # 4:  F | G | H   — TNBC (taller panels)
-            0.65,  # 5:  spacer
-            0.90,  # 6:  I | J       — TNBC
-            0.90,  # 7:  section spacer
-            0.95,  # 8:  K | L | M
-            0.70,  # 9:  spacer
-            0.95,  # 10: N | O | P
-            0.70,  # 11: spacer
-            1.25,  # 12: Q | R
+            1.50,  # 0:  A | B | C   — TNBC (taller panels)
+            0.45,  # 1:  spacer
+            0.90,  # 2:  D | E       — TNBC
+            0.50,  # 3:  section spacer
+            0.95,  # 4:  F | G | H
+            0.45,  # 5:  spacer
+            0.95,  # 6:  I | J | K
+            0.45,  # 7:  spacer
+            1.25,  # 8:  L | M
         ],
         hspace=0.0,
         left=0.07, right=0.97, top=0.98, bottom=0.03,
     )
 
     # ── Row 0: A(wide) | B(wider) | spacer | C(narrow) ──────────────
-    # A reduced further; B widened; spacer keeps B-C gap
     gs0 = outer[0].subgridspec(1, 4, wspace=0.40,
                                 width_ratios=[1.0, 0.85, 0.18, 0.7])
     ax_a = fig_c.add_subplot(gs0[0])
@@ -3441,182 +3403,130 @@ def _build_composite(data4: dict, data_tnbc: dict, data5: dict) -> None:
     ax_d = fig_c.add_subplot(gs2[1])
     ax_e = fig_c.add_subplot(gs2[3])
 
-    # ── Row 4: F(wide) | G(wider) | spacer | H(narrow) ──────────────
-    # F reduced further; G widened; spacer keeps G-H gap
-    gs4 = outer[4].subgridspec(1, 4, wspace=0.40,
-                                width_ratios=[1.0, 0.85, 0.18, 0.7])
+    # ── Row 4: F | G | H ─────────────────────────────────────────────
+    gs4 = outer[4].subgridspec(1, 3, wspace=1.05)
     ax_f = fig_c.add_subplot(gs4[0])
     ax_g = fig_c.add_subplot(gs4[1])
-    ax_h = fig_c.add_subplot(gs4[3])
+    ax_h = fig_c.add_subplot(gs4[2])
 
-    # ── Row 6: left-spacer | I | mid-spacer | J ─────────────────────
-    gs6 = outer[6].subgridspec(1, 4, wspace=0.30,
-                                width_ratios=[0.10, 0.95, 0.25, 0.95])
-    ax_i = fig_c.add_subplot(gs6[1])
-    ax_j = fig_c.add_subplot(gs6[3])
+    # ── Row 6: I | J | K ─────────────────────────────────────────────
+    gs6 = outer[6].subgridspec(1, 3, wspace=1.05)
+    ax_i = fig_c.add_subplot(gs6[0])
+    ax_j = fig_c.add_subplot(gs6[1])
+    ax_k = fig_c.add_subplot(gs6[2])
 
-    # ── Row 8: K | L | M ─────────────────────────────────────────────
-    gs8 = outer[8].subgridspec(1, 3, wspace=1.05)
-    ax_k = fig_c.add_subplot(gs8[0])
-    ax_l = fig_c.add_subplot(gs8[1])
-    ax_m = fig_c.add_subplot(gs8[2])
+    # ── Row 8: L | M ─────────────────────────────────────────────────
+    gs8 = outer[8].subgridspec(1, 2, wspace=0.90, width_ratios=[1.2, 0.9])
+    ax_l = fig_c.add_subplot(gs8[0])
+    ax_m = fig_c.add_subplot(gs8[1])
 
-    # ── Row 10: N | O | P ────────────────────────────────────────────
-    gs10 = outer[10].subgridspec(1, 3, wspace=1.05)
-    ax_n = fig_c.add_subplot(gs10[0])
-    ax_o = fig_c.add_subplot(gs10[1])
-    ax_p = fig_c.add_subplot(gs10[2])
+    # ── Draw TNBC panels A, B, C, D, E ───────────────────────────────
+    tnbc_volcano(ax_a, data_tnbc, composite=True)
+    ax_a.set_title("Gene-Level Volcano (TNBC DiD)", fontsize=4.5,
+                   fontweight="bold")
+    ax_a.xaxis.label.set_fontsize(4.5)
+    _fix_tnbc_labels(ax_a)
 
-    # ── Row 12: Q | R ────────────────────────────────────────────────
-    gs12 = outer[12].subgridspec(1, 2, wspace=0.90, width_ratios=[1.2, 0.9])
-    ax_q = fig_c.add_subplot(gs12[0])
-    ax_r = fig_c.add_subplot(gs12[1])
-
-    # ── Draw Melanoma panels A, B, C, D, E ───────────────────────────
-    fig4_volcano(ax_a, data4, composite=True)
-    fig4_waterfall(ax_b, data4)
-    ax_b.tick_params(axis='y', labelsize=3.0)
+    tnbc_waterfall(ax_b, data_tnbc)
+    ax_b.set_title("Top Genes — TNBC DiD", fontsize=4.5, fontweight="bold")
+    ax_b.tick_params(axis='y', labelsize=4.0)
+    ax_b.xaxis.label.set_fontsize(4.5)
     # Thin crowded gene labels — show every other tick
     _b_lbls = [t.get_text() for t in ax_b.get_yticklabels()]
     if _b_lbls:
         ax_b.set_yticklabels(
             [t if _k % 2 == 0 else "" for _k, t in enumerate(_b_lbls)],
-            fontsize=3.0,
+            fontsize=4.0,
         )
+    _fix_tnbc_labels(ax_b)
 
-    fig4_gsea_bars(ax_c, data4)
-    ax_c.set_title(ax_c.get_title().replace("Melanoma", "").strip(" —–-") +
-                   " — Melanoma", fontsize=4.5, fontweight="bold")
+    tnbc_gsea_bars(ax_c, data_tnbc)
+    ax_c.set_title("Pathway Enrichment — TNBC", fontsize=4.5, fontweight="bold")
     ax_c.tick_params(axis='y', labelsize=3.5)
+    ax_c.xaxis.label.set_fontsize(4.5)
     ax_c.set_xticks([-2, 0, 2])
+    _fix_tnbc_labels(ax_c)
 
-    fig4_leading_edge(ax_d, data4, composite=True)
+    tnbc_leading_edge(ax_d, data_tnbc, composite=True)
+    ax_d.set_title("Leading-Edge — TNBC", fontsize=4.5, fontweight="bold")
     _swap_leading_edge_axes(ax_d)
-    ax_d.set_title(ax_d.get_title().replace("Melanoma", "").strip(" —–-") +
-                   " — Melanoma", fontsize=4.5, fontweight="bold")
+    _fix_tnbc_labels(ax_d)
+    ax_d.tick_params(axis='y', labelsize=4.0)
 
     _axes_before_e = set(fig_c.get_axes())
-    fig4_celltype_hm(ax_e, data4)
-    _shrink_colorbars(fig_c, _axes_before_e, fs=3.5)
-    ax_e.set_title(ax_e.get_title().replace("Melanoma", "").strip(" —–-") +
-                   " — Melanoma", fontsize=4.5, fontweight="bold")
+    tnbc_celltype_hm(ax_e, data_tnbc)
+    _shrink_colorbars(fig_c, _axes_before_e, fs=4.5)
     ax_e.tick_params(axis='x', labelsize=4.0)
-    ax_e.tick_params(axis='y', labelsize=3.5)
+    ax_e.tick_params(axis='y', labelsize=4.5)
 
-    # ── Draw TNBC panels F, G, H, I, J ───────────────────────────────
-    tnbc_volcano(ax_f, data_tnbc, composite=True)
-    ax_f.set_title("Gene-Level Volcano (TNBC DiD)", fontsize=4.5,
-                   fontweight="bold")
-    _fix_tnbc_labels(ax_f)
-
-    tnbc_waterfall(ax_g, data_tnbc)
-    ax_g.set_title("Top Genes — TNBC DiD", fontsize=4.5, fontweight="bold")
-    ax_g.tick_params(axis='y', labelsize=3.0)
-    # Thin crowded gene labels — show every other tick
-    _g_lbls = [t.get_text() for t in ax_g.get_yticklabels()]
-    if _g_lbls:
-        ax_g.set_yticklabels(
-            [t if _k % 2 == 0 else "" for _k, t in enumerate(_g_lbls)],
-            fontsize=3.0,
-        )
-    _fix_tnbc_labels(ax_g)
-
-    tnbc_gsea_bars(ax_h, data_tnbc)
-    ax_h.set_title("Pathway Enrichment — TNBC", fontsize=4.5, fontweight="bold")
-    ax_h.tick_params(axis='y', labelsize=3.5)
-    ax_h.set_xticks([-2, 0, 2])
-    _fix_tnbc_labels(ax_h)
-
-    tnbc_leading_edge(ax_i, data_tnbc, composite=True)
-    ax_i.set_title("Leading-Edge — TNBC", fontsize=4.5, fontweight="bold")
-    _swap_leading_edge_axes(ax_i)
-    _fix_tnbc_labels(ax_i)
-
-    _axes_before_j = set(fig_c.get_axes())
-    tnbc_celltype_hm(ax_j, data_tnbc)
-    _shrink_colorbars(fig_c, _axes_before_j, fs=3.5)
-    ax_j.tick_params(axis='x', labelsize=4.0)
-    ax_j.tick_params(axis='y', labelsize=3.5)
-
-    # ── Draw forest plots K–P ────────────────────────────────────────
-    _fp_tick = 3.5
-    panel_a_covid(ax_k, data5)
-    panel_b_vaccine(ax_l, data5)
-    panel_c_aml(ax_m, data5)
-    panel_d_cart(ax_n, data5)
-    panel_e_melanoma(ax_o, data5)
-    panel_p_tnbc(ax_p, data5)
-    for _ax_fp in [ax_k, ax_l, ax_m, ax_n, ax_o, ax_p]:
+    # ── Draw forest plots F–K ────────────────────────────────────────
+    _fp_tick = 4.5
+    panel_a_covid(ax_f, data5)
+    panel_b_vaccine(ax_g, data5)
+    panel_c_aml(ax_h, data5)
+    panel_d_cart(ax_i, data5)
+    panel_e_melanoma(ax_j, data5)
+    panel_p_tnbc(ax_k, data5)
+    for _ax_fp in [ax_f, ax_g, ax_h, ax_i, ax_j, ax_k]:
         _ax_fp.tick_params(axis='both', labelsize=_fp_tick)
         if _ax_fp.get_xlabel():
-            _ax_fp.xaxis.label.set_fontsize(3.5)
+            _ax_fp.xaxis.label.set_fontsize(4.5)
 
-    # ── Q — effect-size heatmap ───────────────────────────────────────
-    _axes_before_q = set(fig_c.get_axes())
-    panel_f_heatmap(ax_q, data5)
-    _shrink_colorbars(fig_c, _axes_before_q, fs=4.0)
-    ax_q.tick_params(axis='both', labelsize=4.0)
+    # ── L — effect-size heatmap ───────────────────────────────────────
+    _axes_before_l = set(fig_c.get_axes())
+    panel_f_heatmap(ax_l, data5)
+    _shrink_colorbars(fig_c, _axes_before_l, fs=5.0)
+    ax_l.tick_params(axis='both', labelsize=5.0)
 
-    # ── R — cross-dataset GSEA heatmap ───────────────────────────────
-    _axes_before_r = set(fig_c.get_axes())
-    fig4_gsea_cross(ax_r, data5)
-    _shrink_colorbars(fig_c, _axes_before_r, fs=4.0)
-    ax_r.set_ylabel("")
-    ax_r.tick_params(axis='x', labelsize=3.5)
-    ax_r.tick_params(axis='y', labelsize=3.5)
+    # ── M — cross-dataset GSEA heatmap ───────────────────────────────
+    _axes_before_m = set(fig_c.get_axes())
+    fig4_gsea_cross(ax_m, data5)
+    _shrink_colorbars(fig_c, _axes_before_m, fs=4.0)
+    ax_m.set_ylabel("")
+    ax_m.tick_params(axis='x', labelsize=3.5)
+    ax_m.tick_params(axis='y', labelsize=4.5)
 
     # ── Post-processing ───────────────────────────────────────────────
 
     # Strip auto-added single-letter labels from panel functions
-    _forest_axes = [ax_k, ax_l, ax_m, ax_n, ax_o, ax_p]
-    for _ax in _forest_axes + [ax_q, ax_r]:
+    _forest_axes = [ax_f, ax_g, ax_h, ax_i, ax_j, ax_k]
+    for _ax in _forest_axes + [ax_l, ax_m]:
         for t in [tt for tt in _ax.texts
                   if len(tt.get_text()) == 1 and tt.get_text().isupper()]:
             t.remove()
 
-    # Compact legends — biological panels
+    # Compact legends — TNBC biological panels
     _bio_locs = {
         ax_a: "upper right", ax_b: "upper left",
         ax_c: "upper left",  ax_d: "lower right",
-        ax_f: "upper right", ax_g: "upper left",
-        ax_h: "upper left",  ax_i: "lower right",
     }
     for ax_target, loc in _bio_locs.items():
-        _compact_legend(ax_target, loc, fs=3.5)
+        _compact_legend(ax_target, loc, fs=4.5)
 
     # Compact legends — forest plots
     for ax_target in _forest_axes:
-        _compact_legend(ax_target, "lower right", fs=3.5)
+        _compact_legend(ax_target, "lower right", fs=4.5)
 
     # Shrink gene-label annotations in volcano/waterfall
-    for _ax in [ax_a, ax_b, ax_f, ax_g]:
-        for txt in _ax.texts:
-            if txt.get_fontsize() > 4:
-                txt.set_fontsize(max(txt.get_fontsize() * 0.50, 2.5))
+    for txt in ax_a.texts:
+        if txt.get_fontsize() > 4:
+            txt.set_fontsize(max(txt.get_fontsize() * 0.65, 3.0))
+    for txt in ax_b.texts:
+        if txt.get_fontsize() > 4:
+            txt.set_fontsize(max(txt.get_fontsize() * 0.50, 2.5))
 
-    # Q heatmap annotation font
-    for txt in ax_q.texts:
-        txt.set_fontsize(max(txt.get_fontsize() * 0.50, 2.0))
+    # L heatmap annotation font
+    for txt in ax_l.texts:
+        txt.set_fontsize(max(txt.get_fontsize() * 0.65, 3.0))
 
-    # R: center-align significance stars
-    for txt in ax_r.texts:
-        _tstr = txt.get_text().strip()
-        if _tstr and all(c in "*†✱★" for c in _tstr):
-            _tx, _ty = txt.get_position()
-            txt.set_position((round(_tx), round(_ty)))
-            txt.set_ha("center")
-            txt.set_va("center_baseline")
-            txt.set_color("black")
 
     # Uniform title font for bio/heatmap panels
-    _title_fs = 4.5
-    for _ax in [ax_a, ax_b, ax_c, ax_d, ax_e,
-                ax_f, ax_g, ax_h, ax_i, ax_j,
-                ax_q, ax_r]:
+    _title_fs = 5.5
+    for _ax in [ax_a, ax_b, ax_c, ax_d, ax_e, ax_l, ax_m]:
         _ax.set_title(_ax.get_title(), fontsize=_title_fs, fontweight="bold",
                       loc="center")
 
-    # Forest plots K–P: move left-aligned titles to center, match J font size
+    # Forest plots F–K: move left-aligned titles to center
     for _ax_fp in _forest_axes:
         _left_txt = _ax_fp.get_title(loc='left')
         if _left_txt:
@@ -3626,17 +3536,17 @@ def _build_composite(data4: dict, data_tnbc: dict, data5: dict) -> None:
 
     _cap_fontsize(fig_c, _MAX_FONT)
 
-    # ── Bold panel labels A–R ─────────────────────────────────────────
-    _lbl_fs = 6.5
-    # Row 0/4 — 3-panel (A/B narrow, C/H wide): use left-of-axis offset
-    _x3a, _y3a = -0.26, 1.16   # narrow panels (A, B, F, G)
-    _x3c, _y3c = -0.10, 1.14   # wide panels (C, H)
-    # Row 2/6 — 2-panel (D/I wide, E/J narrow)
-    _xw,  _yw  = -0.18, 1.14   # wide leading-edge (D, I)
-    _xn,  _yn  = -0.18, 1.16   # narrow cell-type HM (E, J)
-    # 3-panel rows (K–P)
+    # ── Bold panel labels A–M ─────────────────────────────────────────
+    _lbl_fs = 7.5
+    # Row 0 — 3-panel (A/B narrow, C wide)
+    _x3a, _y3a = -0.26, 1.08   # narrow panels (A, B)
+    _x3c, _y3c = -0.10, 1.06   # wide panel (C)
+    # Row 2 — 2-panel (D wide, E narrow)
+    _xw,  _yw  = -0.18, 1.14   # wide leading-edge (D)
+    _xn,  _yn  = -0.18, 1.16   # narrow cell-type HM (E)
+    # 3-panel rows (F–K)
     _x3, _y3   = -0.22, 1.16
-    # 2-panel rows (Q, R)
+    # 2-panel rows (L, M)
     _x2, _y2   = -0.12, 1.14
 
     # Row 0: A B C
@@ -3653,30 +3563,17 @@ def _build_composite(data4: dict, data_tnbc: dict, data5: dict) -> None:
     ax_e.text(_xn, _yn, "E", transform=ax_e.transAxes,
               fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
     # Row 4: F G H
-    for _ax, lbl, _x, _y in [
-        (ax_f, "F", _x3,  _y3a),
-        (ax_g, "G", _x3a, _y3a),
-        (ax_h, "H", _x3c, _y3c),
-    ]:
-        _ax.text(_x, _y, lbl, transform=_ax.transAxes,
-                 fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    # Row 6: I J
-    ax_i.text(_x3, _yw, "I", transform=ax_i.transAxes,
-              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    ax_j.text(_xn, _yn, "J", transform=ax_j.transAxes,
-              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    # Row 8: K L M
-    for _ax, lbl in [(ax_k, "K"), (ax_l, "L"), (ax_m, "M")]:
+    for _ax, lbl in [(ax_f, "F"), (ax_g, "G"), (ax_h, "H")]:
         _ax.text(_x3, _y3, lbl, transform=_ax.transAxes,
                  fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    # Row 10: N O P
-    for _ax, lbl in [(ax_n, "N"), (ax_o, "O"), (ax_p, "P")]:
+    # Row 6: I J K
+    for _ax, lbl in [(ax_i, "I"), (ax_j, "J"), (ax_k, "K")]:
         _ax.text(_x3, _y3, lbl, transform=_ax.transAxes,
                  fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    # Row 12: Q R
-    ax_q.text(_x2, _y2, "Q", transform=ax_q.transAxes,
+    # Row 8: L M
+    ax_l.text(_x2, _y2, "L", transform=ax_l.transAxes,
               fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    ax_r.text(-0.48, _y2, "R", transform=ax_r.transAxes,
+    ax_m.text(-0.48, _y2, "M", transform=ax_m.transAxes,
               fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
 
     plt.rcParams.update(_prev_rc)
@@ -3692,33 +3589,26 @@ def _build_composite(data4: dict, data_tnbc: dict, data5: dict) -> None:
 # ── Public entry point ────────────────────────────────────────────────────
 
 def generate() -> None:
-    """Generate individual panels A–R and the combined composite."""
+    """Generate individual panels A–M and the combined composite."""
     print("=" * 60)
     print("Figure 4: Biological Discovery & Multi-Dataset Generalization")
     print("=" * 60)
 
-    print("  Preparing Melanoma (Fig4) data...")
-    data4 = _prepare_bio_discovery_data()
     print("  Preparing TNBC biological discovery data...")
     data_tnbc = _prepare_tnbc_bio_discovery_data()
-    print("  Preparing multi-dataset (Fig5) data...")
+    print("  Preparing multi-dataset data...")
     data5 = _prepare_multi_dataset_data()
 
-    # Reuse multi-dataset GSEA (includes TNBC) from Fig4 data prep / cache
-    gsea_multi = data4.get("gsea_multi_dataset")
-    if gsea_multi is None:
-        gsea_multi = _run_multi_dataset_gsea(
-            sf_gsea_results=data4.get("gsea_results"),
-        )
+    # Multi-dataset GSEA for cross-dataset heatmaps (panels L, M)
+    gsea_multi = _run_multi_dataset_gsea()
     data5["gsea_multi_dataset"] = gsea_multi
 
-    _save_individual_panels(data4, data_tnbc, data5)
-    _build_composite(data4, data_tnbc, data5)
+    _save_individual_panels(data_tnbc, data5)
+    _build_composite(data_tnbc, data5)
 
-    for d in (data4, data_tnbc):
-        if "adata" in d:
-            del d["adata"]
-    del data4, data_tnbc, data5
+    if "adata" in data_tnbc:
+        del data_tnbc["adata"]
+    del data_tnbc, data5
     gc.collect()
     print("  Done.\n")
 

@@ -1,15 +1,20 @@
 """
-Supplementary Figure 6 - Cross-dataset biological consistency.
+Supplementary Figure 6 - Melanoma biological discovery + Cross-dataset consistency.
 
 Panels:
-  A  Gene-set score distributions (within-dataset z-score).
-  B  All-pairs cross-dataset effect correlation (DiD/Δ labelled).
-  C  Shared top genes with concordant direction (|β|>0.05 threshold).
-  D  Gene-level effect distributions (DiD/Δ labelled).
-  E  Exhaustion effects by cell type (proper two-sample SE for DiD).
-  F  Effect heatmap across datasets (DiD/Δ labelled).
-  G  Participant-level paired gene-set trajectories.
-  H  Enrichment summary heatmap (within-dataset z-score).
+  A  Gene-level volcano plot (melanoma DiD).
+  B  Top genes ranked by effect size (waterfall, melanoma).
+  C  GSEA enrichment bar chart (pathway enrichment, melanoma).
+  D  Leading-edge gene overlap heatmap (melanoma).
+  E  Cell-type-resolved DiD effect heatmap (melanoma).
+  F  Gene-set score distributions (within-dataset z-score).
+  G  All-pairs cross-dataset effect correlation (DiD/Δ labelled).
+  H  Shared top genes with concordant direction (|β|>0.05 threshold).
+  I  Gene-level effect distributions (DiD/Δ labelled).
+  J  Exhaustion effects by cell type (proper two-sample SE for DiD).
+  K  Effect heatmap across datasets (DiD/Δ labelled).
+  L  Participant-level paired gene-set trajectories.
+  M  Enrichment summary heatmap (within-dataset z-score).
 
 Design-type handling:
   Two-arm datasets (Sade-Feldman, Stephenson, TNBC) use DiD estimand
@@ -43,6 +48,17 @@ from .._shared import (
     get_cart,
     get_tnbc_zhang,
     save_panel,
+)
+from ..main.figure4_biological_discovery_multi_dataset import (
+    panel_E as _mel_volcano,          # supp panel A: gene-level volcano (melanoma)
+    panel_A as _mel_waterfall,        # supp panel B: top genes waterfall (melanoma)
+    panel_B as _mel_gsea_bars,        # supp panel C: GSEA enrichment (melanoma)
+    panel_C as _mel_leading_edge,     # supp panel D: leading-edge heatmap (melanoma)
+    panel_F as _mel_celltype_hm,      # supp panel E: cell-type DiD heatmap (melanoma)
+    _prepare_bio_discovery_data,
+    _swap_leading_edge_axes,
+    _shrink_colorbars,
+    _compact_legend,
 )
 
 FIGURE_NAME = "SuppFig6_cross_dataset_biology"
@@ -351,8 +367,9 @@ def _panel_gs_distributions(ax, data: dict[str, dict]):
     df["Dataset"] = df["Dataset"].map(_ds_label)
     palette = {_ds_label(k): v for k, v in _DS_PALETTE.items()}
     sns.violinplot(data=df, x="Gene set", y="Score", hue="Dataset", palette=palette,
-                   cut=0, linewidth=0.6, ax=ax)
+                   cut=0, linewidth=0.2, ax=ax)
     ax.set_title("Gene-set score distributions (within-dataset z-score)", fontweight="bold")
+    ax.set_xlabel("")
     ax.tick_params(axis="x", rotation=20)
     ylo, yhi = ax.get_ylim()
     ax.set_ylim(ylo, yhi + (yhi - ylo) * 0.25)
@@ -432,15 +449,15 @@ def _panel_concordant_top_genes(ax, data: dict[str, dict]):
 
     ax.barh(df["feature"], df["mean_abs"], color=colors, alpha=0.85)
     for i, (_, r) in enumerate(df.iterrows()):
-        ax.text(r["mean_abs"] + 0.005, i, f"{r['concordance']:.0%}", va="center", fontsize=7)
-    ax.set_xlabel("Mean |effect| across datasets")
+        ax.text(r["mean_abs"] + 0.005, i, f"{r['concordance']:.0%}", va="center", fontsize=4)
+    ax.set_xlabel("Mean |effect| across datasets", labelpad=1)
     ax.set_title("Shared top genes with concordant direction (|β|>0.05)", fontweight="bold")
     import matplotlib.patches as mpatches
     handles = [
         mpatches.Patch(facecolor=COLORS["treated"], label="Upregulated"),
         mpatches.Patch(facecolor=COLORS["control"], label="Downregulated"),
     ]
-    ax.legend(handles=handles, fontsize=7, frameon=True)
+    ax.legend(handles=handles, fontsize=4, frameon=True)
     despine(ax)
 
 
@@ -458,13 +475,15 @@ def _panel_gene_dist(ax, data: dict[str, dict]):
     df = pd.DataFrame(rows)
     df["Dataset"] = df["Dataset"].map(_ds_label)
     palette = {_ds_label(k): v for k, v in _DS_PALETTE.items()}
-    sns.violinplot(data=df, x="Dataset", y="Effect", palette=palette, cut=0, inner="quartile", ax=ax)
+    sns.violinplot(data=df, x="Dataset", y="Effect", palette=palette, cut=0, inner="quartile",
+                   linewidth=0.2, ax=ax)
     ax.axhline(0, color="black", lw=0.8, ls="--")
+    ax.set_xlabel("")
     ax.set_title("Gene-level effect distributions", fontweight="bold")
     import matplotlib.patches as mpatches
     handles = [mpatches.Patch(facecolor=_DS_PALETTE[n], label=_ds_label(n))
                for n in _DS_PALETTE if _ds_label(n) in df["Dataset"].values]
-    ax.legend(handles=handles, fontsize=5, frameon=True, loc="lower right", ncol=2)
+    ax.legend(handles=handles, fontsize=4, frameon=True, loc="lower right", ncol=2)
     despine(ax)
 
 
@@ -562,11 +581,11 @@ def _panel_effect_heatmap(ax, data: dict[str, dict]):
     top = vv.head(15).index.tolist()
     plot_df = mat.loc[top].rename(columns=_ds_label)
     sns.heatmap(plot_df, cmap="RdBu_r", center=0, linewidths=0.4, linecolor="white",
-                annot=True, fmt=".2f", annot_kws={"fontsize": 7}, ax=ax,
+                annot=True, fmt=".2f", ax=ax,
                 cbar_kws={"label": "Effect"})
     ax.set_title("Effect heatmap across datasets", fontweight="bold")
     ax.tick_params(axis="x", rotation=0)
-    ax.tick_params(axis="y", labelsize=8)
+    ax.tick_params(axis="y", labelsize=4)
 
 
 def _panel_paired_trajectories(ax, data: dict[str, dict]):
@@ -642,57 +661,81 @@ def _panel_enrichment_heatmap(ax, data: dict[str, dict]):
     df = pd.DataFrame(rows)
     piv = df.pivot(index="Gene set", columns="Group", values="Score")
     sns.heatmap(piv, cmap="RdBu_r", center=0, linewidths=0.3, linecolor="white",
-                ax=ax, cbar_kws={"label": "Mean z-score (within-dataset)", "pad": 0.01})
+                ax=ax, cbar_kws={"label": "Mean z-score\n(within-dataset)", "pad": 0.01})
     ax.set_title("Enrichment summary (within-dataset z-score)", fontweight="bold")
     ax.tick_params(axis="x", labelsize=3.5, rotation=45)
-    ax.tick_params(axis="y", labelsize=5)
+    ax.tick_params(axis="y", labelsize=4)
 
 
 def generate():
-    """Create and save Supplementary Figure 5 panels (A–H) + composite."""
-    print("Supplementary Figure 5: Cross-Dataset Biological Consistency")
+    """Create and save Supplementary Figure 6 panels (A–M) + composite."""
+    print("Supplementary Figure 6: Melanoma Discovery + Cross-Dataset Consistency")
 
+    # ── Load melanoma data (panels A–E) ──────────────────────────────
+    print("  Loading melanoma biological discovery data...")
+    data_mel = _prepare_bio_discovery_data()
+
+    # ── Load cross-dataset data (panels F–M) ─────────────────────────
     data = _load_all()
     if not data:
-        print("  No datasets available; skipping.")
+        print("  No cross-dataset data available; skipping.")
         return
 
     # ── Individual panels ─────────────────────────────────────────────
-    panels = [
-        ("panel_A", _panel_gs_distributions, (11.0, 5.8)),
-        ("panel_B", _panel_pairwise_corr, (6.8, 6.0)),
-        ("panel_C", _panel_concordant_top_genes, (8.8, 5.8)),
-        ("panel_D", _panel_gene_dist, (7.2, 5.8)),
-        ("panel_E", _panel_exhaustion_by_celltype, (7.8, 6.8)),
-        ("panel_F", _panel_effect_heatmap, (8.8, 6.0)),
-        ("panel_G", _panel_paired_trajectories, (12.0, 6.2)),
-        ("panel_H", _panel_enrichment_heatmap, (12.0, 6.5)),
+
+    # Panels A–E: melanoma biological discovery
+    mel_panels = [
+        ("panel_A", _mel_volcano,      (8, 6),  dict(composite=False)),
+        ("panel_B", _mel_waterfall,    (8, 6),  {}),
+        ("panel_C", _mel_gsea_bars,    (8, 6),  {}),
+        ("panel_D", _mel_leading_edge, (10, 7), {}),
+        ("panel_E", _mel_celltype_hm,  (8, 6),  {}),
     ]
-    for panel_name, fn, size in panels:
+    for panel_name, fn, size, kwargs in mel_panels:
+        fig, ax = plt.subplots(figsize=size)
+        fn(ax, data_mel, **kwargs)
+        if panel_name != "panel_D":
+            fig.tight_layout()
+        save_panel(fig, panel_name, FIGURE_NAME, SUPP_OUTPUT)
+
+    # Panels F–M: cross-dataset panels (previously A–H)
+    cross_panels = [
+        ("panel_F", _panel_gs_distributions,    (11.0, 5.8)),
+        ("panel_G", _panel_pairwise_corr,        (6.8, 6.0)),
+        ("panel_H", _panel_concordant_top_genes, (8.8, 5.8)),
+        ("panel_I", _panel_gene_dist,            (7.2, 5.8)),
+        ("panel_J", _panel_exhaustion_by_celltype,(7.8, 6.8)),
+        ("panel_K", _panel_effect_heatmap,       (8.8, 6.0)),
+        ("panel_L", _panel_paired_trajectories,  (12.0, 6.2)),
+        ("panel_M", _panel_enrichment_heatmap,   (12.0, 6.5)),
+    ]
+    for panel_name, fn, size in cross_panels:
         fig, ax = plt.subplots(figsize=size)
         fn(ax, data)
         fig.tight_layout()
         save_panel(fig, panel_name, FIGURE_NAME, SUPP_OUTPUT)
 
     # ==================================================================
-    # Composite artboard  (180 mm × ≤ 215 mm)
+    # Composite artboard  (180 mm × 215 mm)
     # ==================================================================
-    #   Row 0: A | B
-    #   Row 1: C | D
-    #   Row 2: E | F
-    #   Row 3: G  (full width)
-    #   Row 4: H  (full width)
+    #   Row  0: A | B | C  (melanoma: volcano | waterfall | GSEA)
+    #   Row  2: D | E      (melanoma: leading-edge | cell-type HM)
+    #   Row  4: F | G      (cross-dataset: gs-dist | pairwise corr)
+    #   Row  6: H | I      (cross-dataset: concordant genes | gene dist)
+    #   Row  8: J | K      (cross-dataset: exhaustion | effect heatmap)
+    #   Row 10: L          (cross-dataset: paired trajectories)
+    #   Row 12: M          (cross-dataset: enrichment heatmap)
     # ==================================================================
     print("  Building composite figure ...")
 
     _SMALL_RC = {
-        "font.size": 5,
-        "axes.titlesize": 5.5,
-        "axes.labelsize": 5,
-        "xtick.labelsize": 4.5,
-        "ytick.labelsize": 4.5,
-        "legend.fontsize": 4,
-        "legend.title_fontsize": 4,
+        "font.size": 4.5,
+        "axes.titlesize": 5.0,
+        "axes.labelsize": 4.5,
+        "xtick.labelsize": 4.0,
+        "ytick.labelsize": 4.0,
+        "legend.fontsize": 3.5,
+        "legend.title_fontsize": 3.5,
     }
     _MAX_FONT = 6
 
@@ -718,57 +761,125 @@ def generate():
     _mm = 1.0 / 25.4
     fig_c = plt.figure(figsize=(180 * _mm, 215 * _mm))
 
-    # 9 rows: 5 content rows interleaved with 4 spacer rows
+    # 13 rows: 7 content rows interleaved with 6 spacer rows
     outer = fig_c.add_gridspec(
-        9, 1,
+        13, 1,
         height_ratios=[
-            0.60,   # row 0: A | B
-            0.40,   # spacer
-            0.60,   # row 2: C | D
-            0.30,   # spacer
-            0.85,   # row 4: E | F
+            0.65,   # row  0: A | B | C  — melanoma
+            0.29,   # spacer
+            0.50,   # row  2: D | E      — melanoma
+            0.38,   # section spacer
+            0.55,   # row  4: F | G
+            0.39,   # spacer (slightly wider)
+            0.43,   # row  6: H | I
+            0.27,   # spacer
+            0.85,   # row  8: J | K (taller)
+            0.29,   # spacer
+            0.30,   # row 10: L (full width)
             0.35,   # spacer
-            0.55,   # row 6: G (full width)
-            0.35,   # spacer
-            0.55,   # row 8: H (full width)
+            0.30,   # row 12: M (full width)
         ],
         hspace=0.0,
-        left=0.04, right=0.99, top=0.97, bottom=0.04,
+        left=0.06, right=0.99, top=0.97, bottom=0.03,
     )
 
-    # ── Row 0: A | B ─────────────────────────────────────────────────
-    gs0 = outer[0].subgridspec(1, 2, width_ratios=[1.8, 1.0], wspace=0.50)
+    # ── Row 0: A | B | C  (melanoma) ─────────────────────────────────
+    gs0 = outer[0].subgridspec(1, 4, wspace=0.40,
+                                width_ratios=[1.0, 0.85, 0.18, 0.7])
     ax_a = fig_c.add_subplot(gs0[0])
     ax_b = fig_c.add_subplot(gs0[1])
+    ax_c = fig_c.add_subplot(gs0[3])
 
-    _panel_gs_distributions(ax_a, data)
-    _panel_pairwise_corr(ax_b, data)
+    _mel_volcano(ax_a, data_mel, composite=True)
+    ax_a.tick_params(axis='y', labelsize=4)
+    ax_a.xaxis.label.set_fontsize(4.5)
+    ax_a.yaxis.label.set_fontsize(4.5)
+    _mel_waterfall(ax_b, data_mel)
+    ax_b.tick_params(axis='y', labelsize=4)
+    _b_lbls = [t.get_text() for t in ax_b.get_yticklabels()]
+    if _b_lbls:
+        ax_b.set_yticklabels(
+            [t if _k % 2 == 0 else "" for _k, t in enumerate(_b_lbls)],
+            fontsize=4,
+        )
+    _mel_gsea_bars(ax_c, data_mel)
+    ax_c.set_title(ax_c.get_title().replace("Melanoma", "").strip(" —–-") +
+                   " — Melanoma", fontsize=5.0, fontweight="bold")
+    ax_c.tick_params(axis='y', labelsize=3.5)
+    ax_c.set_xticks([-2, 0, 2])
 
-    # ── Row 2: C | D ─────────────────────────────────────────────────
-    gs1 = outer[2].subgridspec(1, 2, width_ratios=[1.1, 1.0], wspace=0.50)
-    ax_cc = fig_c.add_subplot(gs1[0])
-    ax_d = fig_c.add_subplot(gs1[1])
+    # ── Row 2: D | E  (melanoma) ──────────────────────────────────────
+    gs2 = outer[2].subgridspec(1, 4, wspace=0.30,
+                                width_ratios=[0.10, 0.95, 0.25, 0.95])
+    ax_d = fig_c.add_subplot(gs2[1])
+    ax_e = fig_c.add_subplot(gs2[3])
 
-    _panel_concordant_top_genes(ax_cc, data)
-    _panel_gene_dist(ax_d, data)
+    _mel_leading_edge(ax_d, data_mel, composite=True)
+    _swap_leading_edge_axes(ax_d)
+    ax_d.set_title(ax_d.get_title().replace("Melanoma", "").strip(" —–-") +
+                   " — Melanoma", fontsize=5.0, fontweight="bold")
+    ax_d.tick_params(axis='y', labelsize=4)
 
-    # ── Row 4: E | F (shifted right with left padding) ────────────
-    gs2 = outer[4].subgridspec(1, 3, width_ratios=[0.0, 1.0, 1.2],
-                               wspace=0.45)
-    ax_e = fig_c.add_subplot(gs2[1])
-    ax_f = fig_c.add_subplot(gs2[2])
+    _axes_before_e = set(fig_c.get_axes())
+    _mel_celltype_hm(ax_e, data_mel)
+    _shrink_colorbars(fig_c, _axes_before_e, fs=3.5)
+    for _cb_ax in set(fig_c.get_axes()) - _axes_before_e - {ax_e}:
+        _cb_ax.tick_params(labelsize=4.0)
+        _cb_ax.yaxis.label.set_fontsize(4.5)
+    ax_e.set_title(ax_e.get_title().replace("Melanoma", "").strip(" —–-") +
+                   " — Melanoma", fontsize=5.0, fontweight="bold")
+    ax_e.tick_params(axis='x', labelsize=4.0)
+    ax_e.tick_params(axis='y', labelsize=4)
 
-    _panel_exhaustion_by_celltype(ax_e, data)
-    _panel_effect_heatmap(ax_f, data)
+    # ── Row 4: F | G ──────────────────────────────────────────────────
+    gs4 = outer[4].subgridspec(1, 2, width_ratios=[1.8, 1.0], wspace=0.50)
+    ax_f = fig_c.add_subplot(gs4[0])
+    ax_g = fig_c.add_subplot(gs4[1])
 
-    # ── Row 6: G (full width) ────────────────────────────────────────
-    ax_g = fig_c.add_subplot(outer[6])
-    _panel_paired_trajectories(ax_g, data)
+    _panel_gs_distributions(ax_f, data)
+    ax_f.tick_params(axis='y', labelsize=4)
+    _axes_before_g = set(fig_c.get_axes())
+    _panel_pairwise_corr(ax_g, data)
+    ax_g.tick_params(axis='y', labelsize=4)
+    for _cb_ax in set(fig_c.get_axes()) - _axes_before_g - {ax_g}:
+        _cb_ax.tick_params(labelsize=4.0)
+        _cb_ax.yaxis.label.set_fontsize(4.5)
 
-    # ── Row 8: H (centred with equal side margins) ────────────────
-    gs3 = outer[8].subgridspec(1, 3, width_ratios=[0.06, 1.0, 0.0], wspace=0.0)
-    ax_h = fig_c.add_subplot(gs3[1])
-    _panel_enrichment_heatmap(ax_h, data)
+    # ── Row 6: H | I ──────────────────────────────────────────────────
+    gs6 = outer[6].subgridspec(1, 2, width_ratios=[1.1, 1.0], wspace=0.50)
+    ax_h = fig_c.add_subplot(gs6[0])
+    ax_i = fig_c.add_subplot(gs6[1])
+
+    _panel_concordant_top_genes(ax_h, data)
+    ax_h.tick_params(axis='y', labelsize=4)
+    _panel_gene_dist(ax_i, data)
+    ax_i.tick_params(axis='y', labelsize=4)
+    ax_i.yaxis.label.set_fontsize(4.5)
+
+    # ── Row 8: J | K ──────────────────────────────────────────────────
+    gs8 = outer[8].subgridspec(1, 3, width_ratios=[0.0, 1.0, 1.2], wspace=0.45)
+    ax_j = fig_c.add_subplot(gs8[1])
+    ax_k = fig_c.add_subplot(gs8[2])
+
+    _panel_exhaustion_by_celltype(ax_j, data)
+    _axes_before_k = set(fig_c.get_axes())
+    _panel_effect_heatmap(ax_k, data)
+    for _cb_ax in set(fig_c.get_axes()) - _axes_before_k - {ax_k}:
+        _cb_ax.tick_params(labelsize=4.0)
+        _cb_ax.yaxis.label.set_fontsize(4.5)
+
+    # ── Row 10: L (full width) ────────────────────────────────────────
+    ax_l = fig_c.add_subplot(outer[10])
+    _panel_paired_trajectories(ax_l, data)
+    ax_l.tick_params(axis='y', labelsize=4)
+    ax_l.yaxis.label.set_fontsize(4.5)
+
+    # ── Row 12: M (shifted right with wider left margin) ──────────────
+    gs12 = outer[12].subgridspec(1, 3, width_ratios=[0.14, 1.0, 0.0], wspace=0.0)
+    ax_m = fig_c.add_subplot(gs12[1])
+    _panel_enrichment_heatmap(ax_m, data)
+    ax_m.xaxis.label.set_fontsize(4.5)
+    ax_m.yaxis.label.set_fontsize(4.5)
 
     # ── Post-processing ───────────────────────────────────────────────
     for ax_pp in fig_c.get_axes():
@@ -777,39 +888,83 @@ def generate():
             leg.get_frame().set_alpha(0.85)
             leg.get_frame().set_edgecolor("#CCCCCC")
 
+    # Compact legends for melanoma panels
+    _mel_bio_locs = {
+        ax_a: "upper right", ax_b: "upper left",
+        ax_c: "upper left",  ax_d: "lower right",
+    }
+    for ax_target, loc in _mel_bio_locs.items():
+        _compact_legend(ax_target, loc, fs=4)
+
+    # Shrink gene-label annotations in volcano/waterfall
+    for _ax in [ax_a, ax_b]:
+        for txt in _ax.texts:
+            if txt.get_fontsize() > 4:
+                txt.set_fontsize(max(txt.get_fontsize() * 0.50, 2.5))
+
     _cap_fontsize(fig_c, _MAX_FONT)
 
-    # Bold panel labels — consistent offset for all panels
-    _lbl_fs = 9
-    _lbl_y = 1.12
-    _lbl_x = -0.10
+    # Normalise all axes titles to match G (rc axes.titlesize = 5.0)
+    for _ax in fig_c.get_axes():
+        if _ax.get_title():
+            _ax.title.set_fontsize(5.0)
 
-    for ax_lbl, lbl, lx in [
-        (ax_a, "A", _lbl_x), (ax_b, "B", _lbl_x),
-        (ax_cc, "C", _lbl_x), (ax_d, "D", _lbl_x),
-        (ax_e, "E", -0.16), (ax_f, "F", _lbl_x),
-        (ax_g, "G", -0.05), (ax_h, "H", _lbl_x),
-    ]:
-        ax_lbl.text(
-            lx, _lbl_y, lbl,
-            transform=ax_lbl.transAxes,
-            fontsize=_lbl_fs, fontweight="bold", va="top", ha="left",
-        )
+    # Bold panel labels A–M
+    _lbl_fs = 7
+
+    # Row 0: A B C  (A, B, C up)
+    ax_a.text(-0.18, 1.10, "A", transform=ax_a.transAxes,
+              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    ax_b.text(-0.26, 1.10, "B", transform=ax_b.transAxes,
+              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    ax_c.text(-0.10, 1.10, "C", transform=ax_c.transAxes,
+              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    # Row 2: D E  (D left and up; E up)
+    ax_d.text(-0.30, 1.10, "D", transform=ax_d.transAxes,
+              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    ax_e.text(-0.24, 1.10, "E", transform=ax_e.transAxes,
+              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    # Row 4: F G  (unchanged)
+    ax_f.text(-0.10, 1.10, "F", transform=ax_f.transAxes,
+              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    ax_g.text(-0.16, 1.10, "G", transform=ax_g.transAxes,
+              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    # Row 6: H I  (further up)
+    ax_h.text(-0.10, 1.16, "H", transform=ax_h.transAxes,
+              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    ax_i.text(-0.10, 1.16, "I", transform=ax_i.transAxes,
+              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    # Row 8: J K  (unchanged)
+    ax_j.text(-0.16, 1.10, "J", transform=ax_j.transAxes,
+              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    ax_k.text(-0.10, 1.10, "K", transform=ax_k.transAxes,
+              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    # Row 10: L  (further up)
+    ax_l.text(-0.05, 1.22, "L", transform=ax_l.transAxes,
+              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    # Row 12: M  (left)
+    ax_m.text(-0.16, 1.16, "M", transform=ax_m.transAxes,
+              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
 
     plt.rcParams.update(_prev_rc)
 
-    save_panel(fig_c, FIGURE_NAME, FIGURE_NAME, SUPP_OUTPUT, close=False)
-    pdf_path = SUPP_OUTPUT / f"{FIGURE_NAME}_panels" / f"{FIGURE_NAME}.pdf"
-    fig_c.savefig(str(pdf_path), format="pdf", bbox_inches="tight",
-                  facecolor="white")
+    panel_dir = SUPP_OUTPUT / f"{FIGURE_NAME}_panels"
+    panel_dir.mkdir(exist_ok=True)
+    png_path = panel_dir / f"{FIGURE_NAME}.png"
+    fig_c.savefig(str(png_path), format="png", dpi=600, facecolor="white")
+    pdf_path = panel_dir / f"{FIGURE_NAME}.pdf"
+    fig_c.savefig(str(pdf_path), format="pdf", facecolor="white")
+    print(f"    Saved panel: {FIGURE_NAME}")
     plt.close(fig_c)
     print("    Saved combined artboard (PNG + PDF)")
 
     # ── Cleanup ───────────────────────────────────────────────────────
+    if "adata" in data_mel:
+        del data_mel["adata"]
     data.clear()
     clear_cache()
     gc.collect()
-    print("  SuppFig5 complete: 8 individual panels + combined (A–H)\n")
+    print("  SuppFig6 complete: 13 individual panels + combined (A–M)\n")
 
 
 if __name__ == "__main__":
