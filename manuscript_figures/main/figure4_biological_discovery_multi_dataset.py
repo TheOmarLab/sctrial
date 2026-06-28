@@ -859,6 +859,34 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
     except Exception as exc:
         print(f"    COVID-19: FAILED ({exc})")
     
+    # Apply immune/metabolic filter consistently to all datasets.
+    # Melanoma results are pre-filtered by _prepare_bio_discovery_data(); all
+    # other datasets are loaded raw above, so without this pass they would
+    # contain cell-cycle, ubiquitin-proteasome, and other non-immune/metabolic
+    # pathways that are absent from Melanoma — causing a spurious asymmetry in
+    # panel_C_replicated (Panel M).
+    for _ds_name in list(gsea_multi.keys()):
+        _df = gsea_multi[_ds_name]
+        if _df is None or len(_df) == 0:
+            continue
+        _term_col = next(
+            (c for c in _df.columns if c.lower().strip() == "term"), None
+        )
+        if _term_col is None:
+            _term_col = next(
+                (c for c in _df.columns if c.lower() in ("name", "pathway")),
+                _df.columns[0],
+            )
+        _n_before = len(_df)
+        gsea_multi[_ds_name] = _df[
+            _df[_term_col].apply(_is_immune_or_metabolic)
+        ].reset_index(drop=True)
+        _n_after = len(gsea_multi[_ds_name])
+        print(
+            f"    {_ds_name}: immune/metabolic filter: "
+            f"{_n_after}/{_n_before} pathways retained"
+        )
+
     print(f"  Multi-dataset GSEA: {len(gsea_multi)} datasets completed")
     return gsea_multi
 
@@ -1845,11 +1873,11 @@ def panel_C_replicated(ax, data: dict):
                 float(fdr_matrix[_i, _j]) if not np.isnan(fdr_matrix[_i, _j]) else None
                 for _i in range(len(all_pathways))
             ]
-        _csv_df.to_csv(csv_dir / "panel_R_replicated_pathways.csv", index=False)
-        print(f"  Panel R: saved all {len(all_pathways)} pathways × "
-              f"{len(all_datasets)} datasets → panel_R_replicated_pathways.csv")
+        _csv_df.to_csv(csv_dir / "panel_M_replicated_pathways.csv", index=False)
+        print(f"  Panel M: saved all {len(all_pathways)} pathways × "
+              f"{len(all_datasets)} datasets → panel_M_replicated_pathways.csv")
     except Exception as _exc:
-        print(f"  Panel R: CSV save failed ({_exc})")
+        print(f"  Panel M: CSV save failed ({_exc})")
 
     # ── Coverage-constrained greedy pathway selection ────────────────────
     # Goal: ≥50% of the top_n selected pathways must be non-NaN for every
@@ -1918,7 +1946,7 @@ def panel_C_replicated(ax, data: dict):
     for _d, _ds in enumerate(all_datasets):
         n_sig  = int((score_matrix[selected_indices, _d] == 2).sum())
         n_pres = int((score_matrix[selected_indices, _d] >= 1).sum())
-        print(f"  Panel R: {_ds:12s}  non-NaN {n_pres}/{top_n}  "
+        print(f"  Panel M: {_ds:12s}  non-NaN {n_pres}/{top_n}  "
               f"(significant {n_sig})")
         if n_pres < min_coverage:
             print(f"    ↳ WARNING: below 50% target — GSEA results are "
@@ -1969,7 +1997,7 @@ def panel_C_replicated(ax, data: dict):
     # For NaN values set to white
     masked_nes = np.ma.masked_invalid(nes_matrix)
     
-    # Plot heatmap 
+    # Plot heatmap
     im = ax.imshow(masked_nes, aspect="auto", interpolation="nearest", origin="lower",
                    cmap=cmap, vmin=vmin, vmax=vmax)
     ax.set_facecolor((0.95, 0.95, 0.95))
@@ -1986,7 +2014,7 @@ def panel_C_replicated(ax, data: dict):
     ax.set_yticks(range(len(all_pathways)))
     ax.set_yticklabels(all_pathways, fontsize=7.5)
     ax.set_xticks(range(len(all_datasets)))
-    ax.set_xticklabels(all_datasets, fontsize=8, rotation=25, ha="right")
+    ax.set_xticklabels(all_datasets, fontsize=7.5, rotation=25, ha="right")
     
     ax.set_xlabel("Dataset", fontsize=9)
     ax.set_ylabel("Pathway", fontsize=9)
@@ -3416,7 +3444,7 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
     ax_k = fig_c.add_subplot(gs6[2])
 
     # ── Row 8: L | M ─────────────────────────────────────────────────
-    gs8 = outer[8].subgridspec(1, 2, wspace=0.90, width_ratios=[1.2, 0.9])
+    gs8 = outer[8].subgridspec(1, 2, wspace=1.10, width_ratios=[1.2, 0.75])
     ax_l = fig_c.add_subplot(gs8[0])
     ax_m = fig_c.add_subplot(gs8[1])
 
@@ -3483,7 +3511,7 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
     fig4_gsea_cross(ax_m, data5)
     _shrink_colorbars(fig_c, _axes_before_m, fs=4.0)
     ax_m.set_ylabel("")
-    ax_m.tick_params(axis='x', labelsize=3.5)
+    ax_m.tick_params(axis='x', labelsize=5.0)
     ax_m.tick_params(axis='y', labelsize=4.5)
 
     # ── Post-processing ───────────────────────────────────────────────
