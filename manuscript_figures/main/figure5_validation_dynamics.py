@@ -842,11 +842,11 @@ def _panel_f(ax, tnbc_data: dict) -> None:
     ax.set_xticklabels(top, rotation=35, ha="right", fontsize=8)
     ax.set_xlim(-0.5, n_feats - 0.5)
     ylo, yhi = ax.get_ylim()
-    # Hedges' g annotations: Chemo vs anti-PDL1+Chemo (pooled across response)
+    # Hedges' g annotations: anti-PDL1+Chemo vs Chemo (pooled across response)
     for feat_idx, feat in enumerate(top):
         chemo_vals = effects.loc[effects["arm"] == TNBC_ARM_CHEMO, feat].dropna().values
         combo_vals = effects.loc[effects["arm"] == TNBC_ARM_COMBO, feat].dropna().values
-        g = _hedges_g(chemo_vals, combo_vals)
+        g = _hedges_g(combo_vals, chemo_vals)
         if np.isfinite(g):
             feat_data = long.loc[long["feature"] == feat, "effect"].dropna()
             ymax_feat = float(np.nanpercentile(feat_data, 90)) if not feat_data.empty else yhi
@@ -856,7 +856,7 @@ def _panel_f(ax, tnbc_data: dict) -> None:
     ax.set_ylim(ylo - 0.25 * (yhi - ylo), yhi + 0.25 * (yhi - ylo))
     ax.set_ylabel("Participant Effect (Post − Pre)")
     ax.set_title(
-        "Response-Stratified Heterogeneity - TNBC\n(Hedges' g: Chemo vs anti-PDL1+Chemo)",
+        "Response-Stratified Heterogeneity - TNBC\n(Hedges' g: anti-PDL1+Chemo vs Chemo)",
         fontsize=10, fontweight="bold",
     )
 
