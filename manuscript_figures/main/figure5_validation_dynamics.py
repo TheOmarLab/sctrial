@@ -2,21 +2,21 @@
 Figure 5 — Validation, Heterogeneity & Temporal Dynamics
 =========================================================
 
-Ten-panel figure combining permutation validation on Sade-Feldman,
-participant-level heterogeneity analysis (Sade-Feldman and TNBC),
+Ten-panel figure combining permutation validation on TNBC (Zhang et al.),
+participant-level heterogeneity analysis (TNBC and Sade-Feldman),
 and temporal severity dynamics from the Stephenson COVID-19 cohort.
 
 Panels
 ------
-A  Permutation null distributions (top 3 most significant signatures).
-B  Observed effects vs 95 % null range for all signatures.
-C  Individual-effect strip plot (Sade-Feldman).
-D  Response-stratified heterogeneity boxplots (Sade-Feldman).
-E  Individual-effect strip plot (TNBC), colored by treatment arm; responders
+A  Permutation null distributions (top 3 most significant signatures, TNBC; anti-PDL1+Chemo vs Chemo).
+B  Observed effects vs 95 % null range for all signatures (TNBC; anti-PDL1+Chemo vs Chemo).
+C  Individual-effect strip plot (TNBC), colored by treatment arm; responders
    marked with black outline, non-responders with grey outline.
-F  Response- and arm-stratified heterogeneity boxplots (TNBC): 4 groups per
+D  Response- and arm-stratified heterogeneity boxplots (TNBC): 4 groups per
    gene (Chemo-Responder, Chemo-Non-responder, anti-PDL1+Chemo-Responder,
    anti-PDL1+Chemo-Non-responder).
+E  Individual-effect strip plot (Sade-Feldman).
+F  Response-stratified heterogeneity boxplots (Sade-Feldman).
 G  Signature trajectories by severity (Stephenson, DFO bins).
 H  Severity divergence over DFO bins (4 representative signatures).
 I  Temporal divergence heatmap (all signatures × DFO bins).
@@ -307,6 +307,102 @@ def _prepare_tnbc_data() -> dict:
     }
 
 
+def _prepare_tnbc_perm_data(*, use_cache: bool = True) -> dict:
+    """Load TNBC, run permutation test (anti-PDL1+Chemo vs Chemo), compute deltas.
+
+    Covers panels A–D: perm results feed A/B; delta_df and hetero_feats feed C/D.
+    Results (excluding adata) are cached to disk because the 999-permutation loop
+    takes several minutes.  Pass ``use_cache=False`` to force recomputation.
+    """
+    _code_hash = hashlib.md5(
+        f"{N_PERM}|{VISITS}|{HETERO_FEATURES}|arm".encode()
+    ).hexdigest()[:8]
+    cache_key = f"figure5_tnbc_perm_v2_{_code_hash}"
+    cache_path = _CACHE_DIR / f"{cache_key}.pkl"
+
+    adata = get_tnbc_zhang()
+    adata = harmonize_response(adata)
+    layer = "log1p_norm" if "log1p_norm" in adata.layers else None
+    if layer is None:
+        raise RuntimeError(
+            "TNBC adata has no 'log1p_norm' layer; cannot score signatures."
+        )
+
+    adata, sig_cols = score_signatures(adata, layer=layer)
+    hetero_feats = [f for f in HETERO_FEATURES if f in adata.var_names]
+
+    if use_cache and cache_path.exists():
+        print(f"  Loading cached TNBC permutation results from {cache_path.name}")
+        with open(cache_path, "rb") as fh:
+            cached = pickle.load(fh)  # noqa: S301 — trusted local cache
+        cached["adata"] = adata
+        cached["sig_cols"] = sig_cols
+        cached["hetero_feats"] = hetero_feats
+        return cached
+
+    tnbc_design = TrialDesign(
+        participant_col="participant_id",
+        visit_col="visit",
+        arm_col="arm",
+        arm_treated=TNBC_ARM_COMBO,
+        arm_control=TNBC_ARM_CHEMO,
+    )
+
+    common_kw = dict(
+        features=sig_cols,
+        design=tnbc_design,
+        visits=VISITS,
+        layer=layer,
+        standardize=True,
+    )
+
+    print("  Running TNBC participant-level DiD ...")
+    df_part = did_table(adata, aggregate="participant_visit", **common_kw)
+
+    print(f"  Running {N_PERM} permutations (TNBC) ...")
+    np.random.seed(42)
+    arm_col = tnbc_design.arm_col
+    original_arm = adata.obs[arm_col].copy()
+    perm_results: list[pd.DataFrame] = []
+
+    for i in range(N_PERM):
+        pid_col = tnbc_design.participant_col
+        pid_arm = adata.obs.groupby(pid_col, observed=True)[arm_col].first()
+        shuffled = pid_arm.sample(frac=1, replace=False)
+        shuffled.index = pid_arm.index
+        adata.obs[arm_col] = adata.obs[pid_col].map(shuffled)
+        try:
+            df_perm = did_table(adata, aggregate="participant_visit", **common_kw)
+            df_perm["permutation"] = i
+            perm_results.append(df_perm)
+        except Exception:
+            pass
+        if (i + 1) % 100 == 0:
+            print(f"    permutation {i + 1}/{N_PERM}")
+
+    adata.obs[arm_col] = original_arm
+    df_perm_all = pd.concat(perm_results, ignore_index=True)
+    print(f"  Completed {df_perm_all['permutation'].nunique()} permutations (TNBC)")
+
+    delta_df = _compute_tnbc_participant_delta(adata, hetero_feats, layer)
+
+    result = {
+        "df_part": df_part,
+        "df_perm_all": df_perm_all,
+        "delta_df": delta_df,
+    }
+
+    if use_cache:
+        with open(cache_path, "wb") as fh:
+            pickle.dump(result, fh, protocol=pickle.HIGHEST_PROTOCOL)
+        print(f"  Cached TNBC permutation results to {cache_path.name}")
+
+    result["adata"] = adata
+    result["sig_cols"] = sig_cols
+    result["hetero_feats"] = hetero_feats
+    return result
+
+
 def _prepare_stephenson_data() -> dict:
     """Load Stephenson COVID-19 cohort and score signatures for temporal panels."""
     adata = get_stephenson()
@@ -396,6 +492,10 @@ def _panel_a(ax, data: dict) -> None:
         obs_beta = df_part.loc[df_part["feature"] == feat, "beta_DiD"].values[0]
         color = hist_colors[idx % len(hist_colors)]
         y_label = y_top * (0.93 - idx * 0.15)
+        if "apoptosis" in sig_display(feat).lower():
+            y_label -= y_top * 0.12
+        if "oxidative" in sig_display(feat).lower():
+            y_label -= y_top * 0.30
         ax.text(
             obs_beta, y_label, f"    p = {perm_p:.3f}",
             fontsize=7, color=color, ha="left", fontweight="bold",
@@ -568,8 +668,10 @@ def _panel_d(ax, data: dict) -> None:
         c_vals = effects.loc[effects["arm"] == DESIGN.arm_control, feat].dropna().values
         g = _hedges_g(t_vals, c_vals)
         if np.isfinite(g):
-            ymax = long.loc[long["feature"] == feat, "effect"].max()
-            ax.text(i, ymax + 0.02 * (ax.get_ylim()[1] - ax.get_ylim()[0]),
+            feat_vals = long.loc[long["feature"] == feat, "effect"].dropna()
+            ymax = float(feat_vals.max()) if not feat_vals.empty else 0.0
+            y_off = -0.12 if feat in ("CD14", "LYZ") else 0.02
+            ax.text(i, ymax + y_off * (ax.get_ylim()[1] - ax.get_ylim()[0]),
                     f"g={g:.2f}", ha="center", va="bottom", fontsize=6.5,
                     fontstyle="italic", color="grey")
     ax.set_xlabel("")
@@ -1007,36 +1109,29 @@ def generate() -> None:
     apply_style()
     print("Figure 5: Validation, Heterogeneity & Temporal Dynamics")
 
-    # Sade-Feldman data (panels A–D) — permutation results cached to disk
-    sf_data = _prepare_sf_data()
+    # TNBC data (panels A–D) — permutation results cached to disk
+    tnbc_perm_data = _prepare_tnbc_perm_data()
 
-    # TNBC data (panels E–F)
-    tnbc_data = _prepare_tnbc_data()
+    # Sade-Feldman data (panels E–F)
+    sf_data = _prepare_sf_data()
 
     # Stephenson data (panels G–J)
     steph_data = _prepare_stephenson_data()
 
-    # Panels A–D: Sade-Feldman
-    sf_panels = [
-        ("panel_A_permutation_null", _panel_a, (6.5, 5)),
-        ("panel_B_observed_vs_null", _panel_b, (6.5, 5)),
-        ("panel_C_individual_effects", _panel_c, (11.5, 6.0)),
-        ("panel_D_response_stratified", _panel_d, (10.5, 6.0)),
+    # Panels A–B: TNBC permutation validation
+    # Panels C–D: TNBC heterogeneity
+    # Panels E–F: Sade-Feldman (Melanoma) heterogeneity
+    abcdef_panels = [
+        ("panel_A_permutation_null",          _panel_a, (6.5,  5.0), tnbc_perm_data),
+        ("panel_B_observed_vs_null",           _panel_b, (6.5,  5.0), tnbc_perm_data),
+        ("panel_C_tnbc_individual_effects",    _panel_e, (11.5, 6.0), tnbc_perm_data),
+        ("panel_D_tnbc_response_stratified",   _panel_f, (10.5, 6.0), tnbc_perm_data),
+        ("panel_E_individual_effects",         _panel_c, (11.5, 6.0), sf_data),
+        ("panel_F_response_stratified",        _panel_d, (10.5, 6.0), sf_data),
     ]
-    for panel_name, func, size in sf_panels:
+    for panel_name, func, size, data in abcdef_panels:
         fig, ax = plt.subplots(figsize=size)
-        func(ax, sf_data)
-        fig.tight_layout()
-        save_panel(fig, panel_name, FIGURE_NAME, MAIN_OUTPUT)
-
-    # Panels E–F: TNBC
-    tnbc_panels = [
-        ("panel_E_tnbc_individual_effects", _panel_e, (11.5, 6.0)),
-        ("panel_F_tnbc_response_stratified", _panel_f, (10.5, 6.0)),
-    ]
-    for panel_name, func, size in tnbc_panels:
-        fig, ax = plt.subplots(figsize=size)
-        func(ax, tnbc_data)
+        func(ax, data)
         fig.tight_layout()
         save_panel(fig, panel_name, FIGURE_NAME, MAIN_OUTPUT)
 
@@ -1086,9 +1181,9 @@ def generate() -> None:
     _mm = 1.0 / 25.4
     fig_c = plt.figure(figsize=(180 * _mm, 215 * _mm))
 
-    #   Row 0: A | B     (permutation)
-    #   Row 1: C | D     (SF heterogeneity)
-    #   Row 2: E | F     (TNBC heterogeneity)
+    #   Row 0: A | B     (TNBC permutation)
+    #   Row 1: C | D     (TNBC heterogeneity)
+    #   Row 2: E | F     (Melanoma/SF heterogeneity)
     #   Row 3: G | H     (temporal lines)
     #   Row 4: I | J     (heatmap + bar)
     outer = fig_c.add_gridspec(
@@ -1118,15 +1213,17 @@ def generate() -> None:
     ax_i = fig_c.add_subplot(gs4[0])
     ax_j = fig_c.add_subplot(gs4[1])
 
-    # Panels A–D: Sade-Feldman data
-    _panel_a(ax_a, sf_data)
-    _panel_b(ax_b, sf_data)
-    _panel_c(ax_cc, sf_data)
-    _panel_d(ax_d, sf_data)
+    # Panels A–B: TNBC permutation validation
+    _panel_a(ax_a, tnbc_perm_data)
+    _panel_b(ax_b, tnbc_perm_data)
 
-    # Panels E–F: TNBC data
-    _panel_e(ax_e, tnbc_data)
-    _panel_f(ax_f, tnbc_data)
+    # Panels C–D: TNBC heterogeneity
+    _panel_e(ax_cc, tnbc_perm_data)
+    _panel_f(ax_d, tnbc_perm_data)
+
+    # Panels E–F: Sade-Feldman (Melanoma) heterogeneity
+    _panel_c(ax_e, sf_data)
+    _panel_d(ax_f, sf_data)
 
     # Panels G–J: Stephenson data
     _panel_g(ax_g, steph_data)
@@ -1137,7 +1234,7 @@ def generate() -> None:
     # Move legends inside plots for the composite
     _inside = {
         ax_a: "upper right", ax_b: "lower right",
-        ax_cc: "upper right", ax_d: "upper right",
+        ax_e: "upper right", ax_f: "upper right",
         ax_g: "upper right", ax_h: "upper right",
         ax_j: "lower right",
     }
@@ -1156,13 +1253,13 @@ def generate() -> None:
                 labelspacing=0.2,
             )
 
-    # Panels E and F: 2-column legends placed at the top
-    leg_e = ax_e.get_legend()
-    if leg_e:
-        handles = leg_e.legend_handles
-        labels = [t.get_text() for t in leg_e.get_texts()]
-        leg_e.remove()
-        ax_e.legend(
+    # Panels C and D (TNBC): 2-column legends
+    leg_cc = ax_cc.get_legend()
+    if leg_cc:
+        handles = leg_cc.legend_handles
+        labels = [t.get_text() for t in leg_cc.get_texts()]
+        leg_cc.remove()
+        ax_cc.legend(
             handles=handles, labels=labels,
             fontsize=3.5, loc="upper left", ncol=2,
             frameon=True, framealpha=0.85,
@@ -1171,12 +1268,12 @@ def generate() -> None:
             labelspacing=0.2,
         )
 
-    leg_f = ax_f.get_legend()
-    if leg_f:
-        handles = leg_f.legend_handles
-        labels = [t.get_text() for t in leg_f.get_texts()]
-        leg_f.remove()
-        ax_f.legend(
+    leg_d = ax_d.get_legend()
+    if leg_d:
+        handles = leg_d.legend_handles
+        labels = [t.get_text() for t in leg_d.get_texts()]
+        leg_d.remove()
+        ax_d.legend(
             handles=handles, labels=labels,
             fontsize=3.5, loc="lower right", ncol=2,
             frameon=True, framealpha=0.85,
@@ -1235,11 +1332,11 @@ def generate() -> None:
     print(f"    Saved combined artboard (PNG + PDF)")
 
     # Cleanup
-    for d in [sf_data, tnbc_data, steph_data]:
+    for d in [tnbc_perm_data, sf_data, steph_data]:
         adata = d.get("adata")
         if adata is not None:
             del adata
-    del sf_data, tnbc_data, steph_data
+    del tnbc_perm_data, sf_data, steph_data
     gc.collect()
 
     print(f"  Figure 6 complete: 10 individual panels + combined (A–J)\n")
