@@ -2,20 +2,20 @@
 Supplementary Figure 7 - Participant heterogeneity and temporal dynamics.
 
 Panels:
-  Row 1 — Melanoma (Sade-Feldman):
-  A  Sade-Feldman participant x feature heatmap.
-  B  Sade-Feldman variance decomposition.
-  C  Sade-Feldman direction-diversity profile.
+  Row 1 — TNBC (Zhang):
+  A  TNBC participant x feature heatmap.
+  B  TNBC variance decomposition.
+  C  TNBC direction-diversity profile.
 
-  Row 2 — TNBC (Zhang):
-  D  TNBC participant x feature heatmap.
-  E  TNBC variance decomposition.
-  F  TNBC direction-diversity profile.
+  Row 2 — Melanoma (Sade-Feldman):
+  D  Sade-Feldman participant x feature heatmap.
+  E  Sade-Feldman variance decomposition.
+  F  Sade-Feldman direction-diversity profile.
 
   Row 3 — Cross-dataset + temporal:
   G  Cross-dataset SD bars.
   H  Cross-dataset heterogeneity scatter.
-  I  Sade-Feldman within-arm change profile.
+  I  TNBC within-arm change profile (both arms).
 
   Row 4 — Single-arm + concordance:
   J  Single-arm datasets within-arm profile.
@@ -537,7 +537,7 @@ def _panel_within_arm_profile(ax, effects: pd.DataFrame, features: list[str], ti
             continue
         mu = sub.mean(axis=0).values
         se = sub.std(axis=0, ddof=1).values / np.sqrt(max(sub.shape[0], 1))
-        color = COLORS["treated"] if ("Resp" in str(arm) or "Treat" in str(arm) or "CAR" in str(arm)) else COLORS["control"]
+        color = COLORS["treated"] if ("Resp" in str(arm) or "Treat" in str(arm) or "CAR" in str(arm) or "PDL1" in str(arm)) else COLORS["control"]
         ax.errorbar(x, mu, yerr=1.96 * se, marker="o", lw=1.6, ms=4, color=color, label=str(arm))
 
     ax.axhline(0, color="black", lw=0.8, ls="--")
@@ -551,8 +551,8 @@ def _panel_within_arm_profile(ax, effects: pd.DataFrame, features: list[str], ti
 
 
 def _panel_aml_cart_profile(ax, data: dict[str, dict], composite: bool = False):
-    # Include all single-arm datasets (AML, CAR-T, Vaccine, etc.)
-    datasets = [d for d in data if d != "Melanoma" and d != "COVID-19"]
+    # Include only single-arm datasets
+    datasets = [d for d in data if _DATASET_CFG.get(d, {}).get("design") == "single_arm"]
     if not datasets:
         datasets = [d for d in ["AML", "CAR-T"] if d in data]
     if not datasets:
@@ -719,19 +719,19 @@ def generate():
         ]
 
     panels = [
-        # Row 1 — Melanoma
-        ("panel_A", lambda ax: _panel_heatmap(ax, mel_eff, mel_feats, f"{mel_name} participant × feature map", annotations=mel_annotations), (9.5, 6.8)),
-        ("panel_B", lambda ax: _panel_variance_decomp(ax, mel_eff, mel_feats, f"{mel_name} variance decomposition"), (8.2, 6.8)),
-        ("panel_C", lambda ax: _panel_direction_diversity(ax, mel_eff, mel_feats, f"{mel_name} effect direction diversity"), (8.2, 6.8)),
-        # Row 2 — TNBC
-        ("panel_D", lambda ax: _panel_heatmap(ax, tnbc_eff, tnbc_feats, f"{tnbc_name} participant × feature map", annotations=tnbc_annotations), (9.5, 6.8)),
-        ("panel_E", lambda ax: _panel_variance_decomp(ax, tnbc_eff, tnbc_feats, f"{tnbc_name} variance decomposition"), (8.2, 6.8)),
-        ("panel_F", lambda ax: _panel_direction_diversity(ax, tnbc_eff, tnbc_feats, f"{tnbc_name} effect direction diversity", legend_loc="upper right"), (8.2, 6.8)),
+        # Row 1 — TNBC
+        ("panel_A", lambda ax: _panel_heatmap(ax, tnbc_eff, tnbc_feats, f"{tnbc_name} participant × feature map", annotations=tnbc_annotations), (9.5, 6.8)),
+        ("panel_B", lambda ax: _panel_variance_decomp(ax, tnbc_eff, tnbc_feats, f"{tnbc_name} variance decomposition"), (8.2, 6.8)),
+        ("panel_C", lambda ax: _panel_direction_diversity(ax, tnbc_eff, tnbc_feats, f"{tnbc_name} effect direction diversity", legend_loc="upper right"), (8.2, 6.8)),
+        # Row 2 — Melanoma
+        ("panel_D", lambda ax: _panel_heatmap(ax, mel_eff, mel_feats, f"{mel_name} participant × feature map", annotations=mel_annotations), (9.5, 6.8)),
+        ("panel_E", lambda ax: _panel_variance_decomp(ax, mel_eff, mel_feats, f"{mel_name} variance decomposition"), (8.2, 6.8)),
+        ("panel_F", lambda ax: _panel_direction_diversity(ax, mel_eff, mel_feats, f"{mel_name} effect direction diversity"), (8.2, 6.8)),
         # Row 3 — Cross-dataset
         ("panel_G", lambda ax: _panel_sd_bars(ax, data), (8.8, 6.8)),
         ("panel_H", lambda ax: _panel_sd_scatter(ax, data), (7.6, 6.8)),
         # Row 4 — Temporal
-        ("panel_I", lambda ax: _panel_within_arm_profile(ax, mel_eff, mel_feats, f"{mel_name} within-arm change profile"), (10.2, 6.0)),
+        ("panel_I", lambda ax: _panel_within_arm_profile(ax, tnbc_eff, tnbc_feats, f"{tnbc_name} within-arm change profile"), (10.2, 6.0)),
         ("panel_J", lambda ax: _panel_aml_cart_profile(ax, data), (10.2, 6.0)),
         # Row 5
         ("panel_K", lambda ax: _panel_treated_fc_concordance(ax, data), (7.0, 6.2)),
@@ -806,21 +806,22 @@ def generate():
         left=0.06, right=0.98, top=0.97, bottom=0.04,
     )
 
-    # ── Row 0: A | B | C  (Melanoma) ─────────────────────────────────
+    _HEAT_SHRINK_A = 0.80   # TNBC heatmap (two annotation strips need more space above)
+    _HEAT_SHRINK_D = 0.90   # Melanoma heatmap (one annotation strip)
+
+    # ── Row 0: A | B | C  (TNBC) ─────────────────────────────────────
     gs0 = outer[0].subgridspec(1, 3, width_ratios=[1.1, 1.0, 1.0], wspace=0.50)
     ax_a = fig_c.add_subplot(gs0[0])
     ax_b = fig_c.add_subplot(gs0[1])
     ax_c = fig_c.add_subplot(gs0[2])
 
-    _HEAT_SHRINK_A = 0.90   # larger heatmap for A
-    _HEAT_SHRINK_D = 0.80   # D unchanged
-    _panel_heatmap(ax_a, mel_eff, mel_feats, f"{mel_name} participant × feature map",
-                   composite=True, annotations=mel_annotations)
+    _panel_heatmap(ax_a, tnbc_eff, tnbc_feats, f"{tnbc_name} participant × feature map",
+                   composite=True, annotations=tnbc_annotations)
     # Shrink ax_a from the top only, freeing space for the legend above the heatmap
     _pos = ax_a.get_position()
     ax_a.set_position([_pos.x0, _pos.y0, _pos.width, _pos.height * _HEAT_SHRINK_A])
     # Re-issue set_title with explicit y so it lands at the original row top
-    ax_a.set_title(ax_a.get_title(), fontweight="bold", y=1.16, pad=0)
+    ax_a.set_title(ax_a.get_title(), fontweight="bold", y=1.30, pad=0)
     # Align colorbar to shrunken heatmap bounds
     try:
         _cbar_ax = ax_a.collections[0].colorbar.ax
@@ -829,23 +830,24 @@ def generate():
         _cbar_ax.set_position([_cp.x0, _np.y0, _cp.width, _np.height])
     except (IndexError, AttributeError):
         pass
-    _panel_variance_decomp(ax_b, mel_eff, mel_feats,
-                           f"{mel_name} variance decomposition", composite=True)
-    _panel_direction_diversity(ax_c, mel_eff, mel_feats,
-                               f"{mel_name} effect direction diversity", composite=True)
+    _panel_variance_decomp(ax_b, tnbc_eff, tnbc_feats,
+                           f"{tnbc_name} variance decomposition", composite=True)
+    _panel_direction_diversity(ax_c, tnbc_eff, tnbc_feats,
+                               f"{tnbc_name} effect direction diversity", composite=True,
+                               legend_loc="upper right")
 
-    # ── Row 2: D | E | F  (TNBC) ─────────────────────────────────────
+    # ── Row 2: D | E | F  (Melanoma) ─────────────────────────────────
     gs1 = outer[2].subgridspec(1, 3, width_ratios=[1.1, 1.0, 1.0], wspace=0.50)
     ax_d = fig_c.add_subplot(gs1[0])
     ax_e = fig_c.add_subplot(gs1[1])
     ax_f = fig_c.add_subplot(gs1[2])
 
-    _panel_heatmap(ax_d, tnbc_eff, tnbc_feats, f"{tnbc_name} participant × feature map",
-                   composite=True, annotations=tnbc_annotations)
+    _panel_heatmap(ax_d, mel_eff, mel_feats, f"{mel_name} participant × feature map",
+                   composite=True, annotations=mel_annotations)
     # Shrink ax_d from the top only, freeing space for the legend above the heatmap
     _pos = ax_d.get_position()
     ax_d.set_position([_pos.x0, _pos.y0, _pos.width, _pos.height * _HEAT_SHRINK_D])
-    ax_d.set_title(ax_d.get_title(), fontweight="bold", y=1.30, pad=0)
+    ax_d.set_title(ax_d.get_title(), fontweight="bold", y=1.16, pad=0)
     # Align colorbar to shrunken heatmap bounds
     try:
         _cbar_ax = ax_d.collections[0].colorbar.ax
@@ -854,11 +856,10 @@ def generate():
         _cbar_ax.set_position([_cp.x0, _np.y0, _cp.width, _np.height])
     except (IndexError, AttributeError):
         pass
-    _panel_variance_decomp(ax_e, tnbc_eff, tnbc_feats,
-                           f"{tnbc_name} variance decomposition", composite=True)
-    _panel_direction_diversity(ax_f, tnbc_eff, tnbc_feats,
-                               f"{tnbc_name} effect direction diversity", composite=True,
-                               legend_loc="upper right")
+    _panel_variance_decomp(ax_e, mel_eff, mel_feats,
+                           f"{mel_name} variance decomposition", composite=True)
+    _panel_direction_diversity(ax_f, mel_eff, mel_feats,
+                               f"{mel_name} effect direction diversity", composite=True)
 
     # ── Row 4: G | H | I  (cross-dataset + within-arm) ───────────────
     gs2 = outer[4].subgridspec(1, 3, width_ratios=[1.1, 1.0, 1.1], wspace=0.50)
@@ -868,8 +869,8 @@ def generate():
 
     _panel_sd_bars(ax_g, data, composite=True)
     _panel_sd_scatter(ax_h, data, composite=True)
-    _panel_within_arm_profile(ax_i, mel_eff, mel_feats,
-                              f"{mel_name} within-arm change profile", composite=True)
+    _panel_within_arm_profile(ax_i, tnbc_eff, tnbc_feats,
+                              f"{tnbc_name} within-arm change profile", composite=True)
 
     # ── Row 6: J | K  (single-arm profile + FC concordance) ──────────
     gs3 = outer[6].subgridspec(1, 2, width_ratios=[1.0, 1.0], wspace=0.45)
