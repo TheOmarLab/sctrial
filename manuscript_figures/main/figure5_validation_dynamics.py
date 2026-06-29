@@ -503,7 +503,7 @@ def _panel_a(ax, data: dict) -> None:
 
     ax.set_xlabel(r"$\beta_{\mathrm{DiD}}$ (null distribution)")
     ax.set_ylabel("Density")
-    ax.set_title("Permutation Null Distributions (Top 3)", fontsize=10, fontweight="bold")
+    ax.set_title("Permutation Null Distributions – TNBC (Top 3)", fontsize=10, fontweight="bold")
     ax.legend(fontsize=7, loc="upper right", frameon=True, framealpha=0.9)
     despine(ax)
 
@@ -563,7 +563,7 @@ def _panel_b(ax, data: dict) -> None:
     ax.set_yticks(y_pos)
     ax.set_yticklabels(rec_df["display"].values, fontsize=8)
     ax.set_xlabel(r"$\beta_{\mathrm{DiD}}$ (standardized)")
-    ax.set_title("Observed Effects vs Null Range", fontsize=10, fontweight="bold")
+    ax.set_title("Observed Effects vs Null Range – TNBC", fontsize=10, fontweight="bold")
 
     handles = [
         Line2D([0], [0], marker="o", color="w",
