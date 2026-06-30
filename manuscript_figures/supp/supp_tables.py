@@ -7,8 +7,8 @@ Table 2  Complete effect-size results across all signatures and datasets.
 Table 3  GSEA pre-ranked results (one sheet per dataset).
 Table 4  Permutation test results.
 Table 5  Power analysis results.
-Table 6  Gene-level DiD results (Sade-Feldman / Melanoma).
-Table 7  Gene-level DiD results (TNBC / Zhang).
+Table 6  Gene-level DiD results (TNBC / Zhang).
+Table 7  Gene-level DiD results (Sade-Feldman / Melanoma).
 Table 8  Dataset metadata summary.
 """
 
@@ -1048,17 +1048,17 @@ def table5_power_analysis() -> pd.DataFrame:
 
 
 # ======================================================================
-# Table 6 — Gene-level DiD results (Sade-Feldman)
+# Table 7 — Gene-level DiD results (Sade-Feldman)
 # ======================================================================
 
 
-def table6_gene_level_results() -> pd.DataFrame:
+def table7_gene_level_results() -> pd.DataFrame:
     """Gene-level DiD results for the melanoma cohort.
 
     Runs DiD on every expressed gene (not just signatures) to provide
     the full genome-wide results for reproducibility.
     """
-    print("  Table 6: Gene-level DiD results (Melanoma)")
+    print("  Table 7: Gene-level DiD results (Melanoma)")
 
     if not SCTRIAL_AVAILABLE:
         print("    Skipped: sctrial not available")
@@ -1101,7 +1101,7 @@ def table6_gene_level_results() -> pd.DataFrame:
             cols = ["feature"] + [c for c in res.columns if c != "feature"]
             res = res[cols]
 
-        path = SUPP_OUTPUT / "Supp_Table6_gene_level_DiD_Melanoma.csv"
+        path = SUPP_OUTPUT / "Supp_Table7_gene_level_DiD_Melanoma.csv"
         res.to_csv(path, index=False)
         n_sig = (res["FDR_DiD"] < 0.05).sum() if "FDR_DiD" in res.columns else 0
         n_nom = (res["p_DiD"] < 0.05).sum() if "p_DiD" in res.columns else 0
@@ -1216,17 +1216,17 @@ def table8_dataset_metadata() -> pd.DataFrame:
 
 
 # ======================================================================
-# Table 7 — Gene-level DiD results (TNBC / Zhang)
+# Table 6 — Gene-level DiD results (TNBC / Zhang)
 # ======================================================================
 
 
-def table7_gene_level_tnbc() -> pd.DataFrame:
+def table6_gene_level_tnbc() -> pd.DataFrame:
     """Gene-level DiD results for the TNBC cohort (Zhang et al.).
 
     Runs DiD on every expressed gene (not just signatures) to provide
     the full genome-wide results for reproducibility.
     """
-    print("  Table 7: Gene-level DiD results (TNBC)")
+    print("  Table 6: Gene-level DiD results (TNBC)")
 
     if not SCTRIAL_AVAILABLE:
         print("    Skipped: sctrial not available")
@@ -1262,7 +1262,7 @@ def table7_gene_level_tnbc() -> pd.DataFrame:
             cols = ["feature"] + [c for c in res.columns if c != "feature"]
             res = res[cols]
 
-        path = SUPP_OUTPUT / "Supp_Table7_gene_level_DiD_TNBC.csv"
+        path = SUPP_OUTPUT / "Supp_Table6_gene_level_DiD_TNBC.csv"
         res.to_csv(path, index=False)
         n_sig = (res["FDR_DiD"] < 0.05).sum() if "FDR_DiD" in res.columns else 0
         n_nom = (res["p_DiD"] < 0.05).sum() if "p_DiD" in res.columns else 0
@@ -1384,9 +1384,9 @@ def generate(tables: str = "all"):
     if 5 in to_run:
         table5_power_analysis()
     if 6 in to_run:
-        table6_gene_level_results()
+        table6_gene_level_tnbc()
     if 7 in to_run:
-        table7_gene_level_tnbc()
+        table7_gene_level_results()
     if 8 in to_run:
         table8_dataset_metadata()
 
