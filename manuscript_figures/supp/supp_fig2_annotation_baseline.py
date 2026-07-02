@@ -45,7 +45,7 @@ from .._shared import (
     save_panel,
 )
 
-FIGURE_NAME = "SuppFig3_annotation_baseline"
+FIGURE_NAME = "SuppFig2_annotation_baseline"
 
 DOT_SIZE = 1.8
 

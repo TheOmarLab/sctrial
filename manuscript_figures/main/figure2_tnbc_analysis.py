@@ -326,6 +326,7 @@ def _panel_a(ax: plt.Axes, data: dict) -> None:
         [f"P{i + 1}" for i in range(len(participants))],
         rotation=90, ha="center", fontsize=7,
     )
+
     ax.set_xlabel("Participant", fontsize=9)
     ax.set_ylabel("Number of cells", fontsize=9)
     ax.set_title("Paired Participants: Cells per Visit",

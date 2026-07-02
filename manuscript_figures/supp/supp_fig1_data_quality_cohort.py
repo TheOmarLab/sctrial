@@ -45,7 +45,7 @@ from .._shared import (
     save_panel,
 )
 
-FIGURE_NAME = "SuppFig2_data_quality_cohort"
+FIGURE_NAME = "SuppFig1_data_quality_cohort"
 
 # ── dataset registry ─────────────────────────────────────────────────
 

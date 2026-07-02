@@ -159,31 +159,29 @@ _ANNOT_MAX_FDR = 0.1  # maximum adjusted p-value
 _ANNOT_SECOND_DELTA = 0.25  # delta to flag ambiguous clusters
 _ANNOT_MIN_ACCEPT = 0.3  # minimum weighted score to accept a label
 
-# Clinical response data for TNBC (Zhang et al. 2021, Table S1).
-# Relative change of target lesions (Post vs Pre).
-# Negative = tumor shrank (Responder), >= 0 = stable/grew (Non-responder).
-_TNBC_CLINICAL = pd.DataFrame(
-    {
-        "participant_id": [
-            # PTX + ATZ arm
-            "P019", "P012", "P017", "P002", "P005", "P016",
-            # PTX arm
-            "P022", "P020", "P013", "P025", "P018", "P023",
-        ],
-        "response": [
-            # PTX + ATZ arm
-            "R", "R", "R", "NR", "NR", "NR",
-            # PTX arm
-            "R", "R", "R", "R", "R", "NR",
-        ],
-        "tumor_size_change": [
-            # PTX + ATZ arm (negative = shrinkage)
-            -0.67, -0.46, -0.22, 0.00, 0.09, 0.17,
-            # PTX arm
-            -0.85, -0.55, -0.30, -0.23, -0.09, 0.03,
-        ],
-    }
-).set_index("participant_id")
+_TNBC_EFFICACY_MAP = {"CR": "R", "PR": "R", "PD": "NR", "SD": "NR"}
+
+
+def _load_tnbc_clinical(raw_dir: Path) -> pd.Series:
+    """Read per-patient response from mmc3.xlsx (Zhang et al. 2021, Table S2).
+
+    Returns a Series indexed by patient ID (e.g. 'P001') with values 'R' or 'NR'.
+    CR/PR → R (responder), PD/SD → NR (non-responder), Na → NaN.
+    """
+    mmc3_path = raw_dir / "mmc3.xlsx"
+    if not mmc3_path.exists():
+        raise FileNotFoundError(
+            f"mmc3.xlsx not found at {mmc3_path}. "
+            "Download it from the Zhang et al. 2021 paper supplementary materials "
+            "and place it in the raw data directory."
+        )
+    df = pd.read_excel(mmc3_path, sheet_name="Single cell clustering", header=1)
+    pt_eff = (
+        df[["Patient", "Efficacy"]]
+        .drop_duplicates("Patient")
+        .set_index("Patient")["Efficacy"]
+    )
+    return pt_eff.map(_TNBC_EFFICACY_MAP)
 
 
 def _weighted_marker_score(
@@ -1797,11 +1795,10 @@ def _process_tnbc_raw(
     )
     obs["arm"] = obs["patient_id"].map(patient_arm)
 
-    # Clinical response and tumor size change from Table S1 (Zhang et al. 2021).
-    # Hardcoded in _TNBC_CLINICAL; NaN for patients not in the paired cohort
-    # (they are removed by the pairing filter below anyway).
-    obs["response"] = obs["patient_id"].map(_TNBC_CLINICAL["response"])
-    obs["tumor_size_change"] = obs["patient_id"].map(_TNBC_CLINICAL["tumor_size_change"])
+    # Clinical response from mmc3.xlsx (Zhang et al. 2021, Table S2).
+    # CR/PR → R (responder), PD/SD → NR (non-responder).
+    tnbc_response = _load_tnbc_clinical(raw_dir)
+    obs["response"] = obs["patient_id"].map(tnbc_response)
 
     adata.obs = obs
     logger.info(f"  All cells: {adata.n_obs:,}")
@@ -1852,7 +1849,7 @@ def _process_tnbc_raw(
         )
         logger.warning(f"  {n_missing} cells have no response label.")
         logger.warning(f"  Missing patient IDs: {missing_pids}")
-        logger.warning("  Add these patients to _TNBC_CLINICAL in datasets.py.")
+        logger.warning("  These patients are missing from mmc3.xlsx or have 'Na' efficacy.")
 
     # Optional: subsample to max_cells_per_participant_visit
     if max_cells_per_participant_visit is not None:
@@ -1998,8 +1995,7 @@ def load_tnbc_zhang(
         - ``adata.obs["participant_id"]``: patient ID (e.g. "P019")
         - ``adata.obs["visit"]``: "Pre" or "Post"
         - ``adata.obs["arm"]``: "anti-PDL1+Chemo" or "Chemo"
-        - ``adata.obs["response"]``: "R" or "NR" (from Table S1, Zhang et al. 2021)
-        - ``adata.obs["tumor_size_change"]``: continuous tumor size change (negative = shrinkage)
+        - ``adata.obs["response"]``: "R" or "NR" (CR/PR → R, PD/SD → NR, from mmc3.xlsx Table S2)
         - ``adata.obs["cell_type"]``: annotated immune cell type
         - ``adata.obsm["X_pca"]``, ``adata.obsm["X_umap"]``: embeddings
 
@@ -2014,6 +2010,7 @@ def load_tnbc_zhang(
     - ``GSE169246_TNBC_RNA.barcode.tsv.gz``  (auto-downloadable)
     - ``GSE169246_TNBC_RNA.feature.tsv.gz``  (auto-downloadable)
     - ``geo_metadata.csv``                   (must be generated manually)
+    - ``mmc3.xlsx``                          (must be downloaded manually)
 
     Download raw files from:
     https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE169246

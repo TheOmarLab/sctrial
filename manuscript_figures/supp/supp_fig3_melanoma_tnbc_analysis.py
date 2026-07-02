@@ -58,7 +58,7 @@ warnings.filterwarnings("ignore")
 
 # ── Constants ─────────────────────────────────────────────────────────────
 
-FIGURE_NAME = "SuppFig1_melanoma_tnbc_analysis"
+FIGURE_NAME = "SuppFig3_melanoma_tnbc_analysis"
 VISITS: tuple[str, str] = ("Pre", "Post")
 
 COL_RESP = COLORS["treated"]     # blue  (Responder)
@@ -553,7 +553,7 @@ def _panel_e_tnbc_response_did_chemo(ax: plt.Axes, tnbc_data: dict) -> None:
     """Panel E: response DID within the Chemo arm (TNBC)."""
     _within_arm_response_forest_tnbc(
         ax, tnbc_data, TNBC_DESIGN.arm_control, COL_NRESP,
-        show_stars=False, legend_loc="center right",
+        show_stars=False, legend_loc="upper left",
     )
 
 
@@ -1065,7 +1065,7 @@ def _enforce_min_fontsize(fig, minimum: float = _MIN_FONT) -> None:
 
 def generate() -> None:
     """Create and save all Figure 2 panels (A–K)."""
-    print("Supp Fig 1: Pseudoreplication Bias & Melanoma/TNBC Primary Analysis")
+    print("Supp Fig 3: Pseudoreplication Bias & Melanoma/TNBC Primary Analysis")
     data      = _prepare_data()
     tnbc_data = _prepare_tnbc_data()
 
@@ -1236,7 +1236,7 @@ def generate() -> None:
         ax_b:      "lower right",
         ax_c:      "lower right",    # Melanoma p-value inflation
         ax_d:      "center left",    # TNBC mean delta by arm
-        ax_e:      "center right",    # TNBC Chemo DID
+        ax_e:      "upper left",     # TNBC Chemo DID
         ax_f:      "upper left",     # TNBC anti-PDL1 DID
         ax_g_comp: "upper left",     # Melanoma forest
         ax_j:      "lower right",    # Melanoma delta by response
@@ -1364,7 +1364,7 @@ def generate() -> None:
     del data["adata"]
     del data
     gc.collect()
-    print("  Supp Fig 1 complete: 11 individual panels + combined (A–K)\n")
+    print("  Supp Fig 3 complete: 11 individual panels + combined (A–K)\n")
 
 
 # ── CLI entry point ─────────────────────────────────────────────────────
