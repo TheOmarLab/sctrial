@@ -2,7 +2,7 @@
 Figure 4 — Biological Discovery & Multi-Dataset Generalization
 ===============================================================
 
-Thirteen-panel combined figure integrating gene/pathway-level biological
+Fourteen-panel combined figure integrating gene/pathway-level biological
 discovery from the TNBC cohort (panels A–E) with cross-dataset
 generalization analyses (panels F–M).
 
@@ -16,14 +16,15 @@ B  Top genes ranked by effect size (waterfall, TNBC).
 C  GSEA enrichment bar chart (pathway enrichment, TNBC).
 D  Leading-edge gene overlap heatmap (TNBC).
 E  Cell-type-resolved DiD effect heatmap (TNBC).
-F  COVID-19 cross-sectional forest plot.
-G  Vaccine paired forest plot.
-H  AML within-arm forest plot.
-I  CAR-T forest plot.
-J  Melanoma DiD forest plot.
-K  TNBC within-arm forest plot.
-L  Cross-dataset effect-size heatmap (includes TNBC).
-M  Cross-dataset GSEA heatmap — replicated pathways (includes TNBC).
+F  Cell-type abundance DiD forest plot (TNBC).
+G  COVID-19 cross-sectional forest plot.
+H  Vaccine paired forest plot.
+I  AML within-arm forest plot.
+J  CAR-T forest plot.
+K  Melanoma DiD forest plot.
+L  TNBC within-arm forest plot.
+M  Cross-dataset effect-size heatmap (includes TNBC).
+N  Cross-dataset GSEA heatmap — replicated pathways (includes TNBC).
 """
 
 from __future__ import annotations
@@ -70,6 +71,7 @@ from .._shared import (
     sig_display,
     within_arm_comparison,
 )
+from sctrial import abundance_did
 
 
 FIGURE_NAME = "Figure4_biological_discovery_multi_dataset"
@@ -531,12 +533,14 @@ def _prepare_tnbc_bio_discovery_data(*, use_cache: bool = True) -> dict:
     arm_col = "arm" if "arm" in adata.obs.columns else None
 
     # Two-arm DiD design (anti-PDL1+Chemo vs Chemo), response-status agnostic
+    _ct_col = "cell_type" if "cell_type" in adata.obs.columns else None
     design = TrialDesign(
         participant_col=pid_col,
         visit_col="visit",
         arm_col=arm_col or "arm",
         arm_treated=_TNBC_TREATED_ARM,
         arm_control=_TNBC_CONTROL_ARM,
+        celltype_col=_ct_col,
     )
     visits = ("Pre", "Post")
 
@@ -626,6 +630,26 @@ def _prepare_tnbc_bio_discovery_data(*, use_cache: bool = True) -> dict:
         traceback.print_exc()
         gene_results = None
 
+    # -- Cell-type abundance DiD --
+    res_abundance = None
+    if _ct_col is not None:
+        try:
+            print("  Running cell-type abundance DiD...")
+            res_abundance = abundance_did(
+                adata,
+                design=design,
+                visits=visits,
+                transform="arcsin_sqrt",
+                min_units=4,
+                use_bootstrap=True,
+                n_boot=999,
+                seed=42,
+            )
+            print(f"  Abundance DiD: {len(res_abundance)} cell types")
+        except Exception as exc:
+            print(f"  Abundance DiD unavailable: {exc}")
+            res_abundance = None
+
     result = dict(
         adata=adata,
         sig_cols=sig_cols,
@@ -634,6 +658,7 @@ def _prepare_tnbc_bio_discovery_data(*, use_cache: bool = True) -> dict:
         did_sig=did_sig,
         gsea_results=gsea_results,
         gene_results=gene_results,
+        res_abundance=res_abundance,
     )
 
     if use_cache:
@@ -2345,6 +2370,367 @@ def _panel_tnbc_celltype_hm(ax, data_tnbc: dict):
     cbar.ax.tick_params(labelsize=7)
 
 
+def _panel_tnbc_abundance_did(ax, data_tnbc: dict) -> None:
+    """Panel F — forest plot of cell-type abundance DiD (TNBC)."""
+    df = data_tnbc.get("res_abundance")
+    if df is None or len(df) == 0:
+        ax.text(0.5, 0.5, "Abundance DiD unavailable",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=10, color=COLORS["gray"])
+        ax.axis("off")
+        return
+
+    df = df.sort_values("beta_DiD").reset_index(drop=True)
+    y_pos = np.arange(len(df))
+
+    if "ci_lo_boot" in df.columns and "ci_hi_boot" in df.columns:
+        ci_lo = df["ci_lo_boot"].values
+        ci_hi = df["ci_hi_boot"].values
+    else:
+        ci_lo = (df["beta_DiD"] - 1.96 * df["se_DiD"]).values
+        ci_hi = (df["beta_DiD"] + 1.96 * df["se_DiD"]).values
+
+    col_treat = COLORS["treated"]
+    col_ctrl  = COLORS["control"]
+    col_gray  = COLORS["gray"]
+
+    for i, (_, row) in enumerate(df.iterrows()):
+        color = col_treat if row["beta_DiD"] > 0 else col_ctrl
+        ax.hlines(y_pos[i], ci_lo[i], ci_hi[i],
+                  color=color, linewidth=2.0, alpha=1.0, zorder=1)
+        ax.scatter(row["beta_DiD"], y_pos[i], color=color, s=30,
+                   edgecolors="white", linewidths=0.8, zorder=2)
+        if row.get("FDR_DiD", 1.0) < 0.25:
+            ax.text(ci_hi[i] + 0.02, y_pos[i], "*",
+                    va="center", fontsize=10, fontweight="bold", color=color)
+
+    ax.axvline(0, color="#333333", lw=0.9, ls="--", zorder=0, alpha=0.6)
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(df["celltype"].tolist(), fontsize=7)
+    ax.set_xlabel("Abundance DiD (arcsin-sqrt fraction)", fontsize=8)
+    ax.set_title(
+        "Cell-type abundance DiD effects - TNBC\n"
+        f"({_TNBC_TREATED_ARM} vs {_TNBC_CONTROL_ARM})",
+        fontsize=9, fontweight="bold",
+    )
+    ax.set_ylim(-0.6, len(df) - 0.4)
+
+    handles = [
+        Line2D([0], [0], marker="o", color="w",
+               markerfacecolor=col_treat, markersize=4,
+               label=f"{_TNBC_TREATED_ARM} ↑"),
+        Line2D([0], [0], marker="o", color="w",
+               markerfacecolor=col_ctrl, markersize=4,
+               label=f"{_TNBC_CONTROL_ARM} ↑"),
+    ]
+    ax.legend(handles=handles, fontsize=6, loc="lower right",
+              frameon=True, framealpha=0.9)
+    despine(ax)
+
+
+# ======================================================================
+# Panels E1/E2 — cell-type gene-expression DiD: Responder vs NR per arm
+# ======================================================================
+
+def _detect_response_labels(obs, resp_col: str):
+    """Return (resp_pos, resp_neg) labels from obs[resp_col], or (None, None)."""
+    vals = obs[resp_col].dropna().unique()
+    resp_pos = next((v for v in vals if str(v).upper() in ("R", "RESPONDER")), None)
+    resp_neg = next((v for v in vals if str(v).upper() in ("NR", "NON-RESPONDER")), None)
+    return resp_pos, resp_neg
+
+
+def _panel_tnbc_response_celltype_hm(ax, data_tnbc: dict, *, arm: str) -> None:
+    """Cell-type-resolved (Responder vs NR) DiD gene-expression heatmap.
+
+    Filters to *arm*, then computes
+    DiD = (Responder Post−Pre) − (Non-responder Post−Pre) per cell type.
+    Top genes are selected from the treatment-arm DiD ranking for consistency
+    with panel E.
+    """
+    import scipy.sparse as sp
+
+    gene_results = data_tnbc.get("gene_results")
+    adata = data_tnbc.get("adata")
+
+    if gene_results is None or adata is None or len(gene_results) == 0:
+        ax.text(0.5, 0.5, f"Gene-level results unavailable\n({arm})",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=10, color=COLORS["gray"])
+        ax.axis("off")
+        return
+
+    arm_col = "arm" if "arm" in adata.obs.columns else None
+    if arm_col is None or arm not in adata.obs[arm_col].values:
+        ax.text(0.5, 0.5, f"Arm '{arm}' not found",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=10, color=COLORS["gray"])
+        ax.axis("off")
+        return
+
+    adata_arm = adata[adata.obs[arm_col] == arm]
+
+    resp_col = next((c for c in ("response", "response_harmonized")
+                     if c in adata_arm.obs.columns), None)
+    if resp_col is None:
+        ax.text(0.5, 0.5, "No response column found",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=10, color=COLORS["gray"])
+        ax.axis("off")
+        return
+
+    resp_pos, resp_neg = _detect_response_labels(adata_arm.obs, resp_col)
+    if resp_pos is None or resp_neg is None:
+        ax.text(0.5, 0.5, f"Cannot detect R/NR labels\n"
+                          f"{list(adata_arm.obs[resp_col].dropna().unique())}",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=9, color=COLORS["gray"])
+        ax.axis("off")
+        return
+
+    # Select top genes from treatment-arm DiD ranking (consistent with panel E)
+    df = gene_results.copy()
+    beta_col = "beta_DiD"
+    df = df.dropna(subset=[beta_col])
+    df = df[df["feature"].apply(_is_likely_protein_coding)]
+    n_per_dir = 8
+    df_pos = df[df[beta_col] > 0].nlargest(n_per_dir, beta_col)
+    df_neg = df[df[beta_col] < 0].nsmallest(n_per_dir - 1, beta_col)
+    top_genes = pd.concat([df_pos, df_neg])["feature"].tolist()
+    available = [g for g in top_genes if g in adata_arm.var_names]
+
+    if not available:
+        ax.text(0.5, 0.5, "No top genes in adata",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=10, color=COLORS["gray"])
+        ax.axis("off")
+        return
+
+    ct_col = "cell_type"
+    if ct_col not in adata_arm.obs.columns:
+        ct_col = next(
+            (c for c in adata_arm.obs.columns
+             if "cell" in c.lower() and "type" in c.lower()), None,
+        )
+    if ct_col is None:
+        ax.axis("off")
+        return
+
+    _tnbc_layer = "log1p_norm" if "log1p_norm" in adata_arm.layers else None
+
+    ct_counts = adata_arm.obs[ct_col].value_counts()
+    cell_types = sorted(ct for ct in ct_counts.index if ct_counts[ct] >= 10)
+
+    sub = adata_arm[:, available].copy()
+    X = sub.layers[_tnbc_layer] if (_tnbc_layer and _tnbc_layer in sub.layers) else sub.X
+    if sp.issparse(X):
+        X = X.toarray()
+
+    obs = sub.obs.copy()
+    expr_df = pd.DataFrame(X, index=obs.index, columns=available)
+    expr_df["_visit"] = obs["visit"].values
+    expr_df["_ct"]    = obs[ct_col].values
+    expr_df["_resp"]  = obs[resp_col].values
+
+    effect_mat = pd.DataFrame(np.nan, index=available, columns=cell_types)
+    for ct in cell_types:
+        ct_data = expr_df[expr_df["_ct"] == ct]
+        for gene in available:
+            try:
+                means = {
+                    (r, v): ct_data.loc[
+                        (ct_data["_resp"] == r) & (ct_data["_visit"] == v), gene
+                    ].mean()
+                    for r in (resp_pos, resp_neg) for v in ("Pre", "Post")
+                }
+                did_val = (
+                    (means[(resp_pos, "Post")] - means[(resp_pos, "Pre")])
+                    - (means[(resp_neg, "Post")] - means[(resp_neg, "Pre")])
+                )
+                if np.isfinite(did_val):
+                    effect_mat.loc[gene, ct] = did_val
+            except Exception:
+                pass
+
+    effect_mat = effect_mat.dropna(axis=0, how="all").dropna(axis=1, how="all")
+    if effect_mat.empty:
+        ax.text(0.5, 0.5, "Insufficient data",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=10, color=COLORS["gray"])
+        ax.axis("off")
+        return
+
+    # Preserve gene ordering from treatment-arm DiD ranking
+    gene_order = [g for g in top_genes if g in effect_mat.index]
+    gene_order += [g for g in effect_mat.index if g not in gene_order]
+    effect_mat = effect_mat.reindex(gene_order)
+
+    arr = effect_mat.fillna(0).values
+    vmax = max(np.abs(arr).max(), 0.01)
+
+    im = ax.imshow(arr, aspect="auto", cmap="RdBu_r",
+                   vmin=-vmax, vmax=vmax,
+                   interpolation="nearest", origin="upper")
+
+    for i in range(arr.shape[0] + 1):
+        ax.axhline(i - 0.5, color="white", linewidth=0.5, zorder=2)
+    for j in range(arr.shape[1] + 1):
+        ax.axvline(j - 0.5, color="white", linewidth=0.5, zorder=2)
+
+    ax.set_xticks(range(len(effect_mat.columns)))
+    ax.set_xticklabels(effect_mat.columns, rotation=40, ha="right", fontsize=6)
+    ax.set_yticks(range(len(effect_mat.index)))
+    ax.set_yticklabels(effect_mat.index, fontsize=6, style="italic")
+    ax.tick_params(length=0)
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+
+    plt.colorbar(im, ax=ax, shrink=0.6, pad=0.02).set_label(
+        "DiD (R vs NR)", fontsize=6,
+    )
+    ax.set_title(
+        f"Cell-type Response DiD\n({arm})",
+        fontsize=9, fontweight="bold",
+    )
+
+
+# ======================================================================
+# Panels F1/F2 — cell-type abundance DiD: Responder vs NR per arm
+# ======================================================================
+
+def _panel_tnbc_response_abundance_did(ax, data_tnbc: dict, *, arm: str) -> None:
+    """Cell-type abundance DiD (Responder vs NR) within one TNBC treatment arm.
+
+    Filters adata to *arm*, then runs abundance_did with the response column
+    as the comparison variable.
+    """
+    adata = data_tnbc.get("adata")
+    if adata is None:
+        ax.text(0.5, 0.5, "TNBC adata unavailable",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=10, color=COLORS["gray"])
+        ax.axis("off")
+        return
+
+    arm_col = "arm" if "arm" in adata.obs.columns else None
+    if arm_col is None or arm not in adata.obs[arm_col].values:
+        ax.text(0.5, 0.5, f"Arm '{arm}' not found",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=10, color=COLORS["gray"])
+        ax.axis("off")
+        return
+
+    adata_arm = adata[adata.obs[arm_col] == arm].copy()
+
+    resp_col = next((c for c in ("response", "response_harmonized")
+                     if c in adata_arm.obs.columns), None)
+    if resp_col is None:
+        ax.text(0.5, 0.5, "No response column",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=10, color=COLORS["gray"])
+        ax.axis("off")
+        return
+
+    resp_pos, resp_neg = _detect_response_labels(adata_arm.obs, resp_col)
+    if resp_pos is None or resp_neg is None:
+        ax.text(0.5, 0.5, f"Cannot detect R/NR labels\n"
+                          f"{list(adata_arm.obs[resp_col].dropna().unique())}",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=9, color=COLORS["gray"])
+        ax.axis("off")
+        return
+
+    pid_col = ("participant_id" if "participant_id" in adata_arm.obs.columns
+               else "patient_id")
+    ct_col = "cell_type" if "cell_type" in adata_arm.obs.columns else next(
+        (c for c in adata_arm.obs.columns
+         if "cell" in c.lower() and "type" in c.lower()), None,
+    )
+    if ct_col is None:
+        ax.text(0.5, 0.5, "No cell type column",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=10, color=COLORS["gray"])
+        ax.axis("off")
+        return
+
+    design = TrialDesign(
+        participant_col=pid_col,
+        visit_col="visit",
+        arm_col=resp_col,
+        arm_treated=resp_pos,
+        arm_control=resp_neg,
+        celltype_col=ct_col,
+    )
+
+    try:
+        res = abundance_did(
+            adata_arm,
+            design=design,
+            visits=("Pre", "Post"),
+            transform="arcsin_sqrt",
+            min_units=3,
+            use_bootstrap=True,
+            n_boot=999,
+            seed=42,
+        )
+    except Exception as exc:
+        ax.text(0.5, 0.5, f"Abundance DiD failed:\n{exc}",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=8, color=COLORS["gray"])
+        ax.axis("off")
+        return
+
+    if res is None or len(res) == 0:
+        ax.text(0.5, 0.5, "No abundance DiD results",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=10, color=COLORS["gray"])
+        ax.axis("off")
+        return
+
+    df = res.sort_values("beta_DiD").reset_index(drop=True)
+    y_pos = np.arange(len(df))
+
+    if "ci_lo_boot" in df.columns and "ci_hi_boot" in df.columns:
+        ci_lo = df["ci_lo_boot"].values
+        ci_hi = df["ci_hi_boot"].values
+    else:
+        ci_lo = (df["beta_DiD"] - 1.96 * df["se_DiD"]).values
+        ci_hi = (df["beta_DiD"] + 1.96 * df["se_DiD"]).values
+
+    col_resp    = COLORS["treated"]
+    col_nonresp = COLORS["control"]
+
+    for i, (_, row) in enumerate(df.iterrows()):
+        color = col_resp if row["beta_DiD"] > 0 else col_nonresp
+        ax.hlines(y_pos[i], ci_lo[i], ci_hi[i],
+                  color=color, linewidth=2.0, alpha=1.0, zorder=1)
+        ax.scatter(row["beta_DiD"], y_pos[i], color=color, s=30,
+                   edgecolors="white", linewidths=0.8, zorder=2)
+        if row.get("FDR_DiD", 1.0) < 0.25:
+            ax.text(ci_hi[i] + 0.02, y_pos[i], "*",
+                    va="center", fontsize=10, fontweight="bold", color=color)
+
+    ax.axvline(0, color="#333333", lw=0.9, ls="--", zorder=0, alpha=0.6)
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(df["celltype"].tolist(), fontsize=7)
+    ax.set_xlabel("Abundance DiD (arcsin-sqrt fraction)", fontsize=8)
+    ax.set_title(
+        f"Cell-type abundance (R vs NR)\n({arm})",
+        fontsize=9, fontweight="bold",
+    )
+    ax.set_ylim(-0.6, len(df) - 0.4)
+
+    handles = [
+        Line2D([0], [0], marker="o", color="w",
+               markerfacecolor=col_resp, markersize=4, label="Responder ↑"),
+        Line2D([0], [0], marker="o", color="w",
+               markerfacecolor=col_nonresp, markersize=4, label="Non-responder ↑"),
+    ]
+    ax.legend(handles=handles, fontsize=6, loc="lower right",
+              frameon=True, framealpha=0.9)
+    despine(ax)
+
+
 # ======================================================================
 # Composite figure
 
@@ -3217,23 +3603,38 @@ tnbc_volcano = panel_E        # TNBC: A
 tnbc_waterfall = panel_A      # TNBC: B
 tnbc_gsea_bars = panel_B      # TNBC: C
 tnbc_leading_edge = panel_C   # TNBC: D
-tnbc_celltype_hm = _panel_tnbc_celltype_hm  # TNBC: E
-fig4_gsea_cross = panel_C_replicated        # M
+tnbc_celltype_hm = _panel_tnbc_celltype_hm      # TNBC: E
+tnbc_abundance_did = _panel_tnbc_abundance_did  # TNBC: F
+fig4_gsea_cross = panel_C_replicated            # N
+
+# Response-stratified panels (per treatment arm, Responder vs NR)
+def _tnbc_response_celltype_hm_treated(ax, data):
+    _panel_tnbc_response_celltype_hm(ax, data, arm=_TNBC_TREATED_ARM)
+
+def _tnbc_response_celltype_hm_control(ax, data):
+    _panel_tnbc_response_celltype_hm(ax, data, arm=_TNBC_CONTROL_ARM)
+
+def _tnbc_response_abundance_treated(ax, data):
+    _panel_tnbc_response_abundance_did(ax, data, arm=_TNBC_TREATED_ARM)
+
+def _tnbc_response_abundance_control(ax, data):
+    _panel_tnbc_response_abundance_did(ax, data, arm=_TNBC_CONTROL_ARM)
 
 
 # ── Individual panel saving ───────────────────────────────────────────────
 
 def _save_individual_panels(data_tnbc: dict, data5: dict) -> None:
-    """Save each panel A–M as a standalone figure."""
+    """Save each panel A–N as a standalone figure."""
     print("  Saving individual panels...")
 
-    # Panels A–E: TNBC biological discovery
+    # Panels A–F: TNBC biological discovery
     tnbc_panels = [
-        ("A", tnbc_volcano,    data_tnbc, (8, 6), dict(composite=False)),
-        ("B", tnbc_waterfall,  data_tnbc, (8, 6), {}),
-        ("C", tnbc_gsea_bars,  data_tnbc, (8, 6), {}),
-        ("D", tnbc_leading_edge, data_tnbc, (10, 7), {}),
-        ("E", tnbc_celltype_hm,  data_tnbc, (8, 6), {}),
+        ("A", tnbc_volcano,       data_tnbc, (8, 6), dict(composite=False)),
+        ("B", tnbc_waterfall,     data_tnbc, (8, 6), {}),
+        ("C", tnbc_gsea_bars,     data_tnbc, (8, 6), {}),
+        ("D", tnbc_leading_edge,  data_tnbc, (10, 7), {}),
+        ("E", tnbc_celltype_hm,   data_tnbc, (8, 6), {}),
+        ("F", tnbc_abundance_did, data_tnbc, (7, 5), {}),
     ]
     for label, fn, data, fsize, kwargs in tnbc_panels:
         fig_p, ax_p = plt.subplots(figsize=fsize)
@@ -3244,14 +3645,14 @@ def _save_individual_panels(data_tnbc: dict, data5: dict) -> None:
             fig_p.tight_layout()
         save_panel(fig_p, f"panel_{label}", FIGURE_NAME, MAIN_OUTPUT)
 
-    # Panels F–K: multi-dataset forest plots
+    # Panels G–L: multi-dataset forest plots
     forest_panels = [
-        (panel_a_covid,    "F_covid_severity",  data5, 6.5),
-        (panel_b_vaccine,  "G_vaccine_paired",  data5, 6.5),
-        (panel_c_aml,      "H_aml_clinical",    data5, 6.5),
-        (panel_d_cart,     "I_cart_clinical",   data5, 6.5),
-        (panel_e_melanoma, "J_melanoma_did",    data5, 6.5),
-        (panel_p_tnbc,     "K_tnbc_within_arm", data5, 6.5),
+        (panel_a_covid,    "G_covid_severity",  data5, 6.5),
+        (panel_b_vaccine,  "H_vaccine_paired",  data5, 6.5),
+        (panel_c_aml,      "I_aml_clinical",    data5, 6.5),
+        (panel_d_cart,     "J_cart_clinical",   data5, 6.5),
+        (panel_e_melanoma, "K_melanoma_did",    data5, 6.5),
+        (panel_p_tnbc,     "L_tnbc_within_arm", data5, 6.5),
     ]
     for fn, name, data, w in forest_panels:
         n_feat = 8
@@ -3261,19 +3662,32 @@ def _save_individual_panels(data_tnbc: dict, data5: dict) -> None:
         fig_p.tight_layout(pad=0.6)
         save_panel(fig_p, f"panel_{name}", FIGURE_NAME, MAIN_OUTPUT)
 
-    # Panel L — cross-dataset effect-size heatmap
+    # Panels E1/E2/F1/F2 — response-stratified panels per treatment arm
+    response_panels = [
+        ("E1", _tnbc_response_celltype_hm_treated,  data_tnbc, (9, 6)),
+        ("E2", _tnbc_response_celltype_hm_control,  data_tnbc, (9, 6)),
+        ("F1", _tnbc_response_abundance_treated,    data_tnbc, (7, 5)),
+        ("F2", _tnbc_response_abundance_control,    data_tnbc, (7, 5)),
+    ]
+    for label, fn, data, fsize in response_panels:
+        fig_p, ax_p = plt.subplots(figsize=fsize)
+        fn(ax_p, data)
+        fig_p.tight_layout()
+        save_panel(fig_p, f"panel_{label}", FIGURE_NAME, MAIN_OUTPUT)
+
+    # Panel M — cross-dataset effect-size heatmap
     fig_p, ax_p = plt.subplots(figsize=(9.5, max(2.8, 0.38 * 10 + 1.1)))
     panel_f_heatmap(ax_p, data5)
     fig_p.tight_layout(pad=0.6)
-    save_panel(fig_p, "panel_L_cross_dataset_heatmap", FIGURE_NAME, MAIN_OUTPUT)
+    save_panel(fig_p, "panel_M_cross_dataset_heatmap", FIGURE_NAME, MAIN_OUTPUT)
 
-    # Panel M — cross-dataset GSEA heatmap
+    # Panel N — cross-dataset GSEA heatmap
     fig_p, ax_p = plt.subplots(figsize=(9.5, max(2.8, 0.38 * 10 + 1.1)))
     fig4_gsea_cross(ax_p, data5)
     fig_p.tight_layout(pad=0.6)
-    save_panel(fig_p, "panel_M_cross_dataset_gsea", FIGURE_NAME, MAIN_OUTPUT)
+    save_panel(fig_p, "panel_N_cross_dataset_gsea", FIGURE_NAME, MAIN_OUTPUT)
 
-    print("    Individual panels saved (A–M)")
+    print("    Individual panels saved (A–N, E1/E2/F1/F2)")
 
 
 # ── Composite artboard ────────────────────────────────────────────────────
@@ -3373,14 +3787,14 @@ def _fix_tnbc_labels(ax) -> None:
 
 
 def _build_composite(data_tnbc: dict, data5: dict) -> None:
-    """Build and save the combined 13-panel artboard (180 × 175 mm).
+    """Build and save the combined 14-panel artboard (180 × 195 mm).
 
-    Layout (9-row grid, ≤175 mm tall):
+    Layout (9-row grid):
       Row  0: A | B | C(wide)         TNBC: volcano | waterfall | GSEA bars
-      Row  2: D(wide) | E             TNBC: leading-edge | cell-type HM
-      Row  4: F | G | H               COVID | Vaccine | AML forest plots
-      Row  6: I | J | K               CAR-T | Melanoma | TNBC forest plots
-      Row  8: L | M                   effect heatmap | GSEA cross-dataset
+      Row  2: D(wide) | E | F         TNBC: leading-edge | cell-type HM | abundance DiD
+      Row  4: G | H | I               COVID | Vaccine | AML forest plots
+      Row  6: J | K | L               CAR-T | Melanoma | TNBC forest plots
+      Row  8: M | N                   effect heatmap | GSEA cross-dataset
     """
     print("  Building composite artboard...")
 
@@ -3405,13 +3819,13 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
         9, 1,
         height_ratios=[
             1.50,  # 0:  A | B | C   — TNBC (taller panels)
-            0.45,  # 1:  spacer
+            0.70,  # 1:  spacer
             0.90,  # 2:  D | E       — TNBC
-            0.50,  # 3:  section spacer
+            0.75,  # 3:  section spacer
             0.95,  # 4:  F | G | H
-            0.45,  # 5:  spacer
+            0.65,  # 5:  spacer
             0.95,  # 6:  I | J | K
-            0.45,  # 7:  spacer
+            0.65,  # 7:  spacer
             1.25,  # 8:  L | M
         ],
         hspace=0.0,
@@ -3425,11 +3839,12 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
     ax_b = fig_c.add_subplot(gs0[1])
     ax_c = fig_c.add_subplot(gs0[3])
 
-    # ── Row 2: left-spacer | D | mid-spacer | E ─────────────────────
-    gs2 = outer[2].subgridspec(1, 4, wspace=0.30,
-                                width_ratios=[0.10, 0.95, 0.25, 0.95])
+    # ── Row 2: left-spacer | D | mid-spacer | E | mid-spacer | F ───
+    gs2 = outer[2].subgridspec(1, 6, wspace=0.30,
+                                width_ratios=[0.10, 0.95, 0.15, 0.95, 0.40, 0.80])
     ax_d = fig_c.add_subplot(gs2[1])
     ax_e = fig_c.add_subplot(gs2[3])
+    ax_f_abund = fig_c.add_subplot(gs2[5])
 
     # ── Row 4: F | G | H ─────────────────────────────────────────────
     gs4 = outer[4].subgridspec(1, 3, wspace=1.05)
@@ -3480,6 +3895,7 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
     _swap_leading_edge_axes(ax_d)
     _fix_tnbc_labels(ax_d)
     ax_d.tick_params(axis='y', labelsize=4.0)
+    ax_d.tick_params(axis='x', labelsize=3.0)
 
     _axes_before_e = set(fig_c.get_axes())
     tnbc_celltype_hm(ax_e, data_tnbc)
@@ -3487,7 +3903,12 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
     ax_e.tick_params(axis='x', labelsize=4.0)
     ax_e.tick_params(axis='y', labelsize=4.5)
 
-    # ── Draw forest plots F–K ────────────────────────────────────────
+    tnbc_abundance_did(ax_f_abund, data_tnbc)
+    ax_f_abund.tick_params(axis='both', labelsize=4.0)
+    if ax_f_abund.get_xlabel():
+        ax_f_abund.xaxis.label.set_fontsize(4.5)
+
+    # ── Draw forest plots G–L ────────────────────────────────────────
     _fp_tick = 4.5
     panel_a_covid(ax_f, data5)
     panel_b_vaccine(ax_g, data5)
@@ -3518,7 +3939,7 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
 
     # Strip auto-added single-letter labels from panel functions
     _forest_axes = [ax_f, ax_g, ax_h, ax_i, ax_j, ax_k]
-    for _ax in _forest_axes + [ax_l, ax_m]:
+    for _ax in _forest_axes + [ax_f_abund, ax_l, ax_m]:
         for t in [tt for tt in _ax.texts
                   if len(tt.get_text()) == 1 and tt.get_text().isupper()]:
             t.remove()
@@ -3527,11 +3948,12 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
     _bio_locs = {
         ax_a: "upper right", ax_b: "upper left",
         ax_c: "upper left",  ax_d: "lower right",
+        ax_f_abund: "lower right",
     }
     for ax_target, loc in _bio_locs.items():
         _compact_legend(ax_target, loc, fs=4.5)
 
-    # Compact legends — forest plots
+    # Compact legends — forest plots G–L
     for ax_target in _forest_axes:
         _compact_legend(ax_target, "lower right", fs=4.5)
 
@@ -3550,11 +3972,11 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
 
     # Uniform title font for bio/heatmap panels
     _title_fs = 5.5
-    for _ax in [ax_a, ax_b, ax_c, ax_d, ax_e, ax_l, ax_m]:
+    for _ax in [ax_a, ax_b, ax_c, ax_d, ax_e, ax_f_abund, ax_l, ax_m]:
         _ax.set_title(_ax.get_title(), fontsize=_title_fs, fontweight="bold",
                       loc="center")
 
-    # Forest plots F–K: move left-aligned titles to center
+    # Forest plots G–L: move left-aligned titles to center
     for _ax_fp in _forest_axes:
         _left_txt = _ax_fp.get_title(loc='left')
         if _left_txt:
@@ -3564,7 +3986,7 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
 
     _cap_fontsize(fig_c, _MAX_FONT)
 
-    # ── Bold panel labels A–M ─────────────────────────────────────────
+    # ── Bold panel labels A–N ─────────────────────────────────────────
     _lbl_fs = 7.5
     # Row 0 — 3-panel (A/B narrow, C wide)
     _x3a, _y3a = -0.26, 1.08   # narrow panels (A, B)
@@ -3585,23 +4007,25 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
     ]:
         _ax.text(_x, _y, lbl, transform=_ax.transAxes,
                  fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    # Row 2: D E
+    # Row 2: D E F
     ax_d.text(_x3, _yw, "D", transform=ax_d.transAxes,
               fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
     ax_e.text(_xn, _yn, "E", transform=ax_e.transAxes,
               fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    # Row 4: F G H
-    for _ax, lbl in [(ax_f, "F"), (ax_g, "G"), (ax_h, "H")]:
+    ax_f_abund.text(_xn, _yn, "F", transform=ax_f_abund.transAxes,
+                   fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    # Row 4: G H I
+    for _ax, lbl in [(ax_f, "G"), (ax_g, "H"), (ax_h, "I")]:
         _ax.text(_x3, _y3, lbl, transform=_ax.transAxes,
                  fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    # Row 6: I J K
-    for _ax, lbl in [(ax_i, "I"), (ax_j, "J"), (ax_k, "K")]:
+    # Row 6: J K L
+    for _ax, lbl in [(ax_i, "J"), (ax_j, "K"), (ax_k, "L")]:
         _ax.text(_x3, _y3, lbl, transform=_ax.transAxes,
                  fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    # Row 8: L M
-    ax_l.text(_x2, _y2, "L", transform=ax_l.transAxes,
+    # Row 8: M N
+    ax_l.text(_x2, _y2, "M", transform=ax_l.transAxes,
               fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    ax_m.text(-0.48, _y2, "M", transform=ax_m.transAxes,
+    ax_m.text(-0.48, _y2, "N", transform=ax_m.transAxes,
               fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
 
     plt.rcParams.update(_prev_rc)
@@ -3617,7 +4041,7 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
 # ── Public entry point ────────────────────────────────────────────────────
 
 def generate() -> None:
-    """Generate individual panels A–M and the combined composite."""
+    """Generate individual panels A–N and the combined composite."""
     print("=" * 60)
     print("Figure 4: Biological Discovery & Multi-Dataset Generalization")
     print("=" * 60)
