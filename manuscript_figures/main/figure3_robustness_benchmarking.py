@@ -16,9 +16,11 @@ D   Effect-size bias and RMSE on signal genes (simulator benchmark). Combined ar
     **left** column of the benchmark row (faceted bias/RMSE grid).
 E   Genomic inflation λ_GC under pure null (simulator benchmark). Combined artboard:
     **right** column of the benchmark row (single-axis λ_GC plot).
-F   Standard-error comparison (cell vs participant level): Sade–Feldman (top)
+F   Computational cost: median runtime per iteration by method and panel size
+    (simulator benchmark).
+G   Standard-error comparison (cell vs participant level): Sade–Feldman (top)
     and TNBC (bottom).
-G   Cross-dataset signed Cohen's d forest (pre-specified endpoints), now
+H   Cross-dataset signed Cohen's d forest (pre-specified endpoints), now
     including TNBC as a sixth dataset group.
 
 Cell-vs-participant effect-size scatter and p-value comparison moved
@@ -727,6 +729,69 @@ def _panel_bench_lambda_gc(ax, bench_df: pd.DataFrame, *, composite: bool = Fals
     _style_axis(ax)
 
 
+def _panel_bench_runtime(ax, bench_df: pd.DataFrame, *, composite: bool = False) -> None:
+    """Per-iteration runtime by method × panel size (log y).
+
+    X-axis uses evenly-spaced categorical positions so the 4 panel sizes
+    are ticked at equal intervals, independent of their raw values.
+    """
+    rt = (
+        bench_df.groupby(["method", "scenario", "n_genes", "iteration"])[
+            "runtime_seconds"
+        ]
+        .first()
+        .reset_index()
+    )
+    summary = (
+        rt.groupby(["method", "n_genes"])["runtime_seconds"]
+        .median()
+        .reset_index()
+    )
+    x_positions = np.arange(len(_PANEL_SIZES), dtype=float)
+    n_to_x = dict(zip(_PANEL_SIZES, x_positions))
+
+    _lbl_fs = 5.05 if composite else 11
+    _ttl_fs = 6.0 if composite else 12
+    _ttl_pad = 5 if composite else 10
+    _leg_fs = 4.5 if composite else 9
+
+    for method in _BENCH_METHODS:
+        sub = summary[summary["method"] == method].sort_values("n_genes")
+        if sub.empty:
+            continue
+        is_focal = method == "sctrial_did"
+        style = _method_style(method, is_focal=is_focal, composite=composite)
+        xs = [n_to_x[int(n)] for n in sub["n_genes"].values]
+        ax.plot(
+            xs, sub["runtime_seconds"],
+            label=_BENCH_METHOD_LABELS[method],
+            zorder=10 if is_focal else 3,
+            **style,
+        )
+
+    ax.set_yscale("log")
+    ax.set_xticks(x_positions)
+    ax.set_xticklabels([f"{p:,}" for p in _PANEL_SIZES], fontsize=_lbl_fs)
+    ax.set_xlim(-0.35, len(_PANEL_SIZES) - 0.65)
+    ax.set_xlabel("Panel size (genes)", fontsize=_lbl_fs)
+    ax.set_ylabel("Median runtime per iteration (s)", fontsize=_lbl_fs)
+    ax.set_title("Computational cost", fontsize=_ttl_fs, fontweight="bold", pad=_ttl_pad)
+    ax.tick_params(axis="y", labelsize=_lbl_fs)
+    if composite:
+        ax.legend(
+            loc="upper left", bbox_to_anchor=(0.02, 0.72),
+            frameon=True, framealpha=0.95, edgecolor="#cccccc", fontsize=_leg_fs,
+            markerscale=0.52, handlelength=1.0,
+        )
+    else:
+        ax.legend(
+            loc="upper left", frameon=True, framealpha=0.95,
+            edgecolor="#cccccc", fontsize=_leg_fs,
+            markerscale=1.0, handlelength=1.5,
+        )
+    _style_axis(ax)
+
+
 def _panel_bench_signal_rmse(fig, bench_df: pd.DataFrame, *, composite: bool = False) -> None:
     df = _compute_signal_bias_rmse_table(bench_df)
     if hasattr(fig, "set_constrained_layout"):
@@ -1270,15 +1335,20 @@ def generate() -> None:
         fig_e.tight_layout()
         save_panel(fig_e, "panel_E_benchmark_lambda_gc", FIGURE_NAME, MAIN_OUTPUT)
 
+        fig_f, ax_f_ind = plt.subplots(figsize=(7.2, 5.0))
+        _panel_bench_runtime(ax_f_ind, bench_df)
+        fig_f.tight_layout()
+        save_panel(fig_f, "panel_F_benchmark_runtime", FIGURE_NAME, MAIN_OUTPUT)
+
     fig, (ax_top, ax_bottom) = plt.subplots(2, 1, figsize=(6.5, 9.5))
     _panel_d_se_comparison(ax_top, ax_bottom, data, data_tnbc)
     fig.tight_layout()
-    save_panel(fig, "panel_F_se_comparison", FIGURE_NAME, MAIN_OUTPUT)
+    save_panel(fig, "panel_G_se_comparison", FIGURE_NAME, MAIN_OUTPUT)
 
     fig, ax = plt.subplots(figsize=(10, 9))
     _panel_e_cross_dataset(ax, data)
     fig.tight_layout()
-    save_panel(fig, "panel_G_cross_dataset_effects", FIGURE_NAME, MAIN_OUTPUT)
+    save_panel(fig, "panel_H_cross_dataset_effects", FIGURE_NAME, MAIN_OUTPUT)
 
     # ── Combined artboard (180 × 215 mm) ──────────────────────────────
     _SMALL_RC = {
@@ -1331,9 +1401,9 @@ def generate() -> None:
     #   Row 2: B — Melanoma | TNBC side by side                        — medium
     #   Row 3: spacer
     #   Row 4: C — null-gene FPR curves (full width)                   — medium
-    #   Row 5: D (bias/RMSE) | E (λ_GC)                               — medium
+    #   Row 5: D (bias/RMSE) | E (λ_GC) | F (runtime)                 — medium
     #   Row 6: spacer
-    #   Row 7: F (left, stacked) | G (right, forest plot)              — tall
+    #   Row 7: G (left, stacked) | H (right, forest plot)              — tall
     outer = fig_c.add_gridspec(
         8, 1,
         height_ratios=[0.78, 0.08, 0.78, 0.22, 0.70, 0.95, 0.06, 1.85],
@@ -1368,34 +1438,41 @@ def generate() -> None:
                    transform=ax_sc.transAxes, fontsize=6)
         ax_sc.set_axis_off()
 
-    # ── Row 5: D | E ─────────────────────────────────────────────────
-    gs_mid = outer[5].subgridspec(1, 2, wspace=0.50, width_ratios=[1.35, 0.95])
+    # ── Row 5: D | E | F ─────────────────────────────────────────────
+    # Outer: D vs (E+F combined) — large gap between D and E.
+    # Inner: E vs F — tight gap between E and F.
+    gs_mid = outer[5].subgridspec(1, 2, wspace=0.38, width_ratios=[1.35, 1.44])
     sub_d = fig_c.add_subfigure(gs_mid[0])
-    ax_e = fig_c.add_subplot(gs_mid[1])
+    gs_ef = gs_mid[1].subgridspec(1, 2, wspace=0.64, width_ratios=[0.76, 0.68])
+    ax_e = fig_c.add_subplot(gs_ef[0])
+    ax_f = fig_c.add_subplot(gs_ef[1])
     if bench_df is not None:
         _panel_bench_signal_rmse(sub_d, bench_df, composite=True)
         _panel_bench_lambda_gc(ax_e, bench_df, composite=True)
+        _panel_bench_runtime(ax_f, bench_df, composite=True)
     else:
         ax_e.text(0.5, 0.5, "—", ha="center", va="center", transform=ax_e.transAxes, fontsize=6)
         ax_e.set_axis_off()
+        ax_f.text(0.5, 0.5, "—", ha="center", va="center", transform=ax_f.transAxes, fontsize=6)
+        ax_f.set_axis_off()
         ax_sd = sub_d.subplots(1, 1)
         ax_sd.set_axis_off()
 
     _ax_sp_bot = fig_c.add_subplot(outer[6])
     _ax_sp_bot.set_axis_off()
 
-    # ── Row 7: F (left) | G (right) ──────────────────────────────────
-    gs_fg = outer[7].subgridspec(1, 2, wspace=0.38, width_ratios=[1.0, 1.0])
-    gs_f = gs_fg[0].subgridspec(2, 1, hspace=0.55)
-    ax_f_top = fig_c.add_subplot(gs_f[0])
-    ax_f_bot = fig_c.add_subplot(gs_f[1])
-    ax_g = fig_c.add_subplot(gs_fg[1])
+    # ── Row 7: G (left) | H (right) ──────────────────────────────────
+    gs_gh = outer[7].subgridspec(1, 2, wspace=0.38, width_ratios=[1.0, 1.0])
+    gs_g = gs_gh[0].subgridspec(2, 1, hspace=0.55)
+    ax_g_top = fig_c.add_subplot(gs_g[0])
+    ax_g_bot = fig_c.add_subplot(gs_g[1])
+    ax_h = fig_c.add_subplot(gs_gh[1])
 
     # ── Draw all panels ───────────────────────────────────────────────
     _panel_a(ax_a_bot, ax_a_top, data, data_tnbc, composite=True)
     _panel_b(ax_b_bot, ax_b_top, data, data_tnbc)
-    _panel_d_se_comparison(ax_f_bot, ax_f_top, data, data_tnbc)
-    _panel_e_cross_dataset(ax_g, data, composite=True)
+    _panel_d_se_comparison(ax_g_bot, ax_g_top, data, data_tnbc)
+    _panel_e_cross_dataset(ax_h, data, composite=True)
 
     fig_c.canvas.draw()
     _match_subfig_axes_height_to_ref(ax_e, sub_d, height_frac=1.0)
@@ -1404,10 +1481,10 @@ def generate() -> None:
     _inside = {
         ax_a_top: "upper right", ax_a_bot: "upper right",
         ax_b_top: "lower right", ax_b_bot: "lower right",
-        ax_f_top: "lower right", ax_f_bot: "lower right",
-        ax_g: "lower right",
+        ax_g_top: "lower right", ax_g_bot: "lower right",
+        ax_h: "lower right",
     }
-    _leg_fs_inside = {ax_b_top: 5.2, ax_b_bot: 5.2, ax_f_top: 5.2, ax_f_bot: 5.2}
+    _leg_fs_inside = {ax_b_top: 5.2, ax_b_bot: 5.2, ax_g_top: 5.2, ax_g_bot: 5.2}
     for ax_target, loc in _inside.items():
         leg = ax_target.get_legend()
         if leg:
@@ -1442,20 +1519,53 @@ def generate() -> None:
     _raise_axis_fonts(ax_a_top, title_fs=6.0, label_fs=6.0, tick_fs=5.4, legend_fs=4.0, text_fs=4.6)
     _raise_axis_fonts(ax_a_bot, title_fs=6.0, label_fs=6.0, tick_fs=5.4, legend_fs=4.0, text_fs=4.6)
     _raise_axis_fonts(ax_e, title_fs=6.7, label_fs=6.0, tick_fs=5.4, legend_fs=5.2, text_fs=4.6)
+    _raise_axis_fonts(ax_f, title_fs=6.7, label_fs=6.0, tick_fs=5.4, legend_fs=5.2, text_fs=4.6)
 
-    # ── Reduce ytick label sizes for F and G ──────────────────────────
-    for ax_ in (ax_f_top, ax_f_bot):
+    # Match E (λ_GC) axis fonts to F (runtime) — use F's post-raise composite sizes
+    # F: _raise_axis_fonts(label_fs=6.0, tick_fs=5.4, legend_fs=5.2)
+    ax_e.xaxis.label.set_fontsize(6.0)
+    ax_e.yaxis.label.set_fontsize(6.0)
+    ax_e.tick_params(axis="both", labelsize=5.4)
+    for _tl in ax_e.get_xticklabels() + ax_e.get_yticklabels():
+        _tl.set_fontsize(5.4)
+    # Split legend: first 2 entries upper-center, last 2 lower-center
+    _e_leg_orig = ax_e.get_legend()
+    if _e_leg_orig:
+        _e_handles = _e_leg_orig.legend_handles
+        _e_labels = [_t.get_text() for _t in _e_leg_orig.get_texts()]
+        _e_leg_orig.remove()
+        _leg_kw_e = dict(
+            ncol=2, frameon=True, framealpha=0.92, edgecolor="#cccccc",
+            fontsize=5.2, markerscale=0.52, handlelength=0.9,
+            handletextpad=0.3, columnspacing=0.45, borderpad=0.28,
+        )
+        _e_leg_top = ax_e.legend(
+            handles=_e_handles[:2], labels=_e_labels[:2],
+            loc="upper center", **_leg_kw_e,
+        )
+        ax_e.add_artist(_e_leg_top)
+        ax_e.legend(
+            handles=_e_handles[2:], labels=_e_labels[2:],
+            loc="lower center", **_leg_kw_e,
+        )
+
+    # ── Reduce ytick label sizes for G and H ──────────────────────────
+    for ax_ in (ax_g_top, ax_g_bot):
         for tl in ax_.get_yticklabels():
             tl.set_fontsize(5.2)
-    for tl in ax_g.get_yticklabels():
+    for tl in ax_h.get_yticklabels():
         tl.set_fontsize(min(tl.get_fontsize(), 5.2))
 
     # ── Panel labels ──────────────────────────────────────────────────
     _lbl_fs = 7
-    for ax, lbl in [(ax_a_top, "A"), (ax_b_top, "B"), (ax_e, "E"), (ax_f_top, "F")]:
+    for ax, lbl in [(ax_a_top, "A"), (ax_b_top, "B"), (ax_g_top, "G")]:
         ax.text(-0.15, 1.12, lbl, transform=ax.transAxes,
                 fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    ax_g.text(-0.07, 1.05, "G", transform=ax_g.transAxes,
+    ax_f.text(-0.28, 1.12, "F", transform=ax_f.transAxes,
+              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    ax_e.text(-0.42, 1.12, "E", transform=ax_e.transAxes,
+              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    ax_h.text(-0.07, 1.05, "H", transform=ax_h.transAxes,
               fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
     ax_c_list = sub_c.get_axes()
     if ax_c_list:
@@ -1485,7 +1595,7 @@ def generate() -> None:
     del data_tnbc
     clear_cache()
     gc.collect()
-    print("  Figure 4 complete: 7 individual panels + combined (A–G)")
+    print("  Figure 3 complete: 8 individual panels + combined (A–H)")
 
 
 if __name__ == "__main__":

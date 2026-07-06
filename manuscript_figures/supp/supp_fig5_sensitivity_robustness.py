@@ -4,11 +4,11 @@ Supplementary Figure 5 — Sensitivity, Robustness, and Benchmarking.
 
 Panels A–G characterize the sensitivity and robustness of sctrial's
 participant-level inference on real datasets.  NatMeth benchmark
-panels H–J (pure-null FPR, runtime, faceted QQ) use the same four
+panels H–I (pure-null FPR, faceted QQ) use the same four
 methods (dreamlet, NEBULA, Wilcoxon on change scores, sctrial DiD) on
 a hierarchical gamma-Poisson simulator (panel sizes 50–2000,
 signal fractions 1–20%); the FPR-curve, λ_GC, and signal-RMSE
-benchmark panels were promoted to Figure 3.  Panel K shows empirical
+benchmark panels were promoted to Figure 3.  Panel J shows empirical
 power curves on real datasets (formerly Figure 3 panel C).
 
 Panels (letters match the composite artboard, left-to-right and top-to-bottom)
@@ -22,10 +22,9 @@ Panels (letters match the composite artboard, left-to-right and top-to-bottom)
   G  Leave-one-out stability matrix (max influence, all datasets).
   --- composite row 3 (right of F|G) ---
   H  Benchmark: pure-null Type I error vs panel size.
-  I  Benchmark: runtime comparison across methods.
   --- composite row 4 ---
-  J  Benchmark: faceted p-value QQ plots with 95% Beta envelope (two-arm, n=40).
-  K  Empirical power curves (participant subsampling; 3+2 facet grid).
+  I  Benchmark: faceted p-value QQ plots with 95% Beta envelope (two-arm, n=40).
+  J  Empirical power curves (participant subsampling; 3+2 facet grid).
 
 Non-overlap guardrail: methodological sensitivity only, not biological claims.
 """
@@ -425,6 +424,9 @@ def _panel_bootstrap_multi(fig, boot_data: dict, *, composite: bool = False):
         df_b = boot.set_index("feature")[[sc_b]].rename(
             columns={sc_b: "se_boot"})
         df = df_a.join(df_b, how="inner").reset_index()
+        df = df.drop_duplicates(subset="feature")
+        if len(df) > 15:
+            df = df.loc[df["beta"].abs().nlargest(15).index]
         df = df.sort_values("beta", ascending=True).reset_index(drop=True)
 
         y = np.arange(len(df))
@@ -480,7 +482,7 @@ def _panel_bootstrap_multi(fig, boot_data: dict, *, composite: bool = False):
         _xc_parent = _sf_pos.x0 + _xc * _sf_pos.width
         _y0_parent = _sf_pos.y0 + _y0 * _sf_pos.height
         _parent_fig.text(
-            _xc_parent, _y0_parent - 0.028, "β with 95% CI",
+            _xc_parent, _y0_parent - 0.050, "β with 95% CI",
             ha="center", va="top", fontsize=_xlbl_fs,
             transform=_parent_fig.transFigure,
         )
@@ -673,7 +675,7 @@ def _panel_ct_heatmap(ax, data: dict, *, composite: bool = False):
         ax.tick_params(axis="y", labelsize=4.5)
         for _tl in ax.get_xticklabels():
             _tl.set_ha("right")
-        ax.set_xlabel("Cell type", labelpad=-3)
+        #ax.set_xlabel("Cell type", labelpad=-3)
     else:
         ax.tick_params(axis="x", labelsize=5.5, rotation=55, pad=1.5)
         ax.tick_params(axis="y", labelsize=7)
@@ -942,6 +944,9 @@ def _panel_loo_stability(ax):
         ax.text(0.5, 0.5, "No LOO data", ha="center", va="center",
                 transform=ax.transAxes)
         return
+    mat = mat.drop_duplicates()
+    if len(mat) > 15:
+        mat = mat.loc[mat.mean(axis=1).nlargest(15).index]
     _draw_loo_heatmap(ax, mat)
 
 
@@ -2134,12 +2139,11 @@ def generate():
       F  Rank-order concordance across choices (TNBC)
       G  Leave-one-out stability matrix (all datasets)
       H  Pure-null Type I error vs panel size (NatMeth benchmark, 4 methods)
-      I  Runtime comparison (NatMeth benchmark)
-      J  Faceted QQ + 95% envelope (two-arm, n=40, 200 genes, 10% signal)
-      K  Empirical power curves (participant subsampling; 3+3 facet grid)
+      I  Faceted QQ + 95% envelope (two-arm, n=40, 200 genes, 10% signal)
+      J  Empirical power curves (participant subsampling; 3+3 facet grid)
 
-    Composite (180 mm × ≤215 mm): row1 A | row2 B|C|D|E | row3 F|G|H|I |
-    row4 J|K.
+    Composite (180 mm × ≤215 mm): row1 A | row2 B|C|D|E | row3 F|G|H |
+    row4 I|J.
     """
     print("Supplementary Figure 4: Sensitivity to Modeling and Preprocessing")
 
@@ -2186,6 +2190,10 @@ def generate():
         print("  Computing LOO stability ...")
         loo_mat = _compute_loo_data()
         _save_cache("loo", loo_mat)
+    if loo_mat is not None:
+        loo_mat = loo_mat.drop_duplicates()
+        if len(loo_mat) > 15:
+            loo_mat = loo_mat.loc[loo_mat.mean(axis=1).nlargest(15).index]
     fig, ax = plt.subplots(figsize=(9, 6))
     if loo_mat is not None:
         _draw_loo_heatmap(ax, loo_mat)
@@ -2195,7 +2203,7 @@ def generate():
     fig.tight_layout()
     save_panel(fig, "panel_G", FIGURE_NAME, SUPP_OUTPUT)
 
-    # ── Benchmark (panels H–J) — H: pure-null FPR; I: runtime; J: QQ ───
+    # ── Benchmark (panels H–I) — H: pure-null FPR; I: QQ ────────────────
     print("  Loading signal-fraction sensitivity benchmark results ...")
     bench_df = _load_benchmark_data()
     print(
@@ -2210,20 +2218,14 @@ def generate():
     fig_h.tight_layout()
     save_panel(fig_h, "panel_H", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel I: Runtime
-    fig_i, ax_i_ind = plt.subplots(figsize=(7.2, 5.0))
-    _panel_bench_runtime(ax_i_ind, bench_df)
+    # Panel I: Faceted QQ panels
+    fig_i = plt.figure(figsize=(15.0, 4.0))
+    _panel_bench_qq(fig_i, bench_df, n_genes=200, signal_pct=10)
     fig_i.tight_layout()
     save_panel(fig_i, "panel_I", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel J: Faceted QQ panels
-    fig_j = plt.figure(figsize=(15.0, 4.0))
-    _panel_bench_qq(fig_j, bench_df, n_genes=200, signal_pct=10)
-    fig_j.tight_layout()
-    save_panel(fig_j, "panel_J", FIGURE_NAME, SUPP_OUTPUT)
-
-    # ── Empirical power curves on real datasets (panel K) ─────────────
-    print("  Computing empirical power curves (panel K) ...")
+    # ── Empirical power curves on real datasets (panel J) ─────────────
+    print("  Computing empirical power curves (panel J) ...")
     try:
         power_data = _prepare_power_data()
     except Exception as exc:
@@ -2231,17 +2233,17 @@ def generate():
         power_data = None
     composite_data = {**data, "power_data": power_data}
 
-    fig_k = _panel_power_curves(composite_data)
-    if fig_k is not None:
-        save_panel(fig_k, "panel_K_power_curves", FIGURE_NAME, SUPP_OUTPUT)
+    fig_j = _panel_power_curves(composite_data)
+    if fig_j is not None:
+        save_panel(fig_j, "panel_J_power_curves", FIGURE_NAME, SUPP_OUTPUT)
 
     # ==================================================================
     # Composite artboard  (180 mm × ≤215 mm)
     # ==================================================================
     #   Row 1: A (full width)
     #   Row 2: B | C | D | E
-    #   Row 3: F | G | H | I  (rank concordance | LOO | pure-null FPR | runtime)
-    #   Row 4: J | K  (QQ panels | power curves 3+3)
+    #   Row 3: F | G | H  (rank concordance | LOO | pure-null FPR)
+    #   Row 4: I | J  (QQ panels | power curves 3+3)
     # ==================================================================
     print("  Building composite figure ...")
 
@@ -2314,15 +2316,11 @@ def generate():
     _panel_log_sensitivity(ax_d, data, composite=True)
     _panel_ct_heatmap(ax_e, data, composite=True)
 
-    # ── Row 3: F | G | H | I  (nested so F–G wspace can exceed G–H / H–I)
-    _w_fg, _w_hi, _w_mid = 0.95, 0.32, 0.24
-    gs_r3 = outer[2].subgridspec(1, 2, width_ratios=[1.72, 2.0], wspace=_w_mid)
-    gs_fg = gs_r3[0].subgridspec(1, 2, width_ratios=[0.72, 1.0], wspace=_w_fg)
-    gs_hi = gs_r3[1].subgridspec(1, 2, width_ratios=[0.92, 0.82], wspace=_w_hi)
-    ax_f = fig_c.add_subplot(gs_fg[0])
-    ax_g = fig_c.add_subplot(gs_fg[1])
-    ax_pure_null = fig_c.add_subplot(gs_hi[0])
-    ax_runtime = fig_c.add_subplot(gs_hi[1])
+    # ── Row 3: F | G | H  (rank concordance | LOO | pure-null FPR)
+    gs_r3 = outer[2].subgridspec(1, 3, width_ratios=[1.05, 1.40, 1.05], wspace=0.30)
+    ax_f = fig_c.add_subplot(gs_r3[0])
+    ax_g = fig_c.add_subplot(gs_r3[1])
+    ax_pure_null = fig_c.add_subplot(gs_r3[2])
 
     _panel_rank_concordance(ax_f, data, composite=True)
     if loo_mat is not None:
@@ -2335,7 +2333,6 @@ def generate():
         ax_g.text(0.5, 0.5, "No LOO data", ha="center", va="center",
                   transform=ax_g.transAxes)
     _panel_bench_pure_null_fpr(ax_pure_null, bench_df, composite=True)
-    _panel_bench_runtime(ax_runtime, bench_df, composite=True)
 
     # ── Row 4: J | K — plain nested gridspecs (no SubFigures).
     # SubFigures in narrow half-row cells inherit figure-coord subplotpars for
@@ -2392,7 +2389,7 @@ def generate():
     # Bold panel labels (placed after cap so they stay prominent)
     _lbl_fs = 9
     _lbl_xy = (-0.25, 1.12)
-    _lbl_y_r3 = 1.17  # F, G, H, I — slightly above default row-2 y
+    _lbl_y_r3 = 1.17  # F, G, H — slightly above default row-2 y
     _lbl_x_left = -0.38  # B, E, F nudged further left
 
     subfig_axes = subfig_a.get_axes()
@@ -2407,10 +2404,9 @@ def generate():
         (ax_b, "B"), (ax_cc, "C"), (ax_d, "D"),
         (ax_f, "F"),
         (ax_pure_null, "H"),
-        (ax_runtime, "I"),
     ]:
         _x = _lbl_x_left if lbl in ("B", "F") else _lbl_xy[0]
-        _y = _lbl_y_r3 if lbl in ("F", "H", "I") else _lbl_xy[1]
+        _y = _lbl_y_r3 if lbl in ("F", "H") else _lbl_xy[1]
         ax_lbl.text(
             _x, _y, lbl,
             transform=ax_lbl.transAxes,
@@ -2437,8 +2433,8 @@ def generate():
             fontsize=_lbl_fs, fontweight="bold", va="top", ha="left",
         )
 
-    _label_axes_panel(qq_axes, "J", x=-0.30, y=1.48)
-    _label_axes_panel(power_axes, "K", x=-0.42, y=1.48)
+    _label_axes_panel(qq_axes, "I", x=-0.30, y=1.48)
+    _label_axes_panel(power_axes, "J", x=-0.42, y=1.48)
 
     # E & G: heatmaps — label slightly lower to clear title/colorbar
     _heat_y = 1.08
@@ -2520,7 +2516,7 @@ def generate():
 
     clear_cache()
     gc.collect()
-    print("  SuppFig4 complete: 11 individual panels + combined (A–K)\n")
+    print("  SuppFig5 complete: 10 individual panels + combined (A–J)\n")
 
 
 if __name__ == "__main__":
