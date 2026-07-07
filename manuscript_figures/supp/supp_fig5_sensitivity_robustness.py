@@ -2218,11 +2218,25 @@ def generate():
     fig_h.tight_layout()
     save_panel(fig_h, "panel_H", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel I: Faceted QQ panels
+    # Panel I: Faceted QQ panels — default condition (200 genes, 10% signal)
     fig_i = plt.figure(figsize=(15.0, 4.0))
     _panel_bench_qq(fig_i, bench_df, n_genes=200, signal_pct=10)
     fig_i.tight_layout()
     save_panel(fig_i, "panel_I", FIGURE_NAME, SUPP_OUTPUT)
+
+    # Panel I variants — all n_genes × signal_pct combinations
+    for _ng in _PANEL_SIZES:
+        for _sf in _SIGNAL_FRACTIONS:
+            if _ng == 200 and _sf == 10:
+                continue  # already saved above
+            _fig_v = plt.figure(figsize=(15.0, 4.0))
+            _axes_v = _panel_bench_qq(_fig_v, bench_df, n_genes=_ng, signal_pct=_sf)
+            if _axes_v:
+                _fig_v.tight_layout()
+                save_panel(
+                    _fig_v, f"panel_I_g{_ng}_f{_sf}pct", FIGURE_NAME, SUPP_OUTPUT,
+                )
+            plt.close(_fig_v)
 
     # ── Empirical power curves on real datasets (panel J) ─────────────
     print("  Computing empirical power curves (panel J) ...")
