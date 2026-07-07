@@ -48,6 +48,7 @@ from statsmodels.stats.multitest import multipletests
 
 from .._shared import (
     COLORS,
+    GSEA_OUTPUT,
     MAIN_OUTPUT,
     TrialDesign,
     add_log1p_cpm_layer,
@@ -660,6 +661,17 @@ def _prepare_tnbc_bio_discovery_data(*, use_cache: bool = True) -> dict:
         gene_results=gene_results,
         res_abundance=res_abundance,
     )
+
+    # Save combined filtered GSEA results (treatment arm DiD) to TNBC folder
+    if gsea_results is not None and len(gsea_results) > 0:
+        try:
+            _tnbc_gsea_dir = GSEA_OUTPUT / "TNBC"
+            _tnbc_gsea_dir.mkdir(parents=True, exist_ok=True)
+            _out_csv = _tnbc_gsea_dir / "treatment_arm_did_filtered.csv"
+            gsea_results.to_csv(_out_csv, index=False)
+            print(f"  Saved TNBC treatment-arm DiD GSEA → {_out_csv}")
+        except Exception as _exc:
+            print(f"  TNBC treatment-arm GSEA CSV save failed: {_exc}")
 
     if use_cache:
         _CACHE_DIR.mkdir(parents=True, exist_ok=True)
@@ -2732,6 +2744,232 @@ def _panel_tnbc_response_abundance_did(ax, data_tnbc: dict, *, arm: str) -> None
 
 
 # ======================================================================
+# Panels C1/C2 — GSEA enrichment: Responder vs Non-responder per arm
+# ======================================================================
+
+def _prepare_tnbc_response_gsea(data_tnbc: dict, *, arm: str) -> "pd.DataFrame | None":
+    """Run GSEA DiD (Responder vs Non-responder) within one TNBC treatment arm.
+
+    Subsets adata to *arm*, detects the response column, and calls
+    load_or_run_gsea_did with the response label as arm_treated/arm_control.
+    Results are cached via the standard GSEA cache path.
+    """
+    adata = data_tnbc.get("adata")
+    if adata is None:
+        return None
+
+    arm_col = "arm" if "arm" in adata.obs.columns else None
+    if arm_col is None or arm not in adata.obs[arm_col].values:
+        print(f"    GSEA R vs NR: arm '{arm}' not found in adata")
+        return None
+
+    adata_arm = adata[adata.obs[arm_col] == arm].copy()
+
+    resp_col = next(
+        (c for c in ("response", "response_harmonized")
+         if c in adata_arm.obs.columns),
+        None,
+    )
+    if resp_col is None:
+        print(f"    GSEA R vs NR ({arm}): no response column")
+        return None
+
+    resp_pos, resp_neg = _detect_response_labels(adata_arm.obs, resp_col)
+    if resp_pos is None or resp_neg is None:
+        print(f"    GSEA R vs NR ({arm}): cannot detect R/NR labels — "
+              f"found {list(adata_arm.obs[resp_col].dropna().unique())}")
+        return None
+
+    pid_col = ("participant_id" if "participant_id" in adata_arm.obs.columns
+               else "patient_id")
+    _tnbc_layer = "log1p_norm" if "log1p_norm" in adata_arm.layers else None
+
+    design = TrialDesign(
+        participant_col=pid_col,
+        visit_col="visit",
+        arm_col=resp_col,
+        arm_treated=str(resp_pos),
+        arm_control=str(resp_neg),
+    )
+
+    # Use "TNBC/{arm}_RvsNR" so per-library cache CSVs land under GSEA/TNBC/
+    safe_arm = arm.replace("+", "_").replace(" ", "_").replace("/", "_")
+    dataset_name = f"TNBC/{safe_arm}_RvsNR"
+
+    gsea_results = load_or_run_gsea_did(
+        adata_arm, design, ("Pre", "Post"), _tnbc_layer, dataset_name,
+    )
+
+    if gsea_results is not None and len(gsea_results) > 0:
+        term_col = next(
+            (c for c in gsea_results.columns if c.lower().strip() == "term"),
+            None,
+        )
+        if term_col is None:
+            term_col = next(
+                (c for c in gsea_results.columns if c.lower() in ("name", "pathway")),
+                gsea_results.columns[0],
+            )
+        n_before = len(gsea_results)
+        gsea_results = gsea_results[
+            gsea_results[term_col].apply(_is_immune_or_metabolic)
+        ].reset_index(drop=True)
+        print(f"    GSEA R vs NR ({arm}): immune/metabolic filter "
+              f"{len(gsea_results)}/{n_before} pathways retained")
+
+        # Save combined filtered CSV to GSEA/TNBC/
+        try:
+            _out_csv = GSEA_OUTPUT / "TNBC" / f"{safe_arm}_RvsNR_did_filtered.csv"
+            _out_csv.parent.mkdir(parents=True, exist_ok=True)
+            gsea_results.to_csv(_out_csv, index=False)
+            print(f"    Saved R vs NR GSEA ({arm}) → {_out_csv}")
+        except Exception as _exc:
+            print(f"    R vs NR GSEA CSV save failed ({arm}): {_exc}")
+
+    return gsea_results
+
+
+def _panel_tnbc_response_gsea_bars(ax, data_tnbc: dict, *, arm: str) -> None:
+    """GSEA enrichment bar chart — Responder vs Non-responder within *arm*.
+
+    Mirrors panel_B (``tnbc_gsea_bars``) exactly, but uses a response-
+    stratified GSEA instead of the treatment-arm DiD GSEA.
+    """
+    gsea_results = _prepare_tnbc_response_gsea(data_tnbc, arm=arm)
+
+    short_arm = (
+        "anti-PDL1+Chemo" if arm == _TNBC_TREATED_ARM else "Chemo"
+    )
+
+    if gsea_results is None or len(gsea_results) == 0:
+        ax.text(
+            0.5, 0.5,
+            f"GSEA results unavailable\n(R vs NR, {short_arm})",
+            transform=ax.transAxes, ha="center", va="center",
+            fontsize=10, color=COLORS["gray"],
+        )
+        ax.set_title(
+            f"Pathway Enrichment — R vs NR ({short_arm})",
+            fontsize=11, fontweight="bold",
+        )
+        ax.axis("off")
+        return
+
+    df = gsea_results.copy()
+    cols = _detect_gsea_columns(df)
+    nes_col, fdr_col, term_col = cols["nes"], cols["fdr"], cols["term"]
+
+    if nes_col is None:
+        ax.text(
+            0.5, 0.5, "NES column not found",
+            transform=ax.transAxes, ha="center", va="center",
+            fontsize=10, color=COLORS["gray"],
+        )
+        ax.axis("off")
+        return
+
+    df[nes_col] = pd.to_numeric(df[nes_col], errors="coerce")
+    if fdr_col is not None:
+        df[fdr_col] = pd.to_numeric(df[fdr_col], errors="coerce")
+    df = df.dropna(subset=[nes_col])
+
+    n_show = 15
+    df_pos = df[df[nes_col] > 0].nlargest(n_show // 2 + 1, nes_col)
+    df_neg = df[df[nes_col] < 0].nsmallest(n_show - len(df_pos), nes_col)
+    if len(df_pos) + len(df_neg) < n_show:
+        remainder = n_show - len(df_pos) - len(df_neg)
+        already = set(df_pos.index) | set(df_neg.index)
+        extra = (
+            df[~df.index.isin(already)]
+            .assign(_abs=df[nes_col].abs())
+            .nlargest(remainder, "_abs")
+        )
+        df_selected = pd.concat([df_pos, df_neg, extra.drop(columns="_abs")])
+    else:
+        df_selected = pd.concat([df_pos, df_neg])
+    df_selected = df_selected.drop_duplicates().sort_values(nes_col, ascending=True)
+
+    df_selected = df_selected.copy()
+    df_selected["pathway"] = df_selected[term_col].apply(_clean_pathway_name)
+    _seen: dict[str, int] = {}
+    new_labels = []
+    for _, row in df_selected.iterrows():
+        label = row["pathway"]
+        if label in _seen:
+            _seen[label] += 1
+            lib = str(row.get("library", ""))
+            label = f"{label} [{lib[:8]}]" if lib and lib != "averaged" else f"{label} ({_seen[label]})"
+        else:
+            _seen[label] = 1
+        new_labels.append(label)
+    df_selected["pathway"] = new_labels
+
+    clr_up_sig = COLORS["treated"]
+    clr_up_ns = COLORS["treated"] + "66"
+    clr_dn_sig = COLORS["control"]
+    clr_dn_ns = COLORS["control"] + "66"
+
+    def _is_sig(row):
+        return (fdr_col is not None
+                and pd.notna(row.get(fdr_col))
+                and row[fdr_col] < 0.25)
+
+    colors = []
+    for _, row in df_selected.iterrows():
+        sig = _is_sig(row)
+        colors.append(
+            (clr_up_sig if sig else clr_up_ns) if row[nes_col] > 0
+            else (clr_dn_sig if sig else clr_dn_ns)
+        )
+
+    y_pos = np.arange(len(df_selected))
+    ax.barh(y_pos, df_selected[nes_col].values, color=colors, alpha=0.9,
+            edgecolor="white", linewidth=0.5, height=0.7)
+    ax.axvline(0, color="black", lw=0.8)
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(df_selected["pathway"].values, fontsize=8)
+    ax.set_xlabel("Normalized Enrichment Score (NES)")
+    ax.set_title(
+        f"Pathway Enrichment — Responder vs Non-responder\n({short_arm} arm)",
+        fontsize=11, fontweight="bold",
+    )
+
+    has_up_sig = any(r[nes_col] > 0 and _is_sig(r)
+                     for _, r in df_selected.iterrows())
+    has_up_ns = any(r[nes_col] > 0 and not _is_sig(r)
+                    for _, r in df_selected.iterrows())
+    has_dn_sig = any(r[nes_col] < 0 and _is_sig(r)
+                     for _, r in df_selected.iterrows())
+    has_dn_ns = any(r[nes_col] < 0 and not _is_sig(r)
+                    for _, r in df_selected.iterrows())
+    legend_handles = []
+    if has_up_sig:
+        legend_handles.append(mpatches.Patch(
+            color=COLORS["treated"], alpha=0.9, label="Responder ↑ (FDR < 0.25)"))
+    if has_up_ns:
+        legend_handles.append(mpatches.Patch(
+            color=COLORS["treated"], alpha=0.4, label="Responder ↑ (n.s.)"))
+    if has_dn_sig:
+        legend_handles.append(mpatches.Patch(
+            color=COLORS["control"], alpha=0.9, label="Non-responder ↑ (FDR < 0.25)"))
+    if has_dn_ns:
+        legend_handles.append(mpatches.Patch(
+            color=COLORS["control"], alpha=0.4, label="Non-responder ↑ (n.s.)"))
+    if legend_handles:
+        ax.legend(handles=legend_handles, fontsize=9, loc="lower right",
+                  frameon=True, framealpha=0.9)
+    despine(ax)
+
+
+def _tnbc_response_gsea_treated(ax, data_tnbc: dict) -> None:
+    _panel_tnbc_response_gsea_bars(ax, data_tnbc, arm=_TNBC_TREATED_ARM)
+
+
+def _tnbc_response_gsea_control(ax, data_tnbc: dict) -> None:
+    _panel_tnbc_response_gsea_bars(ax, data_tnbc, arm=_TNBC_CONTROL_ARM)
+
+
+# ======================================================================
 # Composite figure
 
 
@@ -3662,8 +3900,10 @@ def _save_individual_panels(data_tnbc: dict, data5: dict) -> None:
         fig_p.tight_layout(pad=0.6)
         save_panel(fig_p, f"panel_{name}", FIGURE_NAME, MAIN_OUTPUT)
 
-    # Panels E1/E2/F1/F2 — response-stratified panels per treatment arm
+    # Panels C1/C2/E1/E2/F1/F2 — response-stratified panels per treatment arm
     response_panels = [
+        ("C1", _tnbc_response_gsea_treated,          data_tnbc, (9, 7)),
+        ("C2", _tnbc_response_gsea_control,          data_tnbc, (9, 7)),
         ("E1", _tnbc_response_celltype_hm_treated,  data_tnbc, (9, 6)),
         ("E2", _tnbc_response_celltype_hm_control,  data_tnbc, (9, 6)),
         ("F1", _tnbc_response_abundance_treated,    data_tnbc, (7, 5)),
@@ -3687,7 +3927,7 @@ def _save_individual_panels(data_tnbc: dict, data5: dict) -> None:
     fig_p.tight_layout(pad=0.6)
     save_panel(fig_p, "panel_N_cross_dataset_gsea", FIGURE_NAME, MAIN_OUTPUT)
 
-    print("    Individual panels saved (A–N, E1/E2/F1/F2)")
+    print("    Individual panels saved (A–N, C1/C2, E1/E2/F1/F2)")
 
 
 # ── Composite artboard ────────────────────────────────────────────────────
