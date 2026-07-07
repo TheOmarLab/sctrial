@@ -759,9 +759,9 @@ def _panel_e(ax, tnbc_data: dict) -> None:
 # ── Panel F: TNBC response- and arm-stratified boxplots ──────────────────
 
 def _panel_f(ax, tnbc_data: dict) -> None:
-    """4-group per gene: boxplot when n≥2, diamond marker when n=1.
+    """4-group per gene: boxplot for each non-empty group.
 
-    Groups: Chemo-R, Chemo-NR (n=1 → marker), anti-PDL1+Chemo-R, anti-PDL1+Chemo-NR.
+    Groups: Chemo-R, Chemo-NR, anti-PDL1+Chemo-R, anti-PDL1+Chemo-NR.
     """
     effects = tnbc_data["delta_df"]
     features = tnbc_data["hetero_feats"]
@@ -795,28 +795,18 @@ def _panel_f(ax, tnbc_data: dict) -> None:
     box_w = 0.16
     offsets = np.linspace(-(n_groups - 1) / 2, (n_groups - 1) / 2, n_groups) * box_w
 
-    # Separate data into box-eligible (n≥2) and single-sample (n=1)
     box_positions, box_data, box_colors = [], [], []
-    single_xs, single_ys, single_colors = [], [], []
 
     for feat_idx, feat in enumerate(top):
         feat_data = long[long["feature"] == feat]
         for grp_idx, grp in enumerate(group_order):
             vals = feat_data[feat_data["group"] == grp]["effect"].dropna().values
-            color = palette_map[grp]
-            x_pos = feat_idx + offsets[grp_idx]
             if len(vals) == 0:
                 continue
-            elif len(vals) == 1:
-                single_xs.append(x_pos)
-                single_ys.append(vals[0])
-                single_colors.append(color)
-            else:
-                box_positions.append(x_pos)
-                box_data.append(vals)
-                box_colors.append(color)
+            box_positions.append(feat_idx + offsets[grp_idx])
+            box_data.append(vals)
+            box_colors.append(palette_map[grp])
 
-    # Draw boxes
     if box_data:
         bp = ax.boxplot(
             box_data, positions=box_positions, widths=box_w * 0.85,
@@ -829,13 +819,6 @@ def _panel_f(ax, tnbc_data: dict) -> None:
             patch.set_facecolor(color)
             patch.set_alpha(0.85)
             patch.set_linewidth(0.6)
-
-    # Draw diamond markers for single-sample groups
-    if single_xs:
-        ax.scatter(
-            single_xs, single_ys, marker="D", s=12,
-            c=single_colors, edgecolors="white", linewidths=0.3, zorder=4,
-        )
 
     ax.axhline(0, color="black", lw=0.8, ls="--")
     ax.set_xticks(range(n_feats))
@@ -850,7 +833,8 @@ def _panel_f(ax, tnbc_data: dict) -> None:
         if np.isfinite(g):
             feat_data = long.loc[long["feature"] == feat, "effect"].dropna()
             ymax_feat = float(np.nanpercentile(feat_data, 90)) if not feat_data.empty else yhi
-            ax.text(feat_idx, ymax_feat + 0.12 * (yhi - ylo),
+            extra = 0.25 * (yhi - ylo) if feat == "NKG7" else 0.0
+            ax.text(feat_idx, ymax_feat + 0.12 * (yhi - ylo) + extra,
                     f"g={g:.2f}", ha="center", va="bottom", fontsize=6.5,
                     fontstyle="italic", color="grey")
     ax.set_ylim(ylo - 0.25 * (yhi - ylo), yhi + 0.25 * (yhi - ylo))
@@ -860,21 +844,10 @@ def _panel_f(ax, tnbc_data: dict) -> None:
         fontsize=10, fontweight="bold",
     )
 
-    # Legend: box patch for multi-sample groups, diamond for single-sample
-    grp_ns = {g: effects[effects["group"] == g].shape[0] for g in group_order}
-    legend_handles = []
-    for grp in group_order:
-        color = palette_map[grp]
-        if grp_ns[grp] <= 1:
-            legend_handles.append(
-                Line2D([0], [0], marker="D", color="w",
-                       markerfacecolor=color, markeredgecolor="none",
-                       markersize=4, label=grp)
-            )
-        else:
-            legend_handles.append(
-                plt.Rectangle((0, 0), 1, 1, fc=color, alpha=0.85, label=grp)
-            )
+    legend_handles = [
+        plt.Rectangle((0, 0), 1, 1, fc=palette_map[grp], alpha=0.85, label=grp)
+        for grp in group_order
+    ]
 
     ax.legend(handles=legend_handles, fontsize=7, frameon=True,
               loc="lower right", ncol=2)
