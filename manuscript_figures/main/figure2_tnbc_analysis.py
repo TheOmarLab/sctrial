@@ -321,11 +321,36 @@ def _panel_a(ax: plt.Axes, data: dict) -> None:
             edgecolor="white", linewidth=0.5,
         )
 
+    _has_responders = False
+    responder_map = pd.Series(dtype=str)
+    if "response" in adata.obs.columns:
+        responder_map = (
+            adata.obs
+            .groupby(DESIGN.participant_col, observed=True)["response"]
+            .first()
+        )
+        _has_responders = (responder_map == "R").any()
+
     ax.set_xticks(range(len(participants)))
     ax.set_xticklabels(
         [f"P{i + 1}" for i in range(len(participants))],
         rotation=90, ha="center", fontsize=7,
     )
+    ax.tick_params(axis="x", pad=10)
+
+    if _has_responders:
+        from matplotlib.transforms import blended_transform_factory
+        star_trans = blended_transform_factory(ax.transData, ax.transAxes)
+        responder_xs = [
+            pid_order[pid]
+            for pid in participants
+            if responder_map.get(pid) == "R"
+        ]
+        ax.scatter(
+            responder_xs, [-0.12] * len(responder_xs),
+            marker="*", s=30, color="black",
+            transform=star_trans, clip_on=False, zorder=5,
+        )
 
     ax.set_xlabel("Participant", fontsize=9)
     ax.set_ylabel("Number of cells", fontsize=9)
@@ -355,10 +380,15 @@ def _panel_a(ax: plt.Axes, data: dict) -> None:
                markerfacecolor=COL_GRAY, markersize=3,
                label="Post"),
     ]
+    if _has_responders:
+        handles.append(
+            Line2D([0], [0], marker="*", color="black", markersize=5,
+                   linestyle="none", label="Responder")
+        )
     ax.legend(
         handles=handles, fontsize=5,
         loc="upper center", bbox_to_anchor=(0.5, -0.28),
-        ncol=4, frameon=True, framealpha=0.9,
+        ncol=5 if _has_responders else 4, frameon=True, framealpha=0.9,
     )
     despine(ax)
 
