@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 def _permute_arms(adata, participant_col: str, arm_col: str, rng):
+    """Shuffle arm labels across participants (preserving within-participant structure)."""
     adata = adata.copy()
     pids = adata.obs[participant_col].unique()
     arms = adata.obs.groupby(participant_col)[arm_col].first()
@@ -29,6 +30,7 @@ def _permute_arms(adata, participant_col: str, arm_col: str, rng):
 
 
 def _permute_visits(adata, participant_col: str, visit_col: str, rng):
+    """Shuffle visit labels within each participant."""
     adata = adata.copy()
     for pid in adata.obs[participant_col].unique():
         mask = adata.obs[participant_col] == pid
@@ -53,54 +55,35 @@ def _run_permutation_iteration(args: tuple) -> list[dict]:
         participant_col,
         arm_col,
         visit_col,
-        treated_label,
-        control_label,
     ) = args
 
     from .orchestrator import _dispatch_method
 
     rng = np.random.default_rng(seed)
 
+    # Permute
     if design_type == "two_arm":
         adata_perm = _permute_arms(adata, participant_col, arm_col, rng)
     else:
         adata_perm = _permute_visits(adata, participant_col, visit_col, rng)
 
-    # FIX 3: build both pseudobulk_counts and pseudobulk_means so that
-    # _dispatch_method receives the correct data type per method.
-    # Previously only a single "pseudobulk" key existed (means), meaning
-    # edgeR/dreamlet/limma silently received means instead of counts.
+    # Build pseudobulk
     from sctrial.stats.pseudobulk import pseudobulk_expression
 
-    pb_means = pseudobulk_expression(
+    pb = pseudobulk_expression(
         adata_perm,
         gene_cols,
         groupby=[participant_col, visit_col, arm_col],
     )
-    pb_counts = (
-    adata_perm.obs[[participant_col, visit_col, arm_col]]
-    .join(pd.DataFrame(
-        adata_perm.layers["counts"][:, [adata_perm.var_names.get_loc(g) for g in gene_cols]].toarray(),
-        columns=gene_cols,
-        index=adata_perm.obs.index
-    ))
-    .groupby([participant_col, visit_col, arm_col])[gene_cols]
-    .sum()
-    .reset_index()
-    )
 
-    sim = {
-        "adata": adata_perm,
-        "pseudobulk_means": pb_means,
-        "pseudobulk_counts": pb_counts,
-    }
+    sim = {"adata": adata_perm, "pseudobulk": pb}
 
     rows = []
     for method in methods:
         try:
-            results = _dispatch_method(method, sim, gene_cols,
-                                   treated_label=treated_label,
-                                   control_label=control_label)
+            from .orchestrator import _dispatch_method
+
+            results = _dispatch_method(method, sim, gene_cols)
         except Exception as exc:
             logger.debug("Permutation %d, method %s failed: %s", perm_idx, method, exc)
             results = {g: {"pvalue": np.nan} for g in gene_cols}
@@ -131,10 +114,27 @@ def run_permutation_test(
     visit_col: str = "visit",
     output_path: str | Path | None = None,
     seed: int = 42,
-    treated_label: str = "Treated",
-    control_label: str = "Control",
 ) -> pd.DataFrame:
-    """Run participant-label permutation test on real data."""
+    """Run participant-label permutation test on real data.
+
+    Parameters
+    ----------
+    adata : AnnData
+        Real dataset.
+    gene_cols : list[str]
+        Genes to test.
+    design_type : {"two_arm", "single_arm"}
+    methods : list[str]
+        Methods to run. Default: all core methods.
+    n_permutations : int
+        Number of permutations.
+    n_jobs : int
+        Parallel workers.
+
+    Returns
+    -------
+    DataFrame with columns: permutation, method, gene, pvalue
+    """
     if methods is None:
         from .orchestrator import CORE_METHODS
 
@@ -151,6 +151,9 @@ def run_permutation_test(
         f"on {len(gene_cols)} genes ({n_jobs} workers)..."
     )
 
+    # NOTE: For multiprocessing with AnnData, we need to serialize carefully.
+    # For now, use sequential or thread-based parallelism.
+    # Full multiprocessing would require saving adata to disk and reloading.
     all_rows = []
     t0 = time.time()
 
@@ -165,8 +168,6 @@ def run_permutation_test(
             participant_col,
             arm_col,
             visit_col,
-            treated_label,
-            control_label,
         )
         rows = _run_permutation_iteration(args)
         all_rows.extend(rows)

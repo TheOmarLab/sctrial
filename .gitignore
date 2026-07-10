@@ -55,3 +55,4 @@ run_nb*.sh
 CLAUDE.md
 .claude/
 .mcp.json
+temp/

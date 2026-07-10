@@ -1,4 +1,14 @@
-"""Ablation study — progressive component addition."""
+"""Ablation study — progressive component addition.
+
+Tests what each component of sctrial contributes by running
+increasingly complete variants:
+
+1. Cell-level OLS (pseudoreplication baseline)
+2. Pseudobulk OLS (aggregation only)
+3. Pseudobulk + FE (fixed effects)
+4. Pseudobulk + FE + CRSE (cluster-robust SE)
+5. Full sctrial (FE + interaction + bootstrap)
+"""
 
 from __future__ import annotations
 
@@ -12,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 def _cell_level_ols(adata, gene_cols: list[str]) -> dict:
+    """Naive OLS on cell-level data (pseudoreplication baseline)."""
     import statsmodels.api as sm
 
     obs = adata.obs.copy()
@@ -41,6 +52,7 @@ def _cell_level_ols(adata, gene_cols: list[str]) -> dict:
 
 
 def _pseudobulk_ols(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
+    """OLS on pseudobulk without fixed effects."""
     import statsmodels.api as sm
 
     pb = pb.copy()
@@ -68,6 +80,7 @@ def _pseudobulk_ols(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
 
 
 def _pseudobulk_fe(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
+    """OLS on pseudobulk WITH participant fixed effects."""
     import statsmodels.api as sm
 
     pb = pb.copy()
@@ -85,6 +98,7 @@ def _pseudobulk_fe(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 fit = sm.OLS(y, X).fit()
+            # interaction is at index 3
             out[gene] = {
                 "beta": float(fit.params[3]),
                 "pvalue": float(fit.pvalues[3]),
@@ -97,6 +111,7 @@ def _pseudobulk_fe(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
 
 
 def _pseudobulk_fe_crse(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
+    """OLS on pseudobulk + FE + cluster-robust SE."""
     import statsmodels.api as sm
 
     pb = pb.copy()
@@ -130,12 +145,10 @@ def _pseudobulk_fe_crse(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
 
 ABLATION_VARIANTS = {
     "cell_ols": ("Cell-level OLS", _cell_level_ols, "adata"),
-    # FIX 3: ablation variants that need pseudobulk now explicitly request
-    # pseudobulk_means — the aggregation these OLS methods actually need.
     "pb_ols": ("Pseudobulk OLS", _pseudobulk_ols, "pseudobulk_means"),
     "pb_fe": ("Pseudobulk + FE", _pseudobulk_fe, "pseudobulk_means"),
     "pb_fe_crse": ("Pseudobulk + FE + CRSE", _pseudobulk_fe_crse, "pseudobulk_means"),
-    "sctrial_full": ("Full sctrial", None, "adata"),
+    "sctrial_full": ("Full sctrial", None, "adata"),  # uses sctrial runner
 }
 
 
@@ -149,24 +162,18 @@ def run_ablation(
     Parameters
     ----------
     sim : dict
-        Must have "adata", "pseudobulk_means", and "pseudobulk_counts" keys.
+        Must have "adata" and "pseudobulk_means" keys (from simulate_trial).
     gene_cols : list[str]
         Genes to test.
     variants : list[str]
         Which ablation variants to run. Default: all.
+
+    Returns
+    -------
+    dict : variant_name → {gene → {"beta", "pvalue", "ci_lo", "ci_hi"}}
     """
     if variants is None:
         variants = list(ABLATION_VARIANTS.keys())
-
-    # FIX 3 (cont): validate that sim has the keys ablation needs before
-    # iterating — gives a clear error message instead of a KeyError mid-loop.
-    required_keys = {"adata", "pseudobulk_means"}
-    missing = required_keys - sim.keys()
-    if missing:
-        raise KeyError(
-            f"sim dict is missing required keys: {missing}. "
-            "Make sure you pass the full dict returned by simulate_trial()."
-        )
 
     results = {}
     for var_name in variants:
