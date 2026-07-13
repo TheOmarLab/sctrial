@@ -52,7 +52,14 @@ from sctrial.benchmark.orchestrator import build_sensitivity_grid
 print('Sensitivity grid:', len(build_sensitivity_grid('two_arm')), 'scenarios')
 "
 
-# ── 3. R packages ─────────────────────────────────────────────
+# ── 3. Install R ─────────────────────────────────────────────
+echo ""
+echo ">>> Step 3: Installing R into the conda environment"
+conda install --name "$ENV_NAME" -c conda-forge r-base --yes
+# Confirm Rscript is now on PATH
+Rscript --version
+
+# ── 4. R packages ─────────────────────────────────────────────
 # Reference versions (sctrial_bench_R_packages_used.csv):
 #   Matrix    1.7-5
 #   edgeR     4.4.2
@@ -63,7 +70,7 @@ print('Sensitivity grid:', len(build_sensitivity_grid('two_arm')), 'scenarios')
 # Installing from source takes ~2h — run in a screen/tmux session.
 
 echo ""
-echo ">>> Step 3: Installing R packages (this takes ~2 hours)"
+echo ">>> Step 4: Installing R packages (this takes ~2 hours)"
 echo "    Tip: if interrupted, re-run this script — already-installed"
 echo "    packages are skipped."
 
@@ -118,7 +125,7 @@ rm -f "$R_SETUP_SCRIPT"
 
 # ── 4. Sanity check ───────────────────────────────────────────
 echo ""
-echo ">>> Step 4: Final verification"
+echo ">>> Step 5: Final verification"
 
 python -c "from sctrial.benchmark.simulator import SimulationConfig; print('Python benchmark: OK')"
 Rscript -e 'library(dreamlet); library(nebula); cat("R packages: OK\n")'
