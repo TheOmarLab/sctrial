@@ -10,14 +10,23 @@ Requires: BiocManager::install("dreamlet") in R.
 from __future__ import annotations
 
 import logging
-import subprocess
 import tempfile
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
+from . import _r_session
+
 logger = logging.getLogger(__name__)
+
+# Loaded once per worker process when the session is first created.
+_DREAMLET_INIT_R = """\
+suppressPackageStartupMessages({
+  library(dreamlet)
+  library(edgeR)
+})
+"""
 
 _R_SCRIPT_TWO_ARM = """\
 suppressPackageStartupMessages({{
@@ -132,13 +141,8 @@ def run(
         script_file = td / "run_dreamlet.R"
         script_file.write_text(script)
         try:
-            proc = subprocess.run(
-                ["Rscript", str(script_file)],
-                capture_output=True, text=True, timeout=1800,
-            )
-            if proc.returncode != 0:
-                logger.warning("dreamlet R error: %s", proc.stderr[-500:])
-                return {g: _fail_result("numerical") for g in gene_cols}
+            session = _r_session.get_session("dreamlet", _DREAMLET_INIT_R)
+            session.run(str(script_file), timeout=1800)
             res = pd.read_csv(output_csv, index_col=0)
         except Exception as exc:
             logger.warning("dreamlet failed: %s", exc)

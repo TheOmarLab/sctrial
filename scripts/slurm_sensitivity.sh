@@ -11,11 +11,10 @@
 
 # Activate environment
 source ~/.bashrc
-eval "$(micromamba shell hook --shell bash)"
-micromamba activate sctrial
+conda activate sctrial_benchmark
 
 # Set working directory
-cd /common/omarmlab/members/omar/projects/sctrial
+cd /PATH/TO/sctrial   # ← update to your HPC project path
 
 # Create output directory
 mkdir -p manuscript/benchmark/sensitivity

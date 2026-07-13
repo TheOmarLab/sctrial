@@ -10,7 +10,6 @@ Requires: install.packages("nebula") in R.
 from __future__ import annotations
 
 import logging
-import subprocess
 import tempfile
 from pathlib import Path
 
@@ -18,7 +17,17 @@ import numpy as np
 import pandas as pd
 from scipy import sparse
 
+from . import _r_session
+
 logger = logging.getLogger(__name__)
+
+# Loaded once per worker process when the session is first created.
+_NEBULA_INIT_R = """\
+suppressPackageStartupMessages({
+  library(nebula)
+  library(Matrix)
+})
+"""
 
 _R_SCRIPT_TWO_ARM = """\
 library(nebula)
@@ -155,13 +164,8 @@ def run(
         script_file = td / "run_nebula.R"
         script_file.write_text(script)
         try:
-            proc = subprocess.run(
-                ["Rscript", str(script_file)],
-                capture_output=True, text=True, timeout=2400,
-            )
-            if proc.returncode != 0:
-                logger.warning("NEBULA R error: %s", proc.stderr[-500:])
-                return {g: _fail_result("numerical") for g in gene_cols}
+            session = _r_session.get_session("nebula", _NEBULA_INIT_R)
+            session.run(str(script_file), timeout=2400)
             res = pd.read_csv(output_csv, index_col=0)
         except Exception as exc:
             logger.warning("NEBULA failed: %s", exc)
