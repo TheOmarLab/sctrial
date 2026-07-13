@@ -29,16 +29,20 @@ echo "============================================"
 echo ""
 echo ">>> Step 1: Creating conda environment '$ENV_NAME'"
 
-# Create from the reference yml but override the env name so it lands
-# in the default conda envs directory (ignores hardcoded prefix in yml).
-conda env create \
-    --name "$ENV_NAME" \
-    --file "$ENV_YML" \
-    --yes
+# If the env already exists (e.g. a previous interrupted run), update it
+# instead of recreating from scratch so already-downloaded packages are reused.
+if conda env list | grep -q "^$ENV_NAME "; then
+    echo "    Environment '$ENV_NAME' already exists — updating (resuming)."
+    conda env update --name "$ENV_NAME" --file "$ENV_YML" --prune --yes
+else
+    conda env create --name "$ENV_NAME" --file "$ENV_YML" --yes
+fi
 
-# Activate — conda activate requires the shell to be initialised first;
-# source activate works universally on HPC without extra shell hooks.
+# Activate — source activate works universally on HPC without extra shell hooks.
 source activate "$ENV_NAME"
+
+# Print the environment path so you know exactly where packages are installed.
+echo "    Env path: $CONDA_PREFIX"
 
 # ── 2. Install sctrial from source ───────────────────────────
 echo ""
@@ -55,9 +59,12 @@ print('Sensitivity grid:', len(build_sensitivity_grid('two_arm')), 'scenarios')
 # ── 3. Install R ─────────────────────────────────────────────
 echo ""
 echo ">>> Step 3: Installing R into the conda environment"
-conda install --name "$ENV_NAME" -c conda-forge r-base --yes
-# Confirm Rscript is now on PATH
-Rscript --version
+if command -v Rscript &>/dev/null; then
+    echo "    R already installed: $(Rscript --version 2>&1 | head -1)"
+else
+    conda install --name "$ENV_NAME" -c conda-forge r-base --yes
+    Rscript --version
+fi
 
 # ── 4. R packages ─────────────────────────────────────────────
 # Reference versions (sctrial_bench_R_packages_used.csv):
