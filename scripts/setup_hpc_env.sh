@@ -33,7 +33,7 @@ echo ">>> Step 1: Creating conda environment '$ENV_NAME'"
 # instead of recreating from scratch so already-downloaded packages are reused.
 if conda env list | grep -q "^$ENV_NAME "; then
     echo "    Environment '$ENV_NAME' already exists — updating (resuming)."
-    conda env update --name "$ENV_NAME" --file "$ENV_YML" --prune --yes
+    conda env update --name "$ENV_NAME" --file "$ENV_YML" --prune
 else
     conda env create --name "$ENV_NAME" --file "$ENV_YML" --yes
 fi
