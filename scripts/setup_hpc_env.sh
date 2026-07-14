@@ -51,6 +51,11 @@ source activate "$ENV_NAME"
 # Print the environment path so you know exactly where packages are installed.
 echo "    Env path: $CONDA_PREFIX"
 
+# conda may have installed its own numpy as a transitive dependency, leaving
+# two conflicting numpy installations (conda + pip). Force pip to own numpy
+# and pandas so they are in a single consistent state before anything imports them.
+pip install --force-reinstall numpy pandas
+
 # ── 2. Install sctrial from source ───────────────────────────
 echo ""
 echo ">>> Step 2: Installing sctrial from source (dev version)"
