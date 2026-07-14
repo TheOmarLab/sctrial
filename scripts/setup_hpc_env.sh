@@ -78,7 +78,7 @@ else
     # to manage — conda refuses to overwrite files it didn't install itself.
     R_LIB="$CONDA_PREFIX/lib/R/library"
     echo "    Removing R-managed copies that would conflict with conda..."
-    for pkg in Matrix Rcpp RcppArmadillo Rfast lme4 pbkrtest lmerTest nloptr XML curl data.table; do
+    for pkg in Matrix Rcpp RcppArmadillo Rfast digest lme4 pbkrtest lmerTest nloptr XML curl data.table; do
         rm -rf "$R_LIB/$pkg"
     done
 
@@ -88,7 +88,7 @@ else
     conda install --name "$ENV_NAME" -c conda-forge \
         r-base \
         r-rcpp r-rcpparmadillo \
-        r-rfast \
+        r-rfast r-digest \
         r-lme4 r-pbkrtest r-lmertest r-nloptr \
         r-xml r-curl r-data.table \
         --yes
@@ -112,35 +112,32 @@ echo "    packages are skipped."
 
 R_SETUP_SCRIPT="$(mktemp /tmp/sctrial_r_setup_XXXXXX.R)"
 cat > "$R_SETUP_SCRIPT" << 'REOF'
-# CRAN repo only — BiocManager manages its own Bioconductor repos internally.
-options(repos = c(CRAN = "https://cloud.r-project.org"))
-
-# Install BiocManager and pin to Bioc 3.20 (matches R 4.4).
+# Install BiocManager first.
 if (!requireNamespace("BiocManager", quietly = TRUE))
-  install.packages("BiocManager")
-BiocManager::install(version = "3.20", ask = FALSE)
+  install.packages("BiocManager", repos = "https://cloud.r-project.org")
 
-# CRAN packages — lme4/pbkrtest/lmerTest/nloptr installed via conda in Step 3;
-# listed here so any that are still missing get caught.
+# CRAN packages — pass repos directly so we don't set a global option that
+# would later interfere with BiocManager's own repository configuration.
 cran_pkgs <- c("Matrix", "lme4", "nloptr", "pbkrtest", "lmerTest", "nebula")
 for (pkg in cran_pkgs) {
   if (!requireNamespace(pkg, quietly = TRUE)) {
     cat("Installing (CRAN):", pkg, "\n"); flush.console()
-    install.packages(pkg)
+    install.packages(pkg, repos = "https://cloud.r-project.org")
   } else {
     cat("Already installed:", pkg, "\n")
   }
 }
 
-# Bioconductor packages — only install what is missing.
-# Omitting update=FALSE so BiocManager can install all transitive deps
-# (SparseArray, DelayedArray, SummarizedExperiment, etc.).
+# Bioconductor packages — do NOT set options(repos=...) before this block;
+# BiocManager must manage its own repos to resolve version constraints.
+# version="3.20" matches R 4.4; update=TRUE allows it to downgrade any
+# packages that were partially installed at a newer Bioc version.
 bioc_pkgs <- c("edgeR", "limma", "variancePartition", "dreamlet")
 bioc_missing <- bioc_pkgs[!sapply(bioc_pkgs, requireNamespace, quietly = TRUE)]
 if (length(bioc_missing) > 0) {
   cat("Installing Bioconductor packages:", paste(bioc_missing, collapse = ", "), "\n")
   flush.console()
-  BiocManager::install(bioc_missing, ask = FALSE, version = "3.20")
+  BiocManager::install(bioc_missing, ask = FALSE, version = "3.20", update = TRUE)
 } else {
   cat("All Bioconductor packages already installed.\n")
 }
