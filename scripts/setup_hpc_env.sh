@@ -78,7 +78,7 @@ else
     # to manage — conda refuses to overwrite files it didn't install itself.
     R_LIB="$CONDA_PREFIX/lib/R/library"
     echo "    Removing R-managed copies that would conflict with conda..."
-    for pkg in Matrix Rcpp RcppArmadillo Rfast digest lme4 pbkrtest lmerTest nloptr XML curl data.table; do
+    for pkg in Matrix Rcpp RcppArmadillo Rfast digest future future.apply lme4 pbkrtest lmerTest nloptr XML curl data.table; do
         rm -rf "$R_LIB/$pkg"
     done
 
@@ -88,7 +88,7 @@ else
     conda install --name "$ENV_NAME" -c conda-forge \
         r-base \
         r-rcpp r-rcpparmadillo \
-        r-rfast r-digest \
+        r-rfast r-digest r-future r-future.apply \
         r-lme4 r-pbkrtest r-lmertest r-nloptr \
         r-xml r-curl r-data.table \
         --yes
@@ -130,14 +130,19 @@ for (pkg in cran_pkgs) {
 
 # Bioconductor packages — do NOT set options(repos=...) before this block;
 # BiocManager must manage its own repos to resolve version constraints.
-# version="3.20" matches R 4.4; update=TRUE allows it to downgrade any
-# packages that were partially installed at a newer Bioc version.
+#
+# Step 1: sync/downgrade any packages installed at a newer Bioc version.
+# Calling install(version=) with no package list triggers the downgrade.
+cat("Syncing Bioconductor version to 3.20 (downgrades if needed)...\n")
+BiocManager::install(version = "3.20", ask = FALSE, update = TRUE)
+
+# Step 2: install only packages that are still missing after the sync.
 bioc_pkgs <- c("edgeR", "limma", "variancePartition", "dreamlet")
 bioc_missing <- bioc_pkgs[!sapply(bioc_pkgs, requireNamespace, quietly = TRUE)]
 if (length(bioc_missing) > 0) {
   cat("Installing Bioconductor packages:", paste(bioc_missing, collapse = ", "), "\n")
   flush.console()
-  BiocManager::install(bioc_missing, ask = FALSE, version = "3.20", update = TRUE)
+  BiocManager::install(bioc_missing, ask = FALSE)
 } else {
   cat("All Bioconductor packages already installed.\n")
 }
