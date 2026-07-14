@@ -131,18 +131,19 @@ for (pkg in cran_pkgs) {
 # Bioconductor packages — do NOT set options(repos=...) before this block;
 # BiocManager must manage its own repos to resolve version constraints.
 #
-# Step 1: sync/downgrade any packages installed at a newer Bioc version.
-# Calling install(version=) with no package list triggers the downgrade.
-cat("Syncing Bioconductor version to 3.20 (downgrades if needed)...\n")
-BiocManager::install(version = "3.20", ask = FALSE, update = TRUE)
+# Step 1: force-downgrade any packages installed at a newer Bioc version.
+# force=TRUE is required when installed versions are >= what Bioc 3.20 wants.
+cat("Syncing Bioconductor version to 3.20 (force-downgrade if needed)...\n")
+BiocManager::install(version = "3.20", ask = FALSE, update = TRUE, force = TRUE)
 
-# Step 2: install only packages that are still missing after the sync.
+# Step 2: install only packages still missing; version= must be explicit here
+# too — without it BiocManager re-detects and defaults back to 3.23.
 bioc_pkgs <- c("edgeR", "limma", "variancePartition", "dreamlet")
 bioc_missing <- bioc_pkgs[!sapply(bioc_pkgs, requireNamespace, quietly = TRUE)]
 if (length(bioc_missing) > 0) {
   cat("Installing Bioconductor packages:", paste(bioc_missing, collapse = ", "), "\n")
   flush.console()
-  BiocManager::install(bioc_missing, ask = FALSE)
+  BiocManager::install(bioc_missing, ask = FALSE, version = "3.20")
 } else {
   cat("All Bioconductor packages already installed.\n")
 }
