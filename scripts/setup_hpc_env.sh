@@ -103,6 +103,7 @@ conda clean --packages --yes -q 2>/dev/null || true
 echo "    Installing core R / Bioconductor packages..."
 conda install --name "$ENV_NAME" \
     -c bioconda -c conda-forge \
+    jq \
     r-base \
     r-rcpp r-rcpparmadillo \
     r-rfast r-digest r-future r-future.apply \
