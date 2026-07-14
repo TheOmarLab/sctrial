@@ -6,9 +6,10 @@
 #   bash scripts/setup_hpc_env.sh
 #
 # What this does:
-#   1. Creates the conda env "sctrial" from the reference yml
+#   1. Creates the conda env "sctrial_benchmark" from the reference yml
 #   2. Installs sctrial from source (dev version)
-#   3. Installs all required R packages
+#   3. Installs R + all R/Bioconductor packages via conda (no compilation)
+#   4. R-only fallback for any package conda could not provide
 # ============================================================
 
 set -euo pipefail
@@ -29,11 +30,8 @@ echo "============================================"
 echo ""
 echo ">>> Step 1: Creating conda environment '$ENV_NAME'"
 
-# If the env already exists (e.g. a previous interrupted run), update it
-# instead of recreating from scratch so already-downloaded packages are reused.
 # Strip the sctrial line from the yml — we install it from source in Step 2,
-# so installing the PyPI version here only causes an uninstall/reinstall cycle
-# that can corrupt numpy.
+# so installing the PyPI version here only causes an uninstall/reinstall cycle.
 _CLEAN_YML="$(mktemp /tmp/sctrial_env_XXXXXX.yml)"
 grep -v "sctrial==" "$ENV_YML" > "$_CLEAN_YML"
 
@@ -47,14 +45,7 @@ rm -f "$_CLEAN_YML"
 
 # Activate — source activate works universally on HPC without extra shell hooks.
 source activate "$ENV_NAME"
-
-# Print the environment path so you know exactly where packages are installed.
 echo "    Env path: $CONDA_PREFIX"
-
-# conda may have installed its own numpy as a transitive dependency, leaving
-# two conflicting numpy installations (conda + pip). Force pip to own numpy
-# and pandas so they are in a single consistent state before anything imports them.
-pip install --force-reinstall numpy pandas
 
 # ── 2. Install sctrial from source ───────────────────────────
 echo ""
@@ -68,88 +59,127 @@ from sctrial.benchmark.orchestrator import build_sensitivity_grid
 print('Sensitivity grid:', len(build_sensitivity_grid('two_arm')), 'scenarios')
 "
 
-# ── 3. Install R and system-level R packages via conda ────────
+# ── 3. R packages via conda (bioconda + conda-forge) ─────────
+# ALL packages with compiled C/C++ code must come from conda so their binaries
+# match the conda R ABI exactly. Compiling from CRAN / BiocManager against a
+# conda R produces "undefined symbol" linker errors at load time. Affected
+# packages: RSQLite, reshape2, XVector, Biostrings, png, RCurl, and their
+# entire downstream dependency chain (GenomicRanges → SummarizedExperiment →
+# SingleCellExperiment → dreamlet). We use bioconda for Bioconductor packages —
+# pre-built binaries, no system headers needed.
 echo ""
-echo ">>> Step 3: Installing R into the conda environment"
-if command -v Rscript &>/dev/null; then
-    echo "    R already installed: $(Rscript --version 2>&1 | head -1)"
-else
-    # Remove any R-installed (non-conda) copies of packages conda is about
-    # to manage — conda refuses to overwrite files it didn't install itself.
-    R_LIB="$CONDA_PREFIX/lib/R/library"
-    echo "    Removing R-managed copies that would conflict with conda..."
-    for pkg in Matrix Rcpp RcppArmadillo Rfast digest future future.apply lme4 pbkrtest lmerTest nloptr XML curl data.table; do
-        rm -rf "$R_LIB/$pkg"
-    done
+echo ">>> Step 3: Installing R and Bioconductor packages via conda"
+echo "    Channels: bioconda + conda-forge (no compilation needed)"
 
-    # Install R and all packages that require compiled C/C++ code via conda
-    # so their binaries match the conda R ABI exactly. Installing these from
-    # CRAN source against a conda R causes undefined-symbol linker errors.
-    conda install --name "$ENV_NAME" -c conda-forge \
-        r-base \
-        r-rcpp r-rcpparmadillo \
-        r-rfast r-digest r-future r-future.apply \
-        r-lme4 r-pbkrtest r-lmertest r-nloptr \
-        r-xml r-curl r-data.table \
-        --yes
-    Rscript --version
+R_LIB="$CONDA_PREFIX/lib/R/library"
+
+# 3a. Remove any R-installed (non-conda) copies that would block conda.
+#     conda refuses to install a package whose files already exist on disk
+#     from another package manager. Safe to run on every re-run — conda
+#     reinstalls its managed copies immediately after.
+echo "    Clearing R-managed package copies that would cause ClobberError..."
+for pkg in \
+    Matrix Rcpp RcppArmadillo Rfast digest future future.apply \
+    lme4 pbkrtest lmerTest nloptr XML curl data.table \
+    RSQLite reshape2 RCurl png \
+    BiocGenerics S4Vectors IRanges XVector Biostrings GenomicRanges \
+    SparseArray DelayedArray SummarizedExperiment SingleCellExperiment \
+    BiocParallel DelayedMatrixStats beachmat BiocFileCache \
+    edgeR limma variancePartition dreamlet nebula; do
+    rm -rf "$R_LIB/$pkg"
+done
+
+# 3b. Remove pip's numpy so conda can install its own without a ClobberError.
+#     The conda solver pulls in numpy as a transitive dep even when installing
+#     R packages, and collides with pip's untracked files. Reinstalled at end.
+echo "    Temporarily removing pip numpy to avoid ClobberError during conda solve..."
+pip uninstall -y numpy 2>/dev/null || true
+
+# 3c. Clear potentially corrupt package cache to avoid SafetyError for r-base
+#     (reported when a prior download was interrupted mid-write).
+conda clean --packages --yes -q 2>/dev/null || true
+
+# 3d. Core install: packages definitely available on bioconda / conda-forge.
+echo "    Installing core R / Bioconductor packages..."
+conda install --name "$ENV_NAME" \
+    -c bioconda -c conda-forge \
+    r-base \
+    r-rcpp r-rcpparmadillo \
+    r-rfast r-digest r-future r-future.apply \
+    r-lme4 r-pbkrtest r-lmertest r-nloptr \
+    r-xml r-curl r-rcurl r-data.table \
+    r-rsqlite r-reshape2 r-png \
+    bioconductor-biocgenerics \
+    bioconductor-s4vectors \
+    bioconductor-iranges \
+    bioconductor-xvector \
+    bioconductor-genomicranges \
+    bioconductor-sparsearray \
+    bioconductor-delayedarray \
+    bioconductor-summarizedexperiment \
+    bioconductor-singlecellexperiment \
+    bioconductor-biocparallel \
+    bioconductor-delayedmatrixstats \
+    bioconductor-beachmat \
+    bioconductor-edger \
+    bioconductor-limma \
+    bioconductor-variancepartition \
+    --yes
+
+# 3e. Optional: dreamlet and nebula via conda. Non-fatal if the version is not
+#     yet in the channel — Step 4 installs them via R as a fallback.
+echo "    Attempting dreamlet and nebula via conda (non-fatal if unavailable)..."
+if conda install --name "$ENV_NAME" \
+        -c bioconda -c conda-forge \
+        bioconductor-dreamlet r-nebula \
+        --yes 2>&1; then
+    echo "    dreamlet and nebula installed via conda."
+else
+    echo "    NOTE: not found in conda channels — Step 4 will use R fallback."
 fi
 
-# ── 4. R packages ─────────────────────────────────────────────
-# Reference versions (sctrial_bench_R_packages_used.csv):
-#   Matrix    1.7-5
-#   edgeR     4.4.2
-#   limma     3.62.2
-#   dreamlet  1.4.1   (from Bioconductor)
-#   nebula    1.5.6   (from CRAN)
-#
-# Installing from source takes ~2h — run in a screen/tmux session.
+echo "    R version: $(Rscript --version 2>&1 | head -1)"
 
+# ── 4. R fallback — install any packages conda missed ─────────
+# Typically a no-op when conda installed everything above.
+# Only runs BiocManager / CRAN for packages still absent after Step 3.
 echo ""
-echo ">>> Step 4: Installing R packages (this takes ~2 hours)"
-echo "    Tip: if interrupted, re-run this script — already-installed"
-echo "    packages are skipped."
+echo ">>> Step 4: R package verification and fallback install"
 
 R_SETUP_SCRIPT="$(mktemp /tmp/sctrial_r_setup_XXXXXX.R)"
 cat > "$R_SETUP_SCRIPT" << 'REOF'
-# Install BiocManager first.
-if (!requireNamespace("BiocManager", quietly = TRUE))
-  install.packages("BiocManager", repos = "https://cloud.r-project.org")
+pkgs_all <- c("nebula", "edgeR", "limma", "variancePartition", "dreamlet")
+missing  <- pkgs_all[!sapply(pkgs_all, requireNamespace, quietly = TRUE)]
 
-# CRAN packages — pass repos directly so we don't set a global option that
-# would later interfere with BiocManager's own repository configuration.
-cran_pkgs <- c("Matrix", "lme4", "nloptr", "pbkrtest", "lmerTest", "nebula")
-for (pkg in cran_pkgs) {
-  if (!requireNamespace(pkg, quietly = TRUE)) {
-    cat("Installing (CRAN):", pkg, "\n"); flush.console()
-    install.packages(pkg, repos = "https://cloud.r-project.org")
-  } else {
-    cat("Already installed:", pkg, "\n")
-  }
-}
-
-# Bioconductor packages — do NOT set options(repos=...) before this block;
-# BiocManager must manage its own repos to resolve version constraints.
-#
-# Step 1: force-downgrade any packages installed at a newer Bioc version.
-# force=TRUE is required when installed versions are >= what Bioc 3.20 wants.
-cat("Syncing Bioconductor version to 3.20 (force-downgrade if needed)...\n")
-BiocManager::install(version = "3.20", ask = FALSE, update = TRUE, force = TRUE)
-
-# Step 2: install only packages still missing; version= must be explicit here
-# too — without it BiocManager re-detects and defaults back to 3.23.
-bioc_pkgs <- c("edgeR", "limma", "variancePartition", "dreamlet")
-bioc_missing <- bioc_pkgs[!sapply(bioc_pkgs, requireNamespace, quietly = TRUE)]
-if (length(bioc_missing) > 0) {
-  cat("Installing Bioconductor packages:", paste(bioc_missing, collapse = ", "), "\n")
-  flush.console()
-  BiocManager::install(bioc_missing, ask = FALSE, version = "3.20")
+if (length(missing) == 0) {
+  cat("All packages already installed via conda — nothing to do.\n")
 } else {
-  cat("All Bioconductor packages already installed.\n")
+  cat("Packages missing from conda install:",
+      paste(missing, collapse = ", "), "\n")
+  cat("Installing via BiocManager / CRAN fallback...\n")
+
+  if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager", repos = "https://cloud.r-project.org")
+
+  # Sync to Bioc 3.20 (required for R 4.4). force=TRUE handles the case where
+  # a CRAN-installed BiocManager defaulted to a newer Bioc version.
+  BiocManager::install(version = "3.20", ask = FALSE, update = FALSE, force = TRUE)
+
+  bioc_pkgs <- c("edgeR", "limma", "variancePartition", "dreamlet")
+  cran_pkgs <- c("nebula")
+
+  bioc_missing <- intersect(missing, bioc_pkgs)
+  cran_missing <- intersect(missing, cran_pkgs)
+
+  if (length(bioc_missing) > 0)
+    BiocManager::install(bioc_missing, ask = FALSE, version = "3.20")
+  for (pkg in cran_missing)
+    install.packages(pkg, repos = "https://cloud.r-project.org")
 }
 
 # Verify all are loadable
-for (p in c("Matrix", "nebula", "edgeR", "limma", "dreamlet")) {
+cat("\nVerifying R packages:\n")
+for (p in c("nebula", "edgeR", "limma", "dreamlet")) {
   suppressPackageStartupMessages(library(p, character.only = TRUE))
   cat("OK:", p, as.character(packageVersion(p)), "\n")
 }
@@ -158,10 +188,16 @@ REOF
 Rscript "$R_SETUP_SCRIPT"
 rm -f "$R_SETUP_SCRIPT"
 
-# ── 4. Sanity check ───────────────────────────────────────────
+# ── 5. Restore pip numpy / final sanity check ─────────────────
 echo ""
 echo ">>> Step 5: Final verification"
 
+# Reinstall the exact pip numpy/pandas — conda may have installed its own
+# versions during Step 3, which can shadow the versions the Python stack
+# was tested against.
+pip install --force-reinstall "numpy==2.4.6" "pandas==3.0.3"
+
+python -c "import numpy; print('numpy:', numpy.__version__)"
 python -c "from sctrial.benchmark.simulator import SimulationConfig; print('Python benchmark: OK')"
 Rscript -e 'library(dreamlet); library(nebula); cat("R packages: OK\n")'
 python -c "
