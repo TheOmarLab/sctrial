@@ -31,12 +31,19 @@ echo ">>> Step 1: Creating conda environment '$ENV_NAME'"
 
 # If the env already exists (e.g. a previous interrupted run), update it
 # instead of recreating from scratch so already-downloaded packages are reused.
+# Strip the sctrial line from the yml — we install it from source in Step 2,
+# so installing the PyPI version here only causes an uninstall/reinstall cycle
+# that can corrupt numpy.
+_CLEAN_YML="$(mktemp /tmp/sctrial_env_XXXXXX.yml)"
+grep -v "sctrial==" "$ENV_YML" > "$_CLEAN_YML"
+
 if conda env list | grep -q "^$ENV_NAME "; then
     echo "    Environment '$ENV_NAME' already exists — updating (resuming)."
-    conda env update --name "$ENV_NAME" --file "$ENV_YML" --prune
+    conda env update --name "$ENV_NAME" --file "$_CLEAN_YML" --prune
 else
-    conda env create --name "$ENV_NAME" --file "$ENV_YML" --yes
+    conda env create --name "$ENV_NAME" --file "$_CLEAN_YML" --yes
 fi
+rm -f "$_CLEAN_YML"
 
 # Activate — source activate works universally on HPC without extra shell hooks.
 source activate "$ENV_NAME"
