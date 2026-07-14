@@ -62,10 +62,15 @@ echo ">>> Step 3: Installing R into the conda environment"
 if command -v Rscript &>/dev/null; then
     echo "    R already installed: $(Rscript --version 2>&1 | head -1)"
 else
-    # r-xml bundles libxml2 so the XML R package can compile cleanly;
-    # r-curl and r-data.table are also easier to get right via conda.
+    # Install R and all packages that require compiled C/C++ code via conda
+    # so their binaries match the conda R ABI exactly. Installing these from
+    # CRAN source against a conda R causes undefined-symbol linker errors.
     conda install --name "$ENV_NAME" -c conda-forge \
-        r-base r-xml r-curl r-data.table --yes
+        r-base \
+        r-rcpp r-rcpparmadillo \
+        r-lme4 r-pbkrtest r-lmertest r-nloptr \
+        r-xml r-curl r-data.table \
+        --yes
     Rscript --version
 fi
 
@@ -89,12 +94,13 @@ cat > "$R_SETUP_SCRIPT" << 'REOF'
 # CRAN repo only — BiocManager manages its own Bioconductor repos internally.
 options(repos = c(CRAN = "https://cloud.r-project.org"))
 
-# Install BiocManager first so it can resolve all Bioconductor dependencies.
+# Install BiocManager and pin to Bioc 3.20 (matches R 4.4).
 if (!requireNamespace("BiocManager", quietly = TRUE))
   install.packages("BiocManager")
+BiocManager::install(version = "3.20", ask = FALSE)
 
-# CRAN packages (XML and data.table already installed via conda, listed here
-# for completeness — install.packages() is a no-op if already present).
+# CRAN packages — lme4/pbkrtest/lmerTest/nloptr installed via conda in Step 3;
+# listed here so any that are still missing get caught.
 cran_pkgs <- c("Matrix", "lme4", "nloptr", "pbkrtest", "lmerTest", "nebula")
 for (pkg in cran_pkgs) {
   if (!requireNamespace(pkg, quietly = TRUE)) {
@@ -106,8 +112,8 @@ for (pkg in cran_pkgs) {
 }
 
 # Bioconductor packages — only install what is missing.
-# We do NOT pass update=FALSE so BiocManager can freely install all
-# transitive deps (SparseArray, DelayedArray, etc.) for missing packages.
+# Omitting update=FALSE so BiocManager can install all transitive deps
+# (SparseArray, DelayedArray, SummarizedExperiment, etc.).
 bioc_pkgs <- c("edgeR", "limma", "variancePartition", "dreamlet")
 bioc_missing <- bioc_pkgs[!sapply(bioc_pkgs, requireNamespace, quietly = TRUE)]
 if (length(bioc_missing) > 0) {
