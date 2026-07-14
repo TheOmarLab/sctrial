@@ -56,13 +56,16 @@ from sctrial.benchmark.orchestrator import build_sensitivity_grid
 print('Sensitivity grid:', len(build_sensitivity_grid('two_arm')), 'scenarios')
 "
 
-# ── 3. Install R ─────────────────────────────────────────────
+# ── 3. Install R and system-level R packages via conda ────────
 echo ""
 echo ">>> Step 3: Installing R into the conda environment"
 if command -v Rscript &>/dev/null; then
     echo "    R already installed: $(Rscript --version 2>&1 | head -1)"
 else
-    conda install --name "$ENV_NAME" -c conda-forge r-base --yes
+    # r-xml bundles libxml2 so the XML R package can compile cleanly;
+    # r-curl and r-data.table are also easier to get right via conda.
+    conda install --name "$ENV_NAME" -c conda-forge \
+        r-base r-xml r-curl r-data.table --yes
     Rscript --version
 fi
 
@@ -83,47 +86,42 @@ echo "    packages are skipped."
 
 R_SETUP_SCRIPT="$(mktemp /tmp/sctrial_r_setup_XXXXXX.R)"
 cat > "$R_SETUP_SCRIPT" << 'REOF'
-options(repos = c(
-  CRAN    = "https://cloud.r-project.org",
-  BioCsoft = "https://bioconductor.org/packages/3.20/bioc",
-  BioCann  = "https://bioconductor.org/packages/3.20/data/annotation"
-))
+# CRAN repo only — BiocManager manages its own Bioconductor repos internally.
+options(repos = c(CRAN = "https://cloud.r-project.org"))
 
-install_if_missing <- function(pkg, bioc = FALSE) {
+# Install BiocManager first so it can resolve all Bioconductor dependencies.
+if (!requireNamespace("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+
+# CRAN packages (XML and data.table already installed via conda, listed here
+# for completeness — install.packages() is a no-op if already present).
+cran_pkgs <- c("Matrix", "lme4", "nloptr", "pbkrtest", "lmerTest", "nebula")
+for (pkg in cran_pkgs) {
   if (!requireNamespace(pkg, quietly = TRUE)) {
-    cat("Installing:", pkg, "\n"); flush.console()
-    if (bioc) {
-      if (!requireNamespace("BiocManager", quietly = TRUE))
-        install.packages("BiocManager")
-      BiocManager::install(pkg, ask = FALSE, update = FALSE)
-    } else {
-      install.packages(pkg)
-    }
+    cat("Installing (CRAN):", pkg, "\n"); flush.console()
+    install.packages(pkg)
   } else {
     cat("Already installed:", pkg, "\n")
   }
 }
 
-# CRAN
-install_if_missing("Matrix")
-install_if_missing("lme4")
-install_if_missing("nloptr")
-install_if_missing("pbkrtest")
-install_if_missing("lmerTest")
-install_if_missing("nebula")
-
-# Bioconductor
-install_if_missing("BiocManager")
-install_if_missing("edgeR",             bioc = TRUE)
-install_if_missing("limma",             bioc = TRUE)
-install_if_missing("variancePartition", bioc = TRUE)
-install_if_missing("dreamlet",          bioc = TRUE)
+# Bioconductor packages — only install what is missing.
+# We do NOT pass update=FALSE so BiocManager can freely install all
+# transitive deps (SparseArray, DelayedArray, etc.) for missing packages.
+bioc_pkgs <- c("edgeR", "limma", "variancePartition", "dreamlet")
+bioc_missing <- bioc_pkgs[!sapply(bioc_pkgs, requireNamespace, quietly = TRUE)]
+if (length(bioc_missing) > 0) {
+  cat("Installing Bioconductor packages:", paste(bioc_missing, collapse = ", "), "\n")
+  flush.console()
+  BiocManager::install(bioc_missing, ask = FALSE)
+} else {
+  cat("All Bioconductor packages already installed.\n")
+}
 
 # Verify all are loadable
-pkgs <- c("Matrix", "nebula", "edgeR", "limma", "dreamlet")
-for (p in pkgs) {
+for (p in c("Matrix", "nebula", "edgeR", "limma", "dreamlet")) {
   suppressPackageStartupMessages(library(p, character.only = TRUE))
-  cat("OK:", p, packageVersion(p), "\n")
+  cat("OK:", p, as.character(packageVersion(p)), "\n")
 }
 REOF
 
