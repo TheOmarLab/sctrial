@@ -9,7 +9,14 @@
 #SBATCH --output=sensitivity_%j.out
 #SBATCH --error=sensitivity_%j.err
 
-# Activate environment
+# Load R modules (adjust names to match your cluster)
+module load gcc/11.2.0
+module load openblas/dynamic/0.3.18
+module load gsl/2.7.1
+module load R/4.4.2
+export R_LIBS_USER="$HOME/R/library"
+
+# Activate Python environment
 source ~/.bashrc
 conda activate sctrial_benchmark
 
