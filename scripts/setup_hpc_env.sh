@@ -78,7 +78,7 @@ else
     # to manage — conda refuses to overwrite files it didn't install itself.
     R_LIB="$CONDA_PREFIX/lib/R/library"
     echo "    Removing R-managed copies that would conflict with conda..."
-    for pkg in Matrix Rcpp RcppArmadillo lme4 pbkrtest lmerTest nloptr XML curl data.table; do
+    for pkg in Matrix Rcpp RcppArmadillo Rfast lme4 pbkrtest lmerTest nloptr XML curl data.table; do
         rm -rf "$R_LIB/$pkg"
     done
 
@@ -88,6 +88,7 @@ else
     conda install --name "$ENV_NAME" -c conda-forge \
         r-base \
         r-rcpp r-rcpparmadillo \
+        r-rfast \
         r-lme4 r-pbkrtest r-lmertest r-nloptr \
         r-xml r-curl r-data.table \
         --yes
@@ -139,7 +140,7 @@ bioc_missing <- bioc_pkgs[!sapply(bioc_pkgs, requireNamespace, quietly = TRUE)]
 if (length(bioc_missing) > 0) {
   cat("Installing Bioconductor packages:", paste(bioc_missing, collapse = ", "), "\n")
   flush.console()
-  BiocManager::install(bioc_missing, ask = FALSE)
+  BiocManager::install(bioc_missing, ask = FALSE, version = "3.20")
 } else {
   cat("All Bioconductor packages already installed.\n")
 }
