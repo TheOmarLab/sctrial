@@ -51,7 +51,7 @@ echo "    Env path: $CONDA_PREFIX"
 # ── 2. Install sctrial from source ───────────────────────────
 echo ""
 echo ">>> Step 2: Installing sctrial from source (dev version)"
-pip install -e "$REPO_ROOT[plots,gsea]" --no-deps
+pip install -e "$REPO_ROOT[plots,gsea]"
 
 python -c "import sctrial; print('sctrial version:', sctrial.__version__)"
 python -c "
