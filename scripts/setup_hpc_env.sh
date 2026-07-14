@@ -62,6 +62,14 @@ echo ">>> Step 3: Installing R into the conda environment"
 if command -v Rscript &>/dev/null; then
     echo "    R already installed: $(Rscript --version 2>&1 | head -1)"
 else
+    # Remove any R-installed (non-conda) copies of packages conda is about
+    # to manage — conda refuses to overwrite files it didn't install itself.
+    R_LIB="$CONDA_PREFIX/lib/R/library"
+    echo "    Removing R-managed copies that would conflict with conda..."
+    for pkg in Matrix Rcpp RcppArmadillo lme4 pbkrtest lmerTest nloptr XML curl data.table; do
+        rm -rf "$R_LIB/$pkg"
+    done
+
     # Install R and all packages that require compiled C/C++ code via conda
     # so their binaries match the conda R ABI exactly. Installing these from
     # CRAN source against a conda R causes undefined-symbol linker errors.
