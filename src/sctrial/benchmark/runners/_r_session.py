@@ -6,6 +6,19 @@ subsequent calls only pay for file I/O and actual computation.
 
 Each spawn-based multiprocessing worker gets its own session dict, so
 there is no shared state across workers and no fork-corruption risk.
+
+Protocol
+--------
+1. Python spawns ``Rscript --vanilla bootstrap.R``.
+   bootstrap.R embeds the caller-supplied init code (library loading etc.)
+   at the top.  After init, R prints ``READY\\n`` to stdout and enters a
+   read-eval loop that waits for commands on stdin.
+2. For each analysis call, Python writes an absolute script path + ``\\n``
+   to R's stdin.  R sources the script and prints ``DONE\\n`` on finish.
+3. To shut down, Python sends ``QUIT\\n``; R exits cleanly.
+
+Stdin is **never** used during the init phase — libraries load as plain R
+script execution, which is reliable across non-interactive / SLURM contexts.
 """
 
 from __future__ import annotations
@@ -16,44 +29,43 @@ import subprocess
 import tempfile
 import threading
 from pathlib import Path
+from string import Template
 
 logger = logging.getLogger(__name__)
 
-# Bootstrap R: starts a read-eval loop that sources scripts sent via stdin
-# and signals completion with "DONE\n" on stdout.
-_BOOTSTRAP_R = """\
-con <- stdin()
+# $init_r is substituted with the caller's library-loading code.
+_BOOTSTRAP_TEMPLATE = Template("""\
+$init_r
+cat("READY\\n")
+flush(stdout())
+
+.con <- file("stdin", open = "r")
 repeat {
-  script_path <- readLines(con, n=1L)
-  if (!length(script_path) || trimws(script_path) == "QUIT") break
+  .path <- readLines(.con, n = 1L)
+  if (!length(.path) || trimws(.path) == "QUIT") break
   tryCatch(
-    source(trimws(script_path), local=FALSE),
+    source(trimws(.path), local = FALSE),
     error = function(e) message("R ERROR: ", conditionMessage(e))
   )
   cat("DONE\\n")
   flush(stdout())
 }
-"""
+close(.con)
+""")
 
 # Per-process session registry: key -> _RSession
 _sessions: dict[str, _RSession] = {}
 
 
 class _RSession:
-    """A long-lived Rscript subprocess with a file-based command protocol.
+    """A long-lived Rscript subprocess with a file-based command protocol."""
 
-    Protocol:
-      Python → R stdin : absolute path of an .R script to source, followed by newline
-      R → Python stdout: "DONE\\n" after the script finishes
-      Python → R stdin : "QUIT\\n" to shut down
-    """
-
-    def __init__(self, init_r: str | None = None) -> None:
+    def __init__(self, init_r: str = "") -> None:
         self._tmpdir = tempfile.TemporaryDirectory()
         td = Path(self._tmpdir.name)
 
         bootstrap = td / "bootstrap.R"
-        bootstrap.write_text(_BOOTSTRAP_R)
+        bootstrap.write_text(_BOOTSTRAP_TEMPLATE.substitute(init_r=init_r))
 
         self._proc = subprocess.Popen(
             ["Rscript", "--vanilla", str(bootstrap)],
@@ -62,34 +74,65 @@ class _RSession:
             stderr=subprocess.PIPE,
         )
 
-        # Drain stderr in a background thread so the pipe never blocks.
+        # Drain stderr in background so the pipe never blocks.
         self._stderr_lines: list[str] = []
         self._stderr_thread = threading.Thread(
             target=self._drain_stderr, daemon=True
         )
         self._stderr_thread.start()
 
-        if init_r:
-            init_script = td / "init.R"
-            init_script.write_text(init_r)
-            self._send(str(init_script), timeout=600)
+        # Wait for R to finish loading libraries and print READY.
+        self._wait_ready(timeout=600)
 
         atexit.register(self.close)
 
+    # ------------------------------------------------------------------
     def _drain_stderr(self) -> None:
         for raw in self._proc.stderr:
             line = raw.decode(errors="replace").rstrip()
             self._stderr_lines.append(line)
             logger.debug("R stderr: %s", line)
 
-    def _last_stderr(self, n: int = 20) -> str:
+    def _last_stderr(self, n: int = 30) -> str:
         return "\n".join(self._stderr_lines[-n:]) or "(no stderr output)"
 
+    def _wait_ready(self, timeout: float) -> None:
+        """Block until R prints READY\\n (init complete) or crash/timeout."""
+        ready = threading.Event()
+        crashed = threading.Event()
+
+        def _reader() -> None:
+            while True:
+                line = self._proc.stdout.readline()
+                if not line:
+                    crashed.set()
+                    ready.set()
+                    return
+                if line.strip() == b"READY":
+                    ready.set()
+                    return
+
+        t = threading.Thread(target=_reader, daemon=True)
+        t.start()
+        if not ready.wait(timeout=timeout):
+            self._proc.kill()
+            raise TimeoutError(
+                f"R session init timed out after {timeout}s\n"
+                f"Last R stderr:\n{self._last_stderr()}"
+            )
+        if crashed.is_set():
+            rc = self._proc.wait()
+            raise RuntimeError(
+                f"R session crashed during init (exit code {rc})\n"
+                f"Last R stderr:\n{self._last_stderr()}"
+            )
+
+    # ------------------------------------------------------------------
     def is_alive(self) -> bool:
         return self._proc.poll() is None
 
     def run(self, script_path: str, timeout: float = 1800) -> None:
-        """Source *script_path* in the persistent R session and wait for completion."""
+        """Source *script_path* in the persistent R session."""
         if not self.is_alive():
             raise RuntimeError("R session has exited unexpectedly")
         self._send(script_path, timeout=timeout)
@@ -106,7 +149,7 @@ class _RSession:
                 line = self._proc.stdout.readline()
                 if not line:
                     crashed.set()
-                    done.set()  # unblock the wait immediately
+                    done.set()
                     return
                 if line.strip() == b"DONE":
                     done.set()
@@ -127,6 +170,7 @@ class _RSession:
                 f"Last R stderr:\n{self._last_stderr()}"
             )
 
+    # ------------------------------------------------------------------
     def close(self) -> None:
         if self.is_alive():
             try:
