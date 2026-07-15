@@ -48,7 +48,7 @@ repeat {
     error = function(e) conditionMessage(e)
   )
   if (!is.null(.err)) {
-    cat(paste0("FAIL: ", .err, "\\n"))
+    cat(paste0("FAIL: ", gsub("\\n", " | ", .err), "\\n"))
   } else {
     cat("DONE\\n")
   }
