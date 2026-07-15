@@ -15,6 +15,7 @@ module load openblas/dynamic/0.3.18
 module load gsl/2.7.1
 module load R/4.4.2
 export R_LIBS_USER="$HOME/R/library"
+export R_LIBS="/apps/rlibs/4.4.0:${R_LIBS:-}"
 
 # Activate Python environment
 source ~/.bashrc
