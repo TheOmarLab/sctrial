@@ -62,10 +62,15 @@ lib <- Sys.getenv("R_LIBS_USER")
 # Step 1: CRAN dependencies needed before Bioc packages
 cat("Step 1: CRAN dependencies...\n")
 install.packages(
-    c("XML", "RCurl", "nloptr", "lme4", "lmerTest", "pbkrtest", "httr", "fs",
+    c("XML", "RCurl", "nloptr", "lmerTest", "pbkrtest", "httr", "fs",
       "Rcpp", "RcppArmadillo", "data.table", "reshape2", "png", "digest",
       "future", "future.apply"),
     lib = lib
+)
+# lme4 2.0 breaks lmerTest/variancePartition/dreamlet — pin to last 1.x release.
+install.packages(
+    "https://cran.r-project.org/src/contrib/Archive/lme4/lme4_1.1-35.5.tar.gz",
+    repos = NULL, type = "source", lib = lib
 )
 
 # Step 2: Bioconductor core (dependency chain for dreamlet)
