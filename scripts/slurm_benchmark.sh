@@ -22,7 +22,7 @@ source ~/.bashrc
 conda activate sctrial_benchmark
 
 # Set working directory
-cd /PATH/TO/sctrial   # ← update to your HPC project path
+cd /common/vasanthakup/projects/sctrial   # ← update to your HPC project path
 
 # Create output directory
 mkdir -p manuscript/benchmark/simulation
