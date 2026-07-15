@@ -59,8 +59,15 @@ class _RSession:
             ["Rscript", "--vanilla", str(bootstrap)],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
         )
+
+        # Drain stderr in a background thread so the pipe never blocks.
+        self._stderr_lines: list[str] = []
+        self._stderr_thread = threading.Thread(
+            target=self._drain_stderr, daemon=True
+        )
+        self._stderr_thread.start()
 
         if init_r:
             init_script = td / "init.R"
@@ -68,6 +75,15 @@ class _RSession:
             self._send(str(init_script), timeout=600)
 
         atexit.register(self.close)
+
+    def _drain_stderr(self) -> None:
+        for raw in self._proc.stderr:
+            line = raw.decode(errors="replace").rstrip()
+            self._stderr_lines.append(line)
+            logger.debug("R stderr: %s", line)
+
+    def _last_stderr(self, n: int = 20) -> str:
+        return "\n".join(self._stderr_lines[-n:]) or "(no stderr output)"
 
     def is_alive(self) -> bool:
         return self._proc.poll() is None
@@ -83,12 +99,15 @@ class _RSession:
         self._proc.stdin.flush()
 
         done = threading.Event()
+        crashed = threading.Event()
 
         def _reader() -> None:
             while True:
                 line = self._proc.stdout.readline()
                 if not line:
-                    return  # EOF — process died
+                    crashed.set()
+                    done.set()  # unblock the wait immediately
+                    return
                 if line.strip() == b"DONE":
                     done.set()
                     return
@@ -97,7 +116,16 @@ class _RSession:
         t.start()
         if not done.wait(timeout=timeout):
             self._proc.kill()
-            raise TimeoutError(f"R session timed out after {timeout}s on {script_path}")
+            raise TimeoutError(
+                f"R session timed out after {timeout}s on {script_path}\n"
+                f"Last R stderr:\n{self._last_stderr()}"
+            )
+        if crashed.is_set():
+            rc = self._proc.wait()
+            raise RuntimeError(
+                f"R session crashed (exit code {rc}) on {script_path}\n"
+                f"Last R stderr:\n{self._last_stderr()}"
+            )
 
     def close(self) -> None:
         if self.is_alive():
