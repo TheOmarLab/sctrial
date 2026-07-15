@@ -65,7 +65,7 @@ class _RSession:
         if init_r:
             init_script = td / "init.R"
             init_script.write_text(init_r)
-            self._send(str(init_script), timeout=120)
+            self._send(str(init_script), timeout=600)
 
         atexit.register(self.close)
 
