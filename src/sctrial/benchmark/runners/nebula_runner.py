@@ -41,6 +41,12 @@ meta <- read.csv("{meta_csv}", stringsAsFactors=TRUE)
 meta$arm   <- factor(meta$arm, levels=c("{control}", "{treated}"))
 meta$visit <- factor(meta$visit, levels=c("{pre}", "{post}"))
 
+# Drop zero-count cells — log(0) = -Inf offset causes NA in objective function
+keep <- colSums(counts) > 0
+if (sum(keep) < 2) stop("Too few cells with non-zero counts after filtering")
+counts <- counts[, keep]
+meta   <- meta[keep, ]
+
 # Two-arm: interaction model
 design <- model.matrix(~arm * visit, data=meta)
 
@@ -78,6 +84,12 @@ rownames(counts) <- genes
 
 meta <- read.csv("{meta_csv}", stringsAsFactors=TRUE)
 meta$visit <- factor(meta$visit, levels=c("{pre}", "{post}"))
+
+# Drop zero-count cells — log(0) = -Inf offset causes NA in objective function
+keep <- colSums(counts) > 0
+if (sum(keep) < 2) stop("Too few cells with non-zero counts after filtering")
+counts <- counts[, keep]
+meta   <- meta[keep, ]
 
 # Single-arm: visit effect only
 design <- model.matrix(~visit, data=meta)
