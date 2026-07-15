@@ -43,11 +43,6 @@ echo "cmake: $(cmake --version | head -1)"
 export PATH=$(echo "$PATH" | tr ':' '\n' | grep -v conda | grep -v anaconda | tr '\n' ':')
 export LD_LIBRARY_PATH=$(echo "${LD_LIBRARY_PATH:-}" | tr ':' '\n' | grep -v conda | grep -v anaconda | tr '\n' ':')
 
-# ── Use cluster's pre-built nloptr for R 4.4 ─────────────────
-# /apps/rlibs/4.4.0/nloptr is ABI-compatible with R 4.4.2.
-# Adding it to R_LIBS lets nloptr install skip the nlopt compile step entirely.
-export R_LIBS="/apps/rlibs/4.4.0:${R_LIBS:-}"
-
 # ── R user library ────────────────────────────────────────────
 mkdir -p "$HOME/R/library"
 export R_LIBS_USER="$HOME/R/library"
