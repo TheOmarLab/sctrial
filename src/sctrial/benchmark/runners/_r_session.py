@@ -43,11 +43,15 @@ flush(stdout())
 repeat {
   .path <- readLines(.con, n = 1L)
   if (!length(.path) || trimws(.path) == "QUIT") break
-  tryCatch(
-    source(trimws(.path), local = FALSE),
-    error = function(e) message("R ERROR: ", conditionMessage(e))
+  .err <- tryCatch(
+    { source(trimws(.path), local = FALSE); NULL },
+    error = function(e) conditionMessage(e)
   )
-  cat("DONE\\n")
+  if (!is.null(.err)) {
+    cat(paste0("FAIL: ", .err, "\\n"))
+  } else {
+    cat("DONE\\n")
+  }
   flush(stdout())
 }
 close(.con)
@@ -91,7 +95,10 @@ class _RSession:
         for raw in self._proc.stderr:
             line = raw.decode(errors="replace").rstrip()
             self._stderr_lines.append(line)
-            logger.debug("R stderr: %s", line)
+            if line.startswith("R ERROR:") or "Error" in line:
+                logger.warning("R stderr: %s", line)
+            else:
+                logger.debug("R stderr: %s", line)
 
     def _last_stderr(self, n: int = 30) -> str:
         return "\n".join(self._stderr_lines[-n:]) or "(no stderr output)"
@@ -144,6 +151,8 @@ class _RSession:
         done = threading.Event()
         crashed = threading.Event()
 
+        r_error: list[str] = []
+
         def _reader() -> None:
             while True:
                 line = self._proc.stdout.readline()
@@ -151,7 +160,12 @@ class _RSession:
                     crashed.set()
                     done.set()
                     return
-                if line.strip() == b"DONE":
+                decoded = line.decode(errors="replace").strip()
+                if decoded == "DONE":
+                    done.set()
+                    return
+                if decoded.startswith("FAIL:"):
+                    r_error.append(decoded[5:].strip())
                     done.set()
                     return
 
@@ -169,6 +183,8 @@ class _RSession:
                 f"R session crashed (exit code {rc}) on {script_path}\n"
                 f"Last R stderr:\n{self._last_stderr()}"
             )
+        if r_error:
+            raise RuntimeError(f"R error on {script_path}: {r_error[0]}")
 
     # ------------------------------------------------------------------
     def close(self) -> None:
