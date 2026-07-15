@@ -26,15 +26,12 @@ _NEBULA_INIT_R = """\
 suppressPackageStartupMessages({
   library(nebula)
   library(Matrix)
-  library(future)
 })
-future::plan("sequential")
 """
 
 _R_SCRIPT_TWO_ARM = """\
 library(nebula)
 library(Matrix)
-future::plan("sequential")
 
 counts <- readMM("{mtx_path}")
 genes  <- readLines("{genes_path}")
@@ -53,6 +50,7 @@ res <- nebula(
   pred = design,
   offset = log(colSums(counts)),
   method = "LN",
+  ncore = 1,
   verbose = FALSE
 )
 
@@ -73,7 +71,6 @@ write.csv(out, "{output_csv}")
 _R_SCRIPT_SINGLE_ARM = """\
 library(nebula)
 library(Matrix)
-future::plan("sequential")
 
 counts <- readMM("{mtx_path}")
 genes  <- readLines("{genes_path}")
@@ -91,6 +88,7 @@ res <- nebula(
   pred = design,
   offset = log(colSums(counts)),
   method = "LN",
+  ncore = 1,
   verbose = FALSE
 )
 
