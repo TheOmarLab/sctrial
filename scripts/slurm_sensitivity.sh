@@ -46,6 +46,29 @@ python -c "import subprocess; subprocess.run(['Rscript', '-e', 'library(dreamlet
 python -c "import sctrial.benchmark.orchestrator as o; import inspect; print('Orchestrator:', inspect.getfile(o))"
 echo "Git commit: $(git rev-parse --short HEAD 2>/dev/null || echo 'N/A')"
 
+# Remove incomplete scenario CSVs so they are re-run (not silently accepted as complete)
+python - <<'PYEOF'
+import pandas as pd
+from pathlib import Path
+
+outdir = Path("manuscript/benchmark/sensitivity")
+if outdir.exists():
+    for csv in sorted(outdir.glob("*.csv")):
+        if csv.name == "sensitivity_combined.csv":
+            continue
+        try:
+            df = pd.read_csv(csv)
+            n_iters = df["iteration"].nunique()
+            if n_iters < 200:
+                print(f"INCOMPLETE ({n_iters}/200 iterations): {csv.name} — removing")
+                csv.unlink()
+            else:
+                print(f"OK ({n_iters}/200 iterations): {csv.name}")
+        except Exception as e:
+            print(f"CORRUPT: {csv.name} ({e}) — removing")
+            csv.unlink()
+PYEOF
+
 # Run the sensitivity benchmark
 # 20 scenarios × 200 iterations × 4 methods
 # 2000-gene scenarios are ~40× slower than 50-gene → allow 72h
