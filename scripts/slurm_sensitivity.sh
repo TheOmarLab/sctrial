@@ -4,7 +4,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=32
-#SBATCH --mem=256G
+#SBATCH --mem=512G
 #SBATCH --time=72:00:00
 #SBATCH --output=sensitivity_%j.out
 #SBATCH --error=sensitivity_%j.err
@@ -74,7 +74,7 @@ PYEOF
 # 2000-gene scenarios are ~40× slower than 50-gene → allow 72h
 python scripts/run_benchmark.py \
   --phase sensitivity \
-  --n-jobs 8 \
+  --n-jobs 30 \
   --n-iterations 200
 
 echo "============================================"
