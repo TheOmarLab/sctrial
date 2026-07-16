@@ -4,7 +4,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=32
-#SBATCH --mem=512G
+#SBATCH --mem=768G
 #SBATCH --time=72:00:00
 #SBATCH --output=sensitivity_%j.out
 #SBATCH --error=sensitivity_%j.err
