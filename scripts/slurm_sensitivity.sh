@@ -74,7 +74,7 @@ PYEOF
 # 2000-gene scenarios are ~40× slower than 50-gene → allow 72h
 python scripts/run_benchmark.py \
   --phase sensitivity \
-  --n-jobs 30 \
+  --n-jobs 8 \
   --n-iterations 200
 
 echo "============================================"
