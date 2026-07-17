@@ -779,7 +779,7 @@ def _panel_bench_runtime(ax, bench_df: pd.DataFrame, *, composite: bool = False)
     ax.tick_params(axis="y", labelsize=_lbl_fs)
     if composite:
         ax.legend(
-            loc="upper left", bbox_to_anchor=(0.02, 0.72),
+            loc="upper left", bbox_to_anchor=(0.02, 0.58),
             frameon=True, framealpha=0.95, edgecolor="#cccccc", fontsize=_leg_fs,
             markerscale=0.52, handlelength=1.0,
         )
