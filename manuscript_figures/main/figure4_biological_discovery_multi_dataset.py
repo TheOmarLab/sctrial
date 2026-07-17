@@ -995,7 +995,7 @@ def _clean_pathway_name(s: str, max_len: int = 55) -> str:
 # Panel A -- Gene waterfall plot (top genes by effect size)
 # ======================================================================
 
-def panel_A(ax, data: dict):
+def _tnbc_waterfall(ax, data: dict):
     """Top 30 protein-coding genes ranked by effect size (waterfall).
 
     Horizontal bar plot of the most extreme genes on each side,
@@ -1093,7 +1093,7 @@ def _panel_A_signature_waterfall(ax, data: dict):
 # Panel B -- GSEA Enrichment Bar Chart
 # ======================================================================
 
-def panel_B(ax, data: dict):
+def _tnbc_gsea_bars(ax, data: dict):
     """GSEA immune + metabolic pathway enrichment bar chart with balanced up/down."""
     gsea_results = data["gsea_results"]
 
@@ -1254,7 +1254,7 @@ def _panel_B_signature_waterfall(ax, data: dict):
 # Panel C -- Leading-edge gene overlap heatmap
 # ======================================================================
 
-def panel_C(ax, data: dict, *, composite: bool = False):
+def _tnbc_leading_edge(ax, data: dict, *, composite: bool = False):
     """Leading-edge gene overlap heatmap across top enriched pathways.
 
     Information-dense design:
@@ -1636,7 +1636,7 @@ def panel_D(ax, data: dict):
 # Panel E -- Gene-level volcano plot
 # ======================================================================
 
-def panel_E(ax, data: dict, *, composite: bool = False):
+def _tnbc_volcano(ax, data: dict, *, composite: bool = False):
     """Volcano plot of gene-level DiD effects (Sade-Feldman).
 
     Labels prioritize protein-coding genes over pseudogenes/lncRNAs.
@@ -2060,187 +2060,6 @@ def panel_C_replicated(ax, data: dict):
     
     ax.tick_params(axis="both", length=0)
     despine(ax)
-
-
-# ======================================================================
-# Panel F -- Cell-type-resolved effect heatmap for top DiD genes
-# ======================================================================
-
-def panel_F(ax, data: dict):
-    """Cell-type-resolved effect heatmap for top DiD genes.
-
-    Rows = top genes by |β_DiD|, columns = cell types.
-    Color = mean DiD-like effect per cell type (responder post-pre
-    minus non-responder post-pre, using raw cell-level means).
-    """
-    gene_results = data.get("gene_results")
-    adata = data.get("adata")
-
-    if gene_results is None or adata is None or len(gene_results) == 0:
-        ax.text(0.5, 0.5, "Gene-level results unavailable",
-                transform=ax.transAxes, ha="center", va="center",
-                fontsize=12, color=COLORS["gray"])
-        ax.set_title("Cell-Type DiD Effects", fontsize=11,
-                     fontweight="bold")
-        ax.axis("off")
-        return
-
-    df = gene_results.copy()
-    beta_col = "beta_DiD"
-    df = df.dropna(subset=[beta_col])
-
-    # Restrict to protein-coding genes (skip RNU*, RNA5SP*, lncRNAs, etc.)
-    df = df[df["feature"].apply(_is_likely_protein_coding)]
-
-    # Select top 15 genes by |β_DiD| (balanced: top 8 pos + top 7 neg)
-    n_per_dir = 8
-    df_pos = df[df[beta_col] > 0].nlargest(n_per_dir, beta_col)
-    df_neg = df[df[beta_col] < 0].nsmallest(n_per_dir - 1, beta_col)
-    top_genes_df = pd.concat([df_pos, df_neg])
-    top_genes = top_genes_df["feature"].tolist()
-
-    # Restrict to genes present in adata
-    available = [g for g in top_genes if g in adata.var_names]
-    if len(available) == 0:
-        ax.text(0.5, 0.5, "No top genes in adata",
-                transform=ax.transAxes, ha="center", va="center",
-                fontsize=12, color=COLORS["gray"])
-        ax.axis("off")
-        return
-
-    # Compute cell-type × gene DiD-like effects from raw cell-level data
-    ct_col = "cell_type"
-    if ct_col not in adata.obs.columns:
-        ct_col = next(
-            (c for c in adata.obs.columns if "cell" in c.lower()
-             and "type" in c.lower()),
-            None,
-        )
-    if ct_col is None:
-        ax.text(0.5, 0.5, "No cell type column",
-                transform=ax.transAxes, ha="center", va="center",
-                fontsize=12, color=COLORS["gray"])
-        ax.axis("off")
-        return
-
-    layer_key = "log1p_tpm"
-    cell_types = sorted(adata.obs[ct_col].dropna().unique())
-    # Drop very rare cell types (<20 cells total)
-    ct_counts = adata.obs[ct_col].value_counts()
-    cell_types = [ct for ct in cell_types if ct_counts.get(ct, 0) >= 20]
-    cell_types = [ct for ct in cell_types if "unassign" not in ct.lower()]
-
-    effect_mat = pd.DataFrame(
-        np.nan, index=available, columns=cell_types
-    )
-
-    sub_adata = adata[:, available].copy()
-    if layer_key in sub_adata.layers:
-        X = sub_adata.layers[layer_key]
-    else:
-        X = sub_adata.X
-
-    obs = sub_adata.obs.copy()
-    obs["_visit"] = obs["visit"]
-    obs["_arm"] = obs["response_harmonized"]
-    obs["_ct"] = obs[ct_col]
-
-    import scipy.sparse as sp
-    if sp.issparse(X):
-        X = X.toarray()
-    expr_df = pd.DataFrame(X, index=obs.index, columns=available)
-    expr_df["_visit"] = obs["_visit"].values
-    expr_df["_arm"] = obs["_arm"].values
-    expr_df["_ct"] = obs["_ct"].values
-
-    for ct in cell_types:
-        ct_mask = expr_df["_ct"] == ct
-        ct_data = expr_df[ct_mask]
-        for arm_label, visit_label in [
-            ("Responder", "Pre"), ("Responder", "Post"),
-            ("Non-responder", "Pre"), ("Non-responder", "Post"),
-        ]:
-            pass  # just checking groups exist
-
-        for gene in available:
-            try:
-                means = {}
-                for arm in ["Responder", "Non-responder"]:
-                    for vis in ["Pre", "Post"]:
-                        mask = (ct_data["_arm"] == arm) & (ct_data["_visit"] == vis)
-                        vals = ct_data.loc[mask, gene]
-                        means[(arm, vis)] = vals.mean() if len(vals) > 0 else np.nan
-
-                # DiD = (R_post - R_pre) - (NR_post - NR_pre)
-                r_delta = means[("Responder", "Post")] - means[("Responder", "Pre")]
-                nr_delta = means[("Non-responder", "Post")] - means[("Non-responder", "Pre")]
-                did_val = r_delta - nr_delta
-                if np.isfinite(did_val):
-                    effect_mat.loc[gene, ct] = did_val
-            except Exception:
-                pass
-
-    # Sort genes by global β_DiD for consistent ordering
-    gene_order = top_genes_df.set_index("feature").loc[available].sort_values(
-        beta_col, ascending=True
-    ).index.tolist()
-    effect_mat = effect_mat.loc[gene_order]
-
-    # Drop cell types with all NaN
-    effect_mat = effect_mat.dropna(axis=1, how="all")
-
-    if effect_mat.shape[1] == 0:
-        ax.text(0.5, 0.5, "Insufficient cell-type data",
-                transform=ax.transAxes, ha="center", va="center",
-                fontsize=12, color=COLORS["gray"])
-        ax.axis("off")
-        return
-
-    # Plot heatmap
-    vmax = np.nanmax(np.abs(effect_mat.values))
-    vmax = max(vmax, 0.01)  # avoid degenerate scale
-
-    import matplotlib.colors as mcolors
-    cmap = mcolors.LinearSegmentedColormap.from_list(
-        "did_div",
-        [COLORS["control"], "#f0f0f0", COLORS["treated"]],
-        N=256,
-    )
-
-    im = ax.imshow(
-        effect_mat.values.astype(float),
-        aspect="auto",
-        cmap=cmap,
-        vmin=-vmax,
-        vmax=vmax,
-        interpolation="nearest",
-    )
-
-    # Mask NaN cells with hatching
-    nan_mask = np.isnan(effect_mat.values.astype(float))
-    if nan_mask.any():
-        masked = np.ma.array(np.ones_like(effect_mat.values, dtype=float),
-                             mask=~nan_mask)
-        ax.pcolormesh(
-            np.arange(effect_mat.shape[1] + 1) - 0.5,
-            np.arange(effect_mat.shape[0] + 1) - 0.5,
-            masked,
-            cmap=mcolors.ListedColormap(["#e8e8e8"]),
-            vmin=0, vmax=1, zorder=0,
-        )
-
-    ax.set_xticks(np.arange(effect_mat.shape[1]))
-    ax.set_xticklabels(effect_mat.columns, rotation=30, ha="right",
-                       fontsize=6.5)
-    ax.set_yticks(np.arange(effect_mat.shape[0]))
-    ax.set_yticklabels(effect_mat.index, fontsize=7)
-    ax.set_title("Cell-Type DiD Effects (Top Genes)", fontsize=11,
-                 fontweight="bold")
-
-    # Colorbar
-    cbar = ax.figure.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-    cbar.set_label(r"$\Delta\Delta$ expression", fontsize=8)
-    cbar.ax.tick_params(labelsize=7)
 
 
 # ======================================================================
@@ -3840,10 +3659,10 @@ def _cap_fontsize(fig, maximum):
 
 # ── Panel aliases for composite ───────────────────────────────────────────
 # TNBC panels A–E reuse existing functions with TNBC data dict
-tnbc_volcano = panel_E        # TNBC: A
-tnbc_waterfall = panel_A      # TNBC: B
-tnbc_gsea_bars = panel_B      # TNBC: C
-tnbc_leading_edge = panel_C   # TNBC: D
+tnbc_volcano = _tnbc_volcano           # TNBC: A
+tnbc_waterfall = _tnbc_waterfall       # TNBC: B
+tnbc_gsea_bars = _tnbc_gsea_bars       # TNBC: C
+tnbc_leading_edge = _tnbc_leading_edge # TNBC: D
 tnbc_celltype_hm = _panel_tnbc_celltype_hm      # TNBC: E
 tnbc_abundance_did = _panel_tnbc_abundance_did  # TNBC: F
 fig4_gsea_cross = panel_C_replicated            # N

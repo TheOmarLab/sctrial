@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import gc
 
+import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -35,6 +36,7 @@ from scipy import stats as sp_stats
 
 from .._shared import (
     COLORS,
+    sig_display,
     SUPP_OUTPUT,
     add_log1p_cpm_layer,
     apply_style,
@@ -50,16 +52,965 @@ from .._shared import (
     save_panel,
 )
 from ..main.figure4_biological_discovery_multi_dataset import (
-    panel_E as _mel_volcano,          # supp panel A: gene-level volcano (melanoma)
-    panel_A as _mel_waterfall,        # supp panel B: top genes waterfall (melanoma)
-    panel_B as _mel_gsea_bars,        # supp panel C: GSEA enrichment (melanoma)
-    panel_C as _mel_leading_edge,     # supp panel D: leading-edge heatmap (melanoma)
-    panel_F as _mel_celltype_hm,      # supp panel E: cell-type DiD heatmap (melanoma)
     _prepare_bio_discovery_data,
     _swap_leading_edge_axes,
     _shrink_colorbars,
     _compact_legend,
+    _is_likely_protein_coding,
+    _clean_pathway_name,
+    _detect_gsea_columns,
+    _is_immune_or_metabolic,
 )
+
+
+# ======================================================================
+# Melanoma biological discovery panel helpers (supp figure A–E)
+# ======================================================================
+
+def _panel_A_signature_waterfall(ax, data: dict):
+    """Fallback: signature DiD waterfall plot."""
+    did_sig = data["did_sig"]
+    df = did_sig.copy()
+    df["display"] = df["feature"].map(sig_display)
+    df = df.sort_values("beta_DiD", ascending=False).reset_index(drop=True)
+
+    y_pos = np.arange(len(df))
+    colors = [COLORS["treated"] if v > 0 else COLORS["control"]
+              for v in df["beta_DiD"]]
+    ax.barh(y_pos, df["beta_DiD"].values, color=colors, alpha=0.85,
+            edgecolor="white", linewidth=0.5, height=0.7)
+    ax.axvline(0, color="black", lw=0.8)
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(df["display"].values, fontsize=8)
+    ax.set_xlabel(r"DiD coefficient ($\beta_{\mathrm{DiD}}$)")
+    ax.set_title("Signature DiD Effects (Melanoma)", fontsize=11,
+                 fontweight="bold")
+    ax.invert_yaxis()
+    despine(ax)
+
+
+# ======================================================================
+# Panel B -- GSEA Enrichment Bar Chart
+# ======================================================================
+
+
+def _panel_B_signature_waterfall(ax, data: dict):
+    """Fallback: signature-level DiD effects bar chart."""
+    did_sig = data["did_sig"]
+    df = did_sig.copy()
+    df["display"] = df["feature"].map(sig_display)
+    df = df.sort_values("beta_DiD", ascending=True)
+
+    colors = [COLORS["treated"] if v > 0 else COLORS["control"]
+              for v in df["beta_DiD"]]
+    y_pos = np.arange(len(df))
+    ax.barh(y_pos, df["beta_DiD"].values, color=colors, alpha=0.85,
+            edgecolor="white", linewidth=0.5)
+    ax.axvline(0, color="black", lw=0.8)
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(df["display"].values, fontsize=8)
+    ax.set_xlabel(r"DiD coefficient ($\beta_{\mathrm{DiD}}$)")
+    ax.set_title("DiD Signature Effects", fontsize=11, fontweight="bold")
+    despine(ax)
+
+
+# ======================================================================
+# Panel C -- Leading-edge gene overlap heatmap
+# ======================================================================
+
+
+def _panel_C_did_summary(ax, data: dict):
+    """Fallback: signature-level DiD effects bar chart."""
+    did_sig = data["did_sig"]
+    df = did_sig.copy()
+    df["display"] = df["feature"].map(sig_display)
+    df = df.sort_values("beta_DiD", ascending=True)
+
+    colors = [COLORS["treated"] if v > 0 else COLORS["control"]
+              for v in df["beta_DiD"]]
+    y_pos = np.arange(len(df))
+    ax.barh(y_pos, df["beta_DiD"].values, color=colors, alpha=0.85,
+            edgecolor="white", linewidth=0.5)
+    ax.axvline(0, color="black", lw=0.8)
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(df["display"].values, fontsize=8)
+    ax.set_xlabel(r"DiD coefficient ($\beta_{\mathrm{DiD}}$)")
+    ax.set_title("DiD Signature Effects", fontsize=11, fontweight="bold")
+    despine(ax)
+
+
+# ======================================================================
+# Panel D -- Signature DiD forest plot with bootstrap CIs
+# ======================================================================
+
+
+# Panel A — Gene-level volcano (Melanoma DiD)
+def panel_A(ax, data: dict, *, composite: bool = False):
+    """Volcano plot of gene-level DiD effects (Sade-Feldman).
+
+    Labels prioritize protein-coding genes over pseudogenes/lncRNAs.
+    When *composite* is True, fewer labels are drawn and adjustText
+    is skipped to avoid cluttering the small composite axes.
+    """
+    gene_results = data["gene_results"]
+
+    if gene_results is None or len(gene_results) == 0:
+        ax.text(
+            0.5, 0.5,
+            "Gene-level results unavailable",
+            transform=ax.transAxes, ha="center", va="center",
+            fontsize=12, color=COLORS["gray"],
+            bbox=dict(boxstyle="round,pad=0.5", facecolor="#f0f0f0",
+                      edgecolor=COLORS["gray"]),
+        )
+        ax.set_title("Gene-Level Volcano Plot", fontsize=11,
+                     fontweight="bold")
+        ax.axis("off")
+        return
+
+    df = gene_results.copy()
+    beta_col = "beta_DiD"
+
+    p_col = "p_DiD"
+
+    df = df.dropna(subset=[beta_col, p_col])
+
+    # Standard volcano: nominal p on y-axis, colour by nominal p < 0.05.
+    # Analytical (nonrobust) SEs provide gene-level resolution; bootstrap
+    # inference is reserved for signature-level tests (Panel D).
+    p_thresh = 0.05
+    df["nlog10"] = -np.log10(df[p_col].clip(lower=1e-300))
+    sig_mask = df[p_col] < p_thresh
+
+    df["category"] = "ns"
+    df.loc[sig_mask & (df[beta_col] > 0), "category"] = "up"
+    df.loc[sig_mask & (df[beta_col] < 0), "category"] = "down"
+
+    color_map = {
+        "ns": COLORS["gray"],
+        "up": COLORS["treated"],
+        "down": COLORS["control"],
+    }
+    alpha_map = {"ns": 0.3, "up": 0.8, "down": 0.8}
+    if composite:
+        size_map = {"ns": 2, "up": 6, "down": 6}
+    else:
+        size_map = {"ns": 8, "up": 20, "down": 20}
+
+    for cat in ["ns", "up", "down"]:
+        sub = df[df["category"] == cat]
+        if len(sub) == 0:
+            continue
+        ax.scatter(
+            sub[beta_col], sub["nlog10"],
+            c=color_map[cat], alpha=alpha_map[cat],
+            s=size_map[cat], edgecolors="none", rasterized=True,
+        )
+
+    N_LABELS = 10
+    labelled_genes: list[str] = []  # ordered by score (highest first)
+
+    for sign in ("pos", "neg"):
+        sub = df[df[beta_col] > 0].copy() if sign == "pos" else df[df[beta_col] < 0].copy()
+        if len(sub) == 0:
+            continue
+        # Restrict to protein-coding genes only
+        sub = sub[sub["feature"].apply(_is_likely_protein_coding)]
+        if len(sub) == 0:
+            continue
+
+        # Force-include top 3 genes by -log10(p) in each direction
+        # (ensures the most significant genes are always labelled)
+        force_genes = set(
+            sub.nlargest(min(3, len(sub)), "nlog10")["feature"].tolist()
+        )
+
+        # Combined score: rank-normalised |β| + rank-normalised -log10(p)
+        # This naturally selects genes at volcano tips (high on both axes).
+        sub = sub.copy()
+        sub["_rank_beta"] = sub[beta_col].abs().rank(pct=True)
+        sub["_rank_sig"] = sub["nlog10"].rank(pct=True)
+        sub["_score"] = sub["_rank_beta"] + sub["_rank_sig"]
+
+        candidates = sub.nlargest(min(N_LABELS * 3, len(sub)), "_score")
+
+        # Deduplicate: skip genes too close to an already-selected one
+        # (prevents overlapping arrows pointing to the same spot).
+        x_range = df[beta_col].max() - df[beta_col].min()
+        y_range = df["nlog10"].max() - df["nlog10"].min()
+        min_dx = x_range * 0.025  # ~2.5% of axis range
+        min_dy = y_range * 0.025
+        selected_coords: list[tuple[float, float]] = []
+        picks: list[str] = []
+
+        # Add forced genes first
+        for _, cand in candidates.iterrows():
+            if cand["feature"] in force_genes and cand["feature"] not in picks:
+                picks.append(cand["feature"])
+                selected_coords.append((cand[beta_col], cand["nlog10"]))
+
+        # Fill remaining slots with score-ranked candidates
+        for _, cand in candidates.iterrows():
+            if cand["feature"] in picks:
+                continue
+            cx, cy = cand[beta_col], cand["nlog10"]
+            too_close = False
+            for sx, sy in selected_coords:
+                if abs(cx - sx) < min_dx and abs(cy - sy) < min_dy:
+                    too_close = True
+                    break
+            if not too_close:
+                picks.append(cand["feature"])
+                selected_coords.append((cx, cy))
+                if len(picks) >= N_LABELS:
+                    break
+
+        labelled_genes.extend(picks)
+
+    labelled_set = set(labelled_genes)
+    labelled_rows = df[df["feature"].isin(labelled_set)].copy()
+
+    from adjustText import adjust_text as _adjust_text
+
+    _lbl_fs = 3.5 if composite else 6.5
+    _arrow_lw = 0.25 if composite else 0.4
+
+    texts = []
+    for _, row in labelled_rows.iterrows():
+        t = ax.text(
+            row[beta_col], row["nlog10"], row["feature"],
+            fontsize=_lbl_fs, fontweight="bold", color="#444444",
+            ha="center", va="center", zorder=5,
+        )
+        texts.append(t)
+
+    x_span = df[beta_col].max() - df[beta_col].min()
+    y_span = df["nlog10"].max() - df["nlog10"].min()
+    _adjust_text(
+        texts, ax=ax,
+        arrowprops=dict(arrowstyle="-", color="#888888", lw=_arrow_lw,
+                        shrinkA=5, shrinkB=3),
+        force_text=(2.0, 2.0),
+        force_points=(3.5, 3.5),
+        expand=(1.8, 2.0),
+        ensure_inside_axes=True,
+        max_move=(x_span * 0.25, y_span * 0.25),
+        only_move="xy",
+    )
+
+    # Threshold line
+    thresh_y = -np.log10(p_thresh)
+    ax.axhline(thresh_y, color=COLORS["gray"], ls="--", lw=0.8, zorder=0)
+    ax.axvline(0, color="black", lw=0.6, zorder=0)
+
+    ax.set_xlabel(r"Effect size ($\beta_{\mathrm{DiD}}$)")
+    ax.set_ylabel(r"$-\log_{10}$(p)")
+    ax.set_title("Gene-Level Volcano (Melanoma DiD)", fontsize=11,
+                 fontweight="bold")
+
+    # Legend — no footnotes, no summary boxes
+    legend_handles = [
+        mpatches.Patch(color=COLORS["treated"], alpha=0.8,
+                       label="Responder ↑"),
+        mpatches.Patch(color=COLORS["control"], alpha=0.8,
+                       label="Non-responder ↑"),
+        mpatches.Patch(color=COLORS["gray"], alpha=0.3,
+                       label="Not significant"),
+    ]
+    ax.legend(handles=legend_handles, fontsize=10, loc="lower left",
+              frameon=True, framealpha=0.9)
+    despine(ax)
+
+
+# ======================================================================
+# Panel C (new) -- Replicated pathways across cohorts
+# ======================================================================
+
+
+# Panel B — Top genes by effect size, waterfall (Melanoma)
+def panel_B(ax, data: dict):
+    """Top 30 protein-coding genes ranked by effect size (waterfall).
+
+    Horizontal bar plot of the most extreme genes on each side,
+    providing immediate biological interpretability.  Colour indicates
+    direction *and* nominal significance (p < 0.05).
+    """
+    gene_results = data.get("gene_results")
+
+    if gene_results is None or len(gene_results) == 0:
+        # Fallback: signature DiD waterfall
+        _panel_A_signature_waterfall(ax, data)
+        return
+
+    df = gene_results.copy()
+    beta_col = "beta_DiD"
+    p_col = "p_DiD"
+
+    df = df.dropna(subset=[beta_col, p_col])
+
+    # Filter to protein-coding genes
+    df = df[df["feature"].apply(_is_likely_protein_coding)]
+
+    p_thresh = 0.05
+    n_per_side = 15
+
+    # Top positive and negative
+    top_pos = df.nlargest(n_per_side, beta_col)
+    top_neg = df.nsmallest(n_per_side, beta_col)
+    selected = pd.concat([top_pos, top_neg]).drop_duplicates()
+    selected = selected.sort_values(beta_col, ascending=True).reset_index(
+        drop=True
+    )
+
+    y_pos = np.arange(len(selected))
+    colors = []
+    for _, row in selected.iterrows():
+        sig = row[p_col] < p_thresh
+        if row[beta_col] > 0:
+            colors.append(
+                COLORS["treated"] if sig else COLORS["treated"] + "55"
+            )
+        else:
+            colors.append(
+                COLORS["control"] if sig else COLORS["control"] + "55"
+            )
+
+    ax.barh(y_pos, selected[beta_col].values, color=colors, alpha=0.9,
+            edgecolor="white", linewidth=0.3, height=0.7)
+    ax.axvline(0, color="black", lw=0.8)
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(selected["feature"].values, fontsize=4)
+
+    ax.set_xlabel(r"Effect size ($\beta_{\mathrm{DiD}}$)")
+    ax.set_title("Top Genes by Effect Size — Melanoma DiD", fontsize=11,
+                 fontweight="bold")
+
+    legend_handles = [
+        mpatches.Patch(color=COLORS["treated"], alpha=0.9,
+                       label="Responder ↑ (p < 0.05)"),
+        mpatches.Patch(color=COLORS["treated"], alpha=0.35,
+                       label="Responder ↑ (n.s.)"),
+        mpatches.Patch(color=COLORS["control"], alpha=0.9,
+                       label="Non-responder ↑ (p < 0.05)"),
+        mpatches.Patch(color=COLORS["control"], alpha=0.35,
+                       label="Non-responder ↑ (n.s.)"),
+    ]
+    ax.legend(handles=legend_handles, fontsize=9, loc="lower right",
+              frameon=True, framealpha=0.9)
+    despine(ax)
+
+
+# Panel C — GSEA enrichment bar chart (Melanoma)
+def panel_C(ax, data: dict):
+    """GSEA immune + metabolic pathway enrichment bar chart with balanced up/down."""
+    gsea_results = data["gsea_results"]
+
+    if gsea_results is None or len(gsea_results) == 0:
+        _panel_B_signature_waterfall(ax, data)
+        return
+
+    df = gsea_results.copy()
+    cols = _detect_gsea_columns(df)
+    nes_col, fdr_col, term_col = cols["nes"], cols["fdr"], cols["term"]
+
+    if nes_col is None:
+        _panel_B_signature_waterfall(ax, data)
+        return
+
+    # Convert to numeric
+    df[nes_col] = pd.to_numeric(df[nes_col], errors="coerce")
+    if fdr_col is not None:
+        df[fdr_col] = pd.to_numeric(df[fdr_col], errors="coerce")
+    df = df.dropna(subset=[nes_col])
+
+    # Immune/metabolic filtering already done in _prepare_data.
+
+    # Balanced selection: top N up + top N down by |NES|
+    n_show = 15
+    df_pos = df[df[nes_col] > 0].nlargest(n_show // 2 + 1, nes_col)
+    df_neg = df[df[nes_col] < 0].nsmallest(n_show - len(df_pos), nes_col)
+    # If one direction is sparse, fill from the other
+    if len(df_pos) + len(df_neg) < n_show:
+        remainder = n_show - len(df_pos) - len(df_neg)
+        already = set(df_pos.index) | set(df_neg.index)
+        extra = (
+            df[~df.index.isin(already)]
+            .assign(_abs=df[nes_col].abs())
+            .nlargest(remainder, "_abs")
+        )
+        df_selected = pd.concat([df_pos, df_neg, extra.drop(columns="_abs")])
+    else:
+        df_selected = pd.concat([df_pos, df_neg])
+    df_selected = df_selected.drop_duplicates().sort_values(nes_col, ascending=True)
+
+    # Fix #4: Clean pathway names AND disambiguate duplicates
+    df_selected["pathway"] = df_selected[term_col].apply(_clean_pathway_name)
+    # Disambiguate duplicate display names
+    _seen = {}
+    new_labels = []
+    for idx, row in df_selected.iterrows():
+        label = row["pathway"]
+        if label in _seen:
+            _seen[label] += 1
+            lib = str(row.get("library", ""))
+            if lib and lib != "averaged":
+                label = f"{label} [{lib[:8]}]"
+            else:
+                label = f"{label} ({_seen[label]})"
+        else:
+            _seen[label] = 1
+        new_labels.append(label)
+    df_selected["pathway"] = new_labels
+
+    # Color by direction and significance — use project palette
+    # treated (blue) = Responder ↑, control (orange) = Non-responder ↑
+    clr_up_sig = COLORS["treated"]
+    clr_up_ns = COLORS["treated"] + "66"  # 40% alpha hex
+    clr_dn_sig = COLORS["control"]
+    clr_dn_ns = COLORS["control"] + "66"
+    colors = []
+    for _, row in df_selected.iterrows():
+        sig = (
+            fdr_col is not None
+            and pd.notna(row.get(fdr_col))
+            and row[fdr_col] < 0.25
+        )
+        if row[nes_col] > 0:
+            colors.append(clr_up_sig if sig else clr_up_ns)
+        else:
+            colors.append(clr_dn_sig if sig else clr_dn_ns)
+
+    y_pos = np.arange(len(df_selected))
+    ax.barh(y_pos, df_selected[nes_col].values, color=colors, alpha=0.9,
+            edgecolor="white", linewidth=0.5, height=0.7)
+
+    ax.axvline(0, color="black", lw=0.8)
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(df_selected["pathway"].values, fontsize=8)
+    ax.set_xlabel("Normalized Enrichment Score (NES)")
+    ax.set_title("Pathway Enrichment", fontsize=11, fontweight="bold")
+
+    # Build legend only for categories present
+    def _is_sig(row):
+        return (fdr_col and pd.notna(row.get(fdr_col))
+                and row[fdr_col] < 0.25)
+
+    has_up_sig = any(
+        row[nes_col] > 0 and _is_sig(row)
+        for _, row in df_selected.iterrows()
+    )
+    has_up_ns = any(
+        row[nes_col] > 0 and not _is_sig(row)
+        for _, row in df_selected.iterrows()
+    )
+    has_down_sig = any(
+        row[nes_col] < 0 and _is_sig(row)
+        for _, row in df_selected.iterrows()
+    )
+    has_down_ns = any(
+        row[nes_col] < 0 and not _is_sig(row)
+        for _, row in df_selected.iterrows()
+    )
+    legend_handles = []
+    if has_up_sig:
+        legend_handles.append(mpatches.Patch(
+            color=COLORS["treated"], alpha=0.9,
+            label="Responder ↑ (FDR < 0.25)",
+        ))
+    if has_up_ns:
+        legend_handles.append(mpatches.Patch(
+            color=COLORS["treated"], alpha=0.4,
+            label="Responder ↑ (n.s.)",
+        ))
+    if has_down_sig:
+        legend_handles.append(mpatches.Patch(
+            color=COLORS["control"], alpha=0.9,
+            label="Non-responder ↑ (FDR < 0.25)",
+        ))
+    if has_down_ns:
+        legend_handles.append(mpatches.Patch(
+            color=COLORS["control"], alpha=0.4,
+            label="Non-responder ↑ (n.s.)",
+        ))
+    if legend_handles:
+        ax.legend(handles=legend_handles, fontsize=9, loc="lower right",
+                  frameon=True, framealpha=0.9)
+    despine(ax)
+
+
+# Panel D — Leading-edge gene overlap heatmap (Melanoma)
+def panel_D(ax, data: dict, *, composite: bool = False):
+    """Leading-edge gene overlap heatmap across top enriched pathways.
+
+    Information-dense design:
+    - Tight imshow grid coloured by NES direction
+    - Pathway labels coloured by NES (blue=Responder↑, orange=Non-responder↑)
+    - Top marginal bar showing gene recurrence count
+    - Hierarchical column clustering for gene co-occurrence
+    - Capped to 8 pathways × 20 genes for readability
+
+    When *composite* is True, the marginal bar and tight_layout are
+    skipped so the panel can be embedded in a composite GridSpec figure.
+    """
+    from scipy.cluster.hierarchy import leaves_list, linkage
+    from scipy.spatial.distance import pdist
+
+    gsea_results = data["gsea_results"]
+
+    if gsea_results is None or len(gsea_results) == 0:
+        _panel_C_did_summary(ax, data)
+        return
+
+    df = gsea_results.copy()
+    cols = _detect_gsea_columns(df)
+    nes_col, fdr_col, term_col, lead_col = (
+        cols["nes"], cols["fdr"], cols["term"], cols["lead"]
+    )
+
+    if nes_col is None or lead_col is None or lead_col not in df.columns:
+        _panel_C_did_summary(ax, data)
+        return
+
+    df[nes_col] = pd.to_numeric(df[nes_col], errors="coerce")
+    if fdr_col is not None:
+        df[fdr_col] = pd.to_numeric(df[fdr_col], errors="coerce")
+    df = df.dropna(subset=[nes_col])
+
+    # Select top pathways balanced across NES directions — match count in
+    # panel A (GSEA bar chart) so every bar in A has a row in this heatmap.
+    MAX_PW = 15
+    work_df = df.assign(_abs=df[nes_col].abs())
+    pos_df = work_df[work_df[nes_col] > 0].nlargest(MAX_PW, "_abs")
+    neg_df = work_df[work_df[nes_col] < 0].nlargest(MAX_PW, "_abs")
+
+    n_pos = min(len(pos_df), MAX_PW // 2)
+    n_neg = min(len(neg_df), MAX_PW // 2)
+    # Fill remaining slots from whichever side has more
+    remaining = MAX_PW - n_pos - n_neg
+    if remaining > 0:
+        if len(pos_df) > n_pos:
+            extra_pos = min(remaining, len(pos_df) - n_pos)
+            n_pos += extra_pos
+            remaining -= extra_pos
+        if remaining > 0 and len(neg_df) > n_neg:
+            n_neg += min(remaining, len(neg_df) - n_neg)
+
+    selected = pd.concat([
+        pos_df.head(n_pos),
+        neg_df.head(n_neg),
+    ]).drop(columns="_abs", errors="ignore")
+    selected = selected.sort_values(nes_col, ascending=True)
+
+    # Parse leading-edge genes
+    pathway_genes: dict[str, set[str]] = {}
+    pathway_nes: dict[str, float] = {}
+    pathway_fdr: dict[str, float] = {}
+    all_genes: set[str] = set()
+    _seen_names: set[str] = set()
+    for _, row in selected.iterrows():
+        pname = _clean_pathway_name(str(row[term_col]), max_len=32)
+        if pname in _seen_names:
+            lib = str(row.get("library", ""))
+            pname = f"{pname} [{lib[:8]}]" if lib else f"{pname} (2)"
+        _seen_names.add(pname)
+        genes_str = str(row[lead_col])
+        genes = [g.strip() for g in genes_str.replace(";", ",").split(",")
+                 if g.strip()]
+        genes = [g for g in genes if _is_likely_protein_coding(g)]
+        pathway_genes[pname] = set(genes)
+        pathway_nes[pname] = float(row[nes_col])
+        if fdr_col is not None and pd.notna(row.get(fdr_col)):
+            pathway_fdr[pname] = float(row[fdr_col])
+        all_genes.update(genes)
+
+    if not all_genes or not pathway_genes:
+        _panel_C_did_summary(ax, data)
+        return
+
+    # Select informative genes — guarantee BOTH NES directions are
+    # represented by selecting top genes PER direction then merging.
+    # This avoids the problem where one direction's highly-overlapping
+    # gene sets dominate a global top-N selection.
+    pathways = list(pathway_genes.keys())
+    pos_pathways = [p for p in pathways if pathway_nes.get(p, 0) > 0]
+    neg_pathways = [p for p in pathways if pathway_nes.get(p, 0) <= 0]
+
+    def _count_genes_in_group(pw_list):
+        """Count gene occurrences within a group of pathways."""
+        counts: dict[str, int] = {}
+        for pw in pw_list:
+            for g in pathway_genes.get(pw, set()):
+                counts[g] = counts.get(g, 0) + 1
+        return counts
+
+    TOTAL_GENES = 20
+    half = TOTAL_GENES // 2
+    pos_counts = _count_genes_in_group(pos_pathways)
+    neg_counts = _count_genes_in_group(neg_pathways)
+
+    # Take top genes from each direction
+    pos_genes = sorted(pos_counts.keys(),
+                       key=lambda g: -pos_counts[g])[:half]
+    neg_genes = sorted(neg_counts.keys(),
+                       key=lambda g: -neg_counts[g])[:half]
+
+    # Merge, removing duplicates (keep order)
+    seen: set[str] = set()
+    shared_genes: list[str] = []
+    for g in pos_genes + neg_genes:
+        if g not in seen:
+            shared_genes.append(g)
+            seen.add(g)
+
+    # If one direction had fewer than half genes, fill from the other
+    if len(shared_genes) < TOTAL_GENES:
+        all_counts: dict[str, int] = {}
+        for pw in pathways:
+            for g in pathway_genes.get(pw, set()):
+                all_counts[g] = all_counts.get(g, 0) + 1
+        for g in sorted(all_counts.keys(), key=lambda g: -all_counts[g]):
+            if g not in seen:
+                shared_genes.append(g)
+                seen.add(g)
+            if len(shared_genes) >= TOTAL_GENES:
+                break
+
+    print(f"  Panel C: {len(pos_genes)} genes from NES>0 pathways, "
+          f"{len(neg_genes)} genes from NES≤0 pathways")
+
+    # Build binary matrix and prune zero rows/cols
+    matrix = np.zeros((len(pathways), len(shared_genes)), dtype=int)
+    for i, pw in enumerate(pathways):
+        for j, g in enumerate(shared_genes):
+            if g in pathway_genes[pw]:
+                matrix[i, j] = 1
+    # Prune zero rows (pathways with no genes in selection)
+    row_ok = matrix.sum(axis=1) > 0
+    matrix = matrix[row_ok]
+    pathways = [p for p, k in zip(pathways, row_ok) if k]
+    # Prune zero cols
+    col_ok = matrix.sum(axis=0) > 0
+    matrix = matrix[:, col_ok]
+    shared_genes = [g for g, k in zip(shared_genes, col_ok) if k]
+
+    n_pw_kept = sum(1 for p in pathways if pathway_nes.get(p, 0) > 0)
+    n_neg_kept = sum(1 for p in pathways if pathway_nes.get(p, 0) <= 0)
+    print(f"  Panel C: {n_pw_kept} NES>0 + {n_neg_kept} NES≤0 pathways "
+          f"retained, {len(shared_genes)} genes")
+
+    if matrix.size == 0 or not shared_genes:
+        _panel_C_did_summary(ax, data)
+        return
+
+    n_pw, n_genes = matrix.shape
+
+    # ── Hierarchical clustering of gene columns ──
+    if n_genes >= 3:
+        try:
+            dist = pdist(matrix.T, metric="jaccard")
+            dist = np.nan_to_num(dist, nan=1.0)
+            Z = linkage(dist, method="average")
+            gene_order = leaves_list(Z)
+        except Exception:
+            gene_order = np.arange(n_genes)
+    else:
+        gene_order = np.arange(n_genes)
+
+    matrix = matrix[:, gene_order]
+    shared_genes = [shared_genes[i] for i in gene_order]
+
+    # Recompute column counts after clustering
+    col_counts = matrix.sum(axis=0)
+
+    # ── Sort pathways: NES>0 block on top, NES<0 on bottom ──
+    pos_pws = [p for p in pathways if pathway_nes.get(p, 0) > 0]
+    neg_pws = [p for p in pathways if pathway_nes.get(p, 0) <= 0]
+    # Sort within each block by |NES|
+    pos_pws.sort(key=lambda p: pathway_nes.get(p, 0))
+    neg_pws.sort(key=lambda p: pathway_nes.get(p, 0))
+    pathways_sorted = neg_pws + pos_pws
+    row_idx = [pathways.index(p) for p in pathways_sorted]
+    matrix = matrix[row_idx]
+    pathways = pathways_sorted
+    n_sep = len(neg_pws)  # separator position between blocks
+
+    # Recompute column counts after reorder
+    col_counts = matrix.sum(axis=0)
+
+    # ── Colour constants ──
+    BLUE = (0.122, 0.471, 0.706)   # steel blue (Responder ↑ / NES>0)
+    ORANGE = (0.878, 0.478, 0.184)  # warm orange (Non-responder ↑ / NES<0)
+    EMPTY_COLOR = (0.94, 0.94, 0.94)    # light gray for "not in leading edge"  # noqa: N806
+
+    # ── Colour matrix: in leading edge (filled) vs not (empty) ──
+    rgb = np.full((n_pw, n_genes, 3), 0.94)  # light gray for empty
+    for i, pw in enumerate(pathways):
+        nes_val = pathway_nes.get(pw, 0)
+        fill = np.array(BLUE if nes_val > 0 else ORANGE)
+        for j in range(n_genes):
+            if matrix[i, j] == 1:
+                rgb[i, j] = fill
+
+    # ── Transpose: genes on Y-axis, pathways on X-axis ──
+    rgb = np.transpose(rgb, (1, 0, 2))  # (n_genes, n_pw, 3)
+
+    ax.imshow(rgb, aspect="auto", interpolation="nearest", origin="lower")
+
+    # Thin white grid lines
+    for i in range(n_genes + 1):
+        ax.axhline(i - 0.5, color="white", linewidth=0.8, zorder=2)
+    for j in range(n_pw + 1):
+        ax.axvline(j - 0.5, color="white", linewidth=0.8, zorder=2)
+
+    # Separator line between NES<0 and NES>0 blocks (now vertical)
+    if n_sep > 0 and n_sep < n_pw:
+        ax.axvline(n_sep - 0.5, color="black", linewidth=1.5, zorder=3)
+
+    # X-axis: pathway labels, coloured by NES direction
+    ax.set_xticks(range(n_pw))
+    ax.set_xticklabels(pathways, rotation=35, ha="right", fontsize=5)
+    for i, (pw, label) in enumerate(zip(pathways, ax.get_xticklabels())):
+        label.set_color(BLUE if pathway_nes.get(pw, 0) > 0 else ORANGE)
+        label.set_fontweight("bold")
+
+    # Y-axis: gene labels
+    ax.set_yticks(range(n_genes))
+    ax.set_yticklabels(shared_genes, fontsize=6, style="italic")
+    ax.tick_params(axis="both", length=0)
+
+    ax.set_xlabel("")
+    ax.set_ylabel("")
+
+    # Gene recurrence: how many pathways each gene appears in
+    # col_counts was computed from original (n_pw × n_genes) matrix
+    gene_counts = col_counts
+
+    if not composite:
+        # ── Right marginal bar: gene recurrence count ──
+        fig = ax.get_figure()
+        fig.tight_layout(rect=[0, 0, 0.90, 1])
+        ax_pos = ax.get_position()
+        bar_width = 0.04
+        bar_ax = fig.add_axes([
+            ax_pos.x1 + 0.02, ax_pos.y0,
+            bar_width, ax_pos.height,
+        ])
+        bar_colors = ["#555555"] * n_genes
+        bar_ax.barh(range(n_genes), gene_counts, height=0.7,
+                    color=bar_colors, edgecolor="none")
+        bar_ax.set_ylim(-0.5, n_genes - 0.5)
+        bar_ax.set_xlim(0, max(gene_counts) + 0.5)
+        bar_ax.set_yticks([])
+        bar_ax.set_xlabel("# paths", fontsize=5.5, labelpad=5)
+        bar_ax.tick_params(axis="x", labelsize=5.5, length=2)
+        bar_ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True, nbins=3))
+        for spine in ["top", "right", "left"]:
+            bar_ax.spines[spine].set_visible(False)
+        bar_ax.spines["bottom"].set_linewidth(0.5)
+        ax.set_title("Leading-Edge Gene Overlap", fontsize=11,
+                     fontweight="bold", pad=8)
+    else:
+        ax.set_title("Leading-Edge Gene Overlap", fontsize=11,
+                     fontweight="bold")
+
+    # Legend — inside the heatmap lower-right (gray empty region)
+    legend_handles = [
+        mpatches.Patch(facecolor=BLUE, label="Resp. ↑"),
+        mpatches.Patch(facecolor=ORANGE, label="Non-resp. ↑"),
+        mpatches.Patch(facecolor=EMPTY_COLOR, edgecolor="#CCCCCC",
+                       label="Not in leading edge"),
+    ]
+    ax.legend(
+        handles=legend_handles, fontsize=7, loc="lower right",
+        frameon=True, framealpha=0.9, edgecolor="#CCCCCC",
+        handlelength=1.0, handleheight=0.7,
+    )
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+
+
+# Panel E — Cell-type DiD effect heatmap (Melanoma)
+def panel_E(ax, data: dict):
+    """Cell-type-resolved effect heatmap for top DiD genes.
+
+    Rows = top genes by |β_DiD|, columns = cell types.
+    Color = mean DiD-like effect per cell type (responder post-pre
+    minus non-responder post-pre, using raw cell-level means).
+    """
+    gene_results = data.get("gene_results")
+    adata = data.get("adata")
+
+    if gene_results is None or adata is None or len(gene_results) == 0:
+        ax.text(0.5, 0.5, "Gene-level results unavailable",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=12, color=COLORS["gray"])
+        ax.set_title("Cell-Type DiD Effects", fontsize=11,
+                     fontweight="bold")
+        ax.axis("off")
+        return
+
+    df = gene_results.copy()
+    beta_col = "beta_DiD"
+    df = df.dropna(subset=[beta_col])
+
+    # Restrict to protein-coding genes (skip RNU*, RNA5SP*, lncRNAs, etc.)
+    df = df[df["feature"].apply(_is_likely_protein_coding)]
+
+    # Select top 15 genes by |β_DiD| (balanced: top 8 pos + top 7 neg)
+    n_per_dir = 8
+    df_pos = df[df[beta_col] > 0].nlargest(n_per_dir, beta_col)
+    df_neg = df[df[beta_col] < 0].nsmallest(n_per_dir - 1, beta_col)
+    top_genes_df = pd.concat([df_pos, df_neg])
+    top_genes = top_genes_df["feature"].tolist()
+
+    # Restrict to genes present in adata
+    available = [g for g in top_genes if g in adata.var_names]
+    if len(available) == 0:
+        ax.text(0.5, 0.5, "No top genes in adata",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=12, color=COLORS["gray"])
+        ax.axis("off")
+        return
+
+    # Compute cell-type × gene DiD-like effects from raw cell-level data
+    ct_col = "cell_type"
+    if ct_col not in adata.obs.columns:
+        ct_col = next(
+            (c for c in adata.obs.columns if "cell" in c.lower()
+             and "type" in c.lower()),
+            None,
+        )
+    if ct_col is None:
+        ax.text(0.5, 0.5, "No cell type column",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=12, color=COLORS["gray"])
+        ax.axis("off")
+        return
+
+    layer_key = "log1p_tpm"
+    cell_types = sorted(adata.obs[ct_col].dropna().unique())
+    # Drop very rare cell types (<20 cells total)
+    ct_counts = adata.obs[ct_col].value_counts()
+    cell_types = [ct for ct in cell_types if ct_counts.get(ct, 0) >= 20]
+    cell_types = [ct for ct in cell_types if "unassign" not in ct.lower()]
+
+    effect_mat = pd.DataFrame(
+        np.nan, index=available, columns=cell_types
+    )
+
+    sub_adata = adata[:, available].copy()
+    if layer_key in sub_adata.layers:
+        X = sub_adata.layers[layer_key]
+    else:
+        X = sub_adata.X
+
+    obs = sub_adata.obs.copy()
+    obs["_visit"] = obs["visit"]
+    obs["_arm"] = obs["response_harmonized"]
+    obs["_ct"] = obs[ct_col]
+
+    import scipy.sparse as sp
+    if sp.issparse(X):
+        X = X.toarray()
+    expr_df = pd.DataFrame(X, index=obs.index, columns=available)
+    expr_df["_visit"] = obs["_visit"].values
+    expr_df["_arm"] = obs["_arm"].values
+    expr_df["_ct"] = obs["_ct"].values
+
+    for ct in cell_types:
+        ct_mask = expr_df["_ct"] == ct
+        ct_data = expr_df[ct_mask]
+        for arm_label, visit_label in [
+            ("Responder", "Pre"), ("Responder", "Post"),
+            ("Non-responder", "Pre"), ("Non-responder", "Post"),
+        ]:
+            pass  # just checking groups exist
+
+        for gene in available:
+            try:
+                means = {}
+                for arm in ["Responder", "Non-responder"]:
+                    for vis in ["Pre", "Post"]:
+                        mask = (ct_data["_arm"] == arm) & (ct_data["_visit"] == vis)
+                        vals = ct_data.loc[mask, gene]
+                        means[(arm, vis)] = vals.mean() if len(vals) > 0 else np.nan
+
+                # DiD = (R_post - R_pre) - (NR_post - NR_pre)
+                r_delta = means[("Responder", "Post")] - means[("Responder", "Pre")]
+                nr_delta = means[("Non-responder", "Post")] - means[("Non-responder", "Pre")]
+                did_val = r_delta - nr_delta
+                if np.isfinite(did_val):
+                    effect_mat.loc[gene, ct] = did_val
+            except Exception:
+                pass
+
+    # Sort genes by global β_DiD for consistent ordering
+    gene_order = top_genes_df.set_index("feature").loc[available].sort_values(
+        beta_col, ascending=True
+    ).index.tolist()
+    effect_mat = effect_mat.loc[gene_order]
+
+    # Drop cell types with all NaN
+    effect_mat = effect_mat.dropna(axis=1, how="all")
+
+    if effect_mat.shape[1] == 0:
+        ax.text(0.5, 0.5, "Insufficient cell-type data",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=12, color=COLORS["gray"])
+        ax.axis("off")
+        return
+
+    # Plot heatmap
+    vmax = np.nanmax(np.abs(effect_mat.values))
+    vmax = max(vmax, 0.01)  # avoid degenerate scale
+
+    import matplotlib.colors as mcolors
+    cmap = mcolors.LinearSegmentedColormap.from_list(
+        "did_div",
+        [COLORS["control"], "#f0f0f0", COLORS["treated"]],
+        N=256,
+    )
+
+    im = ax.imshow(
+        effect_mat.values.astype(float),
+        aspect="auto",
+        cmap=cmap,
+        vmin=-vmax,
+        vmax=vmax,
+        interpolation="nearest",
+    )
+
+    # Mask NaN cells with hatching
+    nan_mask = np.isnan(effect_mat.values.astype(float))
+    if nan_mask.any():
+        masked = np.ma.array(np.ones_like(effect_mat.values, dtype=float),
+                             mask=~nan_mask)
+        ax.pcolormesh(
+            np.arange(effect_mat.shape[1] + 1) - 0.5,
+            np.arange(effect_mat.shape[0] + 1) - 0.5,
+            masked,
+            cmap=mcolors.ListedColormap(["#e8e8e8"]),
+            vmin=0, vmax=1, zorder=0,
+        )
+
+    ax.set_xticks(np.arange(effect_mat.shape[1]))
+    ax.set_xticklabels(effect_mat.columns, rotation=30, ha="right",
+                       fontsize=6.5)
+    ax.set_yticks(np.arange(effect_mat.shape[0]))
+    ax.set_yticklabels(effect_mat.index, fontsize=7)
+    ax.set_title("Cell-Type DiD Effects (Top Genes)", fontsize=11,
+                 fontweight="bold")
+
+    # Colorbar
+    cbar = ax.figure.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    cbar.set_label(r"$\Delta\Delta$ expression", fontsize=8)
+    cbar.ax.tick_params(labelsize=7)
+
+
+# ======================================================================
+# Panel J — TNBC cell-type within-arm effect heatmap
+# ======================================================================
+
 
 FIGURE_NAME = "SuppFig6_cross_dataset_biology"
 
@@ -685,11 +1636,11 @@ def generate():
 
     # Panels A–E: melanoma biological discovery
     mel_panels = [
-        ("panel_A", _mel_volcano,      (8, 6),  dict(composite=False)),
-        ("panel_B", _mel_waterfall,    (8, 6),  {}),
-        ("panel_C", _mel_gsea_bars,    (8, 6),  {}),
-        ("panel_D", _mel_leading_edge, (10, 7), {}),
-        ("panel_E", _mel_celltype_hm,  (8, 6),  {}),
+        ("panel_A", panel_A,      (8, 6),  dict(composite=False)),
+        ("panel_B", panel_B,    (8, 6),  {}),
+        ("panel_C", panel_C,    (8, 6),  {}),
+        ("panel_D", panel_D, (10, 7), {}),
+        ("panel_E", panel_E,  (8, 6),  {}),
     ]
     for panel_name, fn, size, kwargs in mel_panels:
         fig, ax = plt.subplots(figsize=size)
@@ -790,11 +1741,11 @@ def generate():
     ax_b = fig_c.add_subplot(gs0[1])
     ax_c = fig_c.add_subplot(gs0[3])
 
-    _mel_volcano(ax_a, data_mel, composite=True)
+    panel_A(ax_a, data_mel, composite=True)
     ax_a.tick_params(axis='y', labelsize=4)
     ax_a.xaxis.label.set_fontsize(4.5)
     ax_a.yaxis.label.set_fontsize(4.5)
-    _mel_waterfall(ax_b, data_mel)
+    panel_B(ax_b, data_mel)
     ax_b.tick_params(axis='y', labelsize=4)
     _b_lbls = [t.get_text() for t in ax_b.get_yticklabels()]
     if _b_lbls:
@@ -802,7 +1753,7 @@ def generate():
             [t if _k % 2 == 0 else "" for _k, t in enumerate(_b_lbls)],
             fontsize=4,
         )
-    _mel_gsea_bars(ax_c, data_mel)
+    panel_C(ax_c, data_mel)
     ax_c.set_title(ax_c.get_title().replace("Melanoma", "").strip(" —–-") +
                    " — Melanoma", fontsize=5.0, fontweight="bold")
     ax_c.tick_params(axis='y', labelsize=3.5)
@@ -814,14 +1765,14 @@ def generate():
     ax_d = fig_c.add_subplot(gs2[1])
     ax_e = fig_c.add_subplot(gs2[3])
 
-    _mel_leading_edge(ax_d, data_mel, composite=True)
+    panel_D(ax_d, data_mel, composite=True)
     _swap_leading_edge_axes(ax_d)
     ax_d.set_title(ax_d.get_title().replace("Melanoma", "").strip(" —–-") +
                    " — Melanoma", fontsize=5.0, fontweight="bold")
     ax_d.tick_params(axis='y', labelsize=4)
 
     _axes_before_e = set(fig_c.get_axes())
-    _mel_celltype_hm(ax_e, data_mel)
+    panel_E(ax_e, data_mel)
     _shrink_colorbars(fig_c, _axes_before_e, fs=3.5)
     for _cb_ax in set(fig_c.get_axes()) - _axes_before_e - {ax_e}:
         _cb_ax.tick_params(labelsize=4.0)
