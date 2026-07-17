@@ -2392,6 +2392,7 @@ def _panel_tnbc_abundance_did(ax, data_tnbc: dict) -> None:
         ax.axis("off")
         return
 
+    df = df[~df["celltype"].str.lower().str.contains("unassign", na=False)]
     df = df.sort_values("beta_DiD").reset_index(drop=True)
     y_pos = np.arange(len(df))
 
