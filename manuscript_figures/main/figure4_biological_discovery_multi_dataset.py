@@ -2128,6 +2128,7 @@ def panel_F(ax, data: dict):
     # Drop very rare cell types (<20 cells total)
     ct_counts = adata.obs[ct_col].value_counts()
     cell_types = [ct for ct in cell_types if ct_counts.get(ct, 0) >= 20]
+    cell_types = [ct for ct in cell_types if "unassign" not in ct.lower()]
 
     effect_mat = pd.DataFrame(
         np.nan, index=available, columns=cell_types
@@ -2304,6 +2305,7 @@ def _panel_tnbc_celltype_hm(ax, data_tnbc: dict):
     cell_types = sorted(adata.obs[ct_col].dropna().unique())
     ct_counts = adata.obs[ct_col].value_counts()
     cell_types = [ct for ct in cell_types if ct_counts.get(ct, 0) >= 20]
+    cell_types = [ct for ct in cell_types if "unassign" not in ct.lower()]
 
     effect_mat = pd.DataFrame(np.nan, index=available, columns=cell_types)
 
