@@ -11,18 +11,20 @@ Panels
 ------
 A   Bootstrap vs analytical SE (Sade–Feldman, top) and TNBC (bottom).
 B   Leave-one-out participant sensitivity (Sade–Feldman, top) and TNBC (bottom).
-C   Null-gene FPR vs signal fraction (simulator benchmark; faceted by panel size).
-D   Effect-size bias and RMSE on signal genes (simulator benchmark). Combined artboard:
+C   Effect-size bias and RMSE on signal genes (simulator benchmark). Combined artboard:
     **left** column of the benchmark row (faceted bias/RMSE grid).
-E   Genomic inflation λ_GC under pure null (simulator benchmark). Combined artboard:
+D   Genomic inflation λ_GC under pure null (simulator benchmark). Combined artboard:
     **right** column of the benchmark row (single-axis λ_GC plot).
-F   Computational cost: median runtime per iteration by method and panel size
+E   Computational cost: median runtime per iteration by method and panel size
     (simulator benchmark).
+F   Null-gene p-value calibration: QQ plots + % outside 95% CI heatmap
+    (from Supp Fig 5 panel I).
 G   Standard-error comparison (cell vs participant level): Sade–Feldman (top)
     and TNBC (bottom).
 H   Cross-dataset signed Cohen's d forest (pre-specified endpoints), now
     including TNBC as a sixth dataset group.
 
+Null-gene FPR vs signal fraction (former panel C) moved to Supp Fig 5 panel H.
 Cell-vs-participant effect-size scatter and p-value comparison moved
 to Figure 2 panels B–C.
 """
@@ -38,6 +40,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from matplotlib.patches import Patch
 from matplotlib.ticker import MultipleLocator
 from scipy import stats
 
@@ -594,18 +597,6 @@ def _style_axis(ax) -> None:
     ax.tick_params(axis="both", which="major", color="#333333", width=0.8, length=4)
 
 
-def _compute_null_fpr_table(bench_df: pd.DataFrame) -> pd.DataFrame:
-    null = bench_df[bench_df["true_beta"] == 0.0].copy()
-    rows = []
-    for (method, n_g, frac), grp in null.groupby(["method", "n_genes", "signal_pct"]):
-        pvals = grp["pvalue"].dropna().values
-        if len(pvals) == 0:
-            continue
-        rows.append({"method": method, "n_genes": int(n_g), "signal_pct": int(frac),
-                     "fpr": float((pvals < 0.05).mean()), "n_tests": int(len(pvals))})
-    return pd.DataFrame(rows)
-
-
 def _compute_signal_bias_rmse_table(bench_df: pd.DataFrame) -> pd.DataFrame:
     mixed = bench_df[~bench_df["is_null_scenario"]].copy()
     sig = mixed[mixed["true_beta"] != 0.0].dropna(subset=["estimated_beta"]).copy()
@@ -619,61 +610,6 @@ def _compute_signal_bias_rmse_table(bench_df: pd.DataFrame) -> pd.DataFrame:
                      "bias": float(grp["err"].mean()), "rmse": float(np.sqrt(grp["sq_err"].mean())),
                      "n_tests": int(len(grp))})
     return pd.DataFrame(rows)
-
-
-def _panel_bench_fpr_curves(fig, bench_df: pd.DataFrame, *, composite: bool = False) -> None:
-    fpr_df = _compute_null_fpr_table(bench_df)
-    fpr_df = fpr_df[fpr_df["signal_pct"] > 0].copy()
-    axes = fig.subplots(1, 4, sharey=True)
-    if not hasattr(axes, "__len__"):
-        axes = [axes]
-
-    _ttl_fs = 5.75 if composite else 12
-    _ax_fs = 5.15 if composite else 11
-    _tk_fs = 4.65 if composite else 10
-    _leg_fs = 5.2 if composite else 9
-    if composite:
-        fig.suptitle("Null-gene FPR vs signal fraction", x=0.5, y=0.99, fontsize=5.8, fontweight="bold")
-
-    x_positions = np.arange(len(_SIGNAL_FRACTIONS), dtype=float)
-    frac_to_x = dict(zip(_SIGNAL_FRACTIONS, x_positions))
-    method_offsets = {"wilcoxon_paired": -0.08, "nebula": -0.03, "sctrial_did": +0.03, "dreamlet": +0.08}
-
-    for ax_idx, (ax, n_g) in enumerate(zip(axes, _PANEL_SIZES)):
-        sub = fpr_df[fpr_df["n_genes"] == n_g]
-        for method in _BENCH_METHODS:
-            m = sub[sub["method"] == method].sort_values("signal_pct")
-            if m.empty:
-                continue
-            is_focal = method == "sctrial_did"
-            style = _method_style(method, is_focal=is_focal, composite=composite)
-            x = np.array([frac_to_x[int(f)] for f in m["signal_pct"].values]) + method_offsets[method]
-            ax.plot(x, m["fpr"], label=_BENCH_METHOD_LABELS[method] if ax_idx == 0 else None,
-                    zorder=10 if is_focal else 3, **style)
-        _add_nominal_band(ax)
-        ax.set_xticks(x_positions)
-        ax.set_xticklabels([f"{f}%" for f in _SIGNAL_FRACTIONS], fontsize=_tk_fs)
-        ax.set_xlim(-0.4, len(_SIGNAL_FRACTIONS) - 0.6)
-        ax.set_xlabel("Signal fraction", fontsize=_ax_fs)
-        ax.set_title(f"{n_g:,} genes", fontsize=_ttl_fs, fontweight="bold",
-                     color="#222222", pad=4 if composite else 8)
-        ax.set_ylim(0.0, 0.7)
-        ax.yaxis.set_major_locator(MultipleLocator(0.1))
-        ax.tick_params(axis="y", labelsize=_tk_fs)
-        _style_axis(ax)
-
-    axes[0].set_ylabel("Null-gene FPR (p < 0.05)", fontsize=_ax_fs)
-    if composite:
-        h, lab = axes[0].get_legend_handles_labels()
-        for ax in axes:
-            leg = ax.get_legend()
-            if leg is not None:
-                leg.remove()
-        axes[0].legend(h, lab, loc="upper left", bbox_to_anchor=(0.02, 0.98),
-                       ncol=1, frameon=True, framealpha=0.95, edgecolor="#cccccc",
-                       fontsize=_leg_fs, handlelength=0.85, columnspacing=0.55, markerscale=0.65)
-    else:
-        axes[0].legend(loc="upper left", frameon=True, framealpha=0.95, edgecolor="#cccccc", fontsize=_leg_fs)
 
 
 def _panel_bench_lambda_gc(ax, bench_df: pd.DataFrame, *, composite: bool = False) -> None:
@@ -876,6 +812,237 @@ def _panel_bench_signal_rmse(fig, bench_df: pd.DataFrame, *, composite: bool = F
         fig.legend(handles=legend_handles, loc="upper center", ncol=4,
                    bbox_to_anchor=(0.53, 0.94), frameon=True, framealpha=0.95,
                    edgecolor="#cccccc", fontsize=_leg_fs)
+
+
+# ======================================================================
+# QQ calibration helpers (from Supp Fig 5 panel I)
+# ======================================================================
+
+def _compute_frac_outside_ci(pvals):
+    """Fraction of null p-value order statistics outside the 95% Beta CI band."""
+    pvals = np.sort(np.asarray(pvals, dtype=float))
+    n = len(pvals)
+    ranks = np.arange(1, n + 1)
+    lo = stats.beta.ppf(0.025, ranks, n - ranks + 1)
+    hi = stats.beta.ppf(0.975, ranks, n - ranks + 1)
+    return float(np.mean((pvals < lo) | (pvals > hi)))
+
+
+def _panel_bench_qq_single(
+    fig, bench_df,
+    n_genes: int = 200,
+    signal_pct: int = 10,
+    *,
+    composite: bool = False,
+    gs_parent=None,
+):
+    """2×2 QQ plots for one (n_genes, signal_pct) condition."""
+    scenario_name = f"two_arm__sens_g{n_genes}_f{signal_pct}"
+    sub_all = bench_df[bench_df["scenario"] == scenario_name]
+    if sub_all.empty:
+        print(f"    WARNING: scenario {scenario_name} not found for QQ panel")
+        return []
+    null = sub_all[sub_all["true_beta"] == 0.0]
+
+    if gs_parent is not None:
+        gs_inner = gs_parent.subgridspec(2, 2, hspace=0.65, wspace=0.28)
+        axes, ref_ax = [], None
+        for r in range(2):
+            for c in range(2):
+                kw = {} if ref_ax is None else {"sharex": ref_ax, "sharey": ref_ax}
+                ax = fig.add_subplot(gs_inner[r, c], **kw)
+                if ref_ax is None:
+                    ref_ax = ax
+                axes.append(ax)
+    else:
+        ax_grid = fig.subplots(2, 2, sharex=True, sharey=True,
+                               gridspec_kw={"hspace": 0.52, "wspace": 0.28})
+        axes = list(ax_grid.flatten())
+
+    _sct      = 2.5 if composite else 8
+    _ttl_fs   = 6.35 if composite else 12
+    _axlbl_fs = 5.1 if composite else 10
+    _tick_fs  = 5.1 if composite else 10
+
+    for mi, (ax, method) in enumerate(zip(axes, _BENCH_METHODS)):
+        pvals = (
+            null.loc[null["method"] == method, "pvalue"]
+            .dropna()
+            .sort_values()
+            .values
+        )
+        if len(pvals) == 0:
+            continue
+        n = len(pvals)
+        ranks = np.arange(1, n + 1)
+        expected = (ranks - 0.5) / n
+        obs_log = -np.log10(pvals + 1e-300)
+        exp_log = -np.log10(expected + 1e-300)
+        lo_env = -np.log10(stats.beta.ppf(0.975, ranks, n - ranks + 1) + 1e-300)
+        hi_env = -np.log10(stats.beta.ppf(0.025, ranks, n - ranks + 1) + 1e-300)
+        ax.fill_between(exp_log, lo_env, hi_env, color="#9a9a9a",
+                        alpha=0.32, zorder=1)
+        ax.scatter(exp_log, obs_log, s=_sct, alpha=0.55,
+                   color=_BENCH_METHOD_COLORS[method], edgecolors="none",
+                   rasterized=True, zorder=3)
+        lim = max(exp_log.max(), obs_log.max()) * 1.05
+        ax.plot([0, lim], [0, lim], color="#333333", linestyle="--",
+                linewidth=0.8, alpha=0.7, zorder=2)
+        ax.set_title(_BENCH_METHOD_LABELS[method], fontsize=_ttl_fs,
+                     fontweight="bold", color=_BENCH_METHOD_COLORS[method], pad=1)
+        if mi >= 2:
+            ax.set_xlabel(r"Expected $-\log_{10}(p)$", fontsize=_axlbl_fs)
+        if mi in (0, 2):
+            ax.set_ylabel(r"Observed $-\log_{10}(p)$", fontsize=_axlbl_fs)
+        _style_axis(ax)
+        ax.tick_params(axis="both", which="major", labelsize=_tick_fs)
+        ax.tick_params(axis="x", labelbottom=(mi >= 2))
+        ax.tick_params(axis="y", labelleft=(mi in (0, 2)))
+
+    if axes:
+        _leg_fs = 5.0 if composite else 8
+        leg = axes[0].legend(
+            handles=[Patch(facecolor="#9a9a9a", alpha=0.32, edgecolor="none",
+                           label="95% Beta envelope")],
+            loc="upper left", bbox_to_anchor=(0.03, 0.98),
+            frameon=True, framealpha=0.9, edgecolor="#cccccc",
+            fontsize=_leg_fs, handleheight=0.6, handlelength=1.0,
+            handletextpad=0.35, borderpad=0.3, borderaxespad=0.0,
+        )
+        leg.get_frame().set_linewidth(0.55)
+
+    return list(axes)
+
+
+def _panel_bench_qq_heatmap(fig, bench_df, *, composite: bool = False, gs_parent=None):
+    """Calibration summary heatmap: % outside 95% CI per (method, n_genes, signal_pct)."""
+    import matplotlib.colors as mcolors
+
+    n_genes_vals = _PANEL_SIZES
+    signal_pct_vals = _SIGNAL_FRACTIONS
+
+    _iter_col = "iteration" if "iteration" in bench_df.columns else None
+    frac_data = {}
+    for method in _BENCH_METHODS:
+        mat = np.full((len(n_genes_vals), len(signal_pct_vals)), np.nan)
+        for ri, ng in enumerate(n_genes_vals):
+            for ci, sf in enumerate(signal_pct_vals):
+                scenario = f"two_arm__sens_g{ng}_f{sf}"
+                sub = bench_df[
+                    (bench_df["scenario"] == scenario)
+                    & (bench_df["method"] == method)
+                    & (bench_df["true_beta"] == 0.0)
+                ]
+                sub = sub.dropna(subset=["pvalue"])
+                if len(sub) < 10:
+                    continue
+                if _iter_col is not None:
+                    fracs = []
+                    for _, grp in sub.groupby(_iter_col):
+                        pv = grp["pvalue"].values
+                        if len(pv) >= 5:
+                            fracs.append(_compute_frac_outside_ci(pv))
+                    if fracs:
+                        mat[ri, ci] = float(np.mean(fracs))
+                else:
+                    mat[ri, ci] = _compute_frac_outside_ci(sub["pvalue"].values)
+        frac_data[method] = mat
+
+    all_vals = np.concatenate([v[~np.isnan(v)] for v in frac_data.values()])
+    if len(all_vals) == 0:
+        print("    WARNING: no calibration data found for panel F heatmap")
+        return []
+    vcenter = 0.05
+    _abs_dev = max(np.nanmax(np.abs(all_vals - vcenter)) * 1.1, 0.03)
+    vmin, vmax = vcenter - _abs_dev, vcenter + _abs_dev
+    norm = mcolors.TwoSlopeNorm(vcenter=vcenter, vmin=vmin, vmax=vmax)
+    cmap = "RdBu_r"
+
+    _ttl_fs   = 6.35 if composite else 11
+    _axlbl_fs = 5.1 if composite else 9
+    _cblbl_fs = 5.6 if composite else 9
+    _ann_fs   = 5.3 if composite else 8
+    _tick_fs  = 5.0 if composite else 8
+
+    _wr = [0.58, 0.58, 0.032]
+    if gs_parent is not None:
+        gs_inner = gs_parent.subgridspec(2, 3, hspace=0.65, wspace=0.38,
+                                         width_ratios=_wr)
+        axes = [
+            fig.add_subplot(gs_inner[0, 0]),
+            fig.add_subplot(gs_inner[0, 1]),
+            fig.add_subplot(gs_inner[1, 0]),
+            fig.add_subplot(gs_inner[1, 1]),
+        ]
+        cbar_ax = fig.add_subplot(gs_inner[:, 2])
+    else:
+        gs = fig.add_gridspec(2, 3, hspace=0.65, wspace=0.35,
+                              width_ratios=_wr,
+                              left=0.10, right=0.95, top=0.92, bottom=0.10)
+        axes = [
+            fig.add_subplot(gs[0, 0]),
+            fig.add_subplot(gs[0, 1]),
+            fig.add_subplot(gs[1, 0]),
+            fig.add_subplot(gs[1, 1]),
+        ]
+        cbar_ax = fig.add_subplot(gs[:, 2])
+
+    col_labels = [f"{sf}%" for sf in signal_pct_vals]
+    row_labels = [f"{ng:,}" for ng in n_genes_vals]
+
+    im_last = None
+    for mi, (ax, method) in enumerate(zip(axes, _BENCH_METHODS)):
+        mat = frac_data[method]
+        im = ax.imshow(mat, cmap=cmap, norm=norm, aspect="auto",
+                       interpolation="nearest")
+        im_last = im
+
+        for ri in range(len(n_genes_vals)):
+            for ci in range(len(signal_pct_vals)):
+                val = mat[ri, ci]
+                if np.isnan(val):
+                    txt = "n/a"
+                    fc = "#777777"
+                else:
+                    txt = f"{val * 100:.1f}%"
+                    fc = "white" if abs(val - vcenter) > _abs_dev * 0.5 else "#222222"
+                ax.text(ci, ri, txt, ha="center", va="center",
+                        fontsize=_ann_fs, color=fc)
+
+        ax.set_xticks(range(len(signal_pct_vals)))
+        ax.set_yticks(range(len(n_genes_vals)))
+        ax.set_xticklabels(col_labels, fontsize=_tick_fs)
+        ax.set_yticklabels(row_labels, fontsize=_tick_fs)
+        ax.tick_params(length=2, pad=1)
+
+        if mi >= 2:
+            ax.set_xlabel("Signal fraction", fontsize=_axlbl_fs)
+        if mi in (0, 2):
+            ax.set_ylabel("Genes", fontsize=_axlbl_fs)
+
+        ax.set_title(
+            _BENCH_METHOD_LABELS[method],
+            fontsize=_ttl_fs, fontweight="bold",
+            color=_BENCH_METHOD_COLORS[method], pad=2,
+        )
+        _style_axis(ax)
+        for spine in ax.spines.values():
+            spine.set_visible(False)
+
+    cb = fig.colorbar(im_last, cax=cbar_ax, orientation="vertical")
+    cb.set_label("% outside 95% CI", fontsize=_cblbl_fs, labelpad=2)
+    cb.ax.tick_params(labelsize=_tick_fs, length=2, pad=1)
+    cb.formatter = plt.FuncFormatter(lambda x, _: f"{x * 100:.0f}%")
+    cb.update_ticks()
+    cb.ax.axhline(vcenter, color="#333333", linewidth=0.7, linestyle="--")
+
+    if not composite:
+        fig.suptitle(
+            "Null-gene p-value calibration: % of null p-values outside 95% CI",
+            fontsize=12, fontweight="bold",
+        )
+
+    return list(axes)
 
 
 # ======================================================================
@@ -1317,28 +1484,30 @@ def generate() -> None:
     save_panel(fig, "panel_B_loo_sensitivity", FIGURE_NAME, MAIN_OUTPUT)
 
     if bench_df is not None:
-        fig_c = plt.figure(figsize=(14, 4.2))
-        _panel_bench_fpr_curves(fig_c, bench_df)
-        fig_c.suptitle("Null-gene FPR scales with signal fraction, not panel size",
-                        fontsize=13, fontweight="bold", y=1.04)
-        fig_c.tight_layout()
-        save_panel(fig_c, "panel_C_benchmark_fpr_curves", FIGURE_NAME, MAIN_OUTPUT)
+        fig_c_ind = plt.figure(figsize=(14, 6.8))
+        _panel_bench_signal_rmse(fig_c_ind, bench_df)
+        fig_c_ind.suptitle("Effect-size estimation accuracy on signal genes",
+                            fontsize=13, fontweight="bold", y=0.995)
+        save_panel(fig_c_ind, "panel_C_benchmark_signal_rmse", FIGURE_NAME, MAIN_OUTPUT)
 
-        fig_d = plt.figure(figsize=(14, 6.8))
-        _panel_bench_signal_rmse(fig_d, bench_df)
-        fig_d.suptitle("Effect-size estimation accuracy on signal genes",
-                        fontsize=13, fontweight="bold", y=0.995)
-        save_panel(fig_d, "panel_D_benchmark_signal_rmse", FIGURE_NAME, MAIN_OUTPUT)
+        fig_d_ind, ax_d_ind = plt.subplots(figsize=(7.2, 5.0))
+        _panel_bench_lambda_gc(ax_d_ind, bench_df)
+        fig_d_ind.tight_layout()
+        save_panel(fig_d_ind, "panel_D_benchmark_lambda_gc", FIGURE_NAME, MAIN_OUTPUT)
 
-        fig_e, ax_e = plt.subplots(figsize=(7.2, 5.0))
-        _panel_bench_lambda_gc(ax_e, bench_df)
-        fig_e.tight_layout()
-        save_panel(fig_e, "panel_E_benchmark_lambda_gc", FIGURE_NAME, MAIN_OUTPUT)
+        fig_e_ind, ax_e_ind = plt.subplots(figsize=(7.2, 5.0))
+        _panel_bench_runtime(ax_e_ind, bench_df)
+        fig_e_ind.tight_layout()
+        save_panel(fig_e_ind, "panel_E_benchmark_runtime", FIGURE_NAME, MAIN_OUTPUT)
 
-        fig_f, ax_f_ind = plt.subplots(figsize=(7.2, 5.0))
-        _panel_bench_runtime(ax_f_ind, bench_df)
-        fig_f.tight_layout()
-        save_panel(fig_f, "panel_F_benchmark_runtime", FIGURE_NAME, MAIN_OUTPUT)
+        fig_f_ind = plt.figure(figsize=(14, 6.0))
+        gs_f_ind = fig_f_ind.add_gridspec(1, 2, wspace=0.28, width_ratios=[0.85, 0.90],
+                                           left=0.07, right=0.97, top=0.88, bottom=0.12)
+        _panel_bench_qq_single(fig_f_ind, bench_df, n_genes=200, signal_pct=10,
+                                gs_parent=gs_f_ind[0])
+        _panel_bench_qq_heatmap(fig_f_ind, bench_df, gs_parent=gs_f_ind[1])
+        fig_f_ind.suptitle("Null-gene p-value calibration", fontsize=13, fontweight="bold")
+        save_panel(fig_f_ind, "panel_F_benchmark_qq", FIGURE_NAME, MAIN_OUTPUT)
 
     fig, (ax_top, ax_bottom) = plt.subplots(2, 1, figsize=(6.5, 9.5))
     _panel_d_se_comparison(ax_top, ax_bottom, data, data_tnbc)
@@ -1399,14 +1568,15 @@ def generate() -> None:
     #   Row 0: A — Melanoma | TNBC side by side                        — medium
     #   Row 1: spacer (A–B gap)
     #   Row 2: B — Melanoma | TNBC side by side                        — medium
-    #   Row 3: spacer
-    #   Row 4: C — null-gene FPR curves (full width)                   — medium
-    #   Row 5: D (bias/RMSE) | E (λ_GC) | F (runtime)                 — medium
-    #   Row 6: spacer
-    #   Row 7: G (left, stacked) | H (right, forest plot)              — tall
+    #   Row 3: spacer (B–C gap, narrow)
+    #   Row 4: C (bias/RMSE) | D (λ_GC) | E (runtime)                 — medium
+    #   Row 5: spacer (C–F gap, wider)
+    #   Row 6: F — QQ calibration panels (full width)                  — medium-tall
+    #   Row 7: spacer (F–G|H gap)
+    #   Row 8: G (left, stacked) | H (right, forest plot)              — tall
     outer = fig_c.add_gridspec(
-        8, 1,
-        height_ratios=[0.78, 0.08, 0.78, 0.22, 0.70, 0.95, 0.06, 1.85],
+        9, 1,
+        height_ratios=[0.78, 0.08, 0.78, 0.08, 0.95, 0.18, 1.2, 0.06, 1.85],
         hspace=0.32,
         left=0.07, right=0.97, top=0.975, bottom=0.04,
     )
@@ -1427,42 +1597,47 @@ def generate() -> None:
     _ax_sp_top = fig_c.add_subplot(outer[3])
     _ax_sp_top.set_axis_off()
 
-    # ── Row 4: C ─────────────────────────────────────────────────────
-    sub_c = fig_c.add_subfigure(outer[4])
+    # ── Row 4: C | D | E ─────────────────────────────────────────────
+    # Outer: C (bias/RMSE) vs (D+E combined).  Inner: D vs E.
+    gs_mid = outer[4].subgridspec(1, 2, wspace=0.38, width_ratios=[1.35, 1.44])
+    sub_c = fig_c.add_subfigure(gs_mid[0])
+    gs_de = gs_mid[1].subgridspec(1, 2, wspace=0.80, width_ratios=[0.76, 0.68])
+    ax_d = fig_c.add_subplot(gs_de[0])
+    ax_e = fig_c.add_subplot(gs_de[1])
     if bench_df is not None:
-        _panel_bench_fpr_curves(sub_c, bench_df, composite=True)
-        sub_c.subplots_adjust(left=0.06, right=0.985, top=0.82, bottom=0.22, wspace=0.18)
+        _panel_bench_signal_rmse(sub_c, bench_df, composite=True)
+        _panel_bench_lambda_gc(ax_d, bench_df, composite=True)
+        _panel_bench_runtime(ax_e, bench_df, composite=True)
     else:
-        ax_sc = sub_c.subplots(1, 1)
-        ax_sc.text(0.5, 0.5, "Benchmark data not available", ha="center", va="center",
-                   transform=ax_sc.transAxes, fontsize=6)
-        ax_sc.set_axis_off()
-
-    # ── Row 5: D | E | F ─────────────────────────────────────────────
-    # Outer: D vs (E+F combined) — large gap between D and E.
-    # Inner: E vs F — tight gap between E and F.
-    gs_mid = outer[5].subgridspec(1, 2, wspace=0.38, width_ratios=[1.35, 1.44])
-    sub_d = fig_c.add_subfigure(gs_mid[0])
-    gs_ef = gs_mid[1].subgridspec(1, 2, wspace=0.64, width_ratios=[0.76, 0.68])
-    ax_e = fig_c.add_subplot(gs_ef[0])
-    ax_f = fig_c.add_subplot(gs_ef[1])
-    if bench_df is not None:
-        _panel_bench_signal_rmse(sub_d, bench_df, composite=True)
-        _panel_bench_lambda_gc(ax_e, bench_df, composite=True)
-        _panel_bench_runtime(ax_f, bench_df, composite=True)
-    else:
+        ax_d.text(0.5, 0.5, "—", ha="center", va="center", transform=ax_d.transAxes, fontsize=6)
+        ax_d.set_axis_off()
         ax_e.text(0.5, 0.5, "—", ha="center", va="center", transform=ax_e.transAxes, fontsize=6)
         ax_e.set_axis_off()
-        ax_f.text(0.5, 0.5, "—", ha="center", va="center", transform=ax_f.transAxes, fontsize=6)
-        ax_f.set_axis_off()
-        ax_sd = sub_d.subplots(1, 1)
-        ax_sd.set_axis_off()
+        ax_sc = sub_c.subplots(1, 1)
+        ax_sc.set_axis_off()
 
-    _ax_sp_bot = fig_c.add_subplot(outer[6])
+    _ax_sp_mid = fig_c.add_subplot(outer[5])
+    _ax_sp_mid.set_axis_off()
+
+    # ── Row 6: F — QQ calibration panels ─────────────────────────────
+    _F_INSET = (0.02, 0.98, 0.00)
+    gs_f_outer = outer[6].subgridspec(3, 1, height_ratios=list(_F_INSET), hspace=0)
+    gs_f = gs_f_outer[1].subgridspec(1, 2, wspace=0.32, width_ratios=[0.85, 0.90])
+    if bench_df is not None:
+        qq_single_axes = _panel_bench_qq_single(
+            fig_c, bench_df, n_genes=200, signal_pct=10, composite=True, gs_parent=gs_f[0],
+        )
+        qq_axes = _panel_bench_qq_heatmap(
+            fig_c, bench_df, composite=True, gs_parent=gs_f[1],
+        )
+    else:
+        qq_single_axes, qq_axes = [], []
+
+    _ax_sp_bot = fig_c.add_subplot(outer[7])
     _ax_sp_bot.set_axis_off()
 
-    # ── Row 7: G (left) | H (right) ──────────────────────────────────
-    gs_gh = outer[7].subgridspec(1, 2, wspace=0.38, width_ratios=[1.0, 1.0])
+    # ── Row 8: G (left) | H (right) ──────────────────────────────────
+    gs_gh = outer[8].subgridspec(1, 2, wspace=0.38, width_ratios=[1.0, 1.0])
     gs_g = gs_gh[0].subgridspec(2, 1, hspace=0.55)
     ax_g_top = fig_c.add_subplot(gs_g[0])
     ax_g_bot = fig_c.add_subplot(gs_g[1])
@@ -1475,7 +1650,7 @@ def generate() -> None:
     _panel_e_cross_dataset(ax_h, data, composite=True)
 
     fig_c.canvas.draw()
-    _match_subfig_axes_height_to_ref(ax_e, sub_d, height_frac=1.0)
+    _match_subfig_axes_height_to_ref(ax_d, sub_c, height_frac=1.0)
 
     # ── Legend overrides ──────────────────────────────────────────────
     _inside = {
@@ -1518,35 +1693,34 @@ def generate() -> None:
 
     _raise_axis_fonts(ax_a_top, title_fs=6.0, label_fs=6.0, tick_fs=5.4, legend_fs=4.0, text_fs=4.6)
     _raise_axis_fonts(ax_a_bot, title_fs=6.0, label_fs=6.0, tick_fs=5.4, legend_fs=4.0, text_fs=4.6)
-    _raise_axis_fonts(ax_e, title_fs=6.7, label_fs=6.0, tick_fs=5.4, legend_fs=5.2, text_fs=4.6)
-    _raise_axis_fonts(ax_f, title_fs=6.7, label_fs=6.0, tick_fs=5.4, legend_fs=5.2, text_fs=4.6)
+    _raise_axis_fonts(ax_d, title_fs=6.0, label_fs=6.0, tick_fs=5.4, legend_fs=5.2, text_fs=4.6)
+    _raise_axis_fonts(ax_e, title_fs=6.0, label_fs=6.0, tick_fs=5.4, legend_fs=5.2, text_fs=4.6)
 
-    # Match E (λ_GC) axis fonts to F (runtime) — use F's post-raise composite sizes
-    # F: _raise_axis_fonts(label_fs=6.0, tick_fs=5.4, legend_fs=5.2)
-    ax_e.xaxis.label.set_fontsize(6.0)
-    ax_e.yaxis.label.set_fontsize(6.0)
-    ax_e.tick_params(axis="both", labelsize=5.4)
-    for _tl in ax_e.get_xticklabels() + ax_e.get_yticklabels():
+    # Match D (λ_GC) axis fonts to E (runtime) — use E's post-raise composite sizes
+    ax_d.xaxis.label.set_fontsize(6.0)
+    ax_d.yaxis.label.set_fontsize(6.0)
+    ax_d.tick_params(axis="both", labelsize=5.4)
+    for _tl in ax_d.get_xticklabels() + ax_d.get_yticklabels():
         _tl.set_fontsize(5.4)
     # Split legend: first 2 entries upper-center, last 2 lower-center
-    _e_leg_orig = ax_e.get_legend()
-    if _e_leg_orig:
-        _e_handles = _e_leg_orig.legend_handles
-        _e_labels = [_t.get_text() for _t in _e_leg_orig.get_texts()]
-        _e_leg_orig.remove()
-        _leg_kw_e = dict(
+    _d_leg_orig = ax_d.get_legend()
+    if _d_leg_orig:
+        _d_handles = _d_leg_orig.legend_handles
+        _d_labels = [_t.get_text() for _t in _d_leg_orig.get_texts()]
+        _d_leg_orig.remove()
+        _leg_kw_d = dict(
             ncol=2, frameon=True, framealpha=0.92, edgecolor="#cccccc",
             fontsize=5.2, markerscale=0.52, handlelength=0.9,
             handletextpad=0.3, columnspacing=0.45, borderpad=0.28,
         )
-        _e_leg_top = ax_e.legend(
-            handles=_e_handles[:2], labels=_e_labels[:2],
-            loc="upper center", **_leg_kw_e,
+        _d_leg_top = ax_d.legend(
+            handles=_d_handles[:2], labels=_d_labels[:2],
+            loc="upper center", **_leg_kw_d,
         )
-        ax_e.add_artist(_e_leg_top)
-        ax_e.legend(
-            handles=_e_handles[2:], labels=_e_labels[2:],
-            loc="lower center", **_leg_kw_e,
+        ax_d.add_artist(_d_leg_top)
+        ax_d.legend(
+            handles=_d_handles[2:], labels=_d_labels[2:],
+            loc="lower center", **_leg_kw_d,
         )
 
     # ── Reduce ytick label sizes for G and H ──────────────────────────
@@ -1558,23 +1732,62 @@ def generate() -> None:
 
     # ── Panel labels ──────────────────────────────────────────────────
     _lbl_fs = 7
-    for ax, lbl in [(ax_a_top, "A"), (ax_b_top, "B"), (ax_g_top, "G")]:
+    ax_a_top.text(-0.22, 1.22, "A", transform=ax_a_top.transAxes,
+                  fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    for ax, lbl in [(ax_b_top, "B"), (ax_g_top, "G")]:
         ax.text(-0.15, 1.12, lbl, transform=ax.transAxes,
                 fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    ax_f.text(-0.28, 1.12, "F", transform=ax_f.transAxes,
+    ax_e.text(-0.28, 1.12, "E", transform=ax_e.transAxes,
               fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    ax_e.text(-0.42, 1.12, "E", transform=ax_e.transAxes,
+    ax_d.text(-0.55, 1.22, "D", transform=ax_d.transAxes,
               fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
     ax_h.text(-0.07, 1.05, "H", transform=ax_h.transAxes,
               fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
     ax_c_list = sub_c.get_axes()
     if ax_c_list:
-        ax_c_list[0].text(-0.20, 1.30, "C", transform=ax_c_list[0].transAxes,
+        ax_c_list[0].text(-0.22, 1.26, "C", transform=ax_c_list[0].transAxes,
                           fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    ax_d_list = sub_d.get_axes()
-    if ax_d_list:
-        ax_d_list[0].text(-0.22, 1.26, "D", transform=ax_d_list[0].transAxes,
-                          fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    if qq_single_axes:
+        qq_single_axes[0].text(-0.30, 1.48, "F", transform=qq_single_axes[0].transAxes,
+                               fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+
+    # ── QQ panel section titles ───────────────────────────────────────
+    _f_all_axes = list(qq_axes or []) + list(qq_single_axes or [])
+    _f_ttl_fs = 6.35
+    _f_sub_fs = 5.85
+    if _f_all_axes:
+        _f_top_y = max(ax.get_position().y1 for ax in _f_all_axes)
+        _f_xs = [ax.get_position().x0 for ax in _f_all_axes] + [
+            ax.get_position().x1 for ax in _f_all_axes
+        ]
+        fig_c.text(
+            0.5 * (min(_f_xs) + max(_f_xs)), _f_top_y + 0.018,
+            "Null-gene p-value calibration",
+            ha="center", va="bottom", fontsize=_f_ttl_fs, fontweight="bold",
+            transform=fig_c.transFigure, clip_on=False,
+        )
+    if qq_single_axes:
+        _qs_top_y = max(ax.get_position().y1 for ax in qq_single_axes)
+        _qs_xs = [ax.get_position().x0 for ax in qq_single_axes] + [
+            ax.get_position().x1 for ax in qq_single_axes
+        ]
+        fig_c.text(
+            0.5 * (min(_qs_xs) + max(_qs_xs)), _qs_top_y + 0.012,
+            "QQ plots (200 genes, 10% signal)",
+            ha="center", va="bottom", fontsize=_f_sub_fs, fontweight="bold",
+            transform=fig_c.transFigure, clip_on=False,
+        )
+    if qq_axes:
+        _hm_top_y = max(ax.get_position().y1 for ax in qq_axes)
+        _hm_xs = [ax.get_position().x0 for ax in qq_axes] + [
+            ax.get_position().x1 for ax in qq_axes
+        ]
+        fig_c.text(
+            0.5 * (min(_hm_xs) + max(_hm_xs)), _hm_top_y + 0.012,
+            "% of null p-values outside 95% CI",
+            ha="center", va="bottom", fontsize=_f_sub_fs, fontweight="bold",
+            transform=fig_c.transFigure, clip_on=False,
+        )
 
     plt.rcParams.update(_prev_rc)
 
@@ -1595,7 +1808,7 @@ def generate() -> None:
     del data_tnbc
     clear_cache()
     gc.collect()
-    print("  Figure 3 complete: 8 individual panels + combined (A–H)")
+    print("  Figure 3 complete: 8 individual panels + combined (A–H); panels C–F updated")
 
 
 if __name__ == "__main__":
