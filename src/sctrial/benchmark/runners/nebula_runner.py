@@ -140,7 +140,7 @@ def run(
 
         # Subset to requested genes
         adata_sub = adata[:, gene_cols].copy()
-        X = adata_sub.X
+        X = adata_sub.layers["counts"] if "counts" in adata_sub.layers else adata_sub.X
         if not sparse.issparse(X):
             X = sparse.csr_matrix(X)
 

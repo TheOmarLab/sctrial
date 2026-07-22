@@ -57,7 +57,7 @@ def _run_permutation_iteration(args: tuple) -> list[dict]:
         visit_col,
     ) = args
 
-    from .orchestrator import _dispatch_method
+    from .orchestrator import _dispatch_method, _pseudobulk_counts_from_adata
 
     rng = np.random.default_rng(seed)
 
@@ -70,13 +70,16 @@ def _run_permutation_iteration(args: tuple) -> list[dict]:
     # Build pseudobulk
     from sctrial.stats.pseudobulk import pseudobulk_expression
 
-    pb = pseudobulk_expression(
+    pb_means = pseudobulk_expression(
         adata_perm,
         gene_cols,
         groupby=[participant_col, visit_col, arm_col],
+        log1p=False,
     )
-
-    sim = {"adata": adata_perm, "pseudobulk": pb}
+    pb_counts = _pseudobulk_counts_from_adata(
+        adata_perm, gene_cols, [participant_col, visit_col, arm_col]
+    )
+    sim = {"adata": adata_perm, "pseudobulk_means": pb_means, "pseudobulk_counts": pb_counts}
 
     rows = []
     for method in methods:

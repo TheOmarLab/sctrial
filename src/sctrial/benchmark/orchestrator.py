@@ -326,6 +326,23 @@ def _run_single_iteration(args: tuple) -> list[dict]:
     return rows
 
 
+def _pseudobulk_counts_from_adata(
+    adata, gene_cols: list[str], groupby: list[str], counts_layer: str = "counts"
+) -> pd.DataFrame:
+    """Return raw integer pseudobulk sums for count-based methods (edgeR/dreamlet/limma)."""
+    layer = counts_layer if counts_layer in adata.layers else None
+    X = adata.layers[layer] if layer is not None else adata.X
+    if hasattr(X, "toarray"):
+        X = X.toarray()
+    X = np.asarray(X)
+    available = [g for g in gene_cols if g in adata.var_names]
+    gene_idx = [int(adata.var_names.get_loc(g)) for g in available]
+    df = adata.obs[groupby].copy()
+    for g, idx in zip(available, gene_idx):
+        df[g] = X[:, idx]
+    return df.groupby(groupby, observed=True)[available].sum().astype(int).reset_index()
+
+
 def _dispatch_method(
     method: str,
     sim: dict,

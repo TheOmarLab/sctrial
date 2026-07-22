@@ -67,13 +67,18 @@ def run_subsampling(
     # First: run full-data reference for each method
     print(f"Running full-data reference ({len(methods)} methods, {len(gene_cols)} genes)...")
     from sctrial.stats.pseudobulk import pseudobulk_expression
+    from .orchestrator import _pseudobulk_counts_from_adata
 
-    pb_full = pseudobulk_expression(
+    pb_means_full = pseudobulk_expression(
         adata,
         gene_cols,
         groupby=[participant_col, visit_col, arm_col],
+        log1p=False,
     )
-    sim_full = {"adata": adata, "pseudobulk": pb_full}
+    pb_counts_full = _pseudobulk_counts_from_adata(
+        adata, gene_cols, [participant_col, visit_col, arm_col]
+    )
+    sim_full = {"adata": adata, "pseudobulk_means": pb_means_full, "pseudobulk_counts": pb_counts_full}
 
     full_pvals = {}
     for method in methods:
@@ -99,12 +104,16 @@ def run_subsampling(
             mask = adata.obs[participant_col].isin(sub_pids)
             adata_sub = adata[mask].copy()
 
-            pb_sub = pseudobulk_expression(
+            pb_means_sub = pseudobulk_expression(
                 adata_sub,
                 gene_cols,
                 groupby=[participant_col, visit_col, arm_col],
+                log1p=False,
             )
-            sim_sub = {"adata": adata_sub, "pseudobulk": pb_sub}
+            pb_counts_sub = _pseudobulk_counts_from_adata(
+                adata_sub, gene_cols, [participant_col, visit_col, arm_col]
+            )
+            sim_sub = {"adata": adata_sub, "pseudobulk_means": pb_means_sub, "pseudobulk_counts": pb_counts_sub}
 
             for method in methods:
                 try:
