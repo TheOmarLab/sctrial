@@ -942,6 +942,7 @@ def generate():
 
     # Panel C: Cells per participant by arm
     fig, ax = plt.subplots(figsize=(13, 5))
+    _panel_cells_per_pid_arm(ax, loaded)
     fig.tight_layout()
     save_panel(fig, "panel_C", FIGURE_NAME, SUPP_OUTPUT)
 

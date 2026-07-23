@@ -21,6 +21,7 @@ import scipy.sparse as sp
 from scipy.io import mmread
 from statsmodels.stats.multitest import multipletests
 
+from .preprocessing import exclude_artifacts_from_hvg, flag_artifact_genes
 from .utils import get_counts_matrix
 
 logger = logging.getLogger(__name__)
@@ -504,7 +505,7 @@ def load_sade_feldman(
         The processed AnnData object.
     """
     processing_params = {
-        "version": "v6",
+        "version": "v7",
         "max_cells_per_participant_visit": max_cells_per_participant_visit,
         "seed": seed,
         "assay": "TPM",
@@ -651,6 +652,7 @@ def load_sade_feldman(
 
     adata.layers["tpm"] = adata.X.copy()
     adata.layers["log1p_tpm"] = adata.X.copy() if _looks_log1p(adata.X) else np.log1p(adata.X)
+    flag_artifact_genes(adata)  # QC: flag hemoglobin/ribosomal/histone genes (not cell-cycle)
 
     # ── PCA → neighbors → UMAP → Leiden ────────────────────────────────
     # Compute BEFORE annotation so that cell-type labels are assigned to
@@ -659,6 +661,7 @@ def load_sade_feldman(
     adata_work = adata.copy()
     adata_work.X = adata_work.layers["log1p_tpm"]
     sc.pp.highly_variable_genes(adata_work, n_top_genes=3000, flavor="seurat")
+    exclude_artifacts_from_hvg(adata_work)  # drop flagged artifact genes from HVG/PCA/clustering
     adata_hvg = adata_work[:, adata_work.var["highly_variable"]].copy()
     sc.pp.scale(adata_hvg, max_value=10)
     sc.tl.pca(adata_hvg, n_comps=50)
@@ -806,6 +809,8 @@ def load_stephenson_data(
 
     adata = adata[obs.index].copy()
     adata.obs = obs
+    flag_artifact_genes(adata)  # QC: flag hemoglobin/ribosomal/histone genes (not cell-cycle)
+    adata.uns["processing_params"] = {"version": "v4", "qc_artifact_flag": True}
 
     processed_path.parent.mkdir(parents=True, exist_ok=True)
     adata.write_h5ad(processed_path)
@@ -848,7 +853,7 @@ def load_vaccine_gse171964(
         The processed AnnData object.
     """
     processing_params = {
-        "version": "v2",
+        "version": "v3",
         "max_participants": max_participants,
         "max_cells_per_group": max_cells_per_group,
         "seed": seed,
@@ -974,6 +979,7 @@ def load_vaccine_gse171964(
         adata = adata[sampled.index].copy()
 
     adata.layers["counts"] = adata.X.copy()
+    flag_artifact_genes(adata)  # QC: flag hemoglobin/ribosomal/histone genes (not cell-cycle)
     adata.uns["processing_params"] = processing_params
 
     processed_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1258,6 +1264,7 @@ def _process_aml_raw(
     sc.pp.normalize_total(adata, target_sum=1e4)
     sc.pp.log1p(adata)
     adata.layers["log1p_norm"] = adata.X.copy()
+    flag_artifact_genes(adata)  # QC: flag hemoglobin/ribosomal/histone genes (not cell-cycle)
 
     # ── Standardised sctrial obs columns ──────────────────────────────
     obs = adata.obs
@@ -1285,6 +1292,7 @@ def _process_aml_raw(
 
     # ── Embeddings (HVG → PCA → neighbours → UMAP) ───────────────────
     sc.pp.highly_variable_genes(adata, n_top_genes=2000, flavor="seurat", subset=False)
+    exclude_artifacts_from_hvg(adata)  # drop flagged artifact genes from HVG/PCA/clustering
     sc.tl.pca(adata, n_comps=50, use_highly_variable=True)
     sc.pp.neighbors(adata, n_neighbors=15, n_pcs=30)
     sc.tl.umap(adata)
@@ -1355,7 +1363,7 @@ def load_aml(
     data_dir_path = Path(data_dir)
 
     processing_params = {
-        "version": "v1",
+        "version": "v2",
         "max_cells_per_sample": max_cells_per_sample,
         "seed": seed,
     }
@@ -1564,6 +1572,7 @@ def _process_cart_raw(
     sc.pp.normalize_total(adata, target_sum=1e4)
     sc.pp.log1p(adata)
     adata.layers["log1p_norm"] = adata.X.copy()
+    flag_artifact_genes(adata)  # QC: flag hemoglobin/ribosomal/histone genes (not cell-cycle)
 
     # ── Standardised sctrial obs columns ──────────────────────────────
     obs = adata.obs
@@ -1575,6 +1584,7 @@ def _process_cart_raw(
 
     # ── Embeddings + clustering ───────────────────────────────────────
     sc.pp.highly_variable_genes(adata, n_top_genes=2000, flavor="seurat", subset=False)
+    exclude_artifacts_from_hvg(adata)  # drop flagged artifact genes from HVG/PCA/clustering
     sc.tl.pca(adata, n_comps=50, use_highly_variable=True)
     sc.pp.neighbors(adata, n_neighbors=15, n_pcs=30)
     sc.tl.umap(adata)
@@ -1661,7 +1671,7 @@ def load_cart(
     data_dir_path = Path(data_dir)
 
     processing_params = {
-        "version": "v1",
+        "version": "v2",
         "max_cells_per_sample": max_cells_per_sample,
         "seed": seed,
     }
@@ -1893,11 +1903,13 @@ def _process_tnbc_raw(
     sc.pp.normalize_total(adata, target_sum=1e4)
     sc.pp.log1p(adata)
     adata.layers["log1p_norm"] = adata.X.copy()
+    flag_artifact_genes(adata)  # QC: flag hemoglobin/ribosomal/histone genes (not cell-cycle)
 
     logger.info("Computing embeddings (HVG -> PCA -> neighbors -> UMAP)...")
     sc.pp.highly_variable_genes(
         adata, n_top_genes=2000, flavor="seurat", subset=False
     )
+    exclude_artifacts_from_hvg(adata)  # drop flagged artifact genes from HVG/PCA/clustering
     sc.tl.pca(adata, n_comps=50, use_highly_variable=True)
     sc.pp.neighbors(adata, n_neighbors=15, n_pcs=30)
     sc.tl.umap(adata)
@@ -1924,7 +1936,7 @@ def _process_tnbc_raw(
 
     # Dataset metadata
     adata.uns["dataset"]     = "GSE169246"
-    adata.uns["paper"]       = "Zhang et al., Cell 2021"
+    adata.uns["paper"]       = "Zhang et al., Cancer Cell 2021"
     adata.uns["description"] = (
         "TNBC immunotherapy trial: anti-PDL1+Chemo vs Chemo, "
         "12 paired patients, Pre/Post tumor biopsies"
@@ -2015,7 +2027,7 @@ def load_tnbc_zhang(
     Download raw files from:
     https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE169246
 
-    Reference: Zhang et al., Cell 2021.
+    Reference: Zhang et al., Cancer Cell 2021.
 
     Examples
     --------
@@ -2024,7 +2036,7 @@ def load_tnbc_zhang(
     >>> print(adata)
     """
     processing_params = {
-        "version": "v2",
+        "version": "v4",
         "max_cells_per_participant_visit": max_cells_per_participant_visit,
         "seed": seed,
     }

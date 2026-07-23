@@ -1125,6 +1125,7 @@ def _within_arm_response_forest(
     data: dict,
     arm_label: str,
     arm_color: str,
+    show_stars: bool = True,
 ) -> None:
     """Forest plot of DID_response = (Post-Pre)_R − (Post-Pre)_NR within one arm.
 
@@ -1132,6 +1133,9 @@ def _within_arm_response_forest(
     ----------
     arm_label  : one of DESIGN.arm_treated / DESIGN.arm_control
     arm_color  : colour for positive-effect bars
+    show_stars : draw significance markers. Set False for arms whose non-responder
+                 stratum is too small for the bootstrap CI to be reliable (matches
+                 supp_fig3 Panel E for the Chemo arm).
     """
     delta    = data["delta"]
     sig_cols = data["sig_cols"]
@@ -1176,7 +1180,7 @@ def _within_arm_response_forest(
                   color=color, linewidth=2.0, alpha=1.0, zorder=1)
         ax.scatter(row["DID"], y_pos[i], color=color, s=30,
                    edgecolors="white", linewidths=0.8, zorder=2)
-        if not (row["ci_lo"] < 0 < row["ci_hi"]):
+        if show_stars and not (row["ci_lo"] < 0 < row["ci_hi"]):
             ax.text(row["ci_hi"] + 0.02, y_pos[i], "*",
                     va="center", fontsize=10, fontweight="bold", color=color)
 
@@ -1216,8 +1220,13 @@ def _within_arm_response_forest(
 
 
 def _panel_k(ax: plt.Axes, data: dict) -> None:
-    """Panel K: DID_response within Chemo arm."""
-    _within_arm_response_forest(ax, data, DESIGN.arm_control, COL_CTRL)
+    """Panel K: DID_response within Chemo arm.
+
+    Stars suppressed: the Chemo non-responder stratum is too small for the
+    stratified-bootstrap CI to support significance markers (matches supp_fig3
+    Panel E, which draws the identical analysis with show_stars=False).
+    """
+    _within_arm_response_forest(ax, data, DESIGN.arm_control, COL_CTRL, show_stars=False)
 
 
 def _panel_l(ax: plt.Axes, data: dict) -> None:

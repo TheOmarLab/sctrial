@@ -193,6 +193,7 @@ def table2_all_results() -> pd.DataFrame:
             adata_sf, features=sig_cols, design=design,
             visits=("Pre", "Post"), layer="log1p_tpm",
             standardize=True, aggregate="participant_visit",
+            use_bootstrap=True, n_boot=999, seed=42,
         )
         res["label"] = res["feature"].apply(sig_display)
         all_results.append(_harmonise(res, "Melanoma", "DiD"))
@@ -222,6 +223,7 @@ def table2_all_results() -> pd.DataFrame:
             adata_tnbc, features=all_sig_cols_tnbc, design=tnbc_design,
             visits=("Pre", "Post"), layer="log1p_norm",
             standardize=True, aggregate="participant_visit",
+            use_bootstrap=True, n_boot=999, seed=42,
         )
         res["label"] = res["feature"].apply(sig_display)
         all_results.append(_harmonise(res, "TNBC", "DiD"))

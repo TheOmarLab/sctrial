@@ -1,12 +1,19 @@
 from __future__ import annotations
 
 import logging
+import re
 
 import numpy as np
 import scipy.sparse as sp
 from anndata import AnnData
 
-__all__ = ["add_log1p_cpm_layer"]
+__all__ = [
+    "add_log1p_cpm_layer",
+    "flag_artifact_genes",
+    "is_artifact_gene",
+    "exclude_artifacts_from_hvg",
+    "add_qc_class_metrics",
+]
 
 logger = logging.getLogger(__name__)
 
@@ -141,3 +148,96 @@ def add_log1p_cpm_layer(
     # Store provenance for reproducibility
     ad.uns.setdefault("sctrial", {})["log1p_cpm_scale"] = float(scale)
     return ad
+
+
+# ---------------------------------------------------------------------------
+# Technical-artifact gene QC (ambient / housekeeping correction)
+# ---------------------------------------------------------------------------
+# Gene classes that dominate UNBIASED gene-level differential expression and GSEA
+# leading-edges as technical/housekeeping signal rather than biology, so they are
+# flagged here (upstream, at preprocessing) and excluded from the HVG/analysis
+# feature set. Ambient hemoglobin reflects red-blood-cell lysis; ribosomal and
+# replication-histone genes are highly-expressed housekeeping that dominate rankings.
+# Cell-cycle / proliferation genes are deliberately NOT flagged -- they are real
+# biology and are used by the proliferation gene signatures. Patterns are anchored
+# to END so signaling genes that merely share a prefix (e.g. RPS6KA*, the ribosomal
+# protein S6 kinases) are NOT flagged. Genes are kept in the object; only flagged.
+_HB_RE = re.compile(
+    r"^(HBA[12]|HBB|HBD|HBE1|HBG[12]|HBM|HBQ1|HBZ|ALAS2|SLC4A1|EPB42|CA1|AHSP)$",
+    re.IGNORECASE,
+)
+_RIBO_RE = re.compile(r"^(RP[SL]\d+[A-Z]?\d?|RPLP\d|RPSA|FAU|UBA52)$", re.IGNORECASE)
+_HIST_RE = re.compile(r"^HIST\d[0-9A-Z]*$", re.IGNORECASE)
+
+
+def is_artifact_gene(name: str) -> bool:
+    """True if *name* is a technical-artifact gene (hemoglobin/erythroid, ribosomal,
+    or replication-histone) to be excluded from unbiased HVG/DE/GSEA. Cell-cycle
+    genes are NOT artifacts. Anchored so prefix-sharing signaling genes are kept."""
+    g = str(name)
+    return bool(_HB_RE.match(g) or _RIBO_RE.match(g) or _HIST_RE.match(g))
+
+
+def flag_artifact_genes(adata: AnnData, *, inplace: bool = True) -> AnnData:
+    """Flag technical-artifact gene classes on ``adata.var`` for QC exclusion.
+
+    Sets boolean columns ``is_hb`` (hemoglobin/erythroid), ``is_ribo`` (ribosomal
+    proteins), ``is_histone`` (replication histones), and their union ``is_artifact``.
+    Depends only on ``adata.var_names`` (gene symbols), so it never touches counts or
+    library sizes and behaves identically for TPM, raw-count, and log-normalized data.
+    Genes are kept in the object; only flagged, so signature scoring (which uses
+    explicit curated gene lists, none of which are artifacts) is unaffected. Cell-cycle
+    genes are deliberately not flagged (used by the proliferation signatures).
+    """
+    ad = adata if inplace else adata.copy()
+    names = [str(g) for g in ad.var_names]
+    ad.var["is_hb"] = np.array([bool(_HB_RE.match(g)) for g in names])
+    ad.var["is_ribo"] = np.array([bool(_RIBO_RE.match(g)) for g in names])
+    ad.var["is_histone"] = np.array([bool(_HIST_RE.match(g)) for g in names])
+    ad.var["is_artifact"] = ad.var["is_hb"] | ad.var["is_ribo"] | ad.var["is_histone"]
+    logger.info(
+        "Flagged %d artifact genes for QC exclusion (hb=%d, ribo=%d, histone=%d).",
+        int(ad.var["is_artifact"].sum()), int(ad.var["is_hb"].sum()),
+        int(ad.var["is_ribo"].sum()), int(ad.var["is_histone"].sum()),
+    )
+    return ad
+
+
+def exclude_artifacts_from_hvg(adata: AnnData) -> AnnData:
+    """Remove flagged artifact genes from the highly-variable set in place.
+
+    Sets ``var['highly_variable'] &= ~var['is_artifact']`` so every HVG-driven step
+    (PCA/clustering, gene-level DE, GSEA rankings) skips technical-artifact genes.
+    Runs :func:`flag_artifact_genes` first if the flag is missing. No-op if
+    ``highly_variable`` has not been computed yet.
+    """
+    if "is_artifact" not in adata.var:
+        flag_artifact_genes(adata)
+    if "highly_variable" in adata.var:
+        adata.var["highly_variable"] = (
+            adata.var["highly_variable"].to_numpy() & ~adata.var["is_artifact"].to_numpy()
+        )
+    return adata
+
+
+def add_qc_class_metrics(adata: AnnData, *, counts_layer: str | None = "counts") -> AnnData:
+    """Add ``pct_counts_hb`` / ``pct_counts_ribo`` (and ``pct_counts_mt``) QC metrics.
+
+    Uses ``counts_layer`` if present in ``adata.layers`` else ``adata.X``. Optional and
+    informational -- the analysis exclusion is driven by :func:`flag_artifact_genes`.
+    Requires scanpy.
+    """
+    import scanpy as sc
+
+    if "is_hb" not in adata.var:
+        flag_artifact_genes(adata)
+    adata.var["hb"] = adata.var["is_hb"].to_numpy()
+    adata.var["ribo"] = adata.var["is_ribo"].to_numpy()
+    if "mt" not in adata.var:
+        adata.var["mt"] = np.array([str(g).upper().startswith("MT-") for g in adata.var_names])
+    layer = counts_layer if (counts_layer and counts_layer in adata.layers) else None
+    qc_vars = [v for v in ("mt", "ribo", "hb") if bool(adata.var[v].any())]
+    sc.pp.calculate_qc_metrics(
+        adata, qc_vars=qc_vars, layer=layer, percent_top=None, log1p=False, inplace=True
+    )
+    return adata

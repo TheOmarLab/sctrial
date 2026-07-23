@@ -39,7 +39,13 @@ from .plotting import (
     plot_within_arm_comparison,
     signed_logp,
 )
-from .preprocessing import add_log1p_cpm_layer
+from .preprocessing import (
+    add_log1p_cpm_layer,
+    add_qc_class_metrics,
+    exclude_artifacts_from_hvg,
+    flag_artifact_genes,
+    is_artifact_gene,
+)
 from .scoring import ScoreMethod, score_gene_sets, score_gene_sets_aucell
 from .stats._extract import extract_gene_vector
 from .stats.abundance import abundance_did
@@ -129,6 +135,10 @@ __all__ = [
     "DiDConfig",
     # Preprocessing & Scoring
     "add_log1p_cpm_layer",
+    "add_qc_class_metrics",
+    "exclude_artifacts_from_hvg",
+    "flag_artifact_genes",
+    "is_artifact_gene",
     "score_gene_sets",
     "score_gene_sets_aucell",
     "ScoreMethod",

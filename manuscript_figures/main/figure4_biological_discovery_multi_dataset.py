@@ -417,6 +417,9 @@ def _prepare_bio_discovery_data(*, use_cache: bool = True) -> dict:
         top_genes = adata_genes.var_names[
             adata_genes.var["highly_variable"]
         ].tolist()
+        if "is_artifact" in adata_genes.var.columns:
+            # QC: drop ambient/housekeeping artifact genes from unbiased gene-level DE
+            top_genes = [g for g in top_genes if not bool(adata_genes.var.loc[g, "is_artifact"])]
         print(f"  Sade-Feldman: {len(top_genes)} variable genes selected")
 
         # Use analytical (nonrobust) SEs for gene-level volcano.
@@ -602,6 +605,9 @@ def _prepare_tnbc_bio_discovery_data(*, use_cache: bool = True) -> dict:
         top_genes = adata_genes.var_names[
             adata_genes.var["highly_variable"]
         ].tolist()
+        if "is_artifact" in adata_genes.var.columns:
+            # QC: drop ambient/housekeeping artifact genes from unbiased gene-level DE
+            top_genes = [g for g in top_genes if not bool(adata_genes.var.loc[g, "is_artifact"])]
         print(f"  TNBC: {len(top_genes)} variable genes selected")
 
         gene_results = did_table(
