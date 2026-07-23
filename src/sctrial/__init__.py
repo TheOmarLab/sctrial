@@ -42,6 +42,7 @@ from .plotting import (
 from .preprocessing import (
     add_log1p_cpm_layer,
     add_qc_class_metrics,
+    drop_artifact_genes,
     exclude_artifacts_from_hvg,
     flag_artifact_genes,
     is_artifact_gene,
@@ -136,6 +137,7 @@ __all__ = [
     # Preprocessing & Scoring
     "add_log1p_cpm_layer",
     "add_qc_class_metrics",
+    "drop_artifact_genes",
     "exclude_artifacts_from_hvg",
     "flag_artifact_genes",
     "is_artifact_gene",

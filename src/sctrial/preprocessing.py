@@ -11,6 +11,7 @@ __all__ = [
     "add_log1p_cpm_layer",
     "flag_artifact_genes",
     "is_artifact_gene",
+    "drop_artifact_genes",
     "exclude_artifacts_from_hvg",
     "add_qc_class_metrics",
 ]
@@ -217,6 +218,30 @@ def exclude_artifacts_from_hvg(adata: AnnData) -> AnnData:
         adata.var["highly_variable"] = (
             adata.var["highly_variable"].to_numpy() & ~adata.var["is_artifact"].to_numpy()
         )
+    return adata
+
+
+def drop_artifact_genes(adata: AnnData) -> AnnData:
+    """Remove technical-artifact gene classes from *adata* in place (upstream QC).
+
+    Removes hemoglobin/erythroid, ribosomal, and replication-histone genes so that
+    EVERY downstream analysis inherits a clean gene set with no per-analysis handling:
+    HVG/PCA/clustering, gene-level differential expression, and GSEA (which ranks the
+    full ``var_names`` list, so it would otherwise be dominated by these housekeeping/
+    ambient genes in its leading edges). Cell-cycle genes are NOT removed -- they are
+    real biology and are used by the proliferation gene signatures.
+
+    Must be run AFTER normalization (per-cell library sizes must be computed over all
+    genes, including the ambient/housekeeping ones) and after any QC-metric computation.
+    The removed gene symbols are recorded in ``adata.uns['artifact_genes_removed']``.
+    """
+    if "is_artifact" not in adata.var:
+        flag_artifact_genes(adata)
+    keep = ~adata.var["is_artifact"].to_numpy()
+    removed = adata.var_names[~keep].tolist()
+    adata._inplace_subset_var(keep)
+    adata.uns["artifact_genes_removed"] = removed
+    logger.info("Removed %d technical-artifact genes (kept %d).", len(removed), int(keep.sum()))
     return adata
 
 
