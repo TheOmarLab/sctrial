@@ -958,6 +958,19 @@ def load_vaccine_gse171964(
 
     adata = adata[adata.obs["day"].isin([0, 7])].copy()
 
+    import scanpy as sc  # local import (optional dependency), like the other loaders
+
+    # ── QC (10x UMI): mito %, gene/cell filters -- matches the other 10x loaders ──
+    # Run BEFORE the pairing filter so pairing is computed on QC-passing cells.
+    adata.var["mt"] = adata.var_names.str.startswith("MT-")
+    sc.pp.calculate_qc_metrics(adata, qc_vars=["mt"], inplace=True)
+    n_before = adata.n_obs
+    sc.pp.filter_cells(adata, min_genes=200)
+    sc.pp.filter_cells(adata, max_genes=6000)
+    adata = adata[adata.obs["pct_counts_mt"] < 20].copy()
+    sc.pp.filter_genes(adata, min_cells=10)
+    logger.info(f"QC: {n_before:,} → {adata.n_obs:,} cells, {adata.n_vars:,} genes")
+
     paired = adata.obs.groupby("pt_id")["day"].nunique()
     keep_ids = paired[paired >= 2].index
     adata = adata[adata.obs["pt_id"].isin(keep_ids)].copy()
@@ -979,6 +992,11 @@ def load_vaccine_gse171964(
         adata = adata[sampled.index].copy()
 
     adata.layers["counts"] = adata.X.copy()
+    # Normalize (GSE171964 matrix is raw integer UMI counts): CP10K + log1p, so
+    # .X is log-normalized like the other 10x datasets (counts kept in the layer).
+    sc.pp.normalize_total(adata, target_sum=1e4)
+    sc.pp.log1p(adata)
+    adata.layers["log1p_norm"] = adata.X.copy()
     flag_artifact_genes(adata)  # QC: flag hemoglobin/ribosomal/histone genes (not cell-cycle)
     adata.uns["processing_params"] = processing_params
 

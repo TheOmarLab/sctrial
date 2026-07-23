@@ -752,10 +752,11 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
         except Exception as exc:
             print(f"    Melanoma: FAILED ({exc})")
     
-    # 2. Vaccine (use within_arm_comparison; .X is already normalized)
+    # 2. Vaccine (within_arm_comparison; GSE171964 is raw UMI counts, so use the
+    #    log1p_norm layer added by the loader -- NOT raw .X)
     try:
         vax = get_vaccine()
-        vax, _ = score_signatures(vax, layer=None)
+        vax, _ = score_signatures(vax, layer="log1p_norm")
         vax.obs["arm_dummy"] = "Vaccinated"
         vax_design = TrialDesign(
             participant_col="participant_id",
@@ -766,7 +767,7 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
         )
         vax_results = load_or_run_gsea_within_arm(
             vax, vax_design, arm="Vaccinated", visits=("Pre", "Post"),
-            layer=None, dataset_name="Vaccine",
+            layer="log1p_norm", dataset_name="Vaccine",
         )
         if vax_results is not None and len(vax_results) > 0:
             vax_results["dataset"] = "Vaccine"
@@ -3028,7 +3029,7 @@ def _prepare_multi_dataset_data() -> dict[str, Any]:
     try:
         print("  [B] Loading Vaccine (GSE171964) ...")
         adata_vax = get_vaccine()
-        adata_vax, sig_cols_vax = score_signatures(adata_vax, layer="counts")
+        adata_vax, sig_cols_vax = score_signatures(adata_vax, layer="log1p_norm")
 
         # Build a single-arm design (all participants treated)
         if "arm" not in adata_vax.obs.columns:
