@@ -31,7 +31,19 @@ REPO_ROOT = PROJECT_DIR.parent.parent.resolve()         # sc-trialdiff/  (up fro
 
 # Figures are saved to sc-trialdiff/manuscript/{main,supp}/
 # GSEA results cached at sc-trialdiff/manuscript/GSEA/{dataset}/{library}/
-MANUSCRIPT_DIR = REPO_ROOT / "manuscript"
+#
+# The default layout assumes the local checkout (sc-trialdiff/sctrial/
+# sc_trial_inference). On the HPC the repo is checked out one level shallower,
+# so REPO_ROOT resolves wrong; SCTRIAL_MANUSCRIPT_DIR overrides the output root
+# without touching the local default. Falls back to <project>/manuscript when
+# the computed default does not exist but a sibling one does.
+_env_manuscript = os.environ.get("SCTRIAL_MANUSCRIPT_DIR")
+if _env_manuscript:
+    MANUSCRIPT_DIR = Path(_env_manuscript).resolve()
+elif (REPO_ROOT / "manuscript").exists() or not (PROJECT_DIR / "manuscript").exists():
+    MANUSCRIPT_DIR = REPO_ROOT / "manuscript"
+else:
+    MANUSCRIPT_DIR = PROJECT_DIR / "manuscript"
 MAIN_OUTPUT = MANUSCRIPT_DIR / "main"
 SUPP_OUTPUT = MANUSCRIPT_DIR / "supp"
 GSEA_OUTPUT = MANUSCRIPT_DIR / "GSEA"
