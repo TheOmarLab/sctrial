@@ -328,7 +328,7 @@ def phase_simulate(n_jobs: int, n_iterations: int):
 
 
 def phase_realdata(n_jobs: int):
-    """Phase 3: Real-data permutation + subsampling."""
+    """Phase 3: Real-data permutation + subsampling (Melanoma + TNBC)."""
     print("=" * 60)
     print("PHASE 3: Real-Data Benchmark")
     print("=" * 60)
@@ -336,18 +336,20 @@ def phase_realdata(n_jobs: int):
     out_dir = OUTPUT_DIR / "realdata"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # Permutation tests
     from sctrial.benchmark.permutation import run_permutation_test
+    from sctrial.benchmark.subsample import run_subsampling
 
-    print("\n--- Melanoma permutation (1000×) ---")
+    # ---------------------------------------------------------------
+    # Melanoma (Sade-Feldman) — two-arm
+    # ---------------------------------------------------------------
+    print("\n--- Melanoma (Sade-Feldman) ---")
     from sctrial.datasets import load_sade_feldman
-    sf = load_sade_feldman(
-        processed_name="sade_feldman_processed_v6.h5ad",
-    )
-    # Use a subset of genes for tractability
-    gene_cols = sf.var_names[:50].tolist()
+    sf = load_sade_feldman(processed_name="sade_feldman_processed_v6.h5ad")
+    gene_cols_sf = sf.var_names[:50].tolist()
+
+    print(f"  Permutation (1000×, {len(gene_cols_sf)} genes) ...")
     run_permutation_test(
-        sf, gene_cols,
+        sf, gene_cols_sf,
         design_type="two_arm",
         n_permutations=1000,
         n_jobs=n_jobs,
@@ -357,18 +359,47 @@ def phase_realdata(n_jobs: int):
         output_path=out_dir / "permutation_melanoma.csv",
     )
 
-    # Subsampling
-    from sctrial.benchmark.subsample import run_subsampling
-
-    print("\n--- Melanoma subsampling (100×) ---")
+    print(f"  Subsampling (100×) ...")
     run_subsampling(
-        sf, gene_cols,
+        sf, gene_cols_sf,
         n_resamples=100,
         participant_col="participant_id",
         arm_col="response",
         visit_col="visit",
         output_path=out_dir / "subsampling_melanoma.csv",
     )
+    del sf
+
+    # ---------------------------------------------------------------
+    # TNBC (Zhang et al.) — two-arm
+    # ---------------------------------------------------------------
+    print("\n--- TNBC (Zhang et al.) ---")
+    from sctrial.datasets import load_tnbc_zhang
+    tnbc = load_tnbc_zhang()
+    gene_cols_tnbc = tnbc.var_names[:50].tolist()
+
+    print(f"  Permutation (1000×, {len(gene_cols_tnbc)} genes) ...")
+    run_permutation_test(
+        tnbc, gene_cols_tnbc,
+        design_type="two_arm",
+        n_permutations=1000,
+        n_jobs=n_jobs,
+        participant_col="participant_id",
+        arm_col="arm",
+        visit_col="visit",
+        output_path=out_dir / "permutation_tnbc.csv",
+    )
+
+    print(f"  Subsampling (100×) ...")
+    run_subsampling(
+        tnbc, gene_cols_tnbc,
+        n_resamples=100,
+        participant_col="participant_id",
+        arm_col="arm",
+        visit_col="visit",
+        output_path=out_dir / "subsampling_tnbc.csv",
+    )
+    del tnbc
 
 
 def phase_sensitivity(n_jobs: int, n_iterations: int):
