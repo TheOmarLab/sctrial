@@ -51,12 +51,13 @@ python -c "import sctrial.benchmark.orchestrator as o; import inspect; print('Or
 echo "Git commit: $(git rev-parse --short HEAD 2>/dev/null || echo 'N/A')"
 
 # Run phase 3: real-data permutation + subsampling on TNBC
-# n-jobs=8: each worker loads TNBC adata + runs NEBULA in R (~3-4 GB/worker).
-# 30 workers × ~4 GB = ~120 GB peak, which OOMs the 256 GB node.
-# 8 workers × ~4 GB = ~32 GB, leaving ample headroom.
+# n-jobs=4: each worker loads TNBC adata + runs NEBULA in R.
+# Workers are restarted every 30 tasks (max_tasks_per_child) to release
+# accumulated Python heap and R session memory between iterations.
+# 4 workers × ~15 GB peak (adata + R + heap) = ~60 GB, safe on 256 GB node.
 python -u scripts/run_benchmark.py \
   --phase realdata \
-  --n-jobs 8
+  --n-jobs 4
 
 echo "============================================"
 echo "Finished: $(date)"

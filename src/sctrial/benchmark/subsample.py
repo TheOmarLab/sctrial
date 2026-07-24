@@ -194,38 +194,98 @@ def run_subsampling(
             logger.warning("Full-data %s failed: %s", method, exc)
             full_pvals[method] = pd.Series({g: np.nan for g in gene_cols})
 
-    # Build all (fraction, resample) argument tuples
+    def _item_to_rows(item):
+        """Compute Spearman ρ and Jaccard for one subsample result dict."""
+        out = []
+        for method in methods:
+            sub_pvals = pd.Series(item["pvals"].get(method, {}))
+            full = full_pvals[method]
+            common = sub_pvals.dropna().index.intersection(full.dropna().index)
+            rho = np.nan
+            if len(common) > 5:
+                rho, _ = spearmanr(full[common], sub_pvals[common])
+            jaccard = compute_topk_jaccard(full, sub_pvals, k=20)
+            out.append({
+                "fraction": item["frac"],
+                "resample": item["resample"],
+                "method": method,
+                "spearman_rho": rho,
+                "jaccard_top20": jaccard,
+                "n_participants": item["n_sub"],
+            })
+        return out
+
+    def _periodic_save(rows, path):
+        if path is None:
+            return
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        pd.DataFrame(rows).to_csv(path, index=False)
+
+    # Resume: load existing partial results and skip completed (frac, resample) pairs
+    all_rows: list[dict] = []
+    completed_pairs: set[tuple] = set()
+    if output_path and Path(output_path).exists():
+        try:
+            existing = pd.read_csv(output_path)
+            # Each (fraction, resample) pair has one row per method — deduplicate
+            completed_pairs = {
+                (float(row["fraction"]), int(row["resample"]))
+                for _, row in existing.iterrows()
+            }
+            all_rows = existing.to_dict("records")
+            print(
+                f"[{_ts()}] Resuming: {len(completed_pairs)} (frac, resample) pairs "
+                f"already done — skipping those.",
+                flush=True,
+            )
+        except Exception as exc:
+            logger.warning("Could not load existing results for resume: %s", exc)
+
+    # Build all (fraction, resample) argument tuples.
+    # Use standardized column names ("participant"/"arm"/"visit") because the
+    # adata passed to workers has already been renamed.
     all_args = []
     for frac in fractions:
         n_sub = max(4, int(n_total * frac))
         for r in range(n_resamples):
+            if (float(frac), int(r)) in completed_pairs:
+                continue
             sub_pids = rng.choice(participants, size=n_sub, replace=False).tolist()
             all_args.append((frac, r, sub_pids, None, gene_cols, methods,
-                             participant_col, arm_col, visit_col))
+                             "participant", "arm", "visit"))
 
-    total_runs = len(all_args)
+    total_remaining = len(all_args)
+    total_runs = len(fractions) * n_resamples
     print(
-        f"[{_ts()}] Running {total_runs} subsamples "
-        f"({len(fractions)} fractions × {n_resamples} resamples, {n_jobs} workers)...",
+        f"[{_ts()}] Running {total_remaining} remaining subsamples "
+        f"(of {total_runs} total, {n_jobs} workers)...",
         flush=True,
     )
-    t0 = time.time()
 
-    subsample_results = []
+    if not all_args:
+        print(f"[{_ts()}] All subsamples already complete.", flush=True)
+        return pd.DataFrame(all_rows)
+
+    t0 = time.time()
 
     if n_jobs == 1:
         for i, args in enumerate(all_args):
             args = args[:3] + (adata,) + args[4:]
-            subsample_results.append(_run_subsample_iteration(args))
+            item = _run_subsample_iteration(args)
+            if item is not None:
+                all_rows.extend(_item_to_rows(item))
             if (i + 1) % 20 == 0:
                 elapsed = time.time() - t0
-                eta = elapsed / (i + 1) * (total_runs - i - 1)
+                eta = elapsed / (i + 1) * (total_remaining - i - 1)
                 print(
-                    f"[{_ts()}] {i+1}/{total_runs} subsamples "
+                    f"[{_ts()}] {len(completed_pairs) + i + 1}/{total_runs} subsamples "
                     f"({elapsed:.0f}s elapsed, ~{eta:.0f}s remaining)",
                     flush=True,
                 )
+                _periodic_save(all_rows, output_path)
     else:
+        import sys
         import tempfile
         from concurrent.futures import ProcessPoolExecutor, as_completed
 
@@ -234,69 +294,51 @@ def run_subsampling(
         try:
             print(f"[{_ts()}] Serializing adata to disk for parallel workers...", flush=True)
             adata.write_h5ad(tmp_path)
-            print(f"[{_ts()}] Serialization done. Dispatching {total_runs} jobs...", flush=True)
+            print(
+                f"[{_ts()}] Serialization done. Dispatching {total_remaining} jobs...",
+                flush=True,
+            )
 
             path_args = [a[:3] + (tmp_path,) + a[4:] for a in all_args]
 
             n_done = 0
             ctx = mp.get_context("spawn")
-            with ProcessPoolExecutor(max_workers=n_jobs, mp_context=ctx) as executor:
+            # max_tasks_per_child (Python 3.11+): restart workers every N tasks to
+            # release accumulated Python heap and R session memory.
+            extra = {"max_tasks_per_child": 30} if sys.version_info >= (3, 11) else {}
+            with ProcessPoolExecutor(max_workers=n_jobs, mp_context=ctx, **extra) as executor:
                 futures = {
                     executor.submit(_run_subsample_iteration, a): (a[0], a[1])
                     for a in path_args
                 }
                 for future in as_completed(futures):
                     try:
-                        subsample_results.append(future.result())
+                        item = future.result()
+                        if item is not None:
+                            all_rows.extend(_item_to_rows(item))
                     except Exception as exc:
                         frac, r = futures[future]
                         logger.warning("Subsample frac=%s r=%d raised: %s", frac, r, exc)
                     n_done += 1
                     if n_done % 20 == 0:
                         elapsed = time.time() - t0
-                        eta = elapsed / n_done * (total_runs - n_done)
+                        eta = elapsed / n_done * (total_remaining - n_done)
+                        total_done = len(completed_pairs) + n_done
                         print(
-                            f"[{_ts()}] {n_done}/{total_runs} subsamples complete "
+                            f"[{_ts()}] {total_done}/{total_runs} subsamples complete "
                             f"({elapsed:.0f}s elapsed, ~{eta:.0f}s remaining)",
                             flush=True,
                         )
+                        _periodic_save(all_rows, output_path)
         finally:
             os.unlink(tmp_path)
 
-    # Compute Spearman ρ and Jaccard against full-data reference
-    rows = []
-    for item in subsample_results:
-        if item is None:
-            continue
-        frac = item["frac"]
-        r = item["resample"]
-        n_sub = item["n_sub"]
-        for method in methods:
-            sub_pvals = pd.Series(item["pvals"].get(method, {}))
-            full = full_pvals[method]
-
-            common = sub_pvals.dropna().index.intersection(full.dropna().index)
-            rho = np.nan
-            if len(common) > 5:
-                rho, _ = spearmanr(full[common], sub_pvals[common])
-
-            jaccard = compute_topk_jaccard(full, sub_pvals, k=20)
-
-            rows.append({
-                "fraction": frac,
-                "resample": r,
-                "method": method,
-                "spearman_rho": rho,
-                "jaccard_top20": jaccard,
-                "n_participants": n_sub,
-            })
-
-    df = pd.DataFrame(rows)
+    df = pd.DataFrame(all_rows)
 
     if output_path:
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         df.to_csv(output_path, index=False)
-        print(f"  Saved → {output_path}")
+        print(f"[{_ts()}] Saved → {output_path}", flush=True)
 
     return df

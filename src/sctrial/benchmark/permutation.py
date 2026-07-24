@@ -184,31 +184,60 @@ def run_permutation_test(
     def _ts() -> str:
         return datetime.datetime.now().strftime("%H:%M:%S")
 
+    # Resume: load any existing partial results and skip completed permutations
+    all_rows: list[dict] = []
+    completed_perms: set[int] = set()
+    if output_path and Path(output_path).exists():
+        try:
+            existing = pd.read_csv(output_path)
+            completed_perms = set(existing["permutation"].astype(int).unique())
+            all_rows = existing.to_dict("records")
+            print(
+                f"[{_ts()}] Resuming: {len(completed_perms)}/{n_permutations} "
+                f"permutations already done — skipping those.",
+                flush=True,
+            )
+        except Exception as exc:
+            logger.warning("Could not load existing results for resume: %s", exc)
+
+    remaining = [i for i in range(n_permutations) if i not in completed_perms]
     print(
-        f"[{_ts()}] Running {n_permutations} permutations × {len(methods)} methods "
+        f"[{_ts()}] Running {len(remaining)} remaining permutations × {len(methods)} methods "
         f"on {len(gene_cols)} genes ({n_jobs} workers)...",
         flush=True,
     )
 
-    all_rows = []
+    if not remaining:
+        print(f"[{_ts()}] All permutations already complete.", flush=True)
+        return pd.DataFrame(all_rows)
+
+    def _periodic_save(rows, path):
+        if path is None:
+            return
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        pd.DataFrame(rows).to_csv(path, index=False)
+
     t0 = time.time()
 
     if n_jobs == 1:
-        for i in range(n_permutations):
+        for count, i in enumerate(remaining):
             args = (
                 i, seeds[i], adata, design_type, gene_cols, methods,
                 participant_col, arm_col, visit_col,
             )
             all_rows.extend(_run_permutation_iteration(args))
-            if (i + 1) % 50 == 0:
+            if (count + 1) % 50 == 0:
                 elapsed = time.time() - t0
-                eta = elapsed / (i + 1) * (n_permutations - i - 1)
+                eta = elapsed / (count + 1) * (len(remaining) - count - 1)
                 print(
-                    f"[{_ts()}] {i+1}/{n_permutations} permutations "
+                    f"[{_ts()}] {len(completed_perms) + count + 1}/{n_permutations} permutations "
                     f"({elapsed:.0f}s elapsed, ~{eta:.0f}s remaining)",
                     flush=True,
                 )
+                _periodic_save(all_rows, output_path)
     else:
+        import sys
         import tempfile
         from concurrent.futures import ProcessPoolExecutor, as_completed
 
@@ -217,17 +246,23 @@ def run_permutation_test(
         try:
             print(f"[{_ts()}] Serializing adata to disk for parallel workers...", flush=True)
             adata.write_h5ad(tmp_path)
-            print(f"[{_ts()}] Serialization done. Dispatching {n_permutations} jobs...", flush=True)
+            print(
+                f"[{_ts()}] Serialization done. Dispatching {len(remaining)} jobs...",
+                flush=True,
+            )
 
             arg_list = [
                 (i, seeds[i], tmp_path, design_type, gene_cols, methods,
                  participant_col, arm_col, visit_col)
-                for i in range(n_permutations)
+                for i in remaining
             ]
 
             n_done = 0
             ctx = mp.get_context("spawn")
-            with ProcessPoolExecutor(max_workers=n_jobs, mp_context=ctx) as executor:
+            # max_tasks_per_child (Python 3.11+): restart workers every N tasks to
+            # release accumulated Python heap and R session memory.
+            extra = {"max_tasks_per_child": 30} if sys.version_info >= (3, 11) else {}
+            with ProcessPoolExecutor(max_workers=n_jobs, mp_context=ctx, **extra) as executor:
                 futures = {
                     executor.submit(_run_permutation_iteration, a): a[0]
                     for a in arg_list
@@ -241,12 +276,14 @@ def run_permutation_test(
                     n_done += 1
                     if n_done % 50 == 0:
                         elapsed = time.time() - t0
-                        eta = elapsed / n_done * (n_permutations - n_done)
+                        eta = elapsed / n_done * (len(remaining) - n_done)
+                        total_done = len(completed_perms) + n_done
                         print(
-                            f"[{_ts()}] {n_done}/{n_permutations} permutations complete "
+                            f"[{_ts()}] {total_done}/{n_permutations} permutations complete "
                             f"({elapsed:.0f}s elapsed, ~{eta:.0f}s remaining)",
                             flush=True,
                         )
+                        _periodic_save(all_rows, output_path)
         finally:
             os.unlink(tmp_path)
 
@@ -256,6 +293,6 @@ def run_permutation_test(
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         df.to_csv(output_path, index=False)
-        print(f"  Saved → {output_path}")
+        print(f"[{_ts()}] Saved → {output_path}", flush=True)
 
     return df
