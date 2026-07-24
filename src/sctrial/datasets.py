@@ -423,6 +423,32 @@ def _join_published_labels(
     return out
 
 
+def _load_sade_feldman_patient_recist(raw_dir: Path) -> dict[str, str]:
+    """Patient-level RECIST response from Cell 2018 Table S1 (mmc1.xlsx).
+
+    Returns ``{participant_id: recist}`` where recist is the raw label
+    ('R', 'NR', or 'Resistance'). This is the PATIENT-level clinical outcome,
+    distinct from the per-lesion radiologic call in the GEO metadata (which can
+    differ between a patient's own biopsies). Empty dict if mmc1 is absent.
+    """
+    mmc1 = raw_dir / "mmc1.xlsx"
+    if not mmc1.exists():
+        return {}
+    df = pd.read_excel(mmc1, sheet_name="Patient-scRNA data", header=1)
+    df.columns = [str(c).strip() for c in df.columns]
+    pid_col = next((c for c in df.columns if c.lower() == "patient id"), None)
+    resp_col = next((c for c in df.columns if "recist" in c.lower()), None)
+    if pid_col is None or resp_col is None:
+        logger.warning("mmc1 Patient-scRNA data: RECIST columns not found (%s)", list(df.columns))
+        return {}
+    out: dict[str, str] = {}
+    for pid, resp in zip(df[pid_col], df[resp_col]):
+        if pd.isna(pid) or pd.isna(resp):
+            continue
+        out[str(pid).strip()] = str(resp).strip()
+    return out
+
+
 def _load_sade_feldman_published_labels(
     raw_dir: Path, cell_names: Sequence[str]
 ) -> dict[str, list[object]]:
@@ -799,10 +825,10 @@ def load_sade_feldman(
         The processed AnnData object.
     """
     processing_params = {
-        "version": "v8",
+        "version": "v9",
         "max_cells_per_participant_visit": max_cells_per_participant_visit,
         "seed": seed,
-        "assay": "TPM",
+        "assay": "log2(TPM+1)->linear+log1p",
     }
 
     data_dir = data_dir or _default_data_dir("sade_feldman")
@@ -946,8 +972,38 @@ def load_sade_feldman(
     # 16,291 cells / 32 participants / 11 Pre+Post paired.
     meta = meta[meta["response"].isin(["Responder", "Non-responder"])].copy()
 
+    # The GEO "response" field is a PER-LESION radiologic call: a patient's
+    # separate biopsies can carry different labels, so using it as the DiD arm
+    # makes the arm flip between a participant's Pre and Post timepoints (e.g.
+    # P4, P28) and get silently resolved by cell-count majority. Rename it and
+    # use PATIENT-LEVEL RECIST (Table S1) as the clinical arm instead.
+    meta = meta.rename(columns={"response": "lesion_response"})
     meta["visit"] = meta["patient_raw"].astype(str).str.split("_").str[0]
     meta["participant_id"] = meta["patient_raw"].astype(str).str.extract(r"(P\d+)")[0]
+
+    recist = _load_sade_feldman_patient_recist(raw_dir_resolved)
+    if recist:
+        meta["clinical_response_recist"] = meta["participant_id"].map(recist)
+        # Binary clinical arm. Resistance (initial response then progression) is
+        # grouped with non-responders; this mapping is recorded in uns.
+        _RECIST_ARM = {"R": "Responder", "NR": "Non-responder", "Resistance": "Non-responder"}
+        meta["response"] = meta["clinical_response_recist"].map(_RECIST_ARM)
+    else:
+        # Fallback: no supplement available -> keep the per-lesion label as arm
+        # but flag that it is not patient-level.
+        meta["response"] = meta["lesion_response"]
+        logger.warning(
+            "mmc1 unavailable: DiD arm falls back to per-lesion response, which "
+            "is not patient-constant. Re-run with allow_download=True."
+        )
+
+    # Flag FACS sort-enriched sub-library cells (suffix _T_enriched /
+    # _myeloid_enriched). These are Post-visit-only and, pooled into their
+    # parent samples, distort Pre/Post composition (the authors' Table S1
+    # per-sample composition reproduces only when they are excluded).
+    meta["sort_enriched"] = (
+        meta["sample_id"].astype(str).str.contains("_enriched", case=False, regex=False)
+    )
 
     time_map = dict(zip(sample_ids, time_labels))
     meta["time_label"] = meta["sample_id"].map(time_map)
@@ -976,8 +1032,22 @@ def load_sade_feldman(
     else:
         logger.info(f"Using full dataset: {adata.n_obs:,} cells (no subsampling)")
 
-    adata.layers["tpm"] = adata.X.copy()
-    adata.layers["log1p_tpm"] = adata.X.copy() if _looks_log1p(adata.X) else np.log1p(adata.X)
+    # The GSE120575 matrix is log2(TPM+1), NOT linear TPM (verified: per-cell
+    # sum(2^x - 1) ~= 1e6). Previously X was copied verbatim into both a "tpm"
+    # layer (treated as linear by the QC panels) and a "log1p_tpm" layer (treated
+    # as natural-log log1p), and ten downstream sites re-applied np.log1p to it,
+    # double-logging. Recover the true linear TPM and a genuine natural-log log1p
+    # so the layer names mean what they say and match the other datasets.
+    X_log2 = adata.X.toarray() if sp.issparse(adata.X) else np.asarray(adata.X, dtype=np.float32)
+    tpm_linear = np.expm1(X_log2 * np.log(2.0))  # 2^x - 1
+    tpm_linear[tpm_linear < 0] = 0.0
+    adata.layers["tpm"] = tpm_linear
+    adata.layers["log1p_tpm"] = np.log1p(tpm_linear)  # natural-log log1p
+    adata.X = adata.layers["log1p_tpm"].copy()
+    adata.uns["expression_provenance"] = (
+        "GEO matrix is log2(TPM+1); recovered layers['tpm']=linear TPM (2^x-1) "
+        "and X=layers['log1p_tpm']=ln(1+TPM)."
+    )
     drop_artifact_genes(adata)  # QC: remove hemoglobin/ribosomal/histone genes (keep cell-cycle)
 
     # ── PCA → neighbors → UMAP → Leiden ────────────────────────────────
@@ -1046,7 +1116,7 @@ def load_sade_feldman(
 
 def load_stephenson_data(
     data_dir: str | None = None,
-    processed_name: str = "stephenson_covid19_v5.h5ad",
+    processed_name: str = "stephenson_covid19_v6.h5ad",
     seed: int = 42,
     allow_download: bool = False,
     force_reprocess: bool = False,
@@ -1134,7 +1204,7 @@ def load_stephenson_data(
     # artifact-gene QC, for instance -- was returned as if current. Match the
     # params like every sibling loader does.
     processing_params = {
-        "version": "v5",
+        "version": "v6",
         "severity_keep": list(severity_keep),
         "dfo_bins": ["DFO_0-7", "DFO_8-14", "DFO_15+"],
         "qc_artifact_flag": True,
@@ -1178,6 +1248,30 @@ def load_stephenson_data(
             _download_file(url, raw_file, "Stephenson COVID-19 data")
     logger.info("Processing raw data...")
     adata = ad.read_h5ad(raw_file)
+
+    # ── Split off CITE-seq ADT protein features ───────────────────────────────
+    # E-MTAB-10026 is CITE-seq: var["feature_types"] tags 192 "Antibody Capture"
+    # features that carry ~48.7% of aggregate counts. Left in the gene matrix they
+    # enter the library-size denominator, so every normalised value is divided by a
+    # mostly-protein library size whose per-cell offset is structured by site and
+    # collection day -- confounded with the D0/D28 axis. Proteins are moved to
+    # obsm["protein"] (raw) and dropped from the gene matrix before anything else.
+    if "feature_types" in adata.var:
+        is_adt = adata.var["feature_types"].astype(str).str.strip() == "Antibody Capture"
+        n_adt = int(is_adt.to_numpy().sum())
+        if n_adt:
+            X_adt = adata[:, is_adt.to_numpy()].X
+            X_adt = X_adt.toarray() if sp.issparse(X_adt) else np.asarray(X_adt)
+            adata.obsm["protein"] = pd.DataFrame(
+                X_adt, index=adata.obs_names,
+                columns=adata.var_names[is_adt.to_numpy()].tolist(),
+            )
+            adata = adata[:, ~is_adt.to_numpy()].copy()
+            logger.info(
+                "Moved %d CITE-seq ADT feature(s) to .obsm['protein']; %d genes remain.",
+                n_adt, adata.n_vars,
+            )
+        adata.uns["n_adt_features"] = n_adt
 
     X_counts, source = _get_counts_matrix(adata)
     if X_counts is None:
@@ -1642,20 +1736,31 @@ def categorize_celltype(ct: str) -> str:
         Coarse lineage string.
     """
     ct_lower = str(ct).lower()
-    if "cd4" in ct_lower or "th1" in ct_lower or "th2" in ct_lower or "treg" in ct_lower:
-        return "CD4_T"
-    if "cd8" in ct_lower or "cytotoxic" in ct_lower:
-        return "CD8_T"
-    if "nk" in ct_lower or "natural killer" in ct_lower:
-        return "NK"
-    # DC check must precede B cell check so "plasmacytoid dendritic cell"
-    # is not captured by the "plasma" substring in the B cell rule.
+
+    # Token-boundary match, so a marker embedded in another gene name does not
+    # trigger a lineage. Without this, "CD83_CD14_mono" matched "cd8" and became
+    # CD8_T (16,326 monocytes mislabelled in the Stephenson atlas).
+    def has(marker: str) -> bool:
+        return bool(re.search(rf"(?<![a-z0-9]){re.escape(marker)}(?![0-9])", ct_lower))
+
+    # Monocyte/DC first: their labels ("CD83_CD14_mono", "CD16_mono", "cDC",
+    # "pDC") contain CD-tokens that would otherwise be captured by the T rules.
+    if has("mono") or has("cd14") or has("cd16") or has("macrophage"):
+        return "Monocytes"
     if "dc" in ct_lower or "dendritic" in ct_lower:
         return "DCs"
-    if "b cell" in ct_lower or "plasma" in ct_lower or "b_cell" in ct_lower:
+    if has("treg") or "regulatory" in ct_lower:
+        return "CD4_T"
+    if has("cd4") or has("th1") or has("th2") or has("th17") or "t_cd4" in ct_lower:
+        return "CD4_T"
+    if has("cd8") or "cytotoxic" in ct_lower or has("mait") or "t_cd8" in ct_lower:
+        return "CD8_T"
+    if has("nk") or "natural killer" in ct_lower:
+        return "NK"
+    # B lineage: match the atlas prefixes (B_naive, B_switched_memory, Bmem, Bn)
+    # and plasma/plasmablast, not just the exact strings "b cell"/"b_cell".
+    if "plasma" in ct_lower or re.match(r"^b[_.\- ]", ct_lower) or has("bcell"):
         return "B_cells"
-    if "mono" in ct_lower or "cd14" in ct_lower or "cd16" in ct_lower:
-        return "Monocytes"
     return "Other"
 
 
@@ -1861,15 +1966,20 @@ def _process_aml_raw(
     else:
         obs["cell_type"] = "Unknown"
     if "PredictionRefined" in obs.columns:
-        # Nullable: an unclassified cell is unknown, not "not malignant".
-        obs["malignant_status"] = obs["PredictionRefined"].apply(
-            lambda x: pd.NA
-            if pd.isna(x)
-            else ("malignant" if "malignant" in str(x).lower() else "normal")
-        )
+        # van Galen's PredictionRefined has exactly three levels: malignant,
+        # normal, unclear. Map them faithfully -- "unclear" and NaN are NOT
+        # "normal" (a substring test that only checked for "malignant" was
+        # silently collapsing 'unclear' into 'normal'). is_malignant is therefore
+        # a nullable boolean: True/False only where the author call is definite.
+        _MAL = {"malignant": "malignant", "normal": "normal", "unclear": pd.NA}
+        raw = obs["PredictionRefined"].astype(str).str.strip().str.lower()
+        obs["malignant_status"] = raw.map(_MAL).where(obs["PredictionRefined"].notna(), pd.NA)
+        obs["is_malignant"] = obs["malignant_status"].map(
+            {"malignant": True, "normal": False}
+        ).astype("boolean")
     else:
         obs["malignant_status"] = pd.NA
-    obs["is_malignant"] = obs["malignant_status"].eq("malignant")
+        obs["is_malignant"] = pd.array([pd.NA] * len(obs), dtype="boolean")
     # `disease_group` is a cohort label derived from the sample name, NOT a
     # clinical outcome. `response` is kept as an alias for backwards
     # compatibility but must not be read as an endpoint: GSE116256 deposits no
@@ -2189,6 +2299,10 @@ def _process_cart_raw(
             "  GSE290722_metadata: matched %d/%d cells (%.2f%%)",
             n_match, adata.n_obs, 100.0 * n_match / max(adata.n_obs, 1),
         )
+        # String metadata -> string dtype; the CAR-transgene count is NUMERIC and
+        # must stay numeric. Casting an int column to object (Python ints + NaN)
+        # makes write_h5ad raise "Can't implicitly convert non-string objects to
+        # strings", which -- because the write is not atomic -- truncates the file.
         for src, dst in (
             # Major_Alias is the primary lineage: unlike Compartment it keeps
             # "T regs" as a distinct population, which the analysis needs.
@@ -2197,14 +2311,13 @@ def _process_cart_raw(
             ("Alias", "cluster_published"),
             ("Response", "response_published"),
             ("TimePoint_Final", "timepoint_published"),
-            ("Axicel", "car_transgene_counts"),
         ):
             if src in cart_meta.columns:
-                adata.obs[dst] = cid.map(cart_meta[src]).astype("object")
-        if "car_transgene_counts" in adata.obs:
-            adata.obs["is_car_positive"] = (
-                pd.to_numeric(adata.obs["car_transgene_counts"], errors="coerce").fillna(0) > 0
-            )
+                adata.obs[dst] = cid.map(cart_meta[src]).astype(str)
+        if "Axicel" in cart_meta.columns:
+            car = pd.to_numeric(cid.map(cart_meta["Axicel"]), errors="coerce")
+            adata.obs["car_transgene_counts"] = car.astype("Int64")
+            adata.obs["is_car_positive"] = car.fillna(0) > 0
         # The authors' primary outcome. Previously this column was hard-coded to
         # the constant "CAR-T", which silently discarded the durable-responder /
         # responder / non-responder contrast the publication is built on.
@@ -2220,6 +2333,30 @@ def _process_cart_raw(
             "GSE290722_metadata.csv.gz not found: per-cell response and author "
             "annotations unavailable. Re-run with allow_download=True."
         )
+
+    # ── Match the authors' downstream cohort ──────────────────────────
+    # Cheloni et al. exclude patient P13 ("insufficient yield ... 312 cells ...
+    # excluded from the downstream analysis") and remove 10,677 doublet-enriched
+    # cells ("Nine clusters ... defined as enriched in doublets and removed").
+    # Both were being retained; excluded here BEFORE embeddings so clustering is
+    # not polluted by doublets. The counts are recorded for provenance.
+    n_start = adata.n_obs
+    excl = {}
+    is_p13 = adata.obs["participant_id"].astype(str) == "P13"
+    excl["P13_insufficient_yield"] = int(is_p13.sum())
+    is_doublet = pd.Series(False, index=adata.obs_names)
+    for col in ("cell_type_compartment_published", "cell_type_published"):
+        if col in adata.obs:
+            is_doublet |= adata.obs[col].astype(str).str.lower() == "doublets"
+    excl["author_doublets"] = int((is_doublet & ~is_p13).sum())
+    keep = ~(is_p13 | is_doublet)
+    if int((~keep).sum()):
+        adata = adata[keep.to_numpy()].copy()
+        logger.info(
+            "Excluded %d cell(s) to match the authors' cohort: %s (%d -> %d).",
+            n_start - adata.n_obs, excl, n_start, adata.n_obs,
+        )
+    adata.uns["author_exclusions"] = excl
 
     # ── Embeddings + clustering ───────────────────────────────────────
     sc.pp.highly_variable_genes(adata, n_top_genes=2000, flavor="seurat", subset=False)
@@ -2256,16 +2393,26 @@ def _process_cart_raw(
             "Major_Alias (primary, 15 levels incl. T regs), Compartment (12), "
             "Alias (73 populations)"
         )
-        # The authors flagged and removed doublet-enriched clusters; keep the
-        # flag so downstream analyses can exclude them explicitly.
-        adata.obs["is_doublet"] = (
-            adata.obs["cell_type_published"].astype(str).str.lower() == "doublets"
-        )
     else:
         adata.obs["cell_type"] = adata.obs["cell_type_denovo"].astype(str)
         adata.obs["annotation_source"] = "de-novo"
         adata.uns["annotation_source"] = "de-novo marker scoring (author metadata unavailable)"
-        adata.obs["is_doublet"] = False
+
+    # Response label semantics. In THIS study the author codes do NOT mean what
+    # `harmonize_response` (a Sade-Feldman helper) assumes: R = RELAPSED, not
+    # responder. Provide an unambiguous human-readable column and record the map,
+    # so downstream code cannot silently read "R" as "Responder".
+    _CART_RESPONSE = {
+        "LtR": "Long-term responder",
+        "R": "Relapsed",
+        "NR": "Non-responder",
+        "Unknown": "Unknown",
+    }
+    if "response_published" in adata.obs:
+        adata.obs["response_label"] = (
+            adata.obs["response_published"].map(_CART_RESPONSE).fillna("Unknown")
+        )
+    adata.uns["response_code_map"] = _CART_RESPONSE
 
     # Mark paired patients
     patients = adata.obs["participant_id"].unique()
@@ -2334,9 +2481,11 @@ def load_cart(
     data_dir_path = Path(data_dir)
 
     processing_params = {
-        "version": "v3",
+        "version": "v4",
         "max_cells_per_sample": max_cells_per_sample,
         "seed": seed,
+        "exclude_p13": True,
+        "exclude_author_doublets": True,
     }
 
     # ── Try to load cached processed file ─────────────────────────────
@@ -2485,6 +2634,14 @@ def _process_tnbc_raw(
         .set_index("patient_id")["treatment"]
     )
     obs["arm"] = obs["patient_id"].map(patient_arm)
+
+    # Per-sample biopsy site (anatomical origin). This was read from
+    # geo_metadata and then discarded; without it the near-perfect confounding
+    # of treatment arm with biopsy site (breast primaries fall almost entirely
+    # in the control arm) is invisible to any downstream adjustment or report.
+    if "tissue" in geo_meta.columns:
+        site_by_title = geo_meta.drop_duplicates("title").set_index("title")["tissue"]
+        obs["biopsy_site"] = obs["sample_id"].map(site_by_title).astype("object")
 
     # Clinical response from mmc3.xlsx (Zhang et al. 2021, Table S2).
     # CR/PR → R (responder), PD/SD → NR (non-responder).
@@ -2653,6 +2810,31 @@ def _process_tnbc_raw(
         "TNBC immunotherapy trial: anti-PDL1+Chemo vs Chemo, "
         "12 paired patients, Pre/Post tumor biopsies"
     )
+
+    # Flag degenerate participant-visits. The 0<n<50 guard removes tiny visits,
+    # but a visit can clear it yet still be compositionally degenerate (e.g. a
+    # Post biopsy that is ~100% one lineage), whose pseudobulk then represents a
+    # single cell type rather than the participant. Record the dominant-lineage
+    # fraction per (participant, visit) so a leave-one-out sensitivity check can
+    # target them; warn but do not auto-exclude (that is an analysis decision).
+    _diversity: dict[str, float] = {}
+    _degenerate: list[str] = []
+    for (pid, vis), grp in adata.obs.groupby(["participant_id", "visit"], observed=True):
+        if len(grp) == 0:
+            continue
+        top_frac = grp["cell_type"].value_counts(normalize=True).iloc[0]
+        key = f"{pid}_{vis}"
+        _diversity[key] = float(top_frac)
+        if top_frac >= 0.90:
+            _degenerate.append(key)
+            logger.warning(
+                "  %s: %.0f%% of %d cells are a single lineage (%s) -- "
+                "compositionally degenerate pseudobulk.",
+                key, 100 * top_frac, len(grp),
+                grp["cell_type"].value_counts().index[0],
+            )
+    adata.uns["visit_dominant_lineage_fraction"] = _diversity
+    adata.uns["degenerate_participant_visits"] = _degenerate
 
     # Log final summary
     logger.info(f"  Final: {adata.n_obs:,} cells, {adata.n_vars:,} genes")
