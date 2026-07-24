@@ -53,6 +53,11 @@ if (sum(keep) < 2) stop("Too few cells with non-zero counts after filtering")
 counts <- counts[, keep]
 meta   <- meta[keep, ]
 
+# NEBULA requires cells of the same subject to be contiguous
+ord    <- order(meta$participant)
+counts <- counts[, ord]
+meta   <- meta[ord, ]
+
 # Two-arm: interaction model
 design <- model.matrix(~arm * visit, data=meta)
 
@@ -99,6 +104,11 @@ keep <- colSums(counts) > 0
 if (sum(keep) < 2) stop("Too few cells with non-zero counts after filtering")
 counts <- counts[, keep]
 meta   <- meta[keep, ]
+
+# NEBULA requires cells of the same subject to be contiguous
+ord    <- order(meta$participant)
+counts <- counts[, ord]
+meta   <- meta[ord, ]
 
 # Single-arm: visit effect only
 design <- model.matrix(~visit, data=meta)
