@@ -44,7 +44,7 @@ from matplotlib.patches import Patch
 from matplotlib.ticker import MultipleLocator
 from scipy import stats
 
-from sctrial import cohens_d_from_did, effect_size_ci
+from sctrial import add_log1p_cpm_layer, cohens_d_from_did, effect_size_ci
 
 from .._shared import (
     COLORS,
@@ -55,13 +55,13 @@ from .._shared import (
     clear_cache,
     despine,
     did_table,
-    get_sade_feldman,
-    get_tnbc_zhang,
-    get_stephenson,
-    get_vaccine,
-    harmonize_response,
     get_aml,
     get_cart,
+    get_sade_feldman,
+    get_stephenson,
+    get_tnbc_zhang,
+    get_vaccine,
+    harmonize_response,
     save_panel,
     score_signatures,
     sig_display,
@@ -455,27 +455,29 @@ def _load_sf() -> DatasetInfo:
 
 def _load_vaccine() -> DatasetInfo:
     vacc = get_vaccine()
-    vacc, vacc_sigs = score_signatures(vacc, layer="counts")
+    vacc, vacc_sigs = score_signatures(vacc, layer="log1p_norm")
     vacc_design = TrialDesign(participant_col="participant_id", visit_col="visit", arm_col=None)
     return ("Vaccine", vacc, vacc_design, ("Pre", "Post"), vacc_sigs, "paired")
 
 def _load_aml() -> DatasetInfo:
     aml = get_aml()
-    aml, aml_sigs = score_signatures(aml, layer="counts")
+    aml, aml_sigs = score_signatures(aml, layer="log1p_norm")
     pid_col = "participant_id" if "participant_id" in aml.obs.columns else "patient_id"
     aml_design = TrialDesign(participant_col=pid_col, visit_col="visit", arm_col=None)
     return ("AML", aml, aml_design, ("Pre", "Post"), aml_sigs, "paired")
 
 def _load_cart() -> DatasetInfo:
     cart = get_cart()
-    cart, cart_sigs = score_signatures(cart, layer="counts")
+    cart, cart_sigs = score_signatures(cart, layer="log1p_norm")
     pid_col = "participant_id" if "participant_id" in cart.obs.columns else "patient_id"
     cart_design = TrialDesign(participant_col=pid_col, visit_col="visit", arm_col=None)
     return ("CAR-T", cart, cart_design, ("Pre", "Post"), cart_sigs, "paired")
 
 def _load_covid() -> DatasetInfo:
     covid = get_stephenson()
-    covid, covid_sigs = score_signatures(covid, layer="counts")
+    if "log1p_cpm" not in covid.layers:
+        add_log1p_cpm_layer(covid, counts_layer="counts", out_layer="log1p_cpm")
+    covid, covid_sigs = score_signatures(covid, layer="log1p_cpm")
     top_bin = covid.obs["dfo_bin"].value_counts().idxmax() if "dfo_bin" in covid.obs.columns else "Pre"
     covid_design = TrialDesign(
         participant_col="participant_id", visit_col="dfo_bin",

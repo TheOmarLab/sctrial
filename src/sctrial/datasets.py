@@ -21,7 +21,7 @@ import scipy.sparse as sp
 from scipy.io import mmread
 from statsmodels.stats.multitest import multipletests
 
-from .preprocessing import drop_artifact_genes
+from .preprocessing import add_log1p_cpm_layer, drop_artifact_genes
 from .utils import get_counts_matrix
 
 logger = logging.getLogger(__name__)
@@ -1046,14 +1046,36 @@ def load_sade_feldman(
 
 def load_stephenson_data(
     data_dir: str | None = None,
-    processed_name: str = "stephenson_covid19_v3.h5ad",
+    processed_name: str = "stephenson_covid19_v5.h5ad",
     seed: int = 42,
     allow_download: bool = False,
     force_reprocess: bool = False,
     *,
+    severity_keep: Sequence[str] = ("Mild", "Severe"),
+    require_numeric_dfo: bool = True,
     data_path: str | None = None,
 ) -> ad.AnnData:
     """Load and preprocess Stephenson COVID-19 dataset (E-MTAB-10026).
+
+    Reference: Stephenson et al., "Single-cell multi-omics analysis of the immune
+    response in COVID-19", Nat Med 2021;27(5):904-916. PMID 33879890,
+    doi:10.1038/s41591-021-01329-2.
+
+    .. warning::
+       **This loader retains a minority of the deposited atlas.** The deposited
+       object holds ~647k cells across ~120 individuals spanning asymptomatic,
+       mild, moderate, severe and critical COVID-19 plus healthy, non-COVID
+       respiratory-illness and IV-LPS control groups. Two filters are applied:
+
+       1. ``severity_keep`` (default ``("Mild", "Severe")``) keeps two strata,
+          which **excludes the asymptomatic, moderate and critical patients** and
+          collapses an ordinal clinical variable to a binary contrast.
+       2. ``require_numeric_dfo`` drops cells whose ``Days_from_onset`` is not
+          numerically parseable (they would otherwise land in a ``"nan"`` bin).
+
+       Together these retain roughly a third of the deposited cells. The exact
+       per-step counts are recorded in ``adata.uns["cohort_funnel"]``. Widen
+       ``severity_keep`` to analyse the full severity spectrum.
 
     Parameters
     ----------
@@ -1062,7 +1084,12 @@ def load_stephenson_data(
     processed_name : str
         Filename for the cached processed h5ad file.
     seed : int
-        Random seed for reproducibility.
+        Unused; this loader is deterministic and performs no subsampling. Kept
+        for signature symmetry with the other loaders.
+    severity_keep : Sequence[str]
+        ``Status_on_day_collection_summary`` levels to retain.
+    require_numeric_dfo : bool
+        Drop cells whose days-from-onset is not numerically parseable.
     allow_download : bool
         If True, download the data file automatically when missing.
     force_reprocess : bool
@@ -1101,6 +1128,18 @@ def load_stephenson_data(
 
     processed_path = data_dir_path / "processed" / processed_name
 
+    # This loader previously served ANY cached file whose processing_params was
+    # merely non-empty, never comparing it to the current settings. The cache key
+    # was effectively the filename, so a file produced by older code -- before the
+    # artifact-gene QC, for instance -- was returned as if current. Match the
+    # params like every sibling loader does.
+    processing_params = {
+        "version": "v5",
+        "severity_keep": list(severity_keep),
+        "dfo_bins": ["DFO_0-7", "DFO_8-14", "DFO_15+"],
+        "qc_artifact_flag": True,
+    }
+
     if not force_reprocess and processed_path.exists():
         adata = ad.read_h5ad(processed_path)
         prev = adata.uns.get("processing_params", {})
@@ -1111,9 +1150,14 @@ def load_stephenson_data(
                 UserWarning,
                 stacklevel=2,
             )
-        logger.info(f"Loaded cached file: {processed_path}")
-        logger.info(f"  {adata.n_obs:,} cells, {adata.n_vars:,} genes")
-        return adata
+            logger.info(f"Loaded cached file: {processed_path}")
+            logger.info(f"  {adata.n_obs:,} cells, {adata.n_vars:,} genes")
+            return adata
+        if _params_match(prev, processing_params):
+            logger.info(f"Loaded cached file: {processed_path}")
+            logger.info(f"  {adata.n_obs:,} cells, {adata.n_vars:,} genes")
+            return adata
+        logger.info("Processed file parameters differ; reprocessing.")
 
     if not raw_file.exists():
         # Also check old location (data_dir directly, not raw subdir)
@@ -1142,19 +1186,45 @@ def load_stephenson_data(
     logger.info(f"  Counts source: {source}")
 
     obs = adata.obs.copy()
+    # Record the cohort funnel so the (substantial) loss is recoverable from the
+    # cached artefact instead of only appearing in transient log lines.
+    funnel: dict[str, object] = {
+        "n_cells_deposited": int(adata.n_obs),
+        "n_individuals_deposited": int(obs["patient_id"].nunique()),
+    }
+
     obs["severity"] = obs["Status_on_day_collection_summary"].astype(str)
-    obs = obs[obs["severity"].isin(["Mild", "Severe"])].copy()
+    funnel["severity_levels_deposited"] = sorted(obs["severity"].unique().tolist())
+    funnel["severity_levels_kept"] = list(severity_keep)
+    funnel["severity_levels_dropped"] = sorted(
+        set(obs["severity"].unique()) - set(severity_keep)
+    )
+    obs = obs[obs["severity"].isin(list(severity_keep))].copy()
+    funnel["n_cells_after_severity"] = int(len(obs))
     logger.info(f"  After severity filter: {len(obs):,} cells")
 
     obs["dfo"] = pd.to_numeric(obs["Days_from_onset"], errors="coerce")
+    n_unparseable = int(obs["dfo"].isna().sum())
     obs["dfo_bin"] = pd.cut(
         obs["dfo"],
         bins=[-np.inf, 7, 14, np.inf],
         labels=["DFO_0-7", "DFO_8-14", "DFO_15+"],
     ).astype(str)
 
-    valid_dfo = obs["dfo_bin"].isin(["DFO_0-7", "DFO_8-14", "DFO_15+"])
-    obs = obs[valid_dfo].copy()
+    if require_numeric_dfo:
+        # NOTE: pd.to_numeric(errors="coerce") turns non-numeric day values into
+        # NaN, which .astype(str) then renders as the literal string "nan". Those
+        # cells are dropped here for a METADATA-FORMATTING reason, not for QC, so
+        # the count is logged and persisted rather than silently absorbed.
+        if n_unparseable:
+            logger.warning(
+                "  %d cell(s) have non-numeric Days_from_onset and are dropped "
+                "(require_numeric_dfo=True).", n_unparseable,
+            )
+        valid_dfo = obs["dfo_bin"].isin(["DFO_0-7", "DFO_8-14", "DFO_15+"])
+        obs = obs[valid_dfo].copy()
+    funnel["n_cells_dropped_unparseable_dfo"] = n_unparseable
+    funnel["n_cells_after_dfo"] = int(len(obs))
     logger.info(f"  After DFO filter: {len(obs):,} cells")
 
     if "Collection_Day" in obs.columns:
@@ -1163,10 +1233,43 @@ def load_stephenson_data(
     obs["participant_id"] = obs["patient_id"].astype(str)
     obs["celltype"] = obs["full_clustering"].astype(str)
 
+    # `severity` is recorded per SAMPLE (status on day of collection) but is used
+    # downstream as a fixed participant-level arm. Verify that assumption instead
+    # of trusting it: a participant whose status changes between collections would
+    # otherwise be silently assigned to two arms.
+    per_pid = obs.groupby("participant_id")["severity"].nunique()
+    inconsistent = sorted(per_pid[per_pid > 1].index.tolist())
+    if inconsistent:
+        logger.warning(
+            "  %d participant(s) have >1 severity level across samples and are "
+            "ambiguous as a fixed arm: %s", len(inconsistent), inconsistent,
+        )
+    funnel["participants_with_inconsistent_severity"] = inconsistent
+    funnel["n_cells_final"] = int(len(obs))
+    funnel["n_individuals_final"] = int(obs["participant_id"].nunique())
+
     adata = adata[obs.index].copy()
     adata.obs = obs
+    # Normalise BEFORE dropping artifact genes: drop_artifact_genes documents that
+    # it must run after normalisation so per-cell library sizes are computed over
+    # the full gene set. This loader does no normalisation of its own, so the
+    # log1p_cpm layer is built here rather than downstream from a matrix whose
+    # ribosomal/histone counts have already been removed.
+    add_log1p_cpm_layer(adata, counts_layer="counts", out_layer="log1p_cpm")
     drop_artifact_genes(adata)  # QC: remove hemoglobin/ribosomal/histone genes (keep cell-cycle)
-    adata.uns["processing_params"] = {"version": "v4", "qc_artifact_flag": True}
+    # The deposited object's own layer is a duplicate of `counts`; keep one copy.
+    if "raw" in adata.layers:
+        del adata.layers["raw"]
+    adata.uns["cohort_funnel"] = funnel
+    adata.uns["annotation_source"] = (
+        "Stephenson et al., Nat Med 2021 — deposited `full_clustering` labels "
+        "(atlas-provided, used verbatim)"
+    )
+    adata.obs["annotation_source"] = "publication"
+    adata.uns["paper"] = "Stephenson et al., Nat Med 2021"
+    adata.uns["pmid"] = "33879890"
+    adata.uns["doi"] = "10.1038/s41591-021-01329-2"
+    adata.uns["processing_params"] = processing_params
 
     processed_path.parent.mkdir(parents=True, exist_ok=True)
     adata.write_h5ad(processed_path)
@@ -1183,6 +1286,9 @@ def load_vaccine_gse171964(
     seed: int = 42,
     allow_download: bool = False,
     force_reprocess: bool = False,
+    *,
+    days: Sequence[int] = (0, 7),
+    min_cells_per_participant_visit: int = 50,
 ) -> ad.AnnData:
     """Load and preprocess GSE171964 PBMC vaccine time course data (Day 0 vs Day 7).
 
@@ -1209,11 +1315,12 @@ def load_vaccine_gse171964(
         The processed AnnData object.
     """
     processing_params = {
-        "version": "v3",
+        "version": "v4",
         "max_participants": max_participants,
         "max_cells_per_group": max_cells_per_group,
         "seed": seed,
-        "days": [0, 7],
+        "days": list(days),
+        "adt_split": True,
     }
 
     data_dir = data_dir or _default_data_dir("vaccine_gse171964")
@@ -1312,9 +1419,34 @@ def load_vaccine_gse171964(
     pheno = pheno.loc[adata.obs_names]
     adata.obs = pheno
 
-    adata = adata[adata.obs["day"].isin([0, 7])].copy()
+    adata = adata[adata.obs["day"].isin(list(days))].copy()
 
     import scanpy as sc  # local import (optional dependency), like the other loaders
+
+    # ── Split off CITE-seq ADT protein features ───────────────────────────────
+    # GSE171964 is CITE-seq: the deposited feature space mixes mRNA genes with
+    # antibody-derived tags. Left in place they are treated as genes, so their
+    # counts enter the CP10K library-size denominator and every gene value is
+    # scaled by (1 - ADT fraction). That fraction differs between Day 0 and Day 7,
+    # so the bias does NOT cancel in the paired within-arm contrast -- it is
+    # confounded with the loader's only estimand. Proteins are moved to
+    # `.obsm["protein"]` (raw) and excluded from the gene matrix entirely.
+    is_adt = adata.var_names.str.contains("_ADT", case=False, regex=False)
+    n_adt = int(is_adt.sum())
+    if n_adt:
+        X_adt = adata[:, is_adt].X
+        X_adt = X_adt.toarray() if sp.issparse(X_adt) else np.asarray(X_adt)
+        adata.obsm["protein"] = pd.DataFrame(
+            X_adt,
+            index=adata.obs_names,
+            columns=adata.var_names[is_adt].tolist(),
+        )
+        adata = adata[:, ~is_adt].copy()
+        logger.info(
+            "Moved %d CITE-seq ADT protein feature(s) to .obsm['protein']; "
+            "%d gene features remain.", n_adt, adata.n_vars,
+        )
+    adata.uns["n_adt_features"] = n_adt
 
     # ── QC (10x UMI): mito %, gene/cell filters -- matches the other 10x loaders ──
     # Run BEFORE the pairing filter so pairing is computed on QC-passing cells.
@@ -1324,7 +1456,6 @@ def load_vaccine_gse171964(
     sc.pp.filter_cells(adata, min_genes=200)
     sc.pp.filter_cells(adata, max_genes=6000)
     adata = adata[adata.obs["pct_counts_mt"] < 20].copy()
-    sc.pp.filter_genes(adata, min_cells=10)
     logger.info(f"QC: {n_before:,} → {adata.n_obs:,} cells, {adata.n_vars:,} genes")
 
     paired = adata.obs.groupby("pt_id")["day"].nunique()
@@ -1347,13 +1478,36 @@ def load_vaccine_gse171964(
         )
         adata = adata[sampled.index].copy()
 
+    # A participant-visit represented by a handful of cells yields a pseudobulk
+    # that is effectively one cell's profile, yet the pairing guard above (which
+    # only checks that >=2 days are present) would pass it. With n=6 participants
+    # such a group can dominate both the paired delta and its variance.
+    vc = adata.obs.groupby(["pt_id", "day"], observed=True).size()
+    logger.info("Cells per participant-visit:\n%s", vc.to_string())
+    thin = vc[vc < min_cells_per_participant_visit]
+    if len(thin):
+        logger.warning(
+            "  %d participant-visit group(s) below %d cells: %s",
+            len(thin), min_cells_per_participant_visit, thin.to_dict(),
+        )
+    adata.uns["cells_per_participant_visit"] = {
+        f"{p}_d{d}": int(n) for (p, d), n in vc.items()
+    }
+
     adata.layers["counts"] = adata.X.copy()
     # Normalize (GSE171964 matrix is raw integer UMI counts): CP10K + log1p, so
     # .X is log-normalized like the other 10x datasets (counts kept in the layer).
+    # Gene filtering follows normalisation so per-cell library sizes are computed
+    # over the full gene set, matching drop_artifact_genes' documented contract.
     sc.pp.normalize_total(adata, target_sum=1e4)
     sc.pp.log1p(adata)
+    sc.pp.filter_genes(adata, min_cells=10)
     adata.layers["log1p_norm"] = adata.X.copy()
     drop_artifact_genes(adata)  # QC: remove hemoglobin/ribosomal/histone genes (keep cell-cycle)
+    adata.obs["annotation_source"] = "publication"
+    adata.uns["annotation_source"] = (
+        "GSE171964 deposited `clustnm` cluster names (source-provided, verbatim)"
+    )
     adata.uns["processing_params"] = processing_params
 
     processed_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1511,8 +1665,28 @@ def _extract_aml_sample_name(filename: str) -> str | None:
     return m.group(1) if m else None
 
 
-def _parse_aml_sample_info(sample_name: str) -> tuple[str, str, int]:
-    """Parse patient ID and day from AML sample name."""
+# Magnetically-enriched / FACS-sorted fractions deposited as separate samples.
+# van Galen et al. sorted healthy donor BM5 into CD34+ and CD34+CD38- fractions;
+# both are the SAME donor and the same aspirate. Treating them as two independent
+# participants fabricates a donor and double-counts one person in every
+# participant-level statistic, while also presenting enriched fractions as if
+# they were unsorted whole marrow.
+_AML_SORTED_FRACTIONS: dict[str, tuple[str, str]] = {
+    "BM5-34p": ("BM5", "CD34+"),
+    "BM5-34p38n": ("BM5", "CD34+CD38-"),
+}
+
+
+def _parse_aml_sample_info(sample_name: str) -> tuple[str, str, int, str]:
+    """Parse sample name, participant ID, day, and sorted fraction.
+
+    Returns ``(sample_name, patient, day, sorted_fraction)`` where
+    *sorted_fraction* is ``"unsorted"`` unless the sample is a deposited
+    enrichment fraction (see ``_AML_SORTED_FRACTIONS``).
+    """
+    if sample_name in _AML_SORTED_FRACTIONS:
+        patient, fraction = _AML_SORTED_FRACTIONS[sample_name]
+        return sample_name, patient, 0, fraction
     if "-D" in sample_name:
         parts = sample_name.rsplit("-D", 1)
         patient = parts[0]
@@ -1523,7 +1697,7 @@ def _parse_aml_sample_info(sample_name: str) -> tuple[str, str, int]:
     else:
         patient = sample_name
         day = 0
-    return sample_name, patient, day
+    return sample_name, patient, day, "unsorted"
 
 
 def _process_aml_raw(
@@ -1557,6 +1731,17 @@ def _process_aml_raw(
             f"No matched sample pairs found in {raw_dir}. "
             f"Found {len(dem_files)} expression and {len(anno_files)} annotation files."
         )
+
+    # GSE116256 also deposits two immortalised leukaemia CELL LINES alongside the
+    # primary marrow aspirates. Their sample names do not start with "AML", so the
+    # sample_type heuristic below would file them as "Healthy" and they would
+    # contaminate the healthy-donor reference group with cultured tumour lines.
+    # They are not patient material and are excluded outright.
+    _CELL_LINES = {"MUTZ3", "MUTZ-3", "OCI-AML3", "OCIAML3"}
+    excluded = [s for s in matched if s.upper() in {c.upper() for c in _CELL_LINES}]
+    if excluded:
+        matched = [s for s in matched if s not in excluded]
+        logger.info(f"Excluded {len(excluded)} cell-line sample(s): {excluded}")
     logger.info(f"Found {len(matched)} matched AML sample pairs")
 
     # Pass 1: collect all gene names
@@ -1601,13 +1786,14 @@ def _process_aml_raw(
             if gene in gene_to_idx:
                 X_re[:, gene_to_idx[gene]] = X_raw[:, j].toarray()
 
-        _, patient, day = _parse_aml_sample_info(sname)
+        _, patient, day, sorted_fraction = _parse_aml_sample_info(sname)
         unique_cells = [f"{sname}_{c}" for c in common_cells]
         obs_df = anno_df.copy()
         obs_df.index = unique_cells
         obs_df["sample_id"] = sname
         obs_df["patient_id"] = patient
         obs_df["day"] = day
+        obs_df["sorted_fraction"] = sorted_fraction
 
         all_X.append(sp.csr_matrix(X_re))
         all_obs.append(obs_df)
@@ -1631,19 +1817,40 @@ def _process_aml_raw(
     n_before = adata.n_obs
     sc.pp.filter_cells(adata, min_genes=200)
     sc.pp.filter_cells(adata, max_genes=6000)
+    n_after_genes = adata.n_obs
     adata = adata[adata.obs["pct_counts_mt"] < 20].copy()
+    n_after_mt = adata.n_obs
     sc.pp.filter_genes(adata, min_cells=10)
     logger.info(f"QC: {n_before:,} → {adata.n_obs:,} cells, {adata.n_vars:,} genes")
+    # Persist the QC funnel so the loss is auditable from the cached h5ad alone.
+    adata.uns["qc_summary"] = {
+        "n_before": int(n_before),
+        "n_after_gene_filters": int(n_after_genes),
+        "n_after_mt_filter": int(n_after_mt),
+        "n_final": int(adata.n_obs),
+        "filters": "min_genes=200, max_genes=6000, pct_counts_mt<20, genes min_cells=10",
+    }
 
     sc.pp.normalize_total(adata, target_sum=1e4)
     sc.pp.log1p(adata)
     adata.layers["log1p_norm"] = adata.X.copy()
-    drop_artifact_genes(adata)  # QC: remove hemoglobin/ribosomal/histone genes (keep cell-cycle)
+    # drop_hb=False: this is BONE MARROW. Erythroid precursors (earlyEry/lateEry)
+    # are published populations here, and hemoglobin/ALAS2/AHSP/SLC4A1 is their
+    # defining identity programme -- not ambient RBC-lysis contamination as it
+    # would be in peripheral blood. Dropping it would delete the biology.
+    drop_artifact_genes(adata, drop_hb=False)
 
     # ── Standardised sctrial obs columns ──────────────────────────────
     obs = adata.obs
     obs["participant_id"] = obs["patient_id"].astype(str)
+    # Keep the raw day AND an ordered timepoint. Collapsing every post-treatment
+    # marrow to a single "Post" pools day-14 residual-disease aspirates with
+    # long-remission ones for the same patient, which participant x visit
+    # aggregation then averages together.
     obs["visit"] = obs["day"].apply(lambda d: "Pre" if d == 0 else "Post")
+    obs["timepoint"] = obs["day"].apply(
+        lambda d: "Pre" if d == 0 else ("EarlyPost" if d <= 45 else "LatePost")
+    )
     obs["sample_type"] = obs["patient_id"].apply(
         lambda pid: "AML" if str(pid).startswith("AML") else "Healthy"
     )
@@ -1654,14 +1861,23 @@ def _process_aml_raw(
     else:
         obs["cell_type"] = "Unknown"
     if "PredictionRefined" in obs.columns:
-        obs["is_malignant"] = obs["PredictionRefined"].apply(
-            lambda x: "malignant" in str(x).lower() if pd.notna(x) else False
+        # Nullable: an unclassified cell is unknown, not "not malignant".
+        obs["malignant_status"] = obs["PredictionRefined"].apply(
+            lambda x: pd.NA
+            if pd.isna(x)
+            else ("malignant" if "malignant" in str(x).lower() else "normal")
         )
     else:
-        obs["is_malignant"] = False
-    obs["response"] = (
+        obs["malignant_status"] = pd.NA
+    obs["is_malignant"] = obs["malignant_status"].eq("malignant")
+    # `disease_group` is a cohort label derived from the sample name, NOT a
+    # clinical outcome. `response` is kept as an alias for backwards
+    # compatibility but must not be read as an endpoint: GSE116256 deposits no
+    # per-patient response variable.
+    obs["disease_group"] = (
         obs["sample_type"].map({"AML": "Treatment", "Healthy": "Control"}).fillna("Unknown")
     )
+    obs["response"] = obs["disease_group"]
     adata.obs = obs
 
     # ── Embeddings (HVG → PCA → neighbours → UMAP) ───────────────────
@@ -1682,6 +1898,11 @@ def _process_aml_raw(
     adata.uns["dataset"] = "GSE116256"
     adata.uns["paper"] = "van Galen et al., Cell 2019"
     adata.uns["description"] = "AML chemotherapy longitudinal scRNA-seq"
+    adata.obs["annotation_source"] = "publication"
+    adata.uns["annotation_source"] = (
+        "van Galen et al., Cell 2019 — deposited .anno CellType / PredictionRefined "
+        "labels (used verbatim; no de-novo clustering)"
+    )
     return adata
 
 
@@ -1736,9 +1957,11 @@ def load_aml(
     data_dir_path = Path(data_dir)
 
     processing_params = {
-        "version": "v2",
+        "version": "v3",
         "max_cells_per_sample": max_cells_per_sample,
         "seed": seed,
+        "exclude_cell_lines": True,
+        "keep_hemoglobin": True,
     }
 
     # ── Try to load cached processed file ─────────────────────────────

@@ -39,7 +39,6 @@ import matplotlib.transforms as mtransforms
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from matplotlib.patches import Patch
 from matplotlib.ticker import MultipleLocator
 from scipy import stats as sp_stats
 
@@ -1144,7 +1143,7 @@ def _load_tnbc() -> DatasetInfo:
 
 def _load_vaccine() -> DatasetInfo:
     vacc = get_vaccine()
-    vacc, vacc_sigs = score_signatures(vacc, layer="counts")
+    vacc, vacc_sigs = score_signatures(vacc, layer="log1p_norm")
     vacc_design = TrialDesign(
         participant_col="participant_id", visit_col="visit", arm_col=None,
     )
@@ -1153,7 +1152,7 @@ def _load_vaccine() -> DatasetInfo:
 
 def _load_aml() -> DatasetInfo:
     aml = get_aml()
-    aml, aml_sigs = score_signatures(aml, layer="counts")
+    aml, aml_sigs = score_signatures(aml, layer="log1p_norm")
     pid_col = "participant_id" if "participant_id" in aml.obs.columns else "patient_id"
     aml_design = TrialDesign(
         participant_col=pid_col, visit_col="visit", arm_col=None,
@@ -1163,7 +1162,7 @@ def _load_aml() -> DatasetInfo:
 
 def _load_cart() -> DatasetInfo:
     cart = get_cart()
-    cart, cart_sigs = score_signatures(cart, layer="counts")
+    cart, cart_sigs = score_signatures(cart, layer="log1p_norm")
     pid_col = "participant_id" if "participant_id" in cart.obs.columns else "patient_id"
     cart_design = TrialDesign(
         participant_col=pid_col, visit_col="visit", arm_col=None,
@@ -1173,7 +1172,9 @@ def _load_cart() -> DatasetInfo:
 
 def _load_covid() -> DatasetInfo:
     covid = get_stephenson()
-    covid, covid_sigs = score_signatures(covid, layer="counts")
+    if "log1p_cpm" not in covid.layers:
+        add_log1p_cpm_layer(covid, counts_layer="counts", out_layer="log1p_cpm")
+    covid, covid_sigs = score_signatures(covid, layer="log1p_cpm")
     if "dfo_bin" in covid.obs.columns:
         top_bin = covid.obs["dfo_bin"].value_counts().idxmax()
     else:
@@ -1217,7 +1218,7 @@ def _wilson_ci(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
 
 def _stratified_subsample_pids(
     adata,
-    design: "TrialDesign",
+    design: TrialDesign,
     dtype: str,
     n_sub: int,
     rng: np.random.Generator,
@@ -1450,8 +1451,8 @@ def _panel_power_grid(
     only the panel arrangement changed to support a 2-row 3+3 layout when
     six datasets are present (previously 3+2 for five).
     """
-    from sklearn.isotonic import IsotonicRegression
     from matplotlib.ticker import MaxNLocator
+    from sklearn.isotonic import IsotonicRegression
 
     power_data = data.get("power_data")
     if power_data is None:

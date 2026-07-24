@@ -116,7 +116,10 @@ try:
         TrialDesign,
         add_log1p_cpm_layer,
         between_arm_comparison,
+        did_fit,
         did_table,
+        get_did_aggregated_df,
+        get_within_arm_aggregated_df,
         harmonize_response,
         hedges_g,
         load_aml,
@@ -128,9 +131,6 @@ try:
         verify_paired_participants,
         within_arm_comparison,
         within_arm_fit_beta,
-        get_within_arm_aggregated_df,
-        did_fit,
-        get_did_aggregated_df,
     )
     SCTRIAL_AVAILABLE = True
 except ImportError:
@@ -249,15 +249,43 @@ def dataset_display(name: str) -> str:
     return DATASET_DISPLAY_NAMES.get(name, name)
 
 
+# Normalised expression layers, in preference order, for signature scoring.
+# "counts" is deliberately ABSENT: scoring raw UMI counts differences two count
+# means that both scale with sequencing depth, so a technical depth shift is
+# reported as biological change. Falling back to it silently produced exactly
+# that artifact for every dataset whose normalised layer is `log1p_norm`
+# (vaccine, AML, CAR-T, TNBC), which was missing from this list entirely.
+_SCORING_LAYERS = ("log1p_tpm", "log1p_cpm", "log1p_norm")
+
+
+def _resolve_scoring_layer(adata, layer):
+    """Pick a normalised layer, failing loudly rather than degrading to counts."""
+    if layer is not None:
+        if layer == "counts":
+            raise ValueError(
+                "Refusing to score signatures on the raw 'counts' layer: scores "
+                "would track sequencing depth rather than biology. Pass a "
+                f"normalised layer (one of {_SCORING_LAYERS}) or layer=None to "
+                "auto-select."
+            )
+        return layer
+    for candidate in _SCORING_LAYERS:
+        if candidate in adata.layers:
+            return candidate
+    if adata.layers:
+        raise KeyError(
+            f"No normalised expression layer found. Looked for {_SCORING_LAYERS}; "
+            f"available layers: {sorted(adata.layers)}. Normalise before scoring "
+            "(e.g. add_log1p_cpm_layer) instead of scoring raw counts."
+        )
+    return None  # no layers at all -> adata.X, which loaders leave normalised
+
+
 def score_signatures(adata, *, layer=None, min_genes=3):
     """Score all 12 GENE_SIGNATURES using scanpy.tl.score_genes."""
     import scanpy as sc
 
-    if layer is None:
-        for candidate in ("log1p_tpm", "log1p_cpm", "counts"):
-            if candidate in adata.layers:
-                layer = candidate
-                break
+    layer = _resolve_scoring_layer(adata, layer)
 
     sig_cols: list[str] = []
     for name, genes in GENE_SIGNATURES.items():
@@ -278,6 +306,8 @@ def score_signatures(adata, *, layer=None, min_genes=3):
 def score_clinical_signatures(adata, *, layer=None, min_genes=3):
     """Score the 5 CLINICAL_SIGNATURES using scanpy.tl.score_genes."""
     import scanpy as sc
+
+    layer = _resolve_scoring_layer(adata, layer)
 
     sig_cols: list[str] = []
     for name, genes in CLINICAL_SIGNATURES.items():
@@ -529,6 +559,7 @@ _CELLTYPE_MAP: dict[str, str] = {
     "ProB": "B cell",
     "NK": "NK",
     "Mono": "Monocyte",
+    "Mono-like": "Monocyte",
     "Monocyte": "Monocyte",
     "Macrophage": "Monocyte",
     "Myeloid": "Monocyte",
@@ -607,9 +638,31 @@ HARMONIZED_CELLTYPE_ORDER = [
 ]
 
 
+_UNMAPPED_CELLTYPES: set[str] = set()
+
+
 def harmonize_celltype(label: str) -> str:
-    """Map a dataset-specific cell-type label to the shared vocabulary."""
-    return _CELLTYPE_MAP.get(label, "Other")
+    """Map a dataset-specific cell-type label to the shared vocabulary.
+
+    An unmapped label silently becoming "Other" is how a whole published
+    population disappears from a cross-dataset panel (this is exactly how AML's
+    monocytic blasts, "Mono-like", were being dropped). Unmapped labels are
+    therefore warned about once each, so a vocabulary gap surfaces immediately
+    instead of quietly shrinking a lineage.
+    """
+    mapped = _CELLTYPE_MAP.get(label)
+    if mapped is None:
+        key = str(label)
+        if key not in _UNMAPPED_CELLTYPES:
+            _UNMAPPED_CELLTYPES.add(key)
+            warnings.warn(
+                f"Cell-type label {key!r} is not in _CELLTYPE_MAP and will be "
+                "collapsed to 'Other'. Add it to the map if it is a real "
+                "population.",
+                stacklevel=2,
+            )
+        return "Other"
+    return mapped
 
 
 def dfo_sort_key(label: str) -> tuple[int, int]:
@@ -669,6 +722,7 @@ def load_or_run_gsea_did(
 
     try:
         import gseapy as gp  # noqa: F401
+
         from sctrial import run_gsea_did as _run_gsea
     except ImportError:
         print(f"    {dataset_name}: sctrial/gseapy not available — skipping GSEA")
@@ -735,6 +789,7 @@ def load_or_run_gsea_cross_sectional(
 
     try:
         import gseapy as gp  # noqa: F401
+
         from sctrial import run_gsea_cross_sectional as _run_gsea
     except ImportError:
         print(f"    {dataset_name}: sctrial/gseapy not available — skipping GSEA")
@@ -801,6 +856,7 @@ def load_or_run_gsea_within_arm(
 
     try:
         import gseapy as gp  # noqa: F401
+
         from sctrial import run_gsea_within_arm as _run_gsea
     except ImportError:
         print(f"    {dataset_name}: sctrial/gseapy not available — skipping GSEA")
