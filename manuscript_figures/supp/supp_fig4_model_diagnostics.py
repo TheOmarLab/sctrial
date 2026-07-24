@@ -109,8 +109,11 @@ _DATASET_CFG = {
         "layer": "log1p_norm",
         "participant_col": "participant_id",
         "visit_col": "visit",
-        "arm_col": "response",
-        "arm_filter": "CAR-T",
+        # Single-arm: every patient received CAR-T, so there is no arm to
+        # filter on. (response now holds LtR/R/NR/Unknown from the loader, so the
+        # old arm_filter="CAR-T" selected zero cells.)
+        "arm_col": None,
+        "arm_filter": None,
         "visits": ("Pre", "Post"),
     },
     "COVID-19": {

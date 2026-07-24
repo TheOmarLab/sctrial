@@ -3120,7 +3120,7 @@ def _prepare_multi_dataset_data() -> dict[str, Any]:
     # (healthy BM donors at baseline only), so a DiD interaction is
     # degenerate (beta_DiD == beta_time).  We therefore analyse the
     # Treatment arm longitudinally, matching CAR-T's single-arm design.
-    _TREATED_ARM = {"aml": "Treatment", "cart": None}  # None → auto-detect
+    _TREATED_ARM = {"aml": "Treatment", "cart": "CAR-T"}  # cart is single-arm
     _LOADERS = {"aml": get_aml, "cart": get_cart}
     for tag, name, panel_label in [("aml", "aml", "C"), ("cart", "cart", "D")]:
         try:
@@ -3158,15 +3158,20 @@ def _prepare_multi_dataset_data() -> dict[str, Any]:
                 pre_v, post_v = visits_sorted[0], visits_sorted[-1]
 
             # Identify the treated arm for within-arm analysis
-            arm_col = "response" if "response" in adata_clin.obs.columns else "arm"
-            arm_values = list(adata_clin.obs[arm_col].dropna().unique())
             treated_arm = _TREATED_ARM.get(tag)
-            if treated_arm is None:
-                treated_arm = arm_values[0]
-
-            # Within-arm (treated only) Pre→Post comparison
-            if "arm" not in adata_clin.obs.columns:
-                adata_clin.obs["arm"] = adata_clin.obs[arm_col]
+            if tag == "cart":
+                # Single-arm: every cell received CAR-T. Use a CONSTANT arm so
+                # the within-arm Pre->Post comparison spans all cells. (response
+                # now holds LtR/R/NR/Unknown, so the old arm_values[0] fallback
+                # silently analysed only the 'NR'/relapsed cells.)
+                adata_clin.obs["arm"] = "CAR-T"
+            else:
+                arm_col = "response" if "response" in adata_clin.obs.columns else "arm"
+                arm_values = list(adata_clin.obs[arm_col].dropna().unique())
+                if treated_arm is None:
+                    treated_arm = arm_values[0]
+                if "arm" not in adata_clin.obs.columns:
+                    adata_clin.obs["arm"] = adata_clin.obs[arm_col]
             clin_design = TrialDesign(
                 participant_col=pid_col,
                 visit_col=visit_col,
