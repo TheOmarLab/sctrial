@@ -825,7 +825,7 @@ def load_sade_feldman(
         The processed AnnData object.
     """
     processing_params = {
-        "version": "v9",
+        "version": "v10",
         "max_cells_per_participant_visit": max_cells_per_participant_visit,
         "seed": seed,
         "assay": "log2(TPM+1)->linear+log1p",
@@ -984,10 +984,25 @@ def load_sade_feldman(
     recist = _load_sade_feldman_patient_recist(raw_dir_resolved)
     if recist:
         meta["clinical_response_recist"] = meta["participant_id"].map(recist)
-        # Binary clinical arm. Resistance (initial response then progression) is
-        # grouped with non-responders; this mapping is recorded in uns.
-        _RECIST_ARM = {"R": "Responder", "NR": "Non-responder", "Resistance": "Non-responder"}
-        meta["response"] = meta["clinical_response_recist"].map(_RECIST_ARM)
+
+        # Map the raw RECIST label to a binary arm. The label carries free-text
+        # variants ("NR (patient had mix response)"), so normalise on the leading
+        # code rather than exact strings -- an exact map silently sent those 4
+        # patients (P5/P13/P18/P20) to NaN. Resistance (initial response then
+        # progression) groups with non-responders. Mapping recorded in uns.
+        def _recist_arm(val: object) -> object:
+            if pd.isna(val):
+                return pd.NA
+            s = str(val).strip().lower()
+            if s.startswith("nr"):
+                return "Non-responder"
+            if s.startswith("resist"):
+                return "Non-responder"
+            if s.startswith("r"):
+                return "Responder"
+            return pd.NA
+
+        meta["response"] = meta["clinical_response_recist"].map(_recist_arm)
     else:
         # Fallback: no supplement available -> keep the per-lesion label as arm
         # but flag that it is not patient-level.
@@ -1106,6 +1121,11 @@ def load_sade_feldman(
     adata.uns["processing_params"] = processing_params
     adata.uns["data_source"] = "GSE120575"
     adata.uns["paper"] = "Sade-Feldman et al., Cell 2018"
+    adata.uns["response_arm_map"] = (
+        "PATIENT-level RECIST (Table S1): leading 'R' -> Responder; leading 'NR' "
+        "or 'Resistance' -> Non-responder. Per-lesion radiologic call retained "
+        "as obs['lesion_response']."
+    )
 
     processed_path.parent.mkdir(parents=True, exist_ok=True)
     adata.write_h5ad(processed_path)
