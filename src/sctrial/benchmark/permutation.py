@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import multiprocessing as mp
+import os
 import time
 from pathlib import Path
 
@@ -40,7 +41,12 @@ def _permute_visits(adata, participant_col: str, visit_col: str, rng):
 
 
 def _run_permutation_iteration(args: tuple) -> list[dict]:
-    """Run all methods on one permuted dataset."""
+    """Run all methods on one permuted dataset.
+
+    The third element of args may be either an in-memory AnnData (n_jobs=1)
+    or a path to an h5ad file (parallel workers, avoids pickling).
+    """
+    import time
     import warnings
 
     warnings.filterwarnings("ignore")
@@ -48,7 +54,7 @@ def _run_permutation_iteration(args: tuple) -> list[dict]:
     (
         perm_idx,
         seed,
-        adata,
+        adata_or_path,
         design_type,
         gene_cols,
         methods,
@@ -59,15 +65,20 @@ def _run_permutation_iteration(args: tuple) -> list[dict]:
 
     from .orchestrator import _dispatch_method, _pseudobulk_counts_from_adata
 
+    if isinstance(adata_or_path, (str, Path)):
+        import anndata as ad
+
+        adata = ad.read_h5ad(adata_or_path)
+    else:
+        adata = adata_or_path
+
     rng = np.random.default_rng(seed)
 
-    # Permute
     if design_type == "two_arm":
         adata_perm = _permute_arms(adata, participant_col, arm_col, rng)
     else:
         adata_perm = _permute_visits(adata, participant_col, visit_col, rng)
 
-    # Build pseudobulk
     from sctrial.stats.pseudobulk import pseudobulk_expression
 
     pb_means = pseudobulk_expression(
@@ -82,14 +93,16 @@ def _run_permutation_iteration(args: tuple) -> list[dict]:
     sim = {"adata": adata_perm, "pseudobulk_means": pb_means, "pseudobulk_counts": pb_counts}
 
     rows = []
+    method_times = []
     for method in methods:
+        t0 = time.time()
         try:
-            from .orchestrator import _dispatch_method
-
             results = _dispatch_method(method, sim, gene_cols)
         except Exception as exc:
-            logger.debug("Permutation %d, method %s failed: %s", perm_idx, method, exc)
+            logger.warning("Permutation %d, method %s failed: %s", perm_idx, method, exc)
             results = {g: {"pvalue": np.nan} for g in gene_cols}
+        elapsed = time.time() - t0
+        method_times.append(f"{method}={elapsed:.0f}s")
 
         for gene in gene_cols:
             r = results.get(gene, {})
@@ -102,6 +115,10 @@ def _run_permutation_iteration(args: tuple) -> list[dict]:
                 }
             )
 
+    print(
+        f"  [perm {perm_idx:04d}] done — {', '.join(method_times)}",
+        flush=True,
+    )
     return rows
 
 
@@ -132,7 +149,8 @@ def run_permutation_test(
     n_permutations : int
         Number of permutations.
     n_jobs : int
-        Parallel workers.
+        Parallel workers. -1 = all CPUs. >1 serializes adata to a
+        temporary h5ad file so subprocesses can load it without pickling.
 
     Returns
     -------
@@ -149,39 +167,75 @@ def run_permutation_test(
     rng = np.random.default_rng(seed)
     seeds = [int(rng.integers(0, 2**31)) for _ in range(n_permutations)]
 
+    import datetime
+
+    def _ts() -> str:
+        return datetime.datetime.now().strftime("%H:%M:%S")
+
     print(
-        f"Running {n_permutations} permutations × {len(methods)} methods "
-        f"on {len(gene_cols)} genes ({n_jobs} workers)..."
+        f"[{_ts()}] Running {n_permutations} permutations × {len(methods)} methods "
+        f"on {len(gene_cols)} genes ({n_jobs} workers)...",
+        flush=True,
     )
 
-    # NOTE: For multiprocessing with AnnData, we need to serialize carefully.
-    # For now, use sequential or thread-based parallelism.
-    # Full multiprocessing would require saving adata to disk and reloading.
     all_rows = []
     t0 = time.time()
 
-    for i in range(n_permutations):
-        args = (
-            i,
-            seeds[i],
-            adata,
-            design_type,
-            gene_cols,
-            methods,
-            participant_col,
-            arm_col,
-            visit_col,
-        )
-        rows = _run_permutation_iteration(args)
-        all_rows.extend(rows)
-
-        if (i + 1) % 50 == 0:
-            elapsed = time.time() - t0
-            eta = elapsed / (i + 1) * (n_permutations - i - 1)
-            print(
-                f"  {i + 1}/{n_permutations} permutations "
-                f"({elapsed:.0f}s elapsed, ~{eta:.0f}s remaining)"
+    if n_jobs == 1:
+        for i in range(n_permutations):
+            args = (
+                i, seeds[i], adata, design_type, gene_cols, methods,
+                participant_col, arm_col, visit_col,
             )
+            all_rows.extend(_run_permutation_iteration(args))
+            if (i + 1) % 50 == 0:
+                elapsed = time.time() - t0
+                eta = elapsed / (i + 1) * (n_permutations - i - 1)
+                print(
+                    f"[{_ts()}] {i+1}/{n_permutations} permutations "
+                    f"({elapsed:.0f}s elapsed, ~{eta:.0f}s remaining)",
+                    flush=True,
+                )
+    else:
+        import tempfile
+        from concurrent.futures import ProcessPoolExecutor, as_completed
+
+        with tempfile.NamedTemporaryFile(suffix=".h5ad", delete=False) as f:
+            tmp_path = f.name
+        try:
+            print(f"[{_ts()}] Serializing adata to disk for parallel workers...", flush=True)
+            adata.write_h5ad(tmp_path)
+            print(f"[{_ts()}] Serialization done. Dispatching {n_permutations} jobs...", flush=True)
+
+            arg_list = [
+                (i, seeds[i], tmp_path, design_type, gene_cols, methods,
+                 participant_col, arm_col, visit_col)
+                for i in range(n_permutations)
+            ]
+
+            n_done = 0
+            with ProcessPoolExecutor(max_workers=n_jobs) as executor:
+                futures = {
+                    executor.submit(_run_permutation_iteration, a): a[0]
+                    for a in arg_list
+                }
+                for future in as_completed(futures):
+                    try:
+                        all_rows.extend(future.result())
+                    except Exception as exc:
+                        perm_idx = futures[future]
+                        logger.warning("Permutation %d raised: %s", perm_idx, exc)
+                    n_done += 1
+                    if n_done % 50 == 0:
+                        elapsed = time.time() - t0
+                        eta = elapsed / n_done * (n_permutations - n_done)
+                        print(
+                            f"[{_ts()}] {n_done}/{n_permutations} permutations complete "
+                            f"({elapsed:.0f}s elapsed, ~{eta:.0f}s remaining)",
+                            flush=True,
+                        )
+        finally:
+            os.unlink(tmp_path)
 
     df = pd.DataFrame(all_rows)
 

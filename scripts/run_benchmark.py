@@ -366,6 +366,7 @@ def phase_realdata(n_jobs: int):
     run_subsampling(
         tnbc, gene_cols_tnbc,
         n_resamples=100,
+        n_jobs=n_jobs,
         participant_col="participant_id",
         arm_col="arm",
         visit_col="visit",

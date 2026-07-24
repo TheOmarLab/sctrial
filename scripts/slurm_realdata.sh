@@ -5,7 +5,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=256G
-#SBATCH --time=24:00:00
+#SBATCH --time=48:00:00
 #SBATCH --output=realdata_%j.out
 #SBATCH --error=realdata_%j.err
 
@@ -19,6 +19,9 @@ export R_LIBS_USER="$HOME/R/library"
 # Activate Python environment
 source ~/.bashrc
 conda activate sctrial_benchmark
+
+# Force unbuffered Python output so progress lines appear immediately in SLURM log
+export PYTHONUNBUFFERED=1
 
 # Set working directory
 cd /common/vasanthakup/projects/sctrial   # ← update to your HPC project path
@@ -47,8 +50,8 @@ python -c "import subprocess; subprocess.run(['Rscript', '-e', 'library(dreamlet
 python -c "import sctrial.benchmark.orchestrator as o; import inspect; print('Orchestrator:', inspect.getfile(o))"
 echo "Git commit: $(git rev-parse --short HEAD 2>/dev/null || echo 'N/A')"
 
-# Run phase 3: real-data permutation + subsampling (Melanoma + TNBC)
-python scripts/run_benchmark.py \
+# Run phase 3: real-data permutation + subsampling on TNBC
+python -u scripts/run_benchmark.py \
   --phase realdata \
   --n-jobs 30
 
