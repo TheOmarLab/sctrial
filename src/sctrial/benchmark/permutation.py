@@ -79,16 +79,28 @@ def _run_permutation_iteration(args: tuple) -> list[dict]:
     else:
         adata_perm = _permute_visits(adata, participant_col, visit_col, rng)
 
+    # Standardize obs column names so _dispatch_method runners work with defaults
+    col_rename = {
+        c: std for c, std in [
+            (participant_col, "participant"),
+            (arm_col, "arm"),
+            (visit_col, "visit"),
+        ]
+        if c != std and c in adata_perm.obs.columns
+    }
+    if col_rename:
+        adata_perm.obs = adata_perm.obs.rename(columns=col_rename)
+
     from sctrial.stats.pseudobulk import pseudobulk_expression
 
     pb_means = pseudobulk_expression(
         adata_perm,
         gene_cols,
-        groupby=[participant_col, visit_col, arm_col],
+        groupby=["participant", "visit", "arm"],
         log1p=False,
     )
     pb_counts = _pseudobulk_counts_from_adata(
-        adata_perm, gene_cols, [participant_col, visit_col, arm_col]
+        adata_perm, gene_cols, ["participant", "visit", "arm"]
     )
     sim = {"adata": adata_perm, "pseudobulk_means": pb_means, "pseudobulk_counts": pb_counts}
 
@@ -214,7 +226,8 @@ def run_permutation_test(
             ]
 
             n_done = 0
-            with ProcessPoolExecutor(max_workers=n_jobs) as executor:
+            ctx = mp.get_context("spawn")
+            with ProcessPoolExecutor(max_workers=n_jobs, mp_context=ctx) as executor:
                 futures = {
                     executor.submit(_run_permutation_iteration, a): a[0]
                     for a in arg_list

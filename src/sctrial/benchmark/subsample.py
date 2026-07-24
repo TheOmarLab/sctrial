@@ -45,13 +45,25 @@ def _run_subsample_iteration(args: tuple) -> dict:
     mask = adata.obs[participant_col].isin(sub_pids)
     adata_sub = adata[mask].copy()
 
+    # Standardize obs column names so runners work with defaults
+    col_rename = {
+        c: std for c, std in [
+            (participant_col, "participant"),
+            (arm_col, "arm"),
+            (visit_col, "visit"),
+        ]
+        if c != std and c in adata_sub.obs.columns
+    }
+    if col_rename:
+        adata_sub.obs = adata_sub.obs.rename(columns=col_rename)
+
     pb_means = pseudobulk_expression(
         adata_sub, gene_cols,
-        groupby=[participant_col, visit_col, arm_col],
+        groupby=["participant", "visit", "arm"],
         log1p=False,
     )
     pb_counts = _pseudobulk_counts_from_adata(
-        adata_sub, gene_cols, [participant_col, visit_col, arm_col]
+        adata_sub, gene_cols, ["participant", "visit", "arm"]
     )
     sim_sub = {
         "adata": adata_sub,
@@ -145,14 +157,27 @@ def run_subsampling(
     )
     from sctrial.stats.pseudobulk import pseudobulk_expression
 
+    # Standardize adata obs column names so runners work with defaults
+    col_rename = {
+        c: std for c, std in [
+            (participant_col, "participant"),
+            (arm_col, "arm"),
+            (visit_col, "visit"),
+        ]
+        if c != std and c in adata.obs.columns
+    }
+    if col_rename:
+        adata = adata.copy()
+        adata.obs = adata.obs.rename(columns=col_rename)
+
     pb_means_full = pseudobulk_expression(
         adata,
         gene_cols,
-        groupby=[participant_col, visit_col, arm_col],
+        groupby=["participant", "visit", "arm"],
         log1p=False,
     )
     pb_counts_full = _pseudobulk_counts_from_adata(
-        adata, gene_cols, [participant_col, visit_col, arm_col]
+        adata, gene_cols, ["participant", "visit", "arm"]
     )
     sim_full = {
         "adata": adata,
@@ -214,7 +239,8 @@ def run_subsampling(
             path_args = [a[:3] + (tmp_path,) + a[4:] for a in all_args]
 
             n_done = 0
-            with ProcessPoolExecutor(max_workers=n_jobs) as executor:
+            ctx = mp.get_context("spawn")
+            with ProcessPoolExecutor(max_workers=n_jobs, mp_context=ctx) as executor:
                 futures = {
                     executor.submit(_run_subsample_iteration, a): (a[0], a[1])
                     for a in path_args
