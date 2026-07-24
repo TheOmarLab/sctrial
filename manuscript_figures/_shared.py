@@ -565,6 +565,39 @@ _CELLTYPE_MAP: dict[str, str] = {
     "B naive": "B cell",
     "B memory": "B cell",
     "HSC/MPP": "HSC/Prog",
+    # -- Sade-Feldman published G1-G11 (Cell 2018, Table S1 sheet
+    #    "Gene marker-Fig1B-C" column headers, verbatim). The authors leave
+    #    G5/G8/G10/G11 unresolved between CD4 and CD8, so they map to
+    #    "T other" rather than being forced onto a lineage.
+    "B cells": "B cell",
+    "Plasma cells": "Plasma",
+    "Monocytes/Macrophages": "Monocyte",
+    "Dendritic cells": "DC",
+    "Lymphocytes": "T other",
+    "Exhausted CD8 T cells": "CD8+ T",
+    "Regulatory T cells": "Treg",
+    "Cytotoxicity (Lymphocytes)": "T other",
+    "Exhausted/HS CD8 T cells": "CD8+ T",
+    "Memory T cells": "T other",
+    "Lymphocytes exhausted/cell-cycle": "T other",
+    # -- TNBC lineage derived from Zhang 2021 97-cluster names --
+    # ("CD4 T cell"/"CD8 T cell"/"ILC" are already mapped above.)
+    "T cell (unresolved)": "T other",
+    "Mast cell": "Other",
+    # -- CAR-T published Major_Alias (Cheloni 2025, GSE290722 metadata) --
+    "CD4 T Cells": "CD4+ T",
+    "CD8 T Cells": "CD8+ T",
+    "T regs": "Treg",
+    "NK T Cells": "T other",
+    "NK Cells": "NK",
+    "NK Cells/ILC": "NK",
+    "B Cells": "B cell",
+    "Monocytes": "Monocyte",
+    "pDCs": "DC",
+    "pDCs/HSC/MPP": "HSC/Prog",
+    "Erythrocytes": "Erythroid",
+    "Mast Cells": "Other",
+    "Doublets": "Other",
 }
 
 # Canonical display order for harmonized cell types.

@@ -10,7 +10,7 @@ import tarfile
 import urllib.error
 import urllib.request
 import warnings
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from io import StringIO
 from pathlib import Path
 
@@ -163,12 +163,22 @@ _ANNOT_MIN_ACCEPT = 0.3  # minimum weighted score to accept a label
 _TNBC_EFFICACY_MAP = {"CR": "R", "PR": "R", "PD": "NR", "SD": "NR"}
 
 
-def _load_tnbc_clinical(raw_dir: Path) -> pd.Series:
-    """Read per-patient response from mmc3.xlsx (Zhang et al. 2021, Table S2).
+# mmc3.xlsx is ~33 MB / 489,490 rows and takes ~1 min to parse, but is needed
+# for both clinical response and per-cell annotations. Cache it per raw_dir.
+_TNBC_MMC3_CACHE: dict[str, pd.DataFrame] = {}
 
-    Returns a Series indexed by patient ID (e.g. 'P001') with values 'R' or 'NR'.
-    CR/PR → R (responder), PD/SD → NR (non-responder), Na → NaN.
+
+def _read_tnbc_mmc3(raw_dir: Path) -> pd.DataFrame:
+    """Read (and memoise) the per-cell sheet of mmc3.xlsx (Zhang 2021 Table S2).
+
+    Columns include ``Cell barcode``, ``Patient``, ``Efficacy``, ``Origin``,
+    ``Group``, ``Major celltype`` (4 immune categories) and ``Cluster`` (97
+    author clusters). Row 0 is the table title, so the real header is row 1.
     """
+    key = str(raw_dir.resolve())
+    cached = _TNBC_MMC3_CACHE.get(key)
+    if cached is not None:
+        return cached
     mmc3_path = raw_dir / "mmc3.xlsx"
     if not mmc3_path.exists():
         raise FileNotFoundError(
@@ -177,12 +187,296 @@ def _load_tnbc_clinical(raw_dir: Path) -> pd.Series:
             "and place it in the raw data directory."
         )
     df = pd.read_excel(mmc3_path, sheet_name="Single cell clustering", header=1)
+    df.columns = [str(c).strip() for c in df.columns]
+    _TNBC_MMC3_CACHE[key] = df
+    return df
+
+
+def _load_tnbc_clinical(raw_dir: Path) -> pd.Series:
+    """Read per-patient response from mmc3.xlsx (Zhang et al. 2021, Table S2).
+
+    Returns a Series indexed by patient ID (e.g. 'P001') with values 'R' or 'NR'.
+    CR/PR → R (responder), PD/SD → NR (non-responder), Na → NaN.
+    """
+    df = _read_tnbc_mmc3(raw_dir)
     pt_eff = (
         df[["Patient", "Efficacy"]]
         .drop_duplicates("Patient")
         .set_index("Patient")["Efficacy"]
     )
     return pt_eff.map(_TNBC_EFFICACY_MAP)
+
+
+def _load_tnbc_published_labels(raw_dir: Path) -> pd.DataFrame:
+    """Per-cell author annotations for GSE169246, indexed by cell barcode.
+
+    The same mmc3.xlsx the loader already opens for clinical response also
+    carries the authors' own annotations, which were previously discarded:
+    ``Major celltype`` (T / B / Myeloid / ILC — every cell is immune, the
+    deposit being CD45+ sorted) and ``Cluster`` (97 clusters such as
+    ``t_CD8-CXCL13``). Barcodes are the same ``<16bp>.<Sample>`` strings the
+    GEO matrix uses, so the join needs no identifier munging.
+    """
+    df = _read_tnbc_mmc3(raw_dir)
+    cols = {c.lower(): c for c in df.columns}
+    bc = cols.get("cell barcode")
+    major = cols.get("major celltype")
+    clus = cols.get("cluster")
+    if bc is None or major is None:
+        raise KeyError(
+            f"mmc3.xlsx is missing expected annotation columns; found {list(df.columns)}"
+        )
+    keep = [c for c in (bc, major, clus) if c is not None]
+    out = df[keep].drop_duplicates(subset=bc).set_index(bc)
+    out.index = out.index.astype(str).str.strip()
+    rename = {major: "cell_type_published"}
+    if clus is not None:
+        rename[clus] = "cluster_published"
+    return out.rename(columns=rename)
+
+
+def _tnbc_cluster_lineage(cluster: object) -> str | None:
+    """Map a Zhang 2021 cluster name (e.g. ``t_CD4_Treg-FOXP3``) to a lineage.
+
+    The authors' ``Major celltype`` column has only four levels (T / B / Myeloid
+    / ILC), which is coarser than the analysis needs — it cannot separate CD4
+    from CD8 or resolve Tregs. Their 97 ``Cluster`` labels are systematically
+    named, so the lineage is recovered from the cluster name instead, keeping
+    the authors' resolution. Clusters the authors deliberately leave unresolved
+    (``t_Tn-LEF1`` naive T, ``t_Tact-IFI6`` activated T, ``t_Tprf-MKI67``
+    proliferating T, and the ambiguous ``Mix`` bin) are NOT forced onto CD4 or
+    CD8; they map to "T cell (unresolved)" / "Unassigned".
+    """
+    if cluster is None or (isinstance(cluster, float) and pd.isna(cluster)):
+        return None
+    name = str(cluster).strip()
+    if not name:
+        return None
+    if name.lower() == "mix":
+        return "Unassigned"
+    # Strip the origin prefix ("t_" tumour / "b_" blood)
+    body = re.sub(r"^[tb]_", "", name)
+    low = body.lower()
+    if low.startswith("cd4_treg") or low.startswith("treg"):
+        return "Treg"
+    if "treg" in low and low.startswith("cd4"):
+        return "Treg"
+    if low.startswith("cd4"):
+        return "CD4 T cell"
+    if low.startswith("cd8"):
+        return "CD8 T cell"
+    if low.startswith(("tn-", "tact-", "tprf-", "tem-", "tcm-")):
+        return "T cell (unresolved)"
+    if low.startswith("pb-"):
+        return "Plasma cell"
+    if low.startswith(("bn-", "bmem-", "bfoc-", "b-")):
+        return "B cell"
+    if low.startswith(("mono-", "macro-", "mphi-", "mφ-")):
+        return "Monocyte/Macrophage"
+    if low.startswith(("cdc", "mdc", "pdc", "dc")):
+        return "Dendritic cell"
+    if low.startswith("mast"):
+        return "Mast cell"
+    if low.startswith("ilc1"):
+        # Group 1 ILC is the NK-cell compartment in this study's nomenclature.
+        return "NK cell"
+    if low.startswith(("ilc2", "ilc3")):
+        return "ILC"
+    return "Unassigned"
+
+
+def _load_cart_published_metadata(raw_dir: Path) -> pd.DataFrame | None:
+    """Per-cell author metadata for GSE290722, indexed by ``Cell.id``.
+
+    This series-level supplementary file carries far more than cell types: it
+    holds the authors' three-level annotation (``Compartment`` / ``Major_Alias``
+    / ``Alias``), their per-cell clinical ``Response`` (LtR / R / NR / Unknown)
+    — which is the publication's primary outcome and cannot be reconstructed
+    from the expression matrices — the exact ``TimePoint_Final``, and ``Axicel``
+    CAR-transgene read counts. Written by R's ``write.table``, so it is
+    space-delimited with quoted fields, not comma-separated.
+
+    Returns None when the file is absent, so the loader degrades to de-novo
+    annotation rather than failing.
+    """
+    path = raw_dir / "GSE290722_metadata.csv.gz"
+    if not path.exists():
+        return None
+    df = pd.read_csv(path, sep=" ")
+    df.columns = [str(c).strip() for c in df.columns]
+    key = next((c for c in df.columns if c.lower() in ("cell.id", "cell_id")), None)
+    if key is None:
+        logger.warning("GSE290722_metadata.csv.gz has no Cell.id column; ignoring.")
+        return None
+    return df.drop_duplicates(subset=key).set_index(key)
+
+
+# ---------------------------------------------------------------------------
+# Published per-cell annotations
+# ---------------------------------------------------------------------------
+# Where the source publication deposited per-cell cell-type labels, those labels
+# are the primary annotation: they are the authors' own, peer-reviewed, and far
+# finer than a generic marker panel can recover. The de-novo marker-based labels
+# are retained alongside (``cell_type_denovo``) purely as a reproducibility
+# check, and ``annotation_source`` records which is which.
+
+# Sade-Feldman et al., Cell 2018, Table S1 (mmc1.xlsx), sheet
+# "Gene marker-Fig1B-C" column headers -- read verbatim from the workbook.
+_SF_CLUSTER_NAMES: dict[int, str] = {
+    1: "B cells",
+    2: "Plasma cells",
+    3: "Monocytes/Macrophages",
+    4: "Dendritic cells",
+    5: "Lymphocytes",
+    6: "Exhausted CD8 T cells",
+    7: "Regulatory T cells",
+    8: "Cytotoxicity (Lymphocytes)",
+    9: "Exhausted/HS CD8 T cells",
+    10: "Memory T cells",
+    11: "Lymphocytes exhausted/cell-cycle",
+}
+
+# GEO cell names carry FACS sort-fraction / lane suffixes that the author tables
+# either omit or replace with the sort gate (e.g. GEO "A10_P1_M39_T_enriched" vs
+# author "A10_P1_M39_DN1"). Stripping these yields a comparable base key.
+_SF_SUFFIX_RE = re.compile(
+    r"_(T_enriched|myeloid_enriched|T_cell_enriched|DN1|DN2|DN|DP1|DP2|DP|L00\d)$",
+    re.IGNORECASE,
+)
+
+
+def _sf_cell_base(name: str) -> str:
+    """Strip trailing sort-fraction/lane suffixes from a Sade-Feldman cell name."""
+    prev = str(name)
+    while True:
+        cur = _SF_SUFFIX_RE.sub("", prev)
+        if cur == prev:
+            return cur
+        prev = cur
+
+
+def _join_published_labels(
+    target_names: Sequence[str],
+    label_map: dict[str, object],
+    *,
+    normalise: Callable[[str], str] | None = None,
+    label_desc: str = "published labels",
+) -> list[object]:
+    """Align *label_map* onto *target_names*, exact matches first.
+
+    A naive exact join loses cells whenever the deposited matrix and the author
+    table spell the same cell differently. A naive normalised join instead
+    creates collisions, because stripping a suffix can map two distinct cells
+    onto one key. Doing both in order -- exact first, then normalised on the
+    unmatched remainder only -- is unambiguous: every cell that already matched
+    exactly is removed from contention before the fuzzy pass runs, which for
+    Sade-Feldman leaves exactly one candidate per base key and recovers 100%.
+
+    Returns a list aligned to *target_names*, with ``None`` where no unambiguous
+    label exists (never a guess).
+    """
+    out: list[object] = [None] * len(target_names)
+    matched_keys: set[str] = set()
+
+    # Stage 1 -- exact
+    for i, name in enumerate(target_names):
+        if name in label_map:
+            out[i] = label_map[name]
+            matched_keys.add(name)
+    n_exact = sum(v is not None for v in out)
+
+    n_fuzzy = 0
+    n_ambiguous = 0
+    if normalise is not None and n_exact < len(target_names):
+        # Remaining author entries, bucketed by normalised key
+        rem_by_base: dict[str, list[object]] = {}
+        for key, val in label_map.items():
+            if key in matched_keys:
+                continue
+            rem_by_base.setdefault(normalise(key), []).append(val)
+        # Remaining target cells, bucketed by normalised key
+        tgt_by_base: dict[str, list[int]] = {}
+        for i, name in enumerate(target_names):
+            if out[i] is None:
+                tgt_by_base.setdefault(normalise(name), []).append(i)
+        for base_key, idxs in tgt_by_base.items():
+            cands = rem_by_base.get(base_key, [])
+            if len(idxs) == 1 and len(cands) == 1:
+                out[idxs[0]] = cands[0]
+                n_fuzzy += 1
+            else:
+                n_ambiguous += len(idxs)
+
+    n_total = sum(v is not None for v in out)
+    logger.info(
+        "  %s: matched %d/%d cells (%.2f%%) [exact=%d, suffix-normalised=%d, "
+        "ambiguous/unmatched=%d]",
+        label_desc, n_total, len(target_names),
+        100.0 * n_total / max(len(target_names), 1),
+        n_exact, n_fuzzy, len(target_names) - n_total,
+    )
+    if n_ambiguous:
+        logger.warning(
+            "  %s: %d cell(s) left unlabelled because the normalised key was "
+            "ambiguous; they are NOT guessed.", label_desc, n_ambiguous,
+        )
+    return out
+
+
+def _load_sade_feldman_published_labels(
+    raw_dir: Path, cell_names: Sequence[str]
+) -> dict[str, list[object]]:
+    """Per-cell author labels for GSE120575 from the Cell 2018 supplements.
+
+    Table S1 (mmc1) gives the unsupervised G1-G11 cluster for all 16,291 cells;
+    Table S2 (mmc2) gives the CD8_G (memory-like) vs CD8_B (dysfunctional)
+    dichotomy that is the publication's headline result; Table S4 (mmc4) gives
+    its six-way refinement CD8_1..CD8_6. Returns empty lists for any table that
+    is absent, so the loader degrades gracefully rather than failing.
+    """
+    out: dict[str, list[object]] = {}
+
+    mmc1 = raw_dir / "mmc1.xlsx"
+    if mmc1.exists():
+        df = pd.read_excel(mmc1, sheet_name="Cluster annotation-Fig1B-C")
+        df.columns = [str(c).strip() for c in df.columns]
+        cmap = {
+            str(n).strip(): int(c)
+            for n, c in zip(df["Cell Name"], df["Cluster number"])
+            if pd.notna(c)
+        }
+        clusters = _join_published_labels(
+            cell_names, cmap, normalise=_sf_cell_base,
+            label_desc="Table S1 G1-G11 clusters",
+        )
+        out["cluster_published"] = [
+            f"G{c}" if c is not None else None for c in clusters
+        ]
+        out["cell_type_published"] = [
+            _SF_CLUSTER_NAMES.get(c) if c is not None else None for c in clusters
+        ]
+
+    for fname, sheet, key in (
+        ("mmc2.xlsx", "Cluster annotation-Fig2A-B", "cd8_state"),
+        ("mmc4.xlsx", "Cluster annotation-Fig4A-B", "cd8_subcluster"),
+    ):
+        path = raw_dir / fname
+        if not path.exists():
+            continue
+        df = pd.read_excel(path, sheet_name=sheet)
+        df.columns = [str(c).strip() for c in df.columns]
+        name_col = next(c for c in df.columns if "name" in c.lower())
+        clus_col = next(c for c in df.columns if "cluster" in c.lower())
+        cmap = {
+            str(n).strip(): str(c).strip()
+            for n, c in zip(df[name_col], df[clus_col])
+            if pd.notna(c)
+        }
+        out[key] = _join_published_labels(
+            cell_names, cmap, normalise=_sf_cell_base,
+            label_desc=f"{fname} {key}",
+        )
+    return out
 
 
 def _weighted_marker_score(
@@ -505,7 +799,7 @@ def load_sade_feldman(
         The processed AnnData object.
     """
     processing_params = {
-        "version": "v7",
+        "version": "v8",
         "max_cells_per_participant_visit": max_cells_per_participant_visit,
         "seed": seed,
         "assay": "TPM",
@@ -586,6 +880,28 @@ def load_sade_feldman(
         raw_dir_resolved.mkdir(parents=True, exist_ok=True)
         for dest, url, label in missing:
             _download_file(url, dest, label)
+
+    # Author per-cell annotations live in the Cell 2018 supplements, not in GEO
+    # (the GEO deposit carries no cell-type field at all). Fetched from the
+    # publisher so the annotation stays reproducible from public sources alone.
+    # Non-fatal: the loader still works without them, falling back to de-novo
+    # labels only, so a publisher outage cannot break the dataset.
+    _ELS_BASE = "https://ars.els-cdn.com/content/image/1-s2.0-S0092867418313941-"
+    for fname, label in (
+        ("mmc1.xlsx", "Table S1 (G1-G11 cluster annotation)"),
+        ("mmc2.xlsx", "Table S2 (CD8_G/CD8_B states)"),
+        ("mmc4.xlsx", "Table S4 (CD8_1-6 subclusters)"),
+    ):
+        dest = raw_dir_resolved / fname
+        if dest.exists() or not allow_download:
+            continue
+        try:
+            _download_file(_ELS_BASE + fname, dest, label)
+        except Exception as exc:  # noqa: BLE001 - optional enrichment
+            logger.warning(
+                "Could not download %s (%s); published labels for this table "
+                "will be unavailable.", fname, exc,
+            )
     logger.info("Processing raw data (this may take a minute)...")
     with gzip.open(tpm_path, "rt") as f:
         header1 = f.readline().strip().split("\t")
@@ -617,7 +933,17 @@ def load_sade_feldman(
     meta["sample_id"] = meta["sample_id"].astype(str)
     meta = meta.dropna(subset=["sample_id"]).copy()
 
-    meta = meta[meta["sample_id"].str.match(r"^[A-Z]\d+_P\d+_M\d+")].copy()
+    # NOTE: do NOT filter cells on a `sample_id` name pattern. An earlier
+    # `^[A-Z]\d+_P\d+_M\d+` filter silently discarded 3,108 of the 16,291
+    # published QC-passing cells (19.1%) and 7 of 32 patients, purely because
+    # some lesions use a different naming convention (the whole `MMD*` lesion
+    # series, plus `m15` whose sample token is lower-case). The drop was not
+    # compositionally neutral -- it depleted cluster G6 (exhaustion-enriched),
+    # which is the publication's primary axis. Validity is already enforced
+    # downstream by the response filter (which removes the 38 non-cell footer
+    # rows) and by the intersection with the TPM matrix columns below, so
+    # removing the pattern filter recovers exactly the published cohort:
+    # 16,291 cells / 32 participants / 11 Pre+Post paired.
     meta = meta[meta["response"].isin(["Responder", "Non-responder"])].copy()
 
     meta["visit"] = meta["patient_raw"].astype(str).str.split("_").str[0]
@@ -672,9 +998,40 @@ def load_sade_feldman(
     sc.tl.leiden(adata, resolution=1.0)
 
     # ── Cell type annotation ────────────────────────────────────────────
+    # De-novo marker-based labels are computed first and always retained as a
+    # reproducibility check, then superseded by the authors' own per-cell labels
+    # where those are available (see _load_sade_feldman_published_labels).
     # Uses the Leiden clusters computed above (same embedding as UMAP).
-    logger.info("Annotating cell types from marker genes...")
-    adata.obs["cell_type"] = _annotate_immune_celltypes(adata)
+    logger.info("Annotating cell types from marker genes (de-novo)...")
+    adata.obs["cell_type_denovo"] = _annotate_immune_celltypes(adata)
+
+    logger.info("Joining published per-cell annotations (Cell 2018 supplements)...")
+    published = _load_sade_feldman_published_labels(
+        raw_dir_resolved, list(adata.obs_names)
+    )
+    for col, values in published.items():
+        adata.obs[col] = pd.Series(values, index=adata.obs_names, dtype="object")
+
+    if "cell_type_published" in adata.obs and adata.obs["cell_type_published"].notna().any():
+        # Authors' unsupervised G1-G11 annotation is the primary cell type.
+        adata.obs["cell_type"] = (
+            adata.obs["cell_type_published"].fillna("Unassigned").astype(str)
+        )
+        adata.obs["annotation_source"] = "publication"
+        adata.uns["annotation_source"] = (
+            "Sade-Feldman et al., Cell 2018 — Table S1 (mmc1.xlsx) unsupervised "
+            "clusters G1-G11; Table S2 CD8_G/CD8_B; Table S4 CD8_1-6"
+        )
+    else:
+        adata.obs["cell_type"] = adata.obs["cell_type_denovo"].astype(str)
+        adata.obs["annotation_source"] = "de-novo"
+        adata.uns["annotation_source"] = (
+            "de-novo marker scoring (published supplements unavailable)"
+        )
+        logger.warning(
+            "Published Sade-Feldman labels unavailable; falling back to de-novo "
+            "annotation. Re-run with allow_download=True to fetch mmc1/2/4."
+        )
 
     adata.uns["processing_params"] = processing_params
     adata.uns["data_source"] = "GSE120575"
@@ -1593,10 +1950,53 @@ def _process_cart_raw(
     # ── Standardised sctrial obs columns ──────────────────────────────
     obs = adata.obs
     obs["participant_id"] = obs["patient_id"].astype(str)
+    # `visit` is the binary Pre/Post contrast the DiD estimand needs; the three
+    # distinct post-infusion timepoints remain separable via `timepoint` and
+    # `days_post_treatment`, which are NOT collapsed.
     obs["visit"] = obs["timepoint"].apply(lambda t: "Pre" if t == "Leukapheresis" else "Post")
     obs["is_paired"] = False  # filled below
-    obs["response"] = "CAR-T"
     adata.obs = obs
+
+    # ── Author per-cell metadata (annotations + clinical response) ─────
+    cart_meta = _load_cart_published_metadata(raw_dir)
+    if cart_meta is not None:
+        cid = adata.obs["cell_id"].astype(str)
+        n_match = int(cid.isin(cart_meta.index).sum())
+        logger.info(
+            "  GSE290722_metadata: matched %d/%d cells (%.2f%%)",
+            n_match, adata.n_obs, 100.0 * n_match / max(adata.n_obs, 1),
+        )
+        for src, dst in (
+            # Major_Alias is the primary lineage: unlike Compartment it keeps
+            # "T regs" as a distinct population, which the analysis needs.
+            ("Major_Alias", "cell_type_published"),
+            ("Compartment", "cell_type_compartment_published"),
+            ("Alias", "cluster_published"),
+            ("Response", "response_published"),
+            ("TimePoint_Final", "timepoint_published"),
+            ("Axicel", "car_transgene_counts"),
+        ):
+            if src in cart_meta.columns:
+                adata.obs[dst] = cid.map(cart_meta[src]).astype("object")
+        if "car_transgene_counts" in adata.obs:
+            adata.obs["is_car_positive"] = (
+                pd.to_numeric(adata.obs["car_transgene_counts"], errors="coerce").fillna(0) > 0
+            )
+        # The authors' primary outcome. Previously this column was hard-coded to
+        # the constant "CAR-T", which silently discarded the durable-responder /
+        # responder / non-responder contrast the publication is built on.
+        if "response_published" in adata.obs:
+            adata.obs["response"] = (
+                adata.obs["response_published"].fillna("Unknown").astype(str)
+            )
+        else:
+            adata.obs["response"] = "Unknown"
+    else:
+        adata.obs["response"] = "Unknown"
+        logger.warning(
+            "GSE290722_metadata.csv.gz not found: per-cell response and author "
+            "annotations unavailable. Re-run with allow_download=True."
+        )
 
     # ── Embeddings + clustering ───────────────────────────────────────
     sc.pp.highly_variable_genes(adata, n_top_genes=2000, flavor="seurat", subset=False)
@@ -1615,9 +2015,34 @@ def _process_cart_raw(
         clusters = kmeans.fit_predict(X_pca)
         adata.obs["leiden"] = pd.Categorical([str(c) for c in clusters])
 
-    # ── Cell type annotation (marker scoring) ─────────────────────────
-    logger.info("Annotating CAR-T cell types...")
-    adata.obs["cell_type"] = _annotate_immune_celltypes(adata)
+    # ── Cell type annotation ──────────────────────────────────────────
+    # De-novo marker scoring is retained as a reproducibility check, but the
+    # authors' own annotation is primary: on this dataset the generic immune
+    # panel mislabels the majority of T cells (cytotoxic CD8 clusters score
+    # onto the NK set via shared GZMB/PRF1/NKG7, and Tregs are not recovered).
+    logger.info("Annotating CAR-T cell types (de-novo)...")
+    adata.obs["cell_type_denovo"] = _annotate_immune_celltypes(adata)
+
+    if "cell_type_published" in adata.obs and adata.obs["cell_type_published"].notna().any():
+        adata.obs["cell_type"] = (
+            adata.obs["cell_type_published"].fillna("Unassigned").astype(str)
+        )
+        adata.obs["annotation_source"] = "publication"
+        adata.uns["annotation_source"] = (
+            "Cheloni et al., Nat Commun 2025 — GSE290722_metadata.csv.gz "
+            "Major_Alias (primary, 15 levels incl. T regs), Compartment (12), "
+            "Alias (73 populations)"
+        )
+        # The authors flagged and removed doublet-enriched clusters; keep the
+        # flag so downstream analyses can exclude them explicitly.
+        adata.obs["is_doublet"] = (
+            adata.obs["cell_type_published"].astype(str).str.lower() == "doublets"
+        )
+    else:
+        adata.obs["cell_type"] = adata.obs["cell_type_denovo"].astype(str)
+        adata.obs["annotation_source"] = "de-novo"
+        adata.uns["annotation_source"] = "de-novo marker scoring (author metadata unavailable)"
+        adata.obs["is_doublet"] = False
 
     # Mark paired patients
     patients = adata.obs["participant_id"].unique()
@@ -1686,7 +2111,7 @@ def load_cart(
     data_dir_path = Path(data_dir)
 
     processing_params = {
-        "version": "v2",
+        "version": "v3",
         "max_cells_per_sample": max_cells_per_sample,
         "seed": seed,
     }
@@ -1746,6 +2171,24 @@ def load_cart(
             tf.extractall(path=raw_dir)
         tar_dest.unlink(missing_ok=True)
         found_raw = raw_dir
+
+    # Series-level per-cell metadata (author annotations, clinical response,
+    # CAR-transgene counts). It sits beside the RAW tar rather than inside it,
+    # so it must be fetched separately. Non-fatal if unavailable.
+    meta_dest = found_raw / "GSE290722_metadata.csv.gz"
+    if not meta_dest.exists() and allow_download:
+        try:
+            _download_file(
+                "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE290nnn/GSE290722/suppl/"
+                "GSE290722_metadata.csv.gz",
+                meta_dest,
+                "GSE290722 per-cell metadata",
+            )
+        except Exception as exc:  # noqa: BLE001 - optional enrichment
+            logger.warning(
+                "Could not download GSE290722_metadata.csv.gz (%s); author "
+                "annotations and per-cell response will be unavailable.", exc,
+            )
 
     # ── Process raw data ──────────────────────────────────────────────
     logger.info("Processing raw CAR-T data (this may take several minutes)...")
@@ -1944,9 +2387,41 @@ def _process_tnbc_raw(
             clusters = kmeans.fit_predict(X_pca)
             adata.obs["leiden"] = pd.Categorical([str(c) for c in clusters])
 
-    # Cell type annotation
-    logger.info("Annotating cell types (Wilcoxon + weighted scoring)...")
-    adata.obs["cell_type"] = _annotate_immune_celltypes(adata)
+    # Cell type annotation -- de-novo first (retained as a reproducibility
+    # check), then superseded by the authors' own per-cell labels from mmc3.
+    logger.info("Annotating cell types (Wilcoxon + weighted scoring, de-novo)...")
+    adata.obs["cell_type_denovo"] = _annotate_immune_celltypes(adata)
+
+    logger.info("Joining published per-cell annotations (mmc3.xlsx, Table S2)...")
+    pub = _load_tnbc_published_labels(raw_dir)
+    bc = adata.obs["barcode_full"].astype(str)
+    rename = {"cell_type_published": "cell_type_major_published"}
+    for col in ("cell_type_published", "cluster_published"):
+        if col in pub.columns:
+            adata.obs[rename.get(col, col)] = bc.map(pub[col]).astype("object")
+    n_pub = int(adata.obs["cell_type_major_published"].notna().sum())
+    logger.info(
+        "  published labels matched %d/%d cells (%.2f%%)",
+        n_pub, adata.n_obs, 100.0 * n_pub / max(adata.n_obs, 1),
+    )
+    if n_pub:
+        # Lineage is derived from the authors' 97 fine clusters rather than
+        # their 4 major categories, which cannot separate CD4/CD8/Treg.
+        adata.obs["cell_type_published"] = (
+            adata.obs["cluster_published"].map(_tnbc_cluster_lineage).astype("object")
+        )
+        adata.obs["cell_type"] = (
+            adata.obs["cell_type_published"].fillna("Unassigned").astype(str)
+        )
+        adata.obs["annotation_source"] = "publication"
+        adata.uns["annotation_source"] = (
+            "Zhang et al., Cancer Cell 2021 — Table S2 (mmc3.xlsx) 'Major "
+            "celltype' (primary) and 'Cluster' (97 author clusters)"
+        )
+    else:
+        adata.obs["cell_type"] = adata.obs["cell_type_denovo"].astype(str)
+        adata.obs["annotation_source"] = "de-novo"
+        adata.uns["annotation_source"] = "de-novo marker scoring (mmc3 labels unavailable)"
 
     # Dataset metadata
     adata.uns["dataset"]     = "GSE169246"
@@ -2050,7 +2525,7 @@ def load_tnbc_zhang(
     >>> print(adata)
     """
     processing_params = {
-        "version": "v4",
+        "version": "v5",
         "max_cells_per_participant_visit": max_cells_per_participant_visit,
         "seed": seed,
     }
