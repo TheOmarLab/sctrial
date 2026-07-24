@@ -37,8 +37,14 @@ suppressPackageStartupMessages({{
 counts <- read.csv("{counts_csv}", row.names=1, check.names=FALSE)
 meta   <- read.csv("{meta_csv}", row.names=1, stringsAsFactors=TRUE)
 
-meta$arm   <- factor(meta$arm, levels=c("{control}", "{treated}"))
-meta$visit <- factor(meta$visit, levels=c("{pre}", "{post}"))
+arm_in_data   <- as.character(meta$arm)
+visit_in_data <- as.character(meta$visit)
+arm_levels   <- if (all(c("Control","Treated") %in% arm_in_data))   c("Control","Treated")   else sort(unique(arm_in_data))
+visit_levels <- if (all(c("Pre","Post")         %in% visit_in_data)) c("Pre","Post")           else sort(unique(visit_in_data))
+if (length(arm_levels)   < 2) stop(paste("Need >=2 arm levels, got:",   paste(arm_levels,   collapse=",")))
+if (length(visit_levels) < 2) stop(paste("Need >=2 visit levels, got:", paste(visit_levels, collapse=",")))
+meta$arm   <- factor(meta$arm,   levels=arm_levels)
+meta$visit <- factor(meta$visit, levels=visit_levels)
 
 y <- DGEList(counts=t(counts))
 keep <- filterByExpr(y, min.count=1)
@@ -51,7 +57,7 @@ vobjDream <- voomWithDreamWeights(y, form, meta)
 fitmm <- dream(vobjDream, form, meta)
 fitmm <- eBayes(fitmm)
 
-# Test the interaction coefficient
+# Test the interaction coefficient (label-agnostic grep)
 coef_name <- grep("arm.*visit|visit.*arm", colnames(coef(fitmm)), value=TRUE)
 if (length(coef_name) == 0) {{
   coef_name <- colnames(coef(fitmm))[ncol(coef(fitmm))]
@@ -70,7 +76,10 @@ suppressPackageStartupMessages({{
 counts <- read.csv("{counts_csv}", row.names=1, check.names=FALSE)
 meta   <- read.csv("{meta_csv}", row.names=1, stringsAsFactors=TRUE)
 
-meta$visit       <- factor(meta$visit, levels=c("{pre}", "{post}"))
+visit_in_data <- as.character(meta$visit)
+visit_levels  <- if (all(c("Pre","Post") %in% visit_in_data)) c("Pre","Post") else sort(unique(visit_in_data))
+if (length(visit_levels) < 2) stop(paste("Need >=2 visit levels, got:", paste(visit_levels, collapse=",")))
+meta$visit       <- factor(meta$visit, levels=visit_levels)
 meta$participant <- factor(meta$participant)
 
 y <- DGEList(counts=t(counts))
@@ -84,10 +93,12 @@ vobjDream <- voomWithDreamWeights(y, form, meta)
 fitmm <- dream(vobjDream, form, meta)
 fitmm <- eBayes(fitmm)
 
-# Test the visit coefficient
-coef_name <- "visitPost"
-if (!(coef_name %in% colnames(coef(fitmm)))) {{
+# Test the visit coefficient (label-agnostic: second visit level)
+coef_name <- grep("^visit", colnames(coef(fitmm)), value=TRUE)
+if (length(coef_name) == 0) {{
   coef_name <- colnames(coef(fitmm))[ncol(coef(fitmm))]
+}} else {{
+  coef_name <- coef_name[length(coef_name)]
 }}
 res <- topTable(fitmm, coef=coef_name, number=Inf, sort.by="none",
                 confint=TRUE)
@@ -132,10 +143,6 @@ def run(
             counts_csv=str(counts_csv),
             meta_csv=str(meta_csv),
             output_csv=str(output_csv),
-            treated=treated_label,
-            control=control_label,
-            pre=visits[0],
-            post=visits[1],
         )
 
         script_file = td / "run_dreamlet.R"

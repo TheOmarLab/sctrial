@@ -38,8 +38,14 @@ genes  <- readLines("{genes_path}")
 rownames(counts) <- genes
 
 meta <- read.csv("{meta_csv}", stringsAsFactors=TRUE)
-meta$arm   <- factor(meta$arm, levels=c("{control}", "{treated}"))
-meta$visit <- factor(meta$visit, levels=c("{pre}", "{post}"))
+arm_in_data   <- as.character(meta$arm)
+visit_in_data <- as.character(meta$visit)
+arm_levels   <- if (all(c("Control","Treated") %in% arm_in_data))   c("Control","Treated")   else sort(unique(arm_in_data))
+visit_levels <- if (all(c("Pre","Post")         %in% visit_in_data)) c("Pre","Post")           else sort(unique(visit_in_data))
+if (length(arm_levels)   < 2) stop(paste("Need >=2 arm levels, got:",   paste(arm_levels,   collapse=",")))
+if (length(visit_levels) < 2) stop(paste("Need >=2 visit levels, got:", paste(visit_levels, collapse=",")))
+meta$arm   <- factor(meta$arm,   levels=arm_levels)
+meta$visit <- factor(meta$visit, levels=visit_levels)
 
 # Drop zero-count cells — log(0) = -Inf offset causes NA in objective function
 keep <- colSums(counts) > 0
@@ -83,7 +89,10 @@ genes  <- readLines("{genes_path}")
 rownames(counts) <- genes
 
 meta <- read.csv("{meta_csv}", stringsAsFactors=TRUE)
-meta$visit <- factor(meta$visit, levels=c("{pre}", "{post}"))
+visit_in_data <- as.character(meta$visit)
+visit_levels  <- if (all(c("Pre","Post") %in% visit_in_data)) c("Pre","Post") else sort(unique(visit_in_data))
+if (length(visit_levels) < 2) stop(paste("Need >=2 visit levels, got:", paste(visit_levels, collapse=",")))
+meta$visit <- factor(meta$visit, levels=visit_levels)
 
 # Drop zero-count cells — log(0) = -Inf offset causes NA in objective function
 keep <- colSums(counts) > 0
@@ -169,10 +178,6 @@ def run(
             genes_path=str(genes_path),
             meta_csv=str(meta_csv),
             output_csv=str(output_csv),
-            treated=treated_label,
-            control=control_label,
-            pre=visits[0],
-            post=visits[1],
         )
 
         script_file = td / "run_nebula.R"
