@@ -149,15 +149,6 @@ The real-data benchmark validates null calibration (permutation p-values should 
 
 Output CSVs are written incrementally — completed scenarios are saved as they finish, so partial results are preserved if a job times out.
 
-### Plotting real-data benchmark results
-
-After the real-data benchmark completes (or partially completes), generate figures with:
-
-```bash
-python scripts/plot_realdata_benchmark.py
-```
-
-Figures are saved to `manuscript/benchmark/realdata/figures/`. The script skips panels for columns that are absent in the CSV (safe to run on partial results).
 
 ---
 
