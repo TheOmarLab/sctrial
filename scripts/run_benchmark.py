@@ -160,6 +160,19 @@ def phase_validate(n_jobs: int):
             print(f"  {k}: {v}")
         else:
             print(f"  {k}: {v:.3f}")
+    # Record WHERE the calibration came from, so a stale or mismatched source is
+    # visible in the artifact itself rather than only in a log line.
+    calibration_params["_provenance"] = {
+        "source": "load_tnbc_zhang()",
+        "dataset": str(tnbc.uns.get("dataset", "GSE169246")),
+        "processing_version": str(
+            tnbc.uns.get("processing_params", {}).get("version", "unknown")
+        ),
+        "n_cells": int(tnbc.n_obs),
+        "n_genes": int(tnbc.n_vars),
+        "n_participants": int(tnbc.obs["participant_id"].nunique()),
+        "annotation_source": str(tnbc.uns.get("annotation_source", "unknown")),
+    }
     with open(out_dir / "calibration_tnbc.json", "w") as f:
         json.dump(calibration_params, f, indent=2)
 
