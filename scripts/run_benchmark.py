@@ -76,24 +76,35 @@ def phase_validate(n_jobs: int):
     datasets = {}
 
     # 1. CALIBRATION SOURCE: TNBC (two-arm, raw UMI counts)
+    #
+    # Use the canonical loader, NOT a hand-placed scratch copy. This previously
+    # read try/GSE169246/tnbc_processed.h5ad, a stale file outside the dataset
+    # layout that no longer exists -- so calibration either aborted or (worse,
+    # when the file was present) calibrated the simulator from pre-reprocessing
+    # TNBC data while the rest of the manuscript used the current object.
     print("\nLoading TNBC (CALIBRATION SOURCE, raw counts)...")
-    import anndata as ad
-    tnbc_path = Path(__file__).parent.parent.parent.parent / "try" / "GSE169246" / "tnbc_processed.h5ad"
-    if tnbc_path.exists():
-        tnbc = ad.read_h5ad(tnbc_path)
-        datasets["tnbc"] = {
-            "adata": tnbc,
-            "layer": None,                # .X is normalized
-            "count_layer": "counts",       # raw integer UMI counts
-            "participant_col": "participant_id", "visit_col": "visit",
-            "arm_col": "arm",
-            "design": "two_arm",
-            "role": "CALIBRATION",
-        }
-    else:
-        print(f"  FATAL: TNBC not found at {tnbc_path}")
+    from sctrial.datasets import load_tnbc_zhang
+
+    try:
+        tnbc = load_tnbc_zhang()
+    except Exception as exc:  # noqa: BLE001 - calibration source is required
+        print(f"  FATAL: could not load TNBC via load_tnbc_zhang(): {exc}")
         print("  Cannot proceed — calibration source is required.")
         return
+    print(
+        f"  TNBC: {tnbc.n_obs:,} cells, {tnbc.n_vars:,} genes, "
+        f"{tnbc.obs['participant_id'].nunique()} participants "
+        f"(processing_params={tnbc.uns.get('processing_params', {}).get('version', '?')})"
+    )
+    datasets["tnbc"] = {
+        "adata": tnbc,
+        "layer": None,                # .X is normalized
+        "count_layer": "counts",       # raw integer UMI counts
+        "participant_col": "participant_id", "visit_col": "visit",
+        "arm_col": "arm",
+        "design": "two_arm",
+        "role": "CALIBRATION",
+    }
 
     # 2. HOLDOUT VALIDATION: Vaccine (single-arm, raw counts)
     print("Loading Vaccine (HOLDOUT VALIDATION, raw counts)...")
