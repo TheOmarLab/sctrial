@@ -25,6 +25,7 @@ def _run_subsample_iteration(args: tuple) -> dict:
     The fourth element may be an in-memory AnnData (n_jobs=1) or an h5ad path.
     Returns a dict with keys: frac, resample, n_sub, pvals (method → gene → pvalue).
     """
+    import signal
     import warnings
 
     warnings.filterwarnings("ignore")
@@ -32,73 +33,102 @@ def _run_subsample_iteration(args: tuple) -> dict:
     (frac, r, sub_pids, adata_or_path, gene_cols, methods,
      participant_col, arm_col, visit_col) = args
 
-    from .orchestrator import _dispatch_method, _pseudobulk_counts_from_adata
-    from sctrial.stats.pseudobulk import pseudobulk_expression
+    _WALL_CLOCK_SECS = 3600
 
-    if isinstance(adata_or_path, (str, Path)):
-        import anndata as ad
+    def _wall_timeout(signum, frame):
+        raise TimeoutError(
+            f"Subsample frac={frac} r={r} exceeded {_WALL_CLOCK_SECS}s wall-clock limit"
+        )
 
-        adata = ad.read_h5ad(adata_or_path)
-    else:
-        adata = adata_or_path
+    old_handler = signal.signal(signal.SIGALRM, _wall_timeout)
+    signal.alarm(_WALL_CLOCK_SECS)
 
-    mask = adata.obs[participant_col].isin(sub_pids)
-    adata_sub = adata[mask].copy()
+    try:
+        from .orchestrator import _dispatch_method, _pseudobulk_counts_from_adata
+        from sctrial.stats.pseudobulk import pseudobulk_expression
 
-    # Standardize obs column names so runners work with defaults
-    col_rename = {
-        c: std for c, std in [
-            (participant_col, "participant"),
-            (arm_col, "arm"),
-            (visit_col, "visit"),
-        ]
-        if c != std and c in adata_sub.obs.columns
-    }
-    if col_rename:
-        adata_sub.obs = adata_sub.obs.rename(columns=col_rename)
+        if isinstance(adata_or_path, (str, Path)):
+            import anndata as ad
 
-    pb_means = pseudobulk_expression(
-        adata_sub, gene_cols,
-        groupby=["participant", "visit", "arm"],
-        log1p=False,
-    )
-    pb_counts = _pseudobulk_counts_from_adata(
-        adata_sub, gene_cols, ["participant", "visit", "arm"]
-    )
-    sim_sub = {
-        "adata": adata_sub,
-        "pseudobulk_means": pb_means,
-        "pseudobulk_counts": pb_counts,
-    }
+            adata = ad.read_h5ad(adata_or_path)
+        else:
+            adata = adata_or_path
 
-    import time as _time
+        mask = adata.obs[participant_col].isin(sub_pids)
+        adata_sub = adata[mask].copy()
 
-    pvals_by_method = {}
-    runtimes_by_method = {}
-    method_times = []
-    for method in methods:
-        t0 = _time.time()
-        try:
-            res = _dispatch_method(method, sim_sub, gene_cols)
-            pvals_by_method[method] = {g: res[g].get("pvalue", np.nan) for g in gene_cols}
-        except Exception as exc:
-            logger.warning("Subsample frac=%s r=%d method=%s failed: %s", frac, r, method, exc)
-            pvals_by_method[method] = {g: np.nan for g in gene_cols}
-        elapsed = _time.time() - t0
-        runtimes_by_method[method] = elapsed
-        method_times.append(f"{method}={elapsed:.0f}s")
+        # Standardize obs column names so runners work with defaults
+        col_rename = {
+            c: std for c, std in [
+                (participant_col, "participant"),
+                (arm_col, "arm"),
+                (visit_col, "visit"),
+            ]
+            if c != std and c in adata_sub.obs.columns
+        }
+        if col_rename:
+            adata_sub.obs = adata_sub.obs.rename(columns=col_rename)
 
-    print(
-        f"  [sub frac={frac} r={r:03d}] done — {', '.join(method_times)}",
-        flush=True,
-    )
-    return {
-        "frac": frac,
-        "resample": r,
-        "n_sub": len(sub_pids),
-        "pvals": pvals_by_method,
-        "runtimes": runtimes_by_method,
-    }
+        pb_means = pseudobulk_expression(
+            adata_sub, gene_cols,
+            groupby=["participant", "visit", "arm"],
+            log1p=False,
+        )
+        pb_counts = _pseudobulk_counts_from_adata(
+            adata_sub, gene_cols, ["participant", "visit", "arm"]
+        )
+        sim_sub = {
+            "adata": adata_sub,
+            "pseudobulk_means": pb_means,
+            "pseudobulk_counts": pb_counts,
+        }
+
+        import time as _time
+
+        pvals_by_method = {}
+        runtimes_by_method = {}
+        method_times = []
+        for method in methods:
+            t0 = _time.time()
+            try:
+                res = _dispatch_method(method, sim_sub, gene_cols)
+                pvals_by_method[method] = {g: res[g].get("pvalue", np.nan) for g in gene_cols}
+            except TimeoutError:
+                raise  # let the wall-clock alarm propagate
+            except Exception as exc:
+                logger.warning("Subsample frac=%s r=%d method=%s failed: %s", frac, r, method, exc)
+                pvals_by_method[method] = {g: np.nan for g in gene_cols}
+            elapsed = _time.time() - t0
+            runtimes_by_method[method] = elapsed
+            method_times.append(f"{method}={elapsed:.0f}s")
+
+        print(
+            f"  [sub frac={frac} r={r:03d}] done — {', '.join(method_times)}",
+            flush=True,
+        )
+        return {
+            "frac": frac,
+            "resample": r,
+            "n_sub": len(sub_pids),
+            "pvals": pvals_by_method,
+            "runtimes": runtimes_by_method,
+        }
+
+    except TimeoutError as exc:
+        print(f"  [sub frac={frac} r={r:03d}] WALL-CLOCK TIMEOUT — {exc}", flush=True)
+        # Return NaN results so this (frac, resample) appears in completed_pairs
+        # on resume and is not retried.
+        return {
+            "frac": frac,
+            "resample": r,
+            "n_sub": len(sub_pids),
+            "pvals": {method: {g: np.nan for g in gene_cols} for method in methods},
+            "runtimes": {},
+        }
+
+    finally:
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, old_handler)
 
 
 def run_subsampling(

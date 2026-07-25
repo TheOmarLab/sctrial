@@ -46,6 +46,7 @@ def _run_permutation_iteration(args: tuple) -> list[dict]:
     The third element of args may be either an in-memory AnnData (n_jobs=1)
     or a path to an h5ad file (parallel workers, avoids pickling).
     """
+    import signal
     import time
     import warnings
 
@@ -63,79 +64,119 @@ def _run_permutation_iteration(args: tuple) -> list[dict]:
         visit_col,
     ) = args
 
-    from .orchestrator import _dispatch_method, _pseudobulk_counts_from_adata
+    # Hard wall-clock limit per permutation. If any step (pseudobulk, R session,
+    # etc.) hangs beyond this, SIGALRM fires and propagates out to the executor,
+    # which logs a warning and moves on. Runners re-raise TimeoutError so it
+    # cannot be silently swallowed by their broad except clauses.
+    _WALL_CLOCK_SECS = 3600
 
-    if isinstance(adata_or_path, (str, Path)):
-        import anndata as ad
+    def _wall_timeout(signum, frame):
+        raise TimeoutError(
+            f"Permutation {perm_idx} exceeded {_WALL_CLOCK_SECS}s wall-clock limit"
+        )
 
-        adata = ad.read_h5ad(adata_or_path)
-    else:
-        adata = adata_or_path
+    old_handler = signal.signal(signal.SIGALRM, _wall_timeout)
+    signal.alarm(_WALL_CLOCK_SECS)
 
-    rng = np.random.default_rng(seed)
+    try:
+        from .orchestrator import _dispatch_method, _pseudobulk_counts_from_adata
 
-    if design_type == "two_arm":
-        adata_perm = _permute_arms(adata, participant_col, arm_col, rng)
-    else:
-        adata_perm = _permute_visits(adata, participant_col, visit_col, rng)
+        if isinstance(adata_or_path, (str, Path)):
+            import anndata as ad
 
-    # Standardize obs column names so _dispatch_method runners work with defaults
-    col_rename = {
-        c: std for c, std in [
-            (participant_col, "participant"),
-            (arm_col, "arm"),
-            (visit_col, "visit"),
+            adata = ad.read_h5ad(adata_or_path)
+        else:
+            adata = adata_or_path
+
+        rng = np.random.default_rng(seed)
+
+        if design_type == "two_arm":
+            adata_perm = _permute_arms(adata, participant_col, arm_col, rng)
+        else:
+            adata_perm = _permute_visits(adata, participant_col, visit_col, rng)
+
+        # Standardize obs column names so _dispatch_method runners work with defaults
+        col_rename = {
+            c: std for c, std in [
+                (participant_col, "participant"),
+                (arm_col, "arm"),
+                (visit_col, "visit"),
+            ]
+            if c != std and c in adata_perm.obs.columns
+        }
+        if col_rename:
+            adata_perm.obs = adata_perm.obs.rename(columns=col_rename)
+
+        from sctrial.stats.pseudobulk import pseudobulk_expression
+
+        pb_means = pseudobulk_expression(
+            adata_perm,
+            gene_cols,
+            groupby=["participant", "visit", "arm"],
+            log1p=False,
+        )
+        pb_counts = _pseudobulk_counts_from_adata(
+            adata_perm, gene_cols, ["participant", "visit", "arm"]
+        )
+        sim = {"adata": adata_perm, "pseudobulk_means": pb_means, "pseudobulk_counts": pb_counts}
+
+        rows = []
+        method_times = []
+        for method in methods:
+            t0 = time.time()
+            try:
+                results = _dispatch_method(method, sim, gene_cols)
+            except TimeoutError:
+                raise  # let the wall-clock alarm propagate
+            except Exception as exc:
+                logger.warning("Permutation %d, method %s failed: %s", perm_idx, method, exc)
+                results = {g: {"pvalue": np.nan} for g in gene_cols}
+            elapsed = time.time() - t0
+            method_times.append(f"{method}={elapsed:.0f}s")
+
+            for gene in gene_cols:
+                r = results.get(gene, {})
+                rows.append(
+                    {
+                        "permutation": perm_idx,
+                        "method": method,
+                        "gene": gene,
+                        "pvalue": r.get("pvalue", np.nan),
+                        "beta": r.get("beta", np.nan),
+                        "converged": r.get("converged", np.nan),
+                        "failure_mode": r.get("failure_mode", None),
+                        "runtime_seconds": elapsed,
+                    }
+                )
+
+        print(
+            f"  [perm {perm_idx:04d}] done — {', '.join(method_times)}",
+            flush=True,
+        )
+        return rows
+
+    except TimeoutError as exc:
+        print(f"  [perm {perm_idx:04d}] WALL-CLOCK TIMEOUT — {exc}", flush=True)
+        # Return NaN rows so this permutation appears in completed_perms on resume
+        # and is not retried (same seed → same degenerate dataset every time).
+        return [
+            {
+                "permutation": perm_idx,
+                "method": method,
+                "gene": gene,
+                "pvalue": np.nan,
+                "beta": np.nan,
+                "converged": np.nan,
+                "failure_mode": "timeout",
+                "runtime_seconds": np.nan,
+            }
+            for method in methods
+            for gene in gene_cols
         ]
-        if c != std and c in adata_perm.obs.columns
-    }
-    if col_rename:
-        adata_perm.obs = adata_perm.obs.rename(columns=col_rename)
 
-    from sctrial.stats.pseudobulk import pseudobulk_expression
-
-    pb_means = pseudobulk_expression(
-        adata_perm,
-        gene_cols,
-        groupby=["participant", "visit", "arm"],
-        log1p=False,
-    )
-    pb_counts = _pseudobulk_counts_from_adata(
-        adata_perm, gene_cols, ["participant", "visit", "arm"]
-    )
-    sim = {"adata": adata_perm, "pseudobulk_means": pb_means, "pseudobulk_counts": pb_counts}
-
-    rows = []
-    method_times = []
-    for method in methods:
-        t0 = time.time()
-        try:
-            results = _dispatch_method(method, sim, gene_cols)
-        except Exception as exc:
-            logger.warning("Permutation %d, method %s failed: %s", perm_idx, method, exc)
-            results = {g: {"pvalue": np.nan} for g in gene_cols}
-        elapsed = time.time() - t0
-        method_times.append(f"{method}={elapsed:.0f}s")
-
-        for gene in gene_cols:
-            r = results.get(gene, {})
-            rows.append(
-                {
-                    "permutation": perm_idx,
-                    "method": method,
-                    "gene": gene,
-                    "pvalue": r.get("pvalue", np.nan),
-                    "beta": r.get("beta", np.nan),
-                    "converged": r.get("converged", np.nan),
-                    "failure_mode": r.get("failure_mode", None),
-                    "runtime_seconds": elapsed,
-                }
-            )
-
-    print(
-        f"  [perm {perm_idx:04d}] done — {', '.join(method_times)}",
-        flush=True,
-    )
-    return rows
+    finally:
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, old_handler)
 
 
 def run_permutation_test(

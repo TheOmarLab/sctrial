@@ -151,6 +151,8 @@ def run(
             session = _r_session.get_session("dreamlet", _DREAMLET_INIT_R)
             session.run(str(script_file), timeout=1800)
             res = pd.read_csv(output_csv, index_col=0)
+        except TimeoutError:
+            raise  # propagate so the worker's wall-clock alarm can fire
         except Exception as exc:
             logger.warning("dreamlet failed: %s", exc)
             return {g: _fail_result("numerical") for g in gene_cols}
