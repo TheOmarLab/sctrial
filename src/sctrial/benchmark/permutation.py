@@ -282,7 +282,6 @@ def run_permutation_test(
                 )
                 _periodic_save(all_rows, output_path)
     else:
-        import sys
         import tempfile
         from concurrent.futures import ProcessPoolExecutor, as_completed
 
@@ -304,10 +303,10 @@ def run_permutation_test(
 
             n_done = 0
             ctx = mp.get_context("spawn")
-            # max_tasks_per_child (Python 3.11+): restart workers every N tasks to
-            # release accumulated Python heap and R session memory.
-            extra = {"max_tasks_per_child": 30} if sys.version_info >= (3, 11) else {}
-            with ProcessPoolExecutor(max_workers=n_jobs, mp_context=ctx, **extra) as executor:
+            # No max_tasks_per_child: workers live for the job lifetime.
+            # Recycling all workers simultaneously caused every 4×N tasks to
+            # deadlock on NFS when new processes loaded R libraries concurrently.
+            with ProcessPoolExecutor(max_workers=n_jobs, mp_context=ctx) as executor:
                 futures = {
                     executor.submit(_run_permutation_iteration, a): a[0]
                     for a in arg_list
