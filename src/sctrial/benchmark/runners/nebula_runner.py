@@ -194,7 +194,7 @@ def run(
         script_file.write_text(script)
         try:
             session = _r_session.get_session("nebula", _NEBULA_INIT_R)
-            session.run(str(script_file), timeout=14400)
+            session.run(str(script_file), timeout=1800)
             res = pd.read_csv(output_csv, index_col=0)
         except Exception as exc:
             logger.warning("NEBULA failed: %s", exc)
