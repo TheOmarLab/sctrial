@@ -44,6 +44,7 @@ from scipy import stats as sp_stats
 
 from .._shared import (
     COLORS,
+    MANUSCRIPT_DIR,
     SUPP_OUTPUT,
     TrialDesign,
     add_log1p_cpm_layer,
@@ -1631,13 +1632,8 @@ def _panel_power_curves(data: dict) -> plt.Figure | None:
 # NatMeth signal-fraction benchmark CSV (H: pure-null FPR; I: runtime; J: QQ)
 # ======================================================================
 
-_BENCHMARK_CSV = (
-    Path(__file__).resolve().parents[4]
-    / "manuscript"
-    / "benchmark"
-    / "sensitivity"
-    / "sensitivity_combined.csv"
-)
+# See figure3: derive from MANUSCRIPT_DIR so the HPC checkout depth is honoured.
+_BENCHMARK_CSV = MANUSCRIPT_DIR / "benchmark" / "sensitivity" / "sensitivity_combined.csv"
 
 _BENCH_METHODS = ["wilcoxon_paired", "nebula", "dreamlet", "sctrial_did"]
 _BENCH_METHOD_LABELS = {

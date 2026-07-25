@@ -49,6 +49,7 @@ from sctrial import add_log1p_cpm_layer, cohens_d_from_did, effect_size_ci
 from .._shared import (
     COLORS,
     MAIN_OUTPUT,
+    MANUSCRIPT_DIR,
     TrialDesign,
     apply_style,
     between_arm_comparison,
@@ -528,10 +529,11 @@ def _prepare_scalability_data() -> dict:
 # NatMeth signal-fraction benchmark (panels C–E)
 # ======================================================================
 
-_BENCHMARK_CSV = (
-    Path(__file__).resolve().parents[4]
-    / "manuscript" / "benchmark" / "sensitivity" / "sensitivity_combined.csv"
-)
+# Derive from MANUSCRIPT_DIR (which honours SCTRIAL_MANUSCRIPT_DIR) rather than a
+# hardcoded parents[4]: the checkout depth differs between the local tree and the
+# HPC, where parents[4] pointed outside the project and silently blanked the
+# benchmark panels.
+_BENCHMARK_CSV = MANUSCRIPT_DIR / "benchmark" / "sensitivity" / "sensitivity_combined.csv"
 
 _BENCH_METHODS = ["wilcoxon_paired", "nebula", "dreamlet", "sctrial_did"]
 _BENCH_METHOD_LABELS = {
