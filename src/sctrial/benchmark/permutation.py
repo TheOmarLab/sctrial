@@ -124,6 +124,10 @@ def _run_permutation_iteration(args: tuple) -> list[dict]:
                     "method": method,
                     "gene": gene,
                     "pvalue": r.get("pvalue", np.nan),
+                    "beta": r.get("beta", np.nan),
+                    "converged": r.get("converged", np.nan),
+                    "failure_mode": r.get("failure_mode", None),
+                    "runtime_seconds": elapsed,
                 }
             )
 

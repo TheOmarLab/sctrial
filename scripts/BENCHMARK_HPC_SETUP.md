@@ -79,10 +79,10 @@ Steps 2 and 3 are independent and can run at the same time.
 
 ### Step 4 — Update the working directory path
 
-Both benchmark SLURM scripts contain a placeholder `cd` path. Update it to your repo location:
+All benchmark SLURM scripts contain a placeholder `cd` path. Update it to your repo location:
 
 ```bash
-# In scripts/slurm_benchmark.sh and scripts/slurm_sensitivity.sh, change:
+# In scripts/slurm_benchmark.sh, slurm_sensitivity.sh, and slurm_realdata.sh, change:
 cd /PATH/TO/sctrial   # ← update to your HPC project path
 # to:
 cd /your/actual/path/to/sctrial
@@ -92,9 +92,9 @@ cd /your/actual/path/to/sctrial
 
 ## Running the Benchmarks
 
-Both jobs can be submitted at the same time.
+All three jobs are independent and can be submitted at the same time.
 
-### Sensitivity benchmark 
+### Sensitivity benchmark
 
 ```bash
 sbatch scripts/slurm_sensitivity.sh
@@ -117,6 +117,21 @@ sbatch scripts/slurm_benchmark.sh
 - **Output**: `manuscript/benchmark/simulation/`
 - **SLURM logs**: `benchmark_<jobid>.out` / `benchmark_<jobid>.err`
 
+### Real-data benchmark (TNBC)
+
+```bash
+sbatch scripts/slurm_realdata.sh
+```
+
+- **Time limit**: 48h
+- **Resources**: 1 node, 32 CPUs, 256 GB RAM
+- **What it runs**: Participant-label permutation test (1000 permutations) and participant subsampling (3 fractions × 100 resamples) on the Zhang et al. TNBC dataset
+- **Workers**: 4 parallel workers (memory-limited — each loads the TNBC AnnData + runs R)
+- **Output**: `manuscript/benchmark/realdata/`
+- **SLURM logs**: `realdata_<jobid>.out` / `realdata_<jobid>.err`
+
+The real-data benchmark validates null calibration (permutation p-values should be uniform) and ranking reproducibility (Spearman ρ and Jaccard@20 at reduced sample sizes). Results are checkpointed every 50 completions, so partial runs survive job timeouts and can be resumed by resubmitting the same script.
+
 ---
 
 ## Output Files
@@ -125,11 +140,24 @@ sbatch scripts/slurm_benchmark.sh
 |------|----------|
 | `manuscript/benchmark/simulation/` | Per-scenario CSV results from the main benchmark |
 | `manuscript/benchmark/sensitivity/` | Per-scenario CSV results from the sensitivity benchmark |
+| `manuscript/benchmark/realdata/permutation_tnbc.csv` | Permutation null p-values (columns: `permutation`, `method`, `gene`, `pvalue`, `beta`, `converged`, `failure_mode`, `runtime_seconds`) |
+| `manuscript/benchmark/realdata/subsampling_tnbc.csv` | Subsampling reproducibility metrics (columns: `fraction`, `resample`, `method`, `spearman_rho`, `jaccard_top20`, `n_participants`, `n_valid_genes`, `runtime_seconds`) |
 | `benchmark_<jobid>.out` / `.err` | SLURM stdout/stderr for the main benchmark job |
 | `sensitivity_<jobid>.out` / `.err` | SLURM stdout/stderr for the sensitivity benchmark job |
+| `realdata_<jobid>.out` / `.err` | SLURM stdout/stderr for the real-data benchmark job |
 | `r_install_<jobid>.out` / `.err` | SLURM logs for the R install job |
 
-Output CSVs are written incrementally — completed scenarios are saved as they finish, so partial results are preserved if the job times out.
+Output CSVs are written incrementally — completed scenarios are saved as they finish, so partial results are preserved if a job times out.
+
+### Plotting real-data benchmark results
+
+After the real-data benchmark completes (or partially completes), generate figures with:
+
+```bash
+python scripts/plot_realdata_benchmark.py
+```
+
+Figures are saved to `manuscript/benchmark/realdata/figures/`. The script skips panels for columns that are absent in the CSV (safe to run on partial results).
 
 ---
 

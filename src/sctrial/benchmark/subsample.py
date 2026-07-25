@@ -74,6 +74,7 @@ def _run_subsample_iteration(args: tuple) -> dict:
     import time as _time
 
     pvals_by_method = {}
+    runtimes_by_method = {}
     method_times = []
     for method in methods:
         t0 = _time.time()
@@ -83,13 +84,21 @@ def _run_subsample_iteration(args: tuple) -> dict:
         except Exception as exc:
             logger.warning("Subsample frac=%s r=%d method=%s failed: %s", frac, r, method, exc)
             pvals_by_method[method] = {g: np.nan for g in gene_cols}
-        method_times.append(f"{method}={_time.time()-t0:.0f}s")
+        elapsed = _time.time() - t0
+        runtimes_by_method[method] = elapsed
+        method_times.append(f"{method}={elapsed:.0f}s")
 
     print(
         f"  [sub frac={frac} r={r:03d}] done — {', '.join(method_times)}",
         flush=True,
     )
-    return {"frac": frac, "resample": r, "n_sub": len(sub_pids), "pvals": pvals_by_method}
+    return {
+        "frac": frac,
+        "resample": r,
+        "n_sub": len(sub_pids),
+        "pvals": pvals_by_method,
+        "runtimes": runtimes_by_method,
+    }
 
 
 def run_subsampling(
@@ -205,6 +214,7 @@ def run_subsampling(
             if len(common) > 5:
                 rho, _ = spearmanr(full[common], sub_pvals[common])
             jaccard = compute_topk_jaccard(full, sub_pvals, k=20)
+            n_valid = int(sub_pvals.notna().sum())
             out.append({
                 "fraction": item["frac"],
                 "resample": item["resample"],
@@ -212,6 +222,8 @@ def run_subsampling(
                 "spearman_rho": rho,
                 "jaccard_top20": jaccard,
                 "n_participants": item["n_sub"],
+                "n_valid_genes": n_valid,
+                "runtime_seconds": item.get("runtimes", {}).get(method, np.nan),
             })
         return out
 
