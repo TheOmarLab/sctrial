@@ -264,21 +264,23 @@ def run_subsampling(
         path.parent.mkdir(parents=True, exist_ok=True)
         pd.DataFrame(rows).to_csv(path, index=False)
 
-    # Resume: load existing partial results and skip completed (frac, resample) pairs
+    # Resume: a (fraction, resample) pair is complete only when ALL expected
+    # methods have rows — so adding/fixing a method re-runs only what's missing.
     all_rows: list[dict] = []
     completed_pairs: set[tuple] = set()
     if output_path and Path(output_path).exists():
         try:
             existing = pd.read_csv(output_path)
-            # Each (fraction, resample) pair has one row per method — deduplicate
+            expected_methods = set(methods)
             completed_pairs = {
-                (float(row["fraction"]), int(row["resample"]))
-                for _, row in existing.iterrows()
+                (float(frac), int(r))
+                for (frac, r), grp in existing.groupby(["fraction", "resample"])
+                if set(grp["method"].unique()) >= expected_methods
             }
             all_rows = existing.to_dict("records")
             print(
                 f"[{_ts()}] Resuming: {len(completed_pairs)} (frac, resample) pairs "
-                f"already done — skipping those.",
+                f"fully done — skipping those.",
                 flush=True,
             )
         except Exception as exc:

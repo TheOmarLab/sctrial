@@ -62,6 +62,15 @@ def _run_from_pseudobulk(
     pre_df = pre_df.loc[common]
     post_df = post_df.loc[common]
 
+    # Detect arm labels — support non-standard labels (e.g. TNBC "anti-PDL1+Chemo"/"Chemo")
+    arm_vals = df["arm"].dropna().unique().tolist() if "arm" in df.columns else []
+    if "Treated" in arm_vals and "Control" in arm_vals:
+        _treated_label, _control_label = "Treated", "Control"
+    elif len(arm_vals) >= 2:
+        _treated_label, _control_label = sorted(arm_vals)[-1], sorted(arm_vals)[0]
+    else:
+        _treated_label, _control_label = "Treated", "Control"
+
     for gene in gene_cols:
         try:
             # Participant-level change scores
@@ -83,8 +92,8 @@ def _run_from_pseudobulk(
             else:
                 # Two-arm DiD: Welch t-test on Δ_treated vs Δ_control
                 arms = pre_df["arm"]
-                treated_mask = arms == "Treated"
-                control_mask = arms == "Control"
+                treated_mask = arms == _treated_label
+                control_mask = arms == _control_label
 
                 delta_treat = delta[treated_mask.values]
                 delta_ctrl = delta[control_mask.values]

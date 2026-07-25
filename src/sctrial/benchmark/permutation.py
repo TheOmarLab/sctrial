@@ -229,17 +229,24 @@ def run_permutation_test(
     def _ts() -> str:
         return datetime.datetime.now().strftime("%H:%M:%S")
 
-    # Resume: load any existing partial results and skip completed permutations
+    # Resume: load existing results; a permutation is complete only when ALL
+    # expected methods have rows — tracked at (perm, method) level so that
+    # adding a new method or fixing a broken one re-runs only what's missing.
     all_rows: list[dict] = []
     completed_perms: set[int] = set()
     if output_path and Path(output_path).exists():
         try:
             existing = pd.read_csv(output_path)
-            completed_perms = set(existing["permutation"].astype(int).unique())
+            expected_methods = set(methods)
+            completed_perms = {
+                int(perm_idx)
+                for perm_idx, grp in existing.groupby("permutation")
+                if set(grp["method"].unique()) >= expected_methods
+            }
             all_rows = existing.to_dict("records")
             print(
                 f"[{_ts()}] Resuming: {len(completed_perms)}/{n_permutations} "
-                f"permutations already done — skipping those.",
+                f"permutations fully done — skipping those.",
                 flush=True,
             )
         except Exception as exc:

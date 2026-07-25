@@ -69,6 +69,14 @@ def run(
     delta = post.loc[common, gene_cols] - pre.loc[common, gene_cols]
     delta[arm_col] = post.loc[common, arm_col]
 
+    # Detect arm labels — support non-standard labels (e.g. TNBC "anti-PDL1+Chemo"/"Chemo")
+    arm_vals = pseudobulk[arm_col].dropna().unique().tolist()
+    if treated_label in arm_vals and control_label in arm_vals:
+        pass  # defaults match
+    elif len(arm_vals) >= 2:
+        treated_label = sorted(arm_vals)[-1]
+        control_label = sorted(arm_vals)[0]
+
     out = {}
     for g in gene_cols:
         try:
