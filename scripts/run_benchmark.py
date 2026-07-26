@@ -190,6 +190,7 @@ def phase_ablation(n_jobs: int):
     import pandas as pd
 
     from sctrial.benchmark.ablation import run_ablation
+    from sctrial.benchmark.contracts import prepare_inputs
     from sctrial.benchmark.metrics import summarize_iteration
     from sctrial.benchmark.simulator_v2 import (
         TranscriptomeSimConfig,
@@ -224,10 +225,15 @@ def phase_ablation(n_jobs: int):
                 else {}
             )
             sim = simulate_trial_v2(TranscriptomeSimConfig(effects=effects, **kw))
+            inputs = prepare_inputs(sim, panel)
 
-            results = run_ablation(sim, panel)
+            # Every ablation rung analyses log(1+CPM), so the truth it is scored
+            # against is the log1p_cpm oracle, not the injected beta. Those differ
+            # for low-expression genes at realistic depth.
+            truth = sim["oracle"]["log1p_cpm"]
+            results = run_ablation(inputs, panel)
             for var_name, gene_results in results.items():
-                metrics = summarize_iteration(gene_results, sim["truth"], set(effects))
+                metrics = summarize_iteration(gene_results, truth, set(effects))
                 metrics["variant"] = var_name
                 metrics["scenario"] = scenario
                 metrics["iteration"] = it

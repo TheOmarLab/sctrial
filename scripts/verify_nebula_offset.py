@@ -119,7 +119,8 @@ def main() -> None:
                     "participant": blk["participant"],
                     "visit": blk["visit"],
                     "arm": blk["arm"],
-                }
+                },
+                index=range(counts.shape[0]),
             )
         )
     X = np.vstack(blocks)
