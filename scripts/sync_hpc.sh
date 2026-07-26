@@ -48,6 +48,10 @@ case "${1:-check}" in
       find . -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null; \
       find . -name '*.pyc' -delete 2>/dev/null; \
       micromamba run -n sctrial pip install -e . --no-deps --force-reinstall -q && \
+      printf '{\"git_commit\": \"%s\", \"git_branch\": \"%s\", \"git_describe\": \"%s\", \"git_dirty\": %s, \"captured_on\": \"login\"}\n' \
+        \"\$(git rev-parse HEAD)\" \"$SHA\" \"\$(git describe --tags --always)\" \
+        \"\$(test -z \"\$(git status --porcelain -- src scripts tests manuscript_figures pyproject.toml)\" && echo false || echo true)\" \
+        > .deploy_provenance.json && \
       echo \"remote HEAD:  \$(git rev-parse --short HEAD)\" && \
       echo \"remote dirty: \$(git status --porcelain | wc -l) file(s)\" && \
       micromamba run -n sctrial python -c \"

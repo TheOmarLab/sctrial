@@ -326,6 +326,7 @@ def _build_manifest(cfg, out: Path, dataset: str, summary: dict) -> dict:
     """
     import hashlib
     import platform
+    import shutil
     import subprocess
     from dataclasses import asdict
 
@@ -333,15 +334,45 @@ def _build_manifest(cfg, out: Path, dataset: str, summary: dict) -> dict:
 
     from sctrial.benchmark.simulator_v2 import TranscriptomeSimConfig, eligible_panel_genes
 
+    # Provenance captured at DEPLOY time, on a node where git exists.
+    #
+    # git is NOT on PATH on this cluster's compute nodes. Every git call therefore
+    # returned the string "unavailable", which meant git_commit recorded
+    # "unavailable" -- a manifest with no provenance at all, written silently --
+    # and bool("unavailable") is True, so the dirty guard refused for a reason
+    # that had nothing to do with the tree being dirty. A manifest that cannot
+    # identify the code is worse than no manifest, because it looks like one.
+    _deployed: dict = {}
+    _dep_file = REPO / ".deploy_provenance.json"
+    if _dep_file.exists():
+        try:
+            _deployed = json.loads(_dep_file.read_text())
+        except Exception:
+            _deployed = {}
+
+    _git_available = subprocess.run(
+        ["git", "--version"], capture_output=True, text=True
+    ).returncode == 0 if shutil.which("git") else False
+
     def _git(*a):
+        if not _git_available:
+            return ""
         try:
             return subprocess.run(
                 ["git", "-C", str(REPO), *a], capture_output=True, text=True, timeout=60
             ).stdout.strip()
         except Exception:
-            return "unavailable"
+            return ""
 
-    def _code_dirty() -> str:
+    if not _git_available and not _deployed:
+        raise SystemExit(
+            "cannot establish provenance: git is unavailable here and no "
+            f"{_dep_file.name} was written by `scripts/sync_hpc.sh deploy`. "
+            "Refusing to record a manifest that cannot identify the code it "
+            "describes. Deploy first."
+        )
+
+    def _code_dirty() -> str:  # noqa: D401
         """Uncommitted changes to CODE, which is what reproducibility depends on.
 
         A bare `git status --porcelain` also reports untracked scratch at the repo
@@ -379,10 +410,13 @@ def _build_manifest(cfg, out: Path, dataset: str, summary: dict) -> dict:
     targets = out / f"{dataset}_sim_targets.json"
     npz = out / f"{dataset}_empirical.npz"
     return {
-        "git_commit": _git("rev-parse", "HEAD"),
-        "git_branch": _git("rev-parse", "--abbrev-ref", "HEAD"),
-        "git_dirty": bool(_code_dirty()),
+        "git_commit": _git("rev-parse", "HEAD") or _deployed.get("git_commit", ""),
+        "git_branch": _git("rev-parse", "--abbrev-ref", "HEAD")
+        or _deployed.get("git_branch", ""),
+        "git_dirty": bool(_code_dirty()) if _git_available
+        else bool(_deployed.get("git_dirty", True)),
         "git_dirty_files": _code_dirty().splitlines()[:20],
+        "provenance_source": "local_git" if _git_available else "deploy_capture",
         "git_untracked_noncode": len(
             [ln for ln in _git("status", "--porcelain").splitlines() if ln.startswith("??")]
         ),
