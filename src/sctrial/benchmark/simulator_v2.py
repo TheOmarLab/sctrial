@@ -62,9 +62,19 @@ __all__ = [
     "make_signal",
     "nested_panels",
     "load_empirical",
+    "build_params",
+    "iter_pv_blocks",
+    "oracle_estimands",
 ]
 
 SignalArch = Literal["balanced", "heterogeneous", "one_directional"]
+
+# Genes generated per pass inside a participant-visit block. Bounds the float64
+# gamma/Poisson transient; see the note in ``iter_pv_blocks``.
+_GENE_CHUNK = 2000
+
+# Gauss-Hermite nodes for the oracle expectation over the random effects.
+_QUAD_NODES = 64
 
 
 def load_tnbc_targets(path: str | Path | None = None) -> dict:
@@ -119,6 +129,14 @@ class TranscriptomeSimConfig:
     cells_per_pv_min: int = 147
     cells_per_pv_max: int = 27653
     cells_scale: float = 1.0  # shrink for tractable benchmarking; 1.0 = TNBC scale
+    # SCENARIO parameter, not a calibration: when set, every participant-visit
+    # gets exactly this many cells. Used by the "varying cells" scenarios, where
+    # cell yield is the thing being varied and must therefore be controlled
+    # rather than resampled. Reported in the scenario name.
+    cells_per_pv_fixed: int | None = None
+    # SCENARIO parameter: fraction of participants whose Post visit is missing.
+    # Tests robustness to incomplete follow-up, which is the norm in real trials.
+    missing_rate: float = 0.0
 
     # --- library size (per cell) ---
     # Prefer EMPIRICAL RESAMPLING: the lognormal fit reproduced the median poorly
@@ -137,21 +155,31 @@ class TranscriptomeSimConfig:
     gene_rate_log_sd: float = 2.6428
 
     # --- NB dispersion: var = mu + phi * mu^2, phi_g lognormal ---
-    # CALIBRATED WITHIN A HOMOGENEOUS POPULATION. The simulator generates one cell
-    # population, so its dispersion must be the WITHIN-cell-type value. Estimating
-    # it on cell-type-pooled TNBC absorbs between-cell-type mean differences into
-    # alpha: conditioning on participant x visit alone gives 0.774, adding cell type
-    # gives 0.275 (0.35x) - i.e. 65% of the apparent "cell-level" dispersion was
-    # cell-type heterogeneity. The implausible alpha = 10-30 at low expression seen
-    # in the MARGINAL curve is absent from both conditional curves; the true
-    # cell-level relationship is nearly flat (0.34 -> 0.23, slope -0.077).
+    # CALIBRATED WITHIN A HOMOGENEOUS POPULATION, BY GAMMA-POISSON MLE.
+    #
+    # The simulator generates ONE cell population, so its generating dispersion must
+    # be the WITHIN-cell-type value. Estimating it on cell-type-pooled TNBC absorbs
+    # between-cell-type mean differences into alpha: conditioning on participant x
+    # visit alone gives 0.774, adding cell type gives 0.275 (0.35x) - i.e. 65% of the
+    # apparent "cell-level" dispersion was unmodelled cell-type heterogeneity. The
+    # implausible alpha = 10-30 at low expression seen in the MARGINAL curve is
+    # absent from both conditional curves; the true cell-level relationship is
+    # nearly flat. This is the same reason reference-based simulators (muscat,
+    # scDesign3) estimate parameters within subpopulations rather than pooling.
+    #
+    # ESTIMATOR: Cox-Reid adjusted profile-likelihood Gamma-Poisson MLE per gene with
+    # empirical-Bayes shrinkage toward a mean-dependent trend
+    # (``sctrial.benchmark.calibration.conditional_dispersion``), NOT a raw
+    # method-of-moments estimate. Strata are participant x visit x cell type and are
+    # therefore small; MoM is badly biased there, and the Cox-Reid term is what
+    # removes the bias from estimating one mean per stratum.
     #
     # CONSEQUENCE FOR VALIDATION: the simulated MARGINAL mean-variance curve is not
     # expected to match cell-type-pooled TNBC, because the simulation has no cell
     # types to pool. The acceptance criterion is agreement of the CONDITIONAL curve.
-    # Matching the pooled marginal by inflating a latent parameter would be
+    # Matching the pooled marginal by tuning a latent parameter would be
     # unidentifiable - many hierarchy/dispersion combinations reproduce the same
-    # marginal, so the loop could compensate a miscalibrated hierarchy.
+    # marginal, so such a loop can silently compensate a miscalibrated hierarchy.
     #
     # PARAMETERISATION (stated explicitly - this is a documented trap):
     #   THIS SIMULATOR uses NB2:            Var(Y) = mu + phi * mu^2
@@ -161,22 +189,13 @@ class TranscriptomeSimConfig:
     #     "dispersion" is the RECIPROCAL of this one. Do not pass one for the other.
     #   The naive estimator (Var(Y) - E(Y)) / E(Y)^2 computed ACROSS ALL CELLS does
     #     NOT estimate this parameter once hierarchical terms exist: it absorbs
-    #     b_ig, u_igt and library-size heterogeneity. Calibration therefore targets
-    #     the CONDITIONAL cell-level dispersion (within participant-visit, offset by
-    #     library size), and the simulator is validated on the observable
-    #     mean-variance RELATIONSHIP rather than on a single latent scalar.
-    # Conditional cell-level NB2 alpha measured WITHIN participant-visit with a
-    # library-size offset (scripts/regen/disp_cond.py): 0.788. The marginal
-    # estimator across all cells gives 2.837 because it also absorbs b_ig, u_igt and
-    # library heterogeneity - a 3.6x difference, which is why the marginal value
-    # must never be used as the generating parameter.
+    #     b_ig, u_igt and library-size heterogeneity, giving 2.837 against a
+    #     conditional 0.275 - which is why the marginal value must never be used as
+    #     the generating parameter.
     dispersion_median: float = 0.2747
-    # Mean-dependence, calibrated so the MARGINAL (observable) mean-variance curve
-    # matches TNBC -- which is the acceptance criterion, not the latent fit. The
-    # conditional curve gave -0.1911, but generating at that value reproduced only a
-    # -0.1007 marginal slope against TNBC's -0.4598, because the marginal curve also
-    # absorbs the hierarchy. Same conditional-vs-marginal distinction as the
-    # dispersion scalar, one level up. 0.0 restores flat behaviour.
+    # Mean-dependence of the CONDITIONAL curve: log phi_g declines slowly with the
+    # gene's log rate. Fitted on the same conditional estimates, so it is on the same
+    # footing as `dispersion_median`. 0.0 restores flat behaviour.
     dispersion_mean_slope: float = -0.0766
     dispersion_log_sd: float = 1.4647
 
@@ -319,6 +338,8 @@ def _draw_cells_per_pv(cfg: TranscriptomeSimConfig, n: int, rng, emp=None) -> np
     biosample is exactly the phenomenon pseudobulk precision weighting addresses,
     so its distribution must be right rather than merely its median.
     """
+    if cfg.cells_per_pv_fixed is not None:
+        return np.full(n, max(int(cfg.cells_per_pv_fixed), 1), dtype=int)
     if emp is not None and cfg.use_empirical_cells_per_pv and "cells_per_pv" in emp:
         pool = np.asarray(emp["cells_per_pv"], dtype=float)
         draws = rng.choice(pool, size=n, replace=True)
@@ -334,26 +355,18 @@ def _draw_cells_per_pv(cfg: TranscriptomeSimConfig, n: int, rng, emp=None) -> np
     return np.clip(np.round(draws), lo, hi).astype(int)
 
 
-def simulate_trial_v2(cfg: TranscriptomeSimConfig) -> dict:
-    """Simulate a full transcriptome under the three-level hierarchical NB model.
+def build_params(cfg: TranscriptomeSimConfig) -> dict:
+    """Draw every gene-level and participant-level latent parameter.
 
-    Returns
-    -------
-    dict with
-        ``adata``                cell-level raw counts (sparse), obs has
-                                 participant/visit/arm and the OBSERVED library total
-        ``pseudobulk_counts``    participant x visit summed counts, full transcriptome
-        ``pseudobulk_means``     participant x visit mean counts, full transcriptome
-        ``gene_names``           transcriptome gene names
-        ``panels``               nested panel -> gene names
-        ``truth``                beta_g by gene (the estimand)
-        ``latent``               VALIDATION ONLY: true_library_size, b_ig, u_igt,
-                                 alpha_g, phi_g. Never use as an analysis input.
-        ``config``               the config used
+    Separated from cell generation so that the full simulation
+    (:func:`simulate_trial_v2`) and the calibration gates
+    (:mod:`sctrial.benchmark.gates`, which only need summary statistics and must
+    not materialise 141k x 20k count matrices) consume **one** implementation of
+    the generative model. Two implementations of a generative model is how a
+    calibration silently stops describing the thing it calibrates.
     """
     rng = np.random.default_rng(cfg.seed)
     emp = load_empirical(cfg.empirical_path)
-    _lib_pool = (emp or {}).get("library_sizes")
     G = cfg.n_genes_transcriptome
 
     # --- participants and arms ---
@@ -374,39 +387,29 @@ def simulate_trial_v2(cfg: TranscriptomeSimConfig) -> dict:
     # `gene_rate_log_mean` is the log MEAN COUNT PER CELL, which is larger than the
     # rate by E[L]; using it directly inflated every rate by ~3,147x and produced
     # 15.8M UMIs per cell against a TNBC median of 2,113. Renormalising the
-    # simplex makes this exact and independent of n_genes_transcriptome (the
-    # simulated transcriptome is smaller than the real one, so a fixed offset
-    # would not transfer).
+    # simplex makes this exact and independent of n_genes_transcriptome.
     alpha = rng.normal(cfg.gene_rate_log_mean, cfg.gene_rate_log_sd, size=G)
     alpha -= float(np.log(np.exp(alpha).sum()))  # sum_g exp(alpha_g) == 1
-    # alpha_g centred on the mean-dependent trend: log phi_g = log phi_med
-    #   + slope * (log rate_g - median log rate) + noise
+
     # Centre the random effects MULTIPLICATIVELY. With log mu = log L + alpha + b + u
     # and sum_g exp(alpha_g) = 1, the per-cell total is L * E[exp(b+u)] =
     # L * exp((sd_b^2 + sd_u^2)/2) -- a 1.65x inflation that made every simulated
     # library 1.7x the empirical one. Subtracting the Jensen term restores
     # E[exp(b+u)] = 1 so totals track the resampled library sizes, without changing
     # the variance structure that sets the pre/post correlation.
-    _re_jensen = (cfg.participant_sd**2 + cfg.participant_visit_sd**2) / 2.0
+    re_jensen = (cfg.participant_sd**2 + cfg.participant_visit_sd**2) / 2.0
 
-    # Mean-dependent dispersion from the EMPIRICAL curve, interpolated. A single
-    # log-linear slope cannot reproduce the observed shape: TNBC alpha drops sharply
-    # across the lowest deciles (10.6 -> 3.4) then FLATTENS near 2.0, whereas any
-    # slope declines smoothly. Interpolating the measured curve reproduces both the
-    # steep low-expression regime and the high-expression plateau.
-    _curve = (emp or {}).get("alpha_curve_x"), (emp or {}).get("alpha_curve_y")
-    _log_mu_g = alpha + float(np.log(np.mean(_lib_pool) if _lib_pool is not None else 3000.0))
-    if False:  # DISABLED: alpha_curve_* is the MARGINAL curve; using it to GENERATE
-        # compounds the hierarchy inflation on top of it (measured 4.6-9.2x overshoot).
-        # Gate C needs an iterative calibration loop: generate -> measure marginal ->
-        # adjust the generating curve -> repeat. Falls back to the log-linear form.
-        _log_alpha = np.interp(_log_mu_g, np.asarray(_curve[0]), np.asarray(_curve[1]))
-    else:
-        _log_alpha = np.log(cfg.dispersion_median) + cfg.dispersion_mean_slope * (
-            alpha - float(np.median(alpha))
-        )
-    phi = np.exp(_log_alpha + rng.normal(0.0, cfg.dispersion_log_sd, size=G))
+    # Mean-dependent dispersion on the CONDITIONAL scale. The empirical marginal
+    # alpha curve (`alpha_curve_*` in the targets file) must NOT be used to generate:
+    # it already contains the hierarchy, so feeding it back in compounds that
+    # variance on top of itself (measured 4.6-9.2x overshoot). The generating
+    # relationship is the conditional one; the marginal is a validation output.
+    log_alpha = np.log(cfg.dispersion_median) + cfg.dispersion_mean_slope * (
+        alpha - float(np.median(alpha))
+    )
+    phi = np.exp(log_alpha + rng.normal(0.0, cfg.dispersion_log_sd, size=G))
     phi = np.clip(phi, 1e-3, 1e3)
+
     gene_names = [f"gene_{i}" for i in range(G)]
     gidx = {g: i for i, g in enumerate(gene_names)}
 
@@ -418,34 +421,79 @@ def simulate_trial_v2(cfg: TranscriptomeSimConfig) -> dict:
 
     # --- level 1 and level 2 random effects ---
     sd_b, sd_u = cfg.participant_sd, cfg.participant_visit_sd
-    b_ig = rng.normal(0.0, sd_b, size=(len(participants), G)) if sd_b > 0 else np.zeros((len(participants), G))
-    u_igt = (
-        rng.normal(0.0, sd_u, size=(len(participants), len(visits), G))
-        if sd_u > 0
-        else np.zeros((len(participants), len(visits), G))
-    )
+    shape_b = (len(participants), G)
+    shape_u = (len(participants), len(visits), G)
+    b_ig = rng.normal(0.0, sd_b, size=shape_b) if sd_b > 0 else np.zeros(shape_b)
+    u_igt = rng.normal(0.0, sd_u, size=shape_u) if sd_u > 0 else np.zeros(shape_u)
 
     # --- cells ---
     n_pv = len(participants) * len(visits)
     cells_pv = _draw_cells_per_pv(cfg, n_pv, rng, emp=emp)
 
-    blocks, obs_rows = [], []
-    pb_sum_rows, pb_mean_rows = [], []
+    # Missing Post visits. Drawn here rather than in the block loop so the set is
+    # part of the same seeded draw as everything else and a replicate is fully
+    # reproducible from its seed.
+    dropped: set[tuple[str, str]] = set()
+    if cfg.missing_rate > 0:
+        n_drop = int(round(len(participants) * cfg.missing_rate))
+        if n_drop:
+            for i in rng.choice(len(participants), size=n_drop, replace=False):
+                dropped.add((participants[int(i)], "Post"))
+
+    return {
+        "dropped": dropped,
+        "rng": rng,
+        "emp": emp,
+        "G": G,
+        "participants": participants,
+        "arms": arms,
+        "visits": visits,
+        "gene_names": gene_names,
+        "gene_index": gidx,
+        "alpha": alpha,
+        "phi": phi,
+        "beta": beta,
+        "gamma": gamma,
+        "b_ig": b_ig,
+        "u_igt": u_igt,
+        "cells_pv": cells_pv,
+        "re_jensen": re_jensen,
+        "config": cfg,
+    }
+
+
+def iter_pv_blocks(cfg: TranscriptomeSimConfig, params: dict | None = None):
+    """Yield one participant-visit block of cell-level counts at a time.
+
+    Yielding rather than returning is what makes full-TNBC-scale Monte Carlo
+    calibration tractable: a single replicate is 141k cells x 20,284 genes, which
+    never has to exist at once if the consumer only needs summary statistics.
+
+    Yields
+    ------
+    dict with ``participant``, ``visit``, ``arm``, ``counts`` (n_cells x G int32),
+    ``library`` (the drawn latent L per cell), ``pi``, ``ti``.
+    """
+    p = params if params is not None else build_params(cfg)
+    rng, emp = p["rng"], p["emp"]
+    alpha, phi, beta, gamma = p["alpha"], p["phi"], p["beta"], p["gamma"]
+    b_ig, u_igt, cells_pv = p["b_ig"], p["u_igt"], p["cells_pv"]
+    re_jensen = p["re_jensen"]
+    shape = 1.0 / phi
+
     k = 0
-    for pi, (pid, arm) in enumerate(zip(participants, arms)):
-        for ti, visit in enumerate(visits):
+    for pi, (pid, arm) in enumerate(zip(p["participants"], p["arms"])):
+        for ti, visit in enumerate(p["visits"]):
             n_cells = int(cells_pv[k])
             k += 1
+            if (pid, visit) in p["dropped"]:
+                continue
             is_post = 1.0 if visit == "Post" else 0.0
             is_treated = 1.0 if arm == "Treated" else 0.0
 
-            # Draw L so the simulated TOTAL counts match the empirical MEDIAN
-            # library size. A cell's total has mean E[L] = exp(mu + sd^2/2); with
-            # many genes the total is near-symmetric, so its median tracks E[L]
-            # rather than exp(mu). Subtracting the Jensen term makes E[L] equal the
-            # calibration target instead of overshooting it by exp(sd^2/2) = 1.4x.
             if emp is not None and cfg.use_empirical_library and "library_sizes" in emp:
-                # Resample the observed depth distribution directly.
+                # Resample the observed depth distribution directly: the lognormal
+                # fit reproduced the median +34% and Q75 +53% off.
                 L = rng.choice(
                     np.asarray(emp["library_sizes"], dtype=float), size=n_cells, replace=True
                 )
@@ -453,39 +501,151 @@ def simulate_trial_v2(cfg: TranscriptomeSimConfig) -> dict:
                 L = rng.lognormal(
                     cfg.lib_log_mean - cfg.lib_log_sd**2 / 2.0, cfg.lib_log_sd, size=n_cells
                 )
-            # log mu = log L + alpha + b + u + gamma*Post + beta*(T*Post)
+
             log_rate = (
                 alpha
                 + b_ig[pi]
                 + u_igt[pi, ti]
                 + gamma * is_post
                 + beta * is_treated * is_post
-                - _re_jensen
+                - re_jensen
             )
-            mu = np.exp(log_rate)[None, :] * L[:, None]
-            # NB via gamma-Poisson: var = mu + phi*mu^2  => shape = 1/phi
-            shape = 1.0 / phi
-            lam = rng.gamma(shape[None, :], mu / shape[None, :])
-            counts = rng.poisson(lam).astype(np.int32)
+            # Generate in GENE CHUNKS. At full TNBC scale a single block is up to
+            # 27,653 cells x 20,284 genes, so the float64 gamma and Poisson
+            # intermediates would peak near 11 GB per worker and make Monte Carlo
+            # calibration impossible to parallelise. Chunking bounds the transient
+            # to the chunk while leaving the output identical in distribution.
+            rate = np.exp(log_rate)
+            counts = np.empty((n_cells, len(alpha)), dtype=np.int32)
+            for c0 in range(0, len(alpha), _GENE_CHUNK):
+                sl = slice(c0, min(c0 + _GENE_CHUNK, len(alpha)))
+                mu = rate[None, sl] * L[:, None]
+                # NB via gamma-Poisson: var = mu + phi*mu^2  => shape = 1/phi
+                lam = rng.gamma(shape[None, sl], mu / shape[None, sl])
+                counts[:, sl] = rng.poisson(lam)
 
-            blocks.append(sp.csr_matrix(counts))
-            obs_rows.append(
-                pd.DataFrame(
-                    {
-                        "participant": pid,
-                        "visit": visit,
-                        "arm": arm,
-                        "true_library_size": L,
-                    }
-                )
+            yield {
+                "participant": pid,
+                "visit": visit,
+                "arm": arm,
+                "counts": counts,
+                "library": L,
+                "pi": pi,
+                "ti": ti,
+            }
+
+
+def oracle_estimands(params: dict) -> dict[str, np.ndarray]:
+    """Per-gene POPULATION truth on each METHOD CLASS's own estimand scale.
+
+    Different methods do not estimate the same functional, so scoring them all
+    against the injected ``beta`` silently penalises whichever method's estimand
+    differs most from it. Two published conclusions have already been produced
+    that way (log2-versus-natural-log, then this).
+
+    ``count_link``
+        The log-link coefficient: exactly ``beta_g``. This is the estimand of
+        NEBULA (NB log link) and of log-CPM pseudobulk models (dreamlet,
+        limma-voom, edgeR): with full-transcriptome normalisation the library
+        reference does not move with a panel-restricted effect, so
+        ``DiD[log CPM_g] = beta_g``.
+
+    ``log1p_cpm``
+        The estimand targeted by sctrial and the Wilcoxon change score: the
+        difference-in-differences of ``log(1 + CPM)`` at participant level.
+        Because ``d/dx log(1+x) = 1/(1+x)`` this equals ``beta_g`` only when
+        CPM >> 1, and is attenuated for low-expression genes at realistic depth.
+        The attenuation is a real property of the estimand and is reported, not
+        corrected away.
+
+    MARGINALISED, NOT CONDITIONED. The expectation is taken over the participant
+    and participant x visit random effects rather than evaluated at their
+    realised values. Conditioning on the realised draw makes the "truth" a random
+    quantity: under a true null it returns values like +0.15 and -0.86 instead of
+    zero, so a perfectly calibrated method would be scored as biased and a null
+    scenario would have a non-null target. The random effects are exactly the
+    variability the standard error is meant to cover.
+
+    The expectation ``E[log(1 + exp(m + eps))]``, ``eps ~ N(0, sigma_b^2 +
+    sigma_u^2)``, is evaluated by Gauss-Hermite quadrature.
+    """
+    cfg = params["config"]
+    alpha, beta, gamma = params["alpha"], params["beta"], params["gamma"]
+    re_jensen = params["re_jensen"]
+    sigma2 = cfg.participant_sd**2 + cfg.participant_visit_sd**2
+
+    nodes, weights = np.polynomial.hermite_e.hermegauss(_QUAD_NODES)
+    weights = weights / np.sqrt(2.0 * np.pi)
+    eps = np.sqrt(sigma2) * nodes
+
+    def _e_log1p_cpm(shift: np.ndarray) -> np.ndarray:
+        """E[log(1 + CPM)] with the log-mean shifted by ``shift`` per gene."""
+        m = np.log(1e6) + alpha + shift - re_jensen
+        # logaddexp(0, z) == log1p(exp(z)) without overflowing for large z.
+        return (np.logaddexp(0.0, m[:, None] + eps[None, :]) * weights[None, :]).sum(axis=1)
+
+    zero = np.zeros_like(alpha)
+    # Treated: (post - pre); Control: (post - pre). gamma is common and cancels,
+    # but it is carried explicitly so a future non-common time effect is handled.
+    treated_delta = _e_log1p_cpm(gamma + beta) - _e_log1p_cpm(zero)
+    control_delta = _e_log1p_cpm(gamma) - _e_log1p_cpm(zero)
+
+    if cfg.design == "single_arm":
+        log1p_cpm = treated_delta
+    else:
+        log1p_cpm = treated_delta - control_delta
+
+    return {"count_link": beta.copy(), "log1p_cpm": log1p_cpm}
+
+
+def simulate_trial_v2(cfg: TranscriptomeSimConfig) -> dict:
+    """Simulate a full transcriptome under the three-level hierarchical NB model.
+
+    Returns
+    -------
+    dict with
+        ``adata``                cell-level raw counts (sparse), obs has
+                                 participant/visit/arm and the OBSERVED library total
+        ``pseudobulk_counts``    participant x visit summed counts, full transcriptome
+        ``pseudobulk_means``     participant x visit mean counts, full transcriptome
+        ``gene_names``           transcriptome gene names
+        ``panels``               nested panel -> gene names
+        ``truth``                beta_g by gene (the injected effect)
+        ``oracle``               per-gene truth on each method class's own estimand
+                                 scale (see :func:`oracle_estimands`)
+        ``latent``               VALIDATION ONLY: b_ig, u_igt, alpha_g, phi_g.
+                                 Never use as an analysis input.
+        ``config``               the config used
+    """
+    params = build_params(cfg)
+    gene_names = params["gene_names"]
+    gidx = params["gene_index"]
+
+    blocks, obs_rows = [], []
+    pb_sum_rows, pb_mean_rows = [], []
+    for blk in iter_pv_blocks(cfg, params=params):
+        counts = blk["counts"]
+        n_cells = counts.shape[0]
+        blocks.append(sp.csr_matrix(counts))
+        obs_rows.append(
+            pd.DataFrame(
+                {
+                    "participant": blk["participant"],
+                    "visit": blk["visit"],
+                    "arm": blk["arm"],
+                    "true_library_size": blk["library"],
+                }
             )
-            s = counts.sum(axis=0)
-            pb_sum_rows.append({"participant": pid, "visit": visit, "arm": arm,
-                                "n_cells": n_cells,
-                                **{g: int(v) for g, v in zip(gene_names, s)}})
-            pb_mean_rows.append({"participant": pid, "visit": visit, "arm": arm,
-                                 "n_cells": n_cells,
-                                 **{g: float(v) for g, v in zip(gene_names, s / n_cells)}})
+        )
+        s = counts.sum(axis=0)
+        meta = {
+            "participant": blk["participant"],
+            "visit": blk["visit"],
+            "arm": blk["arm"],
+            "n_cells": n_cells,
+        }
+        pb_sum_rows.append({**meta, **{g: int(v) for g, v in zip(gene_names, s)}})
+        pb_mean_rows.append({**meta, **{g: float(v) for g, v in zip(gene_names, s / n_cells)}})
 
     X = sp.vstack(blocks, format="csr")
     obs = pd.concat(obs_rows, ignore_index=True)
@@ -497,23 +657,30 @@ def simulate_trial_v2(cfg: TranscriptomeSimConfig) -> dict:
 
     panels = {
         size: [gene_names[i] for i in idx]
-        for size, idx in nested_panels(G, rng=np.random.default_rng(cfg.seed + 1)).items()
+        for size, idx in nested_panels(
+            params["G"], rng=np.random.default_rng(cfg.seed + 1)
+        ).items()
     }
 
+    oracle = oracle_estimands(params)
     return {
         "adata": adata,
         "pseudobulk_counts": pd.DataFrame(pb_sum_rows),
         "pseudobulk_means": pd.DataFrame(pb_mean_rows),
         "gene_names": gene_names,
         "panels": panels,
-        "truth": {g: float(beta[gidx[g]]) for g in cfg.effects if g in gidx},
+        "truth": {g: float(params["beta"][gidx[g]]) for g in cfg.effects if g in gidx},
+        "oracle": {
+            scale: {g: float(vals[gidx[g]]) for g in gene_names}
+            for scale, vals in oracle.items()
+        },
         "latent": {
-            "alpha_g": alpha,
-            "phi_g": phi,
-            "b_ig": b_ig,
-            "u_igt": u_igt,
-            "participants": participants,
-            "arms": arms,
+            "alpha_g": params["alpha"],
+            "phi_g": params["phi"],
+            "b_ig": params["b_ig"],
+            "u_igt": params["u_igt"],
+            "participants": params["participants"],
+            "arms": params["arms"],
         },
         "config": cfg,
     }

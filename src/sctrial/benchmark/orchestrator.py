@@ -1,13 +1,14 @@
-"""Benchmark orchestrator — runs the full simulation grid with parallelization.
+"""Benchmark orchestrator — runs the scenario grid on the transcriptome simulator.
+
+Every method is given the input its estimand assumes (see
+:mod:`sctrial.benchmark.contracts`) and is scored against that estimand, not
+against one shared "true beta". Both of those were wrong in the previous version
+and each produced a published conclusion that did not survive checking.
 
 Usage::
 
     from sctrial.benchmark.orchestrator import run_benchmark
-    results = run_benchmark(n_jobs=25, output_dir="benchmark_results")
-
-Or from command line::
-
-    python -m sctrial.benchmark.orchestrator --n-jobs 25 --output-dir benchmark_results
+    results = run_benchmark(n_jobs=16, output_dir="benchmark_results")
 """
 
 from __future__ import annotations
@@ -20,270 +21,294 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from .simulator import SimulationConfig, simulate_trial
+from .contracts import METHOD_ESTIMAND, prepare_inputs
+from .simulator_v2 import TranscriptomeSimConfig, make_signal, nested_panels, simulate_trial_v2
 
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Scenario definitions (from the locked NatMeth benchmark plan)
+# Scenario definitions
 # ---------------------------------------------------------------------------
 
-_N_GENES = 50
-_N_SIGNAL = 10
+_PANEL = 50
+_SIGNAL_FRACTION = 0.20
 _N_ITERATIONS = 200
-_MEAN_CELLS = 500
+_CELLS = 500
 
-# Core methods
+# Methods reported in the paper.
+#
+# ``limma_voom`` is the Gate G conventional pseudobulk comparator: a reviewer is
+# entitled to ask how the standard tool behaves, and "we excluded it" is not an
+# answer. It carries the repeated measure through ``duplicateCorrelation`` and is
+# permitted to FAIL rather than silently fall back to an unpaired model; the
+# failure rate is itself a reported result.
+#
+# ``edger_qlf`` stays excluded: edgeR-QL has no repeated-measures route for a
+# two-arm design that is not rank-deficient, so including it would compare a
+# different estimand under the same label.
 CORE_METHODS = [
     "sctrial_did",
     "dreamlet",
     "nebula",
     "wilcoxon_paired",
+    "limma_voom",
 ]
 
-# Excluded from benchmark:
-# - edger_qlf: no native repeated-measures support; ~arm*visit without
-#   participant blocking is severely conservative (~0% FPR); participant
-#   FE designs are rank-deficient with nested participants.
-# - limma_voom: duplicateCorrelation crashes at n>=40; participant FE
-#   designs are rank-deficient; unblocked ~arm*visit is conservative.
-# Both lack proper paired-design handling. dreamlet (mixed model)
-# represents the count-based pseudobulk class correctly.
-
-# Internal sensitivity (not headline)
 INTERNAL_METHODS = ["sctrial_mixed"]
 
+# Primary signal architecture. ``one_directional`` is retained but named as a
+# composition stress test: a coordinated shift moves the library-size reference,
+# and about two thirds of the inflation previously attributed to empirical-Bayes
+# moderation is that artifact.
+_PRIMARY_ARCH = "balanced"
 
-def _make_effects(n_signal: int, beta: float, mixed_sign: bool = False) -> dict:
-    """Create effect dict for n_signal genes."""
-    effects = {}
-    for i in range(n_signal):
-        if mixed_sign and i % 2 == 1:
-            effects[f"gene_{i}"] = -beta
-        else:
-            effects[f"gene_{i}"] = beta
-    return effects
+
+def _scenario(
+    name: str,
+    description: str,
+    *,
+    design: str,
+    panel_size: int = _PANEL,
+    signal_fraction: float = 0.0,
+    architecture: str = _PRIMARY_ARCH,
+    magnitude: float = 0.5,
+    **cfg,
+) -> dict:
+    return {
+        "name": name,
+        "description": description,
+        "panel_size": panel_size,
+        "signal_fraction": signal_fraction,
+        "architecture": architecture,
+        "magnitude": magnitude,
+        "config_kwargs": {"design": design, **cfg},
+    }
 
 
 def build_scenario_grid(design: str = "two_arm") -> list[dict]:
-    """Build the full scenario grid for one design family.
+    """Core scenario grid for one design family."""
+    s: list[dict] = []
 
-    Returns list of dicts, each with keys: name, config_kwargs, description.
-    """
-    scenarios = []
-
-    # 1. Complete null
+    # 1. Complete null across sample size
     for n in [8, 12, 20, 40, 60]:
-        scenarios.append(
-            {
-                "name": f"null_n{n}",
-                "description": f"Complete null, n={n} per arm",
-                "config_kwargs": {
-                    "design": design,
-                    "n_per_arm": n,
-                    "n_genes": _N_GENES,
-                    "effects": {},
-                    "mean_cells_per_visit": _MEAN_CELLS,
-                },
-            }
+        s.append(
+            _scenario(
+                f"null_n{n}",
+                f"Complete null, n={n} per arm",
+                design=design,
+                n_per_arm=n,
+                cells_per_pv_fixed=_CELLS,
+            )
         )
 
-    # 2. Null + nuisance heterogeneity
+    # 2. Null with nuisance heterogeneity: larger participant variance and a wide
+    #    cell-yield distribution (resampled rather than fixed).
     for n in [20, 40]:
-        scenarios.append(
-            {
-                "name": f"null_hetero_n{n}",
-                "description": f"Null + high participant SD + imbalanced cells, n={n}",
-                "config_kwargs": {
-                    "design": design,
-                    "n_per_arm": n,
-                    "n_genes": _N_GENES,
-                    "effects": {},
-                    "mean_cells_per_visit": _MEAN_CELLS,
-                    "participant_sd": 0.8,
-                    "cell_count_mode": "lognormal",
-                    "cell_count_cv": 0.8,
-                },
-            }
+        s.append(
+            _scenario(
+                f"null_hetero_n{n}",
+                f"Null, high participant SD + imbalanced cell yield, n={n}",
+                design=design,
+                n_per_arm=n,
+                between_participant_sd=1.5,
+                cells_scale=0.1,
+            )
         )
 
-    # 3. Sparse DE (positive)
+    # 3. Sparse DE, primary (balanced) architecture
     for n in [20, 40, 60]:
         for beta in [0.2, 0.5, 1.0]:
-            scenarios.append(
-                {
-                    "name": f"de_pos_n{n}_b{beta}",
-                    "description": f"Sparse DE (positive), n={n}, beta={beta}",
-                    "config_kwargs": {
-                        "design": design,
-                        "n_per_arm": n,
-                        "n_genes": _N_GENES,
-                        "effects": _make_effects(_N_SIGNAL, beta, mixed_sign=False),
-                        "mean_cells_per_visit": _MEAN_CELLS,
-                    },
-                }
+            s.append(
+                _scenario(
+                    f"de_balanced_n{n}_b{beta}",
+                    f"Sparse DE, balanced signs, n={n}, beta={beta}",
+                    design=design,
+                    n_per_arm=n,
+                    signal_fraction=_SIGNAL_FRACTION,
+                    architecture="balanced",
+                    magnitude=beta,
+                    cells_per_pv_fixed=_CELLS,
+                )
             )
 
-    # 4. Sparse DE (mixed sign)
+    # 4. Heterogeneous effect magnitudes — the most realistic architecture
     for n in [20, 40]:
         for beta in [0.5, 1.0]:
-            scenarios.append(
-                {
-                    "name": f"de_mixed_n{n}_b{beta}",
-                    "description": f"Sparse DE (mixed sign), n={n}, beta={beta}",
-                    "config_kwargs": {
-                        "design": design,
-                        "n_per_arm": n,
-                        "n_genes": _N_GENES,
-                        "effects": _make_effects(_N_SIGNAL, beta, mixed_sign=True),
-                        "mean_cells_per_visit": _MEAN_CELLS,
-                    },
-                }
+            s.append(
+                _scenario(
+                    f"de_hetero_n{n}_b{beta}",
+                    f"Sparse DE, heterogeneous magnitudes, n={n}, beta={beta}",
+                    design=design,
+                    n_per_arm=n,
+                    signal_fraction=_SIGNAL_FRACTION,
+                    architecture="heterogeneous",
+                    magnitude=beta,
+                    cells_per_pv_fixed=_CELLS,
+                )
             )
 
-    # 5. Varying cells
-    for n_cells in [200, 1000, 5000]:
-        scenarios.append(
-            {
-                "name": f"cells_{n_cells}_n40",
-                "description": f"Varying cells ({n_cells}/visit), n=40, beta=0.5",
-                "config_kwargs": {
-                    "design": design,
-                    "n_per_arm": 40,
-                    "n_genes": _N_GENES,
-                    "effects": _make_effects(_N_SIGNAL, 0.5),
-                    "mean_cells_per_visit": n_cells,
-                },
-            }
+    # 5. One-directional COMPOSITION STRESS. Named so no regex on the scenario
+    #    name can pool it with the primary DE scenarios.
+    for n in [20, 40]:
+        s.append(
+            _scenario(
+                f"compstress_onedir_n{n}",
+                f"Composition stress: all signal genes +0.5, n={n}",
+                design=design,
+                n_per_arm=n,
+                signal_fraction=_SIGNAL_FRACTION,
+                architecture="one_directional",
+                cells_per_pv_fixed=_CELLS,
+            )
         )
 
-    # 6. Unequal arms (two-arm only)
+    # 6. Varying cell yield
+    for n_cells in [200, 1000, 5000]:
+        s.append(
+            _scenario(
+                f"cells_{n_cells}_n40",
+                f"Cell yield {n_cells}/visit, n=40",
+                design=design,
+                n_per_arm=40,
+                signal_fraction=_SIGNAL_FRACTION,
+                cells_per_pv_fixed=n_cells,
+            )
+        )
+
+    # 7. Unequal arms (two-arm only)
     if design == "two_arm":
         for ratio in [(3, 7), (5, 10), (10, 20)]:
-            scenarios.append(
-                {
-                    "name": f"imbal_{ratio[0]}v{ratio[1]}",
-                    "description": f"Unequal arms {ratio[0]}:{ratio[1]}, beta=0.5",
-                    "config_kwargs": {
-                        "design": design,
-                        "n_per_arm": sum(ratio),
-                        "n_genes": _N_GENES,
-                        "effects": _make_effects(_N_SIGNAL, 0.5),
-                        "mean_cells_per_visit": _MEAN_CELLS,
-                        "arm_ratio": ratio,
-                    },
-                }
+            s.append(
+                _scenario(
+                    f"imbal_{ratio[0]}v{ratio[1]}",
+                    f"Unequal arms {ratio[0]}:{ratio[1]}",
+                    design=design,
+                    n_per_arm=sum(ratio),
+                    arm_ratio=ratio,
+                    signal_fraction=_SIGNAL_FRACTION,
+                    cells_per_pv_fixed=_CELLS,
+                )
             )
 
-    # 7. Missing visits
+    # 8. Missing post visits
     for rate in [0.1, 0.2]:
-        scenarios.append(
-            {
-                "name": f"missing_{int(rate * 100)}pct_n40",
-                "description": f"Missing {int(rate * 100)}% post visits, n=40, beta=0.5",
-                "config_kwargs": {
-                    "design": design,
-                    "n_per_arm": 40,
-                    "n_genes": _N_GENES,
-                    "effects": _make_effects(_N_SIGNAL, 0.5),
-                    "mean_cells_per_visit": _MEAN_CELLS,
-                    "missing_rate": rate,
-                },
-            }
+        s.append(
+            _scenario(
+                f"missing_{int(rate * 100)}pct_n40",
+                f"{int(rate * 100)}% of Post visits missing, n=40",
+                design=design,
+                n_per_arm=40,
+                missing_rate=rate,
+                signal_fraction=_SIGNAL_FRACTION,
+                cells_per_pv_fixed=_CELLS,
+            )
         )
 
-    return scenarios
+    return s
 
 
 def build_sensitivity_grid(design: str = "two_arm") -> list[dict]:
-    """Build signal-fraction sensitivity scenarios.
+    """Panel size x signal fraction sensitivity.
 
-    Tests how null-gene FPR depends on gene-panel size and signal fraction.
-    Fixed at n=40 per arm, beta=0.5 for signal genes.  Grid:
+    Panels are NESTED subsets of one simulated transcriptome, so a panel-size
+    effect is separable from a gene-identity effect. With independently drawn
+    panels the two are confounded, and "progressive miscalibration with panel
+    size" could not be distinguished from a change in which genes were tested.
 
-        Total genes:      50,  200,  500,  2000
-        Signal fraction:  1%,  5%,  10%,  20%
-
-    Also includes a matched pure-null for each panel size.
-
-    Returns list of dicts with keys: name, config_kwargs, description.
+    Signal counts are reported as REALISED fractions rather than nominal labels:
+    at 50 genes ``round(50 * 0.01)`` is 1 gene, i.e. 2%, and the previous loaders
+    parsed the scenario name rather than the data, manufacturing an apparent
+    panel-size dependence.
     """
-    scenarios = []
+    s: list[dict] = []
     n_per_arm = 40
-    beta = 0.5
-    panel_sizes = [50, 200, 500, 2000]
-    signal_fractions = [0.01, 0.05, 0.10, 0.20]
-
-    for n_genes in panel_sizes:
-        # Pure-null for this panel size
-        scenarios.append(
-            {
-                "name": f"sens_null_g{n_genes}",
-                "description": f"Sensitivity null, {n_genes} genes, n={n_per_arm}",
-                "config_kwargs": {
-                    "design": design,
-                    "n_per_arm": n_per_arm,
-                    "n_genes": n_genes,
-                    "effects": {},
-                    "mean_cells_per_visit": _MEAN_CELLS,
-                },
-            }
-        )
-
-        # Mixed-signal at each fraction
-        for frac in signal_fractions:
-            n_signal = max(1, int(round(n_genes * frac)))
-            scenarios.append(
-                {
-                    "name": f"sens_g{n_genes}_f{int(frac * 100)}",
-                    "description": (
-                        f"Sensitivity: {n_genes} genes, {frac:.0%} signal "
-                        f"({n_signal} DE), beta={beta}"
-                    ),
-                    "config_kwargs": {
-                        "design": design,
-                        "n_per_arm": n_per_arm,
-                        "n_genes": n_genes,
-                        "effects": _make_effects(n_signal, beta, mixed_sign=False),
-                        "mean_cells_per_visit": _MEAN_CELLS,
-                    },
-                }
+    for panel in [50, 200, 500, 2000]:
+        s.append(
+            _scenario(
+                f"sens_null_g{panel}",
+                f"Sensitivity null, {panel}-gene panel, n={n_per_arm}",
+                design=design,
+                n_per_arm=n_per_arm,
+                panel_size=panel,
+                signal_fraction=0.0,
+                cells_per_pv_fixed=_CELLS,
             )
-
-    return scenarios
+        )
+        for frac in [0.01, 0.05, 0.10, 0.20]:
+            realised = max(1, int(round(panel * frac))) / panel
+            for arch in ("balanced", "one_directional"):
+                tag = "" if arch == "balanced" else "_onedir"
+                s.append(
+                    _scenario(
+                        f"sens_g{panel}_f{int(frac * 100)}{tag}",
+                        f"{panel} genes, nominal {frac:.0%} / realised {realised:.1%} "
+                        f"signal, {arch}",
+                        design=design,
+                        n_per_arm=n_per_arm,
+                        panel_size=panel,
+                        signal_fraction=frac,
+                        architecture=arch,
+                        cells_per_pv_fixed=_CELLS,
+                    )
+                )
+    return s
 
 
 # ---------------------------------------------------------------------------
-# Single-iteration worker (for multiprocessing)
+# Single-iteration worker
 # ---------------------------------------------------------------------------
 
 
 def _run_single_iteration(args: tuple) -> list[dict]:
-    """Run all methods on one simulated dataset. Called in worker processes."""
+    """Run every method on one simulated dataset. Executed in worker processes."""
     import warnings
 
     warnings.filterwarnings("ignore")
 
-    scenario_name, iteration, seed, config_kwargs, methods = args
+    scenario_name, iteration, seed, scenario, methods = args
+    kw = dict(scenario["config_kwargs"])
 
-    # For single-arm designs, force time_effect=0 so null scenarios are
-    # truly null (the default 0.1 cancels in two-arm DiD but is detected
-    # by single-arm methods testing Δ vs 0).
-    kw = dict(config_kwargs)
-    if kw.get("design") == "single_arm" and "time_effect" not in kw:
-        kw["time_effect"] = 0.0
+    # A single-arm design tests Delta versus 0, so a common time effect is NOT
+    # removed by the contrast the way it is in a two-arm DiD. Forcing it to zero
+    # keeps a "null" scenario actually null.
+    if kw.get("design") == "single_arm":
+        kw.setdefault("time_effect", 0.0)
 
-    cfg = SimulationConfig(seed=seed, **kw)
+    panel_size = scenario["panel_size"]
+    probe = TranscriptomeSimConfig(seed=seed, **kw)
+
+    # Draw the panel first so the signal is defined on the tested genes, then
+    # build the config with those effects. The panel is a nested subset of the
+    # transcriptome and is reproducible from the seed alone.
+    panels = nested_panels(probe.n_genes_transcriptome, rng=np.random.default_rng(seed + 1))
+    if panel_size not in panels:
+        raise ValueError(f"panel size {panel_size} is not one of {sorted(panels)}")
+    panel_genes = [f"gene_{i}" for i in panels[panel_size]]
+
+    effects = (
+        make_signal(
+            panel_genes,
+            scenario["signal_fraction"],
+            scenario["architecture"],
+            scenario["magnitude"],
+            rng=np.random.default_rng(seed + 2),
+        )
+        if scenario["signal_fraction"] > 0
+        else {}
+    )
+    cfg = TranscriptomeSimConfig(seed=seed, effects=effects, **kw)
+
+    sim = simulate_trial_v2(cfg)
+    inputs = prepare_inputs(sim, panel_genes)
+    oracle = inputs["oracle"]
     design_type = cfg.design
-    sim = simulate_trial(cfg)
-    gene_cols = [f"gene_{i}" for i in range(cfg.n_genes)]
-    signal_genes = set(cfg.effects.keys())
+    signal_genes = set(effects)
 
     rows = []
     for method in methods:
         t0 = time.time()
         try:
-            results = _dispatch_method(method, sim, gene_cols, design_type=design_type)
+            results = _dispatch_method(method, inputs, design_type=design_type)
         except Exception as exc:
             logger.warning(
                 "Method %s failed on %s iter %d: %s", method, scenario_name, iteration, exc
@@ -297,19 +322,27 @@ def _run_single_iteration(args: tuple) -> list[dict]:
                     "converged": False,
                     "failure_mode": "numerical",
                 }
-                for g in gene_cols
+                for g in panel_genes
             }
         elapsed = time.time() - t0
 
-        for gene in gene_cols:
+        estimand = METHOD_ESTIMAND.get(method, "count_link")
+        truth_table = oracle.get(estimand, {})
+        for gene in panel_genes:
             r = results.get(gene, {})
+            injected = effects.get(gene, 0.0)
             rows.append(
                 {
                     "scenario": scenario_name,
                     "iteration": iteration,
                     "method": method,
                     "gene": gene,
-                    "true_beta": cfg.effects.get(gene, 0.0),
+                    # The value THIS method's estimand implies. Scoring every
+                    # method against `injected_beta` compares different
+                    # functionals and penalises whichever differs most from it.
+                    "true_beta": float(truth_table.get(gene, injected)),
+                    "injected_beta": float(injected),
+                    "estimand": estimand,
                     "is_signal": gene in signal_genes,
                     "estimated_beta": r.get("beta", np.nan),
                     "pvalue": r.get("pvalue", np.nan),
@@ -318,110 +351,182 @@ def _run_single_iteration(args: tuple) -> list[dict]:
                     "converged": r.get("converged", False),
                     "failure_mode": r.get("failure_mode", "numerical"),
                     # Wall time for the WHOLE iteration (all genes), matching the
-                    # figure axis "Median runtime per iteration (s)". This was
-                    # previously divided by len(gene_cols), i.e. stored per-gene
-                    # while being plotted and described as per-iteration. That
-                    # understated the cost by the panel size (up to 2000x) and,
-                    # worse, manufactured the "flat runtime scaling" claim:
-                    # per-gene time is naturally flat in panel size, whereas the
-                    # per-iteration cost it was labelled as grows with it.
-                    # NOTE: existing CSVs written before this fix hold per-gene
-                    # values and can be corrected as runtime_seconds * n_genes.
+                    # figure axis "Median runtime per iteration (s)". Storing
+                    # elapsed/n_genes while plotting it as per-iteration
+                    # understated the cost by the panel size and manufactured the
+                    # "flat runtime scaling" claim.
                     "runtime_seconds": elapsed,
+                    "runtime_scope": "per_iteration",
                     "n_per_arm": cfg.n_per_arm,
-                    "mean_cells": cfg.mean_cells_per_visit,
+                    "panel_size": panel_size,
+                    "n_signal_realised": len(signal_genes),
+                    "signal_fraction_realised": len(signal_genes) / max(panel_size, 1),
+                    "architecture": scenario["architecture"],
                 }
             )
 
     return rows
 
 
-def _pseudobulk_counts_from_adata(
-    adata, gene_cols: list[str], groupby: list[str], counts_layer: str = "counts"
-) -> pd.DataFrame:
-    """Return raw integer pseudobulk sums for count-based methods (edgeR/dreamlet/limma)."""
-    layer = counts_layer if counts_layer in adata.layers else None
-    X = adata.layers[layer] if layer is not None else adata.X
-    if hasattr(X, "toarray"):
-        X = X.toarray()
-    X = np.asarray(X)
-    available = [g for g in gene_cols if g in adata.var_names]
-    gene_idx = [int(adata.var_names.get_loc(g)) for g in available]
-    df = adata.obs[groupby].copy()
-    for g, idx in zip(available, gene_idx):
-        df[g] = X[:, idx]
-    return df.groupby(groupby, observed=True)[available].sum().astype(int).reset_index()
+def _dispatch_method(method: str, inputs: dict, design_type: str = "two_arm") -> dict:
+    """Route to a runner with its CONTRACTED input representation.
 
-
-def _dispatch_method(
-    method: str,
-    sim: dict,
-    gene_cols: list[str],
-    design_type: str = "two_arm",
-) -> dict:
-    """Route to the correct runner with the appropriate data representation.
-
-    - sctrial, NEBULA: cell-level AnnData
-    - edgeR, limma-voom, dreamlet: summed-count pseudobulk (true counts)
-    - Wilcoxon (paired delta): mean-expression pseudobulk
-
-    Parameters
-    ----------
-    design_type : str
-        "two_arm" or "single_arm". Determines the statistical model used
-        by R-based runners (interaction vs paired visit).
+    See :mod:`sctrial.benchmark.contracts` for the contract table. Nothing is
+    inferred here: an unknown method raises rather than getting a guessed
+    representation.
     """
-    # Backwards compat: old sim dicts may have "pseudobulk" instead of split keys
-    pb_counts = sim.get("pseudobulk_counts", sim.get("pseudobulk"))
-    pb_means = sim.get("pseudobulk_means", sim.get("pseudobulk"))
+    panel = inputs["panel_genes"]
 
-    # Log-transformed pseudobulk means for methods that need expression-scale
-    # input (sctrial_did, wilcoxon_paired). This ensures all methods report
-    # betas on a comparable log-fold-change scale:
-    #   - edgeR/limma/dreamlet internally log-transform raw counts
-    #   - NEBULA fits a log-link NB model on raw counts
-    #   - sctrial_did and wilcoxon_paired need log-transformed input explicitly
-    if pb_means is not None:
-        pb_log = pb_means.copy()
-        gene_mask = [c for c in gene_cols if c in pb_log.columns]
-        pb_log[gene_mask] = np.log1p(pb_log[gene_mask])
-    else:
-        pb_log = None
-
-    if method == "sctrial_did":
+    if method in ("sctrial_did", "sctrial_mixed"):
         from .runners import sctrial_did
 
-        # Pass log-pseudobulk DataFrame instead of raw cell-level AnnData
-        # so that DiD betas are on log-expression scale, comparable to
-        # edgeR/limma/dreamlet log-fold-changes
-        return sctrial_did.run(pb_log, gene_cols, from_pseudobulk=True, design_type=design_type)
-    elif method == "edger_qlf":
-        from .runners import edger_qlf
-
-        return edger_qlf.run(pb_counts, gene_cols, design_type=design_type)
-    elif method == "limma_voom":
-        from .runners import limma_voom
-
-        return limma_voom.run(pb_counts, gene_cols, design_type=design_type)
-    elif method == "dreamlet":
-        from .runners import dreamlet_runner
-
-        return dreamlet_runner.run(pb_counts, gene_cols, design_type=design_type)
-    elif method == "nebula":
-        from .runners import nebula_runner
-
-        return nebula_runner.run(sim["adata"], gene_cols, design_type=design_type)
-    elif method == "wilcoxon_paired":
+        return sctrial_did.run(
+            inputs["participant_log1p_cpm"],
+            panel,
+            from_pseudobulk=True,
+            design_type=design_type,
+        )
+    if method == "wilcoxon_paired":
         from .runners import wilcoxon_paired
 
-        return wilcoxon_paired.run(pb_log, gene_cols, design_type=design_type)
-    else:
-        raise ValueError(f"Unknown method: {method}")
+        return wilcoxon_paired.run(
+            inputs["participant_log1p_cpm"], panel, design_type=design_type
+        )
+    if method == "dreamlet":
+        from .runners import dreamlet_runner
+
+        return dreamlet_runner.run(
+            inputs["pseudobulk_counts"],
+            panel,
+            design_type=design_type,
+            lib_size=inputs["lib_size"],
+        )
+    if method == "limma_voom":
+        from .runners import limma_voom
+
+        return limma_voom.run(
+            inputs["pseudobulk_counts"],
+            panel,
+            design_type=design_type,
+            lib_size=inputs["lib_size"],
+        )
+    if method == "edger_qlf":
+        from .runners import edger_qlf
+
+        return edger_qlf.run(
+            inputs["pseudobulk_counts"],
+            panel,
+            design_type=design_type,
+            lib_size=inputs["lib_size"],
+        )
+    if method == "nebula":
+        from .runners import nebula_runner
+
+        return nebula_runner.run(
+            inputs["cell_counts"],
+            panel,
+            design_type=design_type,
+            lib_size=inputs["cell_lib_size"],
+        )
+    raise ValueError(f"Unknown method: {method}")
 
 
 # ---------------------------------------------------------------------------
-# Main orchestrator
+# Grid driver
 # ---------------------------------------------------------------------------
+
+
+def _run_grid(
+    grid_fn,
+    designs: list[str],
+    methods: list[str],
+    n_iterations: int,
+    n_jobs: int,
+    output_dir: Path,
+    resume: bool,
+    combined_name: str,
+    seed: int,
+) -> pd.DataFrame:
+    """One driver for both grids.
+
+    The core and sensitivity drivers were previously near-identical copies, and a
+    resume defect fixed in one was not fixed in the other.
+    """
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    rng = np.random.default_rng(seed)
+    all_results = []
+
+    for design in designs:
+        scenarios = grid_fn(design)
+        print(f"\n{'=' * 60}")
+        print(f"Design: {design} — {len(scenarios)} scenarios x {n_iterations} iterations")
+        print(f"Methods: {methods}")
+        print(f"Parallel workers: {n_jobs}")
+        print(f"{'=' * 60}")
+
+        for si, scenario in enumerate(scenarios):
+            name = f"{design}__{scenario['name']}"
+            csv_path = output_dir / f"{name}.csv"
+            seeds = [int(rng.integers(0, 2**31)) for _ in range(n_iterations)]
+
+            if resume and csv_path.exists():
+                existing = pd.read_csv(csv_path)
+                # A partial file is worse than no file: it silently shrinks the
+                # Monte Carlo sample for one cell of the grid while every summary
+                # reports the nominal iteration count.
+                n_done = existing["iteration"].nunique() if "iteration" in existing else 0
+                if n_done == n_iterations:
+                    print(f"  [{si + 1}/{len(scenarios)}] {name} — CACHED, skipping")
+                    all_results.append(existing)
+                    continue
+                print(
+                    f"  [{si + 1}/{len(scenarios)}] {name} — PARTIAL "
+                    f"({n_done}/{n_iterations} iterations), re-running"
+                )
+
+            print(f"  [{si + 1}/{len(scenarios)}] {name}: {scenario['description']}")
+            task_args = [(name, it, seeds[it], scenario, methods) for it in range(n_iterations)]
+
+            t0 = time.time()
+            all_rows: list = []
+            flush_interval = 20
+
+            def _process(i: int, batch: list, _t0=t0, _rows=all_rows, _path=csv_path) -> None:
+                _rows.extend(batch)
+                if (i + 1) % flush_interval == 0:
+                    elapsed = time.time() - _t0
+                    eta = elapsed / (i + 1) * (n_iterations - i - 1)
+                    print(
+                        f"    {i + 1}/{n_iterations} iterations "
+                        f"({elapsed:.0f}s elapsed, ~{eta:.0f}s remaining)",
+                        flush=True,
+                    )
+                    pd.DataFrame(_rows).to_csv(_path, index=False)
+
+            if n_jobs == 1:
+                for i, a in enumerate(task_args):
+                    _process(i, _run_single_iteration(a))
+            else:
+                # 'spawn', never 'fork': a forked worker inherits R/BLAS state and
+                # produced demonstrably wrong results (edgeR FPR 0.002 in-pipeline
+                # versus 0.05 standalone).
+                ctx = mp.get_context("spawn")
+                with ctx.Pool(n_jobs) as pool:
+                    for i, batch in enumerate(pool.imap(_run_single_iteration, task_args)):
+                        _process(i, batch)
+
+            df = pd.DataFrame(all_rows)
+            df.to_csv(csv_path, index=False)
+            all_results.append(df)
+            print(f"    Done in {time.time() - t0:.0f}s -> {csv_path.name}")
+
+    combined = pd.concat(all_results, ignore_index=True)
+    combined_path = output_dir / combined_name
+    combined.to_csv(combined_path, index=False)
+    print(f"\nAll results saved -> {combined_path}")
+    print(f"Total rows: {len(combined):,}")
+    return combined
 
 
 def run_benchmark(
@@ -432,114 +537,20 @@ def run_benchmark(
     output_dir: str | Path = "benchmark_results",
     resume: bool = True,
 ) -> pd.DataFrame:
-    """Run the full NatMeth benchmark grid.
-
-    Parameters
-    ----------
-    designs : list of str
-        Design families to run. Default: ["two_arm", "single_arm"].
-    methods : list of str
-        Methods to benchmark. Default: CORE_METHODS.
-    n_iterations : int
-        Monte Carlo iterations per scenario.
-    n_jobs : int
-        Parallel workers. Use -1 for all cores.
-    output_dir : str or Path
-        Directory for output CSVs and figures.
-    resume : bool
-        If True, skip scenarios that already have results in output_dir.
-
-    Returns
-    -------
-    DataFrame with all results concatenated.
-    """
-    if designs is None:
-        designs = ["two_arm", "single_arm"]
-    if methods is None:
-        methods = CORE_METHODS
+    """Run the core scenario grid."""
     if n_jobs == -1:
         n_jobs = mp.cpu_count()
-
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    rng = np.random.default_rng(2024)
-    all_results = []
-
-    for design in designs:
-        scenarios = build_scenario_grid(design)
-        print(f"\n{'=' * 60}")
-        print(f"Design: {design} — {len(scenarios)} scenarios × {n_iterations} iterations")
-        print(f"Methods: {methods}")
-        print(f"Parallel workers: {n_jobs}")
-        print(f"{'=' * 60}")
-
-        for si, scenario in enumerate(scenarios):
-            name = f"{design}__{scenario['name']}"
-            csv_path = output_dir / f"{name}.csv"
-
-            # Resume support
-            if resume and csv_path.exists():
-                print(f"  [{si + 1}/{len(scenarios)}] {name} — CACHED, skipping")
-                existing = pd.read_csv(csv_path)
-                all_results.append(existing)
-                continue
-
-            print(f"  [{si + 1}/{len(scenarios)}] {name}: {scenario['description']}")
-
-            # Pre-generate seeds
-            seeds = [int(rng.integers(0, 2**31)) for _ in range(n_iterations)]
-
-            # Build task args
-            task_args = [
-                (name, it, seeds[it], scenario["config_kwargs"], methods)
-                for it in range(n_iterations)
-            ]
-
-            t0 = time.time()
-
-            all_rows: list = []
-            flush_interval = 20  # write to disk every 20 iterations
-
-            def _process_iteration(i: int, batch: list) -> None:
-                all_rows.extend(batch)
-                if (i + 1) % flush_interval == 0:
-                    elapsed = time.time() - t0
-                    eta = elapsed / (i + 1) * (n_iterations - i - 1)
-                    print(
-                        f"    {i + 1}/{n_iterations} iterations "
-                        f"({elapsed:.0f}s elapsed, ~{eta:.0f}s remaining)"
-                    )
-                    # Incremental save — protects against crashes
-                    pd.DataFrame(all_rows).to_csv(csv_path, index=False)
-
-            if n_jobs == 1:
-                for i, args in enumerate(task_args):
-                    _process_iteration(i, _run_single_iteration(args))
-            else:
-                # Use 'spawn' context to avoid fork-inheriting corrupted R/rpy2
-                # state. With 'fork', R subprocess calls inside workers
-                # produce incorrect results (e.g., edgeR FPR=0.002 instead
-                # of 0.05) even when using Rscript subprocess.
-                ctx = mp.get_context("spawn")
-                with ctx.Pool(n_jobs) as pool:
-                    for i, batch in enumerate(pool.imap(_run_single_iteration, task_args)):
-                        _process_iteration(i, batch)
-
-            elapsed = time.time() - t0
-            df = pd.DataFrame(all_rows)
-            df.to_csv(csv_path, index=False)
-            all_results.append(df)
-            print(f"    Done in {elapsed:.0f}s → {csv_path.name}")
-
-    # Combine all
-    combined = pd.concat(all_results, ignore_index=True)
-    combined_path = output_dir / "benchmark_combined.csv"
-    combined.to_csv(combined_path, index=False)
-    print(f"\nAll results saved → {combined_path}")
-    print(f"Total rows: {len(combined):,}")
-
-    return combined
+    return _run_grid(
+        build_scenario_grid,
+        designs or ["two_arm", "single_arm"],
+        methods or CORE_METHODS,
+        n_iterations,
+        n_jobs,
+        Path(output_dir),
+        resume,
+        "benchmark_combined.csv",
+        seed=2024,
+    )
 
 
 def run_sensitivity_benchmark(
@@ -547,103 +558,23 @@ def run_sensitivity_benchmark(
     methods: list[str] | None = None,
     n_iterations: int = _N_ITERATIONS,
     n_jobs: int = 1,
-    output_dir: str | Path = "benchmark_results",
+    output_dir: str | Path = "benchmark_results/sensitivity",
     resume: bool = True,
 ) -> pd.DataFrame:
-    """Run the signal-fraction sensitivity benchmark.
-
-    Tests how null-gene FPR depends on gene-panel size (50–2000) and
-    signal fraction (1–20%). Used to determine whether the dreamlet/NEBULA
-    inflation observed in the 50-gene/20%-signal benchmark generalizes
-    or attenuates with more realistic panel compositions.
-
-    Parameters
-    ----------
-    designs : list of str
-        Default: ["two_arm"].
-    methods, n_iterations, n_jobs, output_dir, resume :
-        Same as run_benchmark().
-
-    Returns
-    -------
-    DataFrame with all sensitivity results.
-    """
-    if designs is None:
-        designs = ["two_arm"]
-    if methods is None:
-        methods = CORE_METHODS
+    """Run the panel-size x signal-fraction sensitivity grid."""
     if n_jobs == -1:
         n_jobs = mp.cpu_count()
-
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    rng = np.random.default_rng(2025)
-    all_results = []
-
-    for design in designs:
-        scenarios = build_sensitivity_grid(design)
-        print(f"\n{'=' * 60}")
-        print(f"SENSITIVITY: {design} — {len(scenarios)} scenarios × {n_iterations} iterations")
-        print(f"Methods: {methods}")
-        print(f"Parallel workers: {n_jobs}")
-        print(f"{'=' * 60}")
-
-        for si, scenario in enumerate(scenarios):
-            name = f"{design}__{scenario['name']}"
-            csv_path = output_dir / f"{name}.csv"
-
-            if resume and csv_path.exists():
-                print(f"  [{si + 1}/{len(scenarios)}] {name} — CACHED, skipping")
-                existing = pd.read_csv(csv_path)
-                all_results.append(existing)
-                continue
-
-            print(f"  [{si + 1}/{len(scenarios)}] {name}: {scenario['description']}")
-
-            seeds = [int(rng.integers(0, 2**31)) for _ in range(n_iterations)]
-            task_args = [
-                (name, it, seeds[it], scenario["config_kwargs"], methods)
-                for it in range(n_iterations)
-            ]
-
-            t0 = time.time()
-            all_rows: list = []
-            flush_interval = 20
-
-            def _process_iteration(i: int, batch: list) -> None:
-                all_rows.extend(batch)
-                if (i + 1) % flush_interval == 0:
-                    elapsed = time.time() - t0
-                    eta = elapsed / (i + 1) * (n_iterations - i - 1)
-                    print(
-                        f"    {i + 1}/{n_iterations} iterations "
-                        f"({elapsed:.0f}s elapsed, ~{eta:.0f}s remaining)"
-                    )
-                    pd.DataFrame(all_rows).to_csv(csv_path, index=False)
-
-            if n_jobs == 1:
-                for i, args in enumerate(task_args):
-                    _process_iteration(i, _run_single_iteration(args))
-            else:
-                ctx = mp.get_context("spawn")
-                with ctx.Pool(n_jobs) as pool:
-                    for i, batch in enumerate(pool.imap(_run_single_iteration, task_args)):
-                        _process_iteration(i, batch)
-
-            elapsed = time.time() - t0
-            df = pd.DataFrame(all_rows)
-            df.to_csv(csv_path, index=False)
-            all_results.append(df)
-            print(f"    Done in {elapsed:.0f}s → {csv_path.name}")
-
-    combined = pd.concat(all_results, ignore_index=True)
-    combined_path = output_dir / "sensitivity_combined.csv"
-    combined.to_csv(combined_path, index=False)
-    print(f"\nSensitivity results saved → {combined_path}")
-    print(f"Total rows: {len(combined):,}")
-
-    return combined
+    return _run_grid(
+        build_sensitivity_grid,
+        designs or ["two_arm"],
+        methods or CORE_METHODS,
+        n_iterations,
+        n_jobs,
+        Path(output_dir),
+        resume,
+        "sensitivity_combined.csv",
+        seed=90210,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -655,28 +586,18 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="NatMeth benchmark: simulation grid")
     parser.add_argument("--n-jobs", type=int, default=1, help="Parallel workers (-1 = all cores)")
-    parser.add_argument(
-        "--n-iterations",
-        type=int,
-        default=_N_ITERATIONS,
-        help="Monte Carlo iterations per scenario",
-    )
-    parser.add_argument(
-        "--output-dir", type=str, default="benchmark_results", help="Output directory"
-    )
-    parser.add_argument(
-        "--designs", nargs="+", default=["two_arm", "single_arm"], help="Design families"
-    )
-    parser.add_argument(
-        "--methods", nargs="+", default=None, help="Methods to run (default: all core)"
-    )
-    parser.add_argument("--no-resume", action="store_true", help="Don't skip existing results")
+    parser.add_argument("--n-iterations", type=int, default=_N_ITERATIONS)
+    parser.add_argument("--output-dir", type=str, default="benchmark_results")
+    parser.add_argument("--designs", nargs="+", default=["two_arm", "single_arm"])
+    parser.add_argument("--methods", nargs="+", default=None)
+    parser.add_argument("--sensitivity", action="store_true", help="run the sensitivity grid")
+    parser.add_argument("--no-resume", action="store_true")
 
     args = parser.parse_args()
-
     logging.basicConfig(level=logging.INFO)
 
-    run_benchmark(
+    fn = run_sensitivity_benchmark if args.sensitivity else run_benchmark
+    fn(
         designs=args.designs,
         methods=args.methods,
         n_iterations=args.n_iterations,

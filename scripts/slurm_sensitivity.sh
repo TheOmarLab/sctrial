@@ -38,7 +38,7 @@ echo "R: $(which R)"
 echo "============================================"
 
 # Verify packages
-python -c "from sctrial.benchmark.simulator import SimulationConfig; print('sctrial OK')"
+python -c "from sctrial.benchmark import TranscriptomeSimConfig; print('sctrial OK')"
 python -c "from sctrial.benchmark.orchestrator import build_sensitivity_grid; print('Sensitivity grid:', len(build_sensitivity_grid('two_arm')), 'scenarios')"
 python -c "import subprocess; subprocess.run(['Rscript', '-e', 'library(dreamlet); library(nebula); cat(\"Rscript OK\n\")'], check=True)"
 

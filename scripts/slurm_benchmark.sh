@@ -38,7 +38,7 @@ echo "R: $(which R)"
 echo "============================================"
 
 # Verify packages
-python -c "from sctrial.benchmark.simulator import SimulationConfig; print('sctrial OK')"
+python -c "from sctrial.benchmark import TranscriptomeSimConfig; print('sctrial OK')"
 python -c "import subprocess; subprocess.run(['Rscript', '-e', 'library(edgeR); library(limma); library(dreamlet); library(nebula); cat(\"Rscript OK\n\")'], check=True)"
 
 # Print git commit and installed package path for reproducibility

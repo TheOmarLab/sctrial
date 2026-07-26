@@ -162,7 +162,7 @@ def run_ablation(
     Parameters
     ----------
     sim : dict
-        Must have "adata" and "pseudobulk_means" keys (from simulate_trial).
+        Must have "adata" and "pseudobulk_means" keys (from simulate_trial_v2).
     gene_cols : list[str]
         Genes to test.
     variants : list[str]

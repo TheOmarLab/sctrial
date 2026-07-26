@@ -41,8 +41,8 @@ meta <- read.csv("{meta_csv}", stringsAsFactors=TRUE)
 meta$arm   <- factor(meta$arm, levels=c("{control}", "{treated}"))
 meta$visit <- factor(meta$visit, levels=c("{pre}", "{post}"))
 
-# Drop zero-count cells — log(0) = -Inf offset causes NA in objective function
-keep <- colSums(counts) > 0
+# Drop cells with no library — a zero offset is undefined
+keep <- colSums(counts) > 0 & meta$lib_size > 0
 if (sum(keep) < 2) stop("Too few cells with non-zero counts after filtering")
 counts <- counts[, keep]
 meta   <- meta[keep, ]
@@ -50,11 +50,17 @@ meta   <- meta[keep, ]
 # Two-arm: interaction model
 design <- model.matrix(~arm * visit, data=meta)
 
+# OFFSET CONTRACT. nebula takes the scaling factor on the LINEAR scale and logs
+# it internally. Passing log(lib) therefore logs it twice, which compresses the
+# offset to log(log(lib)) and attenuates library-size adjustment almost entirely.
+# The scaling factor is also the FULL-TRANSCRIPTOME library size supplied by the
+# caller, not colSums() of the tested panel: a panel sum moves with the signal,
+# so normalising by it partly divides out the effect being estimated.
 res <- nebula(
   counts,
   id = meta$participant,
   pred = design,
-  offset = log(colSums(counts)),
+  offset = meta$lib_size,
   method = "LN",
   ncore = 1,
   verbose = FALSE
@@ -67,7 +73,7 @@ out <- data.frame(
   gene = res$summary$gene,
   logFC = res$summary[[paste0("logFC_", coef_names[interaction_idx])]],
   pvalue = res$summary[[paste0("p_", coef_names[interaction_idx])]],
-  converged = res$convergence,
+  convergence_code = res$convergence,
   stringsAsFactors = FALSE
 )
 rownames(out) <- out$gene
@@ -85,8 +91,8 @@ rownames(counts) <- genes
 meta <- read.csv("{meta_csv}", stringsAsFactors=TRUE)
 meta$visit <- factor(meta$visit, levels=c("{pre}", "{post}"))
 
-# Drop zero-count cells — log(0) = -Inf offset causes NA in objective function
-keep <- colSums(counts) > 0
+# Drop cells with no library — a zero offset is undefined
+keep <- colSums(counts) > 0 & meta$lib_size > 0
 if (sum(keep) < 2) stop("Too few cells with non-zero counts after filtering")
 counts <- counts[, keep]
 meta   <- meta[keep, ]
@@ -98,7 +104,7 @@ res <- nebula(
   counts,
   id = meta$participant,
   pred = design,
-  offset = log(colSums(counts)),
+  offset = meta$lib_size,  # LINEAR scale, full transcriptome; see two-arm note
   method = "LN",
   ncore = 1,
   verbose = FALSE
@@ -111,7 +117,7 @@ out <- data.frame(
   gene = res$summary$gene,
   logFC = res$summary[[paste0("logFC_", coef_names[visit_idx])]],
   pvalue = res$summary[[paste0("p_", coef_names[visit_idx])]],
-  converged = res$convergence,
+  convergence_code = res$convergence,
   stringsAsFactors = FALSE
 )
 rownames(out) <- out$gene
@@ -129,12 +135,23 @@ def run(
     control_label: str = "Control",
     visits: tuple[str, str] = ("Pre", "Post"),
     design_type: str = "two_arm",
+    lib_size=None,
 ) -> dict[str, dict]:
     """Run NEBULA NBLMM on cell-level counts.
 
-    Unlike other runners, NEBULA takes the full cell-level AnnData,
-    NOT pseudobulk.
+    Unlike other runners, NEBULA takes the full cell-level AnnData, NOT
+    pseudobulk.
+
+    ``lib_size`` is the FULL-TRANSCRIPTOME library size per cell, on the linear
+    scale. It is required: falling back to the panel sum reintroduces the
+    normalisation-scope artifact, and passing a logged value double-logs it.
     """
+    if lib_size is None:
+        raise ValueError(
+            "nebula requires an explicit full-transcriptome lib_size. Deriving it "
+            "from the tested panel makes the normalisation reference move with the "
+            "signal; see sctrial.benchmark.contracts."
+        )
     with tempfile.TemporaryDirectory() as _tmpdir:
         td = Path(_tmpdir)
 
@@ -158,6 +175,7 @@ def run(
         # Export metadata
         meta_df = adata_sub.obs[[participant_col, arm_col, visit_col]].copy()
         meta_df.columns = ["participant", "arm", "visit"]
+        meta_df["lib_size"] = np.asarray(lib_size, dtype=float)
         meta_csv = td / "meta.csv"
         meta_df.to_csv(meta_csv, index=False)
 
@@ -189,7 +207,12 @@ def run(
     for gene in gene_cols:
         if gene in res.index:
             row = res.loc[gene]
-            converged = bool(row.get("converged", True))
+            # Record the raw nebula code as well as the boolean. The code
+            # semantics are documented in nebula's Rd and have been misread
+            # before; keeping the integer means the boolean can be re-derived
+            # from stored results instead of re-run.
+            code = float(row.get("convergence_code", np.nan))
+            converged = bool(code > -20) if np.isfinite(code) else False
             failure = None if converged else "convergence"
             out[gene] = {
                 "beta": float(row.get("logFC", np.nan)),
@@ -197,6 +220,7 @@ def run(
                 "ci_lo": np.nan,  # NEBULA doesn't return CIs by default
                 "ci_hi": np.nan,
                 "converged": converged,
+                "convergence_code": code,
                 "failure_mode": failure,
             }
         else:

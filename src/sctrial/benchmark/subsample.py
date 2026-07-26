@@ -67,6 +67,7 @@ def run_subsampling(
     # First: run full-data reference for each method
     print(f"Running full-data reference ({len(methods)} methods, {len(gene_cols)} genes)...")
     from sctrial.stats.pseudobulk import pseudobulk_expression
+
     from .orchestrator import _pseudobulk_counts_from_adata
 
     pb_means_full = pseudobulk_expression(

@@ -1,10 +1,10 @@
 """Tests for the benchmark package.
 
 Covers:
-- Simulator output contracts
-- Runner output contracts (standardized dict format)
-- End-to-end tiny benchmark pass
-- Metrics computation
+- simulator output contracts
+- runner output contracts (standardised dict format)
+- metrics computation
+- an end-to-end tiny benchmark pass
 """
 
 import sys
@@ -16,7 +16,27 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from sctrial.benchmark.simulator import SimulationConfig, simulate_trial
+from sctrial.benchmark.contracts import prepare_inputs
+from sctrial.benchmark.simulator_v2 import TranscriptomeSimConfig, simulate_trial_v2
+
+# A transcriptome large enough for the 2000-gene nested panel, small enough to
+# run in a unit test. Panels are drawn FROM the transcriptome, so this is the
+# feature universe, not the tested panel.
+_TEST_GENES = 2500
+
+
+def _cfg(**kwargs) -> TranscriptomeSimConfig:
+    base = dict(
+        n_per_arm=6,
+        n_genes_transcriptome=_TEST_GENES,
+        cells_per_pv_fixed=50,
+        use_empirical_library=False,
+        use_empirical_cells_per_pv=False,
+        seed=42,
+    )
+    base.update(kwargs)
+    return TranscriptomeSimConfig(**base)
+
 
 # ---------------------------------------------------------------------------
 # Simulator tests
@@ -24,58 +44,40 @@ from sctrial.benchmark.simulator import SimulationConfig, simulate_trial
 
 
 class TestSimulator:
-    """Test simulator output contracts."""
+    """Simulator output contracts."""
 
     def _make_sim(self, **kwargs):
-        cfg = SimulationConfig(
-            n_per_arm=6,
-            n_genes=5,
-            mean_cells_per_visit=50,
-            effects={"gene_0": 0.5},
-            seed=42,
-            **kwargs,
-        )
-        return simulate_trial(cfg)
+        return simulate_trial_v2(_cfg(effects={"gene_0": 0.5}, **kwargs))
 
     def test_two_arm_participant_count(self):
-        """n_per_arm=6 with two arms should give 12 total participants."""
         sim = self._make_sim(design="two_arm")
-        n_pids = sim["adata"].obs["participant"].nunique()
-        assert n_pids == 12, f"Expected 12 participants, got {n_pids}"
+        assert sim["adata"].obs["participant"].nunique() == 12
 
     def test_single_arm_participant_count(self):
-        """n_per_arm=6 with single arm gives 6 participants."""
         sim = self._make_sim(design="single_arm")
-        n_pids = sim["adata"].obs["participant"].nunique()
-        assert n_pids == 6
+        assert sim["adata"].obs["participant"].nunique() == 6
 
     def test_returns_both_pseudobulk(self):
-        """simulate_trial returns both pseudobulk_means and pseudobulk_counts."""
         sim = self._make_sim()
         assert "pseudobulk_means" in sim
         assert "pseudobulk_counts" in sim
-        assert "pseudobulk" not in sim  # old key should NOT be present
+        assert "pseudobulk" not in sim  # the ambiguous old key must not return
 
     def test_pseudobulk_counts_are_integers(self):
-        """Summed count pseudobulk should have integer values."""
         sim = self._make_sim()
-        gene_cols = [f"gene_{i}" for i in range(5)]
-        counts = sim["pseudobulk_counts"][gene_cols]
+        counts = sim["pseudobulk_counts"][[f"gene_{i}" for i in range(5)]]
         assert (counts == counts.astype(int)).all().all()
 
     def test_pseudobulk_counts_larger_than_means(self):
-        """Summed counts should be much larger than means (sum vs avg)."""
         sim = self._make_sim()
-        gene_cols = [f"gene_{i}" for i in range(5)]
-        means = sim["pseudobulk_means"][gene_cols].values
-        counts = sim["pseudobulk_counts"][gene_cols].values
-        # Counts = sum over ~50 cells; means = mean over ~50 cells
-        # So counts should be ~50x larger
-        ratio = counts.mean() / (means.mean() + 1e-10)
-        assert ratio > 10, f"Count/mean ratio={ratio:.1f}, expected >10"
+        cols = [f"gene_{i}" for i in range(50)]
+        ratio = (
+            sim["pseudobulk_counts"][cols].values.mean()
+            / (sim["pseudobulk_means"][cols].values.mean() + 1e-10)
+        )
+        assert ratio > 10, f"count/mean ratio={ratio:.1f}, expected ~n_cells"
 
     def test_adata_is_sparse_counts(self):
-        """Cell-level X should be sparse integer counts."""
         from scipy import sparse
 
         sim = self._make_sim()
@@ -85,26 +87,47 @@ class TestSimulator:
         assert (X == X.astype(int)).all()
 
     def test_truth_dict(self):
-        """Truth dict should have correct effects."""
         sim = self._make_sim()
         assert sim["truth"]["gene_0"] == 0.5
-        assert sim["truth"]["gene_1"] == 0.0
+
+    def test_panels_are_nested(self):
+        """Each larger panel must CONTAIN every smaller one.
+
+        Without nesting, a panel-size effect and a gene-identity effect are
+        confounded, and "progressive miscalibration with panel size" cannot be
+        distinguished from a change in which genes were tested.
+        """
+        sim = self._make_sim()
+        panels = sim["panels"]
+        sizes = sorted(panels)
+        for small, large in zip(sizes[:-1], sizes[1:]):
+            assert set(panels[small]).issubset(set(panels[large])), (
+                f"panel {small} is not a subset of panel {large}"
+            )
+
+    def test_library_totals_track_the_drawn_library_size(self):
+        """Observed per-cell totals must match the latent L, not a multiple of it.
+
+        With ``sum_g exp(alpha_g) = 1`` the per-cell total is
+        ``L * E[exp(b + u)]``, which is ``exp((sd_b^2 + sd_u^2)/2)`` times too
+        large unless the Jensen term is subtracted. That bug inflated every
+        simulated library 1.7x.
+        """
+        sim = self._make_sim()
+        obs = sim["adata"].obs
+        ratio = obs["observed_library_size"].mean() / obs["true_library_size"].mean()
+        assert 0.85 < ratio < 1.15, f"library inflation ratio {ratio:.3f}"
 
     def test_missing_visits(self):
-        """missing_rate > 0 should drop some post visits."""
         sim = self._make_sim(missing_rate=0.3)
         pv = sim["adata"].obs.groupby(["participant", "visit"]).size().unstack(fill_value=0)
-        n_missing = (pv.get("Post", 0) == 0).sum()
-        assert n_missing > 0, "Expected some missing post visits"
+        assert (pv.get("Post", 0) == 0).sum() > 0
 
     def test_imbalanced_arms(self):
-        """arm_ratio should produce unequal participant counts per arm."""
         sim = self._make_sim(arm_ratio=(2, 8))
         pid_arms = sim["adata"].obs.groupby("participant")["arm"].first()
-        n_treat = (pid_arms == "Treated").sum()
-        n_ctrl = (pid_arms == "Control").sum()
-        assert n_treat == 2, f"Expected 2 treated participants, got {n_treat}"
-        assert n_ctrl == 8, f"Expected 8 control participants, got {n_ctrl}"
+        assert (pid_arms == "Treated").sum() == 2
+        assert (pid_arms == "Control").sum() == 8
 
 
 # ---------------------------------------------------------------------------
@@ -113,46 +136,37 @@ class TestSimulator:
 
 
 class TestRunnerContracts:
-    """Test that all runners return standardized dicts."""
+    """All runners must return the standardised dict."""
 
     @pytest.fixture
     def sim_data(self):
-        cfg = SimulationConfig(
-            n_per_arm=6,
-            n_genes=5,
-            mean_cells_per_visit=50,
-            effects={"gene_0": 0.5},
-            seed=42,
-        )
-        return simulate_trial(cfg)
+        return simulate_trial_v2(_cfg(effects={"gene_0": 0.5}))
 
     def _check_runner_output(self, result, gene_cols):
-        """Verify a runner's output matches the contract."""
         assert isinstance(result, dict)
         for gene in gene_cols:
-            assert gene in result, f"Missing gene {gene}"
+            assert gene in result, f"missing gene {gene}"
             r = result[gene]
-            assert "beta" in r
-            assert "pvalue" in r
-            assert "converged" in r
-            assert "failure_mode" in r
-            # pvalue should be in [0, 1] or NaN
+            for key in ("beta", "pvalue", "converged", "failure_mode"):
+                assert key in r, f"{gene}: missing {key}"
             if not np.isnan(r["pvalue"]):
                 assert 0 <= r["pvalue"] <= 1, f"{gene}: pvalue={r['pvalue']}"
 
     def test_sctrial_did_contract(self, sim_data):
         from sctrial.benchmark.runners.sctrial_did import run
 
-        gene_cols = [f"gene_{i}" for i in range(5)]
-        result = run(sim_data["adata"], gene_cols)
-        self._check_runner_output(result, gene_cols)
+        panel = sim_data["panels"][50]
+        inputs = prepare_inputs(sim_data, panel)
+        result = run(inputs["participant_log1p_cpm"], panel, from_pseudobulk=True)
+        self._check_runner_output(result, panel)
 
     def test_wilcoxon_paired_contract(self, sim_data):
         from sctrial.benchmark.runners.wilcoxon_paired import run
 
-        gene_cols = [f"gene_{i}" for i in range(5)]
-        result = run(sim_data["pseudobulk_means"], gene_cols)
-        self._check_runner_output(result, gene_cols)
+        panel = sim_data["panels"][50]
+        inputs = prepare_inputs(sim_data, panel)
+        result = run(inputs["participant_log1p_cpm"], panel)
+        self._check_runner_output(result, panel)
 
 
 # ---------------------------------------------------------------------------
@@ -231,27 +245,36 @@ class TestEndToEnd:
     """Tiny end-to-end benchmark pass."""
 
     def test_mini_benchmark(self):
-        """Run 2 iterations of 1 scenario with 2 methods."""
+        """Two Python methods, one null scenario, one iteration."""
         from sctrial.benchmark.orchestrator import _run_single_iteration
 
-        args = (
-            "test_null",  # scenario name
-            0,  # iteration
-            42,  # seed
-            {  # config_kwargs
+        scenario = {
+            "name": "test_null",
+            "description": "unit-test null",
+            "panel_size": 50,
+            "signal_fraction": 0.0,
+            "architecture": "balanced",
+            "magnitude": 0.5,
+            "config_kwargs": {
                 "design": "two_arm",
                 "n_per_arm": 6,
-                "n_genes": 5,
-                "effects": {},
-                "mean_cells_per_visit": 50,
+                "n_genes_transcriptome": _TEST_GENES,
+                "cells_per_pv_fixed": 50,
+                "use_empirical_library": False,
+                "use_empirical_cells_per_pv": False,
             },
-            ["sctrial_did", "wilcoxon_paired"],  # methods
+        }
+        rows = _run_single_iteration(
+            ("test_null", 0, 42, scenario, ["sctrial_did", "wilcoxon_paired"])
         )
-
-        rows = _run_single_iteration(args)
         df = pd.DataFrame(rows)
 
-        assert len(df) == 2 * 5  # 2 methods × 5 genes
+        assert len(df) == 2 * 50
         assert set(df["method"]) == {"sctrial_did", "wilcoxon_paired"}
-        assert (df["true_beta"] == 0.0).all()  # null scenario
+        assert (df["injected_beta"] == 0.0).all()
         assert df["pvalue"].notna().all()
+        # Under a true null the method-specific oracle must also be zero: an
+        # oracle that drifts from zero when nothing was injected would silently
+        # define a non-null truth for a null scenario.
+        assert df["true_beta"].abs().max() < 1e-9
+        assert (df["runtime_scope"] == "per_iteration").all()

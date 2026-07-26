@@ -58,7 +58,7 @@ python -c "
 from sctrial.benchmark.orchestrator import build_sensitivity_grid
 print('Sensitivity grid:', len(build_sensitivity_grid('two_arm')), 'scenarios')
 "
-python -c "from sctrial.benchmark.simulator import SimulationConfig; print('Python benchmark: OK')"
+python -c "from sctrial.benchmark import TranscriptomeSimConfig; print('Python benchmark: OK')"
 
 echo ""
 echo "============================================"

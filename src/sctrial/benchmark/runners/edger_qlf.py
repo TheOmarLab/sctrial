@@ -36,9 +36,15 @@ design <- model.matrix(~arm * visit, data=meta)
 
 group <- interaction(meta$arm, meta$visit)
 
+# NORMALISATION-SCOPE CONTRACT. lib.size is the FULL-TRANSCRIPTOME total supplied
+# by the caller, not colSums of the tested panel. With a panel denominator a
+# coordinated signal moves the reference every null gene is measured against, and
+# each null gene acquires an offsetting apparent effect.
+# keep.lib.sizes=TRUE prevents filterByExpr from recomputing it from the panel.
 y <- DGEList(counts=t(counts), group=group)
+y$samples$lib.size <- meta$lib_size
 keep <- filterByExpr(y, min.count=1)
-y <- y[keep, , keep.lib.sizes=FALSE]
+y <- y[keep, , keep.lib.sizes=TRUE]
 y <- calcNormFactors(y)
 y <- estimateDisp(y, design)
 fit <- glmQLFit(y, design)
@@ -68,9 +74,15 @@ design <- model.matrix(~participant + visit, data=meta)
 # Group for filterByExpr: use visit
 group <- meta$visit
 
+# NORMALISATION-SCOPE CONTRACT. lib.size is the FULL-TRANSCRIPTOME total supplied
+# by the caller, not colSums of the tested panel. With a panel denominator a
+# coordinated signal moves the reference every null gene is measured against, and
+# each null gene acquires an offsetting apparent effect.
+# keep.lib.sizes=TRUE prevents filterByExpr from recomputing it from the panel.
 y <- DGEList(counts=t(counts), group=group)
+y$samples$lib.size <- meta$lib_size
 keep <- filterByExpr(y, min.count=1)
-y <- y[keep, , keep.lib.sizes=FALSE]
+y <- y[keep, , keep.lib.sizes=TRUE]
 y <- calcNormFactors(y)
 y <- estimateDisp(y, design)
 fit <- glmQLFit(y, design)
@@ -102,6 +114,7 @@ def run(
     control_label: str = "Control",
     visits: tuple[str, str] = ("Pre", "Post"),
     design_type: str = "two_arm",
+    lib_size=None,
 ) -> dict[str, dict]:
     """Run edgeR-QLF on pseudobulk counts.
 
@@ -129,6 +142,15 @@ def run(
 
         meta_df = pseudobulk[[participant_col, arm_col, visit_col]].copy()
         meta_df.columns = ["participant", "arm", "visit"]
+        # Full-transcriptome library size. Required: without it the model
+        # normalises against the tested panel, whose total moves with the
+        # signal. See sctrial.benchmark.contracts.
+        if lib_size is None:
+            raise ValueError(
+                "an explicit full-transcriptome lib_size is required; a panel-derived "
+                "library size makes the normalisation reference move with the signal"
+            )
+        meta_df["lib_size"] = np.asarray(lib_size, dtype=float)
         meta_df.index = sample_ids
         meta_csv = td / "meta.csv"
         meta_df.to_csv(meta_csv)
