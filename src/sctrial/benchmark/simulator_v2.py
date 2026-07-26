@@ -80,25 +80,41 @@ _GENE_CHUNK = 2000
 _QUAD_NODES = 64
 
 
+def _validation_dir() -> Path:
+    """Locate the calibration outputs without guessing a parent depth.
+
+    ``parents[N]`` is the defect that resolved outside the project on HPC and
+    silently blanked four figure panels while every script exited 0. The layouts
+    genuinely differ: ``manuscript/`` sits inside the project root on the cluster
+    and beside the repo locally. Check, do not assume.
+    """
+    import os
+
+    env = os.environ.get("SCTRIAL_MANUSCRIPT_DIR")
+    if env:
+        return Path(env) / "benchmark" / "validation"
+    here = Path(__file__).resolve()
+    repo = here.parents[3]  # <repo>/src/sctrial/benchmark/simulator_v2.py
+    for base in (repo / "manuscript", repo.parent.parent / "manuscript"):
+        if base.is_dir():
+            return base / "benchmark" / "validation"
+    return repo / "manuscript" / "benchmark" / "validation"
+
+
 def load_tnbc_targets(path: str | Path | None = None) -> dict:
     """Empirical TNBC targets measured from the processed h5ad.
 
     These are the quantities a defensible calibration must reproduce. Measured by
-    ``scripts/regen/tnbc_targets.py`` from the v5 TNBC object (141,553 cells x
-    20,284 genes, 12 paired participants, 6 v 6 arms).
+    ``scripts/calibrate_simulator.py targets`` from the v5 TNBC object
+    (141,553 cells x 20,284 genes, 12 paired participants, 6 v 6 arms).
     """
-    if path is None:
-        path = (
-            Path(__file__).resolve().parents[3]
-            / "manuscript" / "benchmark" / "validation" / "tnbc_sim_targets.json"
-        )
-    path = Path(path)
+    path = Path(path) if path is not None else _validation_dir() / "tnbc_sim_targets.json"
     if not path.exists():
         raise FileNotFoundError(
             f"TNBC simulation targets not found at {path}. Run "
-            "scripts/regen/tnbc_targets.py first — the simulator must not fall back "
-            "to uncalibrated defaults (that is how the previous benchmark produced "
-            "2.3e7 UMIs per cell)."
+            "`python scripts/calibrate_simulator.py targets` first — the simulator "
+            "must not fall back to uncalibrated defaults, which is how the previous "
+            "benchmark produced 2.3e7 UMIs per cell."
         )
     with open(path) as fh:
         return json.load(fh)
@@ -271,12 +287,7 @@ def load_empirical(path: str | Path | None = None) -> dict | None:
     rather than failing — but the fits are known to reproduce the library-size
     distribution poorly, so the empirical file should normally be present.
     """
-    if path is None:
-        path = (
-            Path(__file__).resolve().parents[3]
-            / "manuscript" / "benchmark" / "validation" / "tnbc_empirical.npz"
-        )
-    path = Path(path)
+    path = Path(path) if path is not None else _validation_dir() / "tnbc_empirical.npz"
     if not path.exists():
         return None
     d = np.load(path)
