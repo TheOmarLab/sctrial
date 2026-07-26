@@ -308,7 +308,7 @@ def run_gates(
                 row["discrepancy_abs"] = abs(row["observed"] - med)
             rows.append(row)
 
-    rows.extend(_distribution_gate(observed, sims))
+    rows.extend(_distribution_gate(observed, sims, bootstrap))
     df = pd.DataFrame(rows)
 
     if out_dir is not None:
@@ -342,57 +342,81 @@ def run_gates(
     return df
 
 
-def _distribution_gate(observed: dict, sims: list[dict]) -> list[dict]:
-    """Gate E as a distribution test, not a comparison of summaries.
+def _distribution_gate(observed: dict, sims: list[dict], bootstrap: list | None = None) -> list[dict]:
+    """Gate E as a DISTRIBUTION test with an empirically calibrated noise floor.
 
-    The reference distribution is built from simulation-versus-simulation
-    distances, so the test asks the only well-posed question available: is the
-    real-versus-simulated discrepancy larger than the discrepancy between two
-    draws of the simulator itself? Comparing a real-versus-simulated distance to
-    zero would fail for any finite sample and tell us nothing.
+    Scalar summaries can agree while the distribution does not: the pooled
+    correlation passed at ratio 0.89 in a run where five distribution statistics
+    failed. So the comparison is between whole quantile profiles.
+
+    The reference is the distance between two PARTICIPANT-BOOTSTRAP realisations
+    of the reference cohort. If the real-versus-simulated distance is no larger
+    than the distance routinely seen between two draws of the study itself, the
+    simulator is as close as a second run of that study would be, which is the
+    strongest fidelity claim the data can support. Comparing the distance to zero
+    would fail for any finite sample and demanding every quantile match to 0.5% is
+    not a meaningful requirement.
+
+    Falls back to a simulation-versus-simulation reference when no bootstrap is
+    supplied; that answers a weaker question (is the discrepancy larger than the
+    simulator's own run-to-run variation) and is labelled accordingly.
     """
-    obs_r = observed.get("_prepost_corr_genewise")
+    obs_grid = observed.get("_corr_quantiles")
     grids = [np.asarray(s["_corr_quantiles"]) for s in sims if "_corr_quantiles" in s]
-    if obs_r is None or len(grids) < 10:
-        return [
-            {
-                "gate": "E_longitudinal",
-                "statistic": "prepost_corr_distribution",
-                "observed": np.nan,
-                "sim_median": np.nan,
-                "sim_lo95": np.nan,
-                "sim_hi95": np.nan,
-                "ratio": np.nan,
-                "percentile": np.nan,
-                "verdict": "INSUFFICIENT",
-            }
-        ]
-    obs_grid = np.percentile(np.asarray(obs_r), np.linspace(1, 99, 99))
+    if obs_grid is None or len(grids) < 10:
+        return [{
+            "gate": "E_longitudinal", "statistic": "prepost_corr_distribution",
+            "class": "DERIVED", "kind": "wasserstein", "observed": np.nan,
+            "sim_median": np.nan, "sim_lo95": np.nan, "sim_hi95": np.nan,
+            "discrepancy": np.nan, "sigma_mc": np.nan, "z": np.nan,
+            "percentile": np.nan, "verdict": "INSUFFICIENT",
+        }]
+    obs_grid = np.asarray(obs_grid)
     stack = np.vstack(grids)
     centre = np.median(stack, axis=0)
 
-    # Distance = max absolute quantile discrepancy (a KS-type statistic computed
-    # on the shared quantile grid).
-    d_obs = float(np.max(np.abs(obs_grid - centre)))
-    d_sim = np.max(np.abs(stack - centre[None, :]), axis=1)
-    pct, v, med, lo, hi = _verdict(d_obs, d_sim)
-    # One-sided: only an unusually LARGE discrepancy is evidence against.
-    hi95 = float(np.percentile(d_sim, 95))
-    hi99 = float(np.percentile(d_sim, 99))
-    v = "PASS" if d_obs <= hi95 else ("INCONCLUSIVE" if d_obs <= hi99 else "FAIL")
-    return [
-        {
-            "gate": "E_longitudinal",
-            "statistic": "prepost_corr_distribution",
-            "observed": d_obs,
-            "sim_median": med,
-            "sim_lo95": 0.0,
-            "sim_hi95": hi95,
-            "ratio": d_obs / med if med else np.nan,
-            "percentile": pct,
-            "verdict": v,
-        }
+    # 1-Wasserstein between two distributions on a shared quantile grid is the
+    # mean absolute difference of their quantile functions.
+    def _w1(a, b):
+        return float(np.mean(np.abs(np.asarray(a) - np.asarray(b))))
+
+    d_obs = _w1(obs_grid, centre)
+
+    boot_grids = [
+        np.asarray(b["_corr_quantiles"])
+        for b in (bootstrap or [])
+        if isinstance(b, dict) and "_corr_quantiles" in b
     ]
+    if len(boot_grids) >= 20:
+        rng = np.random.default_rng(7)
+        idx = rng.integers(0, len(boot_grids), size=(min(2000, len(boot_grids) ** 2), 2))
+        ref = np.array([
+            _w1(boot_grids[i], boot_grids[j]) for i, j in idx if i != j
+        ])
+        basis = "participant_bootstrap"
+    else:
+        ref = np.array([_w1(g, centre) for g in stack])
+        basis = "simulation_only"
+
+    hi95, hi99 = float(np.percentile(ref, 95)), float(np.percentile(ref, 99))
+    v = "PASS" if d_obs <= hi95 else ("INCONCLUSIVE" if d_obs <= hi99 else "FAIL")
+    return [{
+        "gate": "E_longitudinal",
+        "statistic": f"prepost_corr_distribution[{basis}]",
+        "class": "DERIVED",
+        "kind": "wasserstein",
+        "observed": d_obs,
+        "sim_median": float(np.median(ref)),
+        "sim_lo95": 0.0,
+        "sim_hi95": hi95,
+        "discrepancy": d_obs,
+        "sigma_mc": float(np.std(ref)),
+        "z": np.nan,
+        "boot_tol95": hi95,
+        "boot_tol99": hi99,
+        "percentile": float((ref < d_obs).mean() * 100.0),
+        "verdict": v,
+    }]
 
 
 # ---------------------------------------------------------------------------

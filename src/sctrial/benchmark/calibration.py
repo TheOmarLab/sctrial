@@ -778,6 +778,15 @@ def typical_celltype_targets(accs: dict[str, SummaryAccumulator]) -> dict:
     the honest statement of how much cell types differ.
     """
     per_ct = {ct: acc.statistics() for ct, acc in accs.items()}
+    # Median quantile profile of the gene-wise correlation across cell types,
+    # kept for the DISTRIBUTIONAL gate. Scalar summaries can agree while the
+    # distribution does not, which is the whole reason Gate E is a distribution.
+    grids = [
+        np.percentile(np.asarray(v["_prepost_corr_genewise"]), np.linspace(1, 99, 99))
+        for v in per_ct.values()
+        if v.get("_prepost_corr_genewise") is not None
+        and len(v["_prepost_corr_genewise"]) > 10
+    ]
     keys = sorted({k for v in per_ct.values() for k in v if not k.startswith("_")})
     out: dict = {}
     for k in keys:
@@ -793,6 +802,8 @@ def typical_celltype_targets(accs: dict[str, SummaryAccumulator]) -> dict:
         out[f"{k}__ct_hi"] = float(np.max(vals))
     out["n_celltypes_used"] = len(per_ct)
     out["celltypes_used"] = sorted(per_ct)
+    if grids:
+        out["_corr_quantiles"] = np.median(np.vstack(grids), axis=0).tolist()
     return out
 
 

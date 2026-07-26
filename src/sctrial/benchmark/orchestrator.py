@@ -26,6 +26,58 @@ from .simulator_v2 import TranscriptomeSimConfig, make_signal, nested_panels, si
 
 logger = logging.getLogger(__name__)
 
+# --- adaptive Monte Carlo stopping -------------------------------------------
+# At 200 replicates the Monte Carlo SE of a 5% false-positive rate is
+# sqrt(.05*.95/200) = 0.015, so 5% and 7% are indistinguishable -- which is the
+# comparison the paper turns on. Rather than pay for a blanket 1,000 everywhere,
+# add replicates only where the estimate is still imprecise.
+# `n_iterations` is the BASE batch; these govern the extension only.
+_MC_BATCH = 100
+_MC_MAX = 1000
+_MCSE_TARGET_FPR = 0.005
+_MCSE_TARGET_POWER = 0.01
+
+
+def _replicate_rates(rows: list) -> tuple[np.ndarray, np.ndarray]:
+    """Per-REPLICATE null-FPR and power.
+
+    The independent unit is the simulated dataset, not the gene. Genes within one
+    replicate share its participants, its library sizes and its random effects, so
+    pooling them would understate the Monte Carlo error -- pseudoreplication
+    inside a benchmark whose subject is pseudoreplication.
+    """
+    df = pd.DataFrame(rows)
+    if df.empty or "iteration" not in df:
+        return np.array([]), np.array([])
+    ok = df["pvalue"].notna()
+    null = df[ok & ~df["is_signal"]]
+    sig = df[ok & df["is_signal"]]
+    fpr = (
+        null.assign(hit=null["pvalue"] < 0.05).groupby("iteration")["hit"].mean().to_numpy()
+        if len(null) else np.array([])
+    )
+    pw = (
+        sig.assign(hit=sig["pvalue"] < 0.05).groupby("iteration")["hit"].mean().to_numpy()
+        if len(sig) else np.array([])
+    )
+    return fpr, pw
+
+
+def _mcse(x: np.ndarray) -> float:
+    return float(np.std(x, ddof=1) / np.sqrt(len(x))) if len(x) > 1 else np.inf
+
+
+def _needs_more_replicates(rows: list, n_done: int) -> tuple[bool, str]:
+    """Whether this scenario has reached its Monte Carlo precision target."""
+    if n_done >= _MC_MAX:
+        return False, f"at the {_MC_MAX}-replicate cap"
+    fpr, pw = _replicate_rates(rows)
+    se_f, se_p = _mcse(fpr), _mcse(pw)
+    need_f = len(fpr) > 0 and se_f > _MCSE_TARGET_FPR
+    need_p = len(pw) > 0 and se_p > _MCSE_TARGET_POWER
+    msg = f"MCSE fpr={se_f:.4f} power={'n/a' if not len(pw) else f'{se_p:.4f}'}"
+    return bool(need_f or need_p), msg
+
 # ---------------------------------------------------------------------------
 # Scenario definitions
 # ---------------------------------------------------------------------------
@@ -462,6 +514,7 @@ def _run_grid(
     combined_name: str,
     seed: int,
     base_config: dict | None = None,
+    adaptive: bool = True,
 ) -> pd.DataFrame:
     """One driver for both grids.
 
@@ -492,7 +545,9 @@ def _run_grid(
                 # Monte Carlo sample for one cell of the grid while every summary
                 # reports the nominal iteration count.
                 n_done = existing["iteration"].nunique() if "iteration" in existing else 0
-                if n_done == n_iterations:
+                # >= not ==: adaptive stopping may have run PAST the base batch,
+                # and a complete deeper run must not be treated as partial.
+                if n_done >= n_iterations:
                     print(f"  [{si + 1}/{len(scenarios)}] {name} — CACHED, skipping")
                     all_results.append(existing)
                     continue
@@ -502,38 +557,61 @@ def _run_grid(
                 )
 
             print(f"  [{si + 1}/{len(scenarios)}] {name}: {scenario['description']}")
-            task_args = [
-                (name, it, seeds[it], scenario, methods, base_config)
-                for it in range(n_iterations)
-            ]
 
             t0 = time.time()
             all_rows: list = []
-            flush_interval = 20
+            done = 0
+            target = n_iterations
 
-            def _process(i: int, batch: list, _t0=t0, _rows=all_rows, _path=csv_path) -> None:
-                _rows.extend(batch)
-                if (i + 1) % flush_interval == 0:
-                    elapsed = time.time() - _t0
-                    eta = elapsed / (i + 1) * (n_iterations - i - 1)
-                    print(
-                        f"    {i + 1}/{n_iterations} iterations "
-                        f"({elapsed:.0f}s elapsed, ~{eta:.0f}s remaining)",
-                        flush=True,
-                    )
-                    pd.DataFrame(_rows).to_csv(_path, index=False)
+            def _flush(_rows=None, _path=csv_path) -> None:
+                pd.DataFrame(_rows if _rows is not None else all_rows).to_csv(
+                    _path, index=False
+                )
 
-            if n_jobs == 1:
-                for i, a in enumerate(task_args):
-                    _process(i, _run_single_iteration(a))
-            else:
-                # 'spawn', never 'fork': a forked worker inherits R/BLAS state and
-                # produced demonstrably wrong results (edgeR FPR 0.002 in-pipeline
-                # versus 0.05 standalone).
-                ctx = mp.get_context("spawn")
-                with ctx.Pool(n_jobs) as pool:
-                    for i, batch in enumerate(pool.imap(_run_single_iteration, task_args)):
-                        _process(i, batch)
+            # ADAPTIVE MONTE CARLO. Run the base batch, then extend only while the
+            # replicate-level Monte Carlo error is above target. Scenarios with an
+            # obvious answer stop early; near-nominal ones, where the paper's
+            # claims actually live, get more effort.
+            while done < target:
+                batch = [
+                    (name, it, seeds[it], scenario, methods, base_config)
+                    for it in range(done, min(target, len(seeds)))
+                ]
+                if not batch:
+                    break
+                if n_jobs == 1:
+                    for a in batch:
+                        all_rows.extend(_run_single_iteration(a))
+                else:
+                    # 'spawn', never 'fork': a forked worker inherits R/BLAS state
+                    # and produced demonstrably wrong results (edgeR FPR 0.002
+                    # in-pipeline versus 0.05 standalone).
+                    ctx = mp.get_context("spawn")
+                    with ctx.Pool(n_jobs) as pool:
+                        for k, out in enumerate(pool.imap(_run_single_iteration, batch)):
+                            all_rows.extend(out)
+                            if (k + 1) % 20 == 0:
+                                elapsed = time.time() - t0
+                                print(
+                                    f"    {done + k + 1}/{target} iterations "
+                                    f"({elapsed:.0f}s elapsed)", flush=True
+                                )
+                                _flush()
+                done = min(target, len(seeds))
+                _flush()
+
+                if not adaptive:
+                    break
+                more, why = _needs_more_replicates(all_rows, done)
+                if not more:
+                    print(f"    stopping at {done} replicates ({why})", flush=True)
+                    break
+                extra = min(_MC_BATCH, _MC_MAX - done)
+                if extra <= 0:
+                    break
+                print(f"    extending +{extra} replicates ({why})", flush=True)
+                seeds.extend(int(rng.integers(0, 2**31)) for _ in range(extra))
+                target = done + extra
 
             df = pd.DataFrame(all_rows)
             df.to_csv(csv_path, index=False)
