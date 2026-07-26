@@ -76,10 +76,77 @@ def _load_frozen_config() -> dict:
             "There is deliberately no default fallback."
         )
     with open(path) as fh:
-        frozen = json.load(fh)["config"]
+        blob = json.load(fh)
+    _verify_manifest(blob, path)
+    frozen = blob["config"]
     frozen.pop("seed", None)
     frozen.pop("effects", None)
     return frozen
+
+
+def _verify_manifest(blob: dict, path) -> None:
+    """Re-check the frozen manifest before any compute happens.
+
+    Every provenance failure this project has had was silent: a calibration read
+    from a deleted scratch file, a stale .npz analysed after a partial sync, a
+    calibration that never reached the scenario generator. Verifying hashes costs
+    a second and converts each of those into a refusal.
+    """
+    import hashlib
+    import subprocess
+
+    m = blob.get("manifest")
+    if not m:
+        raise SystemExit(
+            f"{path} has no run manifest. It predates the freeze protocol and its "
+            "provenance cannot be established; re-run scripts/calibrate_simulator.py freeze."
+        )
+
+    problems = []
+    val_dir = path.parent
+    for key, fname in (
+        ("targets_sha256", f"{m['dataset']}_sim_targets.json"),
+        ("empirical_sha256", f"{m['dataset']}_empirical.npz"),
+    ):
+        want = m.get(key)
+        f = val_dir / fname
+        if want is None:
+            continue
+        if not f.exists():
+            problems.append(f"{fname} is missing")
+            continue
+        h = hashlib.sha256()
+        with open(f, "rb") as fh:
+            for chunk in iter(lambda: fh.read(1 << 20), b""):
+                h.update(chunk)
+        if h.hexdigest() != want:
+            problems.append(
+                f"{fname} has changed since the freeze "
+                f"({h.hexdigest()[:12]} != {want[:12]})"
+            )
+
+    try:
+        here = subprocess.run(
+            ["git", "-C", str(PROJECT_ROOT), "rev-parse", "HEAD"],
+            capture_output=True, text=True, timeout=60,
+        ).stdout.strip()
+    except Exception:
+        here = ""
+    if here and m.get("git_commit") not in ("unavailable", "", here):
+        problems.append(
+            f"code is at {here[:12]} but the run was frozen at "
+            f"{str(m.get('git_commit'))[:12]}"
+        )
+
+    if problems:
+        raise SystemExit(
+            "refusing to run: the frozen manifest does not describe this tree.\n  - "
+            + "\n  - ".join(problems)
+            + "\nRe-freeze deliberately, or check out the frozen commit."
+        )
+    print(f"manifest verified: commit {str(m.get('git_commit'))[:12]}, "
+          f"{m.get('n_eligible_genes')} eligible genes, "
+          f"calibration {m.get('calibration_level')}")
 
 
 def phase_simulate(n_jobs: int, n_iterations: int, designs=None):

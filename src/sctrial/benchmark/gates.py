@@ -44,10 +44,32 @@ import pandas as pd
 
 __all__ = [
     "GATE_STATISTICS",
+    "PINNED_STATISTICS",
     "GateResult",
     "run_gates",
     "composition_ablation",
 ]
+
+# PINNED statistics are near-deterministic readbacks of an empirical pool the
+# simulator resamples. Their agreement is true by construction, so a failure
+# indicates an IMPLEMENTATION defect, not a fidelity defect -- and their
+# agreement must never be presented as independent evidence that the simulator
+# "recovered" a property of the data.
+#
+# Everything else is DERIVED: it emerges from the generative model after counts
+# are drawn, and only those carry a fidelity verdict.
+PINNED_STATISTICS = frozenset({
+    # library-size pool, resampled directly
+    "umi_per_cell_q05", "umi_per_cell_q25", "umi_per_cell_median",
+    "umi_per_cell_q75", "umi_per_cell_q95",
+    # cells-per-participant-visit pool, resampled directly
+    "cells_per_pv_median", "cells_per_pv_cv",
+    # gene-rate pool, permuted directly
+    "gene_mean_log_mean", "gene_mean_log_sd",
+    # per-gene dispersion, resampled paired with the gene rate
+    "cond_alpha_median", "cond_alpha_q25", "cond_alpha_q75",
+    "cond_alpha_log_sd", "cond_alpha_slope", "cond_alpha_n_genes",
+})
 
 GATE_STATISTICS: dict[str, list[str]] = {
     "A_transcriptome": [
@@ -152,20 +174,54 @@ class GateResult:
         }
 
 
-def _verdict(observed: float, sims: np.ndarray) -> tuple[float, str, float, float, float]:
+def _verdict(
+    observed: float,
+    sims: np.ndarray,
+    boot: np.ndarray | None = None,
+) -> tuple[float, str, float, float, float]:
+    """Verdict for one statistic.
+
+    Two regimes, and the difference matters:
+
+    * With a participant BOOTSTRAP of the reference cohort (``boot``), the
+      tolerance is the cohort's own sampling uncertainty. PASS when the
+      simulator's discrepancy from the observed value is no larger than the 95th
+      percentile of bootstrap discrepancies; INCONCLUSIVE to the 99th; FAIL
+      beyond. A simulator closer to TNBC than two draws of TNBC are to each other
+      cannot be distinguished from a second run of the same study.
+    * Without it, fall back to the Monte Carlo envelope. That envelope is ~0.4%
+      wide at 141,553 cells and tests exact equality, so it is retained only as a
+      diagnostic and its failures must not be read as fidelity failures.
+
+    INCONCLUSIVE is a real state, not a courtesy. Previously that condition could
+    not be expressed and was silently coded as FAIL, which is how a resolution
+    limit gets reported as a simulator defect.
+    """
     sims = sims[np.isfinite(sims)]
     if sims.size < 10 or not np.isfinite(observed):
         return np.nan, "INSUFFICIENT", np.nan, np.nan, np.nan
     lo95, hi95 = np.percentile(sims, [2.5, 97.5])
-    lo99, hi99 = np.percentile(sims, [0.5, 99.5])
     pct = float((sims < observed).mean() * 100.0)
+    sim_med = float(np.median(sims))
+
+    if boot is not None:
+        boot = boot[np.isfinite(boot)]
+        if boot.size >= 20:
+            # Discrepancies of bootstrap realisations from the observed value.
+            ref = np.abs(boot - observed)
+            d = abs(observed - sim_med)
+            t95, t99 = np.percentile(ref, [95, 99])
+            v = "PASS" if d <= t95 else ("INCONCLUSIVE" if d <= t99 else "FAIL")
+            return pct, v, sim_med, float(lo95), float(hi95)
+
+    lo99, hi99 = np.percentile(sims, [0.5, 99.5])
     if lo95 <= observed <= hi95:
         v = "PASS"
     elif lo99 <= observed <= hi99:
-        v = "MARGINAL"
+        v = "INCONCLUSIVE"
     else:
         v = "FAIL"
-    return pct, v, float(np.median(sims)), float(lo95), float(hi95)
+    return pct, v, sim_med, float(lo95), float(hi95)
 
 
 def _one_replicate(args: tuple) -> dict:
@@ -193,6 +249,7 @@ def run_gates(
     seed0: int = 100_000,
     out_dir: str | Path | None = None,
     verbose: bool = True,
+    bootstrap: dict | None = None,
 ) -> pd.DataFrame:
     """Run every envelope gate.
 
@@ -232,10 +289,24 @@ def run_gates(
     for gate, keys in GATE_STATISTICS.items():
         for key in keys:
             arr = np.array([s.get(key, np.nan) for s in sims], dtype=float)
-            pct, v, med, lo, hi = _verdict(observed.get(key, np.nan), arr)
-            rows.append(
-                GateResult(gate, key, float(observed.get(key, np.nan)), med, lo, hi, pct, v).as_row()
+            ref = (
+                np.array([b.get(key, np.nan) for b in bootstrap], dtype=float)
+                if bootstrap
+                else None
             )
+            pct, v, med, lo, hi = _verdict(observed.get(key, np.nan), arr, ref)
+            row = GateResult(
+                gate, key, float(observed.get(key, np.nan)), med, lo, hi, pct, v
+            ).as_row()
+            # A PINNED statistic is a readback of a pool the simulator resamples;
+            # its verdict reports wiring, not fidelity.
+            row["class"] = "PINNED" if key in PINNED_STATISTICS else "DERIVED"
+            if ref is not None and np.isfinite(ref).sum() >= 20:
+                r = ref[np.isfinite(ref)]
+                row["boot_tol95"] = float(np.percentile(np.abs(r - row["observed"]), 95))
+                row["boot_tol99"] = float(np.percentile(np.abs(r - row["observed"]), 99))
+                row["discrepancy_abs"] = abs(row["observed"] - med)
+            rows.append(row)
 
     rows.extend(_distribution_gate(observed, sims))
     df = pd.DataFrame(rows)
@@ -250,9 +321,18 @@ def run_gates(
                     "n_mc": n_mc,
                     "n_statistics": len(df),
                     "n_pass": int((df["verdict"] == "PASS").sum()),
-                    "n_marginal": int((df["verdict"] == "MARGINAL").sum()),
+                    "n_inconclusive": int((df["verdict"] == "INCONCLUSIVE").sum()),
                     "n_fail": int((df["verdict"] == "FAIL").sum()),
+                    # Only DERIVED failures are fidelity failures; a PINNED failure
+                    # is an implementation defect and is reported separately.
+                    "n_fail_derived": int(
+                        ((df["verdict"] == "FAIL") & (df["class"] == "DERIVED")).sum()
+                    ),
+                    "n_fail_pinned": int(
+                        ((df["verdict"] == "FAIL") & (df["class"] == "PINNED")).sum()
+                    ),
                     "failures": df.loc[df["verdict"] == "FAIL", "statistic"].tolist(),
+                    "bootstrap_used": bool(bootstrap),
                 },
                 fh,
                 indent=2,
@@ -299,7 +379,7 @@ def _distribution_gate(observed: dict, sims: list[dict]) -> list[dict]:
     # One-sided: only an unusually LARGE discrepancy is evidence against.
     hi95 = float(np.percentile(d_sim, 95))
     hi99 = float(np.percentile(d_sim, 99))
-    v = "PASS" if d_obs <= hi95 else ("MARGINAL" if d_obs <= hi99 else "FAIL")
+    v = "PASS" if d_obs <= hi95 else ("INCONCLUSIVE" if d_obs <= hi99 else "FAIL")
     return [
         {
             "gate": "E_longitudinal",

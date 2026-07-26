@@ -83,6 +83,11 @@ _QUAD_NODES = 64
 # value works; it exists so the two streams cannot silently coincide.
 _SUBSTREAM_OFFSET = 7919
 
+# Rate bins used to impute dispersion for genes with too few counts to estimate
+# one. Enough bins to follow the mean-dependence, few enough that each holds a
+# usable empirical distribution.
+_RATE_BINS = 50
+
 
 def _validation_dir() -> Path:
     """Locate the calibration outputs without guessing a parent depth.
@@ -565,19 +570,41 @@ def build_params(cfg: TranscriptomeSimConfig) -> dict:
             if ok.sum() < 100:
                 phi = None
             else:
-                # 10,557 of 20,284 genes have no estimable dispersion (too few
-                # counts to identify one). They are given the lowest-expression
-                # estimable value. This affects NO measured quantity: the gate
-                # applies the same estimability filter to both arms, keeping 9,727
-                # genes on each, and these genes generate essentially no counts.
-                # Verified: on the estimable subset the simulated dispersion
-                # reproduces TNBC exactly -- q25 0.2281, median 0.4416, q75 0.8783,
-                # log sd 1.3380, mean-dependence slope -0.1753, all to four
-                # decimals, because phi IS TNBC's own per-gene estimate carried
-                # through the same permutation as the gene rate.
-                src = np.argsort(rates[ok])
+                # 10,557 of 20,284 genes (52%) have too few counts to identify a
+                # dispersion. They are NOT irrelevant, and an earlier note here
+                # claiming otherwise was wrong: they carry 1.15% of transcriptome
+                # counts and contribute ~24 detected genes per cell at the median
+                # library, about 30% of the Gate A genes-detected gap. They also
+                # enter full-transcriptome normalisation, TMM factors, sparsity and
+                # the CPM denominator.
+                #
+                # Assigning them all one value would impose a spike on the
+                # background transcriptome. Instead draw each from the empirical
+                # conditional dispersion distribution of estimable genes in its own
+                # LOCAL RATE BIN, so the background keeps realistic dispersion
+                # spread rather than a point mass.
                 phi = phi.copy()
-                phi[~ok] = phi[ok][src][0]
+                miss = np.flatnonzero(~ok)
+                if miss.size:
+                    est_rates = rates[ok]
+                    est_phi = phi[ok]
+                    edges = np.quantile(est_rates, np.linspace(0, 1, _RATE_BINS + 1))
+                    edges[0], edges[-1] = -np.inf, np.inf
+                    bin_of_missing = np.clip(
+                        np.searchsorted(edges, rates[miss], side="right") - 1,
+                        0, _RATE_BINS - 1,
+                    )
+                    est_bin = np.clip(
+                        np.searchsorted(edges, est_rates, side="right") - 1,
+                        0, _RATE_BINS - 1,
+                    )
+                    draw = np.random.default_rng(cfg.seed + 104729)
+                    for b in np.unique(bin_of_missing):
+                        donors = est_phi[est_bin == b]
+                        if donors.size == 0:
+                            donors = est_phi
+                        tgt = miss[bin_of_missing == b]
+                        phi[tgt] = draw.choice(donors, size=tgt.size, replace=True)
     if phi is None:
         alpha_c = np.where(finite, alpha, np.min(alpha[finite]) if finite.any() else 0.0)
         log_alpha = np.log(cfg.dispersion_median) + cfg.dispersion_mean_slope * (

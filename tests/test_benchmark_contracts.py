@@ -442,3 +442,63 @@ def test_every_reported_method_has_a_plotting_style():
     for m in CORE_METHODS:
         assert f'"{m}"' in fig3, f"{m} has no plotting style in Figure 3"
     sys.modules.pop("manuscript_figures", None)
+
+
+# ---------------------------------------------------------------------------
+# Panel eligibility must not depend on the injected signal
+# ---------------------------------------------------------------------------
+
+
+def test_eligibility_is_independent_of_the_injected_signal():
+    """A gene must not become testable BECAUSE it is differential.
+
+    If eligibility were computed after injecting the effect, signal genes would be
+    preferentially admitted at the margin and every power estimate would be
+    optimistic by an amount nobody could see.
+    """
+    from sctrial.benchmark.simulator_v2 import eligible_panel_genes, nested_panels
+
+    base = _cfg(effects={})
+    strong = _cfg(effects={f"gene_{i}": 3.0 for i in range(200)})
+
+    np.testing.assert_array_equal(
+        eligible_panel_genes(base), eligible_panel_genes(strong)
+    )
+    p0 = nested_panels(base, rng=np.random.default_rng(1))
+    p1 = nested_panels(strong, rng=np.random.default_rng(1))
+    for size in p0:
+        assert p0[size] == p1[size], f"panel {size} moved when a signal was injected"
+
+
+def test_all_methods_receive_the_same_panel():
+    """Comparability requires an identical denominator across methods."""
+    from sctrial.benchmark.simulator_v2 import simulate_trial_v2
+
+    sim = simulate_trial_v2(_cfg())
+    panel = sim["panels"][50]
+    inputs = prepare_inputs(sim, panel)
+    assert inputs["panel_genes"] == panel
+    assert list(inputs["pseudobulk_counts"].columns[3:]) == panel
+    assert list(inputs["cell_counts"].var_names) == panel
+    outcome_genes = [c for c in inputs["participant_log1p_cpm"].columns
+                     if c not in ("participant", "visit", "arm")]
+    assert outcome_genes == panel
+
+
+def test_evaluability_is_recorded_not_silently_dropped():
+    """A method's own filtering must show up as a rate, not shrink the denominator."""
+    from sctrial.benchmark.orchestrator import _run_single_iteration
+
+    scenario = {
+        "name": "t", "description": "t", "panel_size": 50, "signal_fraction": 0.0,
+        "architecture": "balanced", "magnitude": 0.5,
+        "config_kwargs": {
+            "design": "two_arm", "n_per_arm": 6, "cells_per_pv_fixed": 40,
+            "n_genes_transcriptome": _TEST_GENES, "panel_sizes": (50, 200, 500),
+            "use_empirical_library": False, "use_empirical_cells_per_pv": False,
+            "use_empirical_gene_rates": False, "use_empirical_dispersion": False,
+        },
+    }
+    rows = _run_single_iteration(("t", 0, 3, scenario, ["sctrial_did"], None))
+    assert len(rows) == 50, "the denominator must be the full panel"
+    assert all("evaluable" in r for r in rows)

@@ -140,26 +140,58 @@ def _config_from_targets(args):
 
 
 def cmd_gates(args) -> None:
+    import pandas as pd
+
+    from sctrial.benchmark.calibration import (
+        participant_bootstrap_statistics,
+        summarize_adata_per_celltype,
+    )
     from sctrial.benchmark.gates import run_gates
 
     cfg, targets = _config_from_targets(args)
     out = _manuscript_dir()
+
+    boot = None
+    if args.n_boot > 0:
+        # The acceptance tolerance is the REFERENCE COHORT's own sampling
+        # uncertainty, obtained by resampling participants (both visits, all cell
+        # types, together). Not the spread across unrelated datasets, which mixes
+        # in disease, tissue, protocol and composition differences, and not the
+        # fixed-parameter Monte Carlo envelope, which at 141,553 cells is ~0.4%
+        # wide and tests exact equality.
+        print(f"participant bootstrap of the reference cohort: {args.n_boot} draws",
+              flush=True)
+        adata = _load_dataset(args.dataset)
+        accs = summarize_adata_per_celltype(
+            adata,
+            participant_col=args.participant_col,
+            visit_col=args.visit_col,
+            arm_col=args.arm_col,
+            celltype_col=args.celltype_col,
+            layer=args.layer,
+        )
+        boot = participant_bootstrap_statistics(accs, n_boot=args.n_boot, verbose=True)
+        del adata, accs
+
     df = run_gates(
         cfg,
         observed=targets,
         n_mc=args.n_mc,
         n_jobs=args.n_jobs,
         out_dir=out / "gates",
+        bootstrap=boot,
     )
-    import pandas as pd
 
-    with pd.option_context("display.width", 200, "display.max_columns", 20):
+    with pd.option_context("display.width", 240, "display.max_columns", 24):
         print(df.to_string(index=False))
-    n_fail = int((df["verdict"] == "FAIL").sum())
-    print(f"\n{len(df)} statistics: {(df['verdict'] == 'PASS').sum()} PASS, "
-          f"{(df['verdict'] == 'MARGINAL').sum()} MARGINAL, {n_fail} FAIL")
-    if n_fail:
-        print("FAILING:", df.loc[df["verdict"] == "FAIL", "statistic"].tolist())
+    counts = df["verdict"].value_counts().to_dict()
+    derived_fail = df[(df["verdict"] == "FAIL") & (df["class"] == "DERIVED")]
+    pinned_fail = df[(df["verdict"] == "FAIL") & (df["class"] == "PINNED")]
+    print(f"\n{len(df)} statistics: " + ", ".join(f"{v} {k}" for k, v in counts.items()))
+    print(f"  DERIVED failures (fidelity): {len(derived_fail)} "
+          f"{derived_fail['statistic'].tolist()}")
+    print(f"  PINNED failures (implementation): {len(pinned_fail)} "
+          f"{pinned_fail['statistic'].tolist()}")
 
 
 def cmd_ablate(args) -> None:
@@ -257,6 +289,92 @@ def cmd_diagnose(args) -> None:
     print(f"\nwrote {out / 'variance_component_conditioning.json'}")
 
 
+def _sha256(path: Path) -> str:
+    import hashlib
+
+    h = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _build_manifest(cfg, out: Path, dataset: str, summary: dict) -> dict:
+    """Everything needed to reproduce, or to detect drift in, the definitive run.
+
+    A config file alone is not enough provenance. This project has already had a
+    calibration read from a deleted scratch file, a stale .npz analysed after a
+    partial sync, a calibration that never reached the scenario generator, and a
+    push to the wrong branch. Every one was silent. The manifest is hashed and
+    re-verified by each benchmark job before it does any work.
+    """
+    import hashlib
+    import platform
+    import subprocess
+    from dataclasses import asdict
+
+    import numpy as np
+
+    from sctrial.benchmark.simulator_v2 import TranscriptomeSimConfig, eligible_panel_genes
+
+    def _git(*a):
+        try:
+            return subprocess.run(
+                ["git", "-C", str(REPO), *a], capture_output=True, text=True, timeout=60
+            ).stdout.strip()
+        except Exception:
+            return "unavailable"
+
+    probe = TranscriptomeSimConfig(**{**asdict(cfg), "seed": 0, "effects": {}})
+    eligible = eligible_panel_genes(probe)
+    elig_hash = hashlib.sha256(np.asarray(eligible, dtype=np.int64).tobytes()).hexdigest()
+
+    versions = {}
+    for mod in ("numpy", "pandas", "scipy", "anndata", "sctrial"):
+        try:
+            versions[mod] = __import__(mod).__version__
+        except Exception:
+            versions[mod] = "unavailable"
+    try:
+        r = subprocess.run(
+            ["Rscript", "-e",
+             'ip <- installed.packages()[,"Version"]; '
+             'cat(paste(c("R", names(ip)[names(ip) %in% c("limma","edgeR","dreamlet","nebula","variancePartition")]), '
+             'c(as.character(getRversion()), ip[names(ip) %in% c("limma","edgeR","dreamlet","nebula","variancePartition")]), '
+             'sep="=", collapse=" "))'],
+            capture_output=True, text=True, timeout=300,
+        )
+        r_versions = r.stdout.strip() or "unavailable"
+    except Exception:
+        r_versions = "unavailable"
+
+    targets = out / f"{dataset}_sim_targets.json"
+    npz = out / f"{dataset}_empirical.npz"
+    return {
+        "git_commit": _git("rev-parse", "HEAD"),
+        "git_branch": _git("rev-parse", "--abbrev-ref", "HEAD"),
+        "git_dirty": bool(_git("status", "--porcelain")),
+        "git_describe": _git("describe", "--tags", "--always"),
+        "dataset": dataset,
+        "calibration_level": "within_cell_type",
+        "targets_sha256": _sha256(targets) if targets.exists() else None,
+        "empirical_sha256": _sha256(npz) if npz.exists() else None,
+        "config_sha256": hashlib.sha256(
+            json.dumps(asdict(cfg), sort_keys=True, default=str).encode()
+        ).hexdigest(),
+        "eligible_genes_sha256": elig_hash,
+        "n_eligible_genes": int(len(eligible)),
+        "panel_sizes": list(cfg.panel_sizes),
+        "seeds": {"panel": "seed+1", "signal": "seed+2", "gene_rates": "seed",
+                  "other_draws": "seed+7919", "background_dispersion": "seed+104729"},
+        "python": platform.python_version(),
+        "platform": platform.platform(),
+        "package_versions": versions,
+        "r_versions": r_versions,
+        "gate_summary": summary,
+    }
+
+
 def cmd_freeze(args) -> None:
     """Write the frozen configuration the definitive benchmark run must use."""
     cfg, targets = _config_from_targets(args)
@@ -270,22 +388,40 @@ def cmd_freeze(args) -> None:
         )
     with open(gate_summary) as fh:
         summary = json.load(fh)
-    if summary.get("n_fail", 1) > 0 and not args.force:
+    n_derived = summary.get("n_fail_derived", summary.get("n_fail", 1))
+    n_pinned = summary.get("n_fail_pinned", 0)
+    if n_pinned and not args.force:
         raise SystemExit(
-            f"refusing to freeze: {summary['n_fail']} gate(s) FAIL "
+            f"refusing to freeze: {n_pinned} PINNED statistic(s) FAIL. A PINNED "
+            "statistic is a readback of a pool the simulator resamples, so this is "
+            "an IMPLEMENTATION defect, not a fidelity one. Fix the wiring."
+        )
+    if n_derived > 0 and not args.force:
+        raise SystemExit(
+            f"refusing to freeze: {n_derived} DERIVED gate(s) FAIL "
             f"({summary.get('failures')}). Fix the calibration, or pass --force "
             "and record the justification in tasks/MASTER_PLAN.md."
         )
+    manifest = _build_manifest(cfg, out, args.dataset, summary)
     frozen = {
         "config": asdict(cfg),
         "targets_source": str(out / f"{args.dataset}_sim_targets.json"),
         "gate_summary": summary,
         "dataset": args.dataset,
+        "manifest": manifest,
     }
     path = out / "frozen_simulator_config.json"
     with open(path, "w") as fh:
         json.dump(frozen, fh, indent=2, default=str)
     print(f"froze configuration -> {path}")
+    print("\n=== RUN MANIFEST ===")
+    for k in ("git_commit", "git_branch", "git_dirty", "calibration_level",
+              "targets_sha256", "empirical_sha256", "config_sha256",
+              "eligible_genes_sha256", "n_eligible_genes", "python", "r_versions"):
+        print(f"  {k}: {manifest.get(k)}")
+    if manifest["git_dirty"]:
+        print("\nWARNING: the working tree is DIRTY. The frozen commit does not "
+              "describe what will run. Commit before the definitive run.")
 
 
 def main() -> None:
@@ -306,6 +442,9 @@ def main() -> None:
     g = sub.add_parser("gates", help="Monte Carlo envelope gates A/B/C/E")
     g.add_argument("--n-mc", type=int, default=200)
     g.add_argument("--n-jobs", type=int, default=8)
+    g.add_argument("--n-boot", type=int, default=500,
+                   help="participant bootstrap draws defining the acceptance tolerance; "
+                        "0 falls back to the Monte Carlo envelope")
     g.set_defaults(func=cmd_gates)
 
     a = sub.add_parser("ablate", help="Gate D normalisation-scope ablation")

@@ -359,6 +359,11 @@ def _run_single_iteration(args: tuple) -> list[dict]:
                     "ci_lo": r.get("ci_lo", np.nan),
                     "ci_hi": r.get("ci_hi", np.nan),
                     "converged": r.get("converged", False),
+                    # Every method receives the SAME panel. If a method's own
+                    # internal filtering then drops a gene, that is reported here
+                    # as an evaluability rate rather than silently shrinking the
+                    # denominator of its calibration and power estimates.
+                    "evaluable": bool(np.isfinite(r.get("pvalue", np.nan))),
                     "failure_mode": r.get("failure_mode", "numerical"),
                     # Wall time for the WHOLE iteration (all genes), matching the
                     # figure axis "Median runtime per iteration (s)". Storing

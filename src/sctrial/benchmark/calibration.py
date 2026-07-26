@@ -199,6 +199,14 @@ class SummaryAccumulator:
                 "counts_b": sum_b,
                 "n_cells_a": int(half.sum()),
                 "n_cells_b": int((~half).sum()),
+                # Per-cell values and per-gene moment contributions, kept so a
+                # PARTICIPANT-level bootstrap can re-pool them without re-reading
+                # the count matrix. Cells are not independent calibration units;
+                # participants are, and with 141k cells a fixed-participant
+                # envelope is ~0.4% wide and rejects any tractable simulator.
+                "umi": lib.astype(np.float32),
+                "genes_per_cell": genes_per_cell,
+                "detected": detected,
             }
         )
 
@@ -222,6 +230,9 @@ class SummaryAccumulator:
         self.mu_sum += lam * s_sum
         self.mu2_sum += (lam**2) * s2_sum
         self.n_strata_used += (gene_sum > 0).astype(np.float64)
+        self.pv_rows[-1].update(
+            resid_ss=resid, mu_sum=lam * s_sum, mu2_sum=(lam**2) * s2_sum
+        )
 
     # -- finalisation -------------------------------------------------
 
@@ -634,6 +645,157 @@ def summarize_adata(
     return acc
 
 
+def _accumulator_from_rows(rows: list, n_genes: int) -> SummaryAccumulator:
+    """Rebuild an accumulator from stored per-stratum contributions."""
+    acc = SummaryAccumulator(n_genes=n_genes)
+    acc.pv_rows = rows
+    for r in rows:
+        acc.n_cells_total += int(r["n_cells"])
+        acc.total_counts += r["counts"]
+        acc.n_detected_cells += r["detected"]
+        acc.cell_umi.append(r["umi"])
+        acc.cell_genes.append(r["genes_per_cell"])
+        if "resid_ss" in r:
+            acc.resid_ss += r["resid_ss"]
+            acc.mu_sum += r["mu_sum"]
+            acc.mu2_sum += r["mu2_sum"]
+            acc.n_strata_used += (r["counts"] > 0).astype(np.float64)
+    return acc
+
+
+def participant_bootstrap_statistics(
+    accs: dict[str, SummaryAccumulator] | SummaryAccumulator,
+    n_boot: int = 500,
+    seed: int = 20260726,
+    verbose: bool = False,
+) -> list[dict]:
+    """Statistics under a PARTICIPANT-level bootstrap of the reference cohort.
+
+    This is what makes an acceptance tolerance defensible. A fixed-parameter Monte
+    Carlo envelope over 141,553 cells is ~0.4% wide, so it rejects a simulator
+    matching the data to 0.5% -- its null ("the simulator IS the data-generating
+    process") is false by construction for anything tractable. But cells are not
+    the independent calibration units. Participants are, and there are twelve.
+
+    Resampling participants with replacement, carrying BOTH visits and all cell
+    types with each, gives the sampling uncertainty of the reference cohort
+    itself. A simulator whose discrepancy from TNBC is no larger than the
+    discrepancy between two bootstrap realisations of TNBC cannot be
+    distinguished from a second draw of the same study.
+    """
+    if isinstance(accs, SummaryAccumulator):
+        accs = {"ALL": accs}
+    rng = np.random.default_rng(seed)
+    by_ct_pid: dict[str, dict[str, list]] = {}
+    for ct, acc in accs.items():
+        d: dict[str, list] = {}
+        for r in acc.pv_rows:
+            d.setdefault(r["participant"], []).append(r)
+        by_ct_pid[ct] = d
+    pids = sorted({p for d in by_ct_pid.values() for p in d})
+
+    out = []
+    for b in range(n_boot):
+        # One participant resample shared across cell types: a participant enters
+        # or leaves the cohort as a whole, which is how the real sampling works.
+        draw = rng.choice(pids, size=len(pids), replace=True)
+        per_ct = []
+        for ct, d in by_ct_pid.items():
+            rows = []
+            for j, pid in enumerate(draw):
+                for r in d.get(pid, []):
+                    # Relabel so a participant drawn twice is two participants.
+                    rows.append({**r, "participant": f"{pid}#{j}"})
+            if rows:
+                per_ct.append(_accumulator_from_rows(rows, accs[ct].n_genes))
+        if not per_ct:
+            continue
+        st = typical_celltype_targets({str(i): a for i, a in enumerate(per_ct)})
+        st.pop("_prepost_corr_genewise", None)
+        out.append(st)
+        if verbose and (b + 1) % 50 == 0:
+            print(f"  bootstrap {b + 1}/{n_boot}", flush=True)
+    return out
+
+
+def summarize_adata_per_celltype(
+    adata,
+    participant_col: str = "participant",
+    visit_col: str = "visit",
+    arm_col: str | None = "arm",
+    celltype_col: str = "cell_type",
+    layer: str | None = None,
+    min_cells: int = 2000,
+) -> dict[str, SummaryAccumulator]:
+    """One accumulator per cell type, each stratified by participant x visit only.
+
+    THE PRIMARY SIMULATOR REPRESENTS ONE HOMOGENEOUS CELL POPULATION, so every
+    target must be measured at that level. Measuring on the cell-type-pooled
+    sample and generating a single population is the incoherence the gates kept
+    detecting.
+
+    It also makes the estimators comparable. ``summarize_adata`` pools 242 strata
+    (participant x visit x cell type) while ``summarize_simulation`` has 24, and
+    the moment estimator consumes one degree of freedom per stratum, so the two
+    arms carried different biases. Here each cell type has exactly 24 strata, the
+    same as the simulator.
+    """
+    obs = adata.obs
+    X = adata.layers[layer] if layer is not None else adata.X
+    out: dict[str, SummaryAccumulator] = {}
+    for ct, ct_idx in obs.groupby(celltype_col, observed=True).indices.items():
+        if len(ct_idx) < min_cells:
+            continue
+        acc = SummaryAccumulator(n_genes=adata.n_vars, gene_names=list(adata.var_names))
+        sub_obs = obs.iloc[ct_idx]
+        for key, rel in sub_obs.groupby([participant_col, visit_col], observed=True).indices.items():
+            key = key if isinstance(key, tuple) else (key,)
+            rows = ct_idx[rel]
+            block = X[rows]
+            block = block.toarray() if hasattr(block, "toarray") else np.asarray(block)
+            arm = (
+                str(sub_obs[arm_col].iloc[rel[0]])
+                if arm_col and arm_col in sub_obs.columns
+                else "NA"
+            )
+            acc.add_block(
+                block,
+                participant=str(key[0]),
+                visit=str(key[1]),
+                arm=arm,
+                stratum=f"{key[0]}|{key[1]}",
+            )
+        out[str(ct)] = acc
+    return out
+
+
+def typical_celltype_targets(accs: dict[str, SummaryAccumulator]) -> dict:
+    """Combine per-cell-type statistics into a TYPICAL cell type.
+
+    Each scalar target is the median across cell types, with the inter-cell-type
+    range recorded alongside. The simulator represents *a* cell type, not the
+    average of a mixture, so the median is the right summary and the spread is
+    the honest statement of how much cell types differ.
+    """
+    per_ct = {ct: acc.statistics() for ct, acc in accs.items()}
+    keys = sorted({k for v in per_ct.values() for k in v if not k.startswith("_")})
+    out: dict = {}
+    for k in keys:
+        vals = np.array(
+            [v[k] for v in per_ct.values() if isinstance(v.get(k), (int, float))],
+            dtype=float,
+        )
+        vals = vals[np.isfinite(vals)]
+        if vals.size == 0:
+            continue
+        out[k] = float(np.median(vals))
+        out[f"{k}__ct_lo"] = float(np.min(vals))
+        out[f"{k}__ct_hi"] = float(np.max(vals))
+    out["n_celltypes_used"] = len(per_ct)
+    out["celltypes_used"] = sorted(per_ct)
+    return out
+
+
 def summarize_simulation(cfg) -> SummaryAccumulator:
     """Summarise one simulated replicate through the identical statistic code.
 
@@ -927,15 +1089,41 @@ def measure_targets(
 ) -> dict:
     """Measure every simulator target from real data and write the canonical files.
 
-    Writes ``tnbc_sim_targets.json`` (the numbers the simulator is configured
-    from and validated against) and ``tnbc_empirical.npz`` (the nuisance pools --
-    per-cell library sizes and cells per participant-visit -- which are resampled
-    rather than fitted, because a parametric fit reproduced the library-size
-    median +34% and Q75 +53% off).
+    ALL TARGETS ARE MEASURED WITHIN CELL TYPE. The primary simulator represents one
+    homogeneous cell population, so cell-level dispersion, participant and
+    participant-by-visit variance, cells per participant-visit, gene rates and the
+    longitudinal covariance must all be conditioned at that level. Mixing
+    conditional dispersion with pooled cell counts and pooled longitudinal
+    covariance is the incoherence the calibration gates kept detecting.
+
+    Scalar targets are the MEDIAN across cell types (a typical cell type), with the
+    inter-cell-type range recorded. Cell-type-pooled values are also written, with
+    a ``pooled_`` prefix, for description only -- they are what a whole-sample
+    analysis would see and are NOT calibration targets.
     """
     if verbose:
         print(f"summarising {adata.n_obs:,} cells x {adata.n_vars:,} genes", flush=True)
-    acc = summarize_adata(
+
+    accs = summarize_adata_per_celltype(
+        adata,
+        participant_col=participant_col,
+        visit_col=visit_col,
+        arm_col=arm_col,
+        celltype_col=celltype_col or "cell_type",
+        layer=layer,
+    )
+    if not accs:
+        raise ValueError(
+            f"no cell type has enough cells; check {celltype_col!r}. The primary "
+            "simulator is calibrated within cell type by design."
+        )
+    if verbose:
+        print(f"cell types used: {sorted(accs)}", flush=True)
+    stats = typical_celltype_targets(accs)
+    stats.pop("_prepost_corr_genewise", None)
+
+    # Cell-type-pooled statistics, for DESCRIPTION only.
+    pooled_acc = summarize_adata(
         adata,
         participant_col=participant_col,
         visit_col=visit_col,
@@ -943,8 +1131,10 @@ def measure_targets(
         celltype_col=celltype_col,
         layer=layer,
     )
-    stats = acc.statistics()
-    stats.pop("_prepost_corr_genewise", None)
+    pooled = pooled_acc.statistics()
+    for k, v in pooled.items():
+        if not k.startswith("_") and isinstance(v, (int, float)):
+            stats[f"pooled_{k}"] = float(v)
 
     if verbose:
         print("fitting conditional Gamma-Poisson dispersion (Cox-Reid APL)", flush=True)
@@ -958,42 +1148,44 @@ def measure_targets(
     )
     stats.update(fit.summary())
 
-    # Marginal (cell-type-pooled) dispersion, REPORTED FOR CONTEXT ONLY. It is not
-    # a calibration target: the simulator has no cell types to pool, so requiring
-    # the simulated marginal to match this one would force a latent parameter to
-    # absorb heterogeneity the model does not contain.
-    marg = summarize_adata(
-        adata,
-        participant_col=participant_col,
-        visit_col=visit_col,
-        arm_col=arm_col,
-        celltype_col=None,
-        layer=layer,
-    )
-    m_alpha, m_mean = marg.conditional_alpha()
-    m_ok = np.isfinite(m_alpha) & (m_alpha > 0)
-    stats["marginal_alpha_median_CONTEXT_ONLY"] = (
-        float(np.median(m_alpha[m_ok])) if m_ok.any() else np.nan
-    )
     stats["celltype_conditioning_ratio"] = (
-        float(stats["cond_alpha_median"] / stats["marginal_alpha_median_CONTEXT_ONLY"])
-        if m_ok.any()
+        float(stats["cond_alpha_median"] / stats["pooled_cond_alpha_median"])
+        if stats.get("pooled_cond_alpha_median")
         else np.nan
     )
 
-    # --- library-size and cells-per-pv fits (fallback parameters) ---
-    umi = np.concatenate(acc.cell_umi).astype(np.float64)
+    # --- empirical pools, all within cell type ---
+    umi = np.concatenate([np.concatenate(a.cell_umi) for a in accs.values()]).astype(float)
     log_umi = np.log(umi[umi > 0])
     stats["lib_log_mean"] = float(log_umi.mean())
     stats["lib_log_sd"] = float(log_umi.std())
-    pv = acc.pv_frame()
-    cells_pv = pv["n_cells"].to_numpy(dtype=float)
+
+    cells_pv = np.concatenate(
+        [a.pv_frame()["n_cells"].to_numpy(dtype=float) for a in accs.values()]
+    )
     stats["cells_per_pv_mean"] = float(cells_pv.mean())
     stats["cells_per_pv_cv"] = float(cells_pv.std() / cells_pv.mean())
     stats["cells_per_pv_min"] = int(cells_pv.min())
     stats["cells_per_pv_max"] = int(cells_pv.max())
+
+    # Gene rate profile of a TYPICAL cell type: the per-gene median of the
+    # within-cell-type profiles, renormalised. The pooled profile is a
+    # composition-weighted mixture and would reintroduce the very heterogeneity
+    # the one-population design excludes.
+    profiles = []
+    for a in accs.values():
+        tot = a.total_counts.sum()
+        if tot > 0:
+            profiles.append(a.total_counts / tot)
+    prof = np.median(np.vstack(profiles), axis=0)
+    prof = prof / prof.sum()
+    gene_mean_count = prof * float(np.mean(umi))
+
     stats["n_genes_transcriptome"] = int(adata.n_vars)
-    stats["n_participants"] = int(pv["participant"].nunique())
+    stats["n_participants"] = int(
+        adata.obs[participant_col].nunique()
+    )
+    stats["calibration_level"] = "within_cell_type"
     stats["source"] = "sctrial.benchmark.calibration.measure_targets"
 
     if out_json is not None:
@@ -1012,7 +1204,8 @@ def measure_targets(
             cells_per_pv=cells_pv.astype(np.float32),
             cond_alpha=fit.alpha_shrunk.astype(np.float32),
             cond_alpha_mle=fit.alpha_mle.astype(np.float32),
-            gene_mean_count=fit.mean_count.astype(np.float32),
+            gene_mean_count=gene_mean_count.astype(np.float32),
+            calibration_level=np.array(["within_cell_type"]),
         )
         if verbose:
             print(f"wrote {out_npz}", flush=True)
