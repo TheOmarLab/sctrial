@@ -726,7 +726,16 @@ def participant_bootstrap_statistics(
         if not per_ct:
             continue
         st = typical_celltype_targets({str(i): a for i, a in enumerate(per_ct)})
-        st.pop("_prepost_corr_genewise", None)
+        # Carry the quantile grid, not just the scalars. Without it the
+        # distributional gate silently falls back to a simulation-versus-simulation
+        # reference, which reflects only Monte Carlo noise rather than the
+        # reference cohort's participant-level sampling variability -- the very
+        # tolerance the bootstrap exists to provide.
+        _r = st.pop("_prepost_corr_genewise", None)
+        if _r is not None and len(_r):
+            st["corr_quantiles"] = np.percentile(
+                np.asarray(_r), np.linspace(1, 99, 99)
+            ).tolist()
         out.append(st)
         if verbose and (b + 1) % 50 == 0:
             print(f"  bootstrap {b + 1}/{n_boot}", flush=True)

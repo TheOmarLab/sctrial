@@ -402,15 +402,16 @@ def _distribution_gate(observed: dict, sims: list[dict], bootstrap: list | None 
     # two independent realisations of the reference process. Like against like.
     d_obs = float(np.median([_w1(obs_grid, g) for g in stack]))
 
-    boot_grids = [
-        np.asarray(b["corr_quantiles"])
-        for b in (bootstrap or [])
-        if isinstance(b, dict) and ("corr_quantiles" in b or "_corr_quantiles" in b)
-    ] or [
-        np.asarray(b["_corr_quantiles"])
-        for b in (bootstrap or [])
-        if isinstance(b, dict) and "_corr_quantiles" in b
-    ]
+    # Accept either key. The guard previously tested for BOTH spellings but the
+    # body read only one, so a bootstrap carrying `_corr_quantiles` alone would
+    # have raised KeyError instead of being used.
+    boot_grids = []
+    for b in bootstrap or []:
+        if not isinstance(b, dict):
+            continue
+        g = b.get("corr_quantiles", b.get("_corr_quantiles"))
+        if g is not None and len(g):
+            boot_grids.append(np.asarray(g))
     if len(boot_grids) >= 20:
         # Preferred: carries the real cohort's participant-level sampling
         # variability, which is the variation a second run of this study would see.

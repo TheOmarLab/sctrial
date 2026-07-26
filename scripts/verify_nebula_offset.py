@@ -318,6 +318,7 @@ def sigma_u_ablation(depth_factor: float = 3.0, panel_n: int = 120, n_rep: int =
     participants = [f"P{i:02d}" for i in range(2 * n_per_arm)]
     arms = ["Treated"] * n_per_arm + ["Control"] * n_per_arm
 
+    rows: list[dict] = []
     print(f"\n  {'sigma_u':>8s} {'mean beta':>11s} {'MCSE':>8s} {'FPR@0.05':>9s} {'converged':>10s}")
     for sigma_u in (0.0, 0.25, 0.50, 0.766):  # last = the Treg-calibrated value
         rng = np.random.default_rng(31337)
@@ -362,11 +363,42 @@ def sigma_u_ablation(depth_factor: float = 3.0, panel_n: int = 120, n_rep: int =
         mcse = float(np.nanstd(per_rep_mean) / np.sqrt(len(per_rep_mean)))
         fpr = float(np.nanmean(np.concatenate(all_p) < 0.05))
         conv = float(np.mean(np.concatenate(all_c) > -20))
+        rows.append({"sigma_u": sigma_u, "mean_beta": mb, "mcse": mcse, "fpr": fpr})
         print(f"  {sigma_u:8.3f} {mb:+11.4f} {mcse:8.4f} {fpr:9.4f} {conv:10.4f}", flush=True)
 
-    print("\n  Monotone deterioration with sigma_u => the participant-by-visit level is")
-    print("  the responsible omission. A flat response refutes that attribution.")
-    print("  NOTE: NEBULA is designed for multi-subject CELL-LEVEL inference; a")
+    # COMPUTE the verdict from the numbers. The previous version printed a fixed
+    # interpretive sentence whatever the data showed, which is precisely how a
+    # diagnostic stops being one -- it would have announced "monotone
+    # deterioration" even for a flat response.
+    fprs = np.array([r["fpr"] for r in rows], dtype=float)
+    biases = np.array([r["mean_beta"] for r in rows], dtype=float)
+    mcses = np.array([r["mcse"] for r in rows], dtype=float)
+    fpr_monotone = bool(np.all(np.diff(fprs) > -0.02)) and (fprs[-1] - fprs[0] > 0.10)
+    bias_monotone = bool(np.all(np.diff(np.abs(biases)) > -1e-3)) and (
+        abs(biases[-1]) > 3 * mcses[-1] and abs(biases[-1]) - abs(biases[0]) > 0.05
+    )
+
+    print("\n  VERDICT (computed, not asserted):")
+    print(
+        f"    Type I error  : {'MONOTONE in sigma_u' if fpr_monotone else 'NOT monotone'}"
+        f"  ({fprs[0]:.4f} -> {fprs[-1]:.4f})"
+    )
+    print(
+        f"    coefficient   : {'MONOTONE in sigma_u' if bias_monotone else 'NOT explained by sigma_u'}"
+        f"  ({biases[0]:+.4f} -> {biases[-1]:+.4f}, MCSE {mcses[-1]:.4f})"
+    )
+    if fpr_monotone and not bias_monotone:
+        print("    => the omitted participant-by-visit level explains the CALIBRATION")
+        print("       failure but NOT any coefficient bias. An omitted mean-zero random")
+        print("       effect corrupts dependence and standard errors; it need not shift")
+        print("       the point estimate, and here it does not.")
+        print("    => any larger coefficient bias seen under the full simulator has a")
+        print("       DIFFERENT cause and must not be attributed to sigma_u.")
+    elif fpr_monotone and bias_monotone:
+        print("    => sigma_u drives both. The attribution is supported on both counts.")
+    else:
+        print("    => sigma_u is NOT the responsible omission. Look elsewhere.")
+    print("\n  NOTE: NEBULA is designed for multi-subject CELL-LEVEL inference; a")
     print("  treatment-by-visit contrast over repeated biosamples is not the")
     print("  cross-sectional subject-level use case it was principally developed for.")
     print("  The finding is about fit to THIS hierarchy, not general calibration.")
