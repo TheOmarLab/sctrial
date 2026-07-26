@@ -116,6 +116,32 @@ def _verify_manifest(blob: dict, path) -> None:
         )
 
     problems = []
+
+    # THE SOURCE ACTUALLY EXECUTING, verified by content rather than by the commit
+    # it claims to be. git is absent from this cluster's compute nodes, and the
+    # cluster spent this project with HEAD pinned at one commit while the files on
+    # disk were many commits newer -- so the nominal commit described nothing that
+    # was running. A content hash needs no git and answers the question that
+    # matters.
+    from sctrial.benchmark.manifest import source_tree_sha256
+
+    want_src = m.get("source_tree_sha256")
+    if not want_src:
+        raise SystemExit(
+            f"{path} carries no source_tree_sha256. It predates source "
+            "verification; re-freeze before running."
+        )
+    got_src = source_tree_sha256()
+    if got_src != want_src:
+        raise SystemExit(
+            "REFUSING TO RUN: the source tree does not match the frozen "
+            f"benchmark.\n  frozen: {want_src}\n  actual: {got_src}\n"
+            "Deploy the frozen commit (scripts/sync_hpc.sh deploy <sha>) or "
+            "re-freeze deliberately. Results produced by unfrozen code cannot be "
+            "attributed to the frozen configuration."
+        )
+    print(f"source tree verified against the frozen benchmark: {got_src[:16]}", flush=True)
+
     val_dir = path.parent
     for key, fname in (
         ("targets_sha256", f"{m['dataset']}_sim_targets.json"),
