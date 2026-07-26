@@ -317,7 +317,17 @@ def _run_single_iteration(args: tuple) -> list[dict]:
                     "ci_hi": r.get("ci_hi", np.nan),
                     "converged": r.get("converged", False),
                     "failure_mode": r.get("failure_mode", "numerical"),
-                    "runtime_seconds": elapsed / len(gene_cols),
+                    # Wall time for the WHOLE iteration (all genes), matching the
+                    # figure axis "Median runtime per iteration (s)". This was
+                    # previously divided by len(gene_cols), i.e. stored per-gene
+                    # while being plotted and described as per-iteration. That
+                    # understated the cost by the panel size (up to 2000x) and,
+                    # worse, manufactured the "flat runtime scaling" claim:
+                    # per-gene time is naturally flat in panel size, whereas the
+                    # per-iteration cost it was labelled as grows with it.
+                    # NOTE: existing CSVs written before this fix hold per-gene
+                    # values and can be corrected as runtime_seconds * n_genes.
+                    "runtime_seconds": elapsed,
                     "n_per_arm": cfg.n_per_arm,
                     "mean_cells": cfg.mean_cells_per_visit,
                 }
