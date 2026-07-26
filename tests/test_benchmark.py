@@ -270,7 +270,7 @@ class TestEndToEnd:
             },
         }
         rows = _run_single_iteration(
-            ("test_null", 0, 42, scenario, ["sctrial_did", "wilcoxon_paired"])
+            ("test_null", 0, 42, scenario, ["sctrial_did", "wilcoxon_paired"], None)
         )
         df = pd.DataFrame(rows)
 

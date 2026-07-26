@@ -268,8 +268,15 @@ def _run_single_iteration(args: tuple) -> list[dict]:
 
     warnings.filterwarnings("ignore")
 
-    scenario_name, iteration, seed, scenario, methods = args
-    kw = dict(scenario["config_kwargs"])
+    scenario_name, iteration, seed, scenario, methods, base_config = args
+
+    # The frozen calibration is the FLOOR; a scenario may only override the knobs
+    # it is explicitly varying. Building the config from scenario kwargs alone is
+    # how the previous benchmark ran on dataclass defaults (2.3e7 UMIs per cell)
+    # while the Methods described calibrated parameters -- the calibration existed,
+    # it was simply never threaded through.
+    kw = dict(base_config or {})
+    kw.update(scenario["config_kwargs"])
 
     # A single-arm design tests Delta versus 0, so a common time effect is NOT
     # removed by the contrast the way it is in a two-arm DiD. Forcing it to zero
@@ -449,6 +456,7 @@ def _run_grid(
     resume: bool,
     combined_name: str,
     seed: int,
+    base_config: dict | None = None,
 ) -> pd.DataFrame:
     """One driver for both grids.
 
@@ -489,7 +497,10 @@ def _run_grid(
                 )
 
             print(f"  [{si + 1}/{len(scenarios)}] {name}: {scenario['description']}")
-            task_args = [(name, it, seeds[it], scenario, methods) for it in range(n_iterations)]
+            task_args = [
+                (name, it, seeds[it], scenario, methods, base_config)
+                for it in range(n_iterations)
+            ]
 
             t0 = time.time()
             all_rows: list = []
@@ -539,6 +550,7 @@ def run_benchmark(
     n_jobs: int = 1,
     output_dir: str | Path = "benchmark_results",
     resume: bool = True,
+    base_config: dict | None = None,
 ) -> pd.DataFrame:
     """Run the core scenario grid."""
     if n_jobs == -1:
@@ -553,6 +565,7 @@ def run_benchmark(
         resume,
         "benchmark_combined.csv",
         seed=2024,
+        base_config=base_config,
     )
 
 
@@ -563,6 +576,7 @@ def run_sensitivity_benchmark(
     n_jobs: int = 1,
     output_dir: str | Path = "benchmark_results/sensitivity",
     resume: bool = True,
+    base_config: dict | None = None,
     panels: list[int] | None = None,
 ) -> pd.DataFrame:
     """Run the panel-size x signal-fraction sensitivity grid."""
@@ -583,6 +597,7 @@ def run_sensitivity_benchmark(
         resume,
         "sensitivity_combined.csv",
         seed=90210,
+        base_config=base_config,
     )
 
 

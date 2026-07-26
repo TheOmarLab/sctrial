@@ -94,6 +94,7 @@ def phase_simulate(n_jobs: int, n_iterations: int, designs=None):
     from sctrial.benchmark.orchestrator import run_benchmark
 
     designs = designs or ["two_arm", "single_arm"]
+    frozen = _load_frozen_config()
     out_dir = OUTPUT_DIR / "simulation"
     print("=" * 60)
     print("PHASE 2: Simulation Benchmark")
@@ -108,6 +109,7 @@ def phase_simulate(n_jobs: int, n_iterations: int, designs=None):
         n_jobs=n_jobs,
         output_dir=out_dir,
         resume=True,
+        base_config=frozen,
     )
 
 
@@ -167,12 +169,13 @@ def phase_sensitivity(n_jobs: int, n_iterations: int, designs=None, panels=None)
     """
     from sctrial.benchmark.orchestrator import run_sensitivity_benchmark
 
+    frozen = _load_frozen_config()
     out_dir = OUTPUT_DIR / "sensitivity"
     print("=" * 60)
     print("PHASE 5: Signal-Fraction Sensitivity Benchmark")
-    print(f"  {n_iterations} iterations × 20 scenarios × 4 methods")
-    print("  Panel sizes: 50, 200, 500, 2000 genes")
-    print("  Signal fractions: 1%, 5%, 10%, 20% + pure null")
+    print(f"  {n_iterations} iterations per scenario")
+    print(f"  Panel sizes: {panels or [50, 200, 500, 2000]}")
+    print("  Signal fractions: 1%, 5%, 10%, 20% + pure null, x balanced/one-directional")
     print(f"  Workers: {n_jobs}")
     print(f"  Output: {out_dir}")
     print("=" * 60)
@@ -184,6 +187,7 @@ def phase_sensitivity(n_jobs: int, n_iterations: int, designs=None, panels=None)
         n_jobs=n_jobs,
         output_dir=out_dir,
         resume=True,
+        base_config=frozen,
     )
 
 
@@ -222,7 +226,7 @@ def phase_ablation(n_jobs: int):
         for it in range(100):
             seed = 42 + it
             kw = dict(frozen)
-            kw.update(n_per_arm=40, cells_per_pv_fixed=500, seed=seed)
+            kw.update(n_per_arm=40, cells_per_pv_fixed=500, seed=seed)  # frozen is the floor
             probe = TranscriptomeSimConfig(**kw)
             panels = nested_panels(probe, rng=np.random.default_rng(seed + 1))
             panel = [f"gene_{i}" for i in panels[50]]

@@ -319,3 +319,90 @@ def test_real_data_path_reproduces_the_simulated_path_exactly(sim):
     np.testing.assert_allclose(
         np.sort(via_sim["cell_lib_size"]), np.sort(via_real["cell_lib_size"])
     )
+
+
+# ---------------------------------------------------------------------------
+# The calibration must actually reach the simulator
+# ---------------------------------------------------------------------------
+
+
+def test_frozen_calibration_reaches_the_simulator(monkeypatch):
+    """The single most consequential wiring in the benchmark.
+
+    The previous benchmark's headline defect was not a wrong calibration: it was
+    a calibration that existed, was described in the Methods, and was never
+    threaded through, so every published simulation ran on dataclass defaults at
+    2.3e7 UMIs per cell. Nothing failed, nothing warned, and the numbers looked
+    plausible.
+
+    This asserts the merge order directly: the frozen configuration is the floor,
+    and a scenario may override only the knobs it is explicitly varying.
+    """
+    from sctrial.benchmark import orchestrator
+
+    captured = {}
+
+    def _spy(cfg):
+        captured["cfg"] = cfg
+        raise RuntimeError("stop after config construction")
+
+    monkeypatch.setattr(orchestrator, "simulate_trial_v2", _spy)
+
+    base = {
+        "n_genes_transcriptome": _TEST_GENES,
+        "panel_sizes": (50, 200, 500),
+        "use_empirical_library": False,
+        "use_empirical_cells_per_pv": False,
+        # Deliberately unlike the dataclass default, so "the default happened to
+        # match" cannot make this pass.
+        "dispersion_median": 0.9137,
+        "between_participant_sd": 1.234,
+        "prepost_corr": 0.321,
+    }
+    scenario = {
+        "name": "t",
+        "description": "t",
+        "panel_size": 50,
+        "signal_fraction": 0.0,
+        "architecture": "balanced",
+        "magnitude": 0.5,
+        # The scenario varies participant SD; everything else must come from base.
+        "config_kwargs": {
+            "design": "two_arm",
+            "n_per_arm": 6,
+            "cells_per_pv_fixed": 40,
+            "between_participant_sd": 2.5,
+        },
+    }
+
+    with pytest.raises(RuntimeError, match="stop after config construction"):
+        orchestrator._run_single_iteration(("t", 0, 5, scenario, ["sctrial_did"], base))
+
+    cfg = captured["cfg"]
+    assert cfg.dispersion_median == pytest.approx(0.9137), (
+        "the frozen calibration did not reach the simulator; this is exactly the "
+        "defect that produced 2.3e7 UMIs per cell under a Methods section "
+        "describing calibrated parameters"
+    )
+    assert cfg.prepost_corr == pytest.approx(0.321)
+    assert cfg.between_participant_sd == pytest.approx(2.5), (
+        "the scenario must win for the knob it is explicitly varying"
+    )
+    assert cfg.cells_per_pv_fixed == 40
+
+
+def test_no_base_config_falls_back_to_dataclass_defaults():
+    """Document the fallback so the guard above is unambiguous.
+
+    ``base_config=None`` is legitimate only for tests. The production driver
+    refuses to start without a frozen configuration, which is asserted here so
+    that guarantee is not quietly removed later.
+    """
+    driver = (
+        Path(__file__).resolve().parent.parent / "scripts" / "run_benchmark.py"
+    ).read_text(encoding="utf-8")
+    assert "_load_frozen_config()" in driver
+    assert "There is deliberately no default fallback" in driver
+    assert driver.count("base_config=frozen") >= 2, (
+        "a benchmark phase runs without the frozen calibration"
+    )
