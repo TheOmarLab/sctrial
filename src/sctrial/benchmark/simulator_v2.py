@@ -337,7 +337,8 @@ def simulate_trial_v2(cfg: TranscriptomeSimConfig) -> dict:
     k = 0
     for pi, (pid, arm) in enumerate(zip(participants, arms)):
         for ti, visit in enumerate(visits):
-            n_cells = int(cells_pv[k]); k += 1
+            n_cells = int(cells_pv[k])
+            k += 1
             is_post = 1.0 if visit == "Post" else 0.0
             is_treated = 1.0 if arm == "Treated" else 0.0
 
