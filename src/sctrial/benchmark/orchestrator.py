@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 import multiprocessing as mp
+import os
 import time
 from pathlib import Path
 
@@ -160,8 +161,13 @@ def _scenario(
     signal_fraction: float = 0.0,
     architecture: str = _PRIMARY_ARCH,
     magnitude: float = 0.5,
+    arm_ratio: tuple[int, int] | None = None,
     **cfg,
 ) -> dict:
+    # arm_ratio is emitted ALWAYS, including as None, so the scenario's design
+    # always wins over anything inherited from the frozen calibration. An absent
+    # key inherits; an explicit None overrides.
+    cfg["arm_ratio"] = arm_ratio
     return {
         "name": name,
         "description": description,
@@ -199,7 +205,14 @@ def build_scenario_grid(design: str = "two_arm") -> list[dict]:
                 design=design,
                 n_per_arm=n,
                 between_participant_sd=1.5,
-                cells_scale=0.1,
+                # Explicit cell count, NOT a scale factor. `cells_scale=0.1`
+                # multiplied whatever pool the anchor supplies, and when the
+                # anchor became Treg (~301 cells/visit) that silently became ~30
+                # cells -- at which dreamlet returns finite p-values for about 10%
+                # of a 50-gene panel instead of 96%, so its Type I error would
+                # have been read off ~5 genes and the collapse would have looked
+                # like a property of dreamlet.
+                cells_per_pv_fixed=150,
             )
         )
 
@@ -272,7 +285,7 @@ def build_scenario_grid(design: str = "two_arm") -> list[dict]:
                     f"Unequal arms {ratio[0]}:{ratio[1]}",
                     design=design,
                     n_per_arm=sum(ratio),
-                    arm_ratio=ratio,
+                    arm_ratio=ratio,  # the only scenarios that set it
                     signal_fraction=_SIGNAL_FRACTION,
                     cells_per_pv_fixed=_CELLS,
                 )
@@ -397,6 +410,21 @@ def _run_single_iteration(args: tuple) -> list[dict]:
     cfg = TranscriptomeSimConfig(seed=seed, effects=effects, **kw)
 
     sim = simulate_trial_v2(cfg)
+
+    # The design that was actually SIMULATED. Asserted against the request so a
+    # config leak cannot silently flatten the sample-size axis again.
+    realised_arms = list(sim["latent"]["arms"])
+    n_treated = sum(a == "Treated" for a in realised_arms)
+    n_control = len(realised_arms) - n_treated
+    if cfg.arm_ratio is None and cfg.design == "two_arm":
+        expected = 2 * cfg.n_per_arm
+        if len(realised_arms) != expected:
+            raise RuntimeError(
+                f"{scenario_name}: requested n_per_arm={cfg.n_per_arm} "
+                f"({expected} participants) but simulated {len(realised_arms)}. "
+                "A design field has leaked in from the frozen calibration."
+            )
+
     inputs = prepare_inputs(sim, panel_genes)
     oracle = inputs["oracle"]
     design_type = cfg.design
@@ -460,6 +488,10 @@ def _run_single_iteration(args: tuple) -> list[dict]:
                     # "flat runtime scaling" claim.
                     "runtime_seconds": elapsed,
                     "runtime_scope": "per_iteration",
+                    # REALISED, not requested. The two diverged once already.
+                    "n_participants": len(realised_arms),
+                    "n_treated": n_treated,
+                    "n_control": n_control,
                     "n_per_arm": cfg.n_per_arm,
                     "panel_size": panel_size,
                     "n_signal_realised": len(signal_genes),
@@ -666,11 +698,38 @@ def _run_grid(
             all_results.append(df)
             print(f"    Done in {time.time() - t0:.0f}s -> {csv_path.name}")
 
-    combined = pd.concat(all_results, ignore_index=True)
+    # REBUILD FROM DISK, not from this invocation's results.
+    #
+    # The definitive run is deliberately split across four SLURM jobs by design
+    # family and panel size, all writing into one directory under one combined
+    # name. Concatenating only `all_results` meant the last job to finish
+    # overwrote the others, so the combined file -- the ONLY file the figures
+    # read -- would have held one design family, or one panel size, with no
+    # error. The pure-null calibration panel would have been drawn from a quarter
+    # of the grid and looked complete.
     combined_path = output_dir / combined_name
-    combined.to_csv(combined_path, index=False)
-    print(f"\nAll results saved -> {combined_path}")
+    parts = []
+    for f in sorted(output_dir.glob("*.csv")):
+        if f.name == combined_name:
+            continue
+        try:
+            parts.append(pd.read_csv(f, low_memory=False))
+        except Exception as exc:  # pragma: no cover - unreadable partial file
+            raise RuntimeError(f"cannot read {f}: {exc}") from exc
+    if not parts:
+        raise RuntimeError(f"no per-scenario results found in {output_dir}")
+    combined = pd.concat(parts, ignore_index=True)
+
+    # Atomic replace: two jobs finishing together would otherwise interleave two
+    # non-atomic writes into a corrupt file.
+    tmp = combined_path.with_suffix(".csv.tmp")
+    combined.to_csv(tmp, index=False)
+    os.replace(tmp, combined_path)
+
+    print(f"\nCombined {len(parts)} scenario files -> {combined_path}")
     print(f"Total rows: {len(combined):,}")
+    if "scenario" in combined:
+        print(f"Scenarios present: {combined['scenario'].nunique()}")
     return combined
 
 

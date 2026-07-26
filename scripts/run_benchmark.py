@@ -91,9 +91,16 @@ def _load_frozen_config() -> dict:
     with open(path) as fh:
         blob = json.load(fh)
     _verify_manifest(blob, path)
+    # Keep ONLY calibration-owned fields. The frozen configuration describes the
+    # reference POPULATION; the scenario grid owns the EXPERIMENT. The anchor's
+    # retained 6-versus-5 design is a property of the TNBC Treg cohort, not of a
+    # simulated n=40 arm, and letting it through collapsed every two-arm scenario
+    # to 11 participants while the results recorded the requested size.
+    from sctrial.benchmark.simulator_v2 import SCENARIO_OWNED_FIELDS
+
     frozen = blob["config"]
-    frozen.pop("seed", None)
-    frozen.pop("effects", None)
+    for field in SCENARIO_OWNED_FIELDS:
+        frozen.pop(field, None)
     return frozen
 
 

@@ -693,3 +693,112 @@ def test_source_tree_hash_is_deterministic_and_sensitive():
     finally:
         target.write_text(original, encoding="utf-8")
     assert source_tree_sha256() == a, "hash did not return to its original value"
+
+
+# ---------------------------------------------------------------------------
+# The frozen calibration must not dictate the experimental design
+# ---------------------------------------------------------------------------
+
+
+def test_scenario_design_survives_the_frozen_calibration(tmp_path, monkeypatch):
+    """The grid's sample-size axis must not collapse to the anchor's design.
+
+    The frozen calibration describes the reference POPULATION. The anchor's
+    retained 6-versus-5 paired design is a property of the TNBC Treg cohort, not
+    of a simulated n=40 arm. It leaked in as `arm_ratio`, and because
+    `build_params` reads `arm_ratio` before `n_per_arm`, EVERY two-arm scenario
+    from n=8 to n=60 simulated 11 participants -- while the results file recorded
+    the requested size, so nothing downstream could have detected it. FPR-versus-n
+    and power-versus-n would have been flat by construction, and two-arm "n=40"
+    (11 people) would have sat beside single-arm "n=40" (40 people) in one figure.
+
+    This drives the REAL loader against a REAL frozen file. An earlier version
+    recomputed the field partition inside the test, so it verified the constant
+    rather than the code that uses it and passed happily when the loader was
+    broken -- a guard that cannot fail is not a guard.
+    """
+    import importlib.util
+    import json as _json
+
+    from sctrial.benchmark.orchestrator import build_scenario_grid
+    from sctrial.benchmark.simulator_v2 import TranscriptomeSimConfig, build_params
+
+    root = Path(__file__).resolve().parent.parent
+    val = tmp_path / "benchmark" / "validation"
+    val.mkdir(parents=True)
+    frozen_cfg = {
+        "arm_ratio": [6, 5],          # the anchor's retained design
+        "n_per_arm": 11,
+        "n_genes_transcriptome": _TEST_GENES,
+        "panel_sizes": [50, 200, 500],
+        "use_empirical_library": False,
+        "use_empirical_cells_per_pv": False,
+        "use_empirical_gene_rates": False,
+        "use_empirical_dispersion": False,
+        "dispersion_median": 0.3404,
+    }
+    (val / "frozen_simulator_config.json").write_text(
+        _json.dumps({"config": frozen_cfg, "manifest": {"_test": True}})
+    )
+
+    spec = importlib.util.spec_from_file_location(
+        "_rb_under_test", root / "scripts" / "run_benchmark.py"
+    )
+    rb = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(rb)
+    monkeypatch.setattr(rb, "OUTPUT_DIR", tmp_path / "benchmark")
+    monkeypatch.setattr(rb, "_verify_manifest", lambda *a, **k: None)
+
+    calibration_only = rb._load_frozen_config()
+    assert "arm_ratio" not in calibration_only, (
+        "_load_frozen_config let the anchor's arm_ratio through into the grid"
+    )
+    assert "n_per_arm" not in calibration_only
+    assert calibration_only.get("dispersion_median") == 0.3404, (
+        "the calibration itself was stripped; only design fields should be removed"
+    )
+
+    for scenario in build_scenario_grid("two_arm"):
+        kw = dict(calibration_only)
+        kw.update(scenario["config_kwargs"])
+        cfg = TranscriptomeSimConfig(seed=1, **kw)
+        arms = build_params(cfg)["arms"]
+        requested = scenario["config_kwargs"].get("arm_ratio")
+        if requested is not None:
+            assert len(arms) == sum(requested), scenario["name"]
+        else:
+            assert len(arms) == 2 * cfg.n_per_arm, (
+                f"{scenario['name']}: requested n_per_arm={cfg.n_per_arm} but "
+                f"simulated {len(arms)} participants"
+            )
+
+
+def test_signal_fraction_never_rounds_away_to_zero():
+    """A signal-bearing scenario must contain signal.
+
+    round() is banker's rounding, so round(50 * 0.01) == 0: the 50-gene 1% cells
+    were generated as pure nulls while still labelled 2% signal and stamped with
+    an architecture, colliding with the true null on any groupby of the realised
+    fraction -- and that is the lowest-signal-fraction point the sensitivity
+    analysis exists to measure.
+    """
+    from sctrial.benchmark.simulator_v2 import make_signal
+
+    panel = [f"gene_{i}" for i in range(50)]
+    for frac in (0.01, 0.05, 0.10, 0.20):
+        effects = make_signal(panel, frac, "balanced", 0.5, rng=np.random.default_rng(0))
+        assert len(effects) >= 1, f"{frac:.0%} of 50 genes produced no signal genes"
+    assert make_signal(panel, 0.0, "balanced", 0.5) == {}, "a null scenario gained signal"
+
+
+def test_combined_results_are_rebuilt_from_disk():
+    """Four split jobs share one output directory and one combined filename."""
+    orch = (
+        Path(__file__).resolve().parent.parent
+        / "src" / "sctrial" / "benchmark" / "orchestrator.py"
+    ).read_text(encoding="utf-8")
+    assert "output_dir.glob" in orch, (
+        "the combined file is built from this invocation's results only, so the "
+        "last of the four split jobs to finish overwrites the rest"
+    )
+    assert "os.replace" in orch, "the combined file is not written atomically"

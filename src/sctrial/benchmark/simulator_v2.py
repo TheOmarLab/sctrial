@@ -72,6 +72,27 @@ __all__ = [
 
 SignalArch = Literal["balanced", "heterogeneous", "one_directional"]
 
+# Fields the SCENARIO owns, never the frozen calibration. The calibration
+# describes the reference POPULATION (rates, dispersion, hierarchy, depth pools);
+# these describe the EXPERIMENT being simulated, which the grid varies.
+#
+# Conflating them silently collapsed the entire two-arm sample-size axis: the
+# anchor's retained 6-versus-5 design leaked in as `arm_ratio`, and because
+# `build_params` reads `arm_ratio` BEFORE `n_per_arm`, every scenario from n=8 to
+# n=60 simulated 11 participants while the results file recorded the requested
+# size. FPR-versus-n and power-versus-n would have been flat by construction.
+SCENARIO_OWNED_FIELDS = (
+    "design",
+    "n_per_arm",
+    "arm_ratio",
+    "missing_rate",
+    "cells_per_pv_fixed",
+    "cells_scale",
+    "time_effect",
+    "effects",
+    "seed",
+)
+
 # Genes generated per pass inside a participant-visit block. Bounds the float64
 # gamma/Poisson transient; see the note in ``iter_pv_blocks``.
 _GENE_CHUNK = 2000
@@ -438,7 +459,15 @@ def make_signal(
         attributed to empirical-Bayes moderation is attributable to it.
     """
     rng = rng or np.random.default_rng(0)
-    n_sig = int(round(len(panel_genes) * signal_fraction))
+    # Half-up, floored at one. Python's round() is banker's rounding, so
+    # round(50 * 0.01) == 0 and the 50-gene 1%-signal cells were simulated as pure
+    # nulls while still labelled 2% signal and stamped with an architecture --
+    # phantom low-signal cells containing no signal, colliding with the true null
+    # on any groupby of the realised fraction. That is precisely the
+    # lowest-signal-fraction point the sensitivity analysis exists to measure.
+    n_sig = int(np.floor(len(panel_genes) * signal_fraction + 0.5))
+    if signal_fraction > 0:
+        n_sig = max(1, n_sig)
     if n_sig == 0:
         return {}
     chosen = rng.choice(np.asarray(panel_genes, dtype=object), size=n_sig, replace=False)
@@ -511,6 +540,9 @@ def build_params(cfg: TranscriptomeSimConfig) -> dict:
         arms = ["Treated"] * nt + ["Control"] * nc
     else:
         arms = ["Treated"] * cfg.n_per_arm + ["Control"] * cfg.n_per_arm
+    # The realised design is recorded and returned so the results file can state
+    # what was SIMULATED rather than what was requested. Writing the requested
+    # value is how a collapsed sample-size axis stayed invisible.
     participants = [f"P{i:03d}" for i in range(len(arms))]
     visits = ["Pre", "Post"]
 
