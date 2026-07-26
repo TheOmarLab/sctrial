@@ -35,11 +35,16 @@ case "${1:-check}" in
       exit 1
     fi
     git -C "$LOCAL" push -q origin HEAD 2>/dev/null || true
+    # Clean BEFORE the checkout: earlier rsyncs leave untracked files that the
+    # checkout would refuse to overwrite. Confined to the four code directories so
+    # it can never touch datasets/ or manuscript/, which are large, gitignored and
+    # not reproducible from the repo. No -x, so ignored files are left alone.
     ssh "$HOST" "cd $REMOTE && \
       git fetch --all --quiet --tags && \
+      git reset --hard --quiet HEAD && \
+      git clean -qfd src scripts tests manuscript_figures && \
       git checkout --quiet --detach $SHA && \
       git reset --hard --quiet $SHA && \
-      git clean -qfd src scripts tests && \
       find . -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null; \
       find . -name '*.pyc' -delete 2>/dev/null; \
       micromamba run -n sctrial pip install -e . --no-deps --force-reinstall -q && \
