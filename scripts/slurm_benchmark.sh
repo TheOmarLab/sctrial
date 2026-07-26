@@ -30,6 +30,7 @@ export SCTRIAL_MANUSCRIPT_DIR="$PROJECT/manuscript"
 GRID="${1:-core}"
 N_ITER="${2:-200}"
 DESIGN="${3:-}"   # optional: two_arm | single_arm; split for wall-clock
+PANELS="${4:-}"   # optional: sensitivity panel sizes, e.g. "50 200 500"
 
 module load gcc/11.2.0 2>/dev/null || true
 module load openblas/dynamic/0.3.18 2>/dev/null || true
@@ -57,6 +58,7 @@ esac
 
 DESIGN_ARG=()
 if [ -n "$DESIGN" ]; then DESIGN_ARG=(--designs "$DESIGN"); fi
+if [ -n "$PANELS" ]; then DESIGN_ARG+=(--panels $PANELS); fi
 
 echo "=== $GRID grid, $N_ITER iterations, $N_JOBS workers, design=${DESIGN:-all} ($(date)) ==="
 micromamba run -n sctrial python scripts/run_benchmark.py \

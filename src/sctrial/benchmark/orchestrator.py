@@ -207,7 +207,7 @@ def build_scenario_grid(design: str = "two_arm") -> list[dict]:
     return s
 
 
-def build_sensitivity_grid(design: str = "two_arm") -> list[dict]:
+def build_sensitivity_grid(design: str = "two_arm", panels=None) -> list[dict]:
     """Panel size x signal fraction sensitivity.
 
     Panels are NESTED subsets of one simulated transcriptome, so a panel-size
@@ -222,7 +222,10 @@ def build_sensitivity_grid(design: str = "two_arm") -> list[dict]:
     """
     s: list[dict] = []
     n_per_arm = 40
-    for panel in [50, 200, 500, 2000]:
+    # Panel sizes are selectable so the 2000-gene cells can run as their own job:
+    # one 2000-gene iteration measured 495 s against 44 s at 50 genes, so mixing
+    # them puts the whole grid at the mercy of the slowest cells.
+    for panel in list(panels) if panels else [50, 200, 500, 2000]:
         s.append(
             _scenario(
                 f"sens_null_g{panel}",
@@ -560,12 +563,18 @@ def run_sensitivity_benchmark(
     n_jobs: int = 1,
     output_dir: str | Path = "benchmark_results/sensitivity",
     resume: bool = True,
+    panels: list[int] | None = None,
 ) -> pd.DataFrame:
     """Run the panel-size x signal-fraction sensitivity grid."""
     if n_jobs == -1:
         n_jobs = mp.cpu_count()
+    grid_fn = (
+        (lambda design: build_sensitivity_grid(design, panels=panels))
+        if panels
+        else build_sensitivity_grid
+    )
     return _run_grid(
-        build_sensitivity_grid,
+        grid_fn,
         designs or ["two_arm"],
         methods or CORE_METHODS,
         n_iterations,

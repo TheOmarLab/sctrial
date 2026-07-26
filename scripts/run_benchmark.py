@@ -155,7 +155,7 @@ def phase_realdata(n_jobs: int):
     )
 
 
-def phase_sensitivity(n_jobs: int, n_iterations: int, designs=None):
+def phase_sensitivity(n_jobs: int, n_iterations: int, designs=None, panels=None):
     """Phase 5: Signal-fraction sensitivity benchmark.
 
     Tests how null-gene FPR depends on gene-panel size (50-2000) and
@@ -179,6 +179,7 @@ def phase_sensitivity(n_jobs: int, n_iterations: int, designs=None):
 
     run_sensitivity_benchmark(
         designs=designs or ["two_arm"],
+        panels=panels,
         n_iterations=n_iterations,
         n_jobs=n_jobs,
         output_dir=out_dir,
@@ -271,6 +272,9 @@ def main():
                         help="Monte Carlo iterations per scenario")
     parser.add_argument("--designs", nargs="+", default=None,
                         help="Design families to run; split across jobs for wall-clock")
+    parser.add_argument("--panels", nargs="+", type=int, default=None,
+                        help="Sensitivity panel sizes to run; a 2000-gene iteration "
+                             "measured 495 s versus 44 s at 50 genes, so it is split off")
 
     args = parser.parse_args()
 
@@ -283,7 +287,7 @@ def main():
         phase_simulate(args.n_jobs, args.n_iterations, args.designs)
 
     if args.phase in ("sensitivity", "all"):
-        phase_sensitivity(args.n_jobs, args.n_iterations, args.designs)
+        phase_sensitivity(args.n_jobs, args.n_iterations, args.designs, args.panels)
 
     if args.phase in ("realdata", "all"):
         phase_realdata(args.n_jobs)
