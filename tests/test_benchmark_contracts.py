@@ -545,3 +545,42 @@ def test_count_runners_keep_the_supplied_library_size_through_filtering(sim):
             f"{fname} lets filtering recompute the library size from the tested "
             "panel, which reinstates the normalisation-scope artifact"
         )
+
+
+def test_limma_follows_the_canonical_repeated_measures_order():
+    """The voom / duplicateCorrelation sequence must be in the prescribed order.
+
+    The limma workflow for repeated measures is: normalise, voom, estimate the
+    within-block correlation, re-voom WITH that correlation, then fit with it.
+    Skipping the second voom, or fitting without the block, silently reverts to
+    treating a participant's two visits as independent -- which is the
+    pseudoreplication this paper is about, committed by the comparator.
+
+    Also guards two mixups the limma maintainers call out: combining a logCPM /
+    limma-trend pipeline with voom, and putting participant in the design as a
+    fixed effect while ALSO blocking on it.
+    """
+    src = (RUNNERS / "limma_voom.py").read_text(encoding="utf-8")
+    two_arm = src.split("_R_SCRIPT_SINGLE_ARM")[0]
+
+    order = [
+        "y$samples$lib.size <- meta$lib_size",
+        "keep.lib.sizes=TRUE",
+        "calcNormFactors(y)",
+        "v0 <- voom(y, design)",
+        "corfit <- duplicateCorrelation(v0, design, block=meta$participant)",
+        "v <- voom(y, design, block=meta$participant, correlation=corfit$consensus)",
+        "fit <- lmFit(v, design, block=meta$participant, correlation=corfit$consensus)",
+        "eBayes(fit)",
+    ]
+    pos = -1
+    for step in order:
+        i = two_arm.find(step)
+        assert i > pos, f"limma step out of order or missing: {step!r}"
+        pos = i
+
+    assert "trend=TRUE" not in two_arm, "voom and limma-trend must not be combined"
+    assert "~arm * visit" in two_arm
+    assert "participant +" not in two_arm, (
+        "participant appears as a fixed effect AND as a duplicateCorrelation block"
+    )
