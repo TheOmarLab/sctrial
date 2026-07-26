@@ -68,15 +68,33 @@ def _mcse(x: np.ndarray) -> float:
 
 
 def _needs_more_replicates(rows: list, n_done: int) -> tuple[bool, str]:
-    """Whether this scenario has reached its Monte Carlo precision target."""
+    """Whether this SCENARIO has reached its Monte Carlo precision target.
+
+    Stopping is decided at the scenario level and applies to every method at once,
+    so all methods always see exactly the same R simulated datasets. Stopping each
+    method independently would break the pairing that makes the comparison
+    powerful -- methods would then be compared on partly different data.
+
+    Requires the criterion to hold for the WORST method: the run continues until
+    every reported method is precise enough, or the cap is reached.
+    """
     if n_done >= _MC_MAX:
-        return False, f"at the {_MC_MAX}-replicate cap"
-    fpr, pw = _replicate_rates(rows)
-    se_f, se_p = _mcse(fpr), _mcse(pw)
-    need_f = len(fpr) > 0 and se_f > _MCSE_TARGET_FPR
-    need_p = len(pw) > 0 and se_p > _MCSE_TARGET_POWER
-    msg = f"MCSE fpr={se_f:.4f} power={'n/a' if not len(pw) else f'{se_p:.4f}'}"
-    return bool(need_f or need_p), msg
+        return False, f"at the {_MC_MAX}-replicate cap; report achieved precision"
+    df = pd.DataFrame(rows)
+    if df.empty or "method" not in df:
+        return False, "no rows"
+    worst_f, worst_p, need = 0.0, 0.0, False
+    for method, grp in df.groupby("method", observed=True):
+        fpr, pw = _replicate_rates(grp.to_dict("records"))
+        se_f, se_p = _mcse(fpr), _mcse(pw)
+        if len(fpr):
+            worst_f = max(worst_f, se_f)
+            need |= se_f > _MCSE_TARGET_FPR
+        if len(pw):
+            worst_p = max(worst_p, se_p)
+            need |= se_p > _MCSE_TARGET_POWER
+        del method
+    return bool(need), f"worst-method MCSE fpr={worst_f:.4f} power={worst_p:.4f}"
 
 # ---------------------------------------------------------------------------
 # Scenario definitions
@@ -113,6 +131,24 @@ INTERNAL_METHODS = ["sctrial_mixed"]
 # and about two thirds of the inflation previously attributed to empirical-Bayes
 # moderation is that artifact.
 _PRIMARY_ARCH = "balanced"
+
+
+def scenario_seed(master_seed: int, scenario_name: str, replicate: int) -> int:
+    """A seed addressed by (scenario, replicate index), not by draw order.
+
+    With a single sequential RNG stream, adding a batch of replicates under
+    adaptive stopping would renumber every later dataset, so replicate 437 would
+    not be the same data across a resume, a different worker count, or a
+    re-partitioned SLURM job. Hashing the address makes replicate 437 always
+    replicate 437.
+
+    hashlib rather than hash(): Python salts str hashing per process, so hash()
+    is not reproducible across runs at all.
+    """
+    import hashlib
+
+    key = f"{master_seed}|{scenario_name}|{replicate}".encode()
+    return int.from_bytes(hashlib.sha256(key).digest()[:4], "big")
 
 
 def _scenario(
@@ -523,7 +559,9 @@ def _run_grid(
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    rng = np.random.default_rng(seed)
+    # No sequential RNG: every replicate seed is addressed by
+    # (scenario, index) via scenario_seed, so adaptive extension and resume
+    # cannot renumber datasets.
     all_results = []
 
     for design in designs:
@@ -537,7 +575,11 @@ def _run_grid(
         for si, scenario in enumerate(scenarios):
             name = f"{design}__{scenario['name']}"
             csv_path = output_dir / f"{name}.csv"
-            seeds = [int(rng.integers(0, 2**31)) for _ in range(n_iterations)]
+            # Addressed by (scenario, index) so adaptive extension and resume
+            # cannot renumber datasets. `rng` is retained only for reproducible
+            # scenario ordering.
+            def _seed(i: int, _n=name) -> int:
+                return scenario_seed(seed, _n, i)
 
             if resume and csv_path.exists():
                 existing = pd.read_csv(csv_path)
@@ -574,8 +616,8 @@ def _run_grid(
             # claims actually live, get more effort.
             while done < target:
                 batch = [
-                    (name, it, seeds[it], scenario, methods, base_config)
-                    for it in range(done, min(target, len(seeds)))
+                    (name, it, _seed(it), scenario, methods, base_config)
+                    for it in range(done, target)
                 ]
                 if not batch:
                     break
@@ -597,7 +639,7 @@ def _run_grid(
                                     f"({elapsed:.0f}s elapsed)", flush=True
                                 )
                                 _flush()
-                done = min(target, len(seeds))
+                done = target
                 _flush()
 
                 if not adaptive:
@@ -610,7 +652,6 @@ def _run_grid(
                 if extra <= 0:
                     break
                 print(f"    extending +{extra} replicates ({why})", flush=True)
-                seeds.extend(int(rng.integers(0, 2**31)) for _ in range(extra))
                 target = done + extra
 
             df = pd.DataFrame(all_rows)

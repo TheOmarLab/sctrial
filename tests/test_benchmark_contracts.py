@@ -502,3 +502,46 @@ def test_evaluability_is_recorded_not_silently_dropped():
     rows = _run_single_iteration(("t", 0, 3, scenario, ["sctrial_did"], None))
     assert len(rows) == 50, "the denominator must be the full panel"
     assert all("evaluable" in r for r in rows)
+
+
+# ---------------------------------------------------------------------------
+# Freeze-level: normalisation must not follow the panel
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("panel_size", [50, 200, 500])
+def test_library_size_is_invariant_to_panel_size(sim, panel_size):
+    """The normalisation reference must be identical for every nested panel.
+
+    This is the artifact Gate D proved: with a panel-scoped denominator the bias
+    swings from +0.094 to -0.076 purely with signal architecture, while a
+    full-transcriptome denominator holds at ~-0.01 throughout. If TMM or voom
+    recomputed norm factors after the matrix were cut down to the tested panel,
+    that artifact would come straight back and no downstream check would see it.
+
+    Freeze-level assertion: lib_size is computed BEFORE panel selection and does
+    not move as the panel grows from 50 to 2,000 genes.
+    """
+    ref = prepare_inputs(sim, sim["panels"][50])["lib_size"]
+    got = prepare_inputs(sim, sim["panels"][panel_size])["lib_size"]
+    np.testing.assert_allclose(got, ref, atol=0, rtol=0)
+
+
+@pytest.mark.parametrize("panel_size", [50, 200, 500])
+def test_cell_library_size_is_invariant_to_panel_size(sim, panel_size):
+    """Same guarantee for NEBULA's per-cell offset."""
+    ref = prepare_inputs(sim, sim["panels"][50])["cell_lib_size"]
+    got = prepare_inputs(sim, sim["panels"][panel_size])["cell_lib_size"]
+    np.testing.assert_allclose(got, ref, atol=0, rtol=0)
+
+
+def test_count_runners_keep_the_supplied_library_size_through_filtering(sim):
+    """filterByExpr must not be allowed to recompute lib.size from the panel."""
+    for fname in ("dreamlet_runner.py", "limma_voom.py", "edger_qlf.py"):
+        src = (RUNNERS / fname).read_text(encoding="utf-8")
+        assert "y$samples$lib.size <- meta$lib_size" in src
+        assert "keep.lib.sizes=TRUE" in src
+        assert "keep.lib.sizes=FALSE" not in src, (
+            f"{fname} lets filtering recompute the library size from the tested "
+            "panel, which reinstates the normalisation-scope artifact"
+        )
