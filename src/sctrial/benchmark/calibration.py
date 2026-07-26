@@ -726,6 +726,7 @@ def summarize_adata_per_celltype(
     celltype_col: str = "cell_type",
     layer: str | None = None,
     min_cells: int = 2000,
+    exclude: tuple[str, ...] = ("Unassigned", "unassigned", "Unknown", "Doublet", "Mixed"),
 ) -> dict[str, SummaryAccumulator]:
     """One accumulator per cell type, each stratified by participant x visit only.
 
@@ -744,7 +745,14 @@ def summarize_adata_per_celltype(
     X = adata.layers[layer] if layer is not None else adata.X
     out: dict[str, SummaryAccumulator] = {}
     for ct, ct_idx in obs.groupby(celltype_col, observed=True).indices.items():
-        if len(ct_idx) < min_cells:
+        # "Unassigned" is, by construction, whatever did not resolve to a marker
+        # profile: a heterogeneous leftover, not a cell population. Calibrating a
+        # HOMOGENEOUS-population simulator on it would reintroduce exactly the
+        # mixture the conditioning exists to remove. Cell types below `min_cells`
+        # are dropped for the opposite reason: too few cells per participant-visit
+        # to estimate anything (Mast cell gave a correlation SD of 0.53 on 7,045
+        # gene-cell-type pairs).
+        if str(ct) in exclude or len(ct_idx) < min_cells:
             continue
         acc = SummaryAccumulator(n_genes=adata.n_vars, gene_names=list(adata.var_names))
         sub_obs = obs.iloc[ct_idx]
