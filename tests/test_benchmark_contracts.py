@@ -229,7 +229,15 @@ def test_log1p_cpm_oracle_is_attenuated_and_same_sign():
 
 def test_log1p_cpm_oracle_approaches_beta_at_high_expression():
     """The two estimands must coincide when CPM >> 1, or the oracle is wrong."""
-    cfg = _cfg(effects={"gene_0": 0.5}, gene_rate_log_mean=-2.0, gene_rate_log_sd=0.2)
+    # Parametric rates on purpose: this test constructs a high-expression regime
+    # to check the quadrature limit, which the empirical proportion vector (drawn
+    # from real, mostly low-expression genes) cannot produce.
+    cfg = _cfg(
+        effects={"gene_0": 0.5},
+        use_empirical_gene_rates=False,
+        gene_rate_log_mean=-2.0,
+        gene_rate_log_sd=0.2,
+    )
     sim = simulate_trial_v2(cfg)
     o = sim["oracle"]["log1p_cpm"]["gene_0"]
     assert o == pytest.approx(0.5, rel=0.05), (

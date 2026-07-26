@@ -79,6 +79,10 @@ _GENE_CHUNK = 2000
 # Gauss-Hermite nodes for the oracle expectation over the random effects.
 _QUAD_NODES = 64
 
+# Offset separating the gene-rate stream from every other draw. Any fixed odd
+# value works; it exists so the two streams cannot silently coincide.
+_SUBSTREAM_OFFSET = 7919
+
 
 def _validation_dir() -> Path:
     """Locate the calibration outputs without guessing a parent depth.
@@ -183,7 +187,22 @@ class TranscriptomeSimConfig:
     lib_log_mean: float = 7.7333
     lib_log_sd: float = 0.8000
 
-    # --- baseline gene rates: alpha_g ~ N(mean, sd), relative to library size ---
+    # --- baseline gene rates ---
+    # Prefer RESAMPLING the empirical gene-proportion vector. Fitting a lognormal
+    # to the mean and SD of log gene expression fails badly: TNBC's log
+    # proportions have mean -12.685 and SD 2.643, but the distribution has a
+    # LIGHTER upper tail than lognormal, so E[exp(x)] is 0.171 rather than the
+    # 0.353 those two moments imply. A lognormal with the right two moments
+    # therefore implies 7,157 counts per cell against an actual mean library of
+    # 3,467 -- a 2.06x inconsistency. Renormalising onto the simplex then divides
+    # every gene down by that factor, and the simulation detected 783 genes per
+    # cell against TNBC's 1,087 with a zero fraction of 0.954 against 0.940.
+    #
+    # The empirical proportions sum to 1 by construction, so resampling them
+    # satisfies the simplex constraint exactly AND reproduces the tail. Same
+    # reasoning as for library sizes and cells per participant-visit: there is no
+    # reason to fit a parametric family to a nuisance distribution we possess.
+    use_empirical_gene_rates: bool = True
     gene_rate_log_mean: float = -4.5338
     gene_rate_log_sd: float = 2.6428
 
@@ -295,18 +314,35 @@ def load_empirical(path: str | Path | None = None) -> dict | None:
 
 
 def gene_baseline_rates(cfg: TranscriptomeSimConfig) -> np.ndarray:
-    """``alpha_g``, reproduced exactly as :func:`build_params` draws it.
+    """``alpha_g``: log gene proportions, summing to 1 on the exponential scale.
 
-    It is the FIRST draw from ``default_rng(cfg.seed)``, so a fresh generator
-    reproduces it bit for bit. That lets the analysis panel be chosen before the
-    effects are defined -- which the orchestrator needs, since the signal is
-    injected on the tested genes -- without simulating anything.
-    ``tests/test_benchmark.py`` asserts the two agree.
+    Reproduced exactly as :func:`build_params` draws it -- it is the FIRST draw
+    from ``default_rng(cfg.seed)``, so a fresh generator reproduces it bit for
+    bit. That lets the analysis panel be chosen before the effects are defined
+    (which the orchestrator needs, since the signal is injected on the tested
+    genes) without simulating anything. ``tests/test_benchmark.py`` asserts the
+    two agree.
+
+    A gene with zero empirical counts gets ``alpha = -inf``, i.e. it is never
+    expressed. That is faithful rather than a degenerate case, and callers must
+    treat ``exp(alpha)`` as the rate rather than assuming ``alpha`` is finite.
     """
     rng = np.random.default_rng(cfg.seed)
-    alpha = rng.normal(
-        cfg.gene_rate_log_mean, cfg.gene_rate_log_sd, size=cfg.n_genes_transcriptome
-    )
+    G = cfg.n_genes_transcriptome
+    emp = load_empirical(cfg.empirical_path)
+    if emp is not None and cfg.use_empirical_gene_rates and "gene_mean_count" in emp:
+        pool = np.asarray(emp["gene_mean_count"], dtype=float)
+        pool = pool[np.isfinite(pool) & (pool >= 0)]
+        # Permute when the sizes match (preserves the distribution exactly);
+        # resample otherwise.
+        props = rng.permutation(pool) if pool.size == G else rng.choice(pool, size=G, replace=True)
+        total = props.sum()
+        if total <= 0:
+            raise ValueError("empirical gene means sum to zero")
+        props = props / total
+        with np.errstate(divide="ignore"):
+            return np.log(props)
+    alpha = rng.normal(cfg.gene_rate_log_mean, cfg.gene_rate_log_sd, size=G)
     return alpha - float(np.log(np.exp(alpha).sum()))
 
 
@@ -445,7 +481,12 @@ def build_params(cfg: TranscriptomeSimConfig) -> dict:
     the generative model. Two implementations of a generative model is how a
     calibration silently stops describing the thing it calibrates.
     """
-    rng = np.random.default_rng(cfg.seed)
+    # TWO explicitly independent streams. ``gene_baseline_rates`` consumes
+    # ``default_rng(cfg.seed)`` so the panel can be chosen without simulating;
+    # everything else draws from a separately seeded generator. Sharing one
+    # stream would make the dispersion noise a deterministic function of the
+    # gene rates, which is a dependence the model does not contain.
+    rng = np.random.default_rng(cfg.seed + _SUBSTREAM_OFFSET)
     emp = load_empirical(cfg.empirical_path)
     G = cfg.n_genes_transcriptome
 
@@ -468,8 +509,10 @@ def build_params(cfg: TranscriptomeSimConfig) -> dict:
     # rate by E[L]; using it directly inflated every rate by ~3,147x and produced
     # 15.8M UMIs per cell against a TNBC median of 2,113. Renormalising the
     # simplex makes this exact and independent of n_genes_transcriptome.
-    alpha = rng.normal(cfg.gene_rate_log_mean, cfg.gene_rate_log_sd, size=G)
-    alpha -= float(np.log(np.exp(alpha).sum()))  # sum_g exp(alpha_g) == 1
+    # One implementation, shared with the panel selector, so the panel can never
+    # be chosen from a different gene-rate vector than the data are generated
+    # from. Consumes exactly the same first draw from this seed.
+    alpha = gene_baseline_rates(cfg)
 
     # Centre the random effects MULTIPLICATIVELY. With log mu = log L + alpha + b + u
     # and sum_g exp(alpha_g) = 1, the per-cell total is L * E[exp(b+u)] =
@@ -484,8 +527,13 @@ def build_params(cfg: TranscriptomeSimConfig) -> dict:
     # it already contains the hierarchy, so feeding it back in compounds that
     # variance on top of itself (measured 4.6-9.2x overshoot). The generating
     # relationship is the conditional one; the marginal is a validation output.
+    # -inf alphas (genes with no empirical counts) must not poison the median or
+    # produce NaN dispersions; they are given the low-expression end of the curve
+    # and never generate counts anyway.
+    finite = np.isfinite(alpha)
+    alpha_c = np.where(finite, alpha, np.min(alpha[finite]) if finite.any() else 0.0)
     log_alpha = np.log(cfg.dispersion_median) + cfg.dispersion_mean_slope * (
-        alpha - float(np.median(alpha))
+        alpha_c - float(np.median(alpha_c))
     )
     phi = np.exp(log_alpha + rng.normal(0.0, cfg.dispersion_log_sd, size=G))
     phi = np.clip(phi, 1e-3, 1e3)
