@@ -102,6 +102,10 @@ class TranscriptomeSimConfig:
     # --- design ---
     n_per_arm: int = 6
     design: Literal["two_arm", "single_arm"] = "two_arm"
+    # Genes detected per cell scales with this: TNBC detects 1,080 of 20,284 genes
+    # per cell (5.32%); at 12,000 genes the simulation detects 629 (5.24%) - the
+    # per-gene detection RATE matches, the absolute count is proportionally lower.
+    # Set to ~20,000 if absolute genes/cell must match TNBC.
     n_genes_transcriptome: int = 12000
     arm_ratio: tuple[int, int] | None = None
 
@@ -139,6 +143,13 @@ class TranscriptomeSimConfig:
     # library heterogeneity - a 3.6x difference, which is why the marginal value
     # must never be used as the generating parameter.
     dispersion_median: float = 0.7881
+    # Mean-dependence, FITTED (not guessed) from the measured conditional
+    # mean-variance curve: d(log alpha)/d(log mu) = -0.1911, i.e. alpha falls from
+    # ~2.00 to ~0.55 across the observed expression range. Drawing alpha independent
+    # of mu understates dispersion for rare genes and overstates it for abundant
+    # ones, biasing FPR in opposite directions across the expression range.
+    # 0.0 restores the flat behaviour.
+    dispersion_mean_slope: float = -0.1911
     dispersion_log_sd: float = 1.4647
 
     # --- hierarchy (levels 1 and 2), from between-participant SD + pre/post corr ---
@@ -308,7 +319,14 @@ def simulate_trial_v2(cfg: TranscriptomeSimConfig) -> dict:
     # would not transfer).
     alpha = rng.normal(cfg.gene_rate_log_mean, cfg.gene_rate_log_sd, size=G)
     alpha -= float(np.log(np.exp(alpha).sum()))  # sum_g exp(alpha_g) == 1
-    phi = rng.lognormal(np.log(cfg.dispersion_median), cfg.dispersion_log_sd, size=G)
+    # alpha_g centred on the mean-dependent trend: log phi_g = log phi_med
+    #   + slope * (log rate_g - median log rate) + noise
+    _rate_dev = alpha - float(np.median(alpha))
+    phi = np.exp(
+        np.log(cfg.dispersion_median)
+        + cfg.dispersion_mean_slope * _rate_dev
+        + rng.normal(0.0, cfg.dispersion_log_sd, size=G)
+    )
     phi = np.clip(phi, 1e-3, 1e3)
     gene_names = [f"gene_{i}" for i in range(G)]
     gidx = {g: i for i, g in enumerate(gene_names)}
