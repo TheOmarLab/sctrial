@@ -20,8 +20,11 @@
 #SBATCH --output=/common/omarmlab/members/omar/projects/sctrial/logs/calib_%x_%j.out
 #SBATCH --error=/common/omarmlab/members/omar/projects/sctrial/logs/calib_%x_%j.err
 
-set -euo pipefail
+# Source the profile BEFORE enabling strict mode: the system /etc/bashrc reads an
+# unset variable, so `set -u` aborts the job at line 1 with a message that looks
+# like a cluster problem rather than a script bug.
 source ~/.bashrc
+set -eo pipefail
 PROJECT=/common/omarmlab/members/omar/projects/sctrial
 cd "$PROJECT"
 mkdir -p logs

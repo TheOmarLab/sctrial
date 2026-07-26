@@ -57,7 +57,8 @@ def _run_permutation_iteration(args: tuple) -> list[dict]:
         visit_col,
     ) = args
 
-    from .orchestrator import _dispatch_method, _pseudobulk_counts_from_adata
+    from .contracts import prepare_inputs_from_adata
+    from .orchestrator import _dispatch_method
 
     rng = np.random.default_rng(seed)
 
@@ -67,26 +68,23 @@ def _run_permutation_iteration(args: tuple) -> list[dict]:
     else:
         adata_perm = _permute_visits(adata, participant_col, visit_col, rng)
 
-    # Build pseudobulk
-    from sctrial.stats.pseudobulk import pseudobulk_expression
-
-    pb_means = pseudobulk_expression(
+    # The SAME contracts as the simulated path: full-transcriptome normalisation,
+    # full-transcriptome library sizes, panel selected afterwards. This analysis
+    # previously built its own pseudobulk and normalised inside the tested panel,
+    # so the real-data results characterised these methods under a different
+    # normalisation scope from the simulation that was used to characterise them.
+    inputs = prepare_inputs_from_adata(
         adata_perm,
         gene_cols,
-        groupby=[participant_col, visit_col, arm_col],
-        log1p=False,
+        participant_col=participant_col,
+        visit_col=visit_col,
+        arm_col=arm_col,
     )
-    pb_counts = _pseudobulk_counts_from_adata(
-        adata_perm, gene_cols, [participant_col, visit_col, arm_col]
-    )
-    sim = {"adata": adata_perm, "pseudobulk_means": pb_means, "pseudobulk_counts": pb_counts}
 
     rows = []
     for method in methods:
         try:
-            from .orchestrator import _dispatch_method
-
-            results = _dispatch_method(method, sim, gene_cols)
+            results = _dispatch_method(method, inputs, design_type=design_type)
         except Exception as exc:
             logger.debug("Permutation %d, method %s failed: %s", perm_idx, method, exc)
             results = {g: {"pvalue": np.nan} for g in gene_cols}

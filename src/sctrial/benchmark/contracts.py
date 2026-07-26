@@ -58,6 +58,7 @@ __all__ = [
     "METHOD_ESTIMAND",
     "METHOD_INPUT",
     "prepare_inputs",
+    "prepare_inputs_from_adata",
     "participant_log1p_cpm",
 ]
 
@@ -175,3 +176,84 @@ def truth_for(method: str, oracle: dict, gene: str, injected: float) -> float:
     if table is None:
         return injected
     return float(table.get(gene, injected))
+
+
+def prepare_inputs_from_adata(
+    adata,
+    panel_genes: list[str],
+    participant_col: str = "participant",
+    visit_col: str = "visit",
+    arm_col: str = "arm",
+    counts_layer: str = "counts",
+) -> dict:
+    """The same contracts, applied to REAL data.
+
+    The permutation and subsampling analyses run the identical methods on real
+    cohorts and must therefore hand them the identical representations. They
+    previously built their own pseudobulk and normalised inside the tested panel,
+    so the real-data results were produced under a different normalisation scope
+    from the simulation used to characterise those same methods. Sharing this
+    function is what stops the two drifting apart again.
+
+    The CPM denominator is the whole measured transcriptome, not the tested
+    panel, exactly as in :func:`prepare_inputs`.
+    """
+    obs = adata.obs
+    X = adata.layers[counts_layer] if counts_layer in adata.layers else adata.X
+    gene_cols = [str(g) for g in adata.var_names]
+    panel = [g for g in panel_genes if g in set(gene_cols)]
+
+    keys = [participant_col, visit_col, arm_col]
+    keys = [k for k in keys if k in obs.columns]
+    groups = obs.groupby(keys, observed=True).indices
+
+    rows, mats = [], []
+    for key, idx in groups.items():
+        key = key if isinstance(key, tuple) else (key,)
+        sub = X[idx]
+        block = sub.toarray() if hasattr(sub, "toarray") else np.asarray(sub)
+        mats.append(block.sum(axis=0))
+        meta = dict(zip(keys, [str(k) for k in key]))
+        rows.append(
+            {
+                "participant": meta.get(participant_col, ""),
+                "visit": meta.get(visit_col, ""),
+                "arm": meta.get(arm_col, "Treated"),
+                "n_cells": len(idx),
+            }
+        )
+    mat = np.vstack(mats)
+    pb = pd.concat(
+        [pd.DataFrame(rows), pd.DataFrame(mat, columns=gene_cols)], axis=1
+    )
+
+    sim_like = {
+        "pseudobulk_counts": pb,
+        "gene_names": gene_cols,
+        "adata": _canonical_adata(
+            adata, participant_col, visit_col, arm_col, counts_layer
+        ),
+        # No truth exists for real data. An empty oracle is correct and explicit;
+        # the permutation analysis is about the null distribution of p-values.
+        "oracle": {},
+    }
+    return prepare_inputs(sim_like, panel)
+
+
+def _canonical_adata(adata, participant_col, visit_col, arm_col, counts_layer):
+    """A raw-count AnnData carrying the canonical obs column names.
+
+    The runners take column names as arguments, but the contract layer needs one
+    vocabulary. Renaming once here is safer than threading four more column-name
+    arguments through every call site, where a mismatch fails silently.
+    """
+    import anndata as ad
+
+    obs = adata.obs.rename(
+        columns={participant_col: "participant", visit_col: "visit", arm_col: "arm"}
+    )
+    keep = [c for c in ("participant", "visit", "arm") if c in obs.columns]
+    X = adata.layers[counts_layer] if counts_layer in adata.layers else adata.X
+    out = ad.AnnData(X=X, obs=obs[keep].copy())
+    out.var_names = adata.var_names
+    return out

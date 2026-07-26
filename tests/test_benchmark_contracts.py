@@ -260,3 +260,58 @@ def test_limma_does_not_silently_fall_back_to_an_unpaired_model():
         "the two-arm limma script swallows a duplicateCorrelation failure; the "
         "failure rate is a reported result, not something to paper over"
     )
+
+
+# ---------------------------------------------------------------------------
+# The real-data path must be the SAME path
+# ---------------------------------------------------------------------------
+
+
+def test_real_data_path_reproduces_the_simulated_path_exactly(sim):
+    """Permutation and subsampling must hand methods identical representations.
+
+    Those analyses run the same methods on real cohorts. They previously built
+    their own pseudobulk and normalised inside the tested panel, so the
+    real-data results characterised these methods under a different
+    normalisation scope from the simulation used to characterise them -- and
+    nothing compared the two. Feeding the same data through both paths and
+    requiring bit-identical output is the only check that keeps them together.
+    """
+    from sctrial.benchmark.contracts import prepare_inputs_from_adata
+
+    panel = sim["panels"][50]
+    adata = sim["adata"].copy()
+    # Deliberately non-canonical column names: the real cohorts use
+    # participant_id / timepoint / response, so the renaming must be exercised.
+    adata.obs = adata.obs.rename(
+        columns={"participant": "pid", "visit": "tp", "arm": "grp"}
+    )
+
+    via_sim = prepare_inputs(sim, panel)
+    via_real = prepare_inputs_from_adata(
+        adata, panel, participant_col="pid", visit_col="tp", arm_col="grp"
+    )
+
+    def _index(df):
+        import pandas as pd
+
+        return pd.MultiIndex.from_arrays([df["participant"], df["visit"]])
+
+    a = via_sim["participant_log1p_cpm"].copy()
+    a.index = _index(a)
+    b = via_real["participant_log1p_cpm"].copy()
+    b.index = _index(b)
+    b = b.loc[a.index]
+
+    np.testing.assert_allclose(a[panel].to_numpy(), b[panel].to_numpy(), atol=0, rtol=0)
+
+    import pandas as pd
+
+    lib_sim = pd.Series(via_sim["lib_size"], index=a.index)
+    lib_real = pd.Series(
+        via_real["lib_size"], index=_index(via_real["participant_log1p_cpm"])
+    ).loc[a.index]
+    np.testing.assert_allclose(lib_sim.to_numpy(), lib_real.to_numpy(), atol=0, rtol=0)
+    np.testing.assert_allclose(
+        np.sort(via_sim["cell_lib_size"]), np.sort(via_real["cell_lib_size"])
+    )
