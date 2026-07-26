@@ -28,7 +28,7 @@ R/4.4.2
 cmake-3.23.1-gcc-11.2.0-idhlovt
 ```
 
-> **Different cluster?** Find equivalents with `module avail R`, `module avail cmake`, etc. Update the `module load` lines in `install_r.sh`, `slurm_benchmark.sh`, and `slurm_sensitivity.sh` to match.
+> **Different cluster?** Find equivalents with `module avail R`, `module avail cmake`, etc. Update the `module load` lines in `install_r.sh`, `slurm_benchmark.sh`, `slurm_calibrate.sh` and `slurm_smoke.sh` to match.
 
 ---
 
@@ -82,7 +82,7 @@ Steps 2 and 3 are independent and can run at the same time.
 Both benchmark SLURM scripts contain a placeholder `cd` path. Update it to your repo location:
 
 ```bash
-# In scripts/slurm_benchmark.sh and scripts/slurm_sensitivity.sh, change:
+# In scripts/slurm_benchmark.sh and scripts/slurm_calibrate.sh, change:
 cd /PATH/TO/sctrial   # ← update to your HPC project path
 # to:
 cd /your/actual/path/to/sctrial
@@ -97,7 +97,7 @@ Both jobs can be submitted at the same time.
 ### Sensitivity benchmark 
 
 ```bash
-sbatch scripts/slurm_sensitivity.sh
+sbatch scripts/slurm_benchmark.sh sensitivity 200 two_arm
 ```
 
 - **Time limit**: 72h
@@ -140,7 +140,7 @@ sctrial is installed as an **editable install** (`pip install -e .`). This means
 ```bash
 git pull
 # No reinstall needed — editable install picks up changes automatically
-sbatch scripts/slurm_sensitivity.sh
+sbatch scripts/slurm_benchmark.sh sensitivity 200 two_arm
 ```
 
 ---

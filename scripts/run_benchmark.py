@@ -8,7 +8,7 @@ Full benchmark execution script. Run phases independently or all together.
 Usage examples::
 
     # Phase 0: Simulator validation gate (MUST pass before Phase 2)
-    python scripts/run_benchmark.py --phase validate --n-jobs 1
+    # (calibration has moved to scripts/calibrate_simulator.py)
 
     # Phase 2: Full simulation grid (heavy — days on 25 cores)
     python scripts/run_benchmark.py --phase simulate --n-jobs 25
