@@ -54,6 +54,45 @@ def _environment() -> dict:
     return env
 
 
+def _parse_versions(blob) -> dict:
+    """Parse a 'name=version name=version' string into a dict.
+
+    Compared as PARSED PAIRS, not as raw strings. The same environment renders
+    differently depending on ordering and on which packages are listed, so a
+    string comparison reports drift when nothing has changed -- and a parity check
+    that cries wolf is one people learn to ignore, which costs more than having no
+    check at all.
+    """
+    if isinstance(blob, dict):
+        return {str(k): str(v) for k, v in blob.items()}
+    out = {}
+    for tok in str(blob).replace(",", " ").split():
+        if "=" in tok:
+            k, v = tok.split("=", 1)
+            out[k.strip()] = v.strip()
+    return out
+
+
+def _environment_drift(frozen: dict, current: dict) -> dict:
+    """Version differences that actually matter, ignoring formatting."""
+    drift = {}
+    for key, now in current.items():
+        was = frozen.get(key)
+        if was is None:
+            continue
+        if key == "r":
+            f_pkgs, c_pkgs = _parse_versions(was), _parse_versions(now)
+            for pkg, cv in c_pkgs.items():
+                fv = f_pkgs.get(pkg)
+                # A package absent from the frozen record is not drift; it is
+                # something newly reported, such as the Bioconductor release.
+                if fv is not None and fv != cv:
+                    drift[f"r:{pkg}"] = (fv, cv)
+        elif str(was) != str(now):
+            drift[key] = (was, now)
+    return drift
+
+
 def _frozen_config() -> dict:
     """The frozen simulator configuration, if one exists."""
     import json
@@ -140,10 +179,10 @@ def main() -> None:
         print(f"  {k}: {v}")
     frozen_env = _frozen_environment()
     if frozen_env:
-        drift = {k: (frozen_env.get(k), v) for k, v in env.items() if frozen_env.get(k) not in (None, v)}
+        drift = _environment_drift(frozen_env, env)
         if drift:
             print("\n  WARNING: environment differs from the frozen manifest:")
-            for k, (was, now) in drift.items():
+            for k, (was, now) in sorted(drift.items()):
                 print(f"    {k}: frozen {was!r} -> now {now!r}")
         else:
             print("  matches the frozen manifest")
