@@ -796,11 +796,21 @@ def summarize_adata_per_celltype(
 # distinct part of the generative model -- yield, depth, complexity, sparsity,
 # cell-level noise, and the two hierarchy levels -- so the medoid is central in
 # the space that actually matters, not in an arbitrary one.
+# MINIMAL NON-REDUNDANT feature set. Each entry drives a distinct part of the
+# generative model: yield, depth, complexity, cell-level noise, and the two
+# hierarchy levels.
+#
+# `zero_fraction` was REMOVED as redundant. It is exactly
+# `1 - mean(genes_detected_per_cell) / n_genes` (see `statistics`), i.e. the mean
+# of the same per-cell curve whose median is already here. Including both
+# double-weights transcriptome complexity against yield, depth and the hierarchy.
+#
+# No derived quantity is included either: `prepost_corr_latent` is a function of
+# sigma_b and sigma_u, so adding it would weight the covariance structure twice.
 _MEDOID_FEATURES = (
     "cells_per_pv_median",
     "umi_per_cell_median",
     "genes_detected_per_cell_median",
-    "zero_fraction",
     "cond_alpha_median",
     "sigma_b_latent",
     "sigma_u_latent",
@@ -833,13 +843,38 @@ def select_medoid_celltype(accs: dict[str, SummaryAccumulator]) -> tuple[str, pd
     usable = feat.dropna(axis=1, how="any")
     if usable.shape[1] == 0 or len(usable) == 1:
         return sorted(per_ct)[0], feat
-    z = (usable - usable.mean()) / usable.std(ddof=0).replace(0, 1.0)
-    # Medoid: smallest total distance to the other cell types.
-    d = np.sqrt(((z.to_numpy()[:, None, :] - z.to_numpy()[None, :, :]) ** 2).sum(axis=2))
-    medoid = str(z.index[int(np.argmin(d.sum(axis=1)))])
+    # ROBUST scaling: median and IQR, not mean and SD. One cell type sequenced far
+    # deeper than the rest (Plasma cell, 12,905 UMI against a ~2,100 median)
+    # inflates the SD of that feature and compresses every other cell type's
+    # contribution toward zero, so the feature silently stops discriminating.
+    med = usable.median()
+    iqr = (usable.quantile(0.75) - usable.quantile(0.25)).replace(0, np.nan)
+    iqr = iqr.fillna(usable.std(ddof=0)).replace(0, 1.0)
+    z = (usable - med) / iqr
+
+    def _medoid_of(frame: pd.DataFrame) -> tuple[str, np.ndarray]:
+        a = frame.to_numpy()
+        dist = np.sqrt(((a[:, None, :] - a[None, :, :]) ** 2).sum(axis=2)).sum(axis=1)
+        return str(frame.index[int(np.argmin(dist))]), dist
+
+    medoid, total = _medoid_of(z)
+
+    # LEAVE-ONE-FEATURE-OUT stability. A medoid that only holds while every
+    # feature is present is an artefact of the feature list, not a property of the
+    # data. Recording each variant's winner makes the claim checkable.
+    lofo: dict[str, str] = {}
+    if z.shape[1] > 2:
+        for f in z.columns:
+            lofo[f"without_{f}"] = _medoid_of(z.drop(columns=[f]))[0]
+
     feat = feat.copy()
     feat["_total_distance"] = np.nan
-    feat.loc[z.index, "_total_distance"] = d.sum(axis=1)
+    feat.loc[z.index, "_total_distance"] = total
+    feat.attrs["lofo_medoid"] = lofo
+    feat.attrs["lofo_stability"] = (
+        float(np.mean([v == medoid for v in lofo.values()])) if lofo else np.nan
+    )
+    feat.attrs["features_used"] = list(z.columns)
     return medoid, feat
 
 
@@ -878,6 +913,9 @@ def typical_celltype_targets(accs: dict[str, SummaryAccumulator]) -> dict:
     out["n_celltypes_available"] = len(accs)
     out["celltypes_available"] = sorted(accs)
     out["medoid_feature_table"] = feat.to_dict()
+    out["medoid_features_used"] = feat.attrs.get("features_used")
+    out["medoid_lofo"] = feat.attrs.get("lofo_medoid")
+    out["medoid_lofo_stability"] = feat.attrs.get("lofo_stability")
     return out
 
 
@@ -1205,7 +1243,16 @@ def measure_targets(
     if verbose:
         print(f"cell types available: {sorted(accs)}", flush=True)
     stats = typical_celltype_targets(accs)
-    stats.pop("_prepost_corr_genewise", None)
+    # Convert the gene-wise correlation vector to the SAME fixed quantile grid the
+    # simulated arm reports, before dropping it. Without this the observed arm has
+    # no grid, the distributional gate has nothing to compare against, and it
+    # silently returns INSUFFICIENT -- a gate that never runs looks the same as a
+    # gate that passes in a summary count.
+    _r = stats.pop("_prepost_corr_genewise", None)
+    if _r is not None and len(_r):
+        stats["corr_quantiles"] = np.percentile(
+            np.asarray(_r), np.linspace(1, 99, 99)
+        ).tolist()
     anchor = stats["anchor_celltype"]
     if verbose:
         print(f"ANCHOR cell type (multivariate medoid): {anchor}", flush=True)

@@ -188,6 +188,7 @@ def main() -> None:
     )
 
     _model_compatible_null(DEPTH_FACTOR, panel_n)
+    sigma_u_ablation(DEPTH_FACTOR)
 
 
 def _model_compatible_null(depth_factor: float, panel_n: int, n_rep: int = 40) -> None:
@@ -275,14 +276,100 @@ def _model_compatible_null(depth_factor: float, panel_n: int, n_rep: int = 40) -
     print("\n  VERDICT:", end=" ")
     if abs(np.nanmean(b)) < max(3 * mcse, 0.03):
         print("mean beta is ~0 under the model-compatible DGP.")
-        print("  => the linear-offset contract is VALIDATED; the -0.21 seen earlier is")
-        print("     attributable to the participant-by-visit variance that NEBULA's")
-        print("     model does not represent, not to the offset.")
+        print("  => the linear-offset CONTRACT IS VALIDATED: correct raw counts, correct")
+        print("     raw positive scaling factor, logged internally by nebula.")
+        print("  => the -0.21 seen under the three-level simulation is therefore NOT a")
+        print("     wiring error. Attributing it specifically to the participant-by-visit")
+        print("     variance requires the ablation below; a matched-DGP comparison alone")
+        print("     does not isolate which omitted structure is responsible.")
     else:
         print("mean beta is STILL biased under a DGP matching NEBULA's own model.")
         print("  => the offset contract is NOT fully validated. Investigate contrast")
         print("     orientation, predictor centring, gene filtering, count/offset")
         print("     alignment, and the LN versus HL approximation before the run.")
+
+
+def sigma_u_ablation(depth_factor: float = 3.0, panel_n: int = 120, n_rep: int = 25) -> None:
+    """Does the participant-BY-VISIT variance specifically drive the deterioration?
+
+    The matched-DGP test shows NEBULA is well behaved under its own two-level
+    model and misbehaves under the three-level simulation. That is consistent with
+    the missing biosample level being responsible, but it does not establish it:
+    an omitted mean-zero random effect reliably corrupts dependence and standard
+    errors, while whether it induces systematic COEFFICIENT bias depends on the
+    nonlinear link, the covariance structure, the approximation and the depth
+    design.
+
+    So vary only sigma_u, holding everything else fixed. A monotone deterioration
+    in mean beta and Type I error with sigma_u is direct mechanistic evidence; a
+    flat response would refute the attribution and send the search elsewhere.
+
+    Supplementary evidence, not a headline result.
+    """
+    import tempfile as _tf
+
+    import scipy.sparse as sp
+
+    print("\n" + "=" * 72)
+    print("SIGMA_U ABLATION: is the participant-by-visit level responsible?")
+    print("=" * 72)
+
+    n_per_arm, n_cells, alpha, sigma_b = 6, 200, 0.4, 0.45
+    participants = [f"P{i:02d}" for i in range(2 * n_per_arm)]
+    arms = ["Treated"] * n_per_arm + ["Control"] * n_per_arm
+
+    print(f"\n  {'sigma_u':>8s} {'mean beta':>11s} {'MCSE':>8s} {'FPR@0.05':>9s} {'converged':>10s}")
+    for sigma_u in (0.0, 0.25, 0.50, 0.766):  # last = the Treg-calibrated value
+        rng = np.random.default_rng(31337)
+        rate = rng.lognormal(np.log(2e-3), 0.5, size=panel_n)
+        rate = rate / rate.sum() * 0.35
+        per_rep_mean, all_p, all_c = [], [], []
+        for _rep in range(n_rep):
+            blocks, meta = [], []
+            for pid, arm in zip(participants, arms):
+                b_i = rng.normal(0.0, sigma_b, size=panel_n)
+                for visit in ("Pre", "Post"):
+                    u = (
+                        rng.normal(0.0, sigma_u, size=panel_n)
+                        if sigma_u > 0
+                        else np.zeros(panel_n)
+                    )
+                    lib = rng.lognormal(np.log(3000), 0.5, size=n_cells)
+                    if arm == "Treated" and visit == "Post":
+                        lib = lib * depth_factor
+                    mu = np.exp(np.log(rate)[None, :] + (b_i + u)[None, :]) * lib[:, None]
+                    blocks.append(rng.poisson(rng.gamma(1.0 / alpha, mu * alpha)).astype(np.int32))
+                    meta.append(
+                        pd.DataFrame(
+                            {"participant": pid, "arm": arm, "visit": visit},
+                            index=range(n_cells),
+                        )
+                    )
+            X = np.vstack(blocks)
+            m = pd.concat(meta, ignore_index=True)
+            m["lib_size"] = X.sum(axis=1).astype(float)
+            keep = m["lib_size"].to_numpy() > 0
+            with _tf.TemporaryDirectory() as td:
+                res = _run(
+                    sp.csr_matrix(X[keep].T), m[keep].reset_index(drop=True),
+                    [f"gene_{i}" for i in range(panel_n)],
+                    "meta$lib_size", Path(td), f"su{sigma_u}_{_rep}",
+                )
+            per_rep_mean.append(float(np.nanmean(res["logFC"].to_numpy(dtype=float))))
+            all_p.append(res["pvalue"].to_numpy(dtype=float))
+            all_c.append(res["convergence_code"].to_numpy(dtype=float))
+        mb = float(np.nanmean(per_rep_mean))
+        mcse = float(np.nanstd(per_rep_mean) / np.sqrt(len(per_rep_mean)))
+        fpr = float(np.nanmean(np.concatenate(all_p) < 0.05))
+        conv = float(np.mean(np.concatenate(all_c) > -20))
+        print(f"  {sigma_u:8.3f} {mb:+11.4f} {mcse:8.4f} {fpr:9.4f} {conv:10.4f}", flush=True)
+
+    print("\n  Monotone deterioration with sigma_u => the participant-by-visit level is")
+    print("  the responsible omission. A flat response refutes that attribution.")
+    print("  NOTE: NEBULA is designed for multi-subject CELL-LEVEL inference; a")
+    print("  treatment-by-visit contrast over repeated biosamples is not the")
+    print("  cross-sectional subject-level use case it was principally developed for.")
+    print("  The finding is about fit to THIS hierarchy, not general calibration.")
 
 
 if __name__ == "__main__":

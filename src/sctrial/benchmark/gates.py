@@ -361,7 +361,10 @@ def _distribution_gate(observed: dict, sims: list[dict], bootstrap: list | None 
     supplied; that answers a weaker question (is the discrepancy larger than the
     simulator's own run-to-run variation) and is labelled accordingly.
     """
-    obs_grid = observed.get("_corr_quantiles")
+    # `corr_quantiles` is what measure_targets writes for real data;
+    # `_corr_quantiles` is what a simulated replicate carries in memory. Accept
+    # either so the gate works from a targets file and from a live accumulator.
+    obs_grid = observed.get("corr_quantiles", observed.get("_corr_quantiles"))
     grids = [np.asarray(s["_corr_quantiles"]) for s in sims if "_corr_quantiles" in s]
     if obs_grid is None or len(grids) < 10:
         return [{
@@ -373,29 +376,51 @@ def _distribution_gate(observed: dict, sims: list[dict], bootstrap: list | None 
         }]
     obs_grid = np.asarray(obs_grid)
     stack = np.vstack(grids)
-    centre = np.median(stack, axis=0)
 
     # 1-Wasserstein between two distributions on a shared quantile grid is the
     # mean absolute difference of their quantile functions.
     def _w1(a, b):
         return float(np.mean(np.abs(np.asarray(a) - np.asarray(b))))
 
-    d_obs = _w1(obs_grid, centre)
+    def _pairwise(grids_list, seed, n_max=2000):
+        n = len(grids_list)
+        rng = np.random.default_rng(seed)
+        pairs = rng.integers(0, n, size=(min(n_max, n * n), 2))
+        return np.array([_w1(grids_list[i], grids_list[j]) for i, j in pairs if i != j])
+
+    # BOTH SIDES PAIRWISE. Every realisation contributes to a centroid, so a
+    # distance-to-centroid is systematically smaller than a distance between two
+    # independent draws -- by roughly sqrt(2) for symmetric noise. Comparing an
+    # observed distance-to-centroid against a pairwise reference therefore biased
+    # the verdict toward PASS, which is the dangerous direction; and using
+    # centroid distances on both sides made it too strict, so two independent
+    # samples from the IDENTICAL distribution scored INCONCLUSIVE (W1 0.0099
+    # against a 95th percentile of 0.0084).
+    #
+    # The observed statistic is now the median distance from the real data to each
+    # INDEPENDENT simulated realisation, and the reference is the distance between
+    # two independent realisations of the reference process. Like against like.
+    d_obs = float(np.median([_w1(obs_grid, g) for g in stack]))
 
     boot_grids = [
+        np.asarray(b["corr_quantiles"])
+        for b in (bootstrap or [])
+        if isinstance(b, dict) and ("corr_quantiles" in b or "_corr_quantiles" in b)
+    ] or [
         np.asarray(b["_corr_quantiles"])
         for b in (bootstrap or [])
         if isinstance(b, dict) and "_corr_quantiles" in b
     ]
     if len(boot_grids) >= 20:
-        rng = np.random.default_rng(7)
-        idx = rng.integers(0, len(boot_grids), size=(min(2000, len(boot_grids) ** 2), 2))
-        ref = np.array([
-            _w1(boot_grids[i], boot_grids[j]) for i, j in idx if i != j
-        ])
+        # Preferred: carries the real cohort's participant-level sampling
+        # variability, which is the variation a second run of this study would see.
+        ref = _pairwise(boot_grids, seed=7)
         basis = "participant_bootstrap"
     else:
-        ref = np.array([_w1(g, centre) for g in stack])
+        # Fallback: reflects only the simulator's Monte Carlo noise, a tighter and
+        # therefore more conservative reference. Labelled so it is never mistaken
+        # for the bootstrap-calibrated version.
+        ref = _pairwise([np.asarray(g) for g in stack], seed=11)
         basis = "simulation_only"
 
     hi95, hi99 = float(np.percentile(ref, 95)), float(np.percentile(ref, 99))

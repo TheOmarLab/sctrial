@@ -161,3 +161,38 @@ def test_variance_components_are_blind_to_design_effects():
             f"{key} moved from {a:.4f} to {b:.4f} when a treatment effect was "
             "injected; design effects are leaking into the nuisance hierarchy"
         )
+
+
+def test_distributional_gate_is_calibrated_and_sensitive():
+    """The distributional gate must pass identical distributions and catch shifts.
+
+    A gate calibrated too tightly rejects a correct simulator; too loosely it
+    certifies a wrong one. Both failure modes occurred here. The reference was
+    built from distances to a CENTROID while the observed distance was measured
+    the same way -- but every realisation contributes to the centroid and the
+    observed one does not, so two independent samples from the IDENTICAL
+    distribution scored just outside the floor (0.0099 against 0.0084). With a
+    bootstrap reference the asymmetry ran the other way and biased toward PASS.
+
+    Both sides are now pairwise distances between independent realisations.
+    """
+    from sctrial.benchmark.gates import _distribution_gate
+
+    rng = np.random.default_rng(0)
+
+    def grid(x):
+        return np.percentile(x, np.linspace(1, 99, 99)).tolist()
+
+    sims = [{"_corr_quantiles": grid(rng.normal(0, 0.3, 4000))} for _ in range(30)]
+
+    same = _distribution_gate({"corr_quantiles": grid(rng.normal(0, 0.3, 4000))}, sims)[0]
+    assert same["verdict"] == "PASS", (
+        f"identical distributions scored {same['verdict']} (W1 {same['observed']:.4f} "
+        f"against a floor of {same['sim_hi95']:.4f}); the gate would reject a "
+        "correctly calibrated simulator"
+    )
+
+    shifted = _distribution_gate({"corr_quantiles": grid(rng.normal(0.05, 0.3, 4000))}, sims)[0]
+    assert shifted["verdict"] == "FAIL", (
+        "a 0.05 location shift was not detected; the gate is too permissive"
+    )
