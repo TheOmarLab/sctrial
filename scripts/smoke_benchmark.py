@@ -54,6 +54,27 @@ def _environment() -> dict:
     return env
 
 
+def _frozen_config() -> dict:
+    """The frozen simulator configuration, if one exists."""
+    import json
+    import os
+
+    base = os.environ.get("SCTRIAL_MANUSCRIPT_DIR")
+    if not base:
+        return {}
+    path = Path(base) / "benchmark" / "validation" / "frozen_simulator_config.json"
+    if not path.exists():
+        return {}
+    cfg = dict(json.load(open(path)).get("config") or {})
+    cfg.pop("seed", None)
+    cfg.pop("effects", None)
+    if isinstance(cfg.get("panel_sizes"), list):
+        cfg["panel_sizes"] = tuple(cfg["panel_sizes"])
+    if isinstance(cfg.get("arm_ratio"), list):
+        cfg["arm_ratio"] = tuple(cfg["arm_ratio"])
+    return cfg
+
+
 def _frozen_environment() -> dict:
     """Versions recorded when the benchmark was frozen, if a freeze exists."""
     import json
@@ -128,6 +149,19 @@ def main() -> None:
             print("  matches the frozen manifest")
     print()
 
+    # Exercise the ACTUAL frozen configuration, not dataclass defaults. A smoke
+    # test that runs on defaults validates a code path the definitive run will
+    # never take -- and running on defaults is precisely the defect that let the
+    # previous benchmark ship at 2.3e7 UMIs per cell.
+    base_config = _frozen_config()
+    print(f"base config: {'FROZEN' if base_config else 'DATACLASS DEFAULTS (no freeze found)'}")
+    if base_config:
+        print(f"  anchor dispersion_median={base_config.get('dispersion_median')}, "
+              f"prepost_corr={base_config.get('prepost_corr')}, "
+              f"n_per_arm={base_config.get('n_per_arm')}, "
+              f"arm_ratio={base_config.get('arm_ratio')}")
+    print()
+
     rows = []
     ok = True
     for design, scenario in cases:
@@ -135,7 +169,9 @@ def main() -> None:
         print(f"\n=== {name} ({scenario['description']}) ===", flush=True)
         for it in range(args.n_iterations):
             t0 = time.time()
-            out = _run_single_iteration((name, it, 1000 + it, scenario, CORE_METHODS))
+            out = _run_single_iteration(
+                (name, it, 1000 + it, scenario, CORE_METHODS, base_config)
+            )
             wall = time.time() - t0
             df = pd.DataFrame(out)
             for method, grp in df.groupby("method"):
