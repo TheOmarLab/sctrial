@@ -656,6 +656,13 @@ def conditional_dispersion(
     n_strata = len(starts)
 
     X = adata.layers[layer] if layer is not None else adata.X
+    # Column slicing dominates this function (one slice per gene chunk) and is
+    # O(nnz) on a CSR matrix. Row slicing is needed once, for the per-stratum
+    # detection counts. Keep the right layout for each rather than paying the
+    # conversion inside the loop.
+    import scipy.sparse as _sp
+
+    X_csc = X.tocsc() if _sp.issparse(X) else X
     lib = np.asarray(X.sum(axis=1)).ravel()[order].astype(np.float64)
     # Offsets normalised WITHIN stratum, matching the SummaryAccumulator model.
     s = np.empty_like(lib)
@@ -670,6 +677,7 @@ def conditional_dispersion(
         sub = X[order[a:b]]
         blk = sub.toarray() if hasattr(sub, "toarray") else np.asarray(sub)
         detected_strata += (blk.sum(axis=0) > 0).astype(float)
+    del blk
 
     estimable = (mean_count >= _MIN_MEAN_COUNT) & (detected_strata >= _MIN_STRATA_DETECTED)
     gene_idx = np.flatnonzero(estimable)
@@ -683,8 +691,10 @@ def conditional_dispersion(
     alpha_mle = np.full(n_genes_total, np.nan)
     for c0 in range(0, gene_idx.size, gene_chunk):
         cols = gene_idx[c0 : c0 + gene_chunk]
-        sub = X[:, cols][order]
-        y = (sub.toarray() if hasattr(sub, "toarray") else np.asarray(sub)).astype(np.float64)
+        sub = X_csc[:, cols]
+        y = (sub.toarray() if hasattr(sub, "toarray") else np.asarray(sub))[order].astype(
+            np.float64
+        )
         apl = np.empty((len(alpha_grid), y.shape[1]))
         for ai, a_val in enumerate(alpha_grid):
             lam = _fit_group_means(y, s, starts, ends, a_val)

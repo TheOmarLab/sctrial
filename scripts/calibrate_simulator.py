@@ -31,29 +31,56 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "src"))
 
-VALIDATION_DIR = REPO.parent.parent / "manuscript" / "benchmark" / "validation"
-
-
 def _manuscript_dir() -> Path:
+    """Resolve the manuscript tree without guessing a parent depth.
+
+    A hardcoded ``parents[N]`` is what silently resolved outside the project on
+    HPC and blanked four figure panels while every script exited 0. The layouts
+    genuinely differ -- ``manuscript/`` sits inside the project root on the
+    cluster and beside the repo locally -- so this checks rather than assumes,
+    and fails loudly when neither exists.
+    """
     import os
 
     env = os.environ.get("SCTRIAL_MANUSCRIPT_DIR")
     if env:
         return Path(env) / "benchmark" / "validation"
-    return VALIDATION_DIR
+    for base in (REPO / "manuscript", REPO.parent.parent / "manuscript"):
+        if base.is_dir():
+            return base / "benchmark" / "validation"
+    raise SystemExit(
+        "Cannot locate the manuscript tree. Checked "
+        f"{REPO / 'manuscript'} and {REPO.parent.parent / 'manuscript'}. "
+        "Set SCTRIAL_MANUSCRIPT_DIR explicitly rather than letting a path guess "
+        "resolve somewhere unintended."
+    )
 
 
 def _load_dataset(name: str):
     from sctrial import datasets
 
+    # Names must match `sctrial.datasets` exactly. Resolved by getattr with an
+    # explicit check rather than by attribute access at import time, so a rename
+    # fails here with a clear message instead of at the top of a 20-hour job.
     loaders = {
-        "tnbc": datasets.load_tnbc_zhang,
-        "vaccine": datasets.load_vaccine,
-        "aml": datasets.load_aml,
+        "tnbc": "load_tnbc_zhang",
+        "vaccine": "load_vaccine_gse171964",
+        "aml": "load_aml",
+        "melanoma": "load_sade_feldman",
+        "covid": "load_stephenson_data",
+        "cart": "load_cart",
     }
     if name not in loaders:
         raise SystemExit(f"unknown dataset {name!r}; choose from {sorted(loaders)}")
-    return loaders[name]()
+    fn = getattr(datasets, loaders[name], None)
+    if fn is None:
+        raise SystemExit(
+            f"sctrial.datasets has no {loaders[name]!r}; the loader was renamed and "
+            "this table was not updated"
+        )
+    return fn()
+
+
 
 
 def cmd_targets(args) -> None:
