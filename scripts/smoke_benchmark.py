@@ -26,6 +26,57 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "src"))
 
 
+def _environment() -> dict:
+    """Package versions that can change a benchmark result."""
+    import subprocess
+    import sys
+
+    env = {"python": sys.version.split()[0]}
+    for mod in ("numpy", "pandas", "scipy", "anndata", "sctrial"):
+        try:
+            env[mod] = __import__(mod).__version__
+        except Exception:
+            env[mod] = "unavailable"
+    try:
+        out = subprocess.run(
+            ["Rscript", "-e",
+             'ip <- installed.packages()[,"Version"]; '
+             'cat(paste0("R=", getRversion(), " bioc=", '
+             'tryCatch(as.character(BiocManager::version()), error=function(e) "NA"), " ", '
+             'paste(sapply(c("dreamlet","limma","edgeR","nebula"), function(p) '
+             'paste0(p,"=", if (p %in% rownames(installed.packages())) ip[[p]] else "absent")), '
+             'collapse=" ")))'],
+            capture_output=True, text=True, timeout=180,
+        ).stdout.strip()
+        env["r"] = out or "unavailable"
+    except Exception:
+        env["r"] = "unavailable"
+    return env
+
+
+def _frozen_environment() -> dict:
+    """Versions recorded when the benchmark was frozen, if a freeze exists."""
+    import json
+    import os
+
+    base = os.environ.get("SCTRIAL_MANUSCRIPT_DIR")
+    if not base:
+        return {}
+    path = Path(base) / "benchmark" / "validation" / "frozen_simulator_config.json"
+    if not path.exists():
+        return {}
+    try:
+        m = json.load(open(path)).get("manifest") or {}
+    except Exception:
+        return {}
+    out = {k: v for k, v in (m.get("python_packages") or {}).items()}
+    if m.get("python"):
+        out["python"] = m["python"]
+    if m.get("r_versions"):
+        out["r"] = m["r_versions"]
+    return out
+
+
 def main() -> None:
     import argparse
 
@@ -50,10 +101,32 @@ def main() -> None:
         de = next(s for s in grid if s["name"].startswith("de_balanced_n20"))
         cases += [(design, null), (design, de)]
     if args.panel_probe:
-        big = next(
-            s for s in build_sensitivity_grid("two_arm") if s["name"] == "sens_g2000_f20"
-        )
-        cases.append(("two_arm", big))
+        # The 2,000-gene NULL as well as the 2,000-gene signal case: a filtering
+        # collapse or an evaluability problem at scale shows up under the null,
+        # where there is no signal to mask it.
+        sens = build_sensitivity_grid("two_arm")
+        for name in ("sens_null_g2000", "sens_g2000_f20"):
+            match = next((s for s in sens if s["name"] == name), None)
+            if match is not None:
+                cases.append(("two_arm", match))
+
+    # ENVIRONMENT PARITY. The definitive run must execute under the same package
+    # versions the smoke test validated, so they are recorded here and compared
+    # against the frozen manifest rather than assumed to match.
+    env = _environment()
+    print("=== environment ===")
+    for k, v in env.items():
+        print(f"  {k}: {v}")
+    frozen_env = _frozen_environment()
+    if frozen_env:
+        drift = {k: (frozen_env.get(k), v) for k, v in env.items() if frozen_env.get(k) not in (None, v)}
+        if drift:
+            print("\n  WARNING: environment differs from the frozen manifest:")
+            for k, (was, now) in drift.items():
+                print(f"    {k}: frozen {was!r} -> now {now!r}")
+        else:
+            print("  matches the frozen manifest")
+    print()
 
     rows = []
     ok = True
