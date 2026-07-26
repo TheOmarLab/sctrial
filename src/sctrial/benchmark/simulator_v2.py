@@ -61,6 +61,7 @@ __all__ = [
     "load_tnbc_targets",
     "make_signal",
     "nested_panels",
+    "load_empirical",
 ]
 
 SignalArch = Literal["balanced", "heterogeneous", "one_directional"]
@@ -102,11 +103,14 @@ class TranscriptomeSimConfig:
     # --- design ---
     n_per_arm: int = 6
     design: Literal["two_arm", "single_arm"] = "two_arm"
-    # Genes detected per cell scales with this: TNBC detects 1,080 of 20,284 genes
-    # per cell (5.32%); at 12,000 genes the simulation detects 629 (5.24%) - the
-    # per-gene detection RATE matches, the absolute count is proportionally lower.
-    # Set to ~20,000 if absolute genes/cell must match TNBC.
-    n_genes_transcriptome: int = 12000
+    # Matches the TNBC transcriptome (20,284 genes). Genes DETECTED per cell is an
+    # observable property in its own right, not merely a percentage of the feature
+    # universe: at 12,000 genes the simulation detected 629/cell against TNBC's
+    # 1,080, which changes dropout, count occupancy and effective normalisation even
+    # though the per-gene detection rate matched. Statistical tests still run only on
+    # the nested 50/200/500/2000 panels; the remaining genes exist to give realistic
+    # count allocation, library normalisation, NEBULA offsets and dreamlet norm factors.
+    n_genes_transcriptome: int = 20284
     arm_ratio: tuple[int, int] | None = None
 
     # --- cells per participant-visit (distribution, not a fixed number) ---
@@ -116,7 +120,15 @@ class TranscriptomeSimConfig:
     cells_per_pv_max: int = 27653
     cells_scale: float = 1.0  # shrink for tractable benchmarking; 1.0 = TNBC scale
 
-    # --- library size (per cell), lognormal on the log scale ---
+    # --- library size (per cell) ---
+    # Prefer EMPIRICAL RESAMPLING: the lognormal fit reproduced the median poorly
+    # (+34%) and Q75 badly (+53%). There is no reason to fit a parametric family to
+    # a nuisance distribution we already possess; resampling reproduces the skew,
+    # both tails and the heteroscedasticity exactly. The lognormal parameters remain
+    # as a fallback when the empirical file is absent.
+    use_empirical_library: bool = True
+    use_empirical_cells_per_pv: bool = True
+    empirical_path: str | None = None
     lib_log_mean: float = 7.7333
     lib_log_sd: float = 0.8000
 
@@ -143,13 +155,13 @@ class TranscriptomeSimConfig:
     # library heterogeneity - a 3.6x difference, which is why the marginal value
     # must never be used as the generating parameter.
     dispersion_median: float = 0.7881
-    # Mean-dependence, FITTED (not guessed) from the measured conditional
-    # mean-variance curve: d(log alpha)/d(log mu) = -0.1911, i.e. alpha falls from
-    # ~2.00 to ~0.55 across the observed expression range. Drawing alpha independent
-    # of mu understates dispersion for rare genes and overstates it for abundant
-    # ones, biasing FPR in opposite directions across the expression range.
-    # 0.0 restores the flat behaviour.
-    dispersion_mean_slope: float = -0.1911
+    # Mean-dependence, calibrated so the MARGINAL (observable) mean-variance curve
+    # matches TNBC -- which is the acceptance criterion, not the latent fit. The
+    # conditional curve gave -0.1911, but generating at that value reproduced only a
+    # -0.1007 marginal slope against TNBC's -0.4598, because the marginal curve also
+    # absorbs the hierarchy. Same conditional-vs-marginal distinction as the
+    # dispersion scalar, one level up. 0.0 restores flat behaviour.
+    dispersion_mean_slope: float = -0.5502
     dispersion_log_sd: float = 1.4647
 
     # --- hierarchy (levels 1 and 2), from between-participant SD + pre/post corr ---
@@ -198,6 +210,25 @@ class TranscriptomeSimConfig:
         )
         kw.update(overrides)
         return cls(**kw)
+
+
+def load_empirical(path: str | Path | None = None) -> dict | None:
+    """Empirical TNBC nuisance pools (library sizes, cells per participant-visit).
+
+    Returns None if absent, so the simulator falls back to the parametric fits
+    rather than failing — but the fits are known to reproduce the library-size
+    distribution poorly, so the empirical file should normally be present.
+    """
+    if path is None:
+        path = (
+            Path(__file__).resolve().parents[3]
+            / "manuscript" / "benchmark" / "validation" / "tnbc_empirical.npz"
+        )
+    path = Path(path)
+    if not path.exists():
+        return None
+    d = np.load(path)
+    return {k: d[k] for k in d.files}
 
 
 def nested_panels(
@@ -264,8 +295,19 @@ def make_signal(
     return {str(g): float(v) for g, v in zip(chosen, vals)}
 
 
-def _draw_cells_per_pv(cfg: TranscriptomeSimConfig, n: int, rng) -> np.ndarray:
-    """Cell counts per participant-visit from a calibrated lognormal, not a constant."""
+def _draw_cells_per_pv(cfg: TranscriptomeSimConfig, n: int, rng, emp=None) -> np.ndarray:
+    """Cell counts per participant-visit.
+
+    Resampled from the empirical TNBC pool when available (the parametric fit
+    mismatched the lower tail badly: Q05 ratio 2.63). Unequal cell yield per
+    biosample is exactly the phenomenon pseudobulk precision weighting addresses,
+    so its distribution must be right rather than merely its median.
+    """
+    if emp is not None and cfg.use_empirical_cells_per_pv and "cells_per_pv" in emp:
+        pool = np.asarray(emp["cells_per_pv"], dtype=float)
+        draws = rng.choice(pool, size=n, replace=True)
+        draws = draws * cfg.cells_scale
+        return np.maximum(np.round(draws), 1).astype(int)
     mean = cfg.cells_per_pv_mean * cfg.cells_scale
     cv = cfg.cells_per_pv_cv
     sigma = float(np.sqrt(np.log1p(cv**2)))
@@ -294,6 +336,8 @@ def simulate_trial_v2(cfg: TranscriptomeSimConfig) -> dict:
         ``config``               the config used
     """
     rng = np.random.default_rng(cfg.seed)
+    emp = load_empirical(cfg.empirical_path)
+    _lib_pool = (emp or {}).get("library_sizes")
     G = cfg.n_genes_transcriptome
 
     # --- participants and arms ---
@@ -321,12 +365,31 @@ def simulate_trial_v2(cfg: TranscriptomeSimConfig) -> dict:
     alpha -= float(np.log(np.exp(alpha).sum()))  # sum_g exp(alpha_g) == 1
     # alpha_g centred on the mean-dependent trend: log phi_g = log phi_med
     #   + slope * (log rate_g - median log rate) + noise
-    _rate_dev = alpha - float(np.median(alpha))
-    phi = np.exp(
-        np.log(cfg.dispersion_median)
-        + cfg.dispersion_mean_slope * _rate_dev
-        + rng.normal(0.0, cfg.dispersion_log_sd, size=G)
-    )
+    # Centre the random effects MULTIPLICATIVELY. With log mu = log L + alpha + b + u
+    # and sum_g exp(alpha_g) = 1, the per-cell total is L * E[exp(b+u)] =
+    # L * exp((sd_b^2 + sd_u^2)/2) -- a 1.65x inflation that made every simulated
+    # library 1.7x the empirical one. Subtracting the Jensen term restores
+    # E[exp(b+u)] = 1 so totals track the resampled library sizes, without changing
+    # the variance structure that sets the pre/post correlation.
+    _re_jensen = (cfg.participant_sd**2 + cfg.participant_visit_sd**2) / 2.0
+
+    # Mean-dependent dispersion from the EMPIRICAL curve, interpolated. A single
+    # log-linear slope cannot reproduce the observed shape: TNBC alpha drops sharply
+    # across the lowest deciles (10.6 -> 3.4) then FLATTENS near 2.0, whereas any
+    # slope declines smoothly. Interpolating the measured curve reproduces both the
+    # steep low-expression regime and the high-expression plateau.
+    _curve = (emp or {}).get("alpha_curve_x"), (emp or {}).get("alpha_curve_y")
+    _log_mu_g = alpha + float(np.log(np.mean(_lib_pool) if _lib_pool is not None else 3000.0))
+    if False:  # DISABLED: alpha_curve_* is the MARGINAL curve; using it to GENERATE
+        # compounds the hierarchy inflation on top of it (measured 4.6-9.2x overshoot).
+        # Gate C needs an iterative calibration loop: generate -> measure marginal ->
+        # adjust the generating curve -> repeat. Falls back to the log-linear form.
+        _log_alpha = np.interp(_log_mu_g, np.asarray(_curve[0]), np.asarray(_curve[1]))
+    else:
+        _log_alpha = np.log(cfg.dispersion_median) + cfg.dispersion_mean_slope * (
+            alpha - float(np.median(alpha))
+        )
+    phi = np.exp(_log_alpha + rng.normal(0.0, cfg.dispersion_log_sd, size=G))
     phi = np.clip(phi, 1e-3, 1e3)
     gene_names = [f"gene_{i}" for i in range(G)]
     gidx = {g: i for i, g in enumerate(gene_names)}
@@ -348,7 +411,7 @@ def simulate_trial_v2(cfg: TranscriptomeSimConfig) -> dict:
 
     # --- cells ---
     n_pv = len(participants) * len(visits)
-    cells_pv = _draw_cells_per_pv(cfg, n_pv, rng)
+    cells_pv = _draw_cells_per_pv(cfg, n_pv, rng, emp=emp)
 
     blocks, obs_rows = [], []
     pb_sum_rows, pb_mean_rows = [], []
@@ -365,9 +428,15 @@ def simulate_trial_v2(cfg: TranscriptomeSimConfig) -> dict:
             # many genes the total is near-symmetric, so its median tracks E[L]
             # rather than exp(mu). Subtracting the Jensen term makes E[L] equal the
             # calibration target instead of overshooting it by exp(sd^2/2) = 1.4x.
-            L = rng.lognormal(
-                cfg.lib_log_mean - cfg.lib_log_sd**2 / 2.0, cfg.lib_log_sd, size=n_cells
-            )
+            if emp is not None and cfg.use_empirical_library and "library_sizes" in emp:
+                # Resample the observed depth distribution directly.
+                L = rng.choice(
+                    np.asarray(emp["library_sizes"], dtype=float), size=n_cells, replace=True
+                )
+            else:
+                L = rng.lognormal(
+                    cfg.lib_log_mean - cfg.lib_log_sd**2 / 2.0, cfg.lib_log_sd, size=n_cells
+                )
             # log mu = log L + alpha + b + u + gamma*Post + beta*(T*Post)
             log_rate = (
                 alpha
@@ -375,6 +444,7 @@ def simulate_trial_v2(cfg: TranscriptomeSimConfig) -> dict:
                 + u_igt[pi, ti]
                 + gamma * is_post
                 + beta * is_treated * is_post
+                - _re_jensen
             )
             mu = np.exp(log_rate)[None, :] * L[:, None]
             # NB via gamma-Poisson: var = mu + phi*mu^2  => shape = 1/phi
