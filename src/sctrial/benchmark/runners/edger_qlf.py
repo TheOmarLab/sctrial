@@ -82,6 +82,15 @@ res <- topTags(qlf, n=Inf, sort.by="none")$table
 write.csv(res, "{output_csv}")
 """
 
+# limma/voom/dreamlet/edgeR report log2 fold-changes; the simulator injects the
+# effect on the NATURAL log scale (simulator.py: log_mu += effect) and NEBULA,
+# sctrial_did and wilcoxon_paired all report natural-log betas. Harvesting logFC
+# unconverted put log2 values into the same `estimated_beta` column as natural-log
+# truth, inflating every dreamlet effect by 1/ln2 = 1.4427 and manufacturing the
+# "substantial effect-size bias" finding: measured dreamlet signal-gene beta was
+# 0.7157 vs 0.5/ln2 = 0.7213, while every natural-log method sat at 0.498-0.504.
+_LN2 = float(np.log(2.0))  # log2 -> natural log
+
 
 def run(
     pseudobulk: pd.DataFrame,
@@ -164,7 +173,7 @@ def run(
         if gene in res.index:
             row = res.loc[gene]
             out[gene] = {
-                "beta": float(row.get("logFC", np.nan)),
+                "beta": float(row.get("logFC", np.nan)) * _LN2,
                 "pvalue": float(row.get("PValue", np.nan)),
                 "ci_lo": np.nan,  # edgeR-QLF doesn't return CIs by default
                 "ci_hi": np.nan,
