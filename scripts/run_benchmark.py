@@ -59,6 +59,19 @@ def phase_validate(n_jobs: int):
 
 
 
+def _load_frozen_manifest() -> dict:
+    """The manifest stamped onto every result row."""
+    import json as _json
+
+    path = OUTPUT_DIR / "validation" / "frozen_simulator_config.json"
+    with open(path) as fh:
+        m = dict(_json.load(fh).get("manifest") or {})
+    # The row stamp uses whichever hash the freeze recorded.
+    m.setdefault("manifest_sha256", m.get("config_sha256", "unknown"))
+    m.setdefault("git_sha", m.get("git_commit", "unknown"))
+    return m
+
+
 def _load_frozen_config() -> dict:
     """The one configuration every benchmark phase must use.
 
@@ -162,6 +175,7 @@ def phase_simulate(n_jobs: int, n_iterations: int, designs=None):
 
     designs = designs or ["two_arm", "single_arm"]
     frozen = _load_frozen_config()
+    manifest = _load_frozen_manifest()
     out_dir = OUTPUT_DIR / "simulation"
     print("=" * 60)
     print("PHASE 2: Simulation Benchmark")
@@ -177,6 +191,7 @@ def phase_simulate(n_jobs: int, n_iterations: int, designs=None):
         output_dir=out_dir,
         resume=True,
         base_config=frozen,
+        manifest=manifest,
     )
 
 
@@ -237,6 +252,7 @@ def phase_sensitivity(n_jobs: int, n_iterations: int, designs=None, panels=None)
     from sctrial.benchmark.orchestrator import run_sensitivity_benchmark
 
     frozen = _load_frozen_config()
+    manifest = _load_frozen_manifest()
     out_dir = OUTPUT_DIR / "sensitivity"
     print("=" * 60)
     print("PHASE 5: Signal-Fraction Sensitivity Benchmark")
@@ -255,6 +271,7 @@ def phase_sensitivity(n_jobs: int, n_iterations: int, designs=None, panels=None)
         output_dir=out_dir,
         resume=True,
         base_config=frozen,
+        manifest=manifest,
     )
 
 

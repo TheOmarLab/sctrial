@@ -20,7 +20,16 @@ from pathlib import Path
 
 import pandas as pd
 
-__all__ = ["manifest_hash", "verify_manifest", "assert_single_manifest"]
+__all__ = [
+    "manifest_hash",
+    "verify_manifest",
+    "assert_single_manifest",
+    "source_tree_sha256",
+    "SOURCE_TREE_PATHS",
+]
+
+# What the benchmark actually executes. Hashed content, not a commit id.
+SOURCE_TREE_PATHS = ("src", "scripts", "pyproject.toml")
 
 _REPO = Path(__file__).resolve().parents[3]
 
@@ -121,3 +130,41 @@ def assert_single_manifest(df: pd.DataFrame, context: str = "") -> str:
             "must not be combined."
         )
     return seen[0]
+
+
+def source_tree_sha256(repo: Path | None = None, paths=SOURCE_TREE_PATHS) -> str:
+    """Deterministic hash of the source that will actually run.
+
+    A commit SHA says what SHOULD be there; this says what IS there. The
+    difference is not hypothetical here: the cluster spent this project with its
+    HEAD pinned at one commit while rsync had overwritten the files with code many
+    commits newer, so the nominal commit described nothing that was executing.
+
+    It also needs no git, which matters because git is absent from this cluster's
+    compute nodes -- so a job can verify its own source at run time, which is
+    exactly where verification is worth having.
+
+    Sorted relative paths, content-hashed, excluding bytecode and egg-info so the
+    hash is stable across installs.
+    """
+    repo = Path(repo) if repo is not None else _REPO
+    h = hashlib.sha256()
+    files: list[Path] = []
+    for rel in paths:
+        target = repo / rel
+        if target.is_file():
+            files.append(target)
+        elif target.is_dir():
+            files.extend(
+                f for f in target.rglob("*")
+                if f.is_file()
+                and "__pycache__" not in f.parts
+                and not f.name.endswith((".pyc", ".pyo"))
+                and ".egg-info" not in str(f)
+            )
+    for f in sorted(files, key=lambda x: str(x.relative_to(repo))):
+        h.update(str(f.relative_to(repo)).encode())
+        h.update(b"\0")
+        h.update(_sha256_file(f).encode())
+        h.update(b"\n")
+    return h.hexdigest()

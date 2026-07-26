@@ -652,3 +652,44 @@ def test_results_carry_provenance_and_mixing_is_refused():
 
     with pytest.raises(ValueError, match="no manifest_sha256"):
         assert_single_manifest(pd.DataFrame({"x": [1]}), "legacy results")
+
+
+def test_benchmark_refuses_to_run_from_unfrozen_source():
+    """A job must verify the source it is executing, not the commit it claims.
+
+    git is absent from this cluster's compute nodes, and the cluster spent this
+    project with HEAD pinned at one commit while the files on disk were many
+    commits newer -- so the nominal commit described nothing that was running. A
+    content hash needs no git and answers the question that matters.
+    """
+    driver = (
+        Path(__file__).resolve().parent.parent / "scripts" / "run_benchmark.py"
+    ).read_text(encoding="utf-8")
+    assert "source_tree_sha256" in driver, (
+        "the benchmark driver does not verify the source tree it is running"
+    )
+    assert "REFUSING TO RUN" in driver
+    seg = driver[driver.index("source_tree_sha256") : driver.index("source_tree_sha256") + 1800]
+    assert "SystemExit" in seg, "a source mismatch does not stop the run"
+
+
+def test_source_tree_hash_is_deterministic_and_sensitive():
+    """It must be stable across calls and change when any source file changes."""
+    from sctrial.benchmark.manifest import source_tree_sha256
+
+    a = source_tree_sha256()
+    assert a == source_tree_sha256(), "hash is not deterministic"
+
+    target = (
+        Path(__file__).resolve().parent.parent
+        / "src" / "sctrial" / "benchmark" / "gates.py"
+    )
+    original = target.read_text(encoding="utf-8")
+    try:
+        target.write_text(original + "\n# a single added comment\n", encoding="utf-8")
+        assert source_tree_sha256() != a, (
+            "a source change did not alter the hash; the guard would not fire"
+        )
+    finally:
+        target.write_text(original, encoding="utf-8")
+    assert source_tree_sha256() == a, "hash did not return to its original value"

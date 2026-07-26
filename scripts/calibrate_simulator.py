@@ -407,6 +407,19 @@ def _build_manifest(cfg, out: Path, dataset: str, summary: dict) -> dict:
     except Exception:
         r_versions = "unavailable"
 
+    from sctrial.benchmark.manifest import source_tree_sha256 as _source_tree_sha256
+
+    def _bioc_version() -> str:
+        """Recorded explicitly, not inferred from package versions."""
+        try:
+            return subprocess.run(
+                ["Rscript", "-e",
+                 'cat(as.character(BiocManager::version()))'],
+                capture_output=True, text=True, timeout=120,
+            ).stdout.strip() or "unavailable"
+        except Exception:
+            return "unavailable"
+
     targets = out / f"{dataset}_sim_targets.json"
     npz = out / f"{dataset}_empirical.npz"
     return {
@@ -420,7 +433,11 @@ def _build_manifest(cfg, out: Path, dataset: str, summary: dict) -> dict:
         "git_untracked_noncode": len(
             [ln for ln in _git("status", "--porcelain").splitlines() if ln.startswith("??")]
         ),
-        "git_describe": _git("describe", "--tags", "--always"),
+        "git_describe": _git("describe", "--tags", "--always")
+        or _deployed.get("git_describe", ""),
+        # What is ACTUALLY on disk, independent of git. Every benchmark job
+        # recomputes this and refuses to run if it differs.
+        "source_tree_sha256": _source_tree_sha256(),
         "dataset": dataset,
         "calibration_level": "within_cell_type",
         "targets_sha256": _sha256(targets) if targets.exists() else None,
@@ -437,6 +454,7 @@ def _build_manifest(cfg, out: Path, dataset: str, summary: dict) -> dict:
         "platform": platform.platform(),
         "package_versions": versions,
         "r_versions": r_versions,
+        "bioconductor": _bioc_version(),
         "gate_summary": summary,
     }
 
