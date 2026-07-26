@@ -137,6 +137,22 @@ class TranscriptomeSimConfig:
     gene_rate_log_sd: float = 2.6428
 
     # --- NB dispersion: var = mu + phi * mu^2, phi_g lognormal ---
+    # CALIBRATED WITHIN A HOMOGENEOUS POPULATION. The simulator generates one cell
+    # population, so its dispersion must be the WITHIN-cell-type value. Estimating
+    # it on cell-type-pooled TNBC absorbs between-cell-type mean differences into
+    # alpha: conditioning on participant x visit alone gives 0.774, adding cell type
+    # gives 0.275 (0.35x) - i.e. 65% of the apparent "cell-level" dispersion was
+    # cell-type heterogeneity. The implausible alpha = 10-30 at low expression seen
+    # in the MARGINAL curve is absent from both conditional curves; the true
+    # cell-level relationship is nearly flat (0.34 -> 0.23, slope -0.077).
+    #
+    # CONSEQUENCE FOR VALIDATION: the simulated MARGINAL mean-variance curve is not
+    # expected to match cell-type-pooled TNBC, because the simulation has no cell
+    # types to pool. The acceptance criterion is agreement of the CONDITIONAL curve.
+    # Matching the pooled marginal by inflating a latent parameter would be
+    # unidentifiable - many hierarchy/dispersion combinations reproduce the same
+    # marginal, so the loop could compensate a miscalibrated hierarchy.
+    #
     # PARAMETERISATION (stated explicitly - this is a documented trap):
     #   THIS SIMULATOR uses NB2:            Var(Y) = mu + phi * mu^2
     #     implemented as gamma-Poisson with Gamma(shape=1/phi, scale=mu*phi),
@@ -154,14 +170,14 @@ class TranscriptomeSimConfig:
     # estimator across all cells gives 2.837 because it also absorbs b_ig, u_igt and
     # library heterogeneity - a 3.6x difference, which is why the marginal value
     # must never be used as the generating parameter.
-    dispersion_median: float = 0.7881
+    dispersion_median: float = 0.2747
     # Mean-dependence, calibrated so the MARGINAL (observable) mean-variance curve
     # matches TNBC -- which is the acceptance criterion, not the latent fit. The
     # conditional curve gave -0.1911, but generating at that value reproduced only a
     # -0.1007 marginal slope against TNBC's -0.4598, because the marginal curve also
     # absorbs the hierarchy. Same conditional-vs-marginal distinction as the
     # dispersion scalar, one level up. 0.0 restores flat behaviour.
-    dispersion_mean_slope: float = -0.5502
+    dispersion_mean_slope: float = -0.0766
     dispersion_log_sd: float = 1.4647
 
     # --- hierarchy (levels 1 and 2), from between-participant SD + pre/post corr ---
