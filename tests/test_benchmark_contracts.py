@@ -587,3 +587,68 @@ def test_limma_follows_the_canonical_repeated_measures_order():
     assert "participant +" not in two_arm, (
         "participant appears as a fixed effect AND as a duplicateCorrelation block"
     )
+
+
+# ---------------------------------------------------------------------------
+# Freeze must refuse, not fall back
+# ---------------------------------------------------------------------------
+
+
+def test_freeze_refuses_a_fallback_or_unrun_distributional_gate():
+    """A development fallback must not be allowed into a frozen benchmark.
+
+    The distributional gate has a simulation-only reference for use while the
+    participant bootstrap is unavailable. It is a DIFFERENT, tighter test. It once
+    ran that way for a whole gate cycle and reported PASS, and separately the gate
+    returned INSUFFICIENT because the observed arm carried no quantile grid -- in
+    a summary count, a gate that never ran is indistinguishable from one that
+    passed.
+
+    Freeze must therefore reject both conditions rather than accept a ledger that
+    looks green.
+    """
+    src = (
+        Path(__file__).resolve().parent.parent / "scripts" / "calibrate_simulator.py"
+    ).read_text(encoding="utf-8")
+    freeze = src[src.index("def cmd_freeze("):]
+
+    assert "simulation_only" in freeze, (
+        "freeze does not check whether the distributional gate fell back to its "
+        "development reference"
+    )
+    assert "INSUFFICIENT" in freeze, "freeze accepts a gate that never ran"
+    assert "git_dirty" in freeze, (
+        "freeze accepts an uncommitted tree; such a run cannot be reproduced from "
+        "any commit"
+    )
+    # Each refusal must be a hard exit, overridable only deliberately.
+    for guard in ("simulation_only", "INSUFFICIENT", "git_dirty"):
+        seg = freeze[freeze.index(guard) : freeze.index(guard) + 900]
+        assert "SystemExit" in seg and "args.force" in seg, (
+            f"the {guard!r} guard does not raise, or is not force-overridable"
+        )
+
+
+def test_results_carry_provenance_and_mixing_is_refused():
+    """Every result row is stamped, and mixed manifests are a hard error."""
+    import pandas as pd
+
+    from sctrial.benchmark.manifest import assert_single_manifest
+
+    orch = (
+        Path(__file__).resolve().parent.parent
+        / "src" / "sctrial" / "benchmark" / "orchestrator.py"
+    ).read_text(encoding="utf-8")
+    assert 'df["manifest_sha256"] = manifest["manifest_sha256"]' in orch, (
+        "benchmark output is not stamped with the manifest that produced it"
+    )
+
+    one = pd.DataFrame({"manifest_sha256": ["a" * 64] * 3})
+    assert assert_single_manifest(one) == "a" * 64
+
+    mixed = pd.DataFrame({"manifest_sha256": ["a" * 64, "b" * 64]})
+    with pytest.raises(ValueError, match="mix"):
+        assert_single_manifest(mixed, "benchmark results")
+
+    with pytest.raises(ValueError, match="no manifest_sha256"):
+        assert_single_manifest(pd.DataFrame({"x": [1]}), "legacy results")

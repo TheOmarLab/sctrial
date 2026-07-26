@@ -35,6 +35,35 @@ import pandas as pd
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "src"))
 
+# Workaround specification: cluster on participant x visit rather than
+# participant, and absorb stable participant differences with fixed effects. The
+# arm main effect is omitted because participant fixed effects already absorb
+# time-invariant arm membership.
+_R_TEMPLATE_WORKAROUND = """\
+suppressPackageStartupMessages({{library(nebula); library(Matrix)}})
+counts <- readMM("{mtx}")
+rownames(counts) <- readLines("{genes}")
+meta <- read.csv("{meta}", stringsAsFactors=TRUE)
+meta$arm   <- factor(meta$arm, levels=c("Control","Treated"))
+meta$visit <- factor(meta$visit, levels=c("Pre","Post"))
+meta$participant <- factor(meta$participant)
+meta$pv <- factor(paste(meta$participant, meta$visit, sep="_"))
+design <- model.matrix(~participant + visit + arm:visit, data=meta)
+design <- design[, colSums(abs(design)) > 0, drop=FALSE]
+design <- design[, qr(design)$pivot[seq_len(qr(design)$rank)], drop=FALSE]
+o <- order(meta$pv)
+res <- nebula(counts[, o], id=meta$pv[o], pred=design[o, , drop=FALSE],
+              offset=meta$lib_size[o], method="LN", ncore=1, verbose=FALSE)
+cn <- colnames(design)
+k <- tail(grep("visit.*arm|arm.*visit", cn), 1)
+if (length(k) == 0) k <- length(cn)
+out <- data.frame(gene=res$summary$gene,
+                  logFC=res$summary[[paste0("logFC_", cn[k])]],
+                  pvalue=res$summary[[paste0("p_", cn[k])]],
+                  convergence_code=res$convergence)
+write.csv(out, "{out}", row.names=FALSE)
+"""
+
 _R_TEMPLATE = """\
 suppressPackageStartupMessages({{library(nebula); library(Matrix)}})
 counts <- readMM("{mtx}")
@@ -54,7 +83,8 @@ write.csv(out, "{out}", row.names=FALSE)
 """
 
 
-def _run(counts, meta, genes, offset_expr, tmp: Path, tag: str) -> pd.DataFrame:
+def _run(counts, meta, genes, offset_expr, tmp: Path, tag: str,
+         template: str | None = None) -> pd.DataFrame:
     import subprocess
 
     from scipy.io import mmwrite
@@ -67,10 +97,11 @@ def _run(counts, meta, genes, offset_expr, tmp: Path, tag: str) -> pd.DataFrame:
     meta.to_csv(mpath, index=False)
     opath = tmp / f"out_{tag}.csv"
     script = tmp / f"run_{tag}.R"
+    tpl = template or _R_TEMPLATE
     script.write_text(
-        _R_TEMPLATE.format(
-            mtx=mtx, genes=gpath, meta=mpath, out=opath, offset_expr=offset_expr
-        )
+        tpl.format(mtx=mtx, genes=gpath, meta=mpath, out=opath, offset_expr=offset_expr)
+        if "{offset_expr}" in tpl
+        else tpl.format(mtx=mtx, genes=gpath, meta=mpath, out=opath)
     )
     proc = subprocess.run(
         ["Rscript", str(script)], capture_output=True, text=True, timeout=7200
@@ -189,6 +220,7 @@ def main() -> None:
 
     _model_compatible_null(DEPTH_FACTOR, panel_n)
     sigma_u_ablation(DEPTH_FACTOR)
+    workaround_diagnostic(DEPTH_FACTOR)
 
 
 def _model_compatible_null(depth_factor: float, panel_n: int, n_rep: int = 40) -> None:
@@ -289,7 +321,12 @@ def _model_compatible_null(depth_factor: float, panel_n: int, n_rep: int = 40) -
         print("     alignment, and the LN versus HL approximation before the run.")
 
 
-def sigma_u_ablation(depth_factor: float = 3.0, panel_n: int = 120, n_rep: int = 25) -> None:
+def sigma_u_ablation(
+    depth_factor: float = 3.0,
+    panel_n: int = 120,
+    n_rep: int = 60,
+    arm_sizes: tuple[int, int] = (6, 5),
+) -> None:
     """Does the participant-BY-VISIT variance specifically drive the deterioration?
 
     The matched-DGP test shows NEBULA is well behaved under its own two-level
@@ -314,17 +351,23 @@ def sigma_u_ablation(depth_factor: float = 3.0, panel_n: int = 120, n_rep: int =
     print("SIGMA_U ABLATION: is the participant-by-visit level responsible?")
     print("=" * 72)
 
-    n_per_arm, n_cells, alpha, sigma_b = 6, 200, 0.4, 0.45
-    participants = [f"P{i:02d}" for i in range(2 * n_per_arm)]
-    arms = ["Treated"] * n_per_arm + ["Control"] * n_per_arm
+    # The FROZEN design: 6 versus 5, matching the anchor population's retained
+    # paired structure. An earlier run used a balanced 6/6, which was the nominal
+    # trial design rather than the analysable one.
+    n_t, n_c = arm_sizes
+    n_cells, alpha, sigma_b = 200, 0.4, 0.45
+    participants = [f"P{i:02d}" for i in range(n_t + n_c)]
+    arms = ["Treated"] * n_t + ["Control"] * n_c
 
     rows: list[dict] = []
-    print(f"\n  {'sigma_u':>8s} {'mean beta':>11s} {'MCSE':>8s} {'FPR@0.05':>9s} {'converged':>10s}")
+    print(f"  design: {n_t} versus {n_c} participants, {n_rep} replicates per level")
+    print(f"\n  {'sigma_u':>8s} {'mean beta':>11s} {'MCSE':>8s} {'FPR@0.05':>9s} "
+          f"{'FPR MCSE':>9s} {'converged':>10s}")
     for sigma_u in (0.0, 0.25, 0.50, 0.766):  # last = the Treg-calibrated value
         rng = np.random.default_rng(31337)
         rate = rng.lognormal(np.log(2e-3), 0.5, size=panel_n)
         rate = rate / rate.sum() * 0.35
-        per_rep_mean, all_p, all_c = [], [], []
+        per_rep_mean, per_rep_fpr, all_c = [], [], []
         for _rep in range(n_rep):
             blocks, meta = [], []
             for pid, arm in zip(participants, arms):
@@ -357,14 +400,22 @@ def sigma_u_ablation(depth_factor: float = 3.0, panel_n: int = 120, n_rep: int =
                     "meta$lib_size", Path(td), f"su{sigma_u}_{_rep}",
                 )
             per_rep_mean.append(float(np.nanmean(res["logFC"].to_numpy(dtype=float))))
-            all_p.append(res["pvalue"].to_numpy(dtype=float))
+            # PER-REPLICATE false-positive rate. Pooling genes across replicates and
+            # treating n_rep x panel_n of them as independent Bernoulli draws is
+            # pseudoreplication inside a benchmark about pseudoreplication: genes in
+            # one replicate share its participants, depths and random effects.
+            _pv = res["pvalue"].to_numpy(dtype=float)
+            per_rep_fpr.append(float(np.nanmean(_pv < 0.05)))
             all_c.append(res["convergence_code"].to_numpy(dtype=float))
         mb = float(np.nanmean(per_rep_mean))
-        mcse = float(np.nanstd(per_rep_mean) / np.sqrt(len(per_rep_mean)))
-        fpr = float(np.nanmean(np.concatenate(all_p) < 0.05))
+        mcse = float(np.nanstd(per_rep_mean, ddof=1) / np.sqrt(len(per_rep_mean)))
+        fpr = float(np.nanmean(per_rep_fpr))
+        fpr_mcse = float(np.nanstd(per_rep_fpr, ddof=1) / np.sqrt(len(per_rep_fpr)))
         conv = float(np.mean(np.concatenate(all_c) > -20))
-        rows.append({"sigma_u": sigma_u, "mean_beta": mb, "mcse": mcse, "fpr": fpr})
-        print(f"  {sigma_u:8.3f} {mb:+11.4f} {mcse:8.4f} {fpr:9.4f} {conv:10.4f}", flush=True)
+        rows.append({"sigma_u": sigma_u, "mean_beta": mb, "mcse": mcse,
+                     "fpr": fpr, "fpr_mcse": fpr_mcse})
+        print(f"  {sigma_u:8.3f} {mb:+11.4f} {mcse:8.4f} {fpr:9.4f} {fpr_mcse:9.4f} "
+              f"{conv:10.4f}", flush=True)
 
     # COMPUTE the verdict from the numbers. The previous version printed a fixed
     # interpretive sentence whatever the data showed, which is precisely how a
@@ -381,7 +432,8 @@ def sigma_u_ablation(depth_factor: float = 3.0, panel_n: int = 120, n_rep: int =
     print("\n  VERDICT (computed, not asserted):")
     print(
         f"    Type I error  : {'MONOTONE in sigma_u' if fpr_monotone else 'NOT monotone'}"
-        f"  ({fprs[0]:.4f} -> {fprs[-1]:.4f})"
+        f"  ({fprs[0]:.4f} +/- {rows[0]['fpr_mcse']:.4f}"
+        f" -> {fprs[-1]:.4f} +/- {rows[-1]['fpr_mcse']:.4f}, replicate-level MCSE)"
     )
     print(
         f"    coefficient   : {'MONOTONE in sigma_u' if bias_monotone else 'NOT explained by sigma_u'}"
@@ -402,6 +454,89 @@ def sigma_u_ablation(depth_factor: float = 3.0, panel_n: int = 120, n_rep: int =
     print("  treatment-by-visit contrast over repeated biosamples is not the")
     print("  cross-sectional subject-level use case it was principally developed for.")
     print("  The finding is about fit to THIS hierarchy, not general calibration.")
+
+
+def workaround_diagnostic(depth_factor: float = 3.0, panel_n: int = 100,
+                          n_rep: int = 20, sigma_u: float = 0.766) -> None:
+    """Can a determined user recover calibration inside NEBULA itself?
+
+    NEBULA takes an arbitrary fixed-effect design and ONE grouping vector. So a
+    sophisticated user could cluster on participant x visit instead of
+    participant, and absorb stable participant differences with fixed effects:
+
+        id   = participant x visit
+        pred = participant FE + visit + arm:visit
+
+    If that restores calibration, the honest conclusion is that NEBULA's ordinary
+    specification is inappropriate for three-level longitudinal data but the
+    failure is recoverable by hand -- which strengthens a usability argument
+    rather than a correctness one. If it does not, the limitation is firmer.
+    Either way it is better to answer this than to leave a reviewer to propose it.
+
+    NEBULA's own documentation warns that many subject-level fixed-effect
+    parameters relative to the number of groups can destabilise variance
+    estimation, and here there are ~10 participant dummies against ~22 groups, so
+    the workaround may be unstable in its own right. That is part of the finding.
+    """
+    import tempfile as _tf
+
+    import scipy.sparse as sp
+
+    print("\n" + "=" * 72)
+    print("WORKAROUND DIAGNOSTIC: id = participant x visit, participant fixed effects")
+    print("=" * 72)
+
+    rng = np.random.default_rng(555)
+    n_t, n_c, n_cells, alpha, sigma_b = 6, 5, 200, 0.4, 0.45
+    participants = [f"P{i:02d}" for i in range(n_t + n_c)]
+    arms = ["Treated"] * n_t + ["Control"] * n_c
+    rate = rng.lognormal(np.log(2e-3), 0.5, size=panel_n)
+    rate = rate / rate.sum() * 0.35
+
+    for label, tpl in (("standard (id=participant)", None),
+                       ("workaround (id=participant x visit)", _R_TEMPLATE_WORKAROUND)):
+        per_rep_fpr, per_rep_mean, fails = [], [], 0
+        for _rep in range(n_rep):
+            blocks, meta = [], []
+            for pid, arm in zip(participants, arms):
+                b_i = rng.normal(0.0, sigma_b, size=panel_n)
+                for visit in ("Pre", "Post"):
+                    u = rng.normal(0.0, sigma_u, size=panel_n)
+                    lib = rng.lognormal(np.log(3000), 0.5, size=n_cells)
+                    if arm == "Treated" and visit == "Post":
+                        lib = lib * depth_factor
+                    mu = np.exp(np.log(rate)[None, :] + (b_i + u)[None, :]) * lib[:, None]
+                    blocks.append(rng.poisson(rng.gamma(1.0 / alpha, mu * alpha)).astype(np.int32))
+                    meta.append(pd.DataFrame(
+                        {"participant": pid, "arm": arm, "visit": visit},
+                        index=range(n_cells)))
+            X = np.vstack(blocks)
+            m = pd.concat(meta, ignore_index=True)
+            m["lib_size"] = X.sum(axis=1).astype(float)
+            keep = m["lib_size"].to_numpy() > 0
+            try:
+                with _tf.TemporaryDirectory() as td:
+                    res = _run(
+                        sp.csr_matrix(X[keep].T), m[keep].reset_index(drop=True),
+                        [f"gene_{i}" for i in range(panel_n)], "meta$lib_size",
+                        Path(td), f"wa{_rep}", template=tpl,
+                    )
+            except Exception:
+                fails += 1
+                continue
+            pv = res["pvalue"].to_numpy(dtype=float)
+            per_rep_fpr.append(float(np.nanmean(pv < 0.05)))
+            per_rep_mean.append(float(np.nanmean(res["logFC"].to_numpy(dtype=float))))
+        if per_rep_fpr:
+            f = float(np.mean(per_rep_fpr))
+            fm = float(np.std(per_rep_fpr, ddof=1) / np.sqrt(len(per_rep_fpr)))
+            print(f"  {label:38s} FPR {f:.4f} +/- {fm:.4f}   "
+                  f"mean beta {np.mean(per_rep_mean):+.4f}   failures {fails}/{n_rep}")
+        else:
+            print(f"  {label:38s} ALL {n_rep} REPLICATES FAILED")
+    print("\n  Truth is FPR = 0.05. If the workaround restores it, NEBULA's default")
+    print("  specification is inappropriate here but the failure is recoverable by")
+    print("  hand; if it does not, the limitation is structural.")
 
 
 if __name__ == "__main__":

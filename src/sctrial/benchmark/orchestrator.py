@@ -550,6 +550,7 @@ def _run_grid(
     combined_name: str,
     seed: int,
     base_config: dict | None = None,
+    manifest: dict | None = None,
     adaptive: bool = True,
 ) -> pd.DataFrame:
     """One driver for both grids.
@@ -655,6 +656,12 @@ def _run_grid(
                 target = done + extra
 
             df = pd.DataFrame(all_rows)
+            # Stamp provenance on EVERY row. Figure loaders refuse to combine
+            # rows from different manifests, which is what stops a corrected run
+            # being silently averaged with the run it replaced.
+            if manifest is not None:
+                df["manifest_sha256"] = manifest["manifest_sha256"]
+                df["git_sha"] = manifest.get("git_sha", "unknown")
             df.to_csv(csv_path, index=False)
             all_results.append(df)
             print(f"    Done in {time.time() - t0:.0f}s -> {csv_path.name}")
@@ -675,6 +682,7 @@ def run_benchmark(
     output_dir: str | Path = "benchmark_results",
     resume: bool = True,
     base_config: dict | None = None,
+    manifest: dict | None = None,
 ) -> pd.DataFrame:
     """Run the core scenario grid."""
     if n_jobs == -1:
@@ -690,6 +698,7 @@ def run_benchmark(
         "benchmark_combined.csv",
         seed=2024,
         base_config=base_config,
+        manifest=manifest,
     )
 
 
@@ -701,6 +710,7 @@ def run_sensitivity_benchmark(
     output_dir: str | Path = "benchmark_results/sensitivity",
     resume: bool = True,
     base_config: dict | None = None,
+    manifest: dict | None = None,
     panels: list[int] | None = None,
 ) -> pd.DataFrame:
     """Run the panel-size x signal-fraction sensitivity grid."""
@@ -722,6 +732,7 @@ def run_sensitivity_benchmark(
         "sensitivity_combined.csv",
         seed=90210,
         base_config=base_config,
+        manifest=manifest,
     )
 
 

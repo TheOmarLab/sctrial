@@ -1329,13 +1329,22 @@ def measure_targets(
     gene_mean_count = prof * float(np.mean(umi))
 
     # PAIRED STRUCTURE of the anchor population, recorded because it is NOT the
-    # nominal design. In TNBC one participant (P016) contributes no Treg cells at
-    # Post, so the anchor has 23 participant-visits and 11 fully paired
-    # participants against a nominal 24 and 12. Every longitudinal target -- the
-    # variance components, the pre/post correlations -- is therefore estimated on
-    # 11 pairs. Describing the simulator's 24 balanced strata as "like-for-like"
-    # with this would be wrong, and the arm split of the retained participants
-    # decides whether an arm-stratified bootstrap is even balanced.
+    # nominal design.
+    #
+    # This is NOT participant dropout, and calling it that would be wrong. P016
+    # HAS a Post sample: 147 cells against 3,862 at Pre, of which 144 are
+    # Monocyte/Macrophage and 3 are Dendritic. Every lymphoid population --
+    # Treg, CD4 T, CD8 T, B, NK, ILC, Plasma -- has zero cells at that visit. So
+    # the sample exists but is small and compositionally extreme, and the
+    # participant-visit is unavailable FOR THOSE CELL TYPES specifically.
+    #
+    # Consequence for the anchor: 23 participant-visits and 11 fully paired
+    # participants against a nominal 24 and 12, split 6/5 by arm rather than 6/6.
+    #
+    # The two supports differ legitimately and are NOT forced to match: conditional
+    # count properties (dispersion, rates, depth) use all 23 available
+    # participant-visits, while longitudinal covariance and paired inference use
+    # the 11 complete pairs. They are different estimands.
     _pv = anchor_acc.pv_frame()
     _by_p = _pv.groupby("participant")["visit"].nunique()
     stats["n_participant_visits"] = int(len(_pv))

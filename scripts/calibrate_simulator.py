@@ -419,6 +419,41 @@ def cmd_freeze(args) -> None:
             "and record the justification in tasks/MASTER_PLAN.md."
         )
     manifest = _build_manifest(cfg, out, args.dataset, summary)
+
+    # A dirty tree cannot be reproduced from any commit, so a result produced
+    # from it is unverifiable however carefully it is hashed.
+    if manifest["git_dirty"] and not args.force:
+        raise SystemExit(
+            "refusing to freeze: the working tree has uncommitted changes. A run "
+            "produced from it cannot be reproduced from any commit. Commit or "
+            "stash first."
+        )
+
+    # The distributional gate must have used its PRESPECIFIED participant-bootstrap
+    # reference. The simulation-only fallback is useful during development and is
+    # a different, tighter test; accepting it here would freeze on a test that was
+    # not the one specified.
+    import pandas as _pd
+
+    _led = out / "gates" / "gate_envelopes.csv"
+    if _led.exists():
+        _df = _pd.read_csv(_led)
+        _fb = _df["statistic"].astype(str).str.contains("simulation_only")
+        if _fb.any() and not args.force:
+            raise SystemExit(
+                "refusing to freeze: the distributional gate fell back to a "
+                "simulation-only reference "
+                f"({_df.loc[_fb, 'statistic'].tolist()}). The prespecified test uses "
+                "the participant bootstrap. Re-run the gates with --n-boot."
+            )
+        if (_df["verdict"] == "INSUFFICIENT").any() and not args.force:
+            raise SystemExit(
+                "refusing to freeze: "
+                f"{_df.loc[_df.verdict == 'INSUFFICIENT', 'statistic'].tolist()} "
+                "returned INSUFFICIENT. A gate that never ran is not a gate that "
+                "passed."
+            )
+
     frozen = {
         "config": asdict(cfg),
         "targets_source": str(out / f"{args.dataset}_sim_targets.json"),
