@@ -1319,6 +1319,27 @@ def measure_targets(
     prof = anchor_acc.total_counts / anchor_acc.total_counts.sum()
     gene_mean_count = prof * float(np.mean(umi))
 
+    # PAIRED STRUCTURE of the anchor population, recorded because it is NOT the
+    # nominal design. In TNBC one participant (P016) contributes no Treg cells at
+    # Post, so the anchor has 23 participant-visits and 11 fully paired
+    # participants against a nominal 24 and 12. Every longitudinal target -- the
+    # variance components, the pre/post correlations -- is therefore estimated on
+    # 11 pairs. Describing the simulator's 24 balanced strata as "like-for-like"
+    # with this would be wrong, and the arm split of the retained participants
+    # decides whether an arm-stratified bootstrap is even balanced.
+    _pv = anchor_acc.pv_frame()
+    _by_p = _pv.groupby("participant")["visit"].nunique()
+    stats["n_participant_visits"] = int(len(_pv))
+    stats["n_participants_any_visit"] = int(len(_by_p))
+    stats["n_participants_paired"] = int((_by_p == 2).sum())
+    _paired_ids = set(_by_p[_by_p == 2].index)
+    _arms = (
+        _pv[_pv["participant"].isin(_paired_ids)]
+        .drop_duplicates("participant")["arm"]
+        .value_counts()
+        .to_dict()
+    )
+    stats["paired_participants_by_arm"] = {str(k): int(v) for k, v in _arms.items()}
     stats["n_genes_transcriptome"] = int(adata.n_vars)
     stats["n_participants"] = int(
         adata.obs[participant_col].nunique()

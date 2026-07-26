@@ -108,8 +108,24 @@ def _config_from_targets(args):
     out = _manuscript_dir()
     with open(out / f"{args.dataset}_sim_targets.json") as fh:
         t = json.load(fh)
+    # Match the anchor population's ACTUAL retained design, not the nominal one.
+    # In TNBC one participant contributes no Treg cells at Post, so the anchor has
+    # 11 fully paired participants split 6/5 by arm, not 12 split 6/6. Every
+    # longitudinal target was estimated on those 11 pairs, so simulating a
+    # balanced 6/6 would compare a balanced simulation against an unbalanced
+    # measurement.
+    _by_arm = t.get("paired_participants_by_arm") or {}
+    _n_paired = int(t.get("n_participants_paired", t.get("n_participants", 12)))
+    if len(_by_arm) == 2:
+        _a, _b = (int(v) for v in sorted(_by_arm.values(), reverse=True))
+        _arm_ratio = (_a, _b)
+        _n_per_arm = _a + _b
+    else:
+        _arm_ratio = None
+        _n_per_arm = max(_n_paired // 2, 1)
     cfg = TranscriptomeSimConfig(
-        n_per_arm=t.get("n_participants", 12) // 2,
+        n_per_arm=_n_per_arm,
+        arm_ratio=_arm_ratio,
         n_genes_transcriptome=t["n_genes_transcriptome"],
         cells_per_pv_mean=t["cells_per_pv_mean"],
         cells_per_pv_cv=t["cells_per_pv_cv"],
