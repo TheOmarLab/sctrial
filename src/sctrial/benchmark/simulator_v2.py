@@ -65,10 +65,6 @@ __all__ = [
 
 SignalArch = Literal["balanced", "heterogeneous", "one_directional"]
 
-# Upward bias of the (var-mean)/mean^2 dispersion estimator on sparse counts,
-# measured by generating at a known phi and re-estimating the same way.
-_MOM_BIAS = 4.42
-
 
 def load_tnbc_targets(path: str | Path | None = None) -> dict:
     """Empirical TNBC targets measured from the processed h5ad.
@@ -125,12 +121,25 @@ class TranscriptomeSimConfig:
     gene_rate_log_sd: float = 2.6428
 
     # --- NB dispersion: var = mu + phi * mu^2, phi_g lognormal ---
-    # NOTE: this is the GENERATING dispersion. The method-of-moments estimator
-    # (var - mean)/mean^2 used to measure TNBC is upward-biased on 95%-zero counts,
-    # so generating with the measured 2.4326 yields ~11.3 when re-measured the same
-    # way. The generating value is set so the RE-MEASURED dispersion matches TNBC.
-    dispersion_median: float = 0.523
-    dispersion_log_sd: float = 1.4567
+    # PARAMETERISATION (stated explicitly - this is a documented trap):
+    #   THIS SIMULATOR uses NB2:            Var(Y) = mu + phi * mu^2
+    #     implemented as gamma-Poisson with Gamma(shape=1/phi, scale=mu*phi),
+    #     so `dispersion_median` IS the NB2 alpha.
+    #   NEBULA parameterises the cell-level term as mu^2/phi_nebula, i.e. its
+    #     "dispersion" is the RECIPROCAL of this one. Do not pass one for the other.
+    #   The naive estimator (Var(Y) - E(Y)) / E(Y)^2 computed ACROSS ALL CELLS does
+    #     NOT estimate this parameter once hierarchical terms exist: it absorbs
+    #     b_ig, u_igt and library-size heterogeneity. Calibration therefore targets
+    #     the CONDITIONAL cell-level dispersion (within participant-visit, offset by
+    #     library size), and the simulator is validated on the observable
+    #     mean-variance RELATIONSHIP rather than on a single latent scalar.
+    # Conditional cell-level NB2 alpha measured WITHIN participant-visit with a
+    # library-size offset (scripts/regen/disp_cond.py): 0.788. The marginal
+    # estimator across all cells gives 2.837 because it also absorbs b_ig, u_igt and
+    # library heterogeneity - a 3.6x difference, which is why the marginal value
+    # must never be used as the generating parameter.
+    dispersion_median: float = 0.7881
+    dispersion_log_sd: float = 1.4647
 
     # --- hierarchy (levels 1 and 2), from between-participant SD + pre/post corr ---
     between_participant_sd: float = 0.9994
@@ -171,12 +180,8 @@ class TranscriptomeSimConfig:
             lib_log_sd=t["lib_log_sd"],
             gene_rate_log_mean=t["gene_mean_log_mean"],
             gene_rate_log_sd=t["gene_mean_log_sd"],
-            # Bias-correct: the method-of-moments estimator used to MEASURE TNBC is
-            # upward-biased on 95%-zero counts, so generating with the measured value
-            # yields ~4.4x that when re-measured identically. Divide so the
-            # re-measured dispersion matches the target (see _MOM_BIAS).
-            dispersion_median=t["dispersion_median"] / _MOM_BIAS,
-            dispersion_log_sd=t["dispersion_log_sd"],
+            dispersion_median=t["dispersion_cell_level"],
+            dispersion_log_sd=t["dispersion_cell_level_log_sd"],
             between_participant_sd=t["between_participant_sd"],
             prepost_corr=t["prepost_corr"],
         )
