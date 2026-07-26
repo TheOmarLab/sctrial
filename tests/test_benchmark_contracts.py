@@ -563,9 +563,12 @@ def test_limma_follows_the_canonical_repeated_measures_order():
     src = (RUNNERS / "limma_voom.py").read_text(encoding="utf-8")
     two_arm = src.split("_R_SCRIPT_SINGLE_ARM")[0]
 
+    # Match STATEMENTS, not substrings: "keep.lib.sizes=TRUE" also appears in the
+    # explanatory comment above the code, so a bare substring search finds the
+    # comment first and the order check becomes meaningless.
     order = [
         "y$samples$lib.size <- meta$lib_size",
-        "keep.lib.sizes=TRUE",
+        "y <- y[keep, , keep.lib.sizes=TRUE]",
         "calcNormFactors(y)",
         "v0 <- voom(y, design)",
         "corfit <- duplicateCorrelation(v0, design, block=meta$participant)",
