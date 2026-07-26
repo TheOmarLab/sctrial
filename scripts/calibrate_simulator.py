@@ -341,6 +341,18 @@ def _build_manifest(cfg, out: Path, dataset: str, summary: dict) -> dict:
         except Exception:
             return "unavailable"
 
+    def _code_dirty() -> str:
+        """Uncommitted changes to CODE, which is what reproducibility depends on.
+
+        A bare `git status --porcelain` also reports untracked scratch at the repo
+        root -- logs, ad-hoc sbatch files, working output. Those do not affect
+        whether the run can be reproduced from the commit, and treating them as
+        blocking either stops the freeze for the wrong reason or, worse, invites
+        someone to pass --force and skip the check that matters.
+        """
+        return _git("status", "--porcelain", "--", "src", "scripts", "tests",
+                    "manuscript_figures", "pyproject.toml")
+
     probe = TranscriptomeSimConfig(**{**asdict(cfg), "seed": 0, "effects": {}})
     eligible = eligible_panel_genes(probe)
     elig_hash = hashlib.sha256(np.asarray(eligible, dtype=np.int64).tobytes()).hexdigest()
@@ -369,7 +381,11 @@ def _build_manifest(cfg, out: Path, dataset: str, summary: dict) -> dict:
     return {
         "git_commit": _git("rev-parse", "HEAD"),
         "git_branch": _git("rev-parse", "--abbrev-ref", "HEAD"),
-        "git_dirty": bool(_git("status", "--porcelain")),
+        "git_dirty": bool(_code_dirty()),
+        "git_dirty_files": _code_dirty().splitlines()[:20],
+        "git_untracked_noncode": len(
+            [ln for ln in _git("status", "--porcelain").splitlines() if ln.startswith("??")]
+        ),
         "git_describe": _git("describe", "--tags", "--always"),
         "dataset": dataset,
         "calibration_level": "within_cell_type",
