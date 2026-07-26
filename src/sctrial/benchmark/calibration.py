@@ -59,6 +59,9 @@ __all__ = [
 _MIN_MEAN_COUNT = 0.02
 _MIN_STRATA_DETECTED = 5
 
+# Genes per reduction pass. Bounds the float64 transient; see ``add_block``.
+_REDUCE_CHUNK = 2000
+
 
 # ---------------------------------------------------------------------------
 # Streaming summary statistics -- one implementation, two consumers
@@ -139,16 +142,33 @@ class SummaryAccumulator:
         n_cells = counts.shape[0]
         if n_cells == 0:
             return
-        y = counts.astype(np.float64, copy=False)
 
-        lib = y.sum(axis=1)
+        # Reduce over GENE CHUNKS. A full TNBC-scale block is up to 27,653 cells
+        # x 20,284 genes; upcasting it to float64 in one piece peaks near 11 GB,
+        # and 16 Monte Carlo workers doing that at once will OOM a 400 GB node.
+        # Chunking bounds the transient without changing any result.
+        G = self.n_genes
+        lib = np.zeros(n_cells, dtype=np.float64)
+        genes_per_cell = np.zeros(n_cells, dtype=np.int32)
+        gene_sum = np.zeros(G)
+        y2_sum = np.zeros(G)
+        ys_sum = np.zeros(G)
+        detected = np.zeros(G)
+
+        for c0 in range(0, G, _REDUCE_CHUNK):
+            sl = slice(c0, min(c0 + _REDUCE_CHUNK, G))
+            y = counts[:, sl].astype(np.float64)
+            lib += y.sum(axis=1)
+            nz = y > 0
+            genes_per_cell += nz.sum(axis=1).astype(np.int32)
+            gene_sum[sl] = y.sum(axis=0)
+            detected[sl] = nz.sum(axis=0)
+
         self.cell_umi.append(lib.astype(np.float32))
-        self.cell_genes.append((y > 0).sum(axis=1).astype(np.int32))
+        self.cell_genes.append(genes_per_cell)
         self.n_cells_total += n_cells
-
-        gene_sum = y.sum(axis=0)
         self.total_counts += gene_sum
-        self.n_detected_cells += (y > 0).sum(axis=0)
+        self.n_detected_cells += detected
 
         # Split-half pseudobulk. This is what makes the participant and
         # participant x visit variance components IDENTIFIABLE: with one
@@ -161,8 +181,8 @@ class SummaryAccumulator:
         half[: n_cells // 2] = True
         rs = np.random.default_rng(abs(hash((participant, visit, stratum))) % (2**32))
         rs.shuffle(half)
-        sum_a = y[half].sum(axis=0) if half.any() else np.zeros(self.n_genes)
-        sum_b = y[~half].sum(axis=0) if (~half).any() else np.zeros(self.n_genes)
+        sum_a = counts[half].sum(axis=0).astype(np.float64)
+        sum_b = counts[~half].sum(axis=0).astype(np.float64)
 
         # Participant-visit pseudobulk (summed counts) for the longitudinal gate.
         self.pv_rows.append(
@@ -172,9 +192,9 @@ class SummaryAccumulator:
                 "arm": arm,
                 "stratum": stratum if stratum is not None else f"{participant}|{visit}",
                 "n_cells": n_cells,
-                "counts": gene_sum.astype(np.float64),
-                "counts_a": sum_a.astype(np.float64),
-                "counts_b": sum_b.astype(np.float64),
+                "counts": gene_sum,
+                "counts_a": sum_a,
+                "counts_b": sum_b,
                 "n_cells_a": int(half.sum()),
                 "n_cells_b": int((~half).sum()),
             }
@@ -189,8 +209,11 @@ class SummaryAccumulator:
         if s_sum <= 0:
             return
         lam = gene_sum / s_sum  # Poisson/ML mean rate given the offsets
-        ys_sum = y.T @ s  # sum(y * s) per gene
-        y2_sum = (y * y).sum(axis=0)
+        for c0 in range(0, G, _REDUCE_CHUNK):
+            sl = slice(c0, min(c0 + _REDUCE_CHUNK, G))
+            y = counts[:, sl].astype(np.float64)
+            ys_sum[sl] = y.T @ s
+            y2_sum[sl] = (y * y).sum(axis=0)
 
         resid = y2_sum - 2.0 * lam * ys_sum + (lam**2) * s2_sum
         self.resid_ss += resid

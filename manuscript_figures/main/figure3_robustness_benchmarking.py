@@ -559,10 +559,33 @@ def _load_benchmark_data() -> pd.DataFrame:
             "Run the signal-fraction sensitivity benchmark on HPC first."
         )
     df = pd.read_csv(_BENCHMARK_CSV, low_memory=False)
-    df["n_genes"] = df["scenario"].str.extract(r"_g(\d+)")[0].astype(int)
-    frac = df["scenario"].str.extract(r"_f(\d+)")
-    df["signal_pct"] = pd.to_numeric(frac[0], errors="coerce").fillna(0).astype(int)
-    df["is_null_scenario"] = df["scenario"].str.contains("sens_null")
+
+    # Read the DATA, not the scenario NAME. Parsing `_g(\d+)` and `_f(\d+)` out of
+    # the name has two failure modes that have both already occurred:
+    #   1. the nominal label is not the realised fraction -- at 50 genes,
+    #      round(50 * 0.01) is 1 gene, i.e. 2%, so the "1%" column was really 2%
+    #      and this manufactured an apparent panel-size dependence;
+    #   2. any new scenario whose name happens to contain `_f<N>` is silently
+    #      swept into these panels. The one-directional composition-stress arm is
+    #      named `sens_g200_f20_onedir` and `_f(\d+)` matches it.
+    # The runner now records panel_size, signal_fraction_realised and
+    # architecture as columns, so nothing needs to be inferred from a string.
+    required = {"panel_size", "signal_fraction_realised", "architecture"}
+    missing = required - set(df.columns)
+    if missing:
+        raise ValueError(
+            f"{_BENCHMARK_CSV} is missing {sorted(missing)}. It predates the "
+            "current runner and its scenario labels cannot be trusted; re-run the "
+            "benchmark rather than parsing the scenario name."
+        )
+    df["n_genes"] = df["panel_size"].astype(int)
+    df["signal_pct"] = (df["signal_fraction_realised"] * 100).round().astype(int)
+    df["is_null_scenario"] = df["signal_fraction_realised"] == 0
+
+    # These panels describe the PRIMARY (balanced) architecture. The
+    # one-directional arm is a separate composition-stress analysis and is
+    # excluded here explicitly rather than by hoping the name regex misses it.
+    df = df[df["architecture"].isin(["balanced", "heterogeneous"])].copy()
     return df
 
 

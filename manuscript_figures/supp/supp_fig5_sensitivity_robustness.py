@@ -1660,18 +1660,19 @@ _SIGNAL_FRACTIONS = [1, 5, 10, 20]
 
 
 def _load_benchmark_data():
-    if not _BENCHMARK_CSV.exists():
-        raise FileNotFoundError(
-            f"Benchmark results not found at {_BENCHMARK_CSV}.\n"
-            "Run the signal-fraction sensitivity benchmark on HPC first, "
-            "then rsync results locally."
-        )
-    df = pd.read_csv(_BENCHMARK_CSV, low_memory=False)
-    df["n_genes"] = df["scenario"].str.extract(r"_g(\d+)")[0].astype(int)
-    frac = df["scenario"].str.extract(r"_f(\d+)")
-    df["signal_pct"] = pd.to_numeric(frac[0], errors="coerce").fillna(0).astype(int)
-    df["is_null_scenario"] = df["scenario"].str.contains("sens_null")
-    return df
+    """Delegate to Figure 3's loader — do not re-implement it here.
+
+    This was a second, independent copy of the same parsing logic. When the
+    scenario labelling was found to be wrong (nominal versus realised signal
+    fraction), fixing one copy would have left the supplementary panels
+    disagreeing with the main figure while both looked internally consistent.
+    Supp Fig 5 and Figure 3 must describe the same benchmark.
+    """
+    from ..main.figure3_robustness_benchmarking import (
+        _load_benchmark_data as _load_from_figure3,
+    )
+
+    return _load_from_figure3()
 
 
 def _method_style(method, is_focal=False, alpha=1.0, *, composite=False):

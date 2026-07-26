@@ -7,11 +7,16 @@ lost. The audit asserted this from the package documentation; documentation has
 already been misread once in this project (the convergence codes), so it is
 settled here by experiment.
 
-Design: simulate a two-arm paired trial with a KNOWN interaction effect and
-deliberately wide per-cell library variation, then fit the same model twice --
-once with the offset on the linear scale, once logged. Whichever recovers the
-injected effect, and whose null genes stay centred at zero, is the correct
-convention.
+Design: the offset only matters when library size is CONFOUNDED with the design.
+With depth drawn independently of arm and visit, both conventions look fine and
+the comparison is uninformative -- a first version of this script made exactly
+that mistake and produced a 2x bias difference that was within noise.
+
+So: multiply the library size of treated-post cells by a known factor, and inject
+NO effect at all. Every gene is null. A working offset absorbs the depth shift and
+leaves the interaction coefficients centred on zero; a double-logged offset
+absorbs only a fraction of it, and every null gene picks up a spurious positive
+interaction. The size of that spurious shift is the diagnostic.
 
     sbatch scripts/slurm_calibrate.sh   # or run under micromamba on a compute node
     python scripts/verify_nebula_offset.py
@@ -76,80 +81,110 @@ def _run(counts, meta, genes, offset_expr, tmp: Path, tag: str) -> pd.DataFrame:
 
 
 def main() -> None:
-    from sctrial.benchmark.simulator_v2 import TranscriptomeSimConfig, simulate_trial_v2
+    from sctrial.benchmark.simulator_v2 import (
+        TranscriptomeSimConfig,
+        build_params,
+        iter_pv_blocks,
+    )
 
-    beta = 0.5
-    n_signal = 20
-    panel_n = 100
+    DEPTH_FACTOR = 3.0  # treated-post cells sequenced 3x deeper
+    panel_n = 150
+
     cfg = TranscriptomeSimConfig(
         n_per_arm=6,
         n_genes_transcriptome=2500,
-        cells_per_pv_fixed=300,
+        cells_per_pv_fixed=250,
         use_empirical_library=False,
         use_empirical_cells_per_pv=False,
-        # Wide library variation: if the offset is mis-scaled, this is what makes
-        # it visible. With a narrow depth distribution both conventions look fine.
         lib_log_mean=7.5,
-        lib_log_sd=1.2,
+        lib_log_sd=0.8,
+        effects={},  # NO true effect anywhere: every gene is null
         seed=11,
     )
+
+    # Generate, then scale the depth of treated-post cells only. Scaling counts
+    # after generation (binomial thinning would be the alternative) keeps the
+    # confounding exactly known and independent of the generative parameters.
+    params = build_params(cfg)
+    rng = np.random.default_rng(999)
+    blocks, obs = [], []
+    for blk in iter_pv_blocks(cfg, params=params):
+        counts = blk["counts"]
+        if blk["arm"] == "Treated" and blk["visit"] == "Post":
+            counts = rng.poisson(counts * DEPTH_FACTOR).astype(np.int32)
+        blocks.append(counts)
+        obs.append(
+            pd.DataFrame(
+                {
+                    "participant": blk["participant"],
+                    "visit": blk["visit"],
+                    "arm": blk["arm"],
+                }
+            )
+        )
+    X = np.vstack(blocks)
+    meta = pd.concat(obs, ignore_index=True)
+    meta["lib_size"] = X.sum(axis=1).astype(float)
+
     panel = [f"gene_{i}" for i in range(panel_n)]
-    cfg = TranscriptomeSimConfig(
-        **{**cfg.__dict__, "effects": {g: beta for g in panel[:n_signal]}}
-    )
-    sim = simulate_trial_v2(cfg)
+    idx = list(range(panel_n))
 
-    adata = sim["adata"]
-    lib = np.asarray(adata.X.sum(axis=1)).ravel().astype(float)
-    sub = adata[:, panel]
-    counts = sub.X.T.tocoo()  # genes x cells
-    meta = adata.obs[["participant", "arm", "visit"]].copy()
-    meta["lib_size"] = lib
-    keep = lib > 0
-
-    print(f"cells={adata.n_obs:,}  panel={panel_n}  signal={n_signal}  beta={beta}")
-    print(f"library size: median={np.median(lib):,.0f}  IQR="
-          f"{np.percentile(lib, 25):,.0f}-{np.percentile(lib, 75):,.0f}")
+    tp = (meta["arm"] == "Treated") & (meta["visit"] == "Post")
+    print(f"cells={len(meta):,}  panel={panel_n}  TRUE EFFECT = 0 for every gene")
+    print(f"depth confounding: treated-post median {meta.loc[tp, 'lib_size'].median():,.0f} "
+          f"vs others {meta.loc[~tp, 'lib_size'].median():,.0f} "
+          f"({meta.loc[tp, 'lib_size'].median() / meta.loc[~tp, 'lib_size'].median():.2f}x)")
 
     with tempfile.TemporaryDirectory() as td:
         tmp = Path(td)
         import scipy.sparse as sp
 
-        c = sp.csr_matrix(counts)[:, keep]
+        keep = meta["lib_size"].to_numpy() > 0
+        c = sp.csr_matrix(X[keep][:, idx].T)  # genes x cells
         m = meta[keep].reset_index(drop=True)
+
         results = {}
         for tag, expr in (("linear", "meta$lib_size"), ("logged", "log(meta$lib_size)")):
             print(f"\n--- offset = {expr} ---", flush=True)
-            res = _run(c, m, panel, expr, tmp, tag)
-            res = res.set_index("gene")
-            sig = res.loc[[g for g in panel[:n_signal] if g in res.index], "logFC"]
-            null = res.loc[[g for g in panel[n_signal:] if g in res.index], "logFC"]
-            nullp = res.loc[[g for g in panel[n_signal:] if g in res.index], "pvalue"]
+            res = _run(c, m, panel, expr, tmp, tag).set_index("gene")
+            b = res["logFC"].to_numpy(dtype=float)
+            pv = res["pvalue"].to_numpy(dtype=float)
             results[tag] = {
-                "signal_mean_beta": float(np.nanmean(sig)),
-                "signal_bias": float(np.nanmean(sig) - beta),
-                "null_mean_beta": float(np.nanmean(null)),
-                "null_fpr_0.05": float(np.nanmean(nullp < 0.05)),
+                "mean_beta": float(np.nanmean(b)),
+                "median_beta": float(np.nanmedian(b)),
+                "fpr_0.05": float(np.nanmean(pv < 0.05)),
                 "converged_frac": float(np.mean(res["convergence_code"] > -20)),
-                "convergence_codes": res["convergence_code"].value_counts().to_dict(),
             }
             for k, v in results[tag].items():
-                print(f"  {k}: {v}")
+                print(f"  {k}: {v:.4f}")
 
     print("\n=== VERDICT ===")
     lin, log = results["linear"], results["logged"]
-    better = "linear" if abs(lin["signal_bias"]) < abs(log["signal_bias"]) else "logged"
-    print(f"signal-gene bias: linear {lin['signal_bias']:+.4f}  vs  "
-          f"logged {log['signal_bias']:+.4f}")
-    print(f"null FPR:         linear {lin['null_fpr_0.05']:.4f}  vs  "
-          f"logged {log['null_fpr_0.05']:.4f}   (nominal 0.05)")
-    print(f"-> nebula's offset argument is on the {better.upper()} scale.")
+    print("TRUTH: every interaction coefficient should be 0.")
+    print(f"  linear offset : mean beta {lin['mean_beta']:+.4f}")
+    print(f"  logged offset : mean beta {log['mean_beta']:+.4f}")
+    better = "linear" if abs(lin["mean_beta"]) < abs(log["mean_beta"]) else "logged"
+    print(f"-> the offset that absorbs a {DEPTH_FACTOR}x depth shift is the "
+          f"{better.upper()} scale.")
+    print(
+        f"   (ratio of residual depth artifact: "
+        f"{abs(log['mean_beta']) / max(abs(lin['mean_beta']), 1e-9):.1f}x worse when logged)"
+    )
     if better != "linear":
         print(
-            "WARNING: this contradicts the contract in "
-            "sctrial/benchmark/runners/nebula_runner.py. Do not run the benchmark "
-            "until the contract is corrected."
+            "\nWARNING: this contradicts the contract in "
+            "src/sctrial/benchmark/runners/nebula_runner.py. Do NOT run the "
+            "benchmark until the contract is corrected."
         )
+
+    print(
+        "\nNOTE: the false-positive rate under BOTH conventions is reported above "
+        "and is expected to exceed 0.05 here. nebula carries a subject-level "
+        "random intercept but no participant-by-visit term, so within-participant "
+        "longitudinal variation is left in the cell-level residual. That is a "
+        "property of the model, is measured properly by the benchmark grid, and "
+        "is not what this script is testing."
+    )
 
 
 if __name__ == "__main__":
