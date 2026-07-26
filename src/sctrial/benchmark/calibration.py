@@ -385,6 +385,57 @@ class SummaryAccumulator:
         agg["variance_components_n_celltypes"] = int(len(weights))
         return agg
 
+    def genewise_corr_within_stratum(self, min_cpm: float = 1.0) -> dict:
+        """Gene-wise pre/post correlation computed WITHIN each cell type.
+
+        The pooled version differences participants after summing over cell types, so a gene
+        restricted to one cell type inherits that cell type's ABUNDANCE variation across
+        participants. That alone creates gene-to-gene heterogeneity in participant-level
+        correlation, with no gene-intrinsic biology behind it.
+
+        The simulator contains one homogeneous population and no composition variation, so if
+        TNBC's heterogeneity is compositional then the pooled statistic is not a quantity the
+        simulator could or should reproduce -- the same conditional-versus-marginal distinction
+        already applied to dispersion. Measuring within cell type is what makes the two arms of
+        the gate comparable.
+        """
+        import collections
+
+        by_ct: dict[str, list] = collections.defaultdict(list)
+        for r in self.pv_rows:
+            parts = str(r["stratum"]).split("|")
+            by_ct[parts[2] if len(parts) > 2 else "ALL"].append(r)
+
+        allr: list[np.ndarray] = []
+        per_ct = {}
+        for ct, rows in by_ct.items():
+            sub = SummaryAccumulator(n_genes=self.n_genes)
+            sub.pv_rows = rows
+            st = sub._longitudinal_statistics(sub.pv_frame())
+            r = st.get("_prepost_corr_genewise")
+            if r is None or len(r) < 50:
+                continue
+            allr.append(np.asarray(r))
+            per_ct[ct] = {
+                "n_genes": int(len(r)),
+                "median": float(np.median(r)),
+                "sd": float(np.std(r)),
+            }
+        if not allr:
+            return {}
+        pooled_r = np.concatenate(allr)
+        out = {
+            "genewise_corr_within_ct_median": float(np.median(pooled_r)),
+            "genewise_corr_within_ct_mean": float(np.mean(pooled_r)),
+            "genewise_corr_within_ct_sd": float(np.std(pooled_r)),
+            "genewise_corr_within_ct_n": int(pooled_r.size),
+            "genewise_corr_within_ct_n_celltypes": int(len(per_ct)),
+        }
+        for q in (10, 25, 75, 90):
+            out[f"genewise_corr_within_ct_q{q}"] = float(np.percentile(pooled_r, q))
+        out["_per_celltype"] = per_ct
+        return out
+
     def statistics(self) -> dict:
         """Every gate statistic, as a flat dict of scalars plus a few vectors."""
         umi = np.concatenate(self.cell_umi) if self.cell_umi else np.array([0.0])

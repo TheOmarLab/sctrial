@@ -216,12 +216,40 @@ def cmd_diagnose(args) -> None:
         ratio = vb / va if va else np.nan
         print(f"{a:32s} {va:24.4f} {vb:18.4f}   ratio {ratio:.3f}")
     print(f"\ncell types used: {within.get('variance_components_n_celltypes')}")
+
+    # The decisive measurement for Gate E: is TNBC's gene-wise correlation
+    # heterogeneity intrinsic, or is it cell-type composition leaking in?
+    gw = acc.genewise_corr_within_ct = acc.genewise_corr_within_stratum()
+    per_ct = gw.pop("_per_celltype", {})
+    print("\n=== gene-wise pre/post correlation: POOLED vs WITHIN cell type ===")
+    st = acc.statistics()
+    rows = [
+        ("median", "prepost_corr_genewise_median", "genewise_corr_within_ct_median"),
+        ("mean", "prepost_corr_genewise_mean", "genewise_corr_within_ct_mean"),
+        ("sd", "prepost_corr_genewise_sd", "genewise_corr_within_ct_sd"),
+        ("q10", "prepost_corr_genewise_q10", "genewise_corr_within_ct_q10"),
+        ("q25", "prepost_corr_genewise_q25", "genewise_corr_within_ct_q25"),
+        ("q75", "prepost_corr_genewise_q75", "genewise_corr_within_ct_q75"),
+        ("q90", "prepost_corr_genewise_q90", "genewise_corr_within_ct_q90"),
+    ]
+    print(f"{'stat':8s} {'pooled':>10s} {'within CT':>10s}")
+    for label, a, b in rows:
+        print(f"{label:8s} {st.get(a, float('nan')):10.4f} {gw.get(b, float('nan')):10.4f}")
+    print(f"\nn gene-celltype pairs: {gw.get('genewise_corr_within_ct_n'):,} "
+          f"across {gw.get('genewise_corr_within_ct_n_celltypes')} cell types")
+    print("\nper cell type (median / sd / n genes):")
+    for ct, v in sorted(per_ct.items()):
+        print(f"  {ct:28s} {v['median']:7.4f} {v['sd']:7.4f} {v['n_genes']:7,d}")
     print(f"genes used (pooled): {pooled.get('variance_components_n_genes')}")
 
     out = _manuscript_dir() / "gates"
     out.mkdir(parents=True, exist_ok=True)
     with open(out / "variance_component_conditioning.json", "w") as fh:
-        json.dump({"pooled": pooled, "within_celltype": within}, fh, indent=2, default=float)
+        json.dump(
+            {"pooled": pooled, "within_celltype": within, "genewise_corr": gw,
+             "genewise_corr_per_celltype": per_ct},
+            fh, indent=2, default=float,
+        )
     print(f"\nwrote {out / 'variance_component_conditioning.json'}")
 
 
