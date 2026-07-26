@@ -40,11 +40,17 @@ def _cfg(**kw) -> TranscriptomeSimConfig:
         cells_per_pv_cv=0.5,
         cells_per_pv_min=100,
         cells_per_pv_max=900,
+        # Every empirical resampling path is OFF. These tests validate an
+        # ESTIMATOR by generating at a known parameter and requiring recovery, so
+        # the generating value has to be a parameter, not a resampled pool.
         use_empirical_library=False,
         use_empirical_cells_per_pv=False,
+        use_empirical_gene_rates=False,
+        use_empirical_dispersion=False,
         dispersion_median=0.30,
         dispersion_mean_slope=0.0,
-        dispersion_log_sd=0.5,
+        dispersion_anchor=0.0,
+        dispersion_residual_sd=0.5,
         between_participant_sd=1.0,
         prepost_corr=0.5,
         seed=1,

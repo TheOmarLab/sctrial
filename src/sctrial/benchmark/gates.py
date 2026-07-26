@@ -51,6 +51,11 @@ __all__ = [
 
 GATE_STATISTICS: dict[str, list[str]] = {
     "A_transcriptome": [
+        # zero_fraction is algebraically the MEAN of the same per-cell curve whose
+        # quantiles follow, so the mean and the quantiles are not independent
+        # evidence. mean/median is the shape discriminator between them.
+        "genes_detected_per_cell_mean",
+        "genes_detected_per_cell_meanmedian",
         "genes_detected_per_cell_median",
         "genes_detected_per_cell_q25",
         "genes_detected_per_cell_q75",
@@ -68,6 +73,9 @@ GATE_STATISTICS: dict[str, list[str]] = {
         "cells_per_pv_cv",
     ],
     "C_dispersion": [
+        # Support size on BOTH arms. If these differ materially the quantile
+        # comparisons are between differently supported distributions.
+        "cond_alpha_n_genes",
         "cond_alpha_median",
         "cond_alpha_q25",
         "cond_alpha_q75",
@@ -103,16 +111,40 @@ class GateResult:
     verdict: str
 
     def as_row(self) -> dict:
+        # `ratio` is meaningless for a statistic already on a log scale and
+        # undefined for a signed one. gene_mean_log_mean reported ratio 0.995 for a
+        # true 2.20% discrepancy (understated 4.5x), and prepost_corr_genewise_q25
+        # printed "n/a" because observed and simulated have opposite signs -- the
+        # formula announcing its own breakdown. `z` is scale-free and always
+        # defined, and is the discrepancy the verdict is actually based on.
+        sigma_mc = (self.sim_hi95 - self.sim_lo95) / 3.92 if np.isfinite(self.sim_hi95) else np.nan
+        log_scale = "_log_" in self.statistic or self.statistic.endswith("_log_sd")
+        if log_scale:
+            discrepancy = self.observed - self.sim_median  # already logs: difference IS the effect
+            kind = "log_difference"
+        elif "corr" in self.statistic or self.statistic.endswith("_slope"):
+            discrepancy = self.observed - self.sim_median  # signed, bounded: ratio is invalid
+            kind = "signed_difference"
+        else:
+            discrepancy = (
+                self.observed / self.sim_median - 1.0
+                if np.isfinite(self.sim_median) and self.sim_median != 0.0
+                else np.nan
+            )
+            kind = "relative"
         return {
             "gate": self.gate,
             "statistic": self.statistic,
+            "kind": kind,
             "observed": self.observed,
             "sim_median": self.sim_median,
             "sim_lo95": self.sim_lo95,
             "sim_hi95": self.sim_hi95,
-            "ratio": (
-                self.observed / self.sim_median
-                if self.sim_median not in (0.0, np.nan) and np.isfinite(self.sim_median)
+            "discrepancy": discrepancy,
+            "sigma_mc": sigma_mc,
+            "z": (
+                (self.observed - self.sim_median) / sigma_mc
+                if np.isfinite(sigma_mc) and sigma_mc > 0
                 else np.nan
             ),
             "percentile": self.percentile,

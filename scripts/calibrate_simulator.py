@@ -121,9 +121,13 @@ def _config_from_targets(args):
         lib_log_sd=t["lib_log_sd"],
         gene_rate_log_mean=t["gene_mean_log_mean"],
         gene_rate_log_sd=t["gene_mean_log_sd"],
+        # Anchor and RESIDUAL sd travel with the median. They are only used when
+        # the empirical per-gene dispersion pool is unavailable; the default path
+        # resamples that pool paired with the gene rate.
         dispersion_median=t["dispersion_median"],
         dispersion_mean_slope=t["dispersion_mean_slope"],
-        dispersion_log_sd=t["dispersion_log_sd"],
+        dispersion_anchor=t["dispersion_anchor"],
+        dispersion_residual_sd=t["dispersion_residual_sd"],
         # LATENT variance components, not the observable correlation. The
         # observable is attenuated by pseudobulk sampling noise (sigma_e), so
         # using it as the generating parameter under-disperses the hierarchy --

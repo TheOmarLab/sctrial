@@ -92,6 +92,8 @@ class SummaryAccumulator:
     # production callers must leave them at the module defaults.
     min_mean_count: float = _MIN_MEAN_COUNT
     min_strata_detected: int = _MIN_STRATA_DETECTED
+    # Minimum CPM for a gene to enter the gene-wise correlation distribution.
+    min_cpm_genewise: float = 0.0
 
     # per-gene accumulators
     total_counts: np.ndarray = field(init=False)
@@ -411,6 +413,9 @@ class SummaryAccumulator:
         for ct, rows in by_ct.items():
             sub = SummaryAccumulator(n_genes=self.n_genes)
             sub.pv_rows = rows
+            # `min_cpm` was accepted and never applied, so unexpressed
+            # gene-by-cell-type pairs entered the distribution unfiltered.
+            sub.min_cpm_genewise = min_cpm
             st = sub._longitudinal_statistics(sub.pv_frame())
             r = st.get("_prepost_corr_genewise")
             if r is None or len(r) < 50:
@@ -448,6 +453,13 @@ class SummaryAccumulator:
 
         stats: dict = {
             # --- Gate A: transcriptome occupancy ---
+            "genes_detected_per_cell_mean": float(np.mean(gdet)),
+            # Shape discriminator. zero_fraction is the MEAN of this same curve, so
+            # a matching mean with mismatched quantiles is a SHAPE error, not a
+            # level error: measured 1.22 simulated against 1.13 for TNBC.
+            "genes_detected_per_cell_meanmedian": float(
+                np.mean(gdet) / max(np.median(gdet), 1e-12)
+            ),
             "genes_detected_per_cell_median": float(np.median(gdet)),
             "genes_detected_per_cell_q25": float(np.percentile(gdet, 25)),
             "genes_detected_per_cell_q75": float(np.percentile(gdet, 75)),
@@ -550,6 +562,9 @@ class SummaryAccumulator:
         sd_pre = pre_c.std(axis=0)
         sd_post = post_c.std(axis=0)
         good = (sd_pre > 1e-8) & (sd_post > 1e-8)
+        if self.min_cpm_genewise > 0:
+            mean_cpm = 0.5 * (np.expm1(pre).mean(axis=0) + np.expm1(post).mean(axis=0))
+            good &= mean_cpm >= self.min_cpm_genewise
         with np.errstate(invalid="ignore", divide="ignore"):
             r = (pre_c * post_c).mean(axis=0) / (sd_pre * sd_post)
         r = r[good & np.isfinite(r)]
@@ -559,6 +574,7 @@ class SummaryAccumulator:
             out["prepost_corr_genewise_sd"] = float(np.std(r))
             for q in (10, 25, 75, 90):
                 out[f"prepost_corr_genewise_q{q}"] = float(np.percentile(r, q))
+            out["prepost_corr_genewise_n"] = int(r.size)  # support size, both arms
             out["_prepost_corr_genewise"] = r  # full vector, for distribution tests
         else:
             out["prepost_corr_genewise_median"] = np.nan
@@ -708,6 +724,7 @@ class DispersionFit:
     mean_count: np.ndarray
     trend_slope: float
     trend_intercept: float
+    trend_anchor: float
     prior_var: float
     n_genes_used: int
     n_genes_total: int
@@ -719,7 +736,16 @@ class DispersionFit:
         return {
             "dispersion_median": float(np.median(a)),
             "dispersion_mean_slope": float(self.trend_slope),
-            "dispersion_log_sd": float(np.std(np.log(a))),
+            # TOTAL spread of log alpha, reported for description only. The
+            # GENERATING quantity is the residual sd about the trend; exporting the
+            # total and consuming it as the residual double-counts trend variance.
+            "dispersion_log_sd_total": float(np.std(np.log(a))),
+            "dispersion_residual_sd": float(np.sqrt(self.prior_var)),
+            # The log-rate the trend is anchored at. Must travel WITH the median,
+            # which is computed over the estimable genes only; anchoring elsewhere
+            # shifts every dispersion by exp(slope * offset).
+            "dispersion_anchor": float(self.trend_anchor),
+            "dispersion_trend_intercept": float(self.trend_intercept),
             "dispersion_mle_median": float(
                 np.median(self.alpha_mle[np.isfinite(self.alpha_mle)])
             ),
@@ -847,10 +873,23 @@ def conditional_dispersion(
     # Sampling variance of log-alpha under the APL, approximated by the standard
     # NB result 2/df with df = (n_cells - n_strata). Anything left over is prior
     # spread, exactly as in the DESeq2/glmGamPoi shrinkage construction.
+    # PER-GENE sampling variance. A single pooled `2/df` with df = n_cells -
+    # n_strata gives 2/141311 = 1.4e-05 against a prior variance of 1.75, i.e.
+    # w = 0.9999919 -- the shrinkage was a numerical no-op, and the "shrunk"
+    # estimates equalled the raw MLEs to six decimal places. The information a
+    # gene carries about its dispersion is governed by its COUNTS, not by the
+    # number of cells: a gene at 0.02 counts/cell is nearly uninformative however
+    # many cells there are.
+    #
+    # Var(log alpha_hat) ~= 2/df * (1 + 1/(alpha*mu))^2 for a Gamma-Poisson, which
+    # collapses to the classical 2/df only when alpha*mu >> 1.
     df = max(len(order) - n_strata, 1)
-    samp_var = 2.0 / df
-    prior_var = max(float(np.var(resid) - samp_var), 1e-6)
-    w = prior_var / (prior_var + samp_var)
+    a_hat = alpha_mle[ok]
+    mu_g = mean_count[ok]
+    samp_var_g = (2.0 / df) * (1.0 + 1.0 / np.maximum(a_hat * mu_g * df, 1e-12)) ** 2
+    samp_var_g = np.clip(samp_var_g, 1e-8, 1e4)
+    prior_var = max(float(np.var(resid) - np.median(samp_var_g)), 1e-6)
+    w = prior_var / (prior_var + samp_var_g)
     alpha_shrunk = np.full(n_genes_total, np.nan)
     alpha_shrunk[ok] = np.exp((intercept + slope * x) + w * resid)
 
@@ -862,6 +901,7 @@ def conditional_dispersion(
         mean_count=mean_count,
         trend_slope=float(slope),
         trend_intercept=float(intercept),
+        trend_anchor=float(np.median(x)),
         prior_var=float(prior_var),
         n_genes_used=int(ok.sum()),
         n_genes_total=int(n_genes_total),

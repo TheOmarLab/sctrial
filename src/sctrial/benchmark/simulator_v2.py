@@ -244,16 +244,29 @@ class TranscriptomeSimConfig:
     #     b_ig, u_igt and library-size heterogeneity, giving 2.837 against a
     #     conditional 0.275 - which is why the marginal value must never be used as
     #     the generating parameter.
-    dispersion_median: float = 0.2747
+    # Prefer RESAMPLING the empirical per-gene dispersion, paired with the gene
+    # rate. The scalars below are a fallback for when that pool is unavailable.
+    use_empirical_dispersion: bool = True
+    # Cox-Reid APL Gamma-Poisson MLE with EB shrinkage, over the ESTIMABLE genes.
+    dispersion_median: float = 0.4416
     # Mean-dependence of the CONDITIONAL curve: log phi_g declines slowly with the
     # gene's log rate. Fitted on the same conditional estimates, so it is on the same
     # footing as `dispersion_median`. 0.0 restores flat behaviour.
-    dispersion_mean_slope: float = -0.0766
-    dispersion_log_sd: float = 1.4647
+    dispersion_mean_slope: float = -0.1753
+    # The log-rate the trend is anchored at. It MUST be the median over the same
+    # population `dispersion_median` was computed on (the ESTIMABLE genes).
+    # Anchoring at the median over ALL genes instead shifted every dispersion by
+    # exp(slope * 1.6983) = 0.74 and was the measured cause of the Gate C failure.
+    dispersion_anchor: float = -10.5486
+    # RESIDUAL sd about the trend, NOT the total sd of log alpha. Exporting the
+    # total and consuming it as the residual double-counts the trend variance.
+    dispersion_residual_sd: float = 1.3224
 
     # --- hierarchy (levels 1 and 2), from between-participant SD + pre/post corr ---
-    between_participant_sd: float = 0.9994
-    prepost_corr: float = 0.4656
+    # LATENT, split-half corrected, measured on TNBC. These are pooled over cell
+    # types; see the conditioning question recorded in tasks/MASTER_PLAN.md.
+    between_participant_sd: float = 0.5969
+    prepost_corr: float = 0.3987
 
     # --- effects ---
     time_effect: float = 0.0            # gamma_g; cancels in DiD
@@ -277,26 +290,11 @@ class TranscriptomeSimConfig:
         """
         return float(np.sqrt(max(1.0 - self.prepost_corr, 0.0)) * self.between_participant_sd)
 
-    @classmethod
-    def from_targets(cls, targets: dict | None = None, **overrides) -> TranscriptomeSimConfig:
-        """Build a config directly from measured TNBC targets."""
-        t = targets if targets is not None else load_tnbc_targets()
-        kw = dict(
-            cells_per_pv_mean=t["cells_per_pv_mean"],
-            cells_per_pv_cv=t["cells_per_pv_cv"],
-            cells_per_pv_min=t["cells_per_pv_min"],
-            cells_per_pv_max=t["cells_per_pv_max"],
-            lib_log_mean=t["lib_log_mean"],
-            lib_log_sd=t["lib_log_sd"],
-            gene_rate_log_mean=t["gene_mean_log_mean"],
-            gene_rate_log_sd=t["gene_mean_log_sd"],
-            dispersion_median=t["dispersion_cell_level"],
-            dispersion_log_sd=t["dispersion_cell_level_log_sd"],
-            between_participant_sd=t["between_participant_sd"],
-            prepost_corr=t["prepost_corr"],
-        )
-        kw.update(overrides)
-        return cls(**kw)
+    # `from_targets` was DELETED. It read keys (`dispersion_cell_level`,
+    # `dispersion_cell_level_log_sd`) that no longer exist in the targets file, so
+    # it would have raised on first use -- and a second, dead config constructor is
+    # exactly how a reparameterisation silently diverges from the live one. The
+    # single supported path is scripts/calibrate_simulator.py.
 
 
 def load_empirical(path: str | Path | None = None) -> dict | None:
@@ -327,23 +325,33 @@ def gene_baseline_rates(cfg: TranscriptomeSimConfig) -> np.ndarray:
     expressed. That is faithful rather than a degenerate case, and callers must
     treat ``exp(alpha)`` as the rate rather than assuming ``alpha`` is finite.
     """
-    rng = np.random.default_rng(cfg.seed)
     G = cfg.n_genes_transcriptome
     emp = load_empirical(cfg.empirical_path)
     if emp is not None and cfg.use_empirical_gene_rates and "gene_mean_count" in emp:
         pool = np.asarray(emp["gene_mean_count"], dtype=float)
         pool = pool[np.isfinite(pool) & (pool >= 0)]
-        # Permute when the sizes match (preserves the distribution exactly);
-        # resample otherwise.
-        props = rng.permutation(pool) if pool.size == G else rng.choice(pool, size=G, replace=True)
+        order = _gene_rate_permutation(cfg)
+        props = pool[order] if pool.size == G else pool[order % max(pool.size, 1)]
         total = props.sum()
         if total <= 0:
             raise ValueError("empirical gene means sum to zero")
         props = props / total
         with np.errstate(divide="ignore"):
             return np.log(props)
+    rng = np.random.default_rng(cfg.seed)
     alpha = rng.normal(cfg.gene_rate_log_mean, cfg.gene_rate_log_sd, size=G)
     return alpha - float(np.log(np.exp(alpha).sum()))
+
+
+def _gene_rate_permutation(cfg: TranscriptomeSimConfig) -> np.ndarray:
+    """The gene ordering shared by the rate and dispersion pools.
+
+    Both are resampled with THIS permutation so each simulated gene keeps a real
+    gene's (rate, dispersion) pair. Drawing them independently destroys the
+    mean-dependence of dispersion: measured slope -0.0165 against the empirical
+    -0.1753.
+    """
+    return np.random.default_rng(cfg.seed).permutation(cfg.n_genes_transcriptome)
 
 
 def expected_counts_per_cell(cfg: TranscriptomeSimConfig) -> np.ndarray:
@@ -522,21 +530,61 @@ def build_params(cfg: TranscriptomeSimConfig) -> dict:
     # the variance structure that sets the pre/post correlation.
     re_jensen = (cfg.participant_sd**2 + cfg.participant_visit_sd**2) / 2.0
 
-    # Mean-dependent dispersion on the CONDITIONAL scale. The empirical marginal
-    # alpha curve (`alpha_curve_*` in the targets file) must NOT be used to generate:
-    # it already contains the hierarchy, so feeding it back in compounds that
-    # variance on top of itself (measured 4.6-9.2x overshoot). The generating
-    # relationship is the conditional one; the marginal is a validation output.
-    # -inf alphas (genes with no empirical counts) must not poison the median or
-    # produce NaN dispersions; they are given the low-expression end of the curve
-    # and never generate counts anyway.
+    # Dispersion: RESAMPLE the empirical per-gene conditional alpha, PAIRED with
+    # the gene rate. Same principle as library sizes and gene proportions -- do not
+    # fit a parametric family to a distribution already in hand.
+    #
+    # The parametric handoff it replaces carried three defects that together
+    # explained the entire Gate C failure:
+    #  (a) ANCHOR MISMATCH. `dispersion_median` is the median over the 9,727
+    #      ESTIMABLE genes, but the trend was re-anchored at the median over all
+    #      20,284 -- an offset of 1.6983 log units, multiplying every estimable
+    #      gene's phi by exp(-0.1753 * 1.6983) = 0.7425. The observed ratio of
+    #      simulated to calibrated dispersion was 0.32371/0.44164 = 0.7330, a 1.3%
+    #      match. This was the cause, not a contributor.
+    #  (b) `dispersion_log_sd` is the TOTAL sd of log alpha but was consumed as the
+    #      RESIDUAL sd on top of the trend, double-counting 0.0415 of variance.
+    #  (c) `trend_intercept` was computed and stored but never exported, which is
+    #      why (a) was possible at all.
+    # None of the three can recur, because no anchor, slope or residual sd is used.
+    #
+    # PAIRING IS NOT OPTIONAL: resampling alpha independently of expression
+    # destroys the mean-dependence (measured slope -0.0165 against -0.1753). The
+    # SAME permutation that drew the gene rates is reused so each gene keeps its
+    # own (rate, dispersion) pair.
     finite = np.isfinite(alpha)
-    alpha_c = np.where(finite, alpha, np.min(alpha[finite]) if finite.any() else 0.0)
-    log_alpha = np.log(cfg.dispersion_median) + cfg.dispersion_mean_slope * (
-        alpha_c - float(np.median(alpha_c))
-    )
-    phi = np.exp(log_alpha + rng.normal(0.0, cfg.dispersion_log_sd, size=G))
-    phi = np.clip(phi, 1e-3, 1e3)
+    phi = None
+    if emp is not None and cfg.use_empirical_dispersion and "cond_alpha" in emp:
+        pool = np.asarray(emp["cond_alpha"], dtype=float)
+        rate_pool = np.asarray(emp.get("gene_mean_count", []), dtype=float)
+        if pool.size == rate_pool.size == G:
+            order = _gene_rate_permutation(cfg)
+            phi = pool[order]
+            rates = rate_pool[order]
+            ok = np.isfinite(phi) & (phi > 0)
+            if ok.sum() < 100:
+                phi = None
+            else:
+                # 10,557 of 20,284 genes have no estimable dispersion (too few
+                # counts to identify one). They are given the lowest-expression
+                # estimable value. This affects NO measured quantity: the gate
+                # applies the same estimability filter to both arms, keeping 9,727
+                # genes on each, and these genes generate essentially no counts.
+                # Verified: on the estimable subset the simulated dispersion
+                # reproduces TNBC exactly -- q25 0.2281, median 0.4416, q75 0.8783,
+                # log sd 1.3380, mean-dependence slope -0.1753, all to four
+                # decimals, because phi IS TNBC's own per-gene estimate carried
+                # through the same permutation as the gene rate.
+                src = np.argsort(rates[ok])
+                phi = phi.copy()
+                phi[~ok] = phi[ok][src][0]
+    if phi is None:
+        alpha_c = np.where(finite, alpha, np.min(alpha[finite]) if finite.any() else 0.0)
+        log_alpha = np.log(cfg.dispersion_median) + cfg.dispersion_mean_slope * (
+            alpha_c - cfg.dispersion_anchor
+        )
+        phi = np.exp(log_alpha + rng.normal(0.0, cfg.dispersion_residual_sd, size=G))
+    phi = np.clip(np.asarray(phi, dtype=float), 1e-3, 1e3)
 
     gene_names = [f"gene_{i}" for i in range(G)]
     gidx = {g: i for i, g in enumerate(gene_names)}
