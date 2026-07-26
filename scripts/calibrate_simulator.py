@@ -173,6 +173,58 @@ def cmd_ablate(args) -> None:
     print(f"\nwrote {out / 'gate_d_composition_ablation.csv'}")
 
 
+def cmd_diagnose(args) -> None:
+    """Measure the hierarchy variance components WITH and WITHOUT cell-type conditioning.
+
+    The dispersion estimate was already shown to be inflated 0.774 -> 0.442 by pooling cell
+    types. The variance components are computed from participant x visit pseudobulk SUMMED over
+    cell types, so between-participant differences in cell-type COMPOSITION are counted as
+    gene-expression variance -- the same error one level up the hierarchy. Composition is largely
+    a participant-level property stable across visits, so it should load onto sigma_b rather than
+    sigma_u and inflate the implied pre/post correlation.
+
+    This measures both and reports the ratio. It is a measurement, not a tuning knob.
+    """
+    import numpy as np
+
+    from sctrial.benchmark.calibration import summarize_adata
+
+    adata = _load_dataset(args.dataset)
+    print(f"{args.dataset}: {adata.n_obs:,} cells x {adata.n_vars:,} genes", flush=True)
+    acc = summarize_adata(
+        adata,
+        participant_col=args.participant_col,
+        visit_col=args.visit_col,
+        arm_col=args.arm_col,
+        celltype_col=args.celltype_col,
+        layer=args.layer,
+    )
+    pooled = acc.variance_components()
+    within = acc.variance_components(within_stratum=True)
+
+    print("\n=== hierarchy variance components ===")
+    print(f"{'quantity':32s} {'pooled over cell types':>24s} {'within cell type':>18s}")
+    pairs = [
+        ("between_participant_sd_latent", "between_participant_sd_latent_within_ct"),
+        ("prepost_corr_latent", "prepost_corr_latent_within_ct"),
+        ("sigma_b_latent", "sigma_b_latent_within_ct"),
+        ("sigma_u_latent", "sigma_u_latent_within_ct"),
+        ("sigma_e_pseudobulk", "sigma_e_pseudobulk_within_ct"),
+    ]
+    for a, b in pairs:
+        va, vb = pooled.get(a, np.nan), within.get(b, np.nan)
+        ratio = vb / va if va else np.nan
+        print(f"{a:32s} {va:24.4f} {vb:18.4f}   ratio {ratio:.3f}")
+    print(f"\ncell types used: {within.get('variance_components_n_celltypes')}")
+    print(f"genes used (pooled): {pooled.get('variance_components_n_genes')}")
+
+    out = _manuscript_dir() / "gates"
+    out.mkdir(parents=True, exist_ok=True)
+    with open(out / "variance_component_conditioning.json", "w") as fh:
+        json.dump({"pooled": pooled, "within_celltype": within}, fh, indent=2, default=float)
+    print(f"\nwrote {out / 'variance_component_conditioning.json'}")
+
+
 def cmd_freeze(args) -> None:
     """Write the frozen configuration the definitive benchmark run must use."""
     cfg, targets = _config_from_targets(args)
@@ -228,6 +280,10 @@ def main() -> None:
     a.add_argument("--n-rep", type=int, default=5)
     a.add_argument("--panel-size", type=int, default=200)
     a.set_defaults(func=cmd_ablate)
+
+    sub.add_parser(
+        "diagnose", help="variance components with vs without cell-type conditioning"
+    ).set_defaults(func=cmd_diagnose)
 
     f = sub.add_parser("freeze", help="freeze the validated configuration")
     f.add_argument("--force", action="store_true")

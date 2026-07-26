@@ -68,6 +68,9 @@ case "$PHASE" in
   freeze)
     micromamba run -n sctrial python scripts/calibrate_simulator.py $COMMON freeze
     ;;
+  diagnose)
+    micromamba run -n sctrial python scripts/calibrate_simulator.py $COMMON diagnose
+    ;;
   nebula-offset)
     micromamba run -n sctrial python scripts/verify_nebula_offset.py
     ;;

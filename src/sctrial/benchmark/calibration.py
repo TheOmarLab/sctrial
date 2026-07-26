@@ -262,7 +262,7 @@ class SummaryAccumulator:
                 agg[key][c] = agg[key][c] + r[c]
         return pd.DataFrame(list(agg.values()))
 
-    def variance_components(self, min_cpm: float = 10.0) -> dict:
+    def variance_components(self, min_cpm: float = 10.0, within_stratum: bool = False) -> dict:
         """LATENT participant and participant x visit SDs on the log-rate scale.
 
         These are the quantities the simulator is parameterised by, and they are
@@ -283,6 +283,8 @@ class SummaryAccumulator:
         there; below it the transform itself shrinks the variance and the
         components would be biased low.
         """
+        if within_stratum:
+            return self._variance_components_within_stratum(min_cpm)
         pv = self.pv_frame()
         if len(pv) == 0:
             return {}
@@ -341,6 +343,47 @@ class SummaryAccumulator:
             "sigma_e_pseudobulk": float(np.sqrt(sigma_e2)),
             "variance_components_n_genes": int(keep.sum()),
         }
+
+    def _variance_components_within_stratum(self, min_cpm: float) -> dict:
+        """Variance components estimated WITHIN each homogeneous stratum.
+
+        The pooled version aggregates over cell types before differencing
+        participants, so between-participant differences in cell-type COMPOSITION
+        are counted as gene-expression variance. That is the same conditioning
+        error that inflated the dispersion estimate (0.774 pooled versus 0.442
+        within cell type), one level up the hierarchy.
+        """
+        import collections
+
+        by_ct: dict[str, list] = collections.defaultdict(list)
+        for r in self.pv_rows:
+            parts = str(r["stratum"]).split("|")  # participant|visit|celltype
+            by_ct[parts[2] if len(parts) > 2 else "ALL"].append(r)
+
+        keys = [
+            "between_participant_sd_latent",
+            "prepost_corr_latent",
+            "sigma_b_latent",
+            "sigma_u_latent",
+            "sigma_e_pseudobulk",
+        ]
+        collected: dict[str, list] = {k: [] for k in keys}
+        weights: list[float] = []
+        for _ct, rows in by_ct.items():
+            sub = SummaryAccumulator(n_genes=self.n_genes)
+            sub.pv_rows = rows
+            res = SummaryAccumulator.variance_components(sub, min_cpm=min_cpm)
+            if not res or not np.isfinite(res.get("prepost_corr_latent", np.nan)):
+                continue
+            for k in keys:
+                collected[k].append(res[k])
+            weights.append(float(res.get("variance_components_n_genes", 1)))
+        if not weights:
+            return {}
+        w = np.asarray(weights) / np.sum(weights)
+        agg = {f"{k}_within_ct": float(np.sum(w * np.asarray(collected[k]))) for k in keys}
+        agg["variance_components_n_celltypes"] = int(len(weights))
+        return agg
 
     def statistics(self) -> dict:
         """Every gate statistic, as a flat dict of scalars plus a few vectors."""
