@@ -42,6 +42,10 @@ def _cfg(**kw) -> TranscriptomeSimConfig:
     base = dict(
         n_per_arm=6,
         n_genes_transcriptome=_TEST_GENES,
+        # A 2,500-gene test transcriptome yields ~1,100 detectable genes,
+        # so the production 2,000-gene panel does not fit. Stated here
+        # rather than silently skipped.
+        panel_sizes=(50, 200, 500),
         cells_per_pv_fixed=60,
         use_empirical_library=False,
         use_empirical_cells_per_pv=False,

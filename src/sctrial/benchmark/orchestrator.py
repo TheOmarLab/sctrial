@@ -280,7 +280,7 @@ def _run_single_iteration(args: tuple) -> list[dict]:
     # Draw the panel first so the signal is defined on the tested genes, then
     # build the config with those effects. The panel is a nested subset of the
     # transcriptome and is reproducible from the seed alone.
-    panels = nested_panels(probe.n_genes_transcriptome, rng=np.random.default_rng(seed + 1))
+    panels = nested_panels(probe, rng=np.random.default_rng(seed + 1))
     if panel_size not in panels:
         raise ValueError(f"panel size {panel_size} is not one of {sorted(panels)}")
     panel_genes = [f"gene_{i}" for i in panels[panel_size]]

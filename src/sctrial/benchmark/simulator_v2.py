@@ -63,6 +63,9 @@ __all__ = [
     "nested_panels",
     "load_empirical",
     "build_params",
+    "gene_baseline_rates",
+    "expected_counts_per_cell",
+    "eligible_panel_genes",
     "iter_pv_blocks",
     "oracle_estimands",
 ]
@@ -122,6 +125,20 @@ class TranscriptomeSimConfig:
     # count allocation, library normalisation, NEBULA offsets and dreamlet norm factors.
     n_genes_transcriptome: int = 20284
     arm_ratio: tuple[int, int] | None = None
+    # Minimum expected counts per cell for a gene to be ELIGIBLE for the tested
+    # panel. The transcriptome is generated in full -- that is the whole point,
+    # since normalisation and offsets must see it -- but a panel drawn uniformly
+    # from it is dominated by genes no assay would report on. With TNBC's rate
+    # distribution a random 50-gene panel contains ~9 detectable genes, and
+    # filterByExpr drops the rest: measured 30-54% finite p-values for dreamlet
+    # and 42-60% for NEBULA. A real workflow filters to detected genes and then
+    # tests; so does this. 0.05 counts/cell leaves ~3,300 eligible genes, enough
+    # for the 2,000-gene panel.
+    panel_min_mean_count: float = 0.05
+    # Tested panel sizes, stated in the config rather than defaulted inside the
+    # panel builder so a configuration that cannot supply them fails loudly at
+    # construction instead of somewhere downstream.
+    panel_sizes: tuple[int, ...] = (50, 200, 500, 2000)
 
     # --- cells per participant-visit (distribution, not a fixed number) ---
     cells_per_pv_mean: float = 5898.0
@@ -266,24 +283,76 @@ def load_empirical(path: str | Path | None = None) -> dict | None:
     return {k: d[k] for k in d.files}
 
 
+def gene_baseline_rates(cfg: TranscriptomeSimConfig) -> np.ndarray:
+    """``alpha_g``, reproduced exactly as :func:`build_params` draws it.
+
+    It is the FIRST draw from ``default_rng(cfg.seed)``, so a fresh generator
+    reproduces it bit for bit. That lets the analysis panel be chosen before the
+    effects are defined -- which the orchestrator needs, since the signal is
+    injected on the tested genes -- without simulating anything.
+    ``tests/test_benchmark.py`` asserts the two agree.
+    """
+    rng = np.random.default_rng(cfg.seed)
+    alpha = rng.normal(
+        cfg.gene_rate_log_mean, cfg.gene_rate_log_sd, size=cfg.n_genes_transcriptome
+    )
+    return alpha - float(np.log(np.exp(alpha).sum()))
+
+
+def expected_counts_per_cell(cfg: TranscriptomeSimConfig) -> np.ndarray:
+    """Expected counts per cell for each gene: ``E[L] * exp(alpha_g)``."""
+    emp = load_empirical(cfg.empirical_path)
+    if emp is not None and cfg.use_empirical_library and "library_sizes" in emp:
+        mean_lib = float(np.mean(emp["library_sizes"]))
+    else:
+        # L ~ lognormal(mu - sd^2/2, sd), so E[L] = exp(mu).
+        mean_lib = float(np.exp(cfg.lib_log_mean))
+    return np.exp(gene_baseline_rates(cfg)) * mean_lib
+
+
+def eligible_panel_genes(cfg: TranscriptomeSimConfig) -> np.ndarray:
+    """Indices of genes a real analysis would carry into testing."""
+    exp_counts = expected_counts_per_cell(cfg)
+    idx = np.flatnonzero(exp_counts >= cfg.panel_min_mean_count)
+    if idx.size == 0:
+        raise ValueError(
+            f"no gene reaches {cfg.panel_min_mean_count} expected counts per cell; "
+            "the rate distribution or the library size is miscalibrated"
+        )
+    return idx
+
+
 def nested_panels(
-    n_transcriptome: int,
-    sizes: tuple[int, ...] = (50, 200, 500, 2000),
+    cfg: TranscriptomeSimConfig,
+    sizes: tuple[int, ...] | None = None,
     rng: np.random.Generator | None = None,
 ) -> dict[int, list[int]]:
-    """Nested analysis panels: each larger panel CONTAINS every smaller one.
+    """Nested analysis panels drawn from the DETECTABLE genes.
 
     Nesting is what lets a panel-size effect be separated from a gene-identity
     effect. With independently drawn panels the two are confounded, and the
     previous benchmark's "progressive miscalibration with panel size" could not be
     distinguished from a change in which genes were tested.
+
+    Panels are drawn from :func:`eligible_panel_genes`, not from the whole
+    transcriptome. The transcriptome is still simulated in full and still supplies
+    every normalisation denominator and offset; it is only the TESTED set that is
+    restricted, exactly as a real pipeline restricts it.
     """
     rng = rng or np.random.default_rng(0)
-    order = rng.permutation(n_transcriptome)
+    sizes = tuple(sizes) if sizes is not None else tuple(cfg.panel_sizes)
+    eligible = eligible_panel_genes(cfg)
+    order = rng.permutation(eligible)
     panels: dict[int, list[int]] = {}
     for s in sorted(sizes):
-        if s > n_transcriptome:
-            raise ValueError(f"panel size {s} exceeds transcriptome {n_transcriptome}")
+        if s > eligible.size:
+            raise ValueError(
+                f"panel size {s} exceeds the {eligible.size} genes reaching "
+                f"{cfg.panel_min_mean_count} expected counts per cell. Lower "
+                "panel_min_mean_count or raise the simulated depth; do NOT pad the "
+                "panel with undetectable genes, which is what produced 30-60% "
+                "non-finite p-values."
+            )
         panels[s] = sorted(order[:s].tolist())
     return panels
 
@@ -658,7 +727,7 @@ def simulate_trial_v2(cfg: TranscriptomeSimConfig) -> dict:
     panels = {
         size: [gene_names[i] for i in idx]
         for size, idx in nested_panels(
-            params["G"], rng=np.random.default_rng(cfg.seed + 1)
+            cfg, rng=np.random.default_rng(cfg.seed + 1)
         ).items()
     }
 

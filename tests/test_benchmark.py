@@ -29,6 +29,10 @@ def _cfg(**kwargs) -> TranscriptomeSimConfig:
     base = dict(
         n_per_arm=6,
         n_genes_transcriptome=_TEST_GENES,
+        # A 2,500-gene test transcriptome yields ~1,100 detectable genes,
+        # so the production 2,000-gene panel does not fit. Stated here
+        # rather than silently skipped.
+        panel_sizes=(50, 200, 500),
         cells_per_pv_fixed=50,
         use_empirical_library=False,
         use_empirical_cells_per_pv=False,
@@ -262,6 +266,7 @@ class TestEndToEnd:
                 "cells_per_pv_fixed": 50,
                 "use_empirical_library": False,
                 "use_empirical_cells_per_pv": False,
+                "panel_sizes": (50, 200, 500),
             },
         }
         rows = _run_single_iteration(
@@ -278,3 +283,54 @@ class TestEndToEnd:
         # define a non-null truth for a null scenario.
         assert df["true_beta"].abs().max() < 1e-9
         assert (df["runtime_scope"] == "per_iteration").all()
+
+
+# ---------------------------------------------------------------------------
+# Panel eligibility
+# ---------------------------------------------------------------------------
+
+
+class TestPanelEligibility:
+    """Tested panels must contain genes a real analysis would report on."""
+
+    def test_baseline_rates_match_the_simulator(self):
+        """The standalone rate draw must equal what build_params uses.
+
+        Panel selection happens BEFORE the effects are defined, so it reproduces
+        alpha from the seed rather than simulating. If the two ever diverge, the
+        panel would be chosen from one gene-rate vector and the data generated
+        from another, and nothing downstream would notice.
+        """
+        from sctrial.benchmark.simulator_v2 import build_params, gene_baseline_rates
+
+        cfg = _cfg()
+        np.testing.assert_allclose(
+            gene_baseline_rates(cfg), build_params(cfg)["alpha"], atol=0, rtol=0
+        )
+
+    def test_panels_avoid_undetectable_genes(self):
+        """A panel drawn uniformly from the transcriptome is mostly noise.
+
+        With TNBC's rate distribution a random 50-gene panel held ~9 detectable
+        genes; filterByExpr discarded the rest and dreamlet returned 30-54%
+        finite p-values. Every panel gene must clear the detection threshold.
+        """
+        from sctrial.benchmark.simulator_v2 import expected_counts_per_cell, nested_panels
+
+        cfg = _cfg()
+        exp_counts = expected_counts_per_cell(cfg)
+        panels = nested_panels(cfg, rng=np.random.default_rng(1))
+        for size, idx in panels.items():
+            assert min(exp_counts[idx]) >= cfg.panel_min_mean_count, (
+                f"panel {size} contains a gene below "
+                f"{cfg.panel_min_mean_count} expected counts per cell"
+            )
+
+    def test_panel_larger_than_the_eligible_set_raises(self):
+        """Padding a panel with undetectable genes must not be possible silently."""
+        from sctrial.benchmark.simulator_v2 import eligible_panel_genes, nested_panels
+
+        cfg = _cfg()
+        n_eligible = len(eligible_panel_genes(cfg))
+        with pytest.raises(ValueError, match="expected counts per cell"):
+            nested_panels(cfg, sizes=(n_eligible + 1,), rng=np.random.default_rng(1))

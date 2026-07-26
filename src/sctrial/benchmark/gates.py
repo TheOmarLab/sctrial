@@ -320,7 +320,7 @@ def composition_ablation(
     for arch in architectures:
         for rep in range(n_rep):
             seed = seed0 + rep
-            panels = nested_panels(cfg.n_genes_transcriptome, rng=np.random.default_rng(seed + 1))
+            panels = nested_panels(replace(cfg, seed=seed), rng=np.random.default_rng(seed + 1))
             panel = [f"gene_{i}" for i in panels[panel_size]]
             effects = make_signal(
                 panel, signal_fraction, arch, magnitude, rng=np.random.default_rng(seed + 2)

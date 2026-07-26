@@ -223,9 +223,7 @@ def phase_ablation(n_jobs: int):
             kw = dict(frozen)
             kw.update(n_per_arm=40, cells_per_pv_fixed=500, seed=seed)
             probe = TranscriptomeSimConfig(**kw)
-            panels = nested_panels(
-                probe.n_genes_transcriptome, rng=np.random.default_rng(seed + 1)
-            )
+            panels = nested_panels(probe, rng=np.random.default_rng(seed + 1))
             panel = [f"gene_{i}" for i in panels[50]]
             effects = (
                 make_signal(panel, frac, "balanced", 0.5, rng=np.random.default_rng(seed + 2))
