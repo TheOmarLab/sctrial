@@ -129,3 +129,35 @@ def test_dispersion_estimator_is_inflated_by_pooling_heterogeneous_groups():
         f"than the stratified {a_split:.3f} -- the conditioning has no effect, so "
         "the estimator would not have detected the TNBC cell-type artifact"
     )
+
+
+def test_variance_components_are_blind_to_design_effects():
+    """A real treatment effect must NOT inflate the nuisance hierarchy.
+
+    If arm, visit and arm-by-visit effects were absorbed into sigma_b or sigma_u,
+    a genuine therapy-associated shift would be simulated as random temporal
+    variability, and the simulated null would be harder than the real nuisance
+    process is. Every method's Type I error would then be measured against a
+    conservative straw man.
+
+    Injecting a large arm-by-visit effect must leave the estimated components
+    unchanged. The estimator centres the change score and the participant mean
+    WITHIN arm, which removes the visit effect, the arm effect and their
+    interaction together.
+    """
+    null = summarize_simulation(_cfg(effects={})).statistics()
+
+    # A large interaction on 20% of a well-expressed subset, plus a common time
+    # effect: exactly the design structure the estimator must be blind to.
+    treated = _cfg(
+        effects={f"gene_{i}": 1.5 for i in range(0, 600, 3)},
+        time_effect=0.8,
+    )
+    with_effect = summarize_simulation(treated).statistics()
+
+    for key in ("sigma_b_latent", "sigma_u_latent", "between_participant_sd_latent"):
+        a, b = null[key], with_effect[key]
+        assert b == pytest.approx(a, rel=0.15), (
+            f"{key} moved from {a:.4f} to {b:.4f} when a treatment effect was "
+            "injected; design effects are leaking into the nuisance hierarchy"
+        )

@@ -687,18 +687,33 @@ def participant_bootstrap_statistics(
         accs = {"ALL": accs}
     rng = np.random.default_rng(seed)
     by_ct_pid: dict[str, dict[str, list]] = {}
+    arm_of: dict[str, str] = {}
     for ct, acc in accs.items():
         d: dict[str, list] = {}
         for r in acc.pv_rows:
             d.setdefault(r["participant"], []).append(r)
+            arm_of.setdefault(r["participant"], str(r.get("arm", "NA")))
         by_ct_pid[ct] = d
     pids = sorted({p for d in by_ct_pid.values() for p in d})
 
+    # STRATIFY BY ARM. Resampling 12 participants indiscriminately can produce a
+    # 9/3 split from a 6/6 design, so the bootstrap would carry allocation
+    # imbalance that the real design does not have and the tolerance would be
+    # inflated by a source of variation the study never faced. Drawing within arm
+    # is the cluster-stratified bootstrap this design calls for.
+    by_arm: dict[str, list[str]] = {}
+    for pid in pids:
+        by_arm.setdefault(arm_of.get(pid, "NA"), []).append(pid)
+
     out = []
     for b in range(n_boot):
-        # One participant resample shared across cell types: a participant enters
-        # or leaves the cohort as a whole, which is how the real sampling works.
-        draw = rng.choice(pids, size=len(pids), replace=True)
+        # A participant enters or leaves the cohort as a WHOLE -- both visits, all
+        # cell types, all their cells -- preserving longitudinal pairing and
+        # cross-cell-type dependence within an individual.
+        draw = np.concatenate([
+            rng.choice(members, size=len(members), replace=True)
+            for _arm, members in sorted(by_arm.items())
+        ])
         per_ct = []
         for ct, d in by_ct_pid.items():
             rows = []
@@ -777,24 +792,64 @@ def summarize_adata_per_celltype(
     return out
 
 
-def typical_celltype_targets(accs: dict[str, SummaryAccumulator]) -> dict:
-    """Combine per-cell-type statistics into a TYPICAL cell type.
+# Features defining "a typical cell population". Chosen because each one drives a
+# distinct part of the generative model -- yield, depth, complexity, sparsity,
+# cell-level noise, and the two hierarchy levels -- so the medoid is central in
+# the space that actually matters, not in an arbitrary one.
+_MEDOID_FEATURES = (
+    "cells_per_pv_median",
+    "umi_per_cell_median",
+    "genes_detected_per_cell_median",
+    "zero_fraction",
+    "cond_alpha_median",
+    "sigma_b_latent",
+    "sigma_u_latent",
+)
 
-    Each scalar target is the median across cell types, with the inter-cell-type
-    range recorded alongside. The simulator represents *a* cell type, not the
-    average of a mixture, so the median is the right summary and the spread is
-    the honest statement of how much cell types differ.
+
+def select_medoid_celltype(accs: dict[str, SummaryAccumulator]) -> tuple[str, pd.DataFrame]:
+    """Pick the REAL cell type closest to the multivariate centre.
+
+    Taking the median of each parameter independently across cell types produces a
+    vector that need correspond to no actual population: a yield from one cell
+    type, a dispersion from another, a participant variance from a third. These
+    quantities interact -- Gate E showed that cell count, sigma_b, sigma_u and
+    measurement noise jointly determine the observed longitudinal correlation --
+    so combining their marginals destroys the empirical joint structure and can
+    reintroduce exactly the incoherence the within-cell-type conditioning removed.
+
+    Reference-based simulators (muscat, scDesign3) avoid this by estimating within
+    actual subpopulations rather than reducing a mixture to independently chosen
+    marginals. The medoid is an ACTUAL cell type, so its parameter vector is
+    guaranteed to be one nature produced.
+
+    Returns the chosen cell type and the standardised feature table, so the choice
+    is auditable rather than asserted.
     """
     per_ct = {ct: acc.statistics() for ct, acc in accs.items()}
-    # Median quantile profile of the gene-wise correlation across cell types,
-    # kept for the DISTRIBUTIONAL gate. Scalar summaries can agree while the
-    # distribution does not, which is the whole reason Gate E is a distribution.
-    grids = [
-        np.percentile(np.asarray(v["_prepost_corr_genewise"]), np.linspace(1, 99, 99))
-        for v in per_ct.values()
-        if v.get("_prepost_corr_genewise") is not None
-        and len(v["_prepost_corr_genewise"]) > 10
-    ]
+    feat = pd.DataFrame(
+        {ct: {f: st.get(f, np.nan) for f in _MEDOID_FEATURES} for ct, st in per_ct.items()}
+    ).T
+    usable = feat.dropna(axis=1, how="any")
+    if usable.shape[1] == 0 or len(usable) == 1:
+        return sorted(per_ct)[0], feat
+    z = (usable - usable.mean()) / usable.std(ddof=0).replace(0, 1.0)
+    # Medoid: smallest total distance to the other cell types.
+    d = np.sqrt(((z.to_numpy()[:, None, :] - z.to_numpy()[None, :, :]) ** 2).sum(axis=2))
+    medoid = str(z.index[int(np.argmin(d.sum(axis=1)))])
+    feat = feat.copy()
+    feat["_total_distance"] = np.nan
+    feat.loc[z.index, "_total_distance"] = d.sum(axis=1)
+    return medoid, feat
+
+
+def celltype_range(accs: dict[str, SummaryAccumulator]) -> dict:
+    """Inter-cell-type range of every statistic, for reporting only.
+
+    NOT a calibration target. It documents how much cell types differ, which is
+    the honest statement to accompany a single-population simulator.
+    """
+    per_ct = {ct: acc.statistics() for ct, acc in accs.items()}
     keys = sorted({k for v in per_ct.values() for k in v if not k.startswith("_")})
     out: dict = {}
     for k in keys:
@@ -803,15 +858,26 @@ def typical_celltype_targets(accs: dict[str, SummaryAccumulator]) -> dict:
             dtype=float,
         )
         vals = vals[np.isfinite(vals)]
-        if vals.size == 0:
-            continue
-        out[k] = float(np.median(vals))
-        out[f"{k}__ct_lo"] = float(np.min(vals))
-        out[f"{k}__ct_hi"] = float(np.max(vals))
-    out["n_celltypes_used"] = len(per_ct)
-    out["celltypes_used"] = sorted(per_ct)
-    if grids:
-        out["_corr_quantiles"] = np.median(np.vstack(grids), axis=0).tolist()
+        if vals.size:
+            out[f"{k}__ct_lo"] = float(np.min(vals))
+            out[f"{k}__ct_hi"] = float(np.max(vals))
+            out[f"{k}__ct_median"] = float(np.median(vals))
+    return out
+
+
+def typical_celltype_targets(accs: dict[str, SummaryAccumulator]) -> dict:
+    """Statistics of the MEDOID cell type, plus the inter-cell-type range.
+
+    The returned scalars are one real population's parameter vector, not a
+    componentwise median; see :func:`select_medoid_celltype`.
+    """
+    medoid, feat = select_medoid_celltype(accs)
+    out = dict(accs[medoid].statistics())
+    out.update(celltype_range(accs))
+    out["anchor_celltype"] = medoid
+    out["n_celltypes_available"] = len(accs)
+    out["celltypes_available"] = sorted(accs)
+    out["medoid_feature_table"] = feat.to_dict()
     return out
 
 
@@ -1137,9 +1203,12 @@ def measure_targets(
             "simulator is calibrated within cell type by design."
         )
     if verbose:
-        print(f"cell types used: {sorted(accs)}", flush=True)
+        print(f"cell types available: {sorted(accs)}", flush=True)
     stats = typical_celltype_targets(accs)
     stats.pop("_prepost_corr_genewise", None)
+    anchor = stats["anchor_celltype"]
+    if verbose:
+        print(f"ANCHOR cell type (multivariate medoid): {anchor}", flush=True)
 
     # Cell-type-pooled statistics, for DESCRIPTION only.
     pooled_acc = summarize_adata(
@@ -1155,13 +1224,20 @@ def measure_targets(
         if not k.startswith("_") and isinstance(v, (int, float)):
             stats[f"pooled_{k}"] = float(v)
 
+    # Dispersion from the ANCHOR cell type alone. Fitting across all cell types
+    # would pool 242 strata against the simulator's 24, and the moment estimator
+    # consumes one degree of freedom per stratum, so the two arms would carry
+    # different biases -- the estimator asymmetry that made Gate C fail on a ~7%
+    # artifact. Restricting to the anchor makes it 24 against 24.
     if verbose:
-        print("fitting conditional Gamma-Poisson dispersion (Cox-Reid APL)", flush=True)
+        print(f"fitting conditional Gamma-Poisson dispersion on {anchor!r} "
+              "(Cox-Reid APL)", flush=True)
+    anchor_mask = (adata.obs[celltype_col or "cell_type"].astype(str) == anchor).to_numpy()
     fit = conditional_dispersion(
-        adata,
+        adata[anchor_mask],
         participant_col=participant_col,
         visit_col=visit_col,
-        celltype_col=celltype_col,
+        celltype_col=None,  # already one cell type: strata are participant x visit
         layer=layer,
         verbose=verbose,
     )
@@ -1173,38 +1249,35 @@ def measure_targets(
         else np.nan
     )
 
-    # --- empirical pools, all within cell type ---
-    umi = np.concatenate([np.concatenate(a.cell_umi) for a in accs.values()]).astype(float)
+    # --- empirical pools: ALL from the anchor cell type ---
+    # Every pool must come from the SAME population as the scalars. Concatenating
+    # across cell types would rebuild the mixture: a library-size distribution
+    # from eleven populations paired with one population's dispersion is the
+    # componentwise-median problem in another guise.
+    anchor_acc = accs[anchor]
+    umi = np.concatenate(anchor_acc.cell_umi).astype(float)
     log_umi = np.log(umi[umi > 0])
     stats["lib_log_mean"] = float(log_umi.mean())
     stats["lib_log_sd"] = float(log_umi.std())
 
-    cells_pv = np.concatenate(
-        [a.pv_frame()["n_cells"].to_numpy(dtype=float) for a in accs.values()]
-    )
+    cells_pv = anchor_acc.pv_frame()["n_cells"].to_numpy(dtype=float)
     stats["cells_per_pv_mean"] = float(cells_pv.mean())
     stats["cells_per_pv_cv"] = float(cells_pv.std() / cells_pv.mean())
     stats["cells_per_pv_min"] = int(cells_pv.min())
     stats["cells_per_pv_max"] = int(cells_pv.max())
 
-    # Gene rate profile of a TYPICAL cell type: the per-gene median of the
-    # within-cell-type profiles, renormalised. The pooled profile is a
-    # composition-weighted mixture and would reintroduce the very heterogeneity
-    # the one-population design excludes.
-    profiles = []
-    for a in accs.values():
-        tot = a.total_counts.sum()
-        if tot > 0:
-            profiles.append(a.total_counts / tot)
-    prof = np.median(np.vstack(profiles), axis=0)
-    prof = prof / prof.sum()
+    # Gene-rate profile of the ANCHOR cell type. The pooled profile is a
+    # composition-weighted mixture of eleven populations and would reintroduce
+    # the heterogeneity the one-population design excludes.
+    prof = anchor_acc.total_counts / anchor_acc.total_counts.sum()
     gene_mean_count = prof * float(np.mean(umi))
 
     stats["n_genes_transcriptome"] = int(adata.n_vars)
     stats["n_participants"] = int(
         adata.obs[participant_col].nunique()
     )
-    stats["calibration_level"] = "within_cell_type"
+    stats["calibration_level"] = "within_cell_type_medoid_anchor"
+    stats["anchor_celltype"] = anchor
     stats["source"] = "sctrial.benchmark.calibration.measure_targets"
 
     if out_json is not None:
@@ -1224,7 +1297,8 @@ def measure_targets(
             cond_alpha=fit.alpha_shrunk.astype(np.float32),
             cond_alpha_mle=fit.alpha_mle.astype(np.float32),
             gene_mean_count=gene_mean_count.astype(np.float32),
-            calibration_level=np.array(["within_cell_type"]),
+            calibration_level=np.array(["within_cell_type_medoid_anchor"]),
+            anchor_celltype=np.array([anchor]),
         )
         if verbose:
             print(f"wrote {out_npz}", flush=True)

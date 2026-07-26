@@ -187,6 +187,103 @@ def main() -> None:
         "is not what this script is testing."
     )
 
+    _model_compatible_null(DEPTH_FACTOR, panel_n)
+
+
+def _model_compatible_null(depth_factor: float, panel_n: int, n_rep: int = 40) -> None:
+    """Is the residual bias the OFFSET, or the missing hierarchy level?
+
+    The experiment above leaves mean beta at -0.21 under the correct linear
+    offset. That is small next to the +0.83 of the double-logged version, but it
+    is not zero and the difference matters: if the offset itself were still
+    mis-specified, every NEBULA number in the benchmark would inherit a bias.
+
+    The competing explanation is model misspecification rather than a wiring
+    error. The simulator's generative model carries a participant-BY-VISIT random
+    effect u_igt; NEBULA's NBLMM carries a subject-level random intercept and
+    nothing at the visit level, so that variance lands in the cell-level residual
+    and the treatment-by-time contrast absorbs part of it.
+
+    This isolates the two. The data-generating process here is EXACTLY the model
+    NEBULA assumes -- subject random intercept only, no participant-by-visit
+    term, NB counts, known dispersion, zero true effect, and the same 3x depth
+    confound. If mean beta returns to ~0 the offset contract is fully validated
+    and the -0.21 is attributable to the missing hierarchy level, which is a
+    finding about the method rather than a defect in the harness.
+    """
+    import tempfile as _tf
+
+    import scipy.sparse as sp
+
+    print("\n" + "=" * 72)
+    print("MODEL-COMPATIBLE NULL: DGP matches NEBULA's assumed model exactly")
+    print("=" * 72)
+
+    rng = np.random.default_rng(4242)
+    n_per_arm, n_cells, alpha = 6, 250, 0.4
+    participants = [f"P{i:02d}" for i in range(2 * n_per_arm)]
+    arms = ["Treated"] * n_per_arm + ["Control"] * n_per_arm
+    # Well-expressed genes only: dispersion is barely identified at low counts and
+    # would add noise to the very quantity being measured.
+    rate = rng.lognormal(np.log(2e-3), 0.5, size=panel_n)
+    rate = rate / rate.sum() * 0.35
+    sigma_b = 0.45  # subject random intercept, the ONLY random effect
+
+    betas, pvals, codes = [], [], []
+    for rep in range(n_rep):
+        blocks, meta = [], []
+        for pid, arm in zip(participants, arms):
+            b = rng.normal(0.0, sigma_b, size=panel_n)
+            for visit in ("Pre", "Post"):
+                lib = rng.lognormal(np.log(3000), 0.5, size=n_cells)
+                if arm == "Treated" and visit == "Post":
+                    lib = lib * depth_factor  # depth confounded with arm x visit
+                mu = np.exp(np.log(rate)[None, :] + b[None, :]) * lib[:, None]
+                lam = rng.gamma(1.0 / alpha, mu * alpha)
+                blocks.append(rng.poisson(lam).astype(np.int32))
+                meta.append(
+                    pd.DataFrame(
+                        {"participant": pid, "arm": arm, "visit": visit},
+                        index=range(n_cells),
+                    )
+                )
+        X = np.vstack(blocks)
+        m = pd.concat(meta, ignore_index=True)
+        m["lib_size"] = X.sum(axis=1).astype(float)
+        keep = m["lib_size"].to_numpy() > 0
+        genes = [f"gene_{i}" for i in range(panel_n)]
+        with _tf.TemporaryDirectory() as td:
+            res = _run(
+                sp.csr_matrix(X[keep].T), m[keep].reset_index(drop=True), genes,
+                "meta$lib_size", Path(td), f"mc{rep}",
+            )
+        betas.append(res["logFC"].to_numpy(dtype=float))
+        pvals.append(res["pvalue"].to_numpy(dtype=float))
+        codes.append(res["convergence_code"].to_numpy(dtype=float))
+        if (rep + 1) % 10 == 0:
+            print(f"  {rep + 1}/{n_rep} replicates", flush=True)
+
+    b = np.concatenate(betas)
+    pv = np.concatenate(pvals)
+    cd = np.concatenate(codes)
+    mcse = float(np.nanstd([np.nanmean(x) for x in betas]) / np.sqrt(len(betas)))
+    print(f"\n  replicates: {n_rep}, genes/replicate: {panel_n}, true beta = 0")
+    print(f"  mean beta      : {np.nanmean(b):+.4f}  (MCSE {mcse:.4f})")
+    print(f"  median beta    : {np.nanmedian(b):+.4f}")
+    print(f"  FPR at 0.05    : {np.nanmean(pv < 0.05):.4f}")
+    print(f"  converged      : {np.mean(cd > -20):.4f}")
+    print("\n  VERDICT:", end=" ")
+    if abs(np.nanmean(b)) < max(3 * mcse, 0.03):
+        print("mean beta is ~0 under the model-compatible DGP.")
+        print("  => the linear-offset contract is VALIDATED; the -0.21 seen earlier is")
+        print("     attributable to the participant-by-visit variance that NEBULA's")
+        print("     model does not represent, not to the offset.")
+    else:
+        print("mean beta is STILL biased under a DGP matching NEBULA's own model.")
+        print("  => the offset contract is NOT fully validated. Investigate contrast")
+        print("     orientation, predictor centring, gene filtering, count/offset")
+        print("     alignment, and the LN versus HL approximation before the run.")
+
 
 if __name__ == "__main__":
     main()
