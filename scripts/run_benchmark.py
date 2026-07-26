@@ -82,10 +82,18 @@ def _load_frozen_config() -> dict:
     return frozen
 
 
-def phase_simulate(n_jobs: int, n_iterations: int):
-    """Phase 2: Full simulation benchmark grid."""
+def phase_simulate(n_jobs: int, n_iterations: int, designs=None):
+    """Phase 2: Full simulation benchmark grid.
+
+    ``designs`` is exposed so the two design families can run as separate jobs.
+    Each iteration now simulates a full 20,284-gene transcriptome rather than
+    only the tested panel, which is far more expensive; both families in one job
+    does not fit a 72-hour wall clock. Splitting also means a timeout costs one
+    family rather than the whole grid, and `resume` picks up complete scenarios.
+    """
     from sctrial.benchmark.orchestrator import run_benchmark
 
+    designs = designs or ["two_arm", "single_arm"]
     out_dir = OUTPUT_DIR / "simulation"
     print("=" * 60)
     print("PHASE 2: Simulation Benchmark")
@@ -95,7 +103,7 @@ def phase_simulate(n_jobs: int, n_iterations: int):
     print("=" * 60)
 
     run_benchmark(
-        designs=["two_arm", "single_arm"],
+        designs=designs,
         n_iterations=n_iterations,
         n_jobs=n_jobs,
         output_dir=out_dir,
@@ -147,7 +155,7 @@ def phase_realdata(n_jobs: int):
     )
 
 
-def phase_sensitivity(n_jobs: int, n_iterations: int):
+def phase_sensitivity(n_jobs: int, n_iterations: int, designs=None):
     """Phase 5: Signal-fraction sensitivity benchmark.
 
     Tests how null-gene FPR depends on gene-panel size (50-2000) and
@@ -170,7 +178,7 @@ def phase_sensitivity(n_jobs: int, n_iterations: int):
     print("=" * 60)
 
     run_sensitivity_benchmark(
-        designs=["two_arm"],
+        designs=designs or ["two_arm"],
         n_iterations=n_iterations,
         n_jobs=n_jobs,
         output_dir=out_dir,
@@ -262,7 +270,9 @@ def main():
     parser.add_argument("--n-jobs", type=int, default=1,
                         help="Parallel workers (-1 = all cores)")
     parser.add_argument("--n-iterations", type=int, default=200,
-                        help="Monte Carlo iterations (Phase 2 only)")
+                        help="Monte Carlo iterations per scenario")
+    parser.add_argument("--designs", nargs="+", default=None,
+                        help="Design families to run; split across jobs for wall-clock")
 
     args = parser.parse_args()
 
@@ -272,10 +282,10 @@ def main():
         phase_validate(args.n_jobs)
 
     if args.phase in ("simulate", "all"):
-        phase_simulate(args.n_jobs, args.n_iterations)
+        phase_simulate(args.n_jobs, args.n_iterations, args.designs)
 
     if args.phase in ("sensitivity", "all"):
-        phase_sensitivity(args.n_jobs, args.n_iterations)
+        phase_sensitivity(args.n_jobs, args.n_iterations, args.designs)
 
     if args.phase in ("realdata", "all"):
         phase_realdata(args.n_jobs)
