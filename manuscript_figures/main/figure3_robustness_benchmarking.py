@@ -535,18 +535,49 @@ def _prepare_scalability_data() -> dict:
 # benchmark panels.
 _BENCHMARK_CSV = MANUSCRIPT_DIR / "benchmark" / "sensitivity" / "sensitivity_combined.csv"
 
-_BENCH_METHODS = ["wilcoxon_paired", "nebula", "dreamlet", "sctrial_did"]
+# Derived from the benchmark package rather than restated here. These four dicts
+# were previously hand-maintained copies, and a method added to CORE_METHODS
+# silently vanished from every panel until all of them were updated. The focal
+# method must come LAST: the ordering controls both draw order and the legend,
+# and sctrial has to render on top of the others.
 _BENCH_METHOD_LABELS = {
-    "sctrial_did": "sctrial (DiD)", "dreamlet": "dreamlet",
-    "nebula": "NEBULA", "wilcoxon_paired": "Wilcoxon (Δ scores)",
+    "sctrial_did": "sctrial (DiD)",
+    "dreamlet": "dreamlet",
+    "nebula": "NEBULA",
+    "wilcoxon_paired": "Wilcoxon (Δ scores)",
+    "limma_voom": "limma-voom",
+    "edger_qlf": "edgeR-QLF",
 }
 _BENCH_METHOD_COLORS = {
-    "sctrial_did": "#1f77b4", "dreamlet": "#d62728",
-    "nebula": "#ff7f0e", "wilcoxon_paired": "#2ca02c",
+    "sctrial_did": "#1f77b4", "dreamlet": "#d62728", "nebula": "#ff7f0e",
+    "wilcoxon_paired": "#2ca02c", "limma_voom": "#9467bd", "edger_qlf": "#8c564b",
 }
 _BENCH_METHOD_MARKERS = {
-    "sctrial_did": "o", "dreamlet": "D", "nebula": "s", "wilcoxon_paired": "^",
+    "sctrial_did": "o", "dreamlet": "D", "nebula": "s",
+    "wilcoxon_paired": "^", "limma_voom": "v", "edger_qlf": "P",
 }
+
+
+def _bench_methods() -> list[str]:
+    """Reported methods, in draw order, taken from the benchmark package.
+
+    Raises rather than silently dropping a method that has no style defined, so
+    adding one to CORE_METHODS cannot make it disappear from the figures.
+    """
+    from sctrial.benchmark.orchestrator import CORE_METHODS
+
+    missing = [m for m in CORE_METHODS if m not in _BENCH_METHOD_LABELS]
+    if missing:
+        raise ValueError(
+            f"no plotting style defined for benchmark method(s) {missing}; add them "
+            "to _BENCH_METHOD_LABELS/_COLORS/_MARKERS rather than letting them be "
+            "dropped from every panel"
+        )
+    others = [m for m in CORE_METHODS if m != "sctrial_did"]
+    return others + (["sctrial_did"] if "sctrial_did" in CORE_METHODS else [])
+
+
+_BENCH_METHODS = _bench_methods()
 
 _PANEL_SIZES = [50, 200, 500, 2000]
 _SIGNAL_FRACTIONS = [1, 5, 10, 20]

@@ -406,3 +406,31 @@ def test_no_base_config_falls_back_to_dataclass_defaults():
     assert driver.count("base_config=frozen") >= 2, (
         "a benchmark phase runs without the frozen calibration"
     )
+
+
+def test_every_reported_method_has_a_plotting_style():
+    """A method added to CORE_METHODS must not vanish from the figures.
+
+    The style dicts were hand-maintained copies in Figure 3 AND Supp Fig 5, so a
+    new method appeared in neither, or in one and not the other, with both files
+    looking internally consistent. Figure 3 now derives the list from
+    CORE_METHODS and raises on a missing style; Supp Fig 5 imports it.
+    """
+    import sys
+    from pathlib import Path as _P
+
+    root = _P(__file__).resolve().parent.parent
+    fig3 = (root / "manuscript_figures" / "main"
+            / "figure3_robustness_benchmarking.py").read_text(encoding="utf-8")
+    supp = (root / "manuscript_figures" / "supp"
+            / "supp_fig5_sensitivity_robustness.py").read_text(encoding="utf-8")
+
+    assert "from sctrial.benchmark.orchestrator import CORE_METHODS" in fig3, (
+        "Figure 3 restates the method list instead of deriving it"
+    )
+    assert "_BENCH_METHODS = [" not in supp, (
+        "Supp Fig 5 keeps its own copy of the method list; it must import Figure 3's"
+    )
+    for m in CORE_METHODS:
+        assert f'"{m}"' in fig3, f"{m} has no plotting style in Figure 3"
+    sys.modules.pop("manuscript_figures", None)

@@ -1635,25 +1635,16 @@ def _panel_power_curves(data: dict) -> plt.Figure | None:
 # See figure3: derive from MANUSCRIPT_DIR so the HPC checkout depth is honoured.
 _BENCHMARK_CSV = MANUSCRIPT_DIR / "benchmark" / "sensitivity" / "sensitivity_combined.csv"
 
-_BENCH_METHODS = ["wilcoxon_paired", "nebula", "dreamlet", "sctrial_did"]
-_BENCH_METHOD_LABELS = {
-    "sctrial_did": "sctrial (DiD)",
-    "dreamlet": "dreamlet",
-    "nebula": "NEBULA",
-    "wilcoxon_paired": "Wilcoxon (Δ scores)",
-}
-_BENCH_METHOD_COLORS = {
-    "sctrial_did": "#1f77b4",
-    "dreamlet": "#d62728",
-    "nebula": "#ff7f0e",
-    "wilcoxon_paired": "#2ca02c",
-}
-_BENCH_METHOD_MARKERS = {
-    "sctrial_did": "o",
-    "dreamlet": "D",
-    "nebula": "s",
-    "wilcoxon_paired": "^",
-}
+# Imported from Figure 3, not restated. These were hand-maintained duplicates, so
+# a method added to CORE_METHODS would have appeared in the main figure and
+# silently vanished from the supplement -- with both looking internally
+# consistent. Supp Fig 5 and Figure 3 must describe the same benchmark.
+from ..main.figure3_robustness_benchmarking import (  # noqa: E402
+    _BENCH_METHOD_COLORS,
+    _BENCH_METHOD_LABELS,
+    _BENCH_METHOD_MARKERS,
+    _BENCH_METHODS,
+)
 
 _PANEL_SIZES = [50, 200, 500, 2000]
 _SIGNAL_FRACTIONS = [1, 5, 10, 20]
