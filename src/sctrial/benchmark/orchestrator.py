@@ -629,6 +629,7 @@ def _run_grid(
     base_config: dict | None = None,
     manifest: dict | None = None,
     adaptive: bool = True,
+    completion_dir: Path | None = None,
 ) -> pd.DataFrame:
     """One driver for both grids.
 
@@ -778,8 +779,14 @@ def _run_grid(
                 mcse_target_power=_MCSE_TARGET_POWER,
             )
             rec["contract_checks"] = report.checked
-            comp_dir = output_dir.parent / "completion" if output_dir.name == "scenarios" \
-                else output_dir / "completion"
+            # Passed in, never derived from the output path's NAME. Inferring
+            # directory structure from a string is how a layout change silently
+            # relocates records: the previous version keyed off
+            # `output_dir.name == "scenarios"`, which stopped being true the
+            # moment the grids were given their own subdirectories.
+            comp_dir = completion_dir if completion_dir is not None else (
+                output_dir.parent / "completion"
+            )
             comp_dir.mkdir(parents=True, exist_ok=True)
             (comp_dir / f"{name}.json").write_text(json.dumps(rec, indent=2, default=str))
 
@@ -817,6 +824,7 @@ def run_benchmark(
     resume: bool = True,
     base_config: dict | None = None,
     manifest: dict | None = None,
+    completion_dir: str | Path | None = None,
 ) -> pd.DataFrame:
     """Run the core scenario grid."""
     if n_jobs == -1:
@@ -833,6 +841,7 @@ def run_benchmark(
         seed=2024,
         base_config=base_config,
         manifest=manifest,
+        completion_dir=Path(completion_dir) if completion_dir else None,
     )
 
 
@@ -846,6 +855,7 @@ def run_sensitivity_benchmark(
     base_config: dict | None = None,
     manifest: dict | None = None,
     panels: list[int] | None = None,
+    completion_dir: str | Path | None = None,
 ) -> pd.DataFrame:
     """Run the panel-size x signal-fraction sensitivity grid."""
     if n_jobs == -1:
@@ -867,6 +877,7 @@ def run_sensitivity_benchmark(
         seed=90210,
         base_config=base_config,
         manifest=manifest,
+        completion_dir=Path(completion_dir) if completion_dir else None,
     )
 
 

@@ -92,6 +92,10 @@ def distributed_run(tmp_path_factory):
     """Run the seven scenarios as TWO shards through the real grid driver."""
     root = tmp_path_factory.mktemp("results")
     layout = ResultLayout(root, _SHA).create()
+    scen = layout.scenarios_for("core")
+    comp = layout.completion_for("core")
+    scen.mkdir(parents=True, exist_ok=True)
+    comp.mkdir(parents=True, exist_ok=True)
     calibration_only = {k: v for k, v in _FROZEN.items() if k not in SCENARIO_OWNED_FIELDS}
     manifest = {"manifest_sha256": _SHA, "git_sha": "b" * 40}
 
@@ -105,13 +109,14 @@ def distributed_run(tmp_path_factory):
             methods=["sctrial_did", "wilcoxon_paired"],
             n_iterations=2,
             n_jobs=1,
-            output_dir=layout.scenarios,
+            output_dir=scen,
             resume=False,
             combined_name="unused.csv",
             seed=7000,
             base_config=calibration_only,
             manifest=manifest,
             adaptive=False,
+            completion_dir=comp,
         )
     return layout, scenarios
 
@@ -136,7 +141,7 @@ def test_realised_design_matches_every_request(distributed_run):
     """
     layout, _ = distributed_run
     for name, kw in _CASES:
-        df = pd.read_csv(layout.scenario_csv(f"two_arm__{name}"))
+        df = pd.read_csv(layout.scenario_csv(f"two_arm__{name}", "core"))
         realised = int(df["n_participants"].iloc[0])
         nt, nc = int(df["n_treated"].iloc[0]), int(df["n_control"].iloc[0])
         expected = sum(kw["arm_ratio"]) if kw.get("arm_ratio") else 2 * kw["n_per_arm"]
@@ -154,7 +159,7 @@ def test_realised_design_matches_every_request(distributed_run):
 def test_realised_signal_matches_every_request(distributed_run):
     layout, _ = distributed_run
     for name, kw in _CASES:
-        df = pd.read_csv(layout.scenario_csv(f"two_arm__{name}"))
+        df = pd.read_csv(layout.scenario_csv(f"two_arm__{name}", "core"))
         per_iter = df[df["method"] == "sctrial_did"].groupby("iteration")["is_signal"].sum()
         assert set(per_iter) == {kw["n_signal"]}, (
             f"{name}: requested {kw['n_signal']} signal genes, realised {set(per_iter)}"
@@ -171,7 +176,7 @@ def test_realised_cell_yield_matches_every_request(distributed_run):
     """
     layout, _ = distributed_run
     for name, kw in _CASES:
-        df = pd.read_csv(layout.scenario_csv(f"two_arm__{name}"))
+        df = pd.read_csv(layout.scenario_csv(f"two_arm__{name}", "core"))
         lo = float(df["cells_per_pv_min"].min())
         hi = float(df["cells_per_pv_max"].max())
         want = kw.get("cells_per_pv_fixed")
@@ -193,7 +198,7 @@ def test_omitted_scenario_fields_are_not_captured_by_the_calibration(distributed
     that 999 would win and the scenario's intended cell yield would vanish.
     """
     layout, _ = distributed_run
-    df = pd.read_csv(layout.scenario_csv("two_arm__inherits_cells"))
+    df = pd.read_csv(layout.scenario_csv("two_arm__inherits_cells", "core"))
     assert int(df["n_participants"].iloc[0]) == 16
 
     assert "cells_per_pv_median" in df.columns, (
@@ -216,9 +221,9 @@ def test_every_scenario_writes_a_completion_record(distributed_run):
     what distinguishes them.
     """
     layout, _ = distributed_run
-    records = layout.completed_scenarios()
+    records = layout.completed_scenarios("core")
     assert set(records) == _EXPECTED, f"missing completion records: {_EXPECTED - set(records)}"
-    assert layout.orphan_scenarios() == []
+    assert layout.orphan_scenarios("core") == []
     for name, rec in records.items():
         assert rec["n_replicates_completed"] == 2, name
         assert rec["manifest_sha256"] == _SHA, name
@@ -245,7 +250,7 @@ def test_aggregator_refuses_an_incomplete_grid(distributed_run, monkeypatch):
         "the combined file does not contain every shard — this is B2"
     )
 
-    hidden = layout.scenario_csv("two_arm__low_cell_50")
+    hidden = layout.scenario_csv("two_arm__low_cell_50", "core")
     bak = hidden.with_suffix(".bak")
     hidden.rename(bak)
     target.unlink()
@@ -265,7 +270,7 @@ def test_aggregator_refuses_a_scenario_with_no_completion_record(distributed_run
     agg = _agg()
     monkeypatch.setattr(agg, "_expected_scenarios", lambda grid: _EXPECTED)
 
-    rec = layout.scenario_completion("two_arm__mixed_signal")
+    rec = layout.scenario_completion("two_arm__mixed_signal", "core")
     original = rec.read_text()
     rec.unlink()
     try:
@@ -295,7 +300,7 @@ def test_aggregator_refuses_an_unjustified_precision_claim(distributed_run, monk
     agg = _agg()
     monkeypatch.setattr(agg, "_expected_scenarios", lambda grid: _EXPECTED)
 
-    rec_path = layout.scenario_completion("two_arm__mixed_signal")
+    rec_path = layout.scenario_completion("two_arm__mixed_signal", "core")
     original = rec_path.read_text()
     rec = json.loads(original)
     rec["stop_reason"] = "precision_reached"
@@ -315,7 +320,7 @@ def test_aggregator_refuses_a_record_disagreeing_with_its_csv(distributed_run, m
     agg = _agg()
     monkeypatch.setattr(agg, "_expected_scenarios", lambda grid: _EXPECTED)
 
-    rec_path = layout.scenario_completion("two_arm__balanced_8v8")
+    rec_path = layout.scenario_completion("two_arm__balanced_8v8", "core")
     original = rec_path.read_text()
     rec = json.loads(original)
     rec["n_replicates_completed"] = 999
@@ -333,7 +338,7 @@ def test_aggregator_refuses_mixed_manifests(distributed_run, monkeypatch):
     agg = _agg()
     monkeypatch.setattr(agg, "_expected_scenarios", lambda grid: _EXPECTED)
 
-    target = layout.scenario_csv("two_arm__mixed_signal")
+    target = layout.scenario_csv("two_arm__mixed_signal", "core")
     original = target.read_text()
     df = pd.read_csv(target)
     df["manifest_sha256"] = "c" * 64          # a different run
@@ -402,3 +407,57 @@ def test_two_grids_do_not_overwrite_each_others_completion_marker(tmp_path):
     assert layout.combined_csv("benchmark_combined.csv") != layout.combined_csv(
         "sensitivity_combined.csv"
     )
+
+
+def test_one_grids_shards_are_invisible_to_the_other_aggregator(tmp_path, monkeypatch):
+    """Each aggregator must see ONLY its own grid's shards.
+
+    Both grids write into one manifest directory. Sharing a scenario directory
+    would hand the core aggregator all 36 sensitivity files as UNEXPECTED, and
+    the natural response -- filtering to the expected set -- would delete the
+    only check that catches a genuinely unexpected scenario. Separate
+    directories keep both properties.
+    """
+    layout = ResultLayout(tmp_path / "results", "7" * 64).create()
+    agg = _agg()
+
+    def _write(grid: str, names: list[str]) -> None:
+        sdir, cdir = layout.scenarios_for(grid), layout.completion_for(grid)
+        sdir.mkdir(parents=True, exist_ok=True)
+        cdir.mkdir(parents=True, exist_ok=True)
+        for n in names:
+            pd.DataFrame({
+                "scenario": [n] * 2, "iteration": [0, 1],
+                "method": ["sctrial_did"] * 2,
+                "pvalue": [0.4, 0.6], "is_signal": [False, False],
+                "manifest_sha256": ["7" * 64] * 2,
+                "n_participants": [16] * 2, "n_treated": [8] * 2, "n_control": [8] * 2,
+            }).to_csv(sdir / f"{n}.csv", index=False)
+            (cdir / f"{n}.json").write_text(json.dumps({
+                "scenario_id": n, "n_replicates_completed": 2,
+                "stop_reason": "adaptive_disabled", "max_replicates": 1000,
+                "fpr_mcse": 0.0, "power_mcse": 0.0,
+                "mcse_target_fpr": 0.005, "mcse_target_power": 0.01,
+                "manifest_sha256": "7" * 64,
+            }))
+
+    _write("core", ["two_arm__null_n8"])
+    _write("sensitivity", ["two_arm__sens_null_g50"])
+
+    monkeypatch.setattr(agg, "_expected_scenarios", lambda g: (
+        {"two_arm__null_n8"} if g == "core" else {"two_arm__sens_null_g50"}
+    ))
+    # Each aggregation must succeed, seeing only its own grid.
+    agg.aggregate(layout, "core", "benchmark_combined.csv", 2, allow_non_adaptive=True)
+    agg.aggregate(layout, "sensitivity", "sensitivity_combined.csv", 2, allow_non_adaptive=True)
+
+    core = pd.read_csv(layout.combined_csv("benchmark_combined.csv"))
+    sens = pd.read_csv(layout.combined_csv("sensitivity_combined.csv"))
+    assert set(core["scenario"]) == {"two_arm__null_n8"}, (
+        "the core aggregation picked up sensitivity shards"
+    )
+    assert set(sens["scenario"]) == {"two_arm__sens_null_g50"}
+    assert json.loads(layout.completion_marker("core").read_text())["grid"] == "core"
+    assert json.loads(
+        layout.completion_marker("sensitivity").read_text()
+    )["grid"] == "sensitivity"

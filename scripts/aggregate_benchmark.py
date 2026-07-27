@@ -144,9 +144,10 @@ def aggregate(
     allow_non_adaptive: bool = False,
 ) -> None:
     expected = _expected_scenarios(grid)
-    shards = sorted(layout.scenarios.glob("*.csv"))
+    scen_dir = layout.scenarios_for(grid)
+    shards = sorted(scen_dir.glob("*.csv"))
     if not shards:
-        raise SystemExit(f"no scenario files in {layout.scenarios}")
+        raise SystemExit(f"no scenario files in {scen_dir}")
 
     frames, seen, problems = [], {}, []
     for f in shards:
@@ -190,7 +191,7 @@ def aggregate(
             problems.append("some rows are unstamped")
 
     # 3. ADAPTIVE completion -- records, not a fixed row count
-    records = layout.completed_scenarios()
+    records = layout.completed_scenarios(grid)
     problems += _check_completion(records, present, combined, allow_non_adaptive)
 
     # A floor still applies: adaptive stopping extends beyond the base batch and
@@ -221,7 +222,7 @@ def aggregate(
         problems.append("results carry no realised-design columns")
 
     # 5. nothing left behind by a killed job
-    orphans = layout.orphan_scenarios()
+    orphans = layout.orphan_scenarios(grid)
     if orphans:
         problems.append(f"{len(orphans)} scenario CSV(s) with no completion record: {orphans[:8]}")
 

@@ -232,9 +232,14 @@ def phase_simulate(n_jobs: int, n_iterations: int, designs=None):
     designs = designs or ["two_arm", "single_arm"]
     frozen = _load_frozen_config()
     manifest = _load_frozen_manifest()
-    # Manifest-scoped: results are addressed by the configuration that produced
-    # them, so a superseded run cannot be adopted by a resume or read by a figure.
-    out_dir = _layout(manifest).create().scenarios
+    # Manifest-scoped AND grid-scoped: results are addressed by the configuration
+    # that produced them, and each grid keeps its own directory so the aggregator
+    # can validate one grid's shards against exactly that grid's expected set.
+    _lay = _layout(manifest).create()
+    out_dir = _lay.scenarios_for("core")
+    comp_dir = _lay.completion_for("core")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    comp_dir.mkdir(parents=True, exist_ok=True)
     print("=" * 60)
     print("PHASE 2: Simulation Benchmark")
     print(f"  {n_iterations} iterations × 2 designs × ~30 scenarios × 6 methods")
@@ -247,6 +252,7 @@ def phase_simulate(n_jobs: int, n_iterations: int, designs=None):
         n_iterations=n_iterations,
         n_jobs=n_jobs,
         output_dir=out_dir,
+        completion_dir=comp_dir,
         resume=True,
         base_config=frozen,
         manifest=manifest,
@@ -311,7 +317,11 @@ def phase_sensitivity(n_jobs: int, n_iterations: int, designs=None, panels=None)
 
     frozen = _load_frozen_config()
     manifest = _load_frozen_manifest()
-    out_dir = _layout(manifest).create().scenarios
+    _lay = _layout(manifest).create()
+    out_dir = _lay.scenarios_for("sensitivity")
+    comp_dir = _lay.completion_for("sensitivity")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    comp_dir.mkdir(parents=True, exist_ok=True)
     print("=" * 60)
     print("PHASE 5: Signal-Fraction Sensitivity Benchmark")
     print(f"  {n_iterations} iterations per scenario")
@@ -327,6 +337,7 @@ def phase_sensitivity(n_jobs: int, n_iterations: int, designs=None, panels=None)
         n_iterations=n_iterations,
         n_jobs=n_jobs,
         output_dir=out_dir,
+        completion_dir=comp_dir,
         resume=True,
         base_config=frozen,
         manifest=manifest,

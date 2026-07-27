@@ -67,6 +67,21 @@ class ResultLayout:
     def completion(self) -> Path:
         return self.base / COMPLETION
 
+    def scenarios_for(self, grid: str) -> Path:
+        """Scenario CSVs for ONE grid.
+
+        Separated because the aggregator globs this directory and validates the
+        result against the exact set the grid declares. The core and sensitivity
+        grids write into the same manifest directory, so a shared directory would
+        hand the core aggregator all 36 sensitivity files as UNEXPECTED -- and
+        the natural "fix" of filtering to the expected set would destroy the only
+        check that catches a genuinely unexpected scenario.
+        """
+        return self.base / SCENARIOS / grid
+
+    def completion_for(self, grid: str) -> Path:
+        return self.base / COMPLETION / grid
+
     @property
     def combined(self) -> Path:
         return self.base / COMBINED
@@ -94,34 +109,38 @@ class ResultLayout:
         """
         return self.combined / f"benchmark_complete_{grid}.json"
 
-    def scenario_csv(self, scenario_id: str) -> Path:
-        return self.scenarios / f"{scenario_id}.csv"
+    def scenario_csv(self, scenario_id: str, grid: str | None = None) -> Path:
+        base = self.scenarios_for(grid) if grid else self.scenarios
+        return base / f"{scenario_id}.csv"
 
-    def scenario_completion(self, scenario_id: str) -> Path:
-        return self.completion / f"{scenario_id}.json"
+    def scenario_completion(self, scenario_id: str, grid: str | None = None) -> Path:
+        base = self.completion_for(grid) if grid else self.completion
+        return base / f"{scenario_id}.json"
 
-    def completed_scenarios(self) -> dict[str, dict]:
+    def completed_scenarios(self, grid: str | None = None) -> dict[str, dict]:
         """Scenarios with a completion record, keyed by scenario id.
 
         A CSV without a record is NOT complete: it is what a job killed part-way
         through an adaptive extension leaves behind.
         """
         out = {}
-        if not self.completion.exists():
+        base = self.completion_for(grid) if grid else self.completion
+        if not base.exists():
             return out
-        for path in sorted(self.completion.glob("*.json")):
+        for path in sorted(base.glob("*.json")):
             try:
                 out[path.stem] = json.loads(path.read_text())
             except json.JSONDecodeError as exc:
                 raise RuntimeError(f"corrupt completion record {path}: {exc}") from exc
         return out
 
-    def orphan_scenarios(self) -> list[str]:
+    def orphan_scenarios(self, grid: str | None = None) -> list[str]:
         """Scenario CSVs with no completion record -- truncated or in flight."""
-        if not self.scenarios.exists():
+        base = self.scenarios_for(grid) if grid else self.scenarios
+        if not base.exists():
             return []
-        done = set(self.completed_scenarios())
-        return sorted(p.stem for p in self.scenarios.glob("*.csv") if p.stem not in done)
+        done = set(self.completed_scenarios(grid))
+        return sorted(p.stem for p in base.glob("*.csv") if p.stem not in done)
 
 
 def preflight_layout(root: Path | str, label: str) -> ResultLayout:
