@@ -371,6 +371,7 @@ def test_frozen_calibration_reaches_the_simulator(monkeypatch):
         "name": "t",
         "description": "t",
         "panel_size": 50,
+        "n_signal": 0,
         "signal_fraction": 0.0,
         "architecture": "balanced",
         "magnitude": 0.5,
@@ -490,7 +491,8 @@ def test_evaluability_is_recorded_not_silently_dropped():
     from sctrial.benchmark.orchestrator import _run_single_iteration
 
     scenario = {
-        "name": "t", "description": "t", "panel_size": 50, "signal_fraction": 0.0,
+        "name": "t", "description": "t", "panel_size": 50,
+        "n_signal": 0, "signal_fraction": 0.0,
         "architecture": "balanced", "magnitude": 0.5,
         "config_kwargs": {
             "design": "two_arm", "n_per_arm": 6, "cells_per_pv_fixed": 40,
@@ -773,32 +775,79 @@ def test_scenario_design_survives_the_frozen_calibration(tmp_path, monkeypatch):
             )
 
 
-def test_signal_fraction_never_rounds_away_to_zero():
-    """A signal-bearing scenario must contain signal.
+def test_signal_is_an_integer_count_and_unrealisable_cells_are_skipped():
+    """A nominal fraction a panel cannot express must be skipped, not rounded.
 
-    round() is banker's rounding, so round(50 * 0.01) == 0: the 50-gene 1% cells
-    were generated as pure nulls while still labelled 2% signal and stamped with
-    an architecture, colliding with the true null on any groupby of the realised
-    fraction -- and that is the lowest-signal-fraction point the sensitivity
-    analysis exists to measure.
+    50 x 1% is 0.5 genes and 50 x 5% is 2.5. Rounding either gives a scenario
+    whose label is wrong: one gene out of 50 is 2%, not 1%. That would corrupt
+    exactly the lowest-signal condition the sensitivity analysis exists to
+    measure, and it would collide with the true null on any groupby of the
+    realised fraction. Signal is therefore declared as an integer COUNT, and the
+    grid omits combinations a panel cannot express.
     """
+    from sctrial.benchmark.orchestrator import build_sensitivity_grid
     from sctrial.benchmark.simulator_v2 import make_signal
 
     panel = [f"gene_{i}" for i in range(50)]
-    for frac in (0.01, 0.05, 0.10, 0.20):
-        effects = make_signal(panel, frac, "balanced", 0.5, rng=np.random.default_rng(0))
-        assert len(effects) >= 1, f"{frac:.0%} of 50 genes produced no signal genes"
-    assert make_signal(panel, 0.0, "balanced", 0.5) == {}, "a null scenario gained signal"
+    for n in (1, 5, 10):
+        effects = make_signal(panel, n, "balanced", 0.5, rng=np.random.default_rng(0))
+        assert len(effects) == n, f"requested {n} signal genes, got {len(effects)}"
+    assert make_signal(panel, 0, "balanced", 0.5) == {}
 
+    with pytest.raises(ValueError, match="exceeds"):
+        make_signal(panel, 51, "balanced", 0.5)
 
-def test_combined_results_are_rebuilt_from_disk():
-    """Four split jobs share one output directory and one combined filename."""
-    orch = (
-        Path(__file__).resolve().parent.parent
-        / "src" / "sctrial" / "benchmark" / "orchestrator.py"
-    ).read_text(encoding="utf-8")
-    assert "output_dir.glob" in orch, (
-        "the combined file is built from this invocation's results only, so the "
-        "last of the four split jobs to finish overwrites the rest"
+    # Every grid cell's label must be the fraction it actually realises.
+    for sc in build_sensitivity_grid("two_arm"):
+        n_sig, panel_size = sc["n_signal"], sc["panel_size"]
+        assert sc["signal_fraction"] == pytest.approx(n_sig / panel_size), sc["name"]
+        assert float(n_sig).is_integer()
+
+    # 50 genes can express neither 1% nor 5%, so no such cell may exist.
+    at50 = [s for s in build_sensitivity_grid("two_arm") if s["panel_size"] == 50]
+    fracs = {round(s["signal_fraction"], 4) for s in at50}
+    assert 0.01 not in fracs and 0.02 not in fracs, (
+        "a 1%-labelled cell exists at 50 genes, where 1% is 0.5 genes"
     )
-    assert "os.replace" in orch, "the combined file is not written atomically"
+    assert {0.0, 0.10, 0.20} <= fracs, f"expected 0/10/20% at 50 genes, got {fracs}"
+
+
+def test_only_the_aggregator_writes_the_combined_results():
+    """Producers must not race each other on the file the figures read.
+
+    Several SLURM jobs share one output directory. Any producer writing a
+    combined file lets the last to finish overwrite the rest, silently, on the
+    only file the figure layer consumes -- so a panel would be drawn from a
+    quarter of the grid and look complete.
+    """
+    root = Path(__file__).resolve().parent.parent
+    orch = (root / "src" / "sctrial" / "benchmark" / "orchestrator.py").read_text(
+        encoding="utf-8"
+    )
+    assert "combined.to_csv" not in orch, (
+        "a producer still writes the combined results file"
+    )
+    assert "aggregate_benchmark.py" in orch, (
+        "the orchestrator does not point at the aggregator that owns the combined file"
+    )
+
+    agg = (root / "scripts" / "aggregate_benchmark.py").read_text(encoding="utf-8")
+    for guard in ("MISSING", "UNEXPECTED", "mix", "unstamped", "iterations", "REFUSING"):
+        assert guard in agg, f"the aggregator does not check for {guard!r}"
+    assert "os.replace" in agg, "the combined file is not written atomically"
+    assert "benchmark_complete.json" in agg
+
+
+def test_figures_refuse_a_grid_without_a_completion_record():
+    """A partial grid must not be able to reach a manuscript figure."""
+    loader = (
+        Path(__file__).resolve().parent.parent
+        / "manuscript_figures" / "main" / "figure3_robustness_benchmarking.py"
+    ).read_text(encoding="utf-8")
+    assert "benchmark_complete.json" in loader, (
+        "the figure loader accepts a combined file with no completion record, so a "
+        "single shard would plot as if it were the whole grid"
+    )
+    assert "assert_single_manifest" in loader, (
+        "the figure loader does not reject results mixing two benchmark runs"
+    )

@@ -440,7 +440,7 @@ def nested_panels(
 
 def make_signal(
     panel_genes: list[str],
-    signal_fraction: float,
+    n_signal: int,
     architecture: SignalArch = "balanced",
     magnitude: float = 0.5,
     rng: np.random.Generator | None = None,
@@ -459,15 +459,19 @@ def make_signal(
         attributed to empirical-Bayes moderation is attributable to it.
     """
     rng = rng or np.random.default_rng(0)
-    # Half-up, floored at one. Python's round() is banker's rounding, so
-    # round(50 * 0.01) == 0 and the 50-gene 1%-signal cells were simulated as pure
-    # nulls while still labelled 2% signal and stamped with an architecture --
-    # phantom low-signal cells containing no signal, colliding with the true null
-    # on any groupby of the realised fraction. That is precisely the
-    # lowest-signal-fraction point the sensitivity analysis exists to measure.
-    n_sig = int(np.floor(len(panel_genes) * signal_fraction + 0.5))
-    if signal_fraction > 0:
-        n_sig = max(1, n_sig)
+    # An INTEGER COUNT, not a fraction. A fraction has to be rounded, and rounding
+    # a fraction that the panel cannot express produces a mislabelled scenario:
+    # 50 x 1% is 0.5 genes, and one gene out of 50 is 2%, not 1%. Simulating one
+    # gene and calling it 1% would corrupt exactly the lowest-signal condition the
+    # sensitivity analysis exists to measure. The grid therefore declares counts
+    # and skips combinations a panel cannot express.
+    n_sig = int(n_signal)
+    if n_sig < 0:
+        raise ValueError(f"n_signal must be >= 0, got {n_signal}")
+    if n_sig > len(panel_genes):
+        raise ValueError(
+            f"n_signal={n_sig} exceeds the {len(panel_genes)}-gene panel"
+        )
     if n_sig == 0:
         return {}
     chosen = rng.choice(np.asarray(panel_genes, dtype=object), size=n_sig, replace=False)

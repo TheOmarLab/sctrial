@@ -256,6 +256,7 @@ class TestEndToEnd:
             "name": "test_null",
             "description": "unit-test null",
             "panel_size": 50,
+            "n_signal": 0,
             "signal_fraction": 0.0,
             "architecture": "balanced",
             "magnitude": 0.5,

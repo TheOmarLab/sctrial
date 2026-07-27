@@ -589,7 +589,24 @@ def _load_benchmark_data() -> pd.DataFrame:
             f"Benchmark results not found at {_BENCHMARK_CSV}.\n"
             "Run the signal-fraction sensitivity benchmark on HPC first."
         )
+    # The completion record is written ONLY by the aggregator, and only after it
+    # has verified that the shards form exactly the expected scenario set under
+    # one manifest. Without it, this file may hold a single shard -- which is
+    # what a partial grid looks like: plausible, and quietly missing 75% of the
+    # benchmark.
+    _complete = _BENCHMARK_CSV.parent / "benchmark_complete.json"
+    if not _complete.exists():
+        raise FileNotFoundError(
+            f"{_BENCHMARK_CSV} has no completion record ({_complete.name}). It was "
+            "not produced by scripts/aggregate_benchmark.py and may be a single "
+            "shard of the grid. Re-run the aggregator."
+        )
+
     df = pd.read_csv(_BENCHMARK_CSV, low_memory=False)
+
+    from sctrial.benchmark.manifest import assert_single_manifest
+
+    assert_single_manifest(df, "benchmark results")
 
     # Read the DATA, not the scenario NAME. Parsing `_g(\d+)` and `_f(\d+)` out of
     # the name has two failure modes that have both already occurred:

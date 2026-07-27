@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import logging
 import multiprocessing as mp
-import os
 import time
 from pathlib import Path
 
@@ -158,7 +157,7 @@ def _scenario(
     *,
     design: str,
     panel_size: int = _PANEL,
-    signal_fraction: float = 0.0,
+    n_signal: int = 0,
     architecture: str = _PRIMARY_ARCH,
     magnitude: float = 0.5,
     arm_ratio: tuple[int, int] | None = None,
@@ -172,7 +171,10 @@ def _scenario(
         "name": name,
         "description": description,
         "panel_size": panel_size,
-        "signal_fraction": signal_fraction,
+        "n_signal": int(n_signal),
+        # The realised fraction, which is the only one that exists. There is no
+        # separate "nominal" fraction to disagree with it.
+        "signal_fraction": (int(n_signal) / panel_size) if panel_size else 0.0,
         "architecture": architecture,
         "magnitude": magnitude,
         "config_kwargs": {"design": design, **cfg},
@@ -205,14 +207,13 @@ def build_scenario_grid(design: str = "two_arm") -> list[dict]:
                 design=design,
                 n_per_arm=n,
                 between_participant_sd=1.5,
-                # Explicit cell count, NOT a scale factor. `cells_scale=0.1`
-                # multiplied whatever pool the anchor supplies, and when the
-                # anchor became Treg (~301 cells/visit) that silently became ~30
-                # cells -- at which dreamlet returns finite p-values for about 10%
-                # of a 50-gene panel instead of 96%, so its Type I error would
-                # have been read off ~5 genes and the collapse would have looked
-                # like a property of dreamlet.
-                cells_per_pv_fixed=150,
+                # The point of this scenario is IMBALANCED yield, so it uses the
+                # anchor's own empirical cells-per-visit distribution (median 243,
+                # CV 0.785) rather than a fixed count. `cells_scale=0.1` was a
+                # relative factor inherited from a different anchor; against Treg
+                # it silently meant ~30 cells.
+                cells_per_pv_fixed=None,
+                cells_scale=1.0,
             )
         )
 
@@ -225,7 +226,7 @@ def build_scenario_grid(design: str = "two_arm") -> list[dict]:
                     f"Sparse DE, balanced signs, n={n}, beta={beta}",
                     design=design,
                     n_per_arm=n,
-                    signal_fraction=_SIGNAL_FRACTION,
+                    n_signal=int(round(_PANEL * _SIGNAL_FRACTION)),
                     architecture="balanced",
                     magnitude=beta,
                     cells_per_pv_fixed=_CELLS,
@@ -241,7 +242,7 @@ def build_scenario_grid(design: str = "two_arm") -> list[dict]:
                     f"Sparse DE, heterogeneous magnitudes, n={n}, beta={beta}",
                     design=design,
                     n_per_arm=n,
-                    signal_fraction=_SIGNAL_FRACTION,
+                    n_signal=int(round(_PANEL * _SIGNAL_FRACTION)),
                     architecture="heterogeneous",
                     magnitude=beta,
                     cells_per_pv_fixed=_CELLS,
@@ -257,21 +258,28 @@ def build_scenario_grid(design: str = "two_arm") -> list[dict]:
                 f"Composition stress: all signal genes +0.5, n={n}",
                 design=design,
                 n_per_arm=n,
-                signal_fraction=_SIGNAL_FRACTION,
+                n_signal=int(round(_PANEL * _SIGNAL_FRACTION)),
                 architecture="one_directional",
                 cells_per_pv_fixed=_CELLS,
             )
         )
 
-    # 6. Varying cell yield
-    for n_cells in [200, 1000, 5000]:
+    # 6. Varying cell yield, spanning the anchor's own realistic range.
+    #    Treg gives a median of 243 cells per participant-visit (min 13, max ~769),
+    #    so the grid is sparse / empirical-median / rich. 5,000 was inherited from
+    #    a whole-sample anchor and is unreachable for any single cell type.
+    #    CHOSEN FROM THE POPULATION, deliberately before seeing any method
+    #    ranking: a low-yield condition must not be raised because a comparator
+    #    struggles there. Evaluability is reported alongside power for exactly
+    #    this reason.
+    for n_cells in [50, 250, 1000]:
         s.append(
             _scenario(
                 f"cells_{n_cells}_n40",
                 f"Cell yield {n_cells}/visit, n=40",
                 design=design,
                 n_per_arm=40,
-                signal_fraction=_SIGNAL_FRACTION,
+                n_signal=int(round(_PANEL * _SIGNAL_FRACTION)),
                 cells_per_pv_fixed=n_cells,
             )
         )
@@ -286,7 +294,7 @@ def build_scenario_grid(design: str = "two_arm") -> list[dict]:
                     design=design,
                     n_per_arm=sum(ratio),
                     arm_ratio=ratio,  # the only scenarios that set it
-                    signal_fraction=_SIGNAL_FRACTION,
+                    n_signal=int(round(_PANEL * _SIGNAL_FRACTION)),
                     cells_per_pv_fixed=_CELLS,
                 )
             )
@@ -300,7 +308,7 @@ def build_scenario_grid(design: str = "two_arm") -> list[dict]:
                 design=design,
                 n_per_arm=40,
                 missing_rate=rate,
-                signal_fraction=_SIGNAL_FRACTION,
+                n_signal=int(round(_PANEL * _SIGNAL_FRACTION)),
                 cells_per_pv_fixed=_CELLS,
             )
         )
@@ -309,52 +317,58 @@ def build_scenario_grid(design: str = "two_arm") -> list[dict]:
 
 
 def build_sensitivity_grid(design: str = "two_arm", panels=None) -> list[dict]:
-    """Panel size x signal fraction sensitivity.
+    """Panel size x signal BURDEN sensitivity, declared as integer gene counts.
 
     Panels are NESTED subsets of one simulated transcriptome, so a panel-size
-    effect is separable from a gene-identity effect. With independently drawn
-    panels the two are confounded, and "progressive miscalibration with panel
-    size" could not be distinguished from a change in which genes were tested.
+    effect is separable from a gene-identity effect.
 
-    Signal counts are reported as REALISED fractions rather than nominal labels:
-    at 50 genes ``round(50 * 0.01)`` is 1 gene, i.e. 2%, and the previous loaders
-    parsed the scenario name rather than the data, manufacturing an apparent
-    panel-size dependence.
+    SIGNAL IS AN INTEGER COUNT, and a nominal fraction a panel cannot express is
+    SKIPPED rather than rounded. 50 x 1% is 0.5 genes; one gene out of 50 is 2%,
+    not 1%. Simulating one gene and labelling it 1% would corrupt exactly the
+    lowest-signal condition this analysis exists to measure, and it would collide
+    with the true null on any groupby of the realised fraction. At 50 genes both
+    1% and 5% are unrealisable, so that panel contributes only 10% and 20%; the
+    1% condition begins at 200 genes, where it is exactly 2 genes.
     """
     s: list[dict] = []
     n_per_arm = 40
-    # Panel sizes are selectable so the 2000-gene cells can run as their own job:
-    # one 2000-gene iteration measured 495 s against 44 s at 50 genes, so mixing
-    # them puts the whole grid at the mercy of the slowest cells.
+    skipped: list[str] = []
     for panel in list(panels) if panels else [50, 200, 500, 2000]:
         s.append(
             _scenario(
                 f"sens_null_g{panel}",
-                f"Sensitivity null, {panel}-gene panel, n={n_per_arm}",
+                f"Sensitivity null, {panel}-gene panel, n={n_per_arm}/arm",
                 design=design,
                 n_per_arm=n_per_arm,
                 panel_size=panel,
-                signal_fraction=0.0,
+                n_signal=0,
                 cells_per_pv_fixed=_CELLS,
             )
         )
-        for frac in [0.01, 0.05, 0.10, 0.20]:
-            realised = max(1, int(round(panel * frac))) / panel
+        for frac in (0.01, 0.05, 0.10, 0.20):
+            exact = panel * frac
+            if abs(exact - round(exact)) > 1e-9 or exact < 1:
+                skipped.append(f"{panel}g x {frac:.0%} ({exact:g} genes)")
+                continue
+            n_sig = int(round(exact))
             for arch in ("balanced", "one_directional"):
                 tag = "" if arch == "balanced" else "_onedir"
                 s.append(
                     _scenario(
-                        f"sens_g{panel}_f{int(frac * 100)}{tag}",
-                        f"{panel} genes, nominal {frac:.0%} / realised {realised:.1%} "
-                        f"signal, {arch}",
+                        f"sens_g{panel}_n{n_sig}{tag}",
+                        f"{panel} genes, {n_sig} signal ({n_sig / panel:.1%}), {arch}",
                         design=design,
                         n_per_arm=n_per_arm,
                         panel_size=panel,
-                        signal_fraction=frac,
+                        n_signal=n_sig,
                         architecture=arch,
                         cells_per_pv_fixed=_CELLS,
                     )
                 )
+    if skipped:
+        # Announced, never silent: a dropped cell that nobody is told about is
+        # indistinguishable from one that was never designed.
+        print(f"  sensitivity grid: skipped unrealisable cells -> {'; '.join(skipped)}")
     return s
 
 
@@ -399,14 +413,19 @@ def _run_single_iteration(args: tuple) -> list[dict]:
     effects = (
         make_signal(
             panel_genes,
-            scenario["signal_fraction"],
+            scenario["n_signal"],
             scenario["architecture"],
             scenario["magnitude"],
             rng=np.random.default_rng(seed + 2),
         )
-        if scenario["signal_fraction"] > 0
+        if scenario["n_signal"] > 0
         else {}
     )
+    if scenario["n_signal"] > 0 and len(effects) != scenario["n_signal"]:
+        raise RuntimeError(
+            f"{scenario_name}: requested {scenario['n_signal']} signal genes, "
+            f"realised {len(effects)}"
+        )
     cfg = TranscriptomeSimConfig(seed=seed, effects=effects, **kw)
 
     sim = simulate_trial_v2(cfg)
@@ -416,6 +435,12 @@ def _run_single_iteration(args: tuple) -> list[dict]:
     realised_arms = list(sim["latent"]["arms"])
     n_treated = sum(a == "Treated" for a in realised_arms)
     n_control = len(realised_arms) - n_treated
+    # Realised CELL yield too. Recording only the requested design is how a
+    # collapsed grid stayed invisible; cell yield is the other axis a leaked
+    # calibration field can silently capture.
+    _cells = sim["pseudobulk_counts"]["n_cells"].to_numpy(dtype=float)
+    cells_median = float(np.median(_cells))
+    cells_min, cells_max = float(_cells.min()), float(_cells.max())
     if cfg.arm_ratio is None and cfg.design == "two_arm":
         expected = 2 * cfg.n_per_arm
         if len(realised_arms) != expected:
@@ -492,6 +517,9 @@ def _run_single_iteration(args: tuple) -> list[dict]:
                     "n_participants": len(realised_arms),
                     "n_treated": n_treated,
                     "n_control": n_control,
+                    "cells_per_pv_median": cells_median,
+                    "cells_per_pv_min": cells_min,
+                    "cells_per_pv_max": cells_max,
                     "n_per_arm": cfg.n_per_arm,
                     "panel_size": panel_size,
                     "n_signal_realised": len(signal_genes),
@@ -698,38 +726,21 @@ def _run_grid(
             all_results.append(df)
             print(f"    Done in {time.time() - t0:.0f}s -> {csv_path.name}")
 
-    # REBUILD FROM DISK, not from this invocation's results.
+    # PRODUCERS DO NOT WRITE THE COMBINED FILE.
     #
-    # The definitive run is deliberately split across four SLURM jobs by design
-    # family and panel size, all writing into one directory under one combined
-    # name. Concatenating only `all_results` meant the last job to finish
-    # overwrote the others, so the combined file -- the ONLY file the figures
-    # read -- would have held one design family, or one panel size, with no
-    # error. The pure-null calibration panel would have been drawn from a quarter
-    # of the grid and looked complete.
-    combined_path = output_dir / combined_name
-    parts = []
-    for f in sorted(output_dir.glob("*.csv")):
-        if f.name == combined_name:
-            continue
-        try:
-            parts.append(pd.read_csv(f, low_memory=False))
-        except Exception as exc:  # pragma: no cover - unreadable partial file
-            raise RuntimeError(f"cannot read {f}: {exc}") from exc
-    if not parts:
-        raise RuntimeError(f"no per-scenario results found in {output_dir}")
-    combined = pd.concat(parts, ignore_index=True)
-
-    # Atomic replace: two jobs finishing together would otherwise interleave two
-    # non-atomic writes into a corrupt file.
-    tmp = combined_path.with_suffix(".csv.tmp")
-    combined.to_csv(tmp, index=False)
-    os.replace(tmp, combined_path)
-
-    print(f"\nCombined {len(parts)} scenario files -> {combined_path}")
-    print(f"Total rows: {len(combined):,}")
-    if "scenario" in combined:
-        print(f"Scenarios present: {combined['scenario'].nunique()}")
+    # The run is split across several SLURM jobs sharing one output directory.
+    # Any producer that writes a combined file races the others, and the last to
+    # finish wins -- silently, on the only file the figures read. Globbing inside
+    # the producer does not fix it either: a shard that fails, is delayed, is
+    # resumed, or leaves a stale file behind still yields a plausible result.
+    #
+    # scripts/aggregate_benchmark.py runs ONCE, under afterok on every producer,
+    # and refuses to write unless the shards form exactly the expected scenario
+    # set under one manifest. See its module docstring.
+    combined = pd.concat(all_results, ignore_index=True) if all_results else pd.DataFrame()
+    print(f"\nWrote {len(all_results)} scenario file(s) to {output_dir}")
+    print("Combined results are written by scripts/aggregate_benchmark.py, "
+          "which runs after all shards succeed.")
     return combined
 
 
