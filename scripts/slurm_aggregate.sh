@@ -19,8 +19,24 @@ mkdir -p logs
 export SCTRIAL_MANUSCRIPT_DIR="$PROJECT/manuscript"
 
 GRID="${1:-core}"
-N_ITER="${2:-200}"
+MIN_ITER="${2:-200}"
 
-echo "=== aggregate $GRID ($(date)) ==="
-micromamba run -n sctrial python scripts/aggregate_benchmark.py "$GRID" --iterations "$N_ITER"
+# The manifest hash is READ FROM THE FROZEN CONFIG, never passed by hand. It
+# names the directory the producers wrote to, and a mistyped or stale hash would
+# either aggregate the wrong run or fail to find one -- both after the compute
+# has already been spent. There is exactly one frozen configuration, so there is
+# exactly one correct answer and no reason for an operator to supply it.
+SHA=$(micromamba run -n sctrial python -c "
+import json, sys
+p = '$PROJECT/manuscript/benchmark/validation/frozen_simulator_config.json'
+m = (json.load(open(p)).get('manifest') or {})
+sha = m.get('manifest_sha256') or m.get('config_sha256')
+if not sha:
+    sys.exit('frozen config carries no manifest hash; re-run calibrate_simulator.py freeze')
+print(sha)
+")
+
+echo "=== aggregate $GRID under manifest ${SHA:0:12} ($(date)) ==="
+micromamba run -n sctrial python scripts/aggregate_benchmark.py \
+    "$GRID" "$SHA" --min-iterations "$MIN_ITER"
 echo "=== done ($(date)) ==="
