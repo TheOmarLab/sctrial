@@ -40,10 +40,38 @@ _TNBC_CALIBRATION = {
     "mean_cells_per_visit": 5898,    # TNBC mean cells/participant-visit
     "baseline_mean": -12.864,        # log(gene_mean / library_size), TNBC
     "baseline_sd": 2.667,
-    "target_library_size": 2981,     # int(exp(library_size_mean=8.0))
+    "target_library_size": 2980,     # int(exp(library_size_mean=8.0))
     "library_size_sd": 0.761,
-    "participant_sd": 0.1,           # max(0.1, sqrt(ICC=0.0012)) — TNBC ICC floor
+    "participant_sd": 0.1,           # max(0.1, sqrt(ICC=0.0015)) — TNBC ICC floor
 }
+
+
+def _calibration_to_sim_kwargs(cal: dict) -> dict:
+    """Convert calibration_tnbc.json dict to SimulationConfig kwargs."""
+    return {
+        "mean_cells_per_visit": int(cal["mean_cells_per_visit"]),
+        "baseline_mean": cal["baseline_mean"],
+        "baseline_sd": cal["baseline_sd"],
+        "target_library_size": int(np.exp(cal["library_size_mean"])),
+        "library_size_sd": cal["library_size_sd"],
+        "participant_sd": max(0.1, np.sqrt(cal["participant_icc"])),
+    }
+
+
+def _load_calibration(calibration_json: str | Path | None) -> dict:
+    """Load and convert a calibration JSON file; fall back to hardcoded TNBC values."""
+    import json
+
+    if calibration_json is not None:
+        path = Path(calibration_json)
+        if path.exists():
+            with open(path) as f:
+                cal = json.load(f)
+            logger.info("Loaded calibration from %s", path)
+            return _calibration_to_sim_kwargs(cal)
+        else:
+            logger.warning("calibration_json not found at %s — using hardcoded fallback", path)
+    return _TNBC_CALIBRATION
 
 # Core methods
 CORE_METHODS = [
@@ -77,7 +105,7 @@ def _make_effects(n_signal: int, beta: float, mixed_sign: bool = False) -> dict:
     return effects
 
 
-def build_scenario_grid(design: str = "two_arm") -> list[dict]:
+def build_scenario_grid(design: str = "two_arm", calibration: dict | None = None) -> list[dict]:
     """Build the full scenario grid for one design family.
 
     Returns list of dicts, each with keys: name, config_kwargs, description.
@@ -205,16 +233,17 @@ def build_scenario_grid(design: str = "two_arm") -> list[dict]:
             }
         )
 
-    # Apply TNBC calibration as base distributional params.
+    # Apply calibration as base distributional params.
     # Scenario-specific values (e.g. participant_sd=0.8 in null_hetero,
     # mean_cells_per_visit in varying-cells scenarios) override the base.
+    base = calibration if calibration is not None else _TNBC_CALIBRATION
     for s in scenarios:
-        s["config_kwargs"] = {**_TNBC_CALIBRATION, **s["config_kwargs"]}
+        s["config_kwargs"] = {**base, **s["config_kwargs"]}
 
     return scenarios
 
 
-def build_sensitivity_grid(design: str = "two_arm") -> list[dict]:
+def build_sensitivity_grid(design: str = "two_arm", calibration: dict | None = None) -> list[dict]:
     """Build signal-fraction sensitivity scenarios.
 
     Tests how null-gene FPR depends on gene-panel size and signal fraction.
@@ -269,8 +298,9 @@ def build_sensitivity_grid(design: str = "two_arm") -> list[dict]:
                 }
             )
 
+    base = calibration if calibration is not None else _TNBC_CALIBRATION
     for s in scenarios:
-        s["config_kwargs"] = {**_TNBC_CALIBRATION, **s["config_kwargs"]}
+        s["config_kwargs"] = {**base, **s["config_kwargs"]}
 
     return scenarios
 
@@ -443,6 +473,7 @@ def run_benchmark(
     n_jobs: int = 1,
     output_dir: str | Path = "benchmark_results",
     resume: bool = True,
+    calibration_json: str | Path | None = None,
 ) -> pd.DataFrame:
     """Run the full NatMeth benchmark grid.
 
@@ -475,11 +506,13 @@ def run_benchmark(
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    calibration = _load_calibration(calibration_json)
+
     rng = np.random.default_rng(2024)
     all_results = []
 
     for design in designs:
-        scenarios = build_scenario_grid(design)
+        scenarios = build_scenario_grid(design, calibration=calibration)
         print(f"\n{'=' * 60}")
         print(f"Design: {design} — {len(scenarios)} scenarios × {n_iterations} iterations")
         print(f"Methods: {methods}")
@@ -561,6 +594,7 @@ def run_sensitivity_benchmark(
     n_jobs: int = 1,
     output_dir: str | Path = "benchmark_results",
     resume: bool = True,
+    calibration_json: str | Path | None = None,
 ) -> pd.DataFrame:
     """Run the signal-fraction sensitivity benchmark.
 
@@ -590,11 +624,13 @@ def run_sensitivity_benchmark(
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    calibration = _load_calibration(calibration_json)
+
     rng = np.random.default_rng(2025)
     all_results = []
 
     for design in designs:
-        scenarios = build_sensitivity_grid(design)
+        scenarios = build_sensitivity_grid(design, calibration=calibration)
         print(f"\n{'=' * 60}")
         print(f"SENSITIVITY: {design} — {len(scenarios)} scenarios × {n_iterations} iterations")
         print(f"Methods: {methods}")
