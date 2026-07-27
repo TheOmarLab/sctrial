@@ -461,6 +461,8 @@ def _build_manifest(cfg, out: Path, dataset: str, summary: dict) -> dict:
 
 def cmd_freeze(args) -> None:
     """Write the frozen configuration the definitive benchmark run must use."""
+    from sctrial.benchmark.simulator_v2 import SCENARIO_OWNED_FIELDS
+
     cfg, targets = _config_from_targets(args)
     out = _manuscript_dir()
     gate_summary = out / "gates" / "gate_summary.json"
@@ -522,8 +524,29 @@ def cmd_freeze(args) -> None:
                 "passed."
             )
 
+    # THE FROZEN OBJECT CARRIES NO EXPERIMENTAL DESIGN.
+    #
+    # The calibration describes the reference POPULATION: expression rates,
+    # dispersion, the three variance components, library-size and cell-yield
+    # pools. The scenario grid describes the EXPERIMENT: arm sizes, visits,
+    # signal, cell-yield condition. Conflating them collapsed the whole two-arm
+    # sample-size axis, because the anchor's retained 6-versus-5 design leaked in
+    # as `arm_ratio` and was read ahead of each scenario's `n_per_arm`.
+    #
+    # Consumers already strip these fields. Not WRITING them is the stronger fix:
+    # a consumer that forgets to strip, or a new consumer that never knew it had
+    # to, then cannot leak a design it was never given. The anchor's own design is
+    # kept alongside as provenance -- it is a real property of the TNBC Treg
+    # cohort and every longitudinal target was estimated on it -- under a key
+    # nothing loads as configuration.
+    full = asdict(cfg)
+    calibration = {k: v for k, v in full.items() if k not in SCENARIO_OWNED_FIELDS}
+    anchor_design = {k: v for k, v in full.items() if k in SCENARIO_OWNED_FIELDS}
+
     frozen = {
-        "config": asdict(cfg),
+        "config": calibration,
+        "anchor_design": anchor_design,
+        "scenario_owned_fields": list(SCENARIO_OWNED_FIELDS),
         "targets_source": str(out / f"{args.dataset}_sim_targets.json"),
         "gate_summary": summary,
         "dataset": args.dataset,

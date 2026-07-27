@@ -899,3 +899,111 @@ def test_figures_refuse_a_grid_without_a_completion_record(tmp_path):
         "the figure loader does not address results by manifest, so it can read a "
         "run other than the frozen one"
     )
+
+
+def test_the_frozen_calibration_carries_no_experimental_design():
+    """The frozen object must not be able to leak a design downstream.
+
+    Consumers strip scenario-owned fields, and that defence stays. This asserts
+    the PRODUCER side as well: the freeze writes calibration only, and records the
+    anchor's own design under a key nothing loads as configuration. A consumer
+    that forgets to strip -- or a new consumer that never knew it had to -- then
+    cannot leak a design it was never given.
+
+    This is the defect that collapsed the two-arm sample-size axis: the anchor's
+    retained 6-versus-5 split reached every scenario as `arm_ratio`, and
+    `build_params` reads it ahead of `n_per_arm`.
+    """
+    freeze_src = (
+        Path(__file__).resolve().parent.parent / "scripts" / "calibrate_simulator.py"
+    ).read_text(encoding="utf-8")
+
+    from sctrial.benchmark.simulator_v2 import SCENARIO_OWNED_FIELDS
+
+    assert "anchor_design" in freeze_src, (
+        "the freeze does not separate the anchor's design from the calibration"
+    )
+    assert 'if k not in SCENARIO_OWNED_FIELDS' in freeze_src, (
+        "the freeze writes scenario-owned fields into the config it hands to the "
+        "benchmark, so a design can still leak into every scenario"
+    )
+    for f in ("arm_ratio", "n_per_arm", "cells_per_pv_fixed"):
+        assert f in SCENARIO_OWNED_FIELDS, (
+            f"{f!r} is not scenario-owned, so the frozen calibration may dictate it"
+        )
+
+
+def test_scenario_contract_detects_a_leaked_design(tmp_path):
+    """The production validator must fail on the exact B1 signature.
+
+    Exercised directly rather than only through the integration test, because the
+    integration test's first version passed with the defect present: every
+    scenario specified every field, so each was protected by its own values and
+    only an omitted one could be captured.
+    """
+    from sctrial.benchmark.scenario_contract import check_scenario_results
+
+    scenario = {
+        "name": "null_n60",
+        "panel_size": 50,
+        "n_signal": 0,
+        "signal_fraction": 0.0,
+        "config_kwargs": {"design": "two_arm", "n_per_arm": 60, "arm_ratio": None},
+    }
+    # What the results looked like under B1: 60 requested, 6/5 simulated.
+    leaked = pd.DataFrame({
+        "scenario": ["null_n60"] * 4,
+        "iteration": [0, 0, 1, 1],
+        "method": ["sctrial_did"] * 4,
+        "n_treated": [6] * 4,
+        "n_control": [5] * 4,
+        "panel_size": [50] * 4,
+        "n_signal_realised": [0] * 4,
+        "cells_per_pv_min": [200.0] * 4,
+        "cells_per_pv_max": [900.0] * 4,
+    })
+    report = check_scenario_results("null_n60", scenario, leaked)
+    assert not report.ok
+    fields = {v.field for v in report.violations}
+    assert {"n_treated", "n_control"} <= fields, report.violations
+    with pytest.raises(RuntimeError, match="SCENARIO CONTRACT VIOLATED"):
+        report.raise_if_violated()
+
+    # The correct design passes.
+    good = leaked.assign(n_treated=60, n_control=60)
+    assert check_scenario_results("null_n60", scenario, good).ok
+
+
+def test_scenario_contract_detects_a_constant_cell_yield(tmp_path):
+    """A scenario that asked for a distribution must not receive one value.
+
+    This is the leak seen from the other direction, and it is the check that
+    would have caught a frozen `cells_per_pv_fixed` reaching a heterogeneous-yield
+    scenario.
+    """
+    from sctrial.benchmark.scenario_contract import check_scenario_results
+
+    scenario = {
+        "name": "null_hetero_n20",
+        "panel_size": 50,
+        "n_signal": 0,
+        "signal_fraction": 0.0,
+        # No cells_per_pv_fixed: the empirical distribution was requested.
+        "config_kwargs": {"design": "two_arm", "n_per_arm": 20, "arm_ratio": None},
+    }
+    base = {
+        "scenario": ["null_hetero_n20"] * 2,
+        "iteration": [0, 1],
+        "method": ["sctrial_did"] * 2,
+        "n_treated": [20] * 2, "n_control": [20] * 2,
+        "panel_size": [50] * 2, "n_signal_realised": [0] * 2,
+    }
+    constant = pd.DataFrame({**base, "cells_per_pv_min": [999.0] * 2,
+                             "cells_per_pv_max": [999.0] * 2})
+    report = check_scenario_results("null_hetero_n20", scenario, constant)
+    assert not report.ok
+    assert any(v.field == "cells_per_pv" for v in report.violations), report.violations
+
+    dispersed = pd.DataFrame({**base, "cells_per_pv_min": [37.0] * 2,
+                              "cells_per_pv_max": [1120.0] * 2})
+    assert check_scenario_results("null_hetero_n20", scenario, dispersed).ok
