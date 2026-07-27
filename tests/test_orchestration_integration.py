@@ -238,7 +238,7 @@ def test_aggregator_refuses_an_incomplete_grid(distributed_run, monkeypatch):
     agg.aggregate(layout, "core", "benchmark_combined.csv", 2, allow_non_adaptive=True)
     target = layout.combined_csv("benchmark_combined.csv")
     assert target.exists()
-    record = json.loads(layout.completion_marker().read_text())
+    record = json.loads(layout.completion_marker("core").read_text())
     assert record["n_scenarios"] == len(_CASES)
     combined = pd.read_csv(target)
     assert set(combined["scenario"].unique()) == _EXPECTED, (
@@ -374,4 +374,31 @@ def test_the_whole_chain_runs_under_the_real_scripts():
     assert "manifest_sha" in r.stdout, (
         "the aggregator must take the manifest explicitly; resolving it by "
         "convention is how stale results were read"
+    )
+
+
+def test_two_grids_do_not_overwrite_each_others_completion_marker(tmp_path):
+    """Core and sensitivity aggregate into ONE manifest directory.
+
+    They run as separate jobs, so a single shared completion marker would be
+    written twice and the survivor would attest to whichever finished last --
+    the same last-writer-wins defect as the combined file itself, one level up.
+    A figure checking that marker would then see a complete record while half the
+    benchmark was missing.
+    """
+    layout = ResultLayout(tmp_path / "results", "9" * 64).create()
+    core = layout.completion_marker("core")
+    sens = layout.completion_marker("sensitivity")
+    assert core != sens, (
+        "both grids write the same completion marker; the second silently "
+        "replaces the first"
+    )
+    core.write_text('{"grid": "core"}')
+    sens.write_text('{"grid": "sensitivity"}')
+    assert json.loads(core.read_text())["grid"] == "core"
+    assert json.loads(sens.read_text())["grid"] == "sensitivity"
+
+    # Their combined CSVs must not collide either.
+    assert layout.combined_csv("benchmark_combined.csv") != layout.combined_csv(
+        "sensitivity_combined.csv"
     )

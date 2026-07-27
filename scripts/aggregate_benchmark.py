@@ -256,7 +256,7 @@ def aggregate(
         "manifest_sha256": str(combined["manifest_sha256"].iloc[0]),
         "scenarios": sorted(present),
     }
-    with open(layout.completion_marker(), "w") as fh:
+    with open(layout.completion_marker(grid), "w") as fh:
         json.dump(record, fh, indent=2)
 
     print(f"combined {len(shards)} shards -> {target}")
@@ -264,7 +264,7 @@ def aggregate(
           f"manifest {record['manifest_sha256'][:12]}")
     print(f"  replicates {record['replicates_min']}-{record['replicates_max']}  "
           f"stop reasons {stops}")
-    print(f"  wrote completion record -> {layout.completion_marker()}")
+    print(f"  wrote completion record -> {layout.completion_marker(grid)}")
 
 
 def main() -> None:

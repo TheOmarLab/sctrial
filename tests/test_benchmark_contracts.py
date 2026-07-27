@@ -870,12 +870,12 @@ def test_figures_refuse_a_grid_without_a_completion_record(tmp_path):
     pd.DataFrame({"scenario": ["s"], "manifest_sha256": [sha]}).to_csv(csv, index=False)
 
     # A combined file WITHOUT the aggregator's completion marker.
-    assert not layout.completion_marker().exists()
+    assert not layout.completion_marker("sensitivity").exists()
     assert csv.exists()
 
     # The loader's own precondition: results exist, marker does not.
     resolved = require_layout(root, sha)
-    assert not resolved.completion_marker().exists(), (
+    assert not resolved.completion_marker("sensitivity").exists(), (
         "a combined file with no completion record must not look complete; it is "
         "what a single shard of the grid looks like"
     )

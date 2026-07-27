@@ -623,7 +623,7 @@ def _load_benchmark_data() -> pd.DataFrame:
     # one manifest, with a valid completion record per scenario. Without it, this
     # file may hold a single shard -- which is what a partial grid looks like:
     # plausible, and quietly missing 75% of the benchmark.
-    _complete = layout.completion_marker()
+    _complete = layout.completion_marker("sensitivity")
     if not _complete.exists():
         raise FileNotFoundError(
             f"{csv} has no completion record ({_complete.name}). It was "

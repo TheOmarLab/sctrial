@@ -83,9 +83,16 @@ class ResultLayout:
     def combined_csv(self, name: str = "benchmark_results.csv") -> Path:
         return self.combined / name
 
-    def completion_marker(self) -> Path:
-        """The run-level marker written by the aggregator once, at the end."""
-        return self.combined / "benchmark_complete.json"
+    def completion_marker(self, grid: str) -> Path:
+        """The marker written by the aggregator for ONE grid, at the end.
+
+        Per GRID, not per run. The core and sensitivity grids are aggregated by
+        separate jobs into the same manifest directory, so a single shared marker
+        would be written twice and the survivor would attest to whichever
+        finished last -- the same last-writer-wins defect as the combined file
+        itself, reintroduced one level up.
+        """
+        return self.combined / f"benchmark_complete_{grid}.json"
 
     def scenario_csv(self, scenario_id: str) -> Path:
         return self.scenarios / f"{scenario_id}.csv"
