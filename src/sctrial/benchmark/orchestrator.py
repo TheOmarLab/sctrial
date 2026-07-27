@@ -28,6 +28,7 @@ from .scenario_contract import (
     check_simulation,
     completion_record,
 )
+from .seeds import stable_seed
 from .simulator_v2 import TranscriptomeSimConfig, make_signal, nested_panels, simulate_trial_v2
 
 logger = logging.getLogger(__name__)
@@ -193,10 +194,13 @@ def scenario_seed(master_seed: int, scenario_name: str, replicate: int) -> int:
     hashlib rather than hash(): Python salts str hashing per process, so hash()
     is not reproducible across runs at all.
     """
-    import hashlib
 
-    key = f"{master_seed}|{scenario_name}|{replicate}".encode()
-    return int.from_bytes(hashlib.sha256(key).digest()[:4], "big")
+    # Delegates to the ONE stable-seed helper rather than repeating the idiom.
+    # The copy here was correct; the copy in calibration.py used `hash()` and was
+    # not, and having two implementations is how that survived unnoticed.
+    return stable_seed(
+        "scenario_replicate_v1", master_seed, scenario_name, replicate, bits=32
+    )
 
 
 def _scenario(

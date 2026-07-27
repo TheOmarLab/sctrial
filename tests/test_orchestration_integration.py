@@ -461,3 +461,116 @@ def test_one_grids_shards_are_invisible_to_the_other_aggregator(tmp_path, monkey
     assert json.loads(
         layout.completion_marker("sensitivity").read_text()
     )["grid"] == "sensitivity"
+
+
+def _finalizer():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "_fin", ROOT / "scripts" / "finalize_benchmark.py"
+    )
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _make_grid(layout, grid, names, sha):
+    """Minimal but structurally complete outputs for one grid."""
+    sdir, cdir = layout.scenarios_for(grid), layout.completion_for(grid)
+    sdir.mkdir(parents=True, exist_ok=True)
+    cdir.mkdir(parents=True, exist_ok=True)
+    layout.combined.mkdir(parents=True, exist_ok=True)
+    rows = []
+    for n in names:
+        rows += [{"scenario": n, "iteration": i, "manifest_sha256": sha} for i in range(2)]
+    combined = "benchmark_combined.csv" if grid == "core" else "sensitivity_combined.csv"
+    pd.DataFrame(rows).to_csv(layout.combined_csv(combined), index=False)
+    layout.completion_marker(grid).write_text(json.dumps({
+        "grid": grid, "n_scenarios": len(names), "n_rows": len(rows),
+        "replicates_min": 2, "replicates_max": 2,
+        "stop_reasons": {"adaptive_disabled": len(names)},
+        "manifest_sha256": sha, "scenarios": sorted(names),
+    }))
+
+
+def test_finalizer_refuses_when_one_grid_is_missing(tmp_path, monkeypatch):
+    """The asymmetric failure: core succeeds, sensitivity never finishes.
+
+    A grid-level marker cannot catch this. Without a whole-benchmark marker a
+    figure script finds a perfectly valid core completion record and regenerates
+    manuscript outputs from half the benchmark, with no error anywhere.
+    """
+    sha = "1" * 64
+    layout = ResultLayout(tmp_path / "results", sha).create()
+    fin = _finalizer()
+    monkeypatch.setattr(fin, "_expected", lambda g: (
+        {"two_arm__c1", "two_arm__c2"} if g == "core" else {"two_arm__s1"}
+    ))
+
+    # Only core finished.
+    _make_grid(layout, "core", ["two_arm__c1", "two_arm__c2"], sha)
+    with pytest.raises(SystemExit, match="no completion marker"):
+        fin.finalize(layout)
+    assert not layout.publication_marker().exists(), (
+        "a publication marker was written while a whole grid was missing"
+    )
+
+    # Now sensitivity finishes too.
+    _make_grid(layout, "sensitivity", ["two_arm__s1"], sha)
+    rec = fin.finalize(layout)
+    assert layout.publication_marker().exists()
+    assert rec["n_scenarios_total"] == 3 == rec["expected_total"]
+
+
+def test_finalizer_refuses_a_missing_scenario_in_an_otherwise_complete_grid(tmp_path, monkeypatch):
+    """Each grid can look internally consistent while the union is short."""
+    sha = "2" * 64
+    layout = ResultLayout(tmp_path / "results", sha).create()
+    fin = _finalizer()
+    monkeypatch.setattr(fin, "_expected", lambda g: (
+        {"two_arm__c1", "two_arm__c2"} if g == "core" else {"two_arm__s1", "two_arm__s2"}
+    ))
+    _make_grid(layout, "core", ["two_arm__c1", "two_arm__c2"], sha)
+    _make_grid(layout, "sensitivity", ["two_arm__s1"], sha)       # s2 absent
+    with pytest.raises(SystemExit, match="MISSING"):
+        fin.finalize(layout)
+    assert not layout.publication_marker().exists()
+
+
+def test_finalizer_refuses_overlapping_grids(tmp_path, monkeypatch):
+    """A scenario appearing in both grids would be counted twice."""
+    sha = "3" * 64
+    layout = ResultLayout(tmp_path / "results", sha).create()
+    fin = _finalizer()
+    monkeypatch.setattr(fin, "_expected", lambda g: {"two_arm__x"})
+    _make_grid(layout, "core", ["two_arm__x"], sha)
+    _make_grid(layout, "sensitivity", ["two_arm__x"], sha)
+    with pytest.raises(SystemExit, match="appears in both"):
+        fin.finalize(layout)
+    assert not layout.publication_marker().exists()
+
+
+def test_finalizer_refuses_mixed_manifests(tmp_path, monkeypatch):
+    """Two runs must not be joined into one publication dataset."""
+    sha = "4" * 64
+    layout = ResultLayout(tmp_path / "results", sha).create()
+    fin = _finalizer()
+    monkeypatch.setattr(fin, "_expected", lambda g: (
+        {"two_arm__c1"} if g == "core" else {"two_arm__s1"}
+    ))
+    _make_grid(layout, "core", ["two_arm__c1"], sha)
+    _make_grid(layout, "sensitivity", ["two_arm__s1"], "5" * 64)
+    with pytest.raises(SystemExit, match="manifests"):
+        fin.finalize(layout)
+    assert not layout.publication_marker().exists()
+
+
+def test_figure_loader_requires_the_publication_marker():
+    """A grid marker must not be enough to draw manuscript figures."""
+    loader = (
+        ROOT / "manuscript_figures" / "main" / "figure3_robustness_benchmarking.py"
+    ).read_text(encoding="utf-8")
+    assert "publication_marker" in loader, (
+        "the figure loader accepts a grid-level completion marker, so panels "
+        "could be drawn while an entire grid is missing"
+    )

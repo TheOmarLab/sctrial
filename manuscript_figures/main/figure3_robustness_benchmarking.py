@@ -623,6 +623,20 @@ def _load_benchmark_data() -> pd.DataFrame:
     # one manifest, with a valid completion record per scenario. Without it, this
     # file may hold a single shard -- which is what a partial grid looks like:
     # plausible, and quietly missing 75% of the benchmark.
+    # The WHOLE-BENCHMARK marker, not this grid's. A grid marker only says the
+    # sensitivity aggregation succeeded; the core grid could have failed entirely
+    # and these panels would still be drawn. The finalizer writes the publication
+    # marker only after checking that the union of both grids equals the frozen
+    # expected scenario set exactly, with no overlap and one manifest.
+    _pub = layout.publication_marker()
+    if not _pub.exists():
+        raise FileNotFoundError(
+            f"no publication completion marker ({_pub.name}) for manifest "
+            f"{layout.manifest_sha[:12]}. Figures are drawn only from a benchmark "
+            "verified complete across ALL grids by "
+            "scripts/finalize_benchmark.py; a grid-level marker is not sufficient, "
+            "because one grid can succeed while another never finishes."
+        )
     _complete = layout.completion_marker("sensitivity")
     if not _complete.exists():
         raise FileNotFoundError(

@@ -109,6 +109,21 @@ class ResultLayout:
         """
         return self.combined / f"benchmark_complete_{grid}.json"
 
+    def publication_marker(self) -> Path:
+        """The WHOLE-BENCHMARK marker, written only by the finalizer.
+
+        Grid-level markers say "core finished" or "sensitivity finished". Neither
+        says "the manuscript benchmark is complete", and the asymmetric failure is
+        real: core aggregates successfully, sensitivity never finishes, and a
+        figure script finds a perfectly valid core marker and regenerates outputs
+        from half the benchmark.
+
+        This project has already met both other members of that class -- several
+        jobs writing one combined file, and two grids sharing one scenario
+        directory -- so the third is closed here rather than left to discipline.
+        """
+        return self.base / "publication_complete.json"
+
     def scenario_csv(self, scenario_id: str, grid: str | None = None) -> Path:
         base = self.scenarios_for(grid) if grid else self.scenarios
         return base / f"{scenario_id}.csv"

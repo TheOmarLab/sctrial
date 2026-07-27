@@ -44,6 +44,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from .seeds import stable_seed
+
 __all__ = [
     "SummaryAccumulator",
     "summarize_blocks",
@@ -179,9 +181,24 @@ class SummaryAccumulator:
         # Two independent halves of the same cells share the biological terms and
         # differ only by sampling noise, so their difference estimates that noise
         # directly and it can be subtracted off.
+        # STABLE ACROSS PROCESSES. Previously seeded from
+        # `hash((participant, visit, stratum))`, and `hash()` on strings is salted
+        # by PYTHONHASHSEED, which CPython randomises per interpreter process. The
+        # split-half partition -- and therefore sigma_b, sigma_u, sigma_e, the
+        # frozen calibration derived from them, the bootstrap acceptance tolerance
+        # and the gate ledger -- differed on every run. Measured: two gate runs
+        # under the identical commit produced tolerances differing by up to 3%,
+        # and four processes gave bootstrap digests that agreed only when
+        # PYTHONHASHSEED was pinned.
+        #
+        # `counts` rows arrive in the order the caller supplied, which is a
+        # deterministic pandas groupby ordering, so shuffling a fixed-length mask
+        # is reproducible once the seed is.
         half = np.zeros(n_cells, dtype=bool)
         half[: n_cells // 2] = True
-        rs = np.random.default_rng(abs(hash((participant, visit, stratum))) % (2**32))
+        rs = np.random.default_rng(
+            stable_seed("calibration_split_half_v1", participant, visit, stratum)
+        )
         rs.shuffle(half)
         sum_a = counts[half].sum(axis=0).astype(np.float64)
         sum_b = counts[~half].sum(axis=0).astype(np.float64)
