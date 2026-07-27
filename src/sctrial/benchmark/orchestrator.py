@@ -339,7 +339,7 @@ def _run_single_iteration(args: tuple) -> list[dict]:
                     "ci_hi": r.get("ci_hi", np.nan),
                     "converged": r.get("converged", False),
                     "failure_mode": r.get("failure_mode", "numerical"),
-                    "runtime_seconds": elapsed / len(gene_cols),
+                    "runtime_seconds": elapsed,
                     "n_per_arm": cfg.n_per_arm,
                     "mean_cells": cfg.mean_cells_per_visit,
                 }
