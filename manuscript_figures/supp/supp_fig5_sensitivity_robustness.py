@@ -44,7 +44,6 @@ from scipy import stats as sp_stats
 
 from .._shared import (
     COLORS,
-    MANUSCRIPT_DIR,
     SUPP_OUTPUT,
     TrialDesign,
     add_log1p_cpm_layer,
@@ -1633,7 +1632,7 @@ def _panel_power_curves(data: dict) -> plt.Figure | None:
 # ======================================================================
 
 # See figure3: derive from MANUSCRIPT_DIR so the HPC checkout depth is honoured.
-_BENCHMARK_CSV = MANUSCRIPT_DIR / "benchmark" / "sensitivity" / "sensitivity_combined.csv"
+# Path resolution lives in figure3's loader, which this delegates to.
 
 # Imported from Figure 3, not restated. These were hand-maintained duplicates, so
 # a method added to CORE_METHODS would have appeared in the main figure and
@@ -1647,7 +1646,7 @@ from ..main.figure3_robustness_benchmarking import (  # noqa: E402
 )
 
 _PANEL_SIZES = [50, 200, 500, 2000]
-_SIGNAL_FRACTIONS = [1, 5, 10, 20]
+_SIGNAL_FRACTIONS = [2, 4, 10, 20]
 
 
 def _load_benchmark_data():

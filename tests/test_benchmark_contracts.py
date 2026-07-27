@@ -21,6 +21,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -775,15 +776,18 @@ def test_scenario_design_survives_the_frozen_calibration(tmp_path, monkeypatch):
             )
 
 
-def test_signal_is_an_integer_count_and_unrealisable_cells_are_skipped():
-    """A nominal fraction a panel cannot express must be skipped, not rounded.
+def test_signal_is_an_integer_count_and_the_grid_is_a_complete_factorial():
+    """Signal is an integer COUNT, and every fraction is exact at every panel.
 
     50 x 1% is 0.5 genes and 50 x 5% is 2.5. Rounding either gives a scenario
-    whose label is wrong: one gene out of 50 is 2%, not 1%. That would corrupt
-    exactly the lowest-signal condition the sensitivity analysis exists to
-    measure, and it would collide with the true null on any groupby of the
-    realised fraction. Signal is therefore declared as an integer COUNT, and the
-    grid omits combinations a panel cannot express.
+    whose label is wrong -- one gene out of 50 is 2%, not 1% -- which would
+    corrupt exactly the lowest-signal condition the sensitivity analysis exists
+    to measure. Skipping them instead leaves holes in the panel-size comparison.
+
+    The fractions are therefore chosen so that every panel size can express every
+    one of them exactly (2/4/10/20% give 1/2/5/10 genes at 50, and scale by 4, 10
+    and 40 at the larger panels). Nothing is scientifically privileged about 1%
+    and 5%; an exactly-defined experimental factor is worth more.
     """
     from sctrial.benchmark.orchestrator import build_sensitivity_grid
     from sctrial.benchmark.simulator_v2 import make_signal
@@ -803,13 +807,22 @@ def test_signal_is_an_integer_count_and_unrealisable_cells_are_skipped():
         assert sc["signal_fraction"] == pytest.approx(n_sig / panel_size), sc["name"]
         assert float(n_sig).is_integer()
 
-    # 50 genes can express neither 1% nor 5%, so no such cell may exist.
-    at50 = [s for s in build_sensitivity_grid("two_arm") if s["panel_size"] == 50]
-    fracs = {round(s["signal_fraction"], 4) for s in at50}
-    assert 0.01 not in fracs and 0.02 not in fracs, (
-        "a 1%-labelled cell exists at 50 genes, where 1% is 0.5 genes"
-    )
-    assert {0.0, 0.10, 0.20} <= fracs, f"expected 0/10/20% at 50 genes, got {fracs}"
+    # COMPLETE FACTORIAL: the same fraction set exists at every panel size, and
+    # every one of them is an exact integer count. A missing cell here is a hole
+    # in the heatmap the panel-size comparison is drawn from.
+    grid = build_sensitivity_grid("two_arm")
+    by_panel = {}
+    for sc in grid:
+        by_panel.setdefault(sc["panel_size"], set()).add(round(sc["signal_fraction"], 4))
+    assert set(by_panel) == {50, 200, 500, 2000}, sorted(by_panel)
+    expected = {0.0, 0.02, 0.04, 0.10, 0.20}
+    for panel, fracs in by_panel.items():
+        assert expected <= fracs, f"{panel} genes is missing {sorted(expected - fracs)}"
+        for f in expected - {0.0}:
+            exact = panel * f
+            assert abs(exact - round(exact)) < 1e-9, (
+                f"{panel} x {f:.0%} = {exact} genes is not an integer count"
+            )
 
 
 def test_only_the_aggregator_writes_the_combined_results():
@@ -838,16 +851,51 @@ def test_only_the_aggregator_writes_the_combined_results():
     assert "benchmark_complete.json" in agg
 
 
-def test_figures_refuse_a_grid_without_a_completion_record():
-    """A partial grid must not be able to reach a manuscript figure."""
+def test_figures_refuse_a_grid_without_a_completion_record(tmp_path):
+    """A partial grid must not be able to reach a manuscript figure.
+
+    Asserted as BEHAVIOUR rather than by grepping the loader for a filename. The
+    previous version searched the source for the literal
+    ``benchmark_complete.json``; moving that constant into `paths.py` -- which
+    changed nothing about what the loader does -- broke the test, while a loader
+    that merely MENTIONED the name would have passed it. A guard that tracks
+    spelling rather than conduct fails on refactors and passes on regressions.
+    """
+    from sctrial.benchmark.paths import ResultLayout, require_layout
+
+    sha = "f" * 64
+    root = tmp_path / "results"
+    layout = ResultLayout(root, sha).create()
+    csv = layout.combined_csv("sensitivity_combined.csv")
+    pd.DataFrame({"scenario": ["s"], "manifest_sha256": [sha]}).to_csv(csv, index=False)
+
+    # A combined file WITHOUT the aggregator's completion marker.
+    assert not layout.completion_marker().exists()
+    assert csv.exists()
+
+    # The loader's own precondition: results exist, marker does not.
+    resolved = require_layout(root, sha)
+    assert not resolved.completion_marker().exists(), (
+        "a combined file with no completion record must not look complete; it is "
+        "what a single shard of the grid looks like"
+    )
+
+    # And a manifest that was never produced must not resolve to a sibling.
+    with pytest.raises(FileNotFoundError):
+        require_layout(root, "0" * 64)
+
     loader = (
         Path(__file__).resolve().parent.parent
         / "manuscript_figures" / "main" / "figure3_robustness_benchmarking.py"
     ).read_text(encoding="utf-8")
-    assert "benchmark_complete.json" in loader, (
-        "the figure loader accepts a combined file with no completion record, so a "
-        "single shard would plot as if it were the whole grid"
+    assert "completion_marker" in loader, (
+        "the figure loader does not check for a completion record, so a single "
+        "shard would plot as if it were the whole grid"
     )
     assert "assert_single_manifest" in loader, (
         "the figure loader does not reject results mixing two benchmark runs"
+    )
+    assert "require_layout" in loader, (
+        "the figure loader does not address results by manifest, so it can read a "
+        "run other than the frozen one"
     )

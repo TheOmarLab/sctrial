@@ -59,6 +59,17 @@ def phase_validate(n_jobs: int):
 
 
 
+def _layout(manifest: dict):
+    """The manifest-scoped result tree for this run.
+
+    Producers write scenario CSVs and per-scenario completion records here.
+    Nothing else in the pipeline resolves a results directory by name or date.
+    """
+    from sctrial.benchmark.paths import ResultLayout
+
+    return ResultLayout(OUTPUT_DIR / "results", manifest["manifest_sha256"])
+
+
 def _load_frozen_manifest() -> dict:
     """The manifest stamped onto every result row."""
     import json as _json
@@ -209,7 +220,9 @@ def phase_simulate(n_jobs: int, n_iterations: int, designs=None):
     designs = designs or ["two_arm", "single_arm"]
     frozen = _load_frozen_config()
     manifest = _load_frozen_manifest()
-    out_dir = OUTPUT_DIR / "simulation"
+    # Manifest-scoped: results are addressed by the configuration that produced
+    # them, so a superseded run cannot be adopted by a resume or read by a figure.
+    out_dir = _layout(manifest).create().scenarios
     print("=" * 60)
     print("PHASE 2: Simulation Benchmark")
     print(f"  {n_iterations} iterations × 2 designs × ~30 scenarios × 6 methods")
@@ -286,7 +299,7 @@ def phase_sensitivity(n_jobs: int, n_iterations: int, designs=None, panels=None)
 
     frozen = _load_frozen_config()
     manifest = _load_frozen_manifest()
-    out_dir = OUTPUT_DIR / "sensitivity"
+    out_dir = _layout(manifest).create().scenarios
     print("=" * 60)
     print("PHASE 5: Signal-Fraction Sensitivity Benchmark")
     print(f"  {n_iterations} iterations per scenario")

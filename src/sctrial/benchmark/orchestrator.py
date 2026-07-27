@@ -13,6 +13,7 @@ Usage::
 
 from __future__ import annotations
 
+import json
 import logging
 import multiprocessing as mp
 import time
@@ -22,6 +23,11 @@ import numpy as np
 import pandas as pd
 
 from .contracts import METHOD_ESTIMAND, prepare_inputs
+from .scenario_contract import (
+    check_scenario_results,
+    check_simulation,
+    completion_record,
+)
 from .simulator_v2 import TranscriptomeSimConfig, make_signal, nested_panels, simulate_trial_v2
 
 logger = logging.getLogger(__name__)
@@ -102,6 +108,10 @@ def _needs_more_replicates(rows: list, n_done: int) -> tuple[bool, str]:
 
 _PANEL = 50
 _SIGNAL_FRACTION = 0.20
+
+# Exactly realisable at 50, 200, 500 and 2000 genes, so the panel-size x
+# signal-burden grid is a complete factorial with no missing cells.
+_SIGNAL_FRACTIONS = (0.02, 0.04, 0.10, 0.20)
 _N_ITERATIONS = 200
 _CELLS = 500
 
@@ -322,13 +332,21 @@ def build_sensitivity_grid(design: str = "two_arm", panels=None) -> list[dict]:
     Panels are NESTED subsets of one simulated transcriptome, so a panel-size
     effect is separable from a gene-identity effect.
 
-    SIGNAL IS AN INTEGER COUNT, and a nominal fraction a panel cannot express is
-    SKIPPED rather than rounded. 50 x 1% is 0.5 genes; one gene out of 50 is 2%,
-    not 1%. Simulating one gene and labelling it 1% would corrupt exactly the
-    lowest-signal condition this analysis exists to measure, and it would collide
-    with the true null on any groupby of the realised fraction. At 50 genes both
-    1% and 5% are unrealisable, so that panel contributes only 10% and 20%; the
-    1% condition begins at 200 genes, where it is exactly 2 genes.
+    SIGNAL IS AN INTEGER COUNT, and the fractions are chosen to be EXACTLY
+    realisable at every panel size, so the grid is a complete factorial:
+
+        fraction     50   200   500  2000
+            2%        1     4    10    40
+            4%        2     8    20    80
+           10%        5    20    50   200
+           20%       10    40   100   400
+
+    The earlier 1% and 5% are not realisable at 50 genes (0.5 and 2.5 genes).
+    Rounding them would mislabel the lowest-signal condition -- one gene out of 50
+    is 2%, not 1% -- and skipping them instead leaves holes in the very panel-size
+    comparison the analysis exists to make. Nothing is scientifically privileged
+    about 1% and 5%; they were sensitivity values. 2% and 4% are more rigorous
+    because the experimental factor is then exactly defined everywhere.
     """
     s: list[dict] = []
     n_per_arm = 40
@@ -345,9 +363,11 @@ def build_sensitivity_grid(design: str = "two_arm", panels=None) -> list[dict]:
                 cells_per_pv_fixed=_CELLS,
             )
         )
-        for frac in (0.01, 0.05, 0.10, 0.20):
+        for frac in _SIGNAL_FRACTIONS:
             exact = panel * frac
             if abs(exact - round(exact)) > 1e-9 or exact < 1:
+                # Should never happen with the chosen fractions; kept so a future
+                # edit that breaks exactness is announced rather than rounded.
                 skipped.append(f"{panel}g x {frac:.0%} ({exact:g} genes)")
                 continue
             n_sig = int(round(exact))
@@ -441,19 +461,16 @@ def _run_single_iteration(args: tuple) -> list[dict]:
     _cells = sim["pseudobulk_counts"]["n_cells"].to_numpy(dtype=float)
     cells_median = float(np.median(_cells))
     cells_min, cells_max = float(_cells.min()), float(_cells.max())
-    if cfg.arm_ratio is None and cfg.design == "two_arm":
-        expected = 2 * cfg.n_per_arm
-        if len(realised_arms) != expected:
-            raise RuntimeError(
-                f"{scenario_name}: requested n_per_arm={cfg.n_per_arm} "
-                f"({expected} participants) but simulated {len(realised_arms)}. "
-                "A design field has leaked in from the frozen calibration."
-            )
-
+    # FULL requested-versus-realised contract, not just the arm count. Checks
+    # design, visits, cell yield, panel size and signal count against what the
+    # simulator actually produced. See benchmark/scenario_contract.py for why
+    # some fields are asserted exactly and others only by generating mode.
     inputs = prepare_inputs(sim, panel_genes)
     oracle = inputs["oracle"]
     design_type = cfg.design
     signal_genes = set(effects)
+
+    check_simulation(scenario, cfg, sim, panel_genes, signal_genes).raise_if_violated()
 
     rows = []
     for method in methods:
@@ -665,6 +682,11 @@ def _run_grid(
             all_rows: list = []
             done = 0
             target = n_iterations
+            # Adaptive stopping makes the replicate count a per-scenario OUTCOME.
+            # Recording WHY a scenario stopped is what lets the aggregator tell a
+            # legitimate early stop from a job that was killed mid-extension --
+            # both leave more rows than the base batch, so a count cannot.
+            stop_reason = "max_replicates_reached"
 
             def _flush(_rows=None, _path=csv_path) -> None:
                 pd.DataFrame(_rows if _rows is not None else all_rows).to_csv(
@@ -704,13 +726,23 @@ def _run_grid(
                 _flush()
 
                 if not adaptive:
+                    # NOT "precision_reached": adaptation was switched off, so no
+                    # precision target was ever evaluated. Claiming it would make
+                    # the stop reason unfalsifiable, and the aggregator refuses
+                    # non-adaptive shards in a definitive run for exactly this
+                    # reason -- a debug run must not be able to become a result.
+                    stop_reason = "adaptive_disabled"
                     break
                 more, why = _needs_more_replicates(all_rows, done)
                 if not more:
+                    stop_reason = (
+                        "max_replicates_reached" if done >= _MC_MAX else "precision_reached"
+                    )
                     print(f"    stopping at {done} replicates ({why})", flush=True)
                     break
                 extra = min(_MC_BATCH, _MC_MAX - done)
                 if extra <= 0:
+                    stop_reason = "max_replicates_reached"
                     break
                 print(f"    extending +{extra} replicates ({why})", flush=True)
                 target = done + extra
@@ -722,9 +754,41 @@ def _run_grid(
             if manifest is not None:
                 df["manifest_sha256"] = manifest["manifest_sha256"]
                 df["git_sha"] = manifest.get("git_sha", "unknown")
+            # SECOND GATE, on the recorded columns rather than the simulator
+            # object, so a defect in the RECORDING path is caught too. The
+            # redundancy is deliberate: the original leak survived because only
+            # one layer was ever checked.
+            report = check_scenario_results(
+                name, scenario, df,
+                manifest_sha=(manifest or {}).get("manifest_sha256"),
+            )
+            report.raise_if_violated()
+
             df.to_csv(csv_path, index=False)
+
+            # The completion record is written LAST, so its absence marks a
+            # truncated scenario. Nothing downstream treats a scenario as
+            # complete without it.
+            rec = completion_record(
+                name, scenario, df,
+                stop_reason=stop_reason,
+                max_replicates=_MC_MAX,
+                manifest_sha=(manifest or {}).get("manifest_sha256"),
+                mcse_target_fpr=_MCSE_TARGET_FPR,
+                mcse_target_power=_MCSE_TARGET_POWER,
+            )
+            rec["contract_checks"] = report.checked
+            comp_dir = output_dir.parent / "completion" if output_dir.name == "scenarios" \
+                else output_dir / "completion"
+            comp_dir.mkdir(parents=True, exist_ok=True)
+            (comp_dir / f"{name}.json").write_text(json.dumps(rec, indent=2, default=str))
+
             all_results.append(df)
-            print(f"    Done in {time.time() - t0:.0f}s -> {csv_path.name}")
+            print(
+                f"    Done in {time.time() - t0:.0f}s -> {csv_path.name} "
+                f"[{rec['n_replicates_completed']} reps, {stop_reason}, "
+                f"fpr MCSE {rec['fpr_mcse']:.4f}]"
+            )
 
     # PRODUCERS DO NOT WRITE THE COMBINED FILE.
     #

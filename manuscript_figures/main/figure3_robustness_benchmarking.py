@@ -533,7 +533,29 @@ def _prepare_scalability_data() -> dict:
 # hardcoded parents[4]: the checkout depth differs between the local tree and the
 # HPC, where parents[4] pointed outside the project and silently blanked the
 # benchmark panels.
-_BENCHMARK_CSV = MANUSCRIPT_DIR / "benchmark" / "sensitivity" / "sensitivity_combined.csv"
+# Results are addressed by the MANIFEST that produced them, never by "latest" or
+# by newest-file. The frozen configuration names the manifest; the loader reads
+# that directory and no other. A glob would happily pick up a development run
+# that finished after the definitive one, which is how stale results reached
+# figures before.
+_RESULTS_ROOT = MANUSCRIPT_DIR / "benchmark" / "results"
+_FROZEN_CONFIG = MANUSCRIPT_DIR / "benchmark" / "validation" / "frozen_simulator_config.json"
+
+
+def _frozen_manifest_sha() -> str:
+    """The manifest hash of the frozen configuration."""
+    import json as _json
+
+    if not _FROZEN_CONFIG.exists():
+        raise FileNotFoundError(
+            f"no frozen configuration at {_FROZEN_CONFIG}. Benchmark figures are "
+            "drawn only from a frozen run; run scripts/calibrate_simulator.py freeze."
+        )
+    m = (_json.loads(_FROZEN_CONFIG.read_text()).get("manifest") or {})
+    sha = m.get("manifest_sha256") or m.get("config_sha256")
+    if not sha:
+        raise ValueError(f"{_FROZEN_CONFIG} carries no manifest hash")
+    return str(sha)
 
 # Derived from the benchmark package rather than restated here. These four dicts
 # were previously hand-maintained copies, and a method added to CORE_METHODS
@@ -580,29 +602,36 @@ def _bench_methods() -> list[str]:
 _BENCH_METHODS = _bench_methods()
 
 _PANEL_SIZES = [50, 200, 500, 2000]
-_SIGNAL_FRACTIONS = [1, 5, 10, 20]
+# Exactly realisable at every panel size, so the grid is a complete factorial.
+# 1% and 5% are not (50 x 1% = 0.5 genes), and labelling one gene out of 50 as
+# "1%" is how an apparent panel-size dependence was manufactured before.
+_SIGNAL_FRACTIONS = [2, 4, 10, 20]
 
 
 def _load_benchmark_data() -> pd.DataFrame:
-    if not _BENCHMARK_CSV.exists():
+    from sctrial.benchmark.paths import require_layout
+
+    layout = require_layout(_RESULTS_ROOT, _frozen_manifest_sha())
+    csv = layout.combined_csv("sensitivity_combined.csv")
+    if not csv.exists():
         raise FileNotFoundError(
-            f"Benchmark results not found at {_BENCHMARK_CSV}.\n"
+            f"Benchmark results not found at {csv}.\n"
             "Run the signal-fraction sensitivity benchmark on HPC first."
         )
     # The completion record is written ONLY by the aggregator, and only after it
     # has verified that the shards form exactly the expected scenario set under
-    # one manifest. Without it, this file may hold a single shard -- which is
-    # what a partial grid looks like: plausible, and quietly missing 75% of the
-    # benchmark.
-    _complete = _BENCHMARK_CSV.parent / "benchmark_complete.json"
+    # one manifest, with a valid completion record per scenario. Without it, this
+    # file may hold a single shard -- which is what a partial grid looks like:
+    # plausible, and quietly missing 75% of the benchmark.
+    _complete = layout.completion_marker()
     if not _complete.exists():
         raise FileNotFoundError(
-            f"{_BENCHMARK_CSV} has no completion record ({_complete.name}). It was "
+            f"{csv} has no completion record ({_complete.name}). It was "
             "not produced by scripts/aggregate_benchmark.py and may be a single "
             "shard of the grid. Re-run the aggregator."
         )
 
-    df = pd.read_csv(_BENCHMARK_CSV, low_memory=False)
+    df = pd.read_csv(csv, low_memory=False)
 
     from sctrial.benchmark.manifest import assert_single_manifest
 
@@ -622,7 +651,7 @@ def _load_benchmark_data() -> pd.DataFrame:
     missing = required - set(df.columns)
     if missing:
         raise ValueError(
-            f"{_BENCHMARK_CSV} is missing {sorted(missing)}. It predates the "
+            f"{csv} is missing {sorted(missing)}. It predates the "
             "current runner and its scenario labels cannot be trusted; re-run the "
             "benchmark rather than parsing the scenario name."
         )
