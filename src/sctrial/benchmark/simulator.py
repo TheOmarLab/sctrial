@@ -94,12 +94,12 @@ class SimulationConfig:
     missing_rate: float = 0.0
     dispersion_mode: Literal["calibrated", "fixed", "extreme"] = "calibrated"
     dispersion_fixed: float = 10.0
-    participant_sd: float = 0.3
-    baseline_mean: float = 2.0
-    baseline_sd: float = 1.0
+    participant_sd: float = 0.1
+    baseline_mean: float = -12.0
+    baseline_sd: float = 2.7
     time_effect: float = 0.1
-    target_library_size: int = 10000
-    library_size_sd: float = 0.3
+    target_library_size: int = 3000
+    library_size_sd: float = 0.76
     seed: int = 42
 
 
@@ -157,7 +157,10 @@ def simulate_trial(cfg: SimulationConfig) -> dict:
         # Very low dispersion = extremely high variance
         theta = np.asarray(rng.uniform(0.01, 0.5, size=cfg.n_genes))
     else:
-        # Calibrated: match real scRNA-seq (θ typically 0.01-2.0, median ~0.15)
+        # Generic scRNA-seq prior (not per-dataset calibration):
+        # θ ~ LogNormal(log(0.15), 1.0), typical range 0.01-2.0.
+        # dispersion_median from calibrate_from_real_data is not wired here;
+        # this prior matches the broad distribution seen across real datasets.
         theta = np.asarray(rng.lognormal(np.log(0.15), 1.0, size=cfg.n_genes))
         theta = np.asarray(np.clip(theta, 0.01, 50.0))
 
@@ -426,7 +429,7 @@ def calibrate_from_real_data(
     # --- ICC from normalized expression ---
     iccs = []
     n_genes_sample = min(50, adata_real.n_vars)
-    gene_idx = np.random.choice(adata_real.n_vars, n_genes_sample, replace=False)
+    gene_idx = np.random.default_rng(42).choice(adata_real.n_vars, n_genes_sample, replace=False)
     for g in gene_idx:
         expr = X_norm[:, g]
         groups = obs[participant_col].values

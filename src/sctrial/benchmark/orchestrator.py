@@ -31,7 +31,19 @@ logger = logging.getLogger(__name__)
 _N_GENES = 50
 _N_SIGNAL = 10
 _N_ITERATIONS = 200
-_MEAN_CELLS = 500
+_MEAN_CELLS = 500  # kept for the explicit "varying cells" scenarios only
+
+# TNBC calibration params (Zhang et al., GSE169246 — calibrated in phase_validate).
+# Applied as base distributional params for all scenarios so Phase 2 simulations
+# match the real-data calibration source. Scenario-specific kwargs override these.
+_TNBC_CALIBRATION = {
+    "mean_cells_per_visit": 5898,    # TNBC mean cells/participant-visit
+    "baseline_mean": -12.864,        # log(gene_mean / library_size), TNBC
+    "baseline_sd": 2.667,
+    "target_library_size": 2981,     # int(exp(library_size_mean=8.0))
+    "library_size_sd": 0.761,
+    "participant_sd": 0.1,           # max(0.1, sqrt(ICC=0.0012)) — TNBC ICC floor
+}
 
 # Core methods
 CORE_METHODS = [
@@ -158,6 +170,7 @@ def build_scenario_grid(design: str = "two_arm") -> list[dict]:
         )
 
     # 6. Unequal arms (two-arm only)
+
     if design == "two_arm":
         for ratio in [(3, 7), (5, 10), (10, 20)]:
             scenarios.append(
@@ -191,6 +204,12 @@ def build_scenario_grid(design: str = "two_arm") -> list[dict]:
                 },
             }
         )
+
+    # Apply TNBC calibration as base distributional params.
+    # Scenario-specific values (e.g. participant_sd=0.8 in null_hetero,
+    # mean_cells_per_visit in varying-cells scenarios) override the base.
+    for s in scenarios:
+        s["config_kwargs"] = {**_TNBC_CALIBRATION, **s["config_kwargs"]}
 
     return scenarios
 
@@ -249,6 +268,9 @@ def build_sensitivity_grid(design: str = "two_arm") -> list[dict]:
                     },
                 }
             )
+
+    for s in scenarios:
+        s["config_kwargs"] = {**_TNBC_CALIBRATION, **s["config_kwargs"]}
 
     return scenarios
 

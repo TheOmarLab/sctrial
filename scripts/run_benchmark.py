@@ -77,23 +77,17 @@ def phase_validate(n_jobs: int):
 
     # 1. CALIBRATION SOURCE: TNBC (two-arm, raw UMI counts)
     print("\nLoading TNBC (CALIBRATION SOURCE, raw counts)...")
-    import anndata as ad
-    tnbc_path = Path(__file__).parent.parent.parent.parent / "try" / "GSE169246" / "tnbc_processed.h5ad"
-    if tnbc_path.exists():
-        tnbc = ad.read_h5ad(tnbc_path)
-        datasets["tnbc"] = {
-            "adata": tnbc,
-            "layer": None,                # .X is normalized
-            "count_layer": "counts",       # raw integer UMI counts
-            "participant_col": "participant_id", "visit_col": "visit",
-            "arm_col": "arm",
-            "design": "two_arm",
-            "role": "CALIBRATION",
-        }
-    else:
-        print(f"  FATAL: TNBC not found at {tnbc_path}")
-        print("  Cannot proceed — calibration source is required.")
-        return
+    from sctrial.datasets import load_tnbc_zhang
+    tnbc = load_tnbc_zhang()
+    datasets["tnbc"] = {
+        "adata": tnbc,
+        "layer": None,                # .X is normalized
+        "count_layer": "counts",       # raw integer UMI counts
+        "participant_col": "participant_id", "visit_col": "visit",
+        "arm_col": "arm",
+        "design": "two_arm",
+        "role": "CALIBRATION",
+    }
 
     # 2. HOLDOUT VALIDATION: Vaccine (single-arm, raw counts)
     print("Loading Vaccine (HOLDOUT VALIDATION, raw counts)...")
