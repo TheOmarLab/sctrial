@@ -490,6 +490,16 @@ def cmd_freeze(args) -> None:
         )
     manifest = _build_manifest(cfg, out, args.dataset, summary)
 
+    # The manifest's own hash, computed over every other field. Results are
+    # addressed by it on disk (results/<manifest_sha>/), stamped onto every row,
+    # and re-verified before a figure reads them, so it must exist and must be a
+    # hex digest -- `config_sha256` alone covers the calibration but not the
+    # source tree, the gate verdicts or the package versions, which are exactly
+    # the things that changed between the runs this is meant to keep apart.
+    from sctrial.benchmark.manifest import manifest_hash
+
+    manifest["manifest_sha256"] = manifest_hash(manifest)
+
     # A dirty tree cannot be reproduced from any commit, so a result produced
     # from it is unverifiable however carefully it is hashed.
     if manifest["git_dirty"] and not args.force:

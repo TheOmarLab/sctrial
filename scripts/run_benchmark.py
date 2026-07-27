@@ -77,8 +77,20 @@ def _load_frozen_manifest() -> dict:
     path = OUTPUT_DIR / "validation" / "frozen_simulator_config.json"
     with open(path) as fh:
         m = dict(_json.load(fh).get("manifest") or {})
-    # The row stamp uses whichever hash the freeze recorded.
-    m.setdefault("manifest_sha256", m.get("config_sha256", "unknown"))
+    # A missing hash is refused HERE rather than defaulted, because the default
+    # was reached: the previous freeze recorded no manifest_sha256, so every row
+    # would have been stamped "unknown" and every run would have shared one
+    # results directory -- reintroducing exactly the collision the manifest-scoped
+    # layout exists to prevent. Failing at load names the cause; failing later, at
+    # directory creation, names only the symptom.
+    sha = m.get("manifest_sha256") or m.get("config_sha256")
+    if not sha:
+        raise SystemExit(
+            f"{path} carries no manifest_sha256. It predates the freeze protocol. "
+            "Re-run scripts/calibrate_simulator.py freeze; results are addressed "
+            "by this hash and cannot be written without it."
+        )
+    m["manifest_sha256"] = sha
     m.setdefault("git_sha", m.get("git_commit", "unknown"))
     return m
 
