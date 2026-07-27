@@ -1007,3 +1007,105 @@ def test_scenario_contract_detects_a_constant_cell_yield(tmp_path):
     dispersed = pd.DataFrame({**base, "cells_per_pv_min": [37.0] * 2,
                               "cells_per_pv_max": [1120.0] * 2})
     assert check_scenario_results("null_hetero_n20", scenario, dispersed).ok
+
+
+def test_replicate_cap_is_raised_where_the_estimand_is_discrete():
+    """Scenarios with 1-2 signal genes get 2,500 replicates, not 1,000.
+
+    Per-replicate power is a mean over the signal genes, so with one signal gene
+    it is Bernoulli with a worst-case replicate SD of 0.5. Meeting the 0.01
+    power-MCSE target needs 2,500 replicates; at 1,000 the best achievable is
+    0.0158. Rather than relax the target where it is inconvenient -- which would
+    mean the prespecified precision requirement did not hold across the grid --
+    the common target is kept and the cap is raised for those scenarios, which
+    are the cheapest in the benchmark.
+
+    The rule keys on the SIGNAL GENE COUNT, never on the number of genes tested:
+    genes within a replicate share participants, libraries, random effects and
+    normalisation, so a 2,000-gene scenario does not carry 40x the independent
+    information. The independent unit is the simulated dataset.
+    """
+    import math
+
+    from sctrial.benchmark.orchestrator import (
+        _MC_MAX,
+        _MC_MAX_SPARSE_SIGNAL,
+        _MCSE_TARGET_POWER,
+        build_scenario_grid,
+        build_sensitivity_grid,
+        mc_max_for,
+    )
+
+    # The arithmetic that motivates the rule.
+    assert math.ceil((math.sqrt(0.25 / 1) / _MCSE_TARGET_POWER) ** 2) > _MC_MAX
+    assert math.ceil((math.sqrt(0.25 / 1) / _MCSE_TARGET_POWER) ** 2) <= _MC_MAX_SPARSE_SIGNAL
+
+    assert mc_max_for({"n_signal": 1}) == _MC_MAX_SPARSE_SIGNAL
+    assert mc_max_for({"n_signal": 2}) == _MC_MAX_SPARSE_SIGNAL
+    assert mc_max_for({"n_signal": 4}) == _MC_MAX
+    # A null scenario has no power criterion at all, so it keeps the base cap.
+    assert mc_max_for({"n_signal": 0}) == _MC_MAX
+
+    # The cap must not depend on the panel size.
+    for panel in (50, 200, 500, 2000):
+        assert mc_max_for({"n_signal": 1, "panel_size": panel}) == _MC_MAX_SPARSE_SIGNAL
+        assert mc_max_for({"n_signal": 10, "panel_size": panel}) == _MC_MAX
+
+    raised = [
+        sc["name"]
+        for fn, designs in (
+            (build_scenario_grid, ("two_arm", "single_arm")),
+            (build_sensitivity_grid, ("two_arm",)),
+        )
+        for d in designs
+        for sc in fn(d)
+        if mc_max_for(sc) == _MC_MAX_SPARSE_SIGNAL
+    ]
+    # Exactly the 50-gene panels at 2% and 4%, in both architectures.
+    assert len(raised) == 4, raised
+    assert all("g50" in n for n in raised), raised
+
+
+def test_manifest_hash_excludes_itself_and_is_order_independent():
+    """The digest must not depend on its own stored value or on key order.
+
+    A self-referential hash cannot be recomputed for verification, and an
+    order-dependent one changes when nothing about the content does. Results are
+    addressed by this digest on disk and stamped onto every row, so either defect
+    would silently split one run across two identities.
+    """
+    from sctrial.benchmark.manifest import manifest_hash, verify_manifest
+
+    payload = {
+        "git_commit": "a" * 40,
+        "source_tree_sha256": "b" * 64,
+        "config_sha256": "c" * 64,
+        "gate_summary": {"n_pass": 32, "n_fail": 0},
+        "package_versions": {"numpy": "1.26.4", "pandas": "2.2.1"},
+    }
+    h = manifest_hash(payload)
+
+    # 1. Inserting the digest must not change it -- i.e. it excludes itself.
+    stamped = dict(payload, manifest_sha256=h)
+    assert manifest_hash(stamped) == h, (
+        "the digest depends on its own stored value, so it can never be "
+        "recomputed for verification"
+    )
+
+    # 2. Key order must not matter.
+    reordered = {k: payload[k] for k in reversed(list(payload))}
+    assert manifest_hash(reordered) == h, "the digest depends on key insertion order"
+
+    # 3. Nested ordering must not matter either.
+    nested = dict(payload, package_versions={"pandas": "2.2.1", "numpy": "1.26.4"})
+    assert manifest_hash(nested) == h, "the digest depends on nested key order"
+
+    # 4. A real content change MUST change it.
+    changed = dict(payload, source_tree_sha256="d" * 64)
+    assert manifest_hash(changed) != h
+
+    # 5. The round trip the freeze performs must verify.
+    verify_manifest(stamped)
+    tampered = dict(stamped, git_commit="e" * 40)
+    with pytest.raises(RuntimeError, match="does not match"):
+        verify_manifest(tampered)

@@ -307,6 +307,86 @@ def probe(name: str, methods: list[str], n_jobs: int) -> dict:
     }
 
 
+def concurrency_probe(name: str, methods: list[str], n_jobs: int, n_rep: int) -> dict:
+    """Run several replicates CONCURRENTLY, as the definitive run will.
+
+    The single-worker probe measures per-replicate cost. It cannot measure what
+    happens when N of them share a node, and that is where this benchmark's known
+    failure mode lives: thirty concurrent R workers at 2,000 genes returned 100%
+    NaN. A NaN rate is not a slowdown -- it is silent data loss that would reach a
+    figure as a low evaluability rate.
+
+    So this reports, at the intended concurrency: peak memory across the whole
+    process tree, and the fraction of genes each method actually returned finite
+    inference for. Memory is the lesser concern on a 1 TB node; the p-value
+    fraction is the reason to run it.
+    """
+    import multiprocessing as mp
+
+    from sctrial.benchmark.orchestrator import _run_single_iteration
+
+    design, scenario = _scenario_by_name(name)
+    frozen = _frozen_config()
+    full_name = f"{design}__{name}"
+
+    print(f"\n{'=' * 72}")
+    print(f"CONCURRENCY {n_jobs} workers x {n_rep} replicates: {full_name}")
+    print(f"  tested genes {scenario['panel_size']}")
+    print(f"{'=' * 72}", flush=True)
+
+    batch = [
+        (full_name, i, 31000 + i, scenario, methods, frozen["config"])
+        for i in range(n_rep)
+    ]
+    t0 = time.time()
+    rows: list = []
+    with _RSSSampler(interval=0.5) as sampler:
+        # 'spawn', never 'fork': a forked worker inherits R state and produced
+        # demonstrably wrong results in this pipeline before.
+        ctx = mp.get_context("spawn")
+        with ctx.Pool(n_jobs) as pool:
+            for out in pool.imap_unordered(_run_single_iteration, batch):
+                rows.extend(out)
+    wall = time.time() - t0
+
+    df = pd.DataFrame(rows)
+    per_method = {}
+    ok = True
+    for method, grp in df.groupby("method", observed=True):
+        finite = float(np.isfinite(grp["pvalue"]).mean())
+        per_method[str(method)] = {
+            "finite_pvalue_fraction": finite,
+            "evaluable_fraction": float(grp["evaluable"].mean()),
+            "converged_fraction": float(grp["converged"].mean()),
+            "median_runtime_seconds": float(grp["runtime_seconds"].median()),
+        }
+        flag = "" if finite > 0.99 else "   <-- DEGRADED UNDER CONCURRENCY"
+        if finite <= 0.99:
+            ok = False
+        print(f"    {method:16s} finite p {finite:7.2%}  "
+              f"converged {grp['converged'].mean():6.1%}{flag}", flush=True)
+
+    peak = sampler.peak_gb if sampler.available else float("nan")
+    print(f"  wall {wall:.1f} s for {n_rep} replicates at {n_jobs} workers "
+          f"({wall / n_rep:.1f} s/replicate wall)")
+    print(f"  peak RSS whole tree {peak:.2f} GB  ({peak / max(n_jobs, 1):.2f} GB/worker)")
+    if not ok:
+        print("  WARNING: a method degraded under concurrency. Reduce workers for "
+              "this resource class; a NaN rate is silent data loss, not a slowdown.")
+
+    return {
+        "scenario": full_name,
+        "mode": "concurrency",
+        "n_jobs": n_jobs,
+        "n_replicates": n_rep,
+        "wall_seconds": wall,
+        "peak_rss_tree_gb": peak,
+        "peak_rss_per_worker_gb": peak / max(n_jobs, 1),
+        "methods": per_method,
+        "all_methods_clean": ok,
+    }
+
+
 def main() -> None:
     import argparse
 
@@ -321,10 +401,39 @@ def main() -> None:
     ap.add_argument("--methods", nargs="+", default=None)
     ap.add_argument("--n-jobs", type=int, default=1)
     ap.add_argument("--out", default=None)
+    ap.add_argument(
+        "--concurrency", type=int, default=None,
+        help="run replicates concurrently at this worker count instead of timing "
+             "one replicate; measures the NaN-under-load failure mode",
+    )
+    ap.add_argument("--n-replicates", type=int, default=None,
+                    help="replicates for --concurrency (default: one per worker)")
     args = ap.parse_args()
 
     methods = args.methods or list(CORE_METHODS)
     print(f"methods: {methods}")
+
+    if args.concurrency:
+        n_rep = args.n_replicates or args.concurrency
+        results = [
+            concurrency_probe(name, methods, args.concurrency, n_rep)
+            for name in args.scenarios
+        ]
+        clean = all(r["all_methods_clean"] for r in results)
+        print(f"\n{'=' * 72}")
+        print(f"CONCURRENCY VERDICT at {args.concurrency} workers: "
+              f"{'CLEAN' if clean else 'DEGRADED -- reduce workers'}")
+        print(f"{'=' * 72}")
+        out = Path(args.out) if args.out else (
+            Path(os.environ.get("SCTRIAL_MANUSCRIPT_DIR", "."))
+            / "benchmark" / "results" / "_preflight" / f"concurrency_{args.concurrency}.json"
+        )
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(results, indent=2))
+        print(f"wrote {out}")
+        if not clean:
+            raise SystemExit("concurrency probe DEGRADED; do not launch at this width")
+        return
 
     results = [probe(name, methods, args.n_jobs) for name in args.scenarios]
 

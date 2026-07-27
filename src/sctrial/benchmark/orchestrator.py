@@ -40,6 +40,44 @@ logger = logging.getLogger(__name__)
 # `n_iterations` is the BASE batch; these govern the extension only.
 _MC_BATCH = 100
 _MC_MAX = 1000
+
+# A HIGHER cap where the estimand itself is discrete.
+#
+# Per-replicate power is a mean over the scenario's signal genes, so with one
+# signal gene it is Bernoulli and its worst-case replicate SD is 0.5. Meeting the
+# 0.01 power-MCSE target then needs sqrt(0.25)/0.01 squared = 2,500 replicates,
+# and at 1,000 the best achievable is 0.0158. Four scenarios (50-gene panels at
+# 2% and 4% signal) are in this position.
+#
+# The alternative was to relax the target where it is inconvenient, which would
+# mean the prespecified precision requirement did not actually hold across the
+# grid. These are the cheapest scenarios in the benchmark, so the common target
+# is kept and the cap is raised instead. The rule is stated in terms of the
+# DISCRETENESS OF THE ESTIMAND and is fixed before any method result is seen.
+#
+# Two signal genes nominally needs 1,250, but per-replicate gene outcomes are
+# correlated through shared participants and random effects, so the theoretical
+# figure is not a guaranteed bound. Both cases therefore get 2,500 and, if that
+# still does not satisfy the empirical replicate-level MCSE, the scenario stops
+# at its cap and reports the precision achieved.
+_MC_MAX_SPARSE_SIGNAL = 2500
+_SPARSE_SIGNAL_GENES = 2
+
+
+def mc_max_for(scenario: dict) -> int:
+    """The replicate cap for one scenario.
+
+    Keyed on the SIGNAL GENE COUNT, not on the number of genes tested. A
+    2,000-gene scenario does not carry 40x more independent information than a
+    50-gene one: genes within a replicate share participants, libraries, random
+    effects, normalisation and signal architecture. The independent unit is the
+    simulated dataset, which is the same pseudoreplication argument the
+    manuscript itself makes.
+    """
+    n_signal = int(scenario.get("n_signal", 0) or 0)
+    if 0 < n_signal <= _SPARSE_SIGNAL_GENES:
+        return _MC_MAX_SPARSE_SIGNAL
+    return _MC_MAX
 _MCSE_TARGET_FPR = 0.005
 _MCSE_TARGET_POWER = 0.01
 
@@ -73,7 +111,7 @@ def _mcse(x: np.ndarray) -> float:
     return float(np.std(x, ddof=1) / np.sqrt(len(x))) if len(x) > 1 else np.inf
 
 
-def _needs_more_replicates(rows: list, n_done: int) -> tuple[bool, str]:
+def _needs_more_replicates(rows: list, n_done: int, mc_max: int = _MC_MAX) -> tuple[bool, str]:
     """Whether this SCENARIO has reached its Monte Carlo precision target.
 
     Stopping is decided at the scenario level and applies to every method at once,
@@ -84,8 +122,8 @@ def _needs_more_replicates(rows: list, n_done: int) -> tuple[bool, str]:
     Requires the criterion to hold for the WORST method: the run continues until
     every reported method is precise enough, or the cap is reached.
     """
-    if n_done >= _MC_MAX:
-        return False, f"at the {_MC_MAX}-replicate cap; report achieved precision"
+    if n_done >= mc_max:
+        return False, f"at the {mc_max}-replicate cap; report achieved precision"
     df = pd.DataFrame(rows)
     if df.empty or "method" not in df:
         return False, "no rows"
@@ -688,6 +726,7 @@ def _run_grid(
             # legitimate early stop from a job that was killed mid-extension --
             # both leave more rows than the base batch, so a count cannot.
             stop_reason = "max_replicates_reached"
+            mc_max = mc_max_for(scenario)
 
             def _flush(_rows=None, _path=csv_path) -> None:
                 pd.DataFrame(_rows if _rows is not None else all_rows).to_csv(
@@ -734,14 +773,14 @@ def _run_grid(
                     # reason -- a debug run must not be able to become a result.
                     stop_reason = "adaptive_disabled"
                     break
-                more, why = _needs_more_replicates(all_rows, done)
+                more, why = _needs_more_replicates(all_rows, done, mc_max)
                 if not more:
                     stop_reason = (
-                        "max_replicates_reached" if done >= _MC_MAX else "precision_reached"
+                        "max_replicates_reached" if done >= mc_max else "precision_reached"
                     )
                     print(f"    stopping at {done} replicates ({why})", flush=True)
                     break
-                extra = min(_MC_BATCH, _MC_MAX - done)
+                extra = min(_MC_BATCH, mc_max - done)
                 if extra <= 0:
                     stop_reason = "max_replicates_reached"
                     break
@@ -773,7 +812,7 @@ def _run_grid(
             rec = completion_record(
                 name, scenario, df,
                 stop_reason=stop_reason,
-                max_replicates=_MC_MAX,
+                max_replicates=mc_max,
                 manifest_sha=(manifest or {}).get("manifest_sha256"),
                 mcse_target_fpr=_MCSE_TARGET_FPR,
                 mcse_target_power=_MCSE_TARGET_POWER,
