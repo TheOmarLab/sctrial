@@ -165,10 +165,27 @@ def main() -> None:
         # collapse or an evaluability problem at scale shows up under the null,
         # where there is no signal to mask it.
         sens = build_sensitivity_grid("two_arm")
-        for name in ("sens_null_g2000", "sens_g2000_f20"):
-            match = next((s for s in sens if s["name"] == name), None)
-            if match is not None:
-                cases.append(("two_arm", match))
+        # Selected BY PROPERTY, not by name. Names encode signal as a gene count
+        # now, so the old literal `sens_g2000_f20` matched nothing and was skipped
+        # in silence -- the probe reported success having never run the 2,000-gene
+        # signal case it exists to bound.
+        wanted = [
+            ("2000-gene null", lambda s: s["panel_size"] == 2000 and s["n_signal"] == 0),
+            ("2000-gene max signal", lambda s: (
+                s["panel_size"] == 2000
+                and abs(s["signal_fraction"] - 0.20) < 1e-9
+                and s["architecture"] == "balanced"
+            )),
+        ]
+        for label, pred in wanted:
+            match = next((s for s in sens if pred(s)), None)
+            if match is None:
+                raise SystemExit(
+                    f"no {label} scenario in the sensitivity grid. The probe cannot "
+                    "bound the largest panel, and skipping it silently is how an "
+                    "unmeasured cell reaches a 72-hour allocation."
+                )
+            cases.append(("two_arm", match))
 
     # ENVIRONMENT PARITY. The definitive run must execute under the same package
     # versions the smoke test validated, so they are recorded here and compared
