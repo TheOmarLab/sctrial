@@ -54,21 +54,32 @@ export MKL_NUM_THREADS=1
 export OPENBLAS_NUM_THREADS=1
 export NUMEXPR_NUM_THREADS=1
 
-# Default worker count, chosen by what actually binds.
+# Default worker count per RESOURCE CLASS, every value measured rather than
+# inferred. One global limit was wrong: the classes bind on different things.
 #
-# MEASURED (job 5292134, one replicate, one worker):
-#   cells_1000_n40  wall 426 s = 381 s simulation + 46 s fitting  -> 89% simulation
-#   sens_null_g2000 wall 539 s = 194 s simulation + 345 s fitting
-#   peak 5.04 GB per worker, at 160,000 cells
+# Single-replicate cost (job 5292134/5292154, one worker):
+#   cells_1000_n40  426 s = 381 s simulation + 46 s fitting   -> 89% simulation
+#   sens_null_g2000 539 s = 194 s simulation + 345 s fitting
+#   null_n60        300 s = 285 s simulation + 15 s fitting
+#   peak 5.70 GB per worker at 160,000 cells (sampled across the process tree)
 #
-# So the 10-worker R limit binds only where R dominates, which is the 2,000-gene
-# panel. Everywhere else the cost is Python simulation and the limit is memory:
-# 32 x 5.04 GB = 161 GB against a 400 GB request.
+# Under CONCURRENCY (jobs 5292318/19/20), every method 100% finite and 100%
+# converged in all three:
+#   32 workers, 50-gene      152.3 GB peak (4.76/worker)  CLEAN
+#   24 workers, 1000 cells   127.8 GB peak (5.32/worker)  CLEAN
+#   16 workers, 2000-gene     87.6 GB peak (5.48/worker)  CLEAN
+#
+# THE 10-WORKER LIMIT WAS TOO CONSERVATIVE. It came from thirty concurrent R
+# workers at 2,000 genes returning 100% NaN; nobody had measured in between, and
+# 16 is clean. That is a 1.6x speedup on the slowest job in the grid.
+#
+# Nodes are ~1 TB with 48 CPUs, so memory is not the binding constraint at any of
+# these widths (152 GB is 15% of a node). Parallel efficiency is 85-88%.
 if [ -z "$N_JOBS" ]; then
   case "$PANELS" in
-    *2000*) N_JOBS=10 ;;   # R at 2000 genes: 30 workers gave 100% NaN
-    "")     N_JOBS=$([ "$GRID" = "core" ] && echo 32 || echo 10) ;;
-    *)      N_JOBS=24 ;;
+    *2000*) N_JOBS=16 ;;   # measured clean; 30 was not, 10 was needlessly slow
+    "")     N_JOBS=$([ "$GRID" = "core" ] && echo 32 || echo 16) ;;
+    *)      N_JOBS=24 ;;   # 200/500-gene panels, bracketed by clean measurements
   esac
 fi
 
