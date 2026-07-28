@@ -2480,7 +2480,7 @@ def generate() -> None:
     # C/D/E/G/H carry all five methods; F (marginal power) omits NEBULA. Short
     # labels + small font keep the whole key on one line under the half-width
     # column.
-    _leg_fs, _leg_pad = 3.2, 0.002
+    _leg_fs, _leg_pad = 3.2, 0.018
     if core_df is not None:
         _bench_legend_below(fig_c, gs_cd[0], fontsize=_leg_fs, y_pad=_leg_pad, short=True)
         _bench_legend_below(fig_c, gs_ef[1], methods=_CALIBRATED, fontsize=_leg_fs,
