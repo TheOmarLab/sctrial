@@ -1441,6 +1441,132 @@ def _panel_bench_typeI_vs_n(axes, core_df, *, composite: bool = False):
                        framealpha=0.95, edgecolor="#cccccc")
 
 
+def _bh_reject(p, q=0.05):
+    p = np.asarray(p, float)
+    ok = np.isfinite(p)
+    rej = np.zeros(len(p), bool)
+    if not ok.any():
+        return rej
+    idx = np.where(ok)[0]
+    order = idx[np.argsort(p[idx])]
+    m = len(order)
+    passed = p[order] <= q * np.arange(1, m + 1) / m
+    if passed.any():
+        rej[order[: np.max(np.where(passed)[0]) + 1]] = True
+    return rej
+
+
+def _per_scenario_fdr(df, q=0.05):
+    """Per-(scenario, method) BH FDR with the correct hierarchy.
+
+    Realised FDR per replicate (false rejections / total rejections after BH at
+    q), then mean and MCSE across replicates. The realised replicate-level FDR is
+    the manuscript's stated endpoint.
+    """
+    rows = []
+    for (sc, m, it), g in df.groupby(["scenario", "method", "iteration"], sort=False):
+        rej = _bh_reject(g["pvalue"].to_numpy(), q)
+        sig = g["is_signal"].to_numpy(bool)
+        n_rej = int(rej.sum())
+        rows.append((sc, m, it, float((rej & ~sig).sum() / n_rej) if n_rej else 0.0))
+    per_rep = pd.DataFrame(rows, columns=["scenario", "method", "iteration", "fdr"])
+    agg = (per_rep.groupby(["scenario", "method"])["fdr"]
+           .agg(mean="mean", sd="std", n_rep="count").reset_index())
+    agg["mcse"] = agg["sd"] / np.sqrt(agg["n_rep"].clip(lower=1))
+    return agg
+
+
+def _faceted_broken_by_fraction(fig, rate, *, ylabel, main_ylim, strip_ylim,
+                                title, nominal=True, composite=False):
+    """Shared 3D/3E body: four tested-set-size facets, x = signal fraction,
+    calibrated methods in the main region and NEBULA in an upper strip.
+
+    `rate` has columns scenario, method, mean, mcse plus n_genes and signal_pct.
+    """
+    _ttl = 5.6 if composite else 11
+    _ax = 5.0 if composite else 10
+    _tk = 4.5 if composite else 9
+    fracs = _SIGNAL_FRACTIONS
+    xpos = {f: i for i, f in enumerate(fracs)}
+    off = {"dreamlet": 0.08, "limma_voom": 0.03, "sctrial_did": -0.03,
+           "wilcoxon_paired": -0.08, "nebula": 0.0}
+    gs = fig.add_gridspec(1, len(_PANEL_SIZES), wspace=0.30)
+    for ci, ng in enumerate(_PANEL_SIZES):
+        ax_main, ax_strip = _broken_pair(fig, gs[ci], main_ylim=main_ylim,
+                                         strip_ylim=strip_ylim)
+        sub = rate[rate["n_genes"] == ng]
+        for method in _CALIBRATED:
+            m = sub[sub["method"] == method].sort_values("signal_pct")
+            if m.empty:
+                continue
+            style = _method_style(method, is_focal=(method == "sctrial_did"),
+                                  composite=composite)
+            xs = [xpos[int(f)] + off[method] for f in m["signal_pct"]]
+            ax_main.plot(xs, m["mean"],
+                         label=_BENCH_METHOD_LABELS[method] if ci == 0 else None, **style)
+            ax_main.errorbar(xs, m["mean"], yerr=1.96 * m["mcse"], fmt="none",
+                             ecolor=style["color"], elinewidth=0.7, capsize=1.2, alpha=0.55)
+        neb = sub[sub["method"] == "nebula"].sort_values("signal_pct")
+        if not neb.empty:
+            ns = _method_style("nebula", composite=composite)
+            xs = [xpos[int(f)] for f in neb["signal_pct"]]
+            ax_strip.plot(xs, neb["mean"],
+                          label=_BENCH_METHOD_LABELS["nebula"] if ci == 0 else None, **ns)
+            ax_strip.errorbar(xs, neb["mean"], yerr=1.96 * neb["mcse"], fmt="none",
+                              ecolor=ns["color"], elinewidth=0.7, capsize=1.2, alpha=0.55)
+        if nominal:
+            ax_main.axhline(0.05, color="#d62728", linestyle="--", linewidth=1.0, alpha=0.7)
+        ax_main.set_xticks(range(len(fracs)))
+        ax_main.set_xticklabels([f"{f}%" for f in fracs])
+        ax_main.set_xlim(-0.5, len(fracs) - 0.5)
+        ax_strip.set_title(f"{ng:,} genes", fontsize=_ttl, fontweight="bold", pad=3)
+        ax_main.set_xlabel("Signal fraction", fontsize=_ax)
+        for a in (ax_main, ax_strip):
+            a.tick_params(labelsize=_tk)
+            _style_axis(a)
+        if ci > 0:
+            ax_main.set_yticklabels([])
+            ax_strip.set_yticklabels([])
+        else:
+            ax_main.set_ylabel(ylabel, fontsize=_ax)
+            if not composite:
+                h1, l1 = ax_main.get_legend_handles_labels()
+                h2, l2 = ax_strip.get_legend_handles_labels()
+                ax_main.legend(h1 + h2, l1 + l2, loc="upper left", fontsize=7,
+                               frameon=True, framealpha=0.95, edgecolor="#cccccc")
+    if title and not composite:
+        fig.suptitle(title, fontsize=(6.2 if composite else 13), fontweight="bold", y=0.995)
+
+
+def _panel_bench_mixed_fpr(fig, bench_df, *, composite: bool = False):
+    """3D. Mixed-signal null-gene FPR, balanced, four tested-set-size facets."""
+    bal = bench_df[(bench_df["architecture"] == "balanced")
+                   & (bench_df["signal_fraction_realised"] > 0)
+                   & (~bench_df["is_signal"])]
+    rate = _per_scenario_rate(bal, on_signal=False)
+    meta = bal.groupby("scenario").agg(n_genes=("n_genes", "first"),
+                                       signal_pct=("signal_pct", "first")).reset_index()
+    rate = rate.merge(meta, on="scenario")
+    _faceted_broken_by_fraction(
+        fig, rate, ylabel="Null-gene FPR (p < 0.05)",
+        main_ylim=(0.0, 0.10), strip_ylim=(0.68, 0.82),
+        title="Mixed-signal null-gene false-positive rate", composite=composite)
+
+
+def _panel_bench_bh_fdr(fig, bench_df, *, composite: bool = False):
+    """3E. BH-controlled realised FDR, balanced, four tested-set-size facets."""
+    bal = bench_df[(bench_df["architecture"] == "balanced")
+                   & (bench_df["signal_fraction_realised"] > 0)]
+    rate = _per_scenario_fdr(bal)
+    meta = bal.groupby("scenario").agg(n_genes=("n_genes", "first"),
+                                       signal_pct=("signal_pct", "first")).reset_index()
+    rate = rate.merge(meta, on="scenario")
+    _faceted_broken_by_fraction(
+        fig, rate, ylabel=r"Realised FDR (BH $q<0.05$)",
+        main_ylim=(0.0, 0.12), strip_ylim=(0.65, 1.02),
+        title="False discovery rate after Benjamini-Hochberg", composite=composite)
+
+
 def _panel_bench_power_vs_n(fig, core_df, *, composite: bool = False):
     """Marginal detection power vs sample size, faceted design x effect size.
 
