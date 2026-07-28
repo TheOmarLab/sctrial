@@ -2409,10 +2409,10 @@ def generate() -> None:
     #   C pure-null Type I error | D mixed-signal null-gene FPR
     #   E realised FDR after BH  | F marginal detection (beta = 0.5)
     #   G runtime  +  H pure-null calibration (lambda_GC)   | I cross-dataset forest
-    fig_c = plt.figure(figsize=(180 * _mm, 220 * _mm))
+    fig_c = plt.figure(figsize=(180 * _mm, 230 * _mm))
     outer = fig_c.add_gridspec(
         9, 1,
-        height_ratios=[0.50, 0.30, 0.44, 0.30, 0.62, 0.34, 0.62, 0.34, 1.48],
+        height_ratios=[0.48, 0.28, 0.42, 0.28, 0.60, 0.48, 0.60, 0.48, 1.40],
         hspace=0.0, left=0.085, right=0.965, top=0.978, bottom=0.035,
     )
 
@@ -2434,7 +2434,7 @@ def generate() -> None:
 
     # Bottom row: [G runtime + H lambda_GC stacked] | I forest (tall, old-H size).
     gs_row5 = outer[8].subgridspec(1, 2, wspace=0.30)
-    gs_left = gs_row5[0].subgridspec(2, 1, hspace=0.62)
+    gs_left = gs_row5[0].subgridspec(2, 1, hspace=0.95)
     ax_rt = fig_c.add_subplot(gs_left[0])
     ax_lgc = fig_c.add_subplot(gs_left[1])
     ax_forest = fig_c.add_subplot(gs_row5[1])
