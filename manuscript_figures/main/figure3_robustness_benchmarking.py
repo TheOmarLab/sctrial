@@ -1289,6 +1289,101 @@ def _panel_bench_qq_heatmap(fig, bench_df, *, composite: bool = False, gs_parent
 # ======================================================================
 
 _DESIGN_LABEL = {"two_arm": "Two-arm (DiD)", "single_arm": "Single-arm (paired)"}
+# Calibrated methods share the main plotting region; NEBULA is shown on its own
+# scale (a strip or separate axis) because its rejection rate is ~0.75, an order
+# of magnitude off the nominal band. Clipping it into the calibrated region would
+# either flatten it to a line or crush the methods that matter.
+_CALIBRATED = [m for m in _BENCH_METHODS if m != "nebula"]
+
+
+def _broken_pair(fig, gs_cell, *, main_ylim, strip_ylim, height_ratios=(1, 3.4)):
+    """A broken y-axis: a thin NEBULA strip above a main calibrated-method axis.
+
+    Returns (ax_main, ax_strip) sharing x, with the conventional diagonal break
+    marks. NEBULA goes in the strip at its true ~0.75 range; the calibrated
+    methods sit in the main axis at the nominal scale.
+    """
+    inner = gs_cell.subgridspec(2, 1, height_ratios=height_ratios, hspace=0.08)
+    ax_strip = fig.add_subplot(inner[0])
+    ax_main = fig.add_subplot(inner[1], sharex=ax_strip)
+    ax_strip.set_ylim(*strip_ylim)
+    ax_main.set_ylim(*main_ylim)
+    ax_strip.spines["bottom"].set_visible(False)
+    ax_main.spines["top"].set_visible(False)
+    ax_strip.tick_params(labelbottom=False, bottom=False)
+    d = 0.012
+    kw = dict(transform=ax_strip.transAxes, color="#333", clip_on=False, lw=0.9)
+    ax_strip.plot((-d, +d), (-d * 3, +d * 3), **kw)
+    ax_strip.plot((1 - d, 1 + d), (-d * 3, +d * 3), **kw)
+    kw["transform"] = ax_main.transAxes
+    ax_main.plot((-d, +d), (1 - d, 1 + d), **kw)
+    ax_main.plot((1 - d, 1 + d), (1 - d, 1 + d), **kw)
+    return ax_main, ax_strip
+
+
+def _panel_bench_typeI_main(fig, core_df, *, composite: bool = False):
+    """3C. Pure-null Type I error vs sample size, two aligned designs.
+
+    x is participants per arm (two-arm) / paired participants (single-arm), which
+    is n_treated in both cases. Calibrated methods sit at the nominal band with
+    scenario-level 95% MC CIs and a dashed 0.05 reference (no shaded tolerance
+    band). NEBULA is in a narrow upper strip on its own 0.70-0.80 scale.
+    """
+    null = core_df[(core_df["family"] == "null") & (~core_df["is_signal"])]
+    rate = _per_scenario_rate(null, on_signal=False)
+    meta = (null.groupby("scenario")
+            .agg(design=("design", "first"), per_arm=("n_treated", "first"))
+            .reset_index())
+    rate = rate.merge(meta, on="scenario")
+
+    gs = fig.add_gridspec(1, 2, wspace=0.28)
+    _ttl = 5.8 if composite else 12
+    _ax = 5.2 if composite else 11
+    _tk = 4.7 if composite else 10
+    for ci, design in enumerate(("two_arm", "single_arm")):
+        sub = rate[rate["design"] == design]
+        n_vals = sorted(sub["per_arm"].unique())
+        pos = {n: i for i, n in enumerate(n_vals)}
+        ax_main, ax_strip = _broken_pair(fig, gs[ci], main_ylim=(0.0, 0.10),
+                                         strip_ylim=(0.68, 0.82))
+        for method in _CALIBRATED:
+            m = sub[sub["method"] == method].sort_values("per_arm")
+            if m.empty:
+                continue
+            style = _method_style(method, is_focal=(method == "sctrial_did"),
+                                  composite=composite)
+            xs = [pos[n] for n in m["per_arm"]]
+            ax_main.plot(xs, m["mean"],
+                         label=_BENCH_METHOD_LABELS[method] if ci == 0 else None, **style)
+            ax_main.errorbar(xs, m["mean"], yerr=1.96 * m["mcse"], fmt="none",
+                             ecolor=style["color"], elinewidth=0.8, capsize=1.5, alpha=0.6)
+        neb = sub[sub["method"] == "nebula"].sort_values("per_arm")
+        if not neb.empty:
+            ns = _method_style("nebula", composite=composite)
+            xs = [pos[n] for n in neb["per_arm"]]
+            ax_strip.plot(xs, neb["mean"],
+                          label=_BENCH_METHOD_LABELS["nebula"] if ci == 0 else None, **ns)
+            ax_strip.errorbar(xs, neb["mean"], yerr=1.96 * neb["mcse"], fmt="none",
+                              ecolor=ns["color"], elinewidth=0.8, capsize=1.5, alpha=0.6)
+        ax_main.axhline(0.05, color="#d62728", linestyle="--", linewidth=1.0, alpha=0.7)
+        ax_main.set_xticks(range(len(n_vals)))
+        ax_main.set_xticklabels(n_vals)
+        ax_main.set_xlim(-0.4, len(n_vals) - 0.6)
+        ax_main.set_yticks([0.0, 0.05, 0.10])
+        ax_strip.set_yticks([0.7, 0.8])
+        xlabel = "Participants per arm" if design == "two_arm" else "Paired participants"
+        ax_main.set_xlabel(xlabel, fontsize=_ax)
+        ax_strip.set_title(_DESIGN_LABEL[design], fontsize=_ttl, fontweight="bold", pad=4)
+        for a in (ax_main, ax_strip):
+            a.tick_params(labelsize=_tk)
+            _style_axis(a)
+        if ci == 0:
+            ax_main.set_ylabel("Type I error (p < 0.05)", fontsize=_ax)
+        if ci == 0 and not composite:
+            h1, l1 = ax_main.get_legend_handles_labels()
+            h2, l2 = ax_strip.get_legend_handles_labels()
+            ax_main.legend(h1 + h2, l1 + l2, loc="upper left", fontsize=8,
+                           frameon=True, framealpha=0.95, edgecolor="#cccccc")
 
 
 def _panel_bench_typeI_vs_n(axes, core_df, *, composite: bool = False):
