@@ -890,18 +890,18 @@ def _panel_bench_runtime(ax, bench_df: pd.DataFrame, *, composite: bool = False)
     X-axis uses evenly-spaced categorical positions so the 4 panel sizes
     are ticked at equal intervals, independent of their raw values.
     """
-    rt = (
-        bench_df.groupby(["method", "scenario", "n_genes", "iteration"])[
-            "runtime_seconds"
-        ]
-        .first()
-        .reset_index()
-    )
-    summary = (
-        rt.groupby(["method", "n_genes"])["runtime_seconds"]
-        .median()
-        .reset_index()
-    )
+    # Aggregation, as specified: median runtime over replicates WITHIN each
+    # scenario, then an equal-weight summary (median + IQR) of the scenario
+    # medians within a tested-set size, so scenarios are weighted equally rather
+    # than by their replicate count. Individual scenario medians are shown as
+    # points, the equal-weight median as the line, and the IQR as a band.
+    per_iter = (bench_df.groupby(["method", "scenario", "n_genes", "iteration"])
+                ["runtime_seconds"].first().reset_index())
+    scen_med = (per_iter.groupby(["method", "scenario", "n_genes"])["runtime_seconds"]
+                .median().reset_index())
+    summary = (scen_med.groupby(["method", "n_genes"])["runtime_seconds"]
+               .agg(med="median", q25=lambda s: s.quantile(0.25),
+                    q75=lambda s: s.quantile(0.75)).reset_index())
     x_positions = np.arange(len(_PANEL_SIZES), dtype=float)
     n_to_x = dict(zip(_PANEL_SIZES, x_positions))
 
@@ -916,21 +916,28 @@ def _panel_bench_runtime(ax, bench_df: pd.DataFrame, *, composite: bool = False)
             continue
         is_focal = method == "sctrial_did"
         style = _method_style(method, is_focal=is_focal, composite=composite)
-        xs = [n_to_x[int(n)] for n in sub["n_genes"].values]
-        ax.plot(
-            xs, sub["runtime_seconds"],
-            label=_BENCH_METHOD_LABELS[method],
-            zorder=10 if is_focal else 3,
-            **style,
-        )
+        xs = np.array([n_to_x[int(n)] for n in sub["n_genes"].values], float)
+        # scenario-median points (small, jittered slightly) behind the summary
+        pts = scen_med[scen_med["method"] == method]
+        jit = (hash(method) % 5 - 2) * 0.03
+        ax.scatter([n_to_x[int(n)] + jit for n in pts["n_genes"]],
+                   pts["runtime_seconds"], s=(3 if composite else 9),
+                   color=style["color"], alpha=0.28, edgecolors="none",
+                   rasterized=True, zorder=2)
+        ax.errorbar(xs, sub["med"],
+                    yerr=[sub["med"] - sub["q25"], sub["q75"] - sub["med"]],
+                    fmt="none", ecolor=style["color"], elinewidth=0.8,
+                    capsize=1.5, alpha=0.6, zorder=4)
+        ax.plot(xs, sub["med"], label=_BENCH_METHOD_LABELS[method],
+                zorder=10 if is_focal else 5, **style)
 
     ax.set_yscale("log")
     ax.set_xticks(x_positions)
     ax.set_xticklabels([f"{p:,}" for p in _PANEL_SIZES], fontsize=_lbl_fs)
     ax.set_xlim(-0.35, len(_PANEL_SIZES) - 0.65)
-    ax.set_xlabel("Panel size (genes)", fontsize=_lbl_fs)
-    ax.set_ylabel("Median runtime per iteration (s)", fontsize=_lbl_fs)
-    ax.set_title("Computational cost", fontsize=_ttl_fs, fontweight="bold", pad=_ttl_pad)
+    ax.set_xlabel("Tested-set size (genes)", fontsize=_lbl_fs)
+    ax.set_ylabel("Wall-clock seconds per iteration", fontsize=_lbl_fs)
+    ax.set_title("Runtime scaling", fontsize=_ttl_fs, fontweight="bold", pad=_ttl_pad)
     ax.tick_params(axis="y", labelsize=_lbl_fs)
     if composite:
         ax.legend(
@@ -1577,7 +1584,7 @@ def _panel_bench_power_vs_n(fig, core_df, *, composite: bool = False):
     de = core_df[(core_df["family"] == "de_balanced") & (core_df["is_signal"])]
     rate = _per_scenario_rate(de, on_signal=True)
     meta = (de.groupby("scenario")
-            .agg(design=("design", "first"), total_n=("total_n", "first"),
+            .agg(design=("design", "first"), per_arm=("n_treated", "first"),
                  beta=("beta", "first")).reset_index())
     rate = rate.merge(meta, on="scenario")
     betas = sorted(rate["beta"].dropna().unique())
@@ -1586,19 +1593,25 @@ def _panel_bench_power_vs_n(fig, core_df, *, composite: bool = False):
     _ttl = 5.6 if composite else 11
     _ax = 5.0 if composite else 10
     _tk = 4.6 if composite else 9
+    # Small horizontal offsets expose methods that overlap (they cluster
+    # tightly). NEBULA is EXCLUDED from marginal-detection comparisons: its Type I
+    # error is ~0.75, so its "detections" are mostly false positives; its full
+    # rejection rates appear with the calibration results in the supplement.
+    off = {"dreamlet": 0.09, "limma_voom": 0.03, "sctrial_did": -0.03,
+           "wilcoxon_paired": -0.09}
     for ri, design in enumerate(designs):
         for ci, beta in enumerate(betas):
             ax = fig.add_subplot(gs[ri, ci])
             sub = rate[(rate["design"] == design) & (rate["beta"] == beta)]
-            n_vals = sorted(sub["total_n"].unique())
+            n_vals = sorted(sub["per_arm"].unique())
             pos = {n: i for i, n in enumerate(n_vals)}
-            for method in _BENCH_METHODS:
-                m = sub[sub["method"] == method].sort_values("total_n")
+            for method in _CALIBRATED:
+                m = sub[sub["method"] == method].sort_values("per_arm")
                 if m.empty:
                     continue
                 style = _method_style(method, is_focal=(method == "sctrial_did"),
                                       composite=composite)
-                xs = [pos[n] for n in m["total_n"]]
+                xs = [pos[n] + off[method] for n in m["per_arm"]]
                 ax.plot(xs, m["mean"],
                         label=_BENCH_METHOD_LABELS[method] if (ri == 0 and ci == 0) else None,
                         **style)
@@ -1608,18 +1621,20 @@ def _panel_bench_power_vs_n(fig, core_df, *, composite: bool = False):
             ax.set_ylim(0, 1.02)
             ax.set_xticks(range(len(n_vals)))
             ax.set_xticklabels(n_vals)
-            ax.set_xlim(-0.4, len(n_vals) - 0.6)
+            ax.set_xlim(-0.5, len(n_vals) - 0.5)
             if ri == 0:
                 ax.set_title(rf"$\beta$ = {beta}", fontsize=_ttl, fontweight="bold")
             if ci == 0:
-                ax.set_ylabel(f"{_DESIGN_LABEL[design]}\nPower", fontsize=_ax)
+                ax.set_ylabel(f"{_DESIGN_LABEL[design]}\n" r"$P(p<0.05\,|\,$signal$)$",
+                              fontsize=_ax)
             if ri == len(designs) - 1:
-                ax.set_xlabel("Participants", fontsize=_ax)
+                xl = "Participants per arm" if design == "two_arm" else "Paired participants"
+                ax.set_xlabel(xl, fontsize=_ax)
             ax.tick_params(labelsize=_tk)
             _style_axis(ax)
     handles, labels = fig.axes[0].get_legend_handles_labels()
     if handles and not composite:
-        fig.legend(handles, labels, loc="upper center", ncol=len(_BENCH_METHODS),
+        fig.legend(handles, labels, loc="upper center", ncol=len(_CALIBRATED),
                    fontsize=8, frameon=True, framealpha=0.95, edgecolor="#cccccc",
                    bbox_to_anchor=(0.5, 1.02))
 
@@ -2068,7 +2083,12 @@ def _panel_e_cross_dataset(ax, data: dict, *, composite: bool = False) -> None:
     for ref_d in (-0.8, -0.5, -0.2, 0.2, 0.5, 0.8):
         ax.axvline(ref_d, color=COLORS["gray"], linewidth=0.4, linestyle=":", zorder=0, alpha=0.25)
 
-    ax.set_xlabel("Cohen's d  (signed effect size)", fontsize=_xl_fs)
+    # VERIFIED design-specific: two-arm uses two-sample pooled-SD Cohen's d
+    # (cohens_d_from_did), single-arm uses one-sample paired Cohen's d. Neither
+    # applies the Hedges small-sample correction (that is a separate hedges_g
+    # function), so this is NOT Hedges' g. Labelled as a design-specific
+    # standardized participant-level effect rather than a single "Cohen's d".
+    ax.set_xlabel("Standardized effect (design-specific Cohen's d)", fontsize=_xl_fs)
     ax.set_title("Effect sizes — pre-specified endpoints", fontsize=_ttl_fs, fontweight="bold",
                  pad=12 if not composite else 8)
     ax.tick_params(axis="x", which="major", labelsize=_xt_fs)
