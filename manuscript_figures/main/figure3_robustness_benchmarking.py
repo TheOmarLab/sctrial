@@ -1737,9 +1737,10 @@ def _panel_bench_power_vs_n(fig, core_df, *, composite: bool = False, only_beta=
             _style_axis(ax)
         if composite:
             # Compact design label as the leftmost y-axis label, so the embedded
-            # panel keeps its Two-arm / Single-arm rows without external text math.
-            short = {"two_arm": "Two-arm DiD",
-                     "single_arm": "Single-arm paired change"}[design]
+            # panel keeps its two-arm / single-arm rows without external text math.
+            # Short forms fit the narrow composite column (design detail is in the
+            # caption).
+            short = {"two_arm": "Two-arm", "single_arm": "Single-arm"}[design]
             axes_by_row[ri][0].set_ylabel(short, fontsize=_ax, fontweight="bold")
     if not composite:
         # Row headers on the left, ONE shared y-label, title, and a global legend
