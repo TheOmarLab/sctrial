@@ -680,6 +680,97 @@ def _load_benchmark_data() -> pd.DataFrame:
     return df
 
 
+def _load_core_benchmark_data() -> pd.DataFrame:
+    """The CORE grid: sample-size sweep, cell yield, missing, imbalance, families.
+
+    Distinct from the sensitivity grid (panel size x signal fraction). Same
+    manifest, same publication marker: a core file without the whole-benchmark
+    completion record is refused, exactly as for the sensitivity file.
+
+    Derived columns are taken from DATA, never a scenario name, wherever a column
+    exists: design from n_control (0 => single-arm), sample size from
+    n_participants. Only `family` and `beta`, which have no column, come from the
+    scenario id -- and that is legitimate, because the scenario id IS the family
+    label; the rule forbids inferring panel_size/signal_fraction from names, not
+    grouping by the scenario itself.
+    """
+    from sctrial.benchmark.paths import require_layout
+
+    layout = require_layout(_RESULTS_ROOT, _frozen_manifest_sha())
+    csv = layout.combined_csv("benchmark_combined.csv")
+    if not csv.exists():
+        raise FileNotFoundError(
+            f"Core benchmark results not found at {csv}. Run the core grid on HPC."
+        )
+    if not layout.publication_marker().exists():
+        raise FileNotFoundError(
+            f"no publication completion marker for manifest {layout.manifest_sha[:12]}; "
+            "the core grid panels are drawn only from a benchmark verified complete "
+            "across ALL grids by scripts/finalize_benchmark.py."
+        )
+    if not layout.completion_marker("core").exists():
+        raise FileNotFoundError(
+            f"{csv} has no core completion record; re-run scripts/aggregate_benchmark.py."
+        )
+    df = pd.read_csv(csv, low_memory=False)
+
+    from sctrial.benchmark.manifest import assert_single_manifest
+
+    assert_single_manifest(df, "core benchmark results")
+
+    for col in ("n_participants", "n_control", "n_signal_realised"):
+        if col not in df.columns:
+            raise ValueError(f"{csv} lacks {col}; re-run the benchmark.")
+    df["design"] = np.where(df["n_control"] == 0, "single_arm", "two_arm")
+    df["total_n"] = df["n_participants"].astype(int)
+    df["is_null_gene"] = df["true_beta"] == 0.0
+    # family: scenario id with the design prefix and the trailing _n{n}[_b{beta}]
+    # stripped. beta: the effect magnitude where present.
+    base = df["scenario"].str.replace(r"^(two_arm|single_arm)__", "", regex=True)
+    df["family"] = base.str.replace(r"_n\d+.*$", "", regex=True)
+    df["beta"] = base.str.extract(r"_b([\d.]+)$")[0].astype(float)
+    return df
+
+
+def _per_scenario_rate(df: pd.DataFrame, *, on_signal: bool, alpha: float = 0.05):
+    """Per-(scenario, method) rejection rate with the CORRECT hierarchy.
+
+    Endpoint per replicate (fraction of the relevant genes with p<alpha), then
+    mean and Monte Carlo SE across replicates. Never pools gene rows across
+    replicates or scenarios. Returns mean, mcse, n_rep per (scenario, method).
+    """
+    sub = df[df["is_signal"] == on_signal].copy()
+    ok = sub["pvalue"].notna()
+    sub = sub[ok]
+    sub["hit"] = (sub["pvalue"] < alpha).astype(float)
+    per_rep = (sub.groupby(["scenario", "method", "iteration"])["hit"]
+               .mean().reset_index())
+    agg = (per_rep.groupby(["scenario", "method"])["hit"]
+           .agg(mean="mean", sd="std", n_rep="count").reset_index())
+    agg["mcse"] = agg["sd"] / np.sqrt(agg["n_rep"].clip(lower=1))
+    return agg
+
+
+def _plot_offscale(ax, x, y, *, method, ymax, style, label=None, annotate=True):
+    """Plot a method's series, clipping values above ymax to the axis top and
+    annotating the true value, so NEBULA (which is off-scale on any axis scaled
+    for the calibrated methods) is shown as extreme rather than allowed to blow
+    out the shared axis or vanish above it.
+    """
+    y = np.asarray(y, float)
+    x = np.asarray(x, float)
+    clipped = np.minimum(y, ymax)
+    ax.plot(x, clipped, label=label, **style)
+    if annotate:
+        over = y > ymax
+        for xi, yi, c in zip(x, y, over):
+            if c:
+                ax.annotate(f"{yi:.2f}", (xi, ymax), fontsize=5.0,
+                            ha="center", va="bottom",
+                            color=style.get("color", "#333"), rotation=0,
+                            xytext=(0, 1), textcoords="offset points", clip_on=False)
+
+
 def _method_style(method: str, is_focal: bool = False, alpha: float = 1.0, *, composite: bool = False):
     if composite:
         ms_hi, ms_lo = 5.6, 4.3
@@ -753,15 +844,25 @@ def _panel_bench_lambda_gc(ax, bench_df: pd.DataFrame, *, composite: bool = Fals
     _ttl_pad = 5 if composite else 10
     _leg_fs = 5.2 if composite else 9
 
+    _lam_top = 1.17  # axis scaled for the CALIBRATED methods
     for method in _BENCH_METHODS:
         sub = lam_df[lam_df["method"] == method].sort_values("n_genes")
         if sub.empty:
             continue
         is_focal = method == "sctrial_did"
         style = _method_style(method, is_focal=is_focal, composite=composite)
-        xs = [n_to_x[int(n)] for n in sub["n_genes"].values]
-        ax.plot(xs, sub["lambda_gc"], label=_BENCH_METHOD_LABELS[method],
+        xs = np.array([n_to_x[int(n)] for n in sub["n_genes"].values], float)
+        lam = sub["lambda_gc"].to_numpy(float)
+        # NEBULA's lambda_GC is far off any axis scaled for the calibrated
+        # methods; clip to the top and annotate the true value rather than let it
+        # set the range and flatten everyone else to a line.
+        ax.plot(xs, np.minimum(lam, _lam_top), label=_BENCH_METHOD_LABELS[method],
                 zorder=10 if is_focal else 3, **style)
+        for xi, li in zip(xs, lam):
+            if li > _lam_top:
+                ax.annotate(f"{li:.1f}", (xi, _lam_top), fontsize=(4.6 if composite else 7),
+                            ha="center", va="bottom", color=style["color"],
+                            xytext=(0, 1), textcoords="offset points", clip_on=False)
 
     ax.axhline(1.0, color="#d62728", linestyle="--", linewidth=1.0, alpha=0.65, zorder=1)
     ax.axhspan(0.95, 1.05, color="#d62728", alpha=0.06, zorder=0)
@@ -971,20 +1072,21 @@ def _panel_bench_qq_single(
         return []
     null = sub_all[sub_all["true_beta"] == 0.0]
 
+    # 2x3 so all FIVE methods fit (a 2x2 silently dropped the 5th, sctrial, the
+    # focal method). Independent y-axes: a QQ is read against its own diagonal, and
+    # NEBULA's inflation reaches -log10(p)~300, which on a shared axis crushes the
+    # calibrated methods into an invisible blob. Each method on its own scale shows
+    # NEBULA's extremity AND the others' calibration.
+    n_methods = len(_BENCH_METHODS)
     if gs_parent is not None:
-        gs_inner = gs_parent.subgridspec(2, 2, hspace=0.65, wspace=0.28)
-        axes, ref_ax = [], None
-        for r in range(2):
-            for c in range(2):
-                kw = {} if ref_ax is None else {"sharex": ref_ax, "sharey": ref_ax}
-                ax = fig.add_subplot(gs_inner[r, c], **kw)
-                if ref_ax is None:
-                    ref_ax = ax
-                axes.append(ax)
+        gs_inner = gs_parent.subgridspec(2, 3, hspace=0.65, wspace=0.38)
+        axes = [fig.add_subplot(gs_inner[r, c]) for r in range(2) for c in range(3)]
     else:
-        ax_grid = fig.subplots(2, 2, sharex=True, sharey=True,
-                               gridspec_kw={"hspace": 0.52, "wspace": 0.28})
+        ax_grid = fig.subplots(2, 3, sharex=False, sharey=False,
+                               gridspec_kw={"hspace": 0.52, "wspace": 0.38})
         axes = list(ax_grid.flatten())
+    for extra in axes[n_methods:]:
+        extra.set_visible(False)
 
     _sct      = 2.5 if composite else 8
     _ttl_fs   = 5.2 if composite else 12
@@ -1018,13 +1120,16 @@ def _panel_bench_qq_single(
         ax.set_title(_BENCH_METHOD_LABELS[method], fontsize=_ttl_fs,
                      fontweight="bold", color=_BENCH_METHOD_COLORS[method],
                      pad=1, y=0.88 if composite else 1.0)
-        if mi >= 2:
+        # Independent axes: label every panel (each has its own scale, so a
+        # shared label would misrepresent the crushed calibrated methods).
+        n_top = 3
+        if mi >= n_methods - n_top or mi >= n_top:
             ax.set_xlabel(r"Expected $-\log_{10}(p)$", fontsize=_axlbl_fs)
-        if mi == 0 and not composite:
+        if mi % n_top == 0:
             ax.set_ylabel(r"Observed $-\log_{10}(p)$", fontsize=_axlbl_fs)
         _style_axis(ax)
         ax.tick_params(axis="both", which="major", labelsize=_tick_fs)
-        ax.tick_params(axis="x", labelbottom=(mi >= 2))
+        ax.tick_params(axis="x", labelbottom=True)
         ax.tick_params(axis="y", labelleft=True)
 
     if axes:
@@ -1098,30 +1203,23 @@ def _panel_bench_qq_heatmap(fig, bench_df, *, composite: bool = False, gs_parent
     _ann_fs   = 5.3 if composite else 8
     _tick_fs  = 5.0 if composite else 8
 
-    _wr = [0.58, 0.58, 0.032]
+    # 2 rows x 3 method columns + a colorbar column, so all FIVE methods appear
+    # (a 2x2 grid silently dropped sctrial, the focal method). The 6th cell is
+    # hidden.
+    n_methods = len(_BENCH_METHODS)
     if gs_parent is not None:
-        # 4-column: left_hm | spacer | right_hm | cbar  — colorbar flush to right heatmap
-        _wr_c = [0.72, 0.12, 0.72, 0.030]
-        gs_inner = gs_parent.subgridspec(2, 4, hspace=0.65, wspace=0.18,
-                                         width_ratios=_wr_c)
-        axes = [
-            fig.add_subplot(gs_inner[0, 0]),
-            fig.add_subplot(gs_inner[0, 2]),
-            fig.add_subplot(gs_inner[1, 0]),
-            fig.add_subplot(gs_inner[1, 2]),
-        ]
+        gs_inner = gs_parent.subgridspec(2, 4, hspace=0.62, wspace=0.30,
+                                         width_ratios=[1, 1, 1, 0.06])
+        axes = [fig.add_subplot(gs_inner[r, c]) for r in range(2) for c in range(3)]
         cbar_ax = fig.add_subplot(gs_inner[:, 3])
     else:
-        gs = fig.add_gridspec(2, 3, hspace=0.65, wspace=0.35,
-                              width_ratios=_wr,
-                              left=0.10, right=0.95, top=0.92, bottom=0.10)
-        axes = [
-            fig.add_subplot(gs[0, 0]),
-            fig.add_subplot(gs[0, 1]),
-            fig.add_subplot(gs[1, 0]),
-            fig.add_subplot(gs[1, 1]),
-        ]
-        cbar_ax = fig.add_subplot(gs[:, 2])
+        gs = fig.add_gridspec(2, 4, hspace=0.6, wspace=0.32,
+                              width_ratios=[1, 1, 1, 0.05],
+                              left=0.08, right=0.93, top=0.90, bottom=0.12)
+        axes = [fig.add_subplot(gs[r, c]) for r in range(2) for c in range(3)]
+        cbar_ax = fig.add_subplot(gs[:, 3])
+    for extra in axes[n_methods:]:
+        extra.set_visible(False)
 
     col_labels = [f"{sf}%" for sf in signal_pct_vals]
     row_labels = [f"{ng:,}" for ng in n_genes_vals]
@@ -1179,6 +1277,171 @@ def _panel_bench_qq_heatmap(fig, bench_df, *, composite: bool = False, gs_parent
         )
 
     return list(axes)
+
+
+# ======================================================================
+# CORE-GRID panels: sample size, power, scenario families
+# ======================================================================
+
+_DESIGN_LABEL = {"two_arm": "Two-arm (DiD)", "single_arm": "Single-arm (paired)"}
+
+
+def _panel_bench_typeI_vs_n(axes, core_df, *, composite: bool = False):
+    """Pure-null Type I error vs sample size, one facet per design.
+
+    The central calibration result: the calibrated methods sit at the nominal
+    band across the whole sample-size range while NEBULA is flat and far above
+    it, so its miscalibration is structural, not a small-sample artefact.
+    NEBULA is clipped to the axis top and annotated rather than allowed to
+    compress the calibrated methods.
+    """
+    null = core_df[(core_df["family"] == "null") & (~core_df["is_signal"])]
+    rate = _per_scenario_rate(null, on_signal=False)
+    meta = (null.groupby("scenario")
+            .agg(design=("design", "first"), total_n=("total_n", "first"))
+            .reset_index())
+    rate = rate.merge(meta, on="scenario")
+
+    _ttl = 5.8 if composite else 12
+    _ax = 5.2 if composite else 11
+    _tk = 4.7 if composite else 10
+    ymax = 0.15
+    for ax, design in zip(axes, ("two_arm", "single_arm")):
+        sub = rate[rate["design"] == design]
+        for method in _BENCH_METHODS:
+            m = sub[sub["method"] == method].sort_values("total_n")
+            if m.empty:
+                continue
+            style = _method_style(method, is_focal=(method == "sctrial_did"),
+                                  composite=composite)
+            _plot_offscale(ax, m["total_n"], m["mean"], method=method, ymax=ymax,
+                           style=style,
+                           label=_BENCH_METHOD_LABELS[method] if design == "two_arm" else None)
+            vis = m[m["mean"] <= ymax]
+            ax.errorbar(vis["total_n"], vis["mean"], yerr=1.96 * vis["mcse"],
+                        fmt="none", ecolor=style["color"], elinewidth=0.8,
+                        capsize=1.5, alpha=0.6, zorder=style.get("zorder", 3))
+        _add_nominal_band(ax)
+        ax.set_ylim(0.0, ymax)
+        ax.set_xscale("log")
+        ax.set_xticks(sorted(sub["total_n"].unique()))
+        ax.get_xaxis().set_major_formatter(plt.matplotlib.ticker.ScalarFormatter())
+        ax.set_title(_DESIGN_LABEL[design], fontsize=_ttl, fontweight="bold", pad=4)
+        ax.set_xlabel("Participants", fontsize=_ax)
+        ax.tick_params(labelsize=_tk)
+        _style_axis(ax)
+    axes[0].set_ylabel("Type I error (p < 0.05)", fontsize=_ax)
+    if not composite:
+        axes[0].legend(loc="upper right", fontsize=8, frameon=True,
+                       framealpha=0.95, edgecolor="#cccccc")
+
+
+def _panel_bench_power_vs_n(fig, core_df, *, composite: bool = False):
+    """Marginal detection power vs sample size, faceted design x effect size.
+
+    Separates single-arm from two-arm -- pooling them onto one participant axis
+    is what produced the spurious non-monotonic curve. Within each facet power
+    rises monotonically with participants.
+    """
+    de = core_df[(core_df["family"] == "de_balanced") & (core_df["is_signal"])]
+    rate = _per_scenario_rate(de, on_signal=True)
+    meta = (de.groupby("scenario")
+            .agg(design=("design", "first"), total_n=("total_n", "first"),
+                 beta=("beta", "first")).reset_index())
+    rate = rate.merge(meta, on="scenario")
+    betas = sorted(rate["beta"].dropna().unique())
+    designs = ("two_arm", "single_arm")
+    gs = fig.add_gridspec(len(designs), len(betas), hspace=0.55, wspace=0.32)
+    _ttl = 5.6 if composite else 11
+    _ax = 5.0 if composite else 10
+    _tk = 4.6 if composite else 9
+    for ri, design in enumerate(designs):
+        for ci, beta in enumerate(betas):
+            ax = fig.add_subplot(gs[ri, ci])
+            sub = rate[(rate["design"] == design) & (rate["beta"] == beta)]
+            for method in _BENCH_METHODS:
+                m = sub[sub["method"] == method].sort_values("total_n")
+                if m.empty:
+                    continue
+                style = _method_style(method, is_focal=(method == "sctrial_did"),
+                                      composite=composite)
+                ax.plot(m["total_n"], m["mean"],
+                        label=_BENCH_METHOD_LABELS[method] if (ri == 0 and ci == 0) else None,
+                        **style)
+                ax.errorbar(m["total_n"], m["mean"], yerr=1.96 * m["mcse"],
+                            fmt="none", ecolor=style["color"], elinewidth=0.7,
+                            capsize=1.3, alpha=0.55)
+            ax.set_ylim(0, 1.02)
+            ax.set_xscale("log")
+            ax.set_xticks(sorted(sub["total_n"].unique()))
+            ax.get_xaxis().set_major_formatter(plt.matplotlib.ticker.ScalarFormatter())
+            if ri == 0:
+                ax.set_title(rf"$\beta$ = {beta}", fontsize=_ttl, fontweight="bold")
+            if ci == 0:
+                ax.set_ylabel(f"{_DESIGN_LABEL[design]}\nPower", fontsize=_ax)
+            if ri == len(designs) - 1:
+                ax.set_xlabel("Participants", fontsize=_ax)
+            ax.tick_params(labelsize=_tk)
+            _style_axis(ax)
+    handles, labels = fig.axes[0].get_legend_handles_labels()
+    if handles and not composite:
+        fig.legend(handles, labels, loc="upper center", ncol=len(_BENCH_METHODS),
+                   fontsize=8, frameon=True, framealpha=0.95, edgecolor="#cccccc",
+                   bbox_to_anchor=(0.5, 1.02))
+
+
+def _panel_bench_scenario_families(ax, core_df, *, composite: bool = False):
+    """Null-gene FPR across robustness families, per method.
+
+    Cell yield, missing visits, arm imbalance and composition stress. sctrial and
+    Wilcoxon hold nominal everywhere; dreamlet and limma inflate under
+    composition stress; NEBULA is off-scale throughout (clipped + annotated).
+    """
+    fam_order = [
+        ("cells_50", "50 cells/PV"), ("cells_250", "250"), ("cells_1000", "1000"),
+        ("missing_10pct", "10% miss"), ("missing_20pct", "20% miss"),
+        ("imbal_3v7", "3:7"), ("imbal_5v10", "5:10"), ("imbal_10v20", "10:20"),
+        ("compstress_onedir", "comp. stress"),
+    ]
+    present = {f for f in core_df["family"].unique()}
+    fam_order = [(f, lab) for f, lab in fam_order if f in present]
+    null_genes = core_df[~core_df["is_signal"]]
+    rate = _per_scenario_rate(null_genes, on_signal=False)
+    meta = core_df.groupby("scenario").agg(family=("family", "first")).reset_index()
+    rate = rate.merge(meta, on="scenario")
+    # equal-weight mean across scenarios within a family (some families have 2)
+    fam_rate = (rate.groupby(["family", "method"])["mean"]
+                .mean().reset_index())
+
+    x = np.arange(len(fam_order))
+    width = 0.16
+    ymax = 0.15
+    for mi, method in enumerate(_BENCH_METHODS):
+        vals = []
+        for f, _ in fam_order:
+            r = fam_rate[(fam_rate["family"] == f) & (fam_rate["method"] == method)]
+            vals.append(float(r["mean"].iloc[0]) if not r.empty else np.nan)
+        vals = np.array(vals)
+        style = _method_style(method, is_focal=(method == "sctrial_did"), composite=composite)
+        offset = (mi - (len(_BENCH_METHODS) - 1) / 2) * width
+        clipped = np.minimum(vals, ymax)
+        ax.bar(x + offset, clipped, width, color=style["color"],
+               label=_BENCH_METHOD_LABELS[method], edgecolor="white", linewidth=0.4)
+        for xi, v in zip(x + offset, vals):
+            if v > ymax:
+                ax.annotate(f"{v:.2f}", (xi, ymax), fontsize=4.6, ha="center",
+                            va="bottom", color=style["color"], rotation=90,
+                            xytext=(0, 1), textcoords="offset points", clip_on=False)
+    _add_nominal_band(ax)
+    ax.set_ylim(0, ymax)
+    ax.set_xticks(x)
+    ax.set_xticklabels([lab for _, lab in fam_order],
+                       rotation=35, ha="right", fontsize=(4.6 if composite else 8))
+    ax.set_ylabel("Null-gene FPR (p < 0.05)", fontsize=(5.0 if composite else 10))
+    if not composite:
+        ax.legend(loc="upper left", fontsize=7.5, ncol=2, frameon=True,
+                  framealpha=0.95, edgecolor="#cccccc")
+    _style_axis(ax)
 
 
 # ======================================================================
