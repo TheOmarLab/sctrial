@@ -937,8 +937,10 @@ def _panel_bench_runtime(ax, bench_df: pd.DataFrame, *, composite: bool = False)
     big = summary[summary["n_genes"] == max(_PANEL_SIZES)].set_index("method")["med"]
     if "sctrial_did" in big.index and big["sctrial_did"] > 0:
         base = big["sctrial_did"]
+        # NEBULA is omitted from the speed comparison: a runtime advantage over a
+        # miscalibrated method is not a meaningful claim.
         lines = [f"at {max(_PANEL_SIZES):,} genes vs sctrial:"]
-        for mth in ("nebula", "dreamlet", "limma_voom"):
+        for mth in ("dreamlet", "limma_voom"):
             if mth in big.index:
                 lines.append(f"  {_BENCH_METHOD_LABELS[mth]}: {big[mth] / base:.0f}x")
         # Lower-right corner: empty at the largest tested-set size (all lines are
@@ -1328,14 +1330,28 @@ _CALIBRATED = [m for m in _BENCH_METHODS if m != "nebula"]
 _LEGEND_ORDER = ["sctrial_did", "wilcoxon_paired", "limma_voom", "dreamlet", "nebula"]
 
 
-def _bench_legend_handles(methods=None):
+# Short one-word method labels for the compact single-row legends beneath the
+# half-width composite panels, where the full "(DiD)" / "(Δ scores)" forms would
+# not fit on one line.
+_BENCH_METHOD_LABELS_SHORT = {
+    "sctrial_did": "sctrial",
+    "dreamlet": "dreamlet",
+    "nebula": "NEBULA",
+    "wilcoxon_paired": "Wilcoxon",
+    "limma_voom": "limma-voom",
+    "edger_qlf": "edgeR-QLF",
+}
+
+
+def _bench_legend_handles(methods=None, *, short=False):
     from matplotlib.lines import Line2D
 
     methods = methods if methods is not None else _LEGEND_ORDER
+    labels = _BENCH_METHOD_LABELS_SHORT if short else _BENCH_METHOD_LABELS
     return [
         Line2D([0], [0], color=_BENCH_METHOD_COLORS[m], marker=_BENCH_METHOD_MARKERS[m],
                linestyle="-", markersize=7, markeredgecolor="white", markeredgewidth=0.6,
-               label=_BENCH_METHOD_LABELS[m])
+               label=labels[m])
         for m in methods
     ]
 
@@ -1351,18 +1367,19 @@ def _bench_figlegend(fig, methods=None, *, y=1.0, fontsize=8):
 
 
 def _bench_legend_below(fig, cell, *, methods=None, fontsize=4.6, y_pad=0.004,
-                        ncol=None):
+                        ncol=None, short=False):
     """A horizontal method legend centred just below a composite cell, matching
     the standalone panels (which each carry their own legend below the axes).
-    `ncol` wraps the legend onto several rows so it fits a narrow column."""
+    Defaults to a SINGLE ROW (ncol = number of methods); pass `ncol` to wrap.
+    `short` uses the one-word method labels so five entries fit one line."""
     methods = methods if methods is not None else _LEGEND_ORDER
     pos = cell.get_position(fig)
     fig.legend(
-        handles=_bench_legend_handles(methods), loc="upper center",
+        handles=_bench_legend_handles(methods, short=short), loc="upper center",
         bbox_to_anchor=(0.5 * (pos.x0 + pos.x1), pos.y0 - y_pad),
         ncol=ncol if ncol is not None else len(methods), frameon=True,
         framealpha=0.95, edgecolor="#cccccc", fontsize=fontsize,
-        columnspacing=0.8, handlelength=1.2, handletextpad=0.3, borderpad=0.3,
+        columnspacing=0.6, handlelength=1.0, handletextpad=0.25, borderpad=0.3,
     )
 
 
@@ -2406,10 +2423,12 @@ def generate() -> None:
                             gs_parent=gs_ef[0])
         _panel_bench_runtime(ax_rt, bench_df, composite=True)
         _panel_bench_lambda_gc(ax_lgc, bench_df, composite=True)
-        # lambda_GC's five-method legend would swamp this quarter-cell; the method
-        # key is the legends beneath C-F, so drop it here.
-        if ax_lgc.get_legend():
-            ax_lgc.get_legend().remove()
+        # Runtime and lambda_GC carry their method key as a single-row legend
+        # beneath the panel (added below), like every other benchmark panel, so
+        # drop the in-axes legends they drew.
+        for _axq in (ax_rt, ax_lgc):
+            if _axq.get_legend():
+                _axq.get_legend().remove()
 
     # Biological panels (A, B) and the cross-dataset forest (I).
     _panel_a(ax_a_bot, ax_a_top, data, data_tnbc, composite=True)
@@ -2457,15 +2476,20 @@ def generate() -> None:
         fig_c.text(x0, min(y1 + 0.013, 0.997), ttl, fontsize=5.4,
                    fontweight="bold", va="bottom", ha="left")
 
-    # Per-panel method legends beneath C, D, E, F (wrapped to fit the half-width
-    # columns). C/D/E carry all five methods; F (marginal power) omits NEBULA.
+    # Per-panel method legend beneath each benchmark panel, as a SINGLE ROW.
+    # C/D/E/G/H carry all five methods; F (marginal power) omits NEBULA. Short
+    # labels + small font keep the whole key on one line under the half-width
+    # column.
+    _leg_fs, _leg_pad = 3.2, 0.002
     if core_df is not None:
-        _bench_legend_below(fig_c, gs_cd[0], fontsize=3.6, ncol=3, y_pad=0.002)
-        _bench_legend_below(fig_c, gs_ef[1], methods=_CALIBRATED, fontsize=3.6,
-                            ncol=2, y_pad=0.002)
+        _bench_legend_below(fig_c, gs_cd[0], fontsize=_leg_fs, y_pad=_leg_pad, short=True)
+        _bench_legend_below(fig_c, gs_ef[1], methods=_CALIBRATED, fontsize=_leg_fs,
+                            y_pad=_leg_pad, short=True)
     if bench_df is not None:
-        _bench_legend_below(fig_c, gs_cd[1], fontsize=3.6, ncol=3, y_pad=0.002)
-        _bench_legend_below(fig_c, gs_ef[0], fontsize=3.6, ncol=3, y_pad=0.002)
+        _bench_legend_below(fig_c, gs_cd[1], fontsize=_leg_fs, y_pad=_leg_pad, short=True)
+        _bench_legend_below(fig_c, gs_ef[0], fontsize=_leg_fs, y_pad=_leg_pad, short=True)
+        _bench_legend_below(fig_c, gs_left[0], fontsize=_leg_fs, y_pad=_leg_pad, short=True)
+        _bench_legend_below(fig_c, gs_left[1], fontsize=_leg_fs, y_pad=_leg_pad, short=True)
 
     # Panel letters A-I at each cell's upper-left corner.
     for cell, lab in [
