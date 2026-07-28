@@ -1350,17 +1350,19 @@ def _bench_figlegend(fig, methods=None, *, y=1.0, fontsize=8):
                handlelength=1.6)
 
 
-def _bench_legend_below(fig, cell, *, methods=None, fontsize=4.6, y_pad=0.004):
+def _bench_legend_below(fig, cell, *, methods=None, fontsize=4.6, y_pad=0.004,
+                        ncol=None):
     """A horizontal method legend centred just below a composite cell, matching
-    the standalone panels (which each carry their own legend below the axes)."""
+    the standalone panels (which each carry their own legend below the axes).
+    `ncol` wraps the legend onto several rows so it fits a narrow column."""
     methods = methods if methods is not None else _LEGEND_ORDER
     pos = cell.get_position(fig)
     fig.legend(
         handles=_bench_legend_handles(methods), loc="upper center",
         bbox_to_anchor=(0.5 * (pos.x0 + pos.x1), pos.y0 - y_pad),
-        ncol=len(methods), frameon=True, framealpha=0.95, edgecolor="#cccccc",
-        fontsize=fontsize, columnspacing=0.8, handlelength=1.2, handletextpad=0.3,
-        borderpad=0.3,
+        ncol=ncol if ncol is not None else len(methods), frameon=True,
+        framealpha=0.95, edgecolor="#cccccc", fontsize=fontsize,
+        columnspacing=0.8, handlelength=1.2, handletextpad=0.3, borderpad=0.3,
     )
 
 
@@ -2354,20 +2356,20 @@ def generate() -> None:
 
     _mm = 1.0 / 25.4
     # ── Lean main Figure 3, 180 x 215 mm (2026-07-28 Option-1 restructure) ──
-    # A legible seven-panel main figure; the full 4-facet FDR / 6-facet power
-    # grids and the mixed-signal FPR panel move to the supplements. Letters are
-    # consecutive A-G (publication requires no skipped letters):
-    #   A pseudoreplication (melanoma | TNBC)   B leave-one-out (melanoma | TNBC)
-    #   C pure-null Type I error (two designs)
-    #   D realised FDR after BH (2,000-gene facet) | E marginal power (beta=0.5)
-    #   F runtime scaling                          | G cross-dataset effects
-    fig_c = plt.figure(figsize=(180 * _mm, 225 * _mm))
-    # Wider spacer rows below C and below D|E leave room for each benchmark
-    # panel's own legend, placed beneath the axes as in the standalone panels.
+    # Consecutive letters A-G (publication requires no skipped letters). The
+    # calibration/power/runtime panels are kept COMPACT (three across) so the
+    # many-endpoint cross-dataset forest gets its own tall row; the full 4-facet
+    # FDR / 6-facet power grids and the mixed-signal FPR panel are in the
+    # supplements.
+    #   A pseudoreplication (TNBC | melanoma)   B leave-one-out (TNBC | melanoma)
+    #   C pure-null Type I error (two designs, full width)
+    #   D realised FDR after BH | E marginal power (beta=0.5) | F runtime   (compact)
+    #   G cross-dataset effect sizes (full width, tall)
+    fig_c = plt.figure(figsize=(180 * _mm, 215 * _mm))
     outer = fig_c.add_gridspec(
         9, 1,
-        height_ratios=[0.78, 0.07, 0.78, 0.13, 0.92, 0.20, 1.00, 0.20, 1.02],
-        hspace=0.0, left=0.10, right=0.965, top=0.955, bottom=0.045,
+        height_ratios=[0.58, 0.27, 0.53, 0.27, 0.58, 0.31, 0.56, 0.31, 1.28],
+        hspace=0.0, left=0.085, right=0.965, top=0.975, bottom=0.035,
     )
 
     gs_a = outer[0].subgridspec(1, 2, wspace=0.42)
@@ -2382,21 +2384,21 @@ def generate() -> None:
 
     fig_c.add_subplot(outer[5]).set_axis_off()
 
-    gs_de = outer[6].subgridspec(1, 2, wspace=0.40, width_ratios=[1.0, 1.30])
+    # D | E | F three across (compact).
+    gs_def = outer[6].subgridspec(1, 3, wspace=0.45, width_ratios=[1.0, 1.15, 1.0])
+    ax_f = fig_c.add_subplot(gs_def[2])
     fig_c.add_subplot(outer[7]).set_axis_off()
 
-    gs_fg = outer[8].subgridspec(1, 2, wspace=0.36, width_ratios=[1.0, 1.05])
-    ax_f = fig_c.add_subplot(gs_fg[0])
-    ax_h = fig_c.add_subplot(gs_fg[1])
+    ax_h = fig_c.add_subplot(outer[8])
 
     # Benchmark panels, embedded in their cells via gs_parent.
     if core_df is not None:
         _panel_bench_typeI_main(fig_c, core_df, composite=True, gs_parent=outer[4])
         _panel_bench_power_vs_n(fig_c, core_df, composite=True, only_beta=0.5,
-                                gs_parent=gs_de[1])
+                                gs_parent=gs_def[1])
     if bench_df is not None:
         _panel_bench_bh_fdr(fig_c, bench_df, composite=True, panel_sizes=[2000],
-                            gs_parent=gs_de[0])
+                            gs_parent=gs_def[0])
         _panel_bench_runtime(ax_f, bench_df, composite=True)
 
     # Biological panels (A, B) and the cross-dataset forest (G).
@@ -2407,7 +2409,7 @@ def generate() -> None:
     fig_c.canvas.draw()
 
     # Inside legends for the biological panels only (the benchmark method key is
-    # the runtime panel's legend).
+    # the C legend, which sits directly above the compact D|E|F row).
     _inside = {
         ax_a_top: "upper right", ax_a_bot: "upper right",
         ax_b_top: "lower right", ax_b_bot: "lower right",
@@ -2431,35 +2433,34 @@ def generate() -> None:
     _cap_fontsize(fig_c, _MAX_FONT_COMPOSITE)
 
     # Compact corner titles for the benchmark panels (composite suppresses their
-    # standalone titles), placed after the font cap so they keep their size.
+    # standalone titles), raised into the roomy spacer so they sit ABOVE the
+    # internal design/facet titles instead of colliding with them.
     def _cell_tl(cell):
         pos = cell.get_position(fig_c)
         return pos.x0, pos.y1
 
-    for cell, ttl in [
-        (outer[4], "Pure-null Type I error"),
-        (gs_de[0], "Realized FDR after BH"),
-        (gs_de[1], r"Marginal detection probability ($\beta$ = 0.5)"),
+    for cell, ttl, fs in [
+        (outer[4], "Pure-null Type I error", 6.0),
+        (gs_def[0], "Realized FDR after BH", 5.2),
+        (gs_def[1], r"Marginal detection ($\beta$ = 0.5)", 5.2),
     ]:
         x0, y1 = _cell_tl(cell)
-        fig_c.text(x0, min(y1 + 0.010, 0.995), ttl, fontsize=6.2,
+        fig_c.text(x0, min(y1 + 0.016, 0.997), ttl, fontsize=fs,
                    fontweight="bold", va="bottom", ha="left")
 
-    # Each benchmark panel carries its own method legend beneath the axes, as in
-    # the standalone panels (C, D show all five methods; E excludes NEBULA).
+    # Method legend below C (full width, all five methods); it is directly above
+    # the compact D|E|F row and serves as the key for those panels too. E excludes
+    # NEBULA, as its caption states.
     if core_df is not None:
         _bench_legend_below(fig_c, outer[4], fontsize=4.6)
-        _bench_legend_below(fig_c, gs_de[1], methods=_CALIBRATED, fontsize=4.6)
-    if bench_df is not None:
-        _bench_legend_below(fig_c, gs_de[0], fontsize=4.6)
 
     # Panel letters A-G at each cell's upper-left corner.
     for cell, lab in [
-        (gs_a[0], "A"), (gs_b[0], "B"), (outer[4], "C"), (gs_de[0], "D"),
-        (gs_de[1], "E"), (gs_fg[0], "F"), (gs_fg[1], "G"),
+        (gs_a[0], "A"), (gs_b[0], "B"), (outer[4], "C"), (gs_def[0], "D"),
+        (gs_def[1], "E"), (gs_def[2], "F"), (outer[8], "G"),
     ]:
         x0, y1 = _cell_tl(cell)
-        fig_c.text(max(x0 - 0.048, 0.003), min(y1 + 0.010, 0.997), lab,
+        fig_c.text(max(x0 - 0.05, 0.003), min(y1 + 0.016, 0.998), lab,
                    fontsize=8, fontweight="bold", va="bottom", ha="left")
 
     plt.rcParams.update(_prev_rc)
