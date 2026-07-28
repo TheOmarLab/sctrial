@@ -955,10 +955,19 @@ def _panel_bench_qq_single(
     gs_parent=None,
 ):
     """2×2 QQ plots for one (n_genes, signal_pct) condition."""
-    scenario_name = f"two_arm__sens_g{n_genes}_f{signal_pct}"
-    sub_all = bench_df[bench_df["scenario"] == scenario_name]
+    # Select by COLUMNS, never by a reconstructed scenario name. The grid names
+    # scenarios sens_g{panel}_n{count}; panel size and realised signal fraction
+    # are recorded as the n_genes and signal_pct columns precisely so panels do
+    # not parse names. Reconstructing "sens_g{n}_f{pct}" matched the OLD naming
+    # and would silently return an empty panel on the current data.
+    sub_all = bench_df[
+        (bench_df["n_genes"] == n_genes)
+        & (bench_df["signal_pct"] == signal_pct)
+        & (bench_df["architecture"] == "balanced")
+    ]
     if sub_all.empty:
-        print(f"    WARNING: scenario {scenario_name} not found for QQ panel")
+        print(f"    WARNING: no balanced scenario for n_genes={n_genes} "
+              f"signal_pct={signal_pct}% in the QQ panel")
         return []
     null = sub_all[sub_all["true_beta"] == 0.0]
 
@@ -1049,9 +1058,12 @@ def _panel_bench_qq_heatmap(fig, bench_df, *, composite: bool = False, gs_parent
         mat = np.full((len(n_genes_vals), len(signal_pct_vals)), np.nan)
         for ri, ng in enumerate(n_genes_vals):
             for ci, sf in enumerate(signal_pct_vals):
-                scenario = f"two_arm__sens_g{ng}_f{sf}"
+                # Column selection, not a reconstructed scenario name (see
+                # _panel_bench_qq_single). Balanced architecture, null genes only.
                 sub = bench_df[
-                    (bench_df["scenario"] == scenario)
+                    (bench_df["n_genes"] == ng)
+                    & (bench_df["signal_pct"] == sf)
+                    & (bench_df["architecture"] == "balanced")
                     & (bench_df["method"] == method)
                     & (bench_df["true_beta"] == 0.0)
                 ]
