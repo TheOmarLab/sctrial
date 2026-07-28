@@ -1533,21 +1533,24 @@ def _per_scenario_fdr(df, q=0.05):
 
 def _faceted_broken_by_fraction(fig, rate, *, ylabel, main_ylim, strip_ylim,
                                 title, arch="Balanced signal architecture",
-                                nominal=True, composite=False):
+                                nominal=True, composite=False, panel_sizes=None):
     """Shared 3D/3E body: four tested-set-size facets, x = signal fraction,
     calibrated methods in the main region and NEBULA in an upper strip.
 
     `rate` has columns scenario, method, mean, mcse plus n_genes and signal_pct.
+    `panel_sizes` restricts the facets shown (the lean main figure shows one
+    representative tested-set size; the full grid lives in the supplement).
     """
     _ttl = 5.6 if composite else 11
     _ax = 5.0 if composite else 10
     _tk = 4.5 if composite else 9
+    sizes = panel_sizes if panel_sizes is not None else _PANEL_SIZES
     fracs = _SIGNAL_FRACTIONS
     xpos = {f: i for i, f in enumerate(fracs)}
     off = {"dreamlet": 0.08, "limma_voom": 0.03, "sctrial_did": -0.03,
            "wilcoxon_paired": -0.08, "nebula": 0.0}
-    gs = fig.add_gridspec(1, len(_PANEL_SIZES), wspace=0.30)
-    for ci, ng in enumerate(_PANEL_SIZES):
+    gs = fig.add_gridspec(1, len(sizes), wspace=0.30)
+    for ci, ng in enumerate(sizes):
         ax_main, ax_strip = _broken_pair(fig, gs[ci], main_ylim=main_ylim,
                                          strip_ylim=strip_ylim)
         sub = rate[rate["n_genes"] == ng]
@@ -1613,7 +1616,7 @@ def _panel_bench_mixed_fpr(fig, bench_df, *, composite: bool = False):
         title="Mixed-signal null-gene false-positive rate", composite=composite)
 
 
-def _panel_bench_bh_fdr(fig, bench_df, *, composite: bool = False):
+def _panel_bench_bh_fdr(fig, bench_df, *, composite: bool = False, panel_sizes=None):
     """3E. BH-controlled realised FDR, balanced, four tested-set-size facets."""
     bal = bench_df[(bench_df["architecture"] == "balanced")
                    & (bench_df["signal_fraction_realised"] > 0)]
@@ -1624,15 +1627,18 @@ def _panel_bench_bh_fdr(fig, bench_df, *, composite: bool = False):
     _faceted_broken_by_fraction(
         fig, rate, ylabel=r"Realized FDR at BH $q<0.05$",
         main_ylim=(0.0, 0.12), strip_ylim=(0.65, 1.02),
-        title="False discovery rate after Benjamini-Hochberg", composite=composite)
+        title="False discovery rate after Benjamini-Hochberg", composite=composite,
+        panel_sizes=panel_sizes)
 
 
-def _panel_bench_power_vs_n(fig, core_df, *, composite: bool = False):
+def _panel_bench_power_vs_n(fig, core_df, *, composite: bool = False, only_beta=None):
     """Marginal detection power vs sample size, faceted design x effect size.
 
     Separates single-arm from two-arm -- pooling them onto one participant axis
     is what produced the spurious non-monotonic curve. Within each facet power
-    rises monotonically with participants.
+    rises monotonically with participants. `only_beta` restricts to a single
+    representative effect size (the lean main figure); the full effect-size grid
+    lives in the supplement.
     """
     de = core_df[(core_df["family"] == "de_balanced") & (core_df["is_signal"])]
     rate = _per_scenario_rate(de, on_signal=True)
@@ -1641,6 +1647,8 @@ def _panel_bench_power_vs_n(fig, core_df, *, composite: bool = False):
                  beta=("beta", "first")).reset_index())
     rate = rate.merge(meta, on="scenario")
     betas = sorted(rate["beta"].dropna().unique())
+    if only_beta is not None:
+        betas = [b for b in betas if abs(b - only_beta) < 1e-9] or betas[:1]
     designs = ("two_arm", "single_arm")
     row_header = {"two_arm": "Two-arm DiD", "single_arm": "Single-arm paired change"}
     # Tighter rows, room on the left for row headers and one shared y-label, room
