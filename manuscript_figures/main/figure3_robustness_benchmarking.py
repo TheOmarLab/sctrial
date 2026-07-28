@@ -1627,9 +1627,11 @@ def _panel_bench_power_vs_n(fig, core_df, *, composite: bool = False):
             if ci == 0:
                 ax.set_ylabel(f"{_DESIGN_LABEL[design]}\n" r"$P(p<0.05\,|\,$signal$)$",
                               fontsize=_ax)
-            if ri == len(designs) - 1:
-                xl = "Participants per arm" if design == "two_arm" else "Paired participants"
-                ax.set_xlabel(xl, fontsize=_ax)
+            # Label BOTH rows: two-arm x is participants per arm, single-arm x is
+            # paired participants -- same values (20/40/60) but different meaning,
+            # so one shared bottom label would be ambiguous.
+            xl = "Participants per arm" if design == "two_arm" else "Paired participants"
+            ax.set_xlabel(xl, fontsize=_ax)
             ax.tick_params(labelsize=_tk)
             _style_axis(ax)
     handles, labels = fig.axes[0].get_legend_handles_labels()
@@ -2150,59 +2152,38 @@ def generate() -> None:
     fig.tight_layout()
     save_panel(fig, "panel_B_loo_sensitivity", FIGURE_NAME, MAIN_OUTPUT)
 
-    if bench_df is not None:
-        fig_c_ind = plt.figure(figsize=(14, 6.8))
-        _panel_bench_signal_rmse(fig_c_ind, bench_df)
-        fig_c_ind.suptitle("Effect-size estimation accuracy on signal genes",
-                            fontsize=13, fontweight="bold", y=0.995)
-        save_panel(fig_c_ind, "panel_C_benchmark_signal_rmse", FIGURE_NAME, MAIN_OUTPUT)
-
-        fig_e_ind, ax_e_ind = plt.subplots(figsize=(7.2, 5.0))
-        _panel_bench_lambda_gc(ax_e_ind, bench_df)
-        fig_e_ind.tight_layout()
-        save_panel(fig_e_ind, "panel_E_benchmark_lambda_gc", FIGURE_NAME, MAIN_OUTPUT)
-
-        fig_f_ind, ax_f_ind = plt.subplots(figsize=(7.2, 5.0))
-        _panel_bench_runtime(ax_f_ind, bench_df)
-        fig_f_ind.tight_layout()
-        save_panel(fig_f_ind, "panel_F_benchmark_runtime", FIGURE_NAME, MAIN_OUTPUT)
-
-        fig_d_ind = plt.figure(figsize=(10, 11.0))
-        gs_d_ind = fig_d_ind.add_gridspec(2, 1, hspace=0.40,
-                                           left=0.07, right=0.97, top=0.90, bottom=0.08)
-        _panel_bench_qq_single(fig_d_ind, bench_df, n_genes=200, signal_pct=10,
-                                gs_parent=gs_d_ind[0])
-        _panel_bench_qq_heatmap(fig_d_ind, bench_df, gs_parent=gs_d_ind[1])
-        fig_d_ind.suptitle("Null-gene p-value calibration", fontsize=13, fontweight="bold")
-        save_panel(fig_d_ind, "panel_D_benchmark_qq", FIGURE_NAME, MAIN_OUTPUT)
-
+    # ── Figure 3 benchmark panels (2026-07-28 restructure) ─────────────
+    # Main figure = 3C Type I vs sample size, 3D mixed-signal FPR, 3E BH FDR,
+    # 3F marginal power, 3G runtime. Titles carry NO panel letter (letters are
+    # added as corner annotations at composite assembly). The panels dropped from
+    # the main figure (QQ, beta-envelope heatmap, lambda_GC, bias/RMSE, family
+    # FPR, cell-vs-participant SE bar) move to the supplementary figures.
     if core_df is not None:
-        # CORE-GRID panels: the sample-size and robustness results the
-        # sensitivity grid does not cover.
-        fig_i, axes_i = plt.subplots(1, 2, figsize=(11, 4.4))
-        _panel_bench_typeI_vs_n(axes_i, core_df)
-        fig_i.suptitle("Pure-null Type I error vs sample size",
-                       fontsize=13, fontweight="bold")
-        fig_i.tight_layout(rect=(0, 0, 1, 0.96))
-        save_panel(fig_i, "panel_I_benchmark_typeI_vs_n", FIGURE_NAME, MAIN_OUTPUT)
+        fig_3c = plt.figure(figsize=(11, 4.6))
+        _panel_bench_typeI_main(fig_3c, core_df)
+        fig_3c.suptitle("Pure-null Type I error vs sample size",
+                        fontsize=13, fontweight="bold", y=0.99)
+        save_panel(fig_3c, "panel_3C_typeI_vs_n", FIGURE_NAME, MAIN_OUTPUT)
 
-        fig_j = plt.figure(figsize=(12, 6.4))
-        _panel_bench_power_vs_n(fig_j, core_df)
-        fig_j.suptitle("Marginal detection power vs sample size",
-                       fontsize=13, fontweight="bold", y=0.995)
-        save_panel(fig_j, "panel_J_benchmark_power_vs_n", FIGURE_NAME, MAIN_OUTPUT)
+        fig_3f = plt.figure(figsize=(12, 6.6))
+        _panel_bench_power_vs_n(fig_3f, core_df)
+        save_panel(fig_3f, "panel_3F_marginal_power", FIGURE_NAME, MAIN_OUTPUT)
 
-        fig_k, ax_k = plt.subplots(figsize=(11, 4.8))
-        _panel_bench_scenario_families(ax_k, core_df)
-        ax_k.set_title("Null-gene FPR across robustness families",
-                       fontsize=13, fontweight="bold")
-        fig_k.tight_layout()
-        save_panel(fig_k, "panel_K_benchmark_scenario_families", FIGURE_NAME, MAIN_OUTPUT)
+    if bench_df is not None:
+        fig_3d = plt.figure(figsize=(13, 4.6))
+        _panel_bench_mixed_fpr(fig_3d, bench_df)
+        save_panel(fig_3d, "panel_3D_mixed_signal_fpr", FIGURE_NAME, MAIN_OUTPUT)
 
-    fig, (ax_top, ax_bottom) = plt.subplots(2, 1, figsize=(6.5, 9.5))
-    _panel_d_se_comparison(ax_top, ax_bottom, data, data_tnbc)
-    fig.tight_layout()
-    save_panel(fig, "panel_G_se_comparison", FIGURE_NAME, MAIN_OUTPUT)
+        fig_3e = plt.figure(figsize=(13, 4.6))
+        _panel_bench_bh_fdr(fig_3e, bench_df)
+        save_panel(fig_3e, "panel_3E_bh_fdr", FIGURE_NAME, MAIN_OUTPUT)
+
+        fig_3g, ax_3g = plt.subplots(figsize=(6.5, 4.6))
+        _panel_bench_runtime(ax_3g, bench_df)
+        ax_3g.legend(loc="upper left", fontsize=8, frameon=True,
+                     framealpha=0.95, edgecolor="#cccccc")
+        fig_3g.tight_layout()
+        save_panel(fig_3g, "panel_3G_runtime", FIGURE_NAME, MAIN_OUTPUT)
 
     fig, ax = plt.subplots(figsize=(10, 9))
     _panel_e_cross_dataset(ax, data)
