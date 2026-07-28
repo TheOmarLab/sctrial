@@ -1375,7 +1375,7 @@ def _broken_pair(fig, gs_cell, *, main_ylim, strip_ylim, height_ratios=(1, 3.4))
     return ax_main, ax_strip
 
 
-def _panel_bench_typeI_main(fig, core_df, *, composite: bool = False):
+def _panel_bench_typeI_main(fig, core_df, *, composite: bool = False, gs_parent=None):
     """3C. Pure-null Type I error vs sample size, two aligned designs.
 
     x is participants per arm (two-arm) / paired participants (single-arm), which
@@ -1390,7 +1390,11 @@ def _panel_bench_typeI_main(fig, core_df, *, composite: bool = False):
             .reset_index())
     rate = rate.merge(meta, on="scenario")
 
-    gs = fig.add_gridspec(1, 2, wspace=0.28)
+    # In a composite, build inside the parent subplotspec (subgridspec) rather
+    # than a new top-level gridspec, so the broken-axis pairs stay within the
+    # allotted cell instead of overflowing into neighbouring panels.
+    gs = (gs_parent.subgridspec(1, 2, wspace=0.28) if gs_parent is not None
+          else fig.add_gridspec(1, 2, wspace=0.28))
     _ttl = 5.8 if composite else 12
     _ax = 5.2 if composite else 11
     _tk = 4.7 if composite else 10
@@ -1533,7 +1537,8 @@ def _per_scenario_fdr(df, q=0.05):
 
 def _faceted_broken_by_fraction(fig, rate, *, ylabel, main_ylim, strip_ylim,
                                 title, arch="Balanced signal architecture",
-                                nominal=True, composite=False, panel_sizes=None):
+                                nominal=True, composite=False, panel_sizes=None,
+                                gs_parent=None):
     """Shared 3D/3E body: four tested-set-size facets, x = signal fraction,
     calibrated methods in the main region and NEBULA in an upper strip.
 
@@ -1549,7 +1554,8 @@ def _faceted_broken_by_fraction(fig, rate, *, ylabel, main_ylim, strip_ylim,
     xpos = {f: i for i, f in enumerate(fracs)}
     off = {"dreamlet": 0.08, "limma_voom": 0.03, "sctrial_did": -0.03,
            "wilcoxon_paired": -0.08, "nebula": 0.0}
-    gs = fig.add_gridspec(1, len(sizes), wspace=0.30)
+    gs = (gs_parent.subgridspec(1, len(sizes), wspace=0.30) if gs_parent is not None
+          else fig.add_gridspec(1, len(sizes), wspace=0.30))
     for ci, ng in enumerate(sizes):
         ax_main, ax_strip = _broken_pair(fig, gs[ci], main_ylim=main_ylim,
                                          strip_ylim=strip_ylim)
@@ -1601,7 +1607,8 @@ def _faceted_broken_by_fraction(fig, rate, *, ylabel, main_ylim, strip_ylim,
                    fontsize=8, columnspacing=1.1, handlelength=1.6)
 
 
-def _panel_bench_mixed_fpr(fig, bench_df, *, composite: bool = False):
+def _panel_bench_mixed_fpr(fig, bench_df, *, composite: bool = False, panel_sizes=None,
+                           gs_parent=None):
     """3D. Mixed-signal null-gene FPR, balanced, four tested-set-size facets."""
     bal = bench_df[(bench_df["architecture"] == "balanced")
                    & (bench_df["signal_fraction_realised"] > 0)
@@ -1613,10 +1620,12 @@ def _panel_bench_mixed_fpr(fig, bench_df, *, composite: bool = False):
     _faceted_broken_by_fraction(
         fig, rate, ylabel="Null-gene FPR (p < 0.05)",
         main_ylim=(0.0, 0.10), strip_ylim=(0.68, 0.82),
-        title="Mixed-signal null-gene false-positive rate", composite=composite)
+        title="Mixed-signal null-gene false-positive rate", composite=composite,
+        panel_sizes=panel_sizes, gs_parent=gs_parent)
 
 
-def _panel_bench_bh_fdr(fig, bench_df, *, composite: bool = False, panel_sizes=None):
+def _panel_bench_bh_fdr(fig, bench_df, *, composite: bool = False, panel_sizes=None,
+                        gs_parent=None):
     """3E. BH-controlled realised FDR, balanced, four tested-set-size facets."""
     bal = bench_df[(bench_df["architecture"] == "balanced")
                    & (bench_df["signal_fraction_realised"] > 0)]
@@ -1628,10 +1637,11 @@ def _panel_bench_bh_fdr(fig, bench_df, *, composite: bool = False, panel_sizes=N
         fig, rate, ylabel=r"Realized FDR at BH $q<0.05$",
         main_ylim=(0.0, 0.12), strip_ylim=(0.65, 1.02),
         title="False discovery rate after Benjamini-Hochberg", composite=composite,
-        panel_sizes=panel_sizes)
+        panel_sizes=panel_sizes, gs_parent=gs_parent)
 
 
-def _panel_bench_power_vs_n(fig, core_df, *, composite: bool = False, only_beta=None):
+def _panel_bench_power_vs_n(fig, core_df, *, composite: bool = False, only_beta=None,
+                            gs_parent=None):
     """Marginal detection power vs sample size, faceted design x effect size.
 
     Separates single-arm from two-arm -- pooling them onto one participant axis
@@ -1653,8 +1663,10 @@ def _panel_bench_power_vs_n(fig, core_df, *, composite: bool = False, only_beta=
     row_header = {"two_arm": "Two-arm DiD", "single_arm": "Single-arm paired change"}
     # Tighter rows, room on the left for row headers and one shared y-label, room
     # at the top for the title + legend.
-    gs = fig.add_gridspec(len(designs), len(betas), hspace=0.32, wspace=0.26,
-                          left=0.13, right=0.98, top=0.84, bottom=0.10)
+    gs = (gs_parent.subgridspec(len(designs), len(betas), hspace=0.32, wspace=0.26)
+          if gs_parent is not None
+          else fig.add_gridspec(len(designs), len(betas), hspace=0.32, wspace=0.26,
+                                left=0.13, right=0.98, top=0.84, bottom=0.10))
     _ttl = 5.6 if composite else 11
     _ax = 5.0 if composite else 10
     _tk = 4.6 if composite else 9
