@@ -1350,6 +1350,20 @@ def _bench_figlegend(fig, methods=None, *, y=1.0, fontsize=8):
                handlelength=1.6)
 
 
+def _bench_legend_below(fig, cell, *, methods=None, fontsize=4.6, y_pad=0.004):
+    """A horizontal method legend centred just below a composite cell, matching
+    the standalone panels (which each carry their own legend below the axes)."""
+    methods = methods if methods is not None else _LEGEND_ORDER
+    pos = cell.get_position(fig)
+    fig.legend(
+        handles=_bench_legend_handles(methods), loc="upper center",
+        bbox_to_anchor=(0.5 * (pos.x0 + pos.x1), pos.y0 - y_pad),
+        ncol=len(methods), frameon=True, framealpha=0.95, edgecolor="#cccccc",
+        fontsize=fontsize, columnspacing=0.8, handlelength=1.2, handletextpad=0.3,
+        borderpad=0.3,
+    )
+
+
 def _broken_pair(fig, gs_cell, *, main_ylim, strip_ylim, height_ratios=(1, 3.4)):
     """A broken y-axis: a thin NEBULA strip above a main calibrated-method axis.
 
