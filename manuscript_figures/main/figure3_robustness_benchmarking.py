@@ -1724,7 +1724,10 @@ def _panel_bench_power_vs_n(fig, core_df, *, composite: bool = False, only_beta=
             ax.set_xticks(range(len(n_vals)))
             ax.set_xticklabels(n_vals)
             ax.set_xlim(-0.5, len(n_vals) - 0.5)
-            if ri == 0:
+            # In a composite the effect size is folded into the panel's corner
+            # title, so the per-axis beta title (which would collide with it) is
+            # suppressed; standalone keeps it as the column header.
+            if ri == 0 and not composite:
                 ax.set_title(rf"$\beta$ = {beta}", fontsize=_ttl, fontweight="bold")
             if ci > 0:
                 ax.set_yticklabels([])
@@ -2357,11 +2360,13 @@ def generate() -> None:
     #   C pure-null Type I error (two designs)
     #   D realised FDR after BH (2,000-gene facet) | E marginal power (beta=0.5)
     #   F runtime scaling                          | G cross-dataset effects
-    fig_c = plt.figure(figsize=(180 * _mm, 215 * _mm))
+    fig_c = plt.figure(figsize=(180 * _mm, 225 * _mm))
+    # Wider spacer rows below C and below D|E leave room for each benchmark
+    # panel's own legend, placed beneath the axes as in the standalone panels.
     outer = fig_c.add_gridspec(
         9, 1,
-        height_ratios=[0.80, 0.07, 0.80, 0.12, 0.92, 0.12, 1.00, 0.12, 1.06],
-        hspace=0.0, left=0.10, right=0.965, top=0.95, bottom=0.05,
+        height_ratios=[0.78, 0.07, 0.78, 0.13, 0.92, 0.20, 1.00, 0.20, 1.02],
+        hspace=0.0, left=0.10, right=0.965, top=0.955, bottom=0.045,
     )
 
     gs_a = outer[0].subgridspec(1, 2, wspace=0.42)
@@ -2433,11 +2438,19 @@ def generate() -> None:
     for cell, ttl in [
         (outer[4], "Pure-null Type I error"),
         (gs_de[0], "Realized FDR after BH"),
-        (gs_de[1], "Marginal detection probability"),
+        (gs_de[1], r"Marginal detection probability ($\beta$ = 0.5)"),
     ]:
         x0, y1 = _cell_tl(cell)
         fig_c.text(x0, min(y1 + 0.010, 0.995), ttl, fontsize=6.2,
                    fontweight="bold", va="bottom", ha="left")
+
+    # Each benchmark panel carries its own method legend beneath the axes, as in
+    # the standalone panels (C, D show all five methods; E excludes NEBULA).
+    if core_df is not None:
+        _bench_legend_below(fig_c, outer[4], fontsize=4.6)
+        _bench_legend_below(fig_c, gs_de[1], methods=_CALIBRATED, fontsize=4.6)
+    if bench_df is not None:
+        _bench_legend_below(fig_c, gs_de[0], fontsize=4.6)
 
     # Panel letters A-G at each cell's upper-left corner.
     for cell, lab in [
