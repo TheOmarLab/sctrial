@@ -921,8 +921,8 @@ def _panel_bench_runtime(ax, bench_df: pd.DataFrame, *, composite: bool = False)
         pts = scen_med[scen_med["method"] == method]
         jit = (hash(method) % 5 - 2) * 0.03
         ax.scatter([n_to_x[int(n)] + jit for n in pts["n_genes"]],
-                   pts["runtime_seconds"], s=(3 if composite else 9),
-                   color=style["color"], alpha=0.28, edgecolors="none",
+                   pts["runtime_seconds"], s=(4 if composite else 14),
+                   color=style["color"], alpha=0.38, edgecolors="none",
                    rasterized=True, zorder=2)
         ax.errorbar(xs, sub["med"],
                     yerr=[sub["med"] - sub["q25"], sub["q75"] - sub["med"]],
@@ -1671,10 +1671,21 @@ def _panel_bench_power_vs_n(fig, core_df, *, composite: bool = False):
                 style = _method_style(method, is_focal=(method == "sctrial_did"),
                                       composite=composite)
                 xs = [pos[n] + off[method] for n in m["per_arm"]]
-                ax.plot(xs, m["mean"], **style)
-                ax.errorbar(xs, m["mean"], yerr=1.96 * m["mcse"],
-                            fmt="none", ecolor=style["color"], elinewidth=0.7,
-                            capsize=1.3, alpha=0.6)
+                ys = m["mean"].to_numpy(float)
+                half = 1.96 * m["mcse"].to_numpy(float)
+                # 95% Monte Carlo CIs, clipped to the valid probability range so a
+                # near-0 or near-1 estimate cannot draw a whisker outside [0, 1].
+                lo = np.clip(ys - half, 0.0, 1.0)
+                hi = np.clip(ys + half, 0.0, 1.0)
+                zbase = 10 if method == "sctrial_did" else 5
+                # Error bars first (behind), then the line + marker on top, so the
+                # marker is always drawn above its interval even where the CI is
+                # very narrow (e.g. beta = 1.0, where it may be hidden entirely).
+                ax.errorbar(xs, ys, yerr=[ys - lo, hi - ys], fmt="none",
+                            ecolor=style["color"], elinewidth=0.9,
+                            capsize=(1.6 if composite else 2.3), capthick=0.9,
+                            alpha=0.9, zorder=zbase - 1)
+                ax.plot(xs, ys, **style, zorder=zbase)
             ax.set_ylim(0, 1.02)
             ax.set_xticks(range(len(n_vals)))
             ax.set_xticklabels(n_vals)
