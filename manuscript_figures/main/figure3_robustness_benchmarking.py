@@ -1366,19 +1366,47 @@ def _bench_figlegend(fig, methods=None, *, y=1.0, fontsize=8):
                handlelength=1.6)
 
 
+def _axes_in_cell(fig, cell):
+    """Axes whose centre falls inside a subplotspec cell's bbox."""
+    pos = cell.get_position(fig)
+    out = []
+    for ax in fig.axes:
+        bb = ax.get_position()
+        cx, cy = 0.5 * (bb.x0 + bb.x1), 0.5 * (bb.y0 + bb.y1)
+        if pos.x0 <= cx <= pos.x1 and pos.y0 <= cy <= pos.y1:
+            out.append(ax)
+    return out
+
+
 def _bench_legend_below(fig, cell, *, methods=None, fontsize=4.6, y_pad=0.004,
-                        ncol=None, short=False):
+                        ncol=None, short=False, axes=None):
     """A horizontal method legend centred just below a composite cell, matching
     the standalone panels (which each carry their own legend below the axes).
     Defaults to a SINGLE ROW (ncol = number of methods); pass `ncol` to wrap.
-    `short` uses the one-word method labels so five entries fit one line."""
+    `short` uses the one-word method labels so five entries fit one line.
+
+    When `axes` is given (or discoverable in the cell), the legend is placed just
+    below the LOWEST x-axis label of those axes -- computed from the rendered
+    tight bbox -- so it never overlaps the tick or axis labels regardless of how
+    deep matplotlib places them."""
     methods = methods if methods is not None else _LEGEND_ORDER
     pos = cell.get_position(fig)
+    cx = 0.5 * (pos.x0 + pos.x1)
+    if axes is None:
+        axes = _axes_in_cell(fig, cell)
+    y_anchor = pos.y0 - y_pad
+    if axes:
+        try:
+            r = fig.canvas.get_renderer()
+            y_disp = min(ax.get_tightbbox(r).y0 for ax in axes)
+            y_fig = fig.transFigure.inverted().transform((0, y_disp))[1]
+            y_anchor = min(y_anchor, y_fig - y_pad)
+        except Exception:
+            pass
     fig.legend(
         handles=_bench_legend_handles(methods, short=short), loc="upper center",
-        bbox_to_anchor=(0.5 * (pos.x0 + pos.x1), pos.y0 - y_pad),
-        ncol=ncol if ncol is not None else len(methods), frameon=True,
-        framealpha=0.95, edgecolor="#cccccc", fontsize=fontsize,
+        bbox_to_anchor=(cx, y_anchor), ncol=ncol if ncol is not None else len(methods),
+        frameon=True, framealpha=0.95, edgecolor="#cccccc", fontsize=fontsize,
         columnspacing=0.6, handlelength=1.0, handletextpad=0.25, borderpad=0.3,
     )
 
@@ -2480,7 +2508,7 @@ def generate() -> None:
     # C/D/E/G/H carry all five methods; F (marginal power) omits NEBULA. Short
     # labels + small font keep the whole key on one line under the half-width
     # column.
-    _leg_fs, _leg_pad = 3.2, 0.018
+    _leg_fs, _leg_pad = 3.2, 0.006
     if core_df is not None:
         _bench_legend_below(fig_c, gs_cd[0], fontsize=_leg_fs, y_pad=_leg_pad, short=True)
         _bench_legend_below(fig_c, gs_ef[1], methods=_CALIBRATED, fontsize=_leg_fs,
