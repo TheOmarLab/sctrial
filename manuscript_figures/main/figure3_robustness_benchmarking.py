@@ -1891,6 +1891,13 @@ def generate() -> None:
     except FileNotFoundError as exc:
         print(f"  Warning: {exc}")
 
+    core_df: pd.DataFrame | None = None
+    try:
+        core_df = _load_core_benchmark_data()
+        print(f"  Core CSV: {len(core_df):,} rows, {core_df.scenario.nunique()} scenarios")
+    except FileNotFoundError as exc:
+        print(f"  Warning (core grid): {exc}")
+
     # ── Individual panels ──────────────────────────────────────────────
     fig, (ax_top, ax_bottom) = plt.subplots(2, 1, figsize=(6.5, 9.5))
     _panel_a(ax_top, ax_bottom, data, data_tnbc)
@@ -1927,6 +1934,29 @@ def generate() -> None:
         _panel_bench_qq_heatmap(fig_d_ind, bench_df, gs_parent=gs_d_ind[1])
         fig_d_ind.suptitle("Null-gene p-value calibration", fontsize=13, fontweight="bold")
         save_panel(fig_d_ind, "panel_D_benchmark_qq", FIGURE_NAME, MAIN_OUTPUT)
+
+    if core_df is not None:
+        # CORE-GRID panels: the sample-size and robustness results the
+        # sensitivity grid does not cover.
+        fig_i, axes_i = plt.subplots(1, 2, figsize=(11, 4.4))
+        _panel_bench_typeI_vs_n(axes_i, core_df)
+        fig_i.suptitle("Pure-null Type I error vs sample size",
+                       fontsize=13, fontweight="bold")
+        fig_i.tight_layout(rect=(0, 0, 1, 0.96))
+        save_panel(fig_i, "panel_I_benchmark_typeI_vs_n", FIGURE_NAME, MAIN_OUTPUT)
+
+        fig_j = plt.figure(figsize=(12, 6.4))
+        _panel_bench_power_vs_n(fig_j, core_df)
+        fig_j.suptitle("Marginal detection power vs sample size",
+                       fontsize=13, fontweight="bold", y=0.995)
+        save_panel(fig_j, "panel_J_benchmark_power_vs_n", FIGURE_NAME, MAIN_OUTPUT)
+
+        fig_k, ax_k = plt.subplots(figsize=(11, 4.8))
+        _panel_bench_scenario_families(ax_k, core_df)
+        ax_k.set_title("Null-gene FPR across robustness families",
+                       fontsize=13, fontweight="bold")
+        fig_k.tight_layout()
+        save_panel(fig_k, "panel_K_benchmark_scenario_families", FIGURE_NAME, MAIN_OUTPUT)
 
     fig, (ax_top, ax_bottom) = plt.subplots(2, 1, figsize=(6.5, 9.5))
     _panel_d_se_comparison(ax_top, ax_bottom, data, data_tnbc)
