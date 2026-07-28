@@ -941,8 +941,10 @@ def _panel_bench_runtime(ax, bench_df: pd.DataFrame, *, composite: bool = False)
         for mth in ("nebula", "dreamlet", "limma_voom"):
             if mth in big.index:
                 lines.append(f"  {_BENCH_METHOD_LABELS[mth]}: {big[mth] / base:.0f}x")
-        ax.text(0.03, 0.97, "\n".join(lines), transform=ax.transAxes,
-                fontsize=(4.4 if composite else 7.5), va="top", ha="left",
+        # Lower-right corner: empty at the largest tested-set size (all lines are
+        # high there), so the ratio box never collides with the upper-left legend.
+        ax.text(0.97, 0.03, "\n".join(lines), transform=ax.transAxes,
+                fontsize=(4.4 if composite else 7.5), va="bottom", ha="right",
                 bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
                           edgecolor="#cccccc", alpha=0.9))
 
@@ -954,16 +956,19 @@ def _panel_bench_runtime(ax, bench_df: pd.DataFrame, *, composite: bool = False)
     ax.set_ylabel("Wall-clock seconds per simulated dataset", fontsize=_lbl_fs)
     ax.set_title("Runtime scaling", fontsize=_ttl_fs, fontweight="bold", pad=_ttl_pad)
     ax.tick_params(axis="y", labelsize=_lbl_fs)
+    # Canonical legend order (sctrial, Wilcoxon, limma-voom, dreamlet, NEBULA),
+    # not the draw order, so every panel's legend reads the same.
     if composite:
         ax.legend(
-            loc="upper left", bbox_to_anchor=(0.02, 0.58),
+            handles=_bench_legend_handles(), loc="upper left",
+            bbox_to_anchor=(0.02, 0.58),
             frameon=True, framealpha=0.95, edgecolor="#cccccc", fontsize=_leg_fs,
             markerscale=0.52, handlelength=1.0,
         )
     else:
         ax.legend(
-            loc="upper left", frameon=True, framealpha=0.95,
-            edgecolor="#cccccc", fontsize=_leg_fs,
+            handles=_bench_legend_handles(), loc="upper left", frameon=True,
+            framealpha=0.95, edgecolor="#cccccc", fontsize=_leg_fs,
             markerscale=1.0, handlelength=1.5,
         )
     _style_axis(ax)
