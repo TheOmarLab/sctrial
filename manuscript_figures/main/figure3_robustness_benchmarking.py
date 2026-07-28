@@ -931,12 +931,27 @@ def _panel_bench_runtime(ax, bench_df: pd.DataFrame, *, composite: bool = False)
         ax.plot(xs, sub["med"], label=_BENCH_METHOD_LABELS[method],
                 zorder=10 if is_focal else 5, **style)
 
+    # Endpoint speed ratios (relative to sctrial) at the largest tested-set size,
+    # as a single annotation rather than per-point clutter. Implementation- and
+    # hardware-specific; the caption states the timing boundary and configuration.
+    big = summary[summary["n_genes"] == max(_PANEL_SIZES)].set_index("method")["med"]
+    if "sctrial_did" in big.index and big["sctrial_did"] > 0:
+        base = big["sctrial_did"]
+        lines = [f"at {max(_PANEL_SIZES):,} genes vs sctrial:"]
+        for mth in ("nebula", "dreamlet", "limma_voom"):
+            if mth in big.index:
+                lines.append(f"  {_BENCH_METHOD_LABELS[mth]}: {big[mth] / base:.0f}x")
+        ax.text(0.03, 0.97, "\n".join(lines), transform=ax.transAxes,
+                fontsize=(4.4 if composite else 7.5), va="top", ha="left",
+                bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
+                          edgecolor="#cccccc", alpha=0.9))
+
     ax.set_yscale("log")
     ax.set_xticks(x_positions)
     ax.set_xticklabels([f"{p:,}" for p in _PANEL_SIZES], fontsize=_lbl_fs)
     ax.set_xlim(-0.35, len(_PANEL_SIZES) - 0.65)
-    ax.set_xlabel("Tested-set size (genes)", fontsize=_lbl_fs)
-    ax.set_ylabel("Wall-clock seconds per iteration", fontsize=_lbl_fs)
+    ax.set_xlabel("Number of tested genes", fontsize=_lbl_fs)
+    ax.set_ylabel("Wall-clock seconds per simulated dataset", fontsize=_lbl_fs)
     ax.set_title("Runtime scaling", fontsize=_ttl_fs, fontweight="bold", pad=_ttl_pad)
     ax.tick_params(axis="y", labelsize=_lbl_fs)
     if composite:
@@ -1302,6 +1317,33 @@ _DESIGN_LABEL = {"two_arm": "Two-arm (DiD)", "single_arm": "Single-arm (paired)"
 # either flatten it to a line or crush the methods that matter.
 _CALIBRATED = [m for m in _BENCH_METHODS if m != "nebula"]
 
+# Legend order is fixed across every benchmark panel: sctrial, Wilcoxon,
+# limma-voom, dreamlet, NEBULA (NEBULA omitted where it is not shown). This is
+# independent of PLOT order, which keeps the focal method drawn last / on top.
+_LEGEND_ORDER = ["sctrial_did", "wilcoxon_paired", "limma_voom", "dreamlet", "nebula"]
+
+
+def _bench_legend_handles(methods=None):
+    from matplotlib.lines import Line2D
+
+    methods = methods if methods is not None else _LEGEND_ORDER
+    return [
+        Line2D([0], [0], color=_BENCH_METHOD_COLORS[m], marker=_BENCH_METHOD_MARKERS[m],
+               linestyle="-", markersize=7, markeredgecolor="white", markeredgewidth=0.6,
+               label=_BENCH_METHOD_LABELS[m])
+        for m in methods
+    ]
+
+
+def _bench_figlegend(fig, methods=None, *, y=1.0, fontsize=8):
+    """One global legend above the panel, in the standard method order, never
+    over the plotted data."""
+    fig.legend(handles=_bench_legend_handles(methods), loc="upper center",
+               ncol=len(methods if methods is not None else _LEGEND_ORDER),
+               bbox_to_anchor=(0.5, y), frameon=True, framealpha=0.95,
+               edgecolor="#cccccc", fontsize=fontsize, columnspacing=1.1,
+               handlelength=1.6)
+
 
 def _broken_pair(fig, gs_cell, *, main_ylim, strip_ylim, height_ratios=(1, 3.4)):
     """A broken y-axis: a thin NEBULA strip above a main calibrated-method axis.
@@ -1376,7 +1418,7 @@ def _panel_bench_typeI_main(fig, core_df, *, composite: bool = False):
         ax_main.set_xticks(range(len(n_vals)))
         ax_main.set_xticklabels(n_vals)
         ax_main.set_xlim(-0.4, len(n_vals) - 0.6)
-        ax_main.set_yticks([0.0, 0.05, 0.10])
+        ax_main.set_yticks([0.0, 0.02, 0.04, 0.06, 0.08, 0.10])
         ax_strip.set_yticks([0.7, 0.8])
         xlabel = "Participants per arm" if design == "two_arm" else "Paired participants"
         ax_main.set_xlabel(xlabel, fontsize=_ax)
@@ -1386,11 +1428,12 @@ def _panel_bench_typeI_main(fig, core_df, *, composite: bool = False):
             _style_axis(a)
         if ci == 0:
             ax_main.set_ylabel("Type I error (p < 0.05)", fontsize=_ax)
-        if ci == 0 and not composite:
-            h1, l1 = ax_main.get_legend_handles_labels()
-            h2, l2 = ax_strip.get_legend_handles_labels()
-            ax_main.legend(h1 + h2, l1 + l2, loc="upper left", fontsize=8,
-                           frameon=True, framealpha=0.95, edgecolor="#cccccc")
+    if not composite:
+        # One global legend below the panels, never over the plotted data.
+        fig.legend(handles=_bench_legend_handles(), loc="lower center",
+                   bbox_to_anchor=(0.5, -0.04), ncol=len(_LEGEND_ORDER),
+                   frameon=True, framealpha=0.95, edgecolor="#cccccc",
+                   fontsize=8, columnspacing=1.1, handlelength=1.6)
 
 
 def _panel_bench_typeI_vs_n(axes, core_df, *, composite: bool = False):
@@ -1484,7 +1527,8 @@ def _per_scenario_fdr(df, q=0.05):
 
 
 def _faceted_broken_by_fraction(fig, rate, *, ylabel, main_ylim, strip_ylim,
-                                title, nominal=True, composite=False):
+                                title, arch="Balanced signal architecture",
+                                nominal=True, composite=False):
     """Shared 3D/3E body: four tested-set-size facets, x = signal fraction,
     calibrated methods in the main region and NEBULA in an upper strip.
 
@@ -1526,7 +1570,7 @@ def _faceted_broken_by_fraction(fig, rate, *, ylabel, main_ylim, strip_ylim,
         ax_main.set_xticks(range(len(fracs)))
         ax_main.set_xticklabels([f"{f}%" for f in fracs])
         ax_main.set_xlim(-0.5, len(fracs) - 0.5)
-        ax_strip.set_title(f"{ng:,} genes", fontsize=_ttl, fontweight="bold", pad=3)
+        ax_strip.set_title(f"{ng:,} tested genes", fontsize=_ttl, fontweight="bold", pad=3)
         ax_main.set_xlabel("Signal fraction", fontsize=_ax)
         for a in (ax_main, ax_strip):
             a.tick_params(labelsize=_tk)
@@ -1536,13 +1580,17 @@ def _faceted_broken_by_fraction(fig, rate, *, ylabel, main_ylim, strip_ylim,
             ax_strip.set_yticklabels([])
         else:
             ax_main.set_ylabel(ylabel, fontsize=_ax)
-            if not composite:
-                h1, l1 = ax_main.get_legend_handles_labels()
-                h2, l2 = ax_strip.get_legend_handles_labels()
-                ax_main.legend(h1 + h2, l1 + l2, loc="upper left", fontsize=7,
-                               frameon=True, framealpha=0.95, edgecolor="#cccccc")
-    if title and not composite:
-        fig.suptitle(title, fontsize=(6.2 if composite else 13), fontweight="bold", y=0.995)
+    if not composite:
+        if title:
+            fig.suptitle(title, fontsize=13, fontweight="bold", y=1.0)
+        if arch:
+            fig.text(0.5, 0.955, arch, ha="center", va="top", fontsize=10,
+                     fontstyle="italic", color="#444")
+        # One global legend below the facets, standard order, off the data.
+        fig.legend(handles=_bench_legend_handles(), loc="lower center",
+                   bbox_to_anchor=(0.5, -0.04), ncol=len(_LEGEND_ORDER),
+                   frameon=True, framealpha=0.95, edgecolor="#cccccc",
+                   fontsize=8, columnspacing=1.1, handlelength=1.6)
 
 
 def _panel_bench_mixed_fpr(fig, bench_df, *, composite: bool = False):
@@ -1569,7 +1617,7 @@ def _panel_bench_bh_fdr(fig, bench_df, *, composite: bool = False):
                                        signal_pct=("signal_pct", "first")).reset_index()
     rate = rate.merge(meta, on="scenario")
     _faceted_broken_by_fraction(
-        fig, rate, ylabel=r"Realised FDR (BH $q<0.05$)",
+        fig, rate, ylabel=r"Realized FDR at BH $q<0.05$",
         main_ylim=(0.0, 0.12), strip_ylim=(0.65, 1.02),
         title="False discovery rate after Benjamini-Hochberg", composite=composite)
 
@@ -1589,19 +1637,25 @@ def _panel_bench_power_vs_n(fig, core_df, *, composite: bool = False):
     rate = rate.merge(meta, on="scenario")
     betas = sorted(rate["beta"].dropna().unique())
     designs = ("two_arm", "single_arm")
-    gs = fig.add_gridspec(len(designs), len(betas), hspace=0.55, wspace=0.32)
+    row_header = {"two_arm": "Two-arm DiD", "single_arm": "Single-arm paired change"}
+    # Tighter rows, room on the left for row headers and one shared y-label, room
+    # at the top for the title + legend.
+    gs = fig.add_gridspec(len(designs), len(betas), hspace=0.32, wspace=0.26,
+                          left=0.13, right=0.98, top=0.84, bottom=0.10)
     _ttl = 5.6 if composite else 11
     _ax = 5.0 if composite else 10
     _tk = 4.6 if composite else 9
-    # Small horizontal offsets expose methods that overlap (they cluster
-    # tightly). NEBULA is EXCLUDED from marginal-detection comparisons: its Type I
+    # Deterministic x-offsets expose methods that otherwise overlap almost
+    # exactly. NEBULA is EXCLUDED from marginal-detection comparisons: its Type I
     # error is ~0.75, so its "detections" are mostly false positives; its full
-    # rejection rates appear with the calibration results in the supplement.
-    off = {"dreamlet": 0.09, "limma_voom": 0.03, "sctrial_did": -0.03,
-           "wilcoxon_paired": -0.09}
+    # rejection rates and matched-model validation are in the supplement.
+    off = {"wilcoxon_paired": -0.15, "limma_voom": -0.05,
+           "sctrial_did": 0.05, "dreamlet": 0.15}
+    axes_by_row = {}
     for ri, design in enumerate(designs):
         for ci, beta in enumerate(betas):
             ax = fig.add_subplot(gs[ri, ci])
+            axes_by_row.setdefault(ri, []).append(ax)
             sub = rate[(rate["design"] == design) & (rate["beta"] == beta)]
             n_vals = sorted(sub["per_arm"].unique())
             pos = {n: i for i, n in enumerate(n_vals)}
@@ -1612,33 +1666,40 @@ def _panel_bench_power_vs_n(fig, core_df, *, composite: bool = False):
                 style = _method_style(method, is_focal=(method == "sctrial_did"),
                                       composite=composite)
                 xs = [pos[n] + off[method] for n in m["per_arm"]]
-                ax.plot(xs, m["mean"],
-                        label=_BENCH_METHOD_LABELS[method] if (ri == 0 and ci == 0) else None,
-                        **style)
+                ax.plot(xs, m["mean"], **style)
                 ax.errorbar(xs, m["mean"], yerr=1.96 * m["mcse"],
                             fmt="none", ecolor=style["color"], elinewidth=0.7,
-                            capsize=1.3, alpha=0.55)
+                            capsize=1.3, alpha=0.6)
             ax.set_ylim(0, 1.02)
             ax.set_xticks(range(len(n_vals)))
             ax.set_xticklabels(n_vals)
             ax.set_xlim(-0.5, len(n_vals) - 0.5)
             if ri == 0:
                 ax.set_title(rf"$\beta$ = {beta}", fontsize=_ttl, fontweight="bold")
-            if ci == 0:
-                ax.set_ylabel(f"{_DESIGN_LABEL[design]}\n" r"$P(p<0.05\,|\,$signal$)$",
-                              fontsize=_ax)
-            # Label BOTH rows: two-arm x is participants per arm, single-arm x is
-            # paired participants -- same values (20/40/60) but different meaning,
-            # so one shared bottom label would be ambiguous.
+            if ci > 0:
+                ax.set_yticklabels([])
             xl = "Participants per arm" if design == "two_arm" else "Paired participants"
             ax.set_xlabel(xl, fontsize=_ax)
             ax.tick_params(labelsize=_tk)
             _style_axis(ax)
-    handles, labels = fig.axes[0].get_legend_handles_labels()
-    if handles and not composite:
-        fig.legend(handles, labels, loc="upper center", ncol=len(_CALIBRATED),
-                   fontsize=8, frameon=True, framealpha=0.95, edgecolor="#cccccc",
-                   bbox_to_anchor=(0.5, 1.02))
+    if not composite:
+        # Row headers on the left, ONE shared y-label, title, and a global legend
+        # below the title (four calibrated methods; NEBULA omitted here).
+        for ri, design in enumerate(designs):
+            axs = axes_by_row[ri]
+            p0, p1 = axs[0].get_position(), axs[-1].get_position()
+            ycen = (p0.y0 + p0.y1) / 2
+            fig.text(0.02, ycen, row_header[design], rotation=90, ha="left",
+                     va="center", fontsize=11, fontweight="bold")
+            del p1
+        fig.text(0.065, 0.5, "Marginal detection probability", rotation=90,
+                 ha="center", va="center", fontsize=11)
+        fig.suptitle("Marginal detection probability by effect size and sample size",
+                     fontsize=13, fontweight="bold", y=0.99)
+        fig.legend(handles=_bench_legend_handles(_CALIBRATED), loc="upper center",
+                   bbox_to_anchor=(0.5, 0.925), ncol=len(_CALIBRATED), frameon=True,
+                   framealpha=0.95, edgecolor="#cccccc", fontsize=8,
+                   columnspacing=1.1, handlelength=1.6)
 
 
 def _panel_bench_scenario_families(ax, core_df, *, composite: bool = False):
@@ -2161,7 +2222,7 @@ def generate() -> None:
     if core_df is not None:
         fig_3c = plt.figure(figsize=(11, 4.6))
         _panel_bench_typeI_main(fig_3c, core_df)
-        fig_3c.suptitle("Pure-null Type I error vs sample size",
+        fig_3c.suptitle("Pure-null Type I error across biological sample size",
                         fontsize=13, fontweight="bold", y=0.99)
         save_panel(fig_3c, "panel_3C_typeI_vs_n", FIGURE_NAME, MAIN_OUTPUT)
 
