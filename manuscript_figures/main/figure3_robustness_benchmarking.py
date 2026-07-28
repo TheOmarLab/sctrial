@@ -1718,6 +1718,12 @@ def _panel_bench_power_vs_n(fig, core_df, *, composite: bool = False, only_beta=
             ax.set_xlabel(xl, fontsize=_ax)
             ax.tick_params(labelsize=_tk)
             _style_axis(ax)
+        if composite:
+            # Compact design label as the leftmost y-axis label, so the embedded
+            # panel keeps its Two-arm / Single-arm rows without external text math.
+            short = {"two_arm": "Two-arm DiD",
+                     "single_arm": "Single-arm paired change"}[design]
+            axes_by_row[ri][0].set_ylabel(short, fontsize=_ax, fontweight="bold")
     if not composite:
         # Row headers on the left, ONE shared y-label, title, and a global legend
         # below the title (four calibrated methods; NEBULA omitted here).
@@ -2329,157 +2335,74 @@ def generate() -> None:
     plt.rcParams.update(_SMALL_RC)
 
     _mm = 1.0 / 25.4
-    # ── Fixed at 180 × 215 mm ──
+    # ── Lean main Figure 3, 180 x 215 mm (2026-07-28 Option-1 restructure) ──
+    # A legible seven-panel main figure; the full 4-facet FDR / 6-facet power
+    # grids and the mixed-signal FPR panel move to the supplements. Letters are
+    # consecutive A-G (publication requires no skipped letters):
+    #   A pseudoreplication (melanoma | TNBC)   B leave-one-out (melanoma | TNBC)
+    #   C pure-null Type I error (two designs)
+    #   D realised FDR after BH (2,000-gene facet) | E marginal power (beta=0.5)
+    #   F runtime scaling                          | G cross-dataset effects
     fig_c = plt.figure(figsize=(180 * _mm, 215 * _mm))
-
-    # Layout (180 × 215 mm):
-    #   Row 0: A — Melanoma | TNBC side by side                           — medium
-    #   Row 1: spacer (A–B gap)
-    #   Row 2: B — Melanoma | TNBC side by side                           — medium
-    #   Row 3: spacer (B–bench gap)
-    #   Row 4: C (bias/RMSE, left) | D top = QQ plots (right)             — medium
-    #   Row 5: spacer (bench_top–bench_bottom gap)
-    #   Row 6: E (λ_GC) + F (runtime) on left | D bottom = heatmap (right)
-    #   Row 7: spacer (bench–G/H gap)
-    #   Row 8: G (left, stacked) | H (right, forest plot)                  — tall
     outer = fig_c.add_gridspec(
         9, 1,
-        height_ratios=[0.70, 0.08, 0.60, 0.08, 0.78, 0.10, 0.82, 0.06, 1.85],
-        hspace=0.32,
-        left=0.07, right=0.97, top=0.975, bottom=0.04,
+        height_ratios=[0.80, 0.07, 0.80, 0.12, 0.92, 0.12, 1.00, 0.12, 1.06],
+        hspace=0.0, left=0.10, right=0.965, top=0.95, bottom=0.05,
     )
 
-    # ── Row 0: A — both subpanels side by side ───────────────────────
-    gs_a = outer[0].subgridspec(1, 2, wspace=0.35)
+    gs_a = outer[0].subgridspec(1, 2, wspace=0.42)
     ax_a_top = fig_c.add_subplot(gs_a[0])
     ax_a_bot = fig_c.add_subplot(gs_a[1])
+    fig_c.add_subplot(outer[1]).set_axis_off()
 
-    _ax_sp_ab = fig_c.add_subplot(outer[1])
-    _ax_sp_ab.set_axis_off()
-
-    # ── Row 2: B — both subpanels side by side ───────────────────────
-    gs_b = outer[2].subgridspec(1, 2, wspace=0.35)
+    gs_b = outer[2].subgridspec(1, 2, wspace=0.42)
     ax_b_top = fig_c.add_subplot(gs_b[0])
     ax_b_bot = fig_c.add_subplot(gs_b[1])
+    fig_c.add_subplot(outer[3]).set_axis_off()
 
-    _ax_sp_top = fig_c.add_subplot(outer[3])
-    _ax_sp_top.set_axis_off()
+    fig_c.add_subplot(outer[5]).set_axis_off()
 
-    # ── Rows 4, 6: C | D-top / E+F | D-bottom (row 5 = spacer) ──────
-    # Rows 4 and 6 share identical width_ratios so the left (C / E+F) and
-    # right (D top / D bottom) columns align vertically.
-    _BENCH_W = [1.35, 1.10]  # left (C / E+F) : right (new D = QQ+heatmap)
+    gs_de = outer[6].subgridspec(1, 2, wspace=0.40, width_ratios=[1.0, 1.30])
+    fig_c.add_subplot(outer[7]).set_axis_off()
 
-    # Row 4: C (left) | D top = QQ plots (right)
-    gs_bench_top = outer[4].subgridspec(1, 2, wspace=0.38, width_ratios=_BENCH_W)
-    sub_c = fig_c.add_subfigure(gs_bench_top[0])
+    gs_fg = outer[8].subgridspec(1, 2, wspace=0.36, width_ratios=[1.0, 1.05])
+    ax_f = fig_c.add_subplot(gs_fg[0])
+    ax_h = fig_c.add_subplot(gs_fg[1])
 
-    _ax_sp_34 = fig_c.add_subplot(outer[5])
-    _ax_sp_34.set_axis_off()
-
-    # Row 6: E (λ_GC) + F (runtime) on left | D bottom = heatmap on right
-    gs_bench_bot = outer[6].subgridspec(1, 2, wspace=0.22, width_ratios=_BENCH_W)
-    gs_ef = gs_bench_bot[0].subgridspec(1, 2, wspace=0.65, width_ratios=[0.88, 0.82])
-    ax_e = fig_c.add_subplot(gs_ef[0])   # E = λ_GC (formerly D)
-    ax_f = fig_c.add_subplot(gs_ef[1])   # F = runtime (formerly E)
-
+    # Benchmark panels, embedded in their cells via gs_parent.
+    if core_df is not None:
+        _panel_bench_typeI_main(fig_c, core_df, composite=True, gs_parent=outer[4])
+        _panel_bench_power_vs_n(fig_c, core_df, composite=True, only_beta=0.5,
+                                gs_parent=gs_de[1])
     if bench_df is not None:
-        _panel_bench_signal_rmse(sub_c, bench_df, composite=True)
-        _panel_bench_lambda_gc(ax_e, bench_df, composite=True)
+        _panel_bench_bh_fdr(fig_c, bench_df, composite=True, panel_sizes=[2000],
+                            gs_parent=gs_de[0])
         _panel_bench_runtime(ax_f, bench_df, composite=True)
-        qq_single_axes = _panel_bench_qq_single(
-            fig_c, bench_df, n_genes=200, signal_pct=10, composite=True,
-            gs_parent=gs_bench_top[1],
-        )
-        qq_axes = _panel_bench_qq_heatmap(
-            fig_c, bench_df, composite=True, gs_parent=gs_bench_bot[1],
-        )
-    else:
-        ax_e.text(0.5, 0.5, "—", ha="center", va="center", transform=ax_e.transAxes, fontsize=6)
-        ax_e.set_axis_off()
-        ax_f.text(0.5, 0.5, "—", ha="center", va="center", transform=ax_f.transAxes, fontsize=6)
-        ax_f.set_axis_off()
-        ax_sc = sub_c.subplots(1, 1)
-        ax_sc.set_axis_off()
-        qq_single_axes, qq_axes = [], []
 
-    _ax_sp_mid = fig_c.add_subplot(outer[7])
-    _ax_sp_mid.set_axis_off()
-
-    # ── Row 8: G (left) | H (right) ──────────────────────────────────
-    gs_gh = outer[8].subgridspec(1, 2, wspace=0.38, width_ratios=[1.0, 1.0])
-    gs_g = gs_gh[0].subgridspec(2, 1, hspace=0.55)
-    ax_g_top = fig_c.add_subplot(gs_g[0])
-    ax_g_bot = fig_c.add_subplot(gs_g[1])
-    ax_h = fig_c.add_subplot(gs_gh[1])
-
-    # ── Draw all panels ───────────────────────────────────────────────
+    # Biological panels (A, B) and the cross-dataset forest (G).
     _panel_a(ax_a_bot, ax_a_top, data, data_tnbc, composite=True)
     _panel_b(ax_b_bot, ax_b_top, data, data_tnbc)
-    _panel_d_se_comparison(ax_g_bot, ax_g_top, data, data_tnbc)
     _panel_e_cross_dataset(ax_h, data, composite=True)
 
     fig_c.canvas.draw()
-    # Scale C's axes block to match D-top (QQ plots) vertical extent so the
-    # subfigure's internal margins don't leave C taller than its neighbour.
-    if qq_single_axes:
-        _qs_y0 = min(ax.get_position().y0 for ax in qq_single_axes)
-        _qs_y1 = max(ax.get_position().y1 for ax in qq_single_axes)
-        _qs_h = max(_qs_y1 - _qs_y0, 1e-6)
-        _c_axes = [ax for ax in sub_c.get_axes() if ax.get_visible()]
-        if _c_axes:
-            _cb_y0 = min(ax.get_position().y0 for ax in _c_axes)
-            _cb_y1 = max(ax.get_position().y1 for ax in _c_axes)
-            _cb_h = max(_cb_y1 - _cb_y0, 1e-6)
-            _cscale = _qs_h / _cb_h
-            for ax in _c_axes:
-                bb = ax.get_position()
-                new_y0 = _qs_y0 + (bb.y0 - _cb_y0) * _cscale
-                ax.set_position([bb.x0, new_y0, bb.width, bb.height * _cscale])
 
-    # ── Centered ylabels for D-top and D-bottom ──────────────────────
-    _d_ylbl_fs = 5.1
-    if qq_single_axes:
-        _qs_y0 = min(ax.get_position().y0 for ax in qq_single_axes)
-        _qs_y1 = max(ax.get_position().y1 for ax in qq_single_axes)
-        _qs_x0 = min(ax.get_position().x0 for ax in qq_single_axes)
-        fig_c.text(
-            _qs_x0 - 0.040, 0.5 * (_qs_y0 + _qs_y1),
-            r"Observed $-\log_{10}(p)$",
-            ha="center", va="center", fontsize=_d_ylbl_fs, rotation=90,
-            transform=fig_c.transFigure,
-        )
-    if qq_axes:
-        _hm_y0 = min(ax.get_position().y0 for ax in qq_axes)
-        _hm_y1 = max(ax.get_position().y1 for ax in qq_axes)
-        _hm_x0 = min(ax.get_position().x0 for ax in qq_axes)
-        fig_c.text(
-            _hm_x0 - 0.040, 0.5 * (_hm_y0 + _hm_y1),
-            "Genes",
-            ha="center", va="center", fontsize=_d_ylbl_fs, rotation=90,
-            transform=fig_c.transFigure,
-        )
-
-    # ── Legend overrides ──────────────────────────────────────────────
+    # Inside legends for the biological panels only (the benchmark method key is
+    # the runtime panel's legend).
     _inside = {
         ax_a_top: "upper right", ax_a_bot: "upper right",
         ax_b_top: "lower right", ax_b_bot: "lower right",
-        ax_g_top: "lower right", ax_g_bot: "lower right",
         ax_h: "lower right",
     }
-    _leg_fs_inside = {ax_a_top: 5.2, ax_a_bot: 5.2, ax_b_top: 5.2, ax_b_bot: 5.2, ax_g_top: 5.2, ax_g_bot: 5.2}
     for ax_target, loc in _inside.items():
         leg = ax_target.get_legend()
         if leg:
             handles = leg.legend_handles
             labels = [t.get_text() for t in leg.get_texts()]
             leg.remove()
-            _fs = _leg_fs_inside.get(ax_target, 4.6)
-            ax_target.legend(handles=handles, labels=labels, fontsize=_fs, loc=loc,
-                             frameon=True, framealpha=0.85, handlelength=1,
+            ax_target.legend(handles=handles, labels=labels, fontsize=5.0, loc=loc,
+                             frameon=True, framealpha=0.85, handlelength=1.0,
                              handletextpad=0.3, borderpad=0.3, labelspacing=0.2)
 
-    # Shrink annotation text in composite panels A/B
     for ax_ in (ax_a_top, ax_a_bot, ax_b_top, ax_b_bot):
         for txt in ax_.texts:
             if txt.get_fontsize() > 5:
@@ -2487,115 +2410,29 @@ def generate() -> None:
 
     _cap_fontsize(fig_c, _MAX_FONT_COMPOSITE)
 
-    def _raise_axis_fonts(ax, *, title_fs, label_fs, tick_fs, legend_fs, text_fs):
-        ax.title.set_fontsize(max(ax.title.get_fontsize(), title_fs))
-        ax.xaxis.label.set_fontsize(max(ax.xaxis.label.get_fontsize(), label_fs))
-        ax.yaxis.label.set_fontsize(max(ax.yaxis.label.get_fontsize(), label_fs))
-        ax.tick_params(axis="both", labelsize=tick_fs)
-        for txt in ax.texts:
-            txt.set_fontsize(max(txt.get_fontsize(), text_fs))
-        leg = ax.get_legend()
-        if leg is not None:
-            for txt in leg.get_texts():
-                txt.set_fontsize(max(txt.get_fontsize(), legend_fs))
+    # Compact corner titles for the benchmark panels (composite suppresses their
+    # standalone titles), placed after the font cap so they keep their size.
+    def _cell_tl(cell):
+        pos = cell.get_position(fig_c)
+        return pos.x0, pos.y1
 
-    _raise_axis_fonts(ax_a_top, title_fs=6.0, label_fs=6.0, tick_fs=5.4, legend_fs=5.2, text_fs=5.2)
-    _raise_axis_fonts(ax_a_bot, title_fs=6.0, label_fs=6.0, tick_fs=5.4, legend_fs=5.2, text_fs=5.2)
-    _raise_axis_fonts(ax_e, title_fs=6.0, label_fs=6.0, tick_fs=5.4, legend_fs=5.2, text_fs=4.6)
-    _raise_axis_fonts(ax_f, title_fs=6.0, label_fs=6.0, tick_fs=5.4, legend_fs=5.2, text_fs=4.6)
+    for cell, ttl in [
+        (outer[4], "Pure-null Type I error"),
+        (gs_de[0], "Realized FDR after BH"),
+        (gs_de[1], "Marginal detection probability"),
+    ]:
+        x0, y1 = _cell_tl(cell)
+        fig_c.text(x0, min(y1 + 0.010, 0.995), ttl, fontsize=6.2,
+                   fontweight="bold", va="bottom", ha="left")
 
-    # Match E (λ_GC) axis fonts to F (runtime)
-    ax_e.xaxis.label.set_fontsize(6.0)
-    ax_e.yaxis.label.set_fontsize(6.0)
-    ax_e.tick_params(axis="both", labelsize=5.4)
-    for _tl in ax_e.get_xticklabels() + ax_e.get_yticklabels():
-        _tl.set_fontsize(5.4)
-    # Split E (λ_GC) legend: first 2 entries upper-center, last 2 lower-center
-    _e_leg_orig = ax_e.get_legend()
-    if _e_leg_orig:
-        _e_handles = _e_leg_orig.legend_handles
-        _e_labels = [_t.get_text() for _t in _e_leg_orig.get_texts()]
-        _e_leg_orig.remove()
-        _leg_kw_e = dict(
-            ncol=2, frameon=True, framealpha=0.92, edgecolor="#cccccc",
-            fontsize=5.2, markerscale=0.52, handlelength=0.9,
-            handletextpad=0.3, columnspacing=0.45, borderpad=0.28,
-        )
-        _e_leg_top = ax_e.legend(
-            handles=_e_handles[:2], labels=_e_labels[:2],
-            loc="upper center", **_leg_kw_e,
-        )
-        ax_e.add_artist(_e_leg_top)
-        ax_e.legend(
-            handles=_e_handles[2:], labels=_e_labels[2:],
-            loc="lower center", **_leg_kw_e,
-        )
-
-    # ── Reduce ytick label sizes for G and H ──────────────────────────
-    for ax_ in (ax_g_top, ax_g_bot):
-        for tl in ax_.get_yticklabels():
-            tl.set_fontsize(5.2)
-    for tl in ax_h.get_yticklabels():
-        tl.set_fontsize(min(tl.get_fontsize(), 5.2))
-
-    # ── Panel labels ──────────────────────────────────────────────────
-    _lbl_fs = 7
-    ax_a_top.text(-0.22, 1.22, "A", transform=ax_a_top.transAxes,
-                  fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    for ax, lbl in [(ax_b_top, "B"), (ax_g_top, "G")]:
-        ax.text(-0.15, 1.12, lbl, transform=ax.transAxes,
-                fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    ax_f.text(-0.28, 1.22, "F", transform=ax_f.transAxes,
-              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    ax_e.text(-0.38, 1.22, "E", transform=ax_e.transAxes,
-              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    ax_h.text(-0.07, 1.05, "H", transform=ax_h.transAxes,
-              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    ax_c_list = sub_c.get_axes()
-    if ax_c_list:
-        ax_c_list[0].text(-0.32, 1.42, "C", transform=ax_c_list[0].transAxes,
-                          fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    if qq_single_axes:
-        qq_single_axes[0].text(-0.42, 1.62, "D", transform=qq_single_axes[0].transAxes,
-                               fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-
-    # ── QQ panel section titles ───────────────────────────────────────
-    _f_all_axes = list(qq_axes or []) + list(qq_single_axes or [])
-    _f_ttl_fs = 6.35
-    _f_sub_fs = 4.8
-    if _f_all_axes:
-        _f_top_y = max(ax.get_position().y1 for ax in _f_all_axes)
-        _f_xs = [ax.get_position().x0 for ax in _f_all_axes] + [
-            ax.get_position().x1 for ax in _f_all_axes
-        ]
-        fig_c.text(
-            0.5 * (min(_f_xs) + max(_f_xs)), _f_top_y + 0.018,
-            "Null-gene p-value calibration",
-            ha="center", va="bottom", fontsize=_f_ttl_fs, fontweight="bold",
-            transform=fig_c.transFigure, clip_on=False,
-        )
-    if qq_single_axes:
-        _qs_top_y = max(ax.get_position().y1 for ax in qq_single_axes)
-        _qs_xs = [ax.get_position().x0 for ax in qq_single_axes] + [
-            ax.get_position().x1 for ax in qq_single_axes
-        ]
-        fig_c.text(
-            0.5 * (min(_qs_xs) + max(_qs_xs)), _qs_top_y + 0.002,
-            "QQ plots (200 genes, 10% signal)",
-            ha="center", va="bottom", fontsize=_f_sub_fs, fontweight="bold",
-            transform=fig_c.transFigure, clip_on=False,
-        )
-    if qq_axes:
-        _hm_top_y = max(ax.get_position().y1 for ax in qq_axes)
-        _hm_xs = [ax.get_position().x0 for ax in qq_axes] + [
-            ax.get_position().x1 for ax in qq_axes
-        ]
-        fig_c.text(
-            0.5 * (min(_hm_xs) + max(_hm_xs)), _hm_top_y + 0.012,
-            "% of null p-values outside 95% CI",
-            ha="center", va="bottom", fontsize=_f_sub_fs, fontweight="bold",
-            transform=fig_c.transFigure, clip_on=False,
-        )
+    # Panel letters A-G at each cell's upper-left corner.
+    for cell, lab in [
+        (gs_a[0], "A"), (gs_b[0], "B"), (outer[4], "C"), (gs_de[0], "D"),
+        (gs_de[1], "E"), (gs_fg[0], "F"), (gs_fg[1], "G"),
+    ]:
+        x0, y1 = _cell_tl(cell)
+        fig_c.text(max(x0 - 0.048, 0.003), min(y1 + 0.010, 0.997), lab,
+                   fontsize=8, fontweight="bold", va="bottom", ha="left")
 
     plt.rcParams.update(_prev_rc)
 
