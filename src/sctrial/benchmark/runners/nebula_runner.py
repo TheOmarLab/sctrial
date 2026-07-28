@@ -157,8 +157,9 @@ meta <- read.csv("{meta_csv}", stringsAsFactors=TRUE)
 meta$arm   <- factor(meta$arm,   levels=c("{control}", "{treated}"))
 meta$visit <- factor(meta$visit, levels=c("{pre}", "{post}"))
 
-# Drop cells with no library — a zero offset is undefined
-keep <- colSums(counts) > 0 & meta$lib_size > 0
+# Drop cells with no library or NA lib_size (NA would propagate into keep and
+# cause "missing value where TRUE/FALSE needed" in the if() below)
+keep <- !is.na(meta$lib_size) & colSums(counts) > 0 & meta$lib_size > 0
 if (sum(keep) < 2) stop("Too few cells with non-zero counts after filtering")
 counts <- counts[, keep]
 meta   <- meta[keep, ]
@@ -201,8 +202,8 @@ rownames(counts) <- genes
 meta <- read.csv("{meta_csv}", stringsAsFactors=TRUE)
 meta$visit <- factor(meta$visit, levels=c("{pre}", "{post}"))
 
-# Drop cells with no library — a zero offset is undefined
-keep <- colSums(counts) > 0 & meta$lib_size > 0
+# Drop cells with no library or NA lib_size (see two-arm note above)
+keep <- !is.na(meta$lib_size) & colSums(counts) > 0 & meta$lib_size > 0
 if (sum(keep) < 2) stop("Too few cells with non-zero counts after filtering")
 counts <- counts[, keep]
 meta   <- meta[keep, ]

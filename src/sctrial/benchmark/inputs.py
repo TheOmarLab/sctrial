@@ -120,6 +120,10 @@ def prepare_inputs_from_adata(
 
     # Cell-level AnnData for NEBULA, restricted to panel genes, canonical column names
     cell_lib = np.asarray(X.sum(axis=1)).ravel().astype(np.float64)
+    # Non-finite lib_size (NaN from QC-flagged cells, Inf from corrupted data)
+    # would silently become NA in the R CSV, causing NEBULA to throw
+    # "missing value where TRUE/FALSE needed". Zero is safe: R filters those out.
+    cell_lib[~np.isfinite(cell_lib)] = 0.0
     adata_canonical = _canonical_adata(adata, participant_col, visit_col, arm_col, counts_layer)
     cell_view = adata_canonical[:, panel]
 
