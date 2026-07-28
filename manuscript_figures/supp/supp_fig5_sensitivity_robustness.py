@@ -4,10 +4,11 @@ Supplementary Figure 5 — Sensitivity, Robustness, and Benchmarking.
 
 Panels A–G characterize the sensitivity and robustness of sctrial's
 participant-level inference on real datasets.  NatMeth benchmark
-panels H–I use the same four methods (dreamlet, NEBULA, Wilcoxon on
-change scores, sctrial DiD) on a hierarchical gamma-Poisson simulator
-(panel sizes 50–2000, signal fractions 1–20%); the λ_GC, signal-RMSE,
-and QQ-calibration benchmark panels were promoted to Figure 3.
+panels H–I use the same five methods (sctrial (DiD), Wilcoxon (Δ scores),
+limma-voom, dreamlet, NEBULA) on a hierarchical gamma-Poisson simulator
+(panel sizes 50–2000, signal fractions 2–20%: 2, 4, 10, 20%); the
+λ_GC-calibration (Figure 3 panel H) and QQ-calibration benchmark panels
+were promoted to Figure 3.
 Panel J shows empirical power curves on real datasets.
 
 Panels (letters match the composite artboard, left-to-right and top-to-bottom)
@@ -20,7 +21,7 @@ Panels (letters match the composite artboard, left-to-right and top-to-bottom)
   F  Rank-order concordance across preprocessing choices (TNBC).
   G  Leave-one-out stability matrix (max influence, all datasets).
   --- composite row 4 ---
-  H  Benchmark: null-gene FPR vs signal fraction (from Figure 3 panel C).
+  H  Benchmark: mixed-signal null-gene FPR vs signal fraction (expanded from Figure 3 panel D).
   I  Benchmark: pure-null Type I error vs panel size.
   J  Empirical power curves (participant subsampling; 3+2 facet grid).
 
@@ -497,7 +498,7 @@ def _panel_bootstrap_multi(fig, boot_data: dict, *, composite: bool = False):
     # _figure_title_above_subfig (SubFigure.suptitle can anchor incorrectly).
 
 
-# ── Panel C: Standardised vs Unstandardised ───────────────────────
+# ── Panel B: Standardised vs Unstandardised ───────────────────────
 
 def _panel_std_vs_unstd(ax, data: dict, *, composite: bool = False):
     """Scatter: standardised vs unstandardised effect sizes."""
@@ -531,7 +532,7 @@ def _panel_std_vs_unstd(ax, data: dict, *, composite: bool = False):
     despine(ax)
 
 
-# ── Panel D: Mean vs Median aggregation ───────────────────────────
+# ── Panel C: Mean vs Median aggregation ───────────────────────────
 
 def _panel_mean_vs_median(ax, data: dict, *, composite: bool = False):
     """Scatter: mean-aggregation vs median-aggregation betas."""
@@ -590,7 +591,7 @@ def _panel_mean_vs_median(ax, data: dict, *, composite: bool = False):
     despine(ax)
 
 
-# ── Panel E: Log-transform sensitivity ────────────────────────────
+# ── Panel D: Log-transform sensitivity ────────────────────────────
 
 def _panel_log_sensitivity(ax, data: dict, *, composite: bool = False):
     """Scatter: log1p_norm betas vs raw counts betas."""
@@ -633,7 +634,7 @@ def _panel_log_sensitivity(ax, data: dict, *, composite: bool = False):
     despine(ax)
 
 
-# ── Panel F: Cell-type stratified heatmap ─────────────────────────
+# ── Panel E: Cell-type stratified heatmap ─────────────────────────
 
 def _panel_ct_heatmap(ax, data: dict, *, composite: bool = False):
     """Heatmap: DiD effect sizes stratified by top cell types."""
@@ -694,7 +695,7 @@ def _panel_ct_heatmap(ax, data: dict, *, composite: bool = False):
             break
 
 
-# ── Panel G: Rank concordance ────────────────────────────────────
+# ── Panel F: Rank concordance ────────────────────────────────────
 
 def _panel_rank_concordance(ax, data: dict, *, composite: bool = False):
     """Bar chart: Spearman rank correlation of feature rankings
@@ -719,7 +720,7 @@ def _panel_rank_concordance(ax, data: dict, *, composite: bool = False):
             and not data["raw"].empty
             and "beta_DiD" in data["raw"].columns
             and data["raw"]["beta_DiD"].notna().sum() >= 2):
-        configs["Raw TPM"] = data["raw"].set_index("feature")["beta_DiD"].rank()
+        configs["Raw counts"] = data["raw"].set_index("feature")["beta_DiD"].rank()
 
     if len(configs) < 2:
         ax.text(0.5, 0.5, "Insufficient configs", ha="center", va="center",
@@ -1475,7 +1476,7 @@ def _panel_power_grid(
 
     _DESIGN_LABELS = {
         "two_arm_did": "Two-arm DiD",
-        "paired": "Paired pre/post",
+        "paired": "Single-arm (paired)",
         "cross_sectional": "Cross-sectional",
     }
 
@@ -1628,7 +1629,7 @@ def _panel_power_curves(data: dict) -> plt.Figure | None:
 
 
 # ======================================================================
-# NatMeth signal-fraction benchmark CSV (H: pure-null FPR; I: runtime; J: QQ)
+# NatMeth signal-fraction benchmark CSV (H: mixed-signal null-gene FPR; I: pure-null Type I error; J: power curves)
 # ======================================================================
 
 # See figure3: derive from MANUSCRIPT_DIR so the HPC checkout depth is honoured.
@@ -1786,7 +1787,7 @@ def _figure_title_above_subfig(
 
 
 # ======================================================================
-# Panel H — Null-gene FPR vs signal fraction (from Figure 3 panel C)
+# Panel H — Mixed-signal null-gene FPR vs signal fraction (expanded from Figure 3 panel D)
 # ======================================================================
 
 def _compute_null_fpr_table(bench_df) -> pd.DataFrame:
@@ -1809,7 +1810,7 @@ def _panel_bench_fpr_curves(fig, bench_df, *, composite: bool = False, axes=None
         if not hasattr(axes, "__len__"):
             axes = [axes]
         if composite:
-            fig.suptitle("Null-gene FPR vs signal fraction", x=0.5, y=0.99, fontsize=5.8, fontweight="bold")
+            fig.suptitle("Mixed-signal null-gene FPR vs signal fraction", x=0.5, y=0.99, fontsize=5.8, fontweight="bold")
 
     _ttl_fs = 5.75 if composite else 12
     _ax_fs = 5.15 if composite else 11
@@ -1818,7 +1819,10 @@ def _panel_bench_fpr_curves(fig, bench_df, *, composite: bool = False, axes=None
 
     x_positions = np.arange(len(_SIGNAL_FRACTIONS), dtype=float)
     frac_to_x = dict(zip(_SIGNAL_FRACTIONS, x_positions))
-    method_offsets = {"wilcoxon_paired": -0.08, "nebula": -0.03, "sctrial_did": +0.03, "dreamlet": +0.08}
+    # Five methods (limma-voom was added to the benchmark); offsets spread them so
+    # the near-nominal calibrated curves stay legible where they overlap.
+    method_offsets = {"wilcoxon_paired": -0.10, "nebula": -0.05, "limma_voom": 0.0,
+                      "sctrial_did": +0.05, "dreamlet": +0.10}
 
     for ax_idx, (ax, n_g) in enumerate(zip(axes, _PANEL_SIZES)):
         sub = fpr_df[fpr_df["n_genes"] == n_g]
@@ -1890,9 +1894,10 @@ def _panel_bench_pure_null_fpr(ax, bench_df, *, composite: bool = False):
     x_positions = np.arange(len(panel_sizes), dtype=float)
     n_to_x = dict(zip(panel_sizes, x_positions))
     method_offsets = {
-        "wilcoxon_paired": -0.09,
-        "nebula": -0.03,
-        "sctrial_did": +0.03,
+        "wilcoxon_paired": -0.10,
+        "nebula": -0.05,
+        "limma_voom": 0.0,
+        "sctrial_did": +0.05,
         "dreamlet": +0.09,
     }
     for method in _BENCH_METHODS:
@@ -1955,7 +1960,7 @@ def _panel_bench_pure_null_fpr(ax, bench_df, *, composite: bool = False):
 
 
 # ======================================================================
-# Panel I — Runtime comparison across methods
+# (unused) Runtime comparison across methods — corresponds to Figure 3 panel G
 # (was panel N before reshuffle)
 # ======================================================================
 
@@ -2032,7 +2037,7 @@ def _panel_bench_runtime(ax, bench_df, *, composite: bool = False):
 # ======================================================================
 
 def generate():
-    """Create and save Supplementary Figure 5 panels (A–K) + composite.
+    """Create and save Supplementary Figure 5 panels (A–J) + composite.
 
     Layout (same order as the composite artboard):
       A  Analytical vs bootstrap SE (all datasets, faceted forest plot)
@@ -2042,9 +2047,9 @@ def generate():
       E  Cell-type-stratified DiD heatmap (TNBC)
       F  Rank-order concordance across choices (TNBC)
       G  Leave-one-out stability matrix (all datasets)
-      H  Pure-null Type I error vs panel size (NatMeth benchmark, 4 methods)
-      I  Faceted QQ + 95% envelope (two-arm, n=40, 200 genes, 10% signal)
-      J  Empirical power curves (participant subsampling; 3+3 facet grid)
+      H  Mixed-signal null-gene FPR vs signal fraction (NatMeth benchmark, 5 methods)
+      I  Pure-null Type I error vs panel size (NatMeth benchmark, 5 methods)
+      J  Empirical power curves (participant subsampling; 3+2 facet grid)
 
     Composite (180 mm × ≤215 mm): row1 A | row2 B|C|D|E | row3 F|G|H |
     row4 I|J.
@@ -2116,11 +2121,11 @@ def generate():
         f"panel sizes = {sorted(bench_df['n_genes'].unique())}"
     )
 
-    # Panel H: Null-gene FPR vs signal fraction (from Figure 3 panel C)
+    # Panel H: Mixed-signal null-gene FPR vs signal fraction (expanded from Figure 3 panel D)
     fig_h_stand = plt.figure(figsize=(14, 4.2))
     _panel_bench_fpr_curves(fig_h_stand, bench_df)
     fig_h_stand.suptitle(
-        "Null-gene FPR vs signal fraction",
+        "Mixed-signal null-gene FPR vs signal fraction",
         fontsize=13, fontweight="bold", y=1.04,
     )
     fig_h_stand.tight_layout()
@@ -2290,7 +2295,7 @@ def generate():
         _h_ymax = max(ax.get_position().y1 for ax in axes_h_list)
         fig_c.text(
             0.5 * (min(_h_xs) + max(_h_xs)), _h_ymax + 0.022,
-            "Null-gene FPR vs signal fraction",
+            "Mixed-signal null-gene FPR vs signal fraction",
             ha="center", va="bottom", fontsize=5.8, fontweight="bold",
             transform=fig_c.transFigure, clip_on=False,
         )
