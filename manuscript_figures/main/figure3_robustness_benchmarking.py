@@ -951,17 +951,22 @@ def _panel_bench_signal_rmse(fig, bench_df: pd.DataFrame, *, composite: bool = F
     df = _compute_signal_bias_rmse_table(bench_df)
     if hasattr(fig, "set_constrained_layout"):
         fig.set_constrained_layout(False)
+    # Lower the panel top so the method legend sits ABOVE the column titles
+    # instead of colliding with them.
     if composite:
-        gs = fig.add_gridspec(2, 4, hspace=0.52, wspace=0.18, left=0.07, right=0.99, top=0.82, bottom=0.16)
+        gs = fig.add_gridspec(2, 4, hspace=0.52, wspace=0.18, left=0.07, right=0.99, top=0.78, bottom=0.16)
     else:
-        gs = fig.add_gridspec(2, 4, hspace=0.38, wspace=0.22, left=0.08, right=0.985, top=0.84, bottom=0.11)
+        gs = fig.add_gridspec(2, 4, hspace=0.38, wspace=0.22, left=0.08, right=0.985, top=0.80, bottom=0.11)
 
     _ttl_fs = 6.35 if composite else 12
     _yl_fs = 6.2 if composite else 11
     _axis_fs = 5.35 if composite else 10
     _xlab_fs = 5.45 if composite else 10
-    bar_width = 0.20
-    method_order = ["sctrial_did", "wilcoxon_paired", "nebula", "dreamlet"]
+    # All FIVE methods (the previous list dropped limma-voom). Each method's bias
+    # is against its OWN oracle (METHOD_ESTIMAND); this is NOT a cross-method
+    # bias ranking, and the caption must say so.
+    bar_width = 0.16
+    method_order = list(_BENCH_METHODS)
     x_positions = np.arange(len(_SIGNAL_FRACTIONS))
     bias_lo = min(df["bias"].min(), 0) - 0.02
     bias_hi = max(df["bias"].max(), 0.02) * 1.12
@@ -1022,14 +1027,14 @@ def _panel_bench_signal_rmse(fig, bench_df: pd.DataFrame, *, composite: bool = F
         _cx = 2.0
         _anchor.text(_cx, 1.25, "Effect-size estimation accuracy", transform=_anchor.transAxes,
                      ha="center", va="bottom", fontsize=5.9, fontweight="bold")
-        _anchor.legend(handles=legend_handles, loc="upper center", ncol=4,
+        _anchor.legend(handles=legend_handles, loc="upper center", ncol=len(method_order),
                        bbox_to_anchor=(_cx, -0.15), bbox_transform=_anchor.transAxes,
                        frameon=True, framealpha=0.93, edgecolor="#cccccc", fontsize=_leg_fs,
                        handlelength=0.85, handleheight=0.42, handletextpad=0.35,
                        columnspacing=0.55, borderpad=0.35)
     else:
-        fig.legend(handles=legend_handles, loc="upper center", ncol=4,
-                   bbox_to_anchor=(0.53, 0.94), frameon=True, framealpha=0.95,
+        fig.legend(handles=legend_handles, loc="upper center", ncol=len(method_order),
+                   bbox_to_anchor=(0.53, 0.99), frameon=True, framealpha=0.95,
                    edgecolor="#cccccc", fontsize=_leg_fs)
 
 
@@ -1308,24 +1313,29 @@ def _panel_bench_typeI_vs_n(axes, core_df, *, composite: bool = False):
     ymax = 0.15
     for ax, design in zip(axes, ("two_arm", "single_arm")):
         sub = rate[rate["design"] == design]
+        # Evenly spaced categorical positions, labelled with the actual
+        # participant counts. A log axis with non-decade values (16, 24, 40, ...)
+        # collides matplotlib's decade minor-tick labels with the real ticks.
+        n_vals = sorted(sub["total_n"].unique())
+        pos = {n: i for i, n in enumerate(n_vals)}
         for method in _BENCH_METHODS:
             m = sub[sub["method"] == method].sort_values("total_n")
             if m.empty:
                 continue
             style = _method_style(method, is_focal=(method == "sctrial_did"),
                                   composite=composite)
-            _plot_offscale(ax, m["total_n"], m["mean"], method=method, ymax=ymax,
-                           style=style,
+            xs = [pos[n] for n in m["total_n"]]
+            _plot_offscale(ax, xs, m["mean"], method=method, ymax=ymax, style=style,
                            label=_BENCH_METHOD_LABELS[method] if design == "two_arm" else None)
             vis = m[m["mean"] <= ymax]
-            ax.errorbar(vis["total_n"], vis["mean"], yerr=1.96 * vis["mcse"],
-                        fmt="none", ecolor=style["color"], elinewidth=0.8,
-                        capsize=1.5, alpha=0.6, zorder=style.get("zorder", 3))
+            ax.errorbar([pos[n] for n in vis["total_n"]], vis["mean"],
+                        yerr=1.96 * vis["mcse"], fmt="none", ecolor=style["color"],
+                        elinewidth=0.8, capsize=1.5, alpha=0.6)
         _add_nominal_band(ax)
         ax.set_ylim(0.0, ymax)
-        ax.set_xscale("log")
-        ax.set_xticks(sorted(sub["total_n"].unique()))
-        ax.get_xaxis().set_major_formatter(plt.matplotlib.ticker.ScalarFormatter())
+        ax.set_xticks(range(len(n_vals)))
+        ax.set_xticklabels(n_vals)
+        ax.set_xlim(-0.4, len(n_vals) - 0.6)
         ax.set_title(_DESIGN_LABEL[design], fontsize=_ttl, fontweight="bold", pad=4)
         ax.set_xlabel("Participants", fontsize=_ax)
         ax.tick_params(labelsize=_tk)
@@ -1359,22 +1369,25 @@ def _panel_bench_power_vs_n(fig, core_df, *, composite: bool = False):
         for ci, beta in enumerate(betas):
             ax = fig.add_subplot(gs[ri, ci])
             sub = rate[(rate["design"] == design) & (rate["beta"] == beta)]
+            n_vals = sorted(sub["total_n"].unique())
+            pos = {n: i for i, n in enumerate(n_vals)}
             for method in _BENCH_METHODS:
                 m = sub[sub["method"] == method].sort_values("total_n")
                 if m.empty:
                     continue
                 style = _method_style(method, is_focal=(method == "sctrial_did"),
                                       composite=composite)
-                ax.plot(m["total_n"], m["mean"],
+                xs = [pos[n] for n in m["total_n"]]
+                ax.plot(xs, m["mean"],
                         label=_BENCH_METHOD_LABELS[method] if (ri == 0 and ci == 0) else None,
                         **style)
-                ax.errorbar(m["total_n"], m["mean"], yerr=1.96 * m["mcse"],
+                ax.errorbar(xs, m["mean"], yerr=1.96 * m["mcse"],
                             fmt="none", ecolor=style["color"], elinewidth=0.7,
                             capsize=1.3, alpha=0.55)
             ax.set_ylim(0, 1.02)
-            ax.set_xscale("log")
-            ax.set_xticks(sorted(sub["total_n"].unique()))
-            ax.get_xaxis().set_major_formatter(plt.matplotlib.ticker.ScalarFormatter())
+            ax.set_xticks(range(len(n_vals)))
+            ax.set_xticklabels(n_vals)
+            ax.set_xlim(-0.4, len(n_vals) - 0.6)
             if ri == 0:
                 ax.set_title(rf"$\beta$ = {beta}", fontsize=_ttl, fontweight="bold")
             if ci == 0:
@@ -1427,11 +1440,14 @@ def _panel_bench_scenario_families(ax, core_df, *, composite: bool = False):
         clipped = np.minimum(vals, ymax)
         ax.bar(x + offset, clipped, width, color=style["color"],
                label=_BENCH_METHOD_LABELS[method], edgecolor="white", linewidth=0.4)
+        # Off-scale value as WHITE vertical text INSIDE the top of the clipped
+        # bar: never clipped by the axes/title and never collides with the
+        # neighbouring family, unlike an annotation placed above the axis.
         for xi, v in zip(x + offset, vals):
             if v > ymax:
-                ax.annotate(f"{v:.2f}", (xi, ymax), fontsize=4.6, ha="center",
-                            va="bottom", color=style["color"], rotation=90,
-                            xytext=(0, 1), textcoords="offset points", clip_on=False)
+                ax.text(xi, ymax - 0.004, f"{v:.2f}", fontsize=(4.4 if composite else 6),
+                        ha="center", va="top", color="white", rotation=90,
+                        fontweight="bold")
     _add_nominal_band(ax)
     ax.set_ylim(0, ymax)
     ax.set_xticks(x)
