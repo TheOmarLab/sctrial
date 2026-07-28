@@ -79,7 +79,8 @@ def _run_permutation_iteration(args: tuple) -> list[dict]:
     signal.alarm(_WALL_CLOCK_SECS)
 
     try:
-        from .orchestrator import _dispatch_method, _pseudobulk_counts_from_adata
+        from .inputs import prepare_inputs_from_adata
+        from .orchestrator import _dispatch_method
 
         if isinstance(adata_or_path, (str, Path)):
             import anndata as ad
@@ -95,37 +96,23 @@ def _run_permutation_iteration(args: tuple) -> list[dict]:
         else:
             adata_perm = _permute_visits(adata, participant_col, visit_col, rng)
 
-        # Standardize obs column names so _dispatch_method runners work with defaults
-        col_rename = {
-            c: std for c, std in [
-                (participant_col, "participant"),
-                (arm_col, "arm"),
-                (visit_col, "visit"),
-            ]
-            if c != std and c in adata_perm.obs.columns
-        }
-        if col_rename:
-            adata_perm.obs = adata_perm.obs.rename(columns=col_rename)
-
-        from sctrial.stats.pseudobulk import pseudobulk_expression
-
-        pb_means = pseudobulk_expression(
+        # Full-transcriptome CPM normalisation and correct NEBULA offset.
+        # Previously this code built pseudobulk from gene_cols only and normalised
+        # within that panel, so the CPM denominator moved with any coordinated signal.
+        inputs = prepare_inputs_from_adata(
             adata_perm,
             gene_cols,
-            groupby=["participant", "visit", "arm"],
-            log1p=False,
+            participant_col=participant_col,
+            visit_col=visit_col,
+            arm_col=arm_col,
         )
-        pb_counts = _pseudobulk_counts_from_adata(
-            adata_perm, gene_cols, ["participant", "visit", "arm"]
-        )
-        sim = {"adata": adata_perm, "pseudobulk_means": pb_means, "pseudobulk_counts": pb_counts}
 
         rows = []
         method_times = []
         for method in methods:
             t0 = time.time()
             try:
-                results = _dispatch_method(method, sim, gene_cols)
+                results = _dispatch_method(method, inputs, design_type=design_type)
             except TimeoutError:
                 raise  # let the wall-clock alarm propagate
             except Exception as exc:

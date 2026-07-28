@@ -137,6 +137,103 @@ rownames(out) <- out$gene
 write.csv(out, "{output_csv}")
 """
 
+# Real-data templates: offset = meta$lib_size (full-transcriptome, linear scale).
+#
+# NEBULA takes the scaling factor on the LINEAR scale and logs it internally.
+# Passing log(lib) therefore logs it twice (log(log(lib))), which compresses
+# the offset and attenuates library-size adjustment almost entirely.
+# The scaling factor must also be the FULL-TRANSCRIPTOME library size supplied
+# by the caller, not colSums() of the tested panel: a panel sum moves with the
+# signal, so normalising by it partly divides out the effect being estimated.
+_R_SCRIPT_TWO_ARM_REAL = """\
+library(nebula)
+library(Matrix)
+
+counts <- readMM("{mtx_path}")
+genes  <- readLines("{genes_path}")
+rownames(counts) <- genes
+
+meta <- read.csv("{meta_csv}", stringsAsFactors=TRUE)
+meta$arm   <- factor(meta$arm,   levels=c("{control}", "{treated}"))
+meta$visit <- factor(meta$visit, levels=c("{pre}", "{post}"))
+
+# Drop cells with no library — a zero offset is undefined
+keep <- colSums(counts) > 0 & meta$lib_size > 0
+if (sum(keep) < 2) stop("Too few cells with non-zero counts after filtering")
+counts <- counts[, keep]
+meta   <- meta[keep, ]
+
+# Two-arm: interaction model
+design <- model.matrix(~arm * visit, data=meta)
+
+res <- nebula(
+  counts,
+  id = meta$participant,
+  pred = design,
+  offset = meta$lib_size,
+  method = "LN",
+  ncore = 1,
+  verbose = FALSE
+)
+
+coef_names <- colnames(design)
+interaction_idx <- length(coef_names)
+
+out <- data.frame(
+  gene = res$summary$gene,
+  logFC = res$summary[[paste0("logFC_", coef_names[interaction_idx])]],
+  pvalue = res$summary[[paste0("p_", coef_names[interaction_idx])]],
+  convergence_code = res$convergence,
+  stringsAsFactors = FALSE
+)
+rownames(out) <- out$gene
+write.csv(out, "{output_csv}")
+"""
+
+_R_SCRIPT_SINGLE_ARM_REAL = """\
+library(nebula)
+library(Matrix)
+
+counts <- readMM("{mtx_path}")
+genes  <- readLines("{genes_path}")
+rownames(counts) <- genes
+
+meta <- read.csv("{meta_csv}", stringsAsFactors=TRUE)
+meta$visit <- factor(meta$visit, levels=c("{pre}", "{post}"))
+
+# Drop cells with no library — a zero offset is undefined
+keep <- colSums(counts) > 0 & meta$lib_size > 0
+if (sum(keep) < 2) stop("Too few cells with non-zero counts after filtering")
+counts <- counts[, keep]
+meta   <- meta[keep, ]
+
+# Single-arm: visit effect only
+design <- model.matrix(~visit, data=meta)
+
+res <- nebula(
+  counts,
+  id = meta$participant,
+  pred = design,
+  offset = meta$lib_size,
+  method = "LN",
+  ncore = 1,
+  verbose = FALSE
+)
+
+coef_names <- colnames(design)
+visit_idx <- length(coef_names)
+
+out <- data.frame(
+  gene = res$summary$gene,
+  logFC = res$summary[[paste0("logFC_", coef_names[visit_idx])]],
+  pvalue = res$summary[[paste0("p_", coef_names[visit_idx])]],
+  convergence_code = res$convergence,
+  stringsAsFactors = FALSE
+)
+rownames(out) <- out$gene
+write.csv(out, "{output_csv}")
+"""
+
 
 def run(
     adata,
@@ -148,11 +245,17 @@ def run(
     control_label: str = "Control",
     visits: tuple[str, str] = ("Pre", "Post"),
     design_type: str = "two_arm",
+    lib_size=None,
 ) -> dict[str, dict]:
     """Run NEBULA NBLMM on cell-level counts.
 
-    Unlike other runners, NEBULA takes the full cell-level AnnData,
-    NOT pseudobulk.
+    Unlike other runners, NEBULA takes the full cell-level AnnData, NOT
+    pseudobulk.
+
+    ``lib_size`` is the FULL-TRANSCRIPTOME library size per cell on the LINEAR
+    scale. When provided, it is passed directly to NEBULA as the offset (NEBULA
+    logs it internally). When None, falls back to the panel-scoped
+    ``log(colSums(counts))`` used by the simulation path.
     """
     with tempfile.TemporaryDirectory() as _tmpdir:
         td = Path(_tmpdir)
@@ -177,18 +280,39 @@ def run(
         # Export metadata
         meta_df = adata_sub.obs[[participant_col, arm_col, visit_col]].copy()
         meta_df.columns = ["participant", "arm", "visit"]
+        if lib_size is not None:
+            meta_df["lib_size"] = np.asarray(lib_size, dtype=float)
         meta_csv = td / "meta.csv"
         meta_df.to_csv(meta_csv, index=False)
 
         output_csv = td / "results.csv"
 
-        template = _R_SCRIPT_TWO_ARM if design_type == "two_arm" else _R_SCRIPT_SINGLE_ARM
-        script = template.format(
-            mtx_path=str(mtx_path),
-            genes_path=str(genes_path),
-            meta_csv=str(meta_csv),
-            output_csv=str(output_csv),
-        )
+        if lib_size is not None:
+            # Real-data path: full-transcriptome lib_size supplied by caller.
+            # Use templates that pass it as the NEBULA offset on the linear scale.
+            if design_type == "two_arm":
+                template = _R_SCRIPT_TWO_ARM_REAL
+            else:
+                template = _R_SCRIPT_SINGLE_ARM_REAL
+            script = template.format(
+                mtx_path=str(mtx_path),
+                genes_path=str(genes_path),
+                meta_csv=str(meta_csv),
+                output_csv=str(output_csv),
+                treated=treated_label,
+                control=control_label,
+                pre=visits[0],
+                post=visits[1],
+            )
+        else:
+            # Simulation path: keep existing offset = log(colSums(counts)).
+            template = _R_SCRIPT_TWO_ARM if design_type == "two_arm" else _R_SCRIPT_SINGLE_ARM
+            script = template.format(
+                mtx_path=str(mtx_path),
+                genes_path=str(genes_path),
+                meta_csv=str(meta_csv),
+                output_csv=str(output_csv),
+            )
 
         script_file = td / "run_nebula.R"
         script_file.write_text(script)
@@ -206,7 +330,11 @@ def run(
     for gene in gene_cols:
         if gene in res.index:
             row = res.loc[gene]
-            converged = bool(row.get("converged", True))
+            if "convergence_code" in res.columns:
+                code = float(row.get("convergence_code", np.nan))
+                converged = bool(code > -20) if np.isfinite(code) else False
+            else:
+                converged = bool(row.get("converged", True))
             failure = None if converged else "convergence"
             out[gene] = {
                 "beta": float(row.get("logFC", np.nan)),

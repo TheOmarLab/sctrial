@@ -397,15 +397,24 @@ def _pseudobulk_counts_from_adata(
 
 def _dispatch_method(
     method: str,
-    sim: dict,
-    gene_cols: list[str],
+    sim_or_inputs: dict,
+    gene_cols: list[str] | None = None,
     design_type: str = "two_arm",
 ) -> dict:
     """Route to the correct runner with the appropriate data representation.
 
-    - sctrial, NEBULA: cell-level AnnData
-    - edgeR, limma-voom, dreamlet: summed-count pseudobulk (true counts)
-    - Wilcoxon (paired delta): mean-expression pseudobulk
+    Accepts two dict formats:
+
+    *New inputs format* (from ``contracts.prepare_inputs_from_adata``):
+        Detected by the presence of the ``"participant_log1p_cpm"`` key.
+        sctrial/Wilcoxon receive full-transcriptome CPM-normalised pseudobulk;
+        NEBULA receives the caller-supplied full-transcriptome ``cell_lib_size``
+        as its offset (linear scale, not double-logged).
+        Built by :func:`sctrial.benchmark.inputs.prepare_inputs_from_adata`.
+
+    *Old sim format* (simulation path):
+        ``pseudobulk_counts``, ``pseudobulk_means``, ``adata`` keys.
+        Behaviour unchanged from before.
 
     Parameters
     ----------
@@ -413,6 +422,49 @@ def _dispatch_method(
         "two_arm" or "single_arm". Determines the statistical model used
         by R-based runners (interaction vs paired visit).
     """
+    # New inputs format: built by contracts.prepare_inputs_from_adata.
+    # Fixes normalisation scope (full-transcriptome CPM) and NEBULA offset.
+    if "participant_log1p_cpm" in sim_or_inputs:
+        inputs = sim_or_inputs
+        panel = inputs["panel_genes"]
+        if gene_cols is None:
+            gene_cols = panel
+
+        if method == "sctrial_did":
+            from .runners import sctrial_did
+            return sctrial_did.run(
+                inputs["participant_log1p_cpm"], gene_cols,
+                from_pseudobulk=True, design_type=design_type,
+            )
+        elif method == "wilcoxon_paired":
+            from .runners import wilcoxon_paired
+            return wilcoxon_paired.run(
+                inputs["participant_log1p_cpm"], gene_cols, design_type=design_type,
+            )
+        elif method == "edger_qlf":
+            from .runners import edger_qlf
+            return edger_qlf.run(inputs["pseudobulk_counts"], gene_cols, design_type=design_type)
+        elif method == "limma_voom":
+            from .runners import limma_voom
+            return limma_voom.run(inputs["pseudobulk_counts"], gene_cols, design_type=design_type)
+        elif method == "dreamlet":
+            from .runners import dreamlet_runner
+            return dreamlet_runner.run(
+                inputs["pseudobulk_counts"], gene_cols, design_type=design_type,
+            )
+        elif method == "nebula":
+            from .runners import nebula_runner
+            return nebula_runner.run(
+                inputs["cell_counts"], gene_cols,
+                design_type=design_type,
+                lib_size=inputs["cell_lib_size"],
+            )
+        else:
+            raise ValueError(f"Unknown method: {method}")
+
+    # Old sim dict format — simulation path; behaviour unchanged.
+    sim = sim_or_inputs
+
     # Backwards compat: old sim dicts may have "pseudobulk" instead of split keys
     pb_counts = sim.get("pseudobulk_counts", sim.get("pseudobulk"))
     pb_means = sim.get("pseudobulk_means", sim.get("pseudobulk"))
@@ -452,7 +504,13 @@ def _dispatch_method(
     elif method == "nebula":
         from .runners import nebula_runner
 
-        return nebula_runner.run(sim["adata"], gene_cols, design_type=design_type)
+        # Pass full-transcriptome library size on the linear scale. NEBULA logs
+        # the offset internally; the old code passed log(colSums(counts)) which
+        # caused NEBULA to double-log it, compressing all betas toward zero.
+        cell_lib = np.asarray(sim["adata"].X.sum(axis=1)).ravel().astype(np.float64)
+        return nebula_runner.run(
+            sim["adata"], gene_cols, design_type=design_type, lib_size=cell_lib
+        )
     elif method == "wilcoxon_paired":
         from .runners import wilcoxon_paired
 

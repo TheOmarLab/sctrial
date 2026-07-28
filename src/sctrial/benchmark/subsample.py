@@ -44,8 +44,8 @@ def _run_subsample_iteration(args: tuple) -> dict:
     signal.alarm(_WALL_CLOCK_SECS)
 
     try:
-        from .orchestrator import _dispatch_method, _pseudobulk_counts_from_adata
-        from sctrial.stats.pseudobulk import pseudobulk_expression
+        from .inputs import prepare_inputs_from_adata
+        from .orchestrator import _dispatch_method
 
         if isinstance(adata_or_path, (str, Path)):
             import anndata as ad
@@ -57,31 +57,16 @@ def _run_subsample_iteration(args: tuple) -> dict:
         mask = adata.obs[participant_col].isin(sub_pids)
         adata_sub = adata[mask].copy()
 
-        # Standardize obs column names so runners work with defaults
-        col_rename = {
-            c: std for c, std in [
-                (participant_col, "participant"),
-                (arm_col, "arm"),
-                (visit_col, "visit"),
-            ]
-            if c != std and c in adata_sub.obs.columns
-        }
-        if col_rename:
-            adata_sub.obs = adata_sub.obs.rename(columns=col_rename)
-
-        pb_means = pseudobulk_expression(
-            adata_sub, gene_cols,
-            groupby=["participant", "visit", "arm"],
-            log1p=False,
+        # Full-transcriptome CPM normalisation and correct NEBULA offset.
+        # Previously this code built pseudobulk from gene_cols only and normalised
+        # within that panel, so the CPM denominator moved with any coordinated signal.
+        inputs_sub = prepare_inputs_from_adata(
+            adata_sub,
+            gene_cols,
+            participant_col=participant_col,
+            visit_col=visit_col,
+            arm_col=arm_col,
         )
-        pb_counts = _pseudobulk_counts_from_adata(
-            adata_sub, gene_cols, ["participant", "visit", "arm"]
-        )
-        sim_sub = {
-            "adata": adata_sub,
-            "pseudobulk_means": pb_means,
-            "pseudobulk_counts": pb_counts,
-        }
 
         import time as _time
 
@@ -91,7 +76,7 @@ def _run_subsample_iteration(args: tuple) -> dict:
         for method in methods:
             t0 = _time.time()
             try:
-                res = _dispatch_method(method, sim_sub, gene_cols)
+                res = _dispatch_method(method, inputs_sub, gene_cols)
                 pvals_by_method[method] = {g: res[g].get("pvalue", np.nan) for g in gene_cols}
             except TimeoutError:
                 raise  # let the wall-clock alarm propagate
@@ -177,8 +162,9 @@ def run_subsampling(
 
     from scipy.stats import spearmanr
 
+    from .inputs import prepare_inputs_from_adata
     from .metrics import compute_topk_jaccard
-    from .orchestrator import _dispatch_method, _pseudobulk_counts_from_adata
+    from .orchestrator import _dispatch_method
 
     rng = np.random.default_rng(seed)
     participants = adata.obs[participant_col].unique()
@@ -189,45 +175,25 @@ def run_subsampling(
     def _ts() -> str:
         return datetime.datetime.now().strftime("%H:%M:%S")
 
-    # Full-data reference (sequential — done once)
+    # Full-data reference (sequential — done once).
+    # Uses full-transcriptome CPM normalisation so the reference is on the same
+    # normalisation scale as each subsample.
     print(
         f"[{_ts()}] Running full-data reference ({len(methods)} methods, {len(gene_cols)} genes)...",
         flush=True,
     )
-    from sctrial.stats.pseudobulk import pseudobulk_expression
-
-    # Standardize adata obs column names so runners work with defaults
-    col_rename = {
-        c: std for c, std in [
-            (participant_col, "participant"),
-            (arm_col, "arm"),
-            (visit_col, "visit"),
-        ]
-        if c != std and c in adata.obs.columns
-    }
-    if col_rename:
-        adata = adata.copy()
-        adata.obs = adata.obs.rename(columns=col_rename)
-
-    pb_means_full = pseudobulk_expression(
+    inputs_full = prepare_inputs_from_adata(
         adata,
         gene_cols,
-        groupby=["participant", "visit", "arm"],
-        log1p=False,
+        participant_col=participant_col,
+        visit_col=visit_col,
+        arm_col=arm_col,
     )
-    pb_counts_full = _pseudobulk_counts_from_adata(
-        adata, gene_cols, ["participant", "visit", "arm"]
-    )
-    sim_full = {
-        "adata": adata,
-        "pseudobulk_means": pb_means_full,
-        "pseudobulk_counts": pb_counts_full,
-    }
 
     full_pvals: dict[str, pd.Series] = {}
     for method in methods:
         try:
-            res = _dispatch_method(method, sim_full, gene_cols)
+            res = _dispatch_method(method, inputs_full, gene_cols)
             full_pvals[method] = pd.Series({g: res[g]["pvalue"] for g in gene_cols})
         except Exception as exc:
             logger.warning("Full-data %s failed: %s", method, exc)
@@ -287,8 +253,7 @@ def run_subsampling(
             logger.warning("Could not load existing results for resume: %s", exc)
 
     # Build all (fraction, resample) argument tuples.
-    # Use standardized column names ("participant"/"arm"/"visit") because the
-    # adata passed to workers has already been renamed.
+    # Pass the original column names — prepare_inputs_from_adata handles renaming.
     all_args = []
     for frac in fractions:
         n_sub = max(4, int(n_total * frac))
@@ -297,7 +262,7 @@ def run_subsampling(
                 continue
             sub_pids = rng.choice(participants, size=n_sub, replace=False).tolist()
             all_args.append((frac, r, sub_pids, None, gene_cols, methods,
-                             "participant", "arm", "visit"))
+                             participant_col, arm_col, visit_col))
 
     total_remaining = len(all_args)
     total_runs = len(fractions) * n_resamples
