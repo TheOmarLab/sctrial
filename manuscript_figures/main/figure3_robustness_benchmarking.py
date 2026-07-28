@@ -1455,8 +1455,12 @@ def _panel_bench_scenario_families(ax, core_df, *, composite: bool = False):
                        rotation=35, ha="right", fontsize=(4.6 if composite else 8))
     ax.set_ylabel("Null-gene FPR (p < 0.05)", fontsize=(5.0 if composite else 10))
     if not composite:
-        ax.legend(loc="upper left", fontsize=7.5, ncol=2, frameon=True,
-                  framealpha=0.95, edgecolor="#cccccc")
+        # Below the plot: NEBULA's clipped bars fill the top across the whole
+        # width, so an in-axes legend would sit on top of them (and hid the
+        # cell-yield family annotations in the first render).
+        ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.22),
+                  ncol=len(_BENCH_METHODS), fontsize=8, frameon=True,
+                  framealpha=0.95, edgecolor="#cccccc", columnspacing=1.0)
     _style_axis(ax)
 
 
