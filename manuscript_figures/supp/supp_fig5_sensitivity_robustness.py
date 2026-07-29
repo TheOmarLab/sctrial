@@ -14,7 +14,7 @@ Panel J shows empirical power curves on real datasets.
 Panels (letters match the composite artboard, left-to-right and top-to-bottom)
 --------------------------------------------------------------------------------
   A  Analytical vs bootstrap SE (all 5 datasets, forest plot).
-  B  Standardised vs unstandardised effect sizes (TNBC).
+  B  Standardized vs unstandardized effect sizes (TNBC).
   C  Mean vs median aggregation comparison (TNBC).
   D  Log-transform sensitivity (TNBC).
   E  Cell-type-stratified DiD heatmap (TNBC).
@@ -235,8 +235,8 @@ def _run_sensitivity():
         use_bootstrap=True, n_boot=200, seed=42,
     )
 
-    # 4. Unstandardised
-    print("  unstandardised DiD ...")
+    # 4. Unstandardized
+    print("  unstandardized DiD ...")
     out["unstd"] = sctrial.did_table(
         adata, feats, design, visits,
         layer=_layer, aggregate="participant_visit", standardize=False,
@@ -492,16 +492,16 @@ def _panel_bootstrap_multi(fig, boot_data: dict, *, composite: bool = False):
         )
 
     if not composite:
-        fig.suptitle("Analytical vs Bootstrap SE", fontweight="bold",
+        fig.suptitle("Analytical vs bootstrap SE", fontweight="bold",
                      fontsize=11)
     # Composite: title is drawn on the parent figure via
     # _figure_title_above_subfig (SubFigure.suptitle can anchor incorrectly).
 
 
-# ── Panel B: Standardised vs Unstandardised ───────────────────────
+# ── Panel B: Standardized vs Unstandardized ───────────────────────
 
 def _panel_std_vs_unstd(ax, data: dict, *, composite: bool = False):
-    """Scatter: standardised vs unstandardised effect sizes."""
+    """Scatter: standardized vs unstandardized effect sizes."""
     std = data["part"].set_index("feature")["beta_DiD"]
     unstd = data["unstd"].set_index("feature")["beta_DiD"]
     common = std.index.intersection(unstd.index)
@@ -525,9 +525,9 @@ def _panel_std_vs_unstd(ax, data: dict, *, composite: bool = False):
             fontsize=_r_fs, va="bottom", ha="right",
             bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
                       edgecolor="#ccc", alpha=0.8))
-    ax.set_xlabel("β (standardised)")
-    ax.set_ylabel("β (unstandardised)")
-    ax.set_title("Standardised vs Unstandardised (TNBC)",
+    ax.set_xlabel("β (standardized)")
+    ax.set_ylabel("β (unstandardized)")
+    ax.set_title("Standardized vs unstandardized (TNBC)",
                  fontweight="bold")
     despine(ax)
 
@@ -542,7 +542,7 @@ def _panel_mean_vs_median(ax, data: dict, *, composite: bool = False):
     if med_res is None or med_res.empty:
         ax.text(0.5, 0.5, "No median-aggregation results", ha="center",
                 va="center", transform=ax.transAxes, fontsize=9, color="#888")
-        ax.set_title("Mean vs Median Aggregation (TNBC)",
+        ax.set_title("Mean vs median aggregation (TNBC)",
                  fontweight="bold")
         despine(ax)
         return
@@ -554,7 +554,7 @@ def _panel_mean_vs_median(ax, data: dict, *, composite: bool = False):
     if len(common) < 2:
         ax.text(0.5, 0.5, "Insufficient data", ha="center", va="center",
                 transform=ax.transAxes)
-        ax.set_title("Mean vs Median Aggregation (TNBC)",
+        ax.set_title("Mean vs median aggregation (TNBC)",
                  fontweight="bold")
         despine(ax)
         return
@@ -586,7 +586,7 @@ def _panel_mean_vs_median(ax, data: dict, *, composite: bool = False):
 
     ax.set_xlabel("β (mean aggregation)")
     ax.set_ylabel("β (median aggregation)")
-    ax.set_title("Mean vs Median Aggregation (TNBC)",
+    ax.set_title("Mean vs median aggregation (TNBC)",
                  fontweight="bold")
     despine(ax)
 
@@ -600,7 +600,7 @@ def _panel_log_sensitivity(ax, data: dict, *, composite: bool = False):
     if raw_res is None or raw_res.empty:
         ax.text(0.5, 0.5, "No raw counts results", ha="center", va="center",
                 transform=ax.transAxes, fontsize=9, color="#888")
-        ax.set_title("Log-Transform Sensitivity (TNBC)",
+        ax.set_title("Log-transform sensitivity (TNBC)",
                  fontweight="bold")
         despine(ax)
         return
@@ -629,7 +629,7 @@ def _panel_log_sensitivity(ax, data: dict, *, composite: bool = False):
                       edgecolor="#ccc", alpha=0.8))
     ax.set_xlabel("β (log1p norm)")
     ax.set_ylabel("β (raw counts)")
-    ax.set_title("Log-Transform Sensitivity (TNBC)",
+    ax.set_title("Log-transform sensitivity (TNBC)",
                  fontweight="bold")
     despine(ax)
 
@@ -642,7 +642,7 @@ def _panel_ct_heatmap(ax, data: dict, *, composite: bool = False):
     if not ct_results:
         ax.text(0.5, 0.5, "No cell-type-stratified results", ha="center",
                 va="center", transform=ax.transAxes, fontsize=9, color="#888")
-        ax.set_title("Cell-Type Stratified DiD (TNBC)",
+        ax.set_title("Cell-type stratified DiD (TNBC)",
                  fontweight="bold")
         despine(ax)
         return
@@ -665,7 +665,7 @@ def _panel_ct_heatmap(ax, data: dict, *, composite: bool = False):
                 linecolor="white", cbar_kws={"shrink": 0.6, "label": "β"},
                 annot=True, fmt=".2f", annot_kws={"fontsize": _annot_fs})
     ax.set_ylabel("Feature")
-    ax.set_title("Cell-Type Stratified DiD (TNBC)",
+    ax.set_title("Cell-type stratified DiD (TNBC)",
                  fontweight="bold")
     if composite:
         ax.tick_params(axis="x", labelsize=3.2, rotation=35, pad=1.0)
@@ -705,7 +705,7 @@ def _panel_rank_concordance(ax, data: dict, *, composite: bool = False):
     for key, label in [("cell", "Cell-level"),
                        ("part", "Participant"),
                        ("boot", "Bootstrap"),
-                       ("unstd", "Unstandardised"),
+                       ("unstd", "Unstandardized"),
                        ("median", "Median agg")]:
         df = data.get(key)
         # Guard: skip if df is None, empty, or has too few valid betas
@@ -766,7 +766,7 @@ def _panel_rank_concordance(ax, data: dict, *, composite: bool = False):
     ax.set_yticklabels(labels, fontsize=_yt_fs)
     ax.set_xlabel(f"Spearman ρ (vs {ref_key})")
     ax.set_xlim(0, 1.15)
-    ax.set_title("Rank Concordance Across Choices (TNBC)",
+    ax.set_title("Rank concordance across choices (TNBC)",
                  fontweight="bold", fontsize=5.5 if composite else 11)
 
     _rho_lbl_fs = 5.0 if composite else 7
@@ -921,7 +921,7 @@ def _draw_loo_heatmap(
                 annot=True, fmt=".2f", annot_kws={"fontsize": annot_fs})
     ax.set_xlabel("Dataset", labelpad=xlabel_pad)
     ax.set_ylabel("Feature")
-    ax.set_title("Leave-One-Out Stability (max influence)", fontweight="bold",
+    ax.set_title("Leave-one-out stability (max influence)", fontweight="bold",
                  fontsize=title_fs)
     ax.tick_params(axis="x", labelsize=8, rotation=35)
     for _tl in ax.get_xticklabels():
@@ -1644,6 +1644,9 @@ from ..main.figure3_robustness_benchmarking import (  # noqa: E402
     _BENCH_METHOD_LABELS,
     _BENCH_METHOD_MARKERS,
     _BENCH_METHODS,
+    _bench_legend_handles,
+    _broken_pair,
+    _panel_bench_mixed_fpr,
 )
 
 _PANEL_SIZES = [50, 200, 500, 2000]
@@ -1866,7 +1869,11 @@ def _panel_bench_fpr_curves(fig, bench_df, *, composite: bool = False, axes=None
 # (was panel H before reshuffle)
 # ======================================================================
 
-def _panel_bench_pure_null_fpr(ax, bench_df, *, composite: bool = False):
+def _panel_bench_pure_null_fpr(fig, bench_df, *, composite: bool = False,
+                               gs_parent=None):
+    """Pure-null Type I error vs gene panel size, with NEBULA on a broken upper
+    axis (matches the Figure 3 display convention) so its ~0.75 inflation is
+    shown without compressing the calibrated methods. Returns (ax_main, ax_strip)."""
     null = bench_df[(bench_df["is_null_scenario"]) & (bench_df["true_beta"] == 0.0)]
     rows = []
     for (method, n_g), grp in null.groupby(["method", "n_genes"]):
@@ -1882,14 +1889,15 @@ def _panel_bench_pure_null_fpr(ax, bench_df, *, composite: bool = False):
             "fpr": p, "ci_lo": ci.low, "ci_hi": ci.high,
         })
     df = pd.DataFrame(rows)
-    ax.axhspan(
-        0.03, 0.07, color="#d62728", alpha=0.08, zorder=0,
-        label=None if composite else "Nominal 5% ± 2%",
-    )
-    ax.axhline(
-        0.05, color="#d62728", linestyle="--", linewidth=1.0, alpha=0.7, zorder=1,
-        label=("Nominal 5%" if composite else None),
-    )
+
+    if gs_parent is None:
+        gs_parent = fig.add_gridspec(1, 1)[0]
+    ax_main, ax_strip = _broken_pair(fig, gs_parent, main_ylim=(0.025, 0.10),
+                                     strip_ylim=(0.68, 0.82))
+    ax_main.axhspan(0.03, 0.07, color="#d62728", alpha=0.08, zorder=0)
+    ax_main.axhline(0.05, color="#d62728", linestyle="--", linewidth=1.0,
+                    alpha=0.7, zorder=1)
+
     panel_sizes = sorted(_PANEL_SIZES)
     x_positions = np.arange(len(panel_sizes), dtype=float)
     n_to_x = dict(zip(panel_sizes, x_positions))
@@ -1900,19 +1908,21 @@ def _panel_bench_pure_null_fpr(ax, bench_df, *, composite: bool = False):
         "sctrial_did": +0.05,
         "dreamlet": +0.09,
     }
+    _ms_hi, _ms_lo = (5.0, 3.85) if composite else (9.0, 7.2)
+    _lw_hi, _lw_lo = (1.25, 0.95) if composite else (2.0, 1.4)
+    _cap_w = (2.0, 0.85) if composite else (4, 1.2)
     for method in _BENCH_METHODS:
         sub = df[df["method"] == method].sort_values("n_genes")
         if sub.empty:
             continue
+        # NEBULA (~0.75) goes on the upper strip; calibrated methods in the main axis.
+        target = ax_strip if method == "nebula" else ax_main
         xs = np.array([n_to_x[int(n)] for n in sub["n_genes"].values]) + method_offsets[method]
         ys = sub["fpr"].values
         lo = sub["ci_lo"].values
         hi = sub["ci_hi"].values
         is_focal = method == "sctrial_did"
-        _ms_hi, _ms_lo = (5.0, 3.85) if composite else (9.0, 7.2)
-        _lw_hi, _lw_lo = (1.25, 0.95) if composite else (2.0, 1.4)
-        _cap_w = (2.0, 0.85) if composite else (4, 1.2)
-        ax.errorbar(
+        target.errorbar(
             xs, ys, yerr=[ys - lo, hi - ys], fmt=_BENCH_METHOD_MARKERS[method],
             markersize=_ms_hi if is_focal else _ms_lo,
             color=_BENCH_METHOD_COLORS[method],
@@ -1923,40 +1933,39 @@ def _panel_bench_pure_null_fpr(ax, bench_df, *, composite: bool = False):
             capsize=_cap_w[0], capthick=_cap_w[1],
             linestyle="-",
             linewidth=_lw_hi if is_focal else _lw_lo,
-            label=_BENCH_METHOD_LABELS[method], alpha=0.92,
-            zorder=10 if is_focal else 4,
+            alpha=0.92, zorder=10 if is_focal else 4,
         )
     _tk_fs = 5.05 if composite else 11
     _ttl_fs = 6.0 if composite else 12
     _leg_fs = 5.2 if composite else 8
 
-    ax.set_xticks(x_positions)
-    ax.set_xticklabels([f"{p:,}" for p in panel_sizes], fontsize=_tk_fs, rotation=0)
-    ax.set_xlim(-0.35, len(panel_sizes) - 0.65)
-    ax.set_xlabel("Panel size (genes)", fontsize=_tk_fs)
-    ax.set_ylabel("Pure-null Type I error (p < 0.05)", fontsize=_tk_fs)
-    ax.set_ylim(0.025, 0.095 if composite else 0.085)
-    ax.yaxis.set_major_locator(MultipleLocator(0.01))
-    ax.tick_params(axis="y", labelsize=_tk_fs)
-    ax.set_title(
-        "Pure-null Type I error",
-        fontsize=_ttl_fs, fontweight="bold", pad=(5 if composite else 10),
-    )
+    ax_main.set_xticks(x_positions)
+    ax_main.set_xticklabels([f"{p:,}" for p in panel_sizes], fontsize=_tk_fs, rotation=0)
+    ax_main.set_xlim(-0.35, len(panel_sizes) - 0.65)
+    ax_main.set_xlabel("Panel size (genes)", fontsize=_tk_fs)
+    ax_main.set_ylabel("Pure-null Type I error (p < 0.05)", fontsize=_tk_fs)
+    ax_main.set_yticks([0.03, 0.05, 0.07, 0.09])
+    ax_strip.set_yticks([0.7, 0.8])
+    for a in (ax_main, ax_strip):
+        a.tick_params(labelsize=_tk_fs)
+        _style_axis(a)
+    handles = _bench_legend_handles()
     if composite:
-        ax.legend(
-            loc="upper center",
-            bbox_to_anchor=(0.5, 0.995),
-            ncol=2,
+        ax_main.legend(
+            handles=handles, loc="upper center", bbox_to_anchor=(0.5, 0.99), ncol=2,
             frameon=True, framealpha=0.93, edgecolor="#cccccc",
-            fontsize=_leg_fs, columnspacing=0.75, handlelength=0.85,
-            markerscale=0.55,
+            fontsize=_leg_fs, columnspacing=0.75, handlelength=0.85, markerscale=0.55,
         )
     else:
-        ax.legend(
-            loc="upper left", frameon=True, framealpha=0.95,
+        ax_main.legend(
+            handles=handles, loc="upper left", frameon=True, framealpha=0.95,
             edgecolor="#cccccc", fontsize=_leg_fs, ncol=2,
         )
-    _style_axis(ax)
+    ax_strip.set_title(
+        "Pure-null Type I error", fontsize=_ttl_fs, fontweight="bold",
+        pad=(4 if composite else 8),
+    )
+    return ax_main, ax_strip
 
 
 # ======================================================================
@@ -2041,7 +2050,7 @@ def generate():
 
     Layout (same order as the composite artboard):
       A  Analytical vs bootstrap SE (all datasets, faceted forest plot)
-      B  Standardised vs unstandardised effect sizes (TNBC)
+      B  Standardized vs unstandardized effect sizes (TNBC)
       C  Mean vs median aggregation comparison (TNBC)
       D  Log-transform sensitivity (TNBC)
       E  Cell-type-stratified DiD heatmap (TNBC)
@@ -2121,20 +2130,18 @@ def generate():
         f"panel sizes = {sorted(bench_df['n_genes'].unique())}"
     )
 
-    # Panel H: Mixed-signal null-gene FPR vs signal fraction (expanded from Figure 3 panel D)
-    fig_h_stand = plt.figure(figsize=(14, 4.2))
-    _panel_bench_fpr_curves(fig_h_stand, bench_df)
-    fig_h_stand.suptitle(
-        "Mixed-signal null-gene FPR vs signal fraction",
-        fontsize=13, fontweight="bold", y=1.04,
-    )
-    fig_h_stand.tight_layout()
+    # Panel H: Mixed-signal null-gene FPR vs signal fraction (the full four-facet
+    # grid that Figure 3 panel D condenses). Delegated to Figure 3's panel so the
+    # NEBULA broken-axis strip and the per-replicate aggregation stay identical
+    # between the main figure and the supplement.
+    fig_h_stand = plt.figure(figsize=(13, 4.6))
+    _panel_bench_mixed_fpr(fig_h_stand, bench_df)
     save_panel(fig_h_stand, "panel_H_benchmark_fpr_curves", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel I: Pure-null Type I error vs panel size (was panel H)
-    fig_i, ax_i_ind = plt.subplots(figsize=(7.5, 4.8))
-    _panel_bench_pure_null_fpr(ax_i_ind, bench_df)
-    fig_i.tight_layout()
+    # Panel I: Pure-null Type I error vs gene panel size (NEBULA on a broken
+    # upper axis). Unique to the supplement (Figure 3 panel C is vs participants).
+    fig_i = plt.figure(figsize=(7.5, 5.0))
+    _panel_bench_pure_null_fpr(fig_i, bench_df)
     save_panel(fig_i, "panel_I_benchmark_pure_null_fpr", FIGURE_NAME, SUPP_OUTPUT)
 
     # ── Empirical power curves on real datasets (panel J) ─────────────
@@ -2254,14 +2261,13 @@ def generate():
     # Use a subgridspec (not a SubFigure) so H's 4 axes get the same
     # automatic margin behaviour as ax_i, preventing vertical stretch.
     gs_r4 = outer[3].subgridspec(1, 2, width_ratios=[2.8, 1.0], wspace=0.25)
-    gs_h = gs_r4[0].subgridspec(1, 4, wspace=0.28)
-    axes_h_list = [fig_c.add_subplot(gs_h[0, 0])]
-    for _hi in range(1, 4):
-        axes_h_list.append(fig_c.add_subplot(gs_h[0, _hi], sharey=axes_h_list[0]))
-    ax_i = fig_c.add_subplot(gs_r4[1])
-
-    _panel_bench_fpr_curves(fig_c, bench_df, composite=True, axes=axes_h_list)
-    _panel_bench_pure_null_fpr(ax_i, bench_df, composite=True)
+    # H (mixed-signal null-gene FPR, four facets, NEBULA broken-axis strip) is
+    # delegated to Figure 3's panel; I (pure-null Type I error vs gene panel size)
+    # is drawn as a broken pair and returns its (main, strip) axes.
+    _cell_h = gs_r4[0]
+    _panel_bench_mixed_fpr(fig_c, bench_df, composite=True, gs_parent=_cell_h)
+    _ax_i_main, ax_i_strip = _panel_bench_pure_null_fpr(
+        fig_c, bench_df, composite=True, gs_parent=gs_r4[1])
 
     # ── Row 5: J centered (empirical power curves) ────────────────────────
     # Centered by flanking with empty columns; wider than before because it
@@ -2288,17 +2294,14 @@ def generate():
 
     fig_c.canvas.draw()
 
-    # H panel group title — computed after draw so positions are resolved
-    if axes_h_list:
-        _h_xs = ([ax.get_position().x0 for ax in axes_h_list]
-                 + [ax.get_position().x1 for ax in axes_h_list])
-        _h_ymax = max(ax.get_position().y1 for ax in axes_h_list)
-        fig_c.text(
-            0.5 * (min(_h_xs) + max(_h_xs)), _h_ymax + 0.022,
-            "Mixed-signal null-gene FPR vs signal fraction",
-            ha="center", va="bottom", fontsize=5.8, fontweight="bold",
-            transform=fig_c.transFigure, clip_on=False,
-        )
+    # H panel group title — placed above the H cell (positions resolved post-draw)
+    _h_pos = _cell_h.get_position(fig_c)
+    fig_c.text(
+        0.5 * (_h_pos.x0 + _h_pos.x1), _h_pos.y1 + 0.006,
+        "Mixed-signal null-gene FPR vs signal fraction",
+        ha="center", va="bottom", fontsize=5.8, fontweight="bold",
+        transform=fig_c.transFigure, clip_on=False,
+    )
 
     # ── Post-processing ───────────────────────────────────────────────
     for ax_pp in fig_c.get_axes():
@@ -2364,17 +2367,17 @@ def generate():
             fontsize=_lbl_fs, fontweight="bold", va="top", ha="left",
         )
 
-    # H label on first axis of FPR-curves panel
-    if axes_h_list:
-        axes_h_list[0].text(
-            -0.32, 1.12, "H",
-            transform=axes_h_list[0].transAxes,
-            fontsize=_lbl_fs, fontweight="bold", va="top", ha="left",
-        )
-    # I label on pure-null FPR axis
-    ax_i.text(
-        -0.25, 1.12, "I",
-        transform=ax_i.transAxes,
+    # H label at the upper-left of the H cell (figure coords, since H's axes are
+    # owned by the delegated Figure 3 panel).
+    fig_c.text(
+        max(_h_pos.x0 - 0.028, 0.004), min(_h_pos.y1 + 0.006, 0.997), "H",
+        transform=fig_c.transFigure, fontsize=_lbl_fs, fontweight="bold",
+        va="bottom", ha="left",
+    )
+    # I label on the pure-null strip axis (top of the broken pair).
+    ax_i_strip.text(
+        -0.25, 1.35, "I",
+        transform=ax_i_strip.transAxes,
         fontsize=_lbl_fs, fontweight="bold", va="top", ha="left",
     )
     _label_axes_panel(power_axes, "J", x=-0.30, y=1.42)
@@ -2396,7 +2399,7 @@ def generate():
     _figure_title_above_subfig(
         fig_c,
         subfig_a,
-        "Analytical vs Bootstrap SE",
+        "Analytical vs bootstrap SE",
         fontsize=_SMALL_RC["axes.titlesize"],
         pad_frac=0.006,
     )
