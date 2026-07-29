@@ -1129,13 +1129,12 @@ def generate() -> None:
     #   E realised FDR after BH  | F marginal detection (beta = 0.5)
     #   G runtime  +  H pure-null calibration (lambda_GC)   | I cross-dataset forest
     fig_c = plt.figure(figsize=(180 * _mm, 234 * _mm))
-    # lambda_GC (old panel H) removed; its space enlarges the cross-dataset forest,
-    # which is now a full-width, tall bottom panel (H). Letters are consecutive A-H.
-    # Spacer rows below A, below B and below G are enlarged because those panels
-    # carry x-axis labels that would otherwise collide with the next panel's title.
+    # lambda_GC (old panel H) removed. Bottom row places G (runtime) and H
+    # (cross-dataset forest) SIDE BY SIDE so neither is over-wide; the forest gets
+    # the wider column. Letters are consecutive A-H.
     outer = fig_c.add_gridspec(
-        11, 1,
-        height_ratios=[0.42, 0.40, 0.36, 0.46, 0.58, 0.50, 0.58, 0.50, 0.46, 0.44, 1.72],
+        9, 1,
+        height_ratios=[0.44, 0.40, 0.38, 0.46, 0.60, 0.52, 0.60, 0.48, 1.92],
         hspace=0.0, left=0.085, right=0.965, top=0.980, bottom=0.032,
     )
 
@@ -1155,10 +1154,10 @@ def generate() -> None:
     gs_ef = outer[6].subgridspec(1, 2, wspace=0.34)
     fig_c.add_subplot(outer[7]).set_axis_off()
 
-    # G runtime (full width, short) then H cross-dataset forest (full width, tall).
-    ax_rt = fig_c.add_subplot(outer[8])
-    fig_c.add_subplot(outer[9]).set_axis_off()
-    ax_forest = fig_c.add_subplot(outer[10])
+    # Bottom row: G runtime (left) | H cross-dataset forest (right, wider column).
+    gs_gh = outer[8].subgridspec(1, 2, width_ratios=[1.0, 1.32], wspace=0.24)
+    ax_rt = fig_c.add_subplot(gs_gh[0])
+    ax_forest = fig_c.add_subplot(gs_gh[1])
 
     # Benchmark panels (embedded via gs_parent / ax).
     if core_df is not None:
@@ -1236,7 +1235,7 @@ def generate() -> None:
     # Panel letters A-H at each cell's upper-left corner (forest is now H).
     for cell, lab in [
         (gs_a[0], "A"), (gs_b[0], "B"), (gs_cd[0], "C"), (gs_cd[1], "D"),
-        (gs_ef[0], "E"), (gs_ef[1], "F"), (outer[8], "G"), (outer[10], "H"),
+        (gs_ef[0], "E"), (gs_ef[1], "F"), (gs_gh[0], "G"), (gs_gh[1], "H"),
     ]:
         x0, y1 = _cell_tl(cell)
         fig_c.text(max(x0 - 0.05, 0.003), min(y1 + 0.013, 0.998), lab,
