@@ -6,7 +6,7 @@
 #   bash scripts/setup_hpc_env.sh
 #
 # What this does:
-#   1. Creates the conda env "sctrial_benchmark" (Python packages only)
+#   1. Creates the conda env "sctrial" (Python packages only)
 #   2. Installs sctrial from source (dev version)
 #
 # R and Bioconductor packages are installed separately via:
@@ -18,7 +18,7 @@ set -euo pipefail
 # ── 0. Configuration ─────────────────────────────────────────
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_YML="$REPO_ROOT/src/sctrial/benchmark/sctrial_bench_environment.yml"
-ENV_NAME="sctrial_benchmark"   # must match slurm scripts
+ENV_NAME="sctrial"   # must match the slurm scripts, which all run `micromamba run -n sctrial`
 
 echo "============================================"
 echo "sctrial HPC environment setup (Python)"

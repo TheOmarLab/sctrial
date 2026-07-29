@@ -42,6 +42,7 @@ SUPP_FIGURES = {
     5: ("Supp Fig 5: Sensitivity and Robustness",                        "supp.supp_fig5_sensitivity_robustness"),
     6: ("Supp Fig 6: Cross-Dataset Biological Consistency",              "supp.supp_fig6_cross_dataset_biology"),
     7: ("Supp Fig 7: Heterogeneity and Temporal Dynamics",               "supp.supp_fig7_heterogeneity_temporal"),
+    8: ("Supp Fig 8: Benchmark Calibration, Power and Robustness",        "supp.supp_fig8_benchmark_calibration"),
 }
 
 

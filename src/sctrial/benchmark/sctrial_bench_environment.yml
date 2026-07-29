@@ -1,4 +1,4 @@
-name: sctrial_bench
+name: sctrial
 channels:
   - conda-forge
   - nodefaults
@@ -81,4 +81,3 @@ dependencies:
       - tqdm==4.68.2
       - typing-extensions==4.15.0
       - umap-learn==0.5.12
-prefix: /home/valenciai/anaconda3/envs/sctrial_bench

@@ -383,9 +383,13 @@ def phase_ablation(n_jobs: int):
             probe = TranscriptomeSimConfig(**kw)
             panels = nested_panels(probe, rng=np.random.default_rng(seed + 1))
             panel = [f"gene_{i}" for i in panels[50]]
+            # make_signal takes an integer gene COUNT, not a fraction: int(0.20) is
+            # 0, which silently turns this "signal" rung into another null run.
+            # Convert the ablation fraction to a realizable count on the panel.
+            n_sig = round(frac * len(panel))
             effects = (
-                make_signal(panel, frac, "balanced", 0.5, rng=np.random.default_rng(seed + 2))
-                if frac > 0
+                make_signal(panel, n_sig, "balanced", 0.5, rng=np.random.default_rng(seed + 2))
+                if n_sig > 0
                 else {}
             )
             sim = simulate_trial_v2(TranscriptomeSimConfig(effects=effects, **kw))

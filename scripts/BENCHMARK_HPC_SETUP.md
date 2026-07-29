@@ -8,7 +8,7 @@ The benchmark uses two separate environments:
 
 | Layer | Tool | What it manages |
 |-------|------|----------------|
-| Python | conda (`sctrial_benchmark`) | Python packages, sctrial source install |
+| Python | conda (`sctrial`) | Python packages, sctrial source install |
 | R | HPC module (`R/4.4.2`) | R and Bioconductor packages in `~/R/library` |
 
 These are kept separate to avoid conda/R library conflicts. R packages are installed once to `~/R/library` and are not part of the conda environment.
@@ -50,7 +50,7 @@ Run interactively on the login node (~5–10 min):
 bash scripts/setup_hpc_env.sh
 ```
 
-This creates the conda environment `sctrial_benchmark` and installs sctrial from source as an editable install. You only need to re-run this if `src/sctrial/benchmark/sctrial_bench_environment.yml` changes.
+This creates the conda environment `sctrial` and installs sctrial from source as an editable install. You only need to re-run this if `src/sctrial/benchmark/sctrial_bench_environment.yml` changes.
 
 ### Step 3 — Install R packages
 

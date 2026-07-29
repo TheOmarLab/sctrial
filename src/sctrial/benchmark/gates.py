@@ -484,8 +484,12 @@ def composition_ablation(
             seed = seed0 + rep
             panels = nested_panels(replace(cfg, seed=seed), rng=np.random.default_rng(seed + 1))
             panel = [f"gene_{i}" for i in panels[panel_size]]
+            # make_signal takes an integer gene COUNT, not a fraction: passing the
+            # 0.2 signal_fraction gives int(0.2) == 0, i.e. no signal genes, so the
+            # ablation silently degenerates to a null run. Convert to a count.
+            n_sig = round(signal_fraction * len(panel))
             effects = make_signal(
-                panel, signal_fraction, arch, magnitude, rng=np.random.default_rng(seed + 2)
+                panel, n_sig, arch, magnitude, rng=np.random.default_rng(seed + 2)
             )
             c = replace(cfg, seed=seed, effects=effects)
             params = build_params(c)
