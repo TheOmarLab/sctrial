@@ -2180,6 +2180,15 @@ def _panel_e_cross_dataset(ax, data: dict, *, composite: bool = False) -> None:
         "Cytotoxic T Cell Activity", "Immune Exhaustion", "Inflammatory Response",
         "Interferon Response", "T Cell Activation",
     ]
+    # Consistent short endpoint labels (the full signature names are long and
+    # ragged; these keep the forest y-axis compact and uniform).
+    _SIG_SHORT = {
+        "Cytotoxic T Cell Activity": "Cytotoxic",
+        "Immune Exhaustion": "Exhaustion",
+        "Inflammatory Response": "Inflammatory",
+        "Interferon Response": "Interferon",
+        "T Cell Activation": "T-cell activation",
+    }
 
     rows: list[dict] = []
     for ds in ds_order:
@@ -2200,17 +2209,24 @@ def _panel_e_cross_dataset(ax, data: dict, *, composite: bool = False) -> None:
     y = 0
     y_positions: list[float] = []
     y_labels: list[str] = []
+    label_datasets: list[str | None] = []
     data_rows: list[tuple[int, dict]] = []
+    # Extra whitespace above each dataset's group label separates the datasets
+    # visually; the point + label colours carry the grouping.
+    _GROUP_GAP = 0.9
 
     for r in reversed(rows):
         if "_group_label" in r:
             y_positions.append(y)
             y_labels.append(r["_group_label"])
-            y += 1
+            label_datasets.append(None)
+            y += 1 + _GROUP_GAP
         else:
             y_positions.append(y)
-            sig_short = r.get("signature", "").replace("_", " ")
+            sig_full = r.get("signature", "")
+            sig_short = _SIG_SHORT.get(sig_full, sig_full.replace("_", " "))
             y_labels.append(f"  {sig_short}")
+            label_datasets.append(r.get("dataset"))
             data_rows.append((len(y_positions) - 1, r))
             y += 1
 
@@ -2243,12 +2259,16 @@ def _panel_e_cross_dataset(ax, data: dict, *, composite: bool = False) -> None:
 
     ax.set_yticks(y_positions)
     ax.set_yticklabels(y_labels, fontsize=_yt_fs)
-    for tick_label in ax.get_yticklabels():
+    for tick_label, lab_ds in zip(ax.get_yticklabels(), label_datasets):
         text = tick_label.get_text()
         if text in ds_order:
+            # Dataset group header: bold, larger, full dataset colour.
             tick_label.set_fontweight("bold")
             tick_label.set_fontsize(_yt_grp_fs)
             tick_label.set_color(DATASET_COLORS.get(text, COLORS["gray"]))
+        elif lab_ds is not None:
+            # Endpoint row: tinted with its dataset colour to preserve grouping.
+            tick_label.set_color(DATASET_COLORS.get(lab_ds, "#444"))
 
     for ref_d in (-0.8, -0.5, -0.2, 0.2, 0.5, 0.8):
         ax.axvline(ref_d, color=COLORS["gray"], linewidth=0.4, linestyle=":", zorder=0, alpha=0.25)
@@ -2409,11 +2429,13 @@ def generate() -> None:
     #   C pure-null Type I error | D mixed-signal null-gene FPR
     #   E realised FDR after BH  | F marginal detection (beta = 0.5)
     #   G runtime  +  H pure-null calibration (lambda_GC)   | I cross-dataset forest
-    fig_c = plt.figure(figsize=(180 * _mm, 230 * _mm))
+    fig_c = plt.figure(figsize=(180 * _mm, 234 * _mm))
+    # lambda_GC (old panel H) removed; its space enlarges the cross-dataset forest,
+    # which is now a full-width, tall bottom panel (H). Letters are consecutive A-H.
     outer = fig_c.add_gridspec(
-        9, 1,
-        height_ratios=[0.48, 0.28, 0.42, 0.28, 0.60, 0.48, 0.60, 0.48, 1.40],
-        hspace=0.0, left=0.085, right=0.965, top=0.978, bottom=0.035,
+        11, 1,
+        height_ratios=[0.46, 0.24, 0.40, 0.24, 0.66, 0.42, 0.66, 0.42, 0.52, 0.30, 2.18],
+        hspace=0.0, left=0.085, right=0.965, top=0.980, bottom=0.032,
     )
 
     gs_a = outer[0].subgridspec(1, 2, wspace=0.42)
@@ -2426,18 +2448,16 @@ def generate() -> None:
     ax_b_bot = fig_c.add_subplot(gs_b[1])
     fig_c.add_subplot(outer[3]).set_axis_off()
 
-    # Row C|D and E|F (half-width benchmark panels).
+    # Rows C|D and E|F (half-width benchmark panels).
     gs_cd = outer[4].subgridspec(1, 2, wspace=0.34)
     fig_c.add_subplot(outer[5]).set_axis_off()
     gs_ef = outer[6].subgridspec(1, 2, wspace=0.34)
     fig_c.add_subplot(outer[7]).set_axis_off()
 
-    # Bottom row: [G runtime + H lambda_GC stacked] | I forest (tall, old-H size).
-    gs_row5 = outer[8].subgridspec(1, 2, wspace=0.30)
-    gs_left = gs_row5[0].subgridspec(2, 1, hspace=0.95)
-    ax_rt = fig_c.add_subplot(gs_left[0])
-    ax_lgc = fig_c.add_subplot(gs_left[1])
-    ax_forest = fig_c.add_subplot(gs_row5[1])
+    # G runtime (full width, short) then H cross-dataset forest (full width, tall).
+    ax_rt = fig_c.add_subplot(outer[8])
+    fig_c.add_subplot(outer[9]).set_axis_off()
+    ax_forest = fig_c.add_subplot(outer[10])
 
     # Benchmark panels (embedded via gs_parent / ax).
     if core_df is not None:
@@ -2450,13 +2470,10 @@ def generate() -> None:
         _panel_bench_bh_fdr(fig_c, bench_df, composite=True, panel_sizes=[2000],
                             gs_parent=gs_ef[0])
         _panel_bench_runtime(ax_rt, bench_df, composite=True)
-        _panel_bench_lambda_gc(ax_lgc, bench_df, composite=True)
-        # Runtime and lambda_GC carry their method key as a single-row legend
-        # beneath the panel (added below), like every other benchmark panel, so
-        # drop the in-axes legends they drew.
-        for _axq in (ax_rt, ax_lgc):
-            if _axq.get_legend():
-                _axq.get_legend().remove()
+        # Runtime carries its method key as a single-row legend beneath the panel
+        # (added below), like every other benchmark panel; drop its in-axes legend.
+        if ax_rt.get_legend():
+            ax_rt.get_legend().remove()
 
     # Biological panels (A, B) and the cross-dataset forest (I).
     _panel_a(ax_a_bot, ax_a_top, data, data_tnbc, composite=True)
@@ -2516,14 +2533,12 @@ def generate() -> None:
     if bench_df is not None:
         _bench_legend_below(fig_c, gs_cd[1], fontsize=_leg_fs, y_pad=_leg_pad, short=True)
         _bench_legend_below(fig_c, gs_ef[0], fontsize=_leg_fs, y_pad=_leg_pad, short=True)
-        _bench_legend_below(fig_c, gs_left[0], fontsize=_leg_fs, y_pad=_leg_pad, short=True)
-        _bench_legend_below(fig_c, gs_left[1], fontsize=_leg_fs, y_pad=_leg_pad, short=True)
+        _bench_legend_below(fig_c, outer[8], fontsize=_leg_fs, y_pad=_leg_pad, short=True)
 
-    # Panel letters A-I at each cell's upper-left corner.
+    # Panel letters A-H at each cell's upper-left corner (forest is now H).
     for cell, lab in [
         (gs_a[0], "A"), (gs_b[0], "B"), (gs_cd[0], "C"), (gs_cd[1], "D"),
-        (gs_ef[0], "E"), (gs_ef[1], "F"), (gs_left[0], "G"), (gs_left[1], "H"),
-        (gs_row5[1], "I"),
+        (gs_ef[0], "E"), (gs_ef[1], "F"), (outer[8], "G"), (outer[10], "H"),
     ]:
         x0, y1 = _cell_tl(cell)
         fig_c.text(max(x0 - 0.05, 0.003), min(y1 + 0.013, 0.998), lab,
