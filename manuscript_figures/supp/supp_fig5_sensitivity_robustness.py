@@ -1027,7 +1027,7 @@ _MDE_DATASET_CFG = {
 
 
 # ======================================================================
-# Multi-dataset power constants, loaders, and helpers (panel K)
+# Multi-dataset power constants, loaders, and helpers (panel J)
 # (duplicated from manuscript_figures/main/figure3_robustness_benchmarking.py
 #  per design choice; json cache helpers renamed to *_json_* to avoid
 #  collision with the pickle-based _load_cache/_save_cache above)
@@ -1451,7 +1451,7 @@ def _panel_power_grid(
 ) -> list[plt.Axes]:
     """Draw power curves into a gridspec area, returning created axes.
 
-    Styling is intentionally matched to Figure 3C (legacy `fig3_c.py`), with
+    Styling is intentionally matched to the legacy power-curve panel (`fig3_c.py`), with
     only the panel arrangement changed to support a 2-row 3+3 layout when
     six datasets are present (previously 3+2 for five).
     """
@@ -1608,7 +1608,7 @@ def _panel_power_grid(
 
 
 def _panel_power_curves(data: dict) -> plt.Figure | None:
-    """Standalone figure for panel K: power curves across datasets."""
+    """Standalone figure for panel J: power curves across datasets."""
     power_data = data.get("power_data")
     if power_data is None:
         return None
@@ -2051,8 +2051,8 @@ def generate():
       I  Pure-null Type I error vs panel size (NatMeth benchmark, 5 methods)
       J  Empirical power curves (participant subsampling; 3+2 facet grid)
 
-    Composite (180 mm × ≤215 mm): row1 A | row2 B|C|D|E | row3 F|G|H |
-    row4 I|J.
+    Composite (180 mm × ≤215 mm): row1 A | row2 B|C|D | row3 E|F|G |
+    row4 H|I | row5 J.
     """
     print("Supplementary Figure 5: Sensitivity to Modeling and Preprocessing")
 
@@ -2112,7 +2112,7 @@ def generate():
     fig.tight_layout()
     save_panel(fig, "panel_G", FIGURE_NAME, SUPP_OUTPUT)
 
-    # ── Benchmark (panels H–I) — H: pure-null FPR; I: calibration heatmap ──
+    # ── Benchmark (panels H–I) — H: null-gene FPR curves; I: pure-null Type I error ──
     print("  Loading signal-fraction sensitivity benchmark results ...")
     bench_df = _load_benchmark_data()
     print(
@@ -2249,7 +2249,7 @@ def generate():
                   transform=ax_g.transAxes)
 
     # ── Row 4: H (FPR curves) | I (pure-null FPR) ────────────────────
-    # H = null-gene FPR vs signal fraction (from Figure 3 panel C).
+    # H = mixed-signal null-gene FPR vs signal fraction (expanded from Figure 3 panel D).
     # I = pure-null Type I error vs panel size (was H in row 3).
     # Use a subgridspec (not a SubFigure) so H's 4 axes get the same
     # automatic margin behaviour as ax_i, preventing vertical stretch.
