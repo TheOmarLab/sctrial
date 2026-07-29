@@ -2434,7 +2434,7 @@ def generate() -> None:
     # which is now a full-width, tall bottom panel (H). Letters are consecutive A-H.
     outer = fig_c.add_gridspec(
         11, 1,
-        height_ratios=[0.46, 0.24, 0.40, 0.24, 0.66, 0.42, 0.66, 0.42, 0.52, 0.30, 2.18],
+        height_ratios=[0.44, 0.22, 0.38, 0.30, 0.60, 0.56, 0.60, 0.56, 0.48, 0.30, 1.95],
         hspace=0.0, left=0.085, right=0.965, top=0.980, bottom=0.032,
     )
 
@@ -2470,10 +2470,8 @@ def generate() -> None:
         _panel_bench_bh_fdr(fig_c, bench_df, composite=True, panel_sizes=[2000],
                             gs_parent=gs_ef[0])
         _panel_bench_runtime(ax_rt, bench_df, composite=True)
-        # Runtime carries its method key as a single-row legend beneath the panel
-        # (added below), like every other benchmark panel; drop its in-axes legend.
-        if ax_rt.get_legend():
-            ax_rt.get_legend().remove()
+        # Runtime is full-width at the bottom; keep its in-axes legend (upper-left)
+        # rather than a below-legend, which would otherwise land on the forest.
 
     # Biological panels (A, B) and the cross-dataset forest (I).
     _panel_a(ax_a_bot, ax_a_top, data, data_tnbc, composite=True)
@@ -2533,7 +2531,6 @@ def generate() -> None:
     if bench_df is not None:
         _bench_legend_below(fig_c, gs_cd[1], fontsize=_leg_fs, y_pad=_leg_pad, short=True)
         _bench_legend_below(fig_c, gs_ef[0], fontsize=_leg_fs, y_pad=_leg_pad, short=True)
-        _bench_legend_below(fig_c, outer[8], fontsize=_leg_fs, y_pad=_leg_pad, short=True)
 
     # Panel letters A-H at each cell's upper-left corner (forest is now H).
     for cell, lab in [
