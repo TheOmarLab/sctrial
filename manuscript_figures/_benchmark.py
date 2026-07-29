@@ -1423,9 +1423,10 @@ def _panel_bench_discovery_sensitivity(fig, bench_df, *, composite=False,
     """FDR-controlled discovery sensitivity: BH-controlled end-to-end true-positive
     rate vs signal fraction, one facet per tested-set size (balanced architecture).
 
-    All five methods are shown; NEBULA's high sensitivity is not FDR-controlled
-    (its realised FDR is severe, see the FDR panel), so it must be read alongside
-    that panel rather than as a favourable result.
+    Uses the shared broken-axis renderer so the calibrated methods (low sensitivity
+    under strict FDR control) stay legible while NEBULA sits on the upper strip.
+    NEBULA's high value is NOT FDR-controlled (its realised FDR is severe, see the
+    FDR panel) and must be read alongside it, not as a favourable result.
     """
     bal = bench_df[(bench_df["architecture"] == "balanced")
                    & (bench_df["signal_fraction_realised"] > 0)]
@@ -1433,89 +1434,63 @@ def _panel_bench_discovery_sensitivity(fig, bench_df, *, composite=False,
     meta = bal.groupby("scenario").agg(n_genes=("n_genes", "first"),
                                        signal_pct=("signal_pct", "first")).reset_index()
     rate = rate.merge(meta, on="scenario")
-    _ttl = 5.6 if composite else 11
+    _faceted_broken_by_fraction(
+        fig, rate,
+        ylabel="FDR-controlled discovery sensitivity",
+        main_ylim=(0.0, 0.30), strip_ylim=(0.85, 1.02),
+        title="FDR-controlled discovery sensitivity (end-to-end TPR)",
+        nominal=False, composite=composite, gs_parent=gs_parent)
+
+
+def _panel_bench_quality(ax, core_df, *, kind="evaluability", composite=False):
+    """Evaluability or convergence per method across the robustness families
+    (core grid). Evaluability exposes gene filtering (dreamlet drops only in the
+    lowest cell-yield / empirical-heterogeneous-yield families); convergence is
+    computed among ATTEMPTED (evaluable) fits and stays at 1.0, so the two are
+    reported separately and the reduced retention is shown to be filtering, not a
+    convergence failure."""
+    fam_order = [
+        ("cells_50", "50 cells/PV"), ("cells_250", "250"), ("cells_1000", "1,000"),
+        ("null_hetero", "emp. het. yield"),
+        ("missing_10pct", "10% miss"), ("missing_20pct", "20% miss"),
+        ("imbal_3v7", "3:7"), ("imbal_5v10", "5:10"), ("imbal_10v20", "10:20"),
+        ("de_hetero", "het. effect"), ("compstress_onedir", "comp. stress"),
+    ]
+    q = _per_scenario_quality(core_df, kind=kind)
+    meta = core_df.groupby("scenario").agg(family=("family", "first")).reset_index()
+    q = q.merge(meta, on="scenario")
+    fam_rate = q.groupby(["family", "method"])["mean"].mean().reset_index()
+    present = set(core_df["family"].unique())
+    fam_order = [(f, lab) for f, lab in fam_order if f in present]
+    order = [m for m in _LEGEND_ORDER if m in set(core_df["method"].unique())]
+    x = np.arange(len(fam_order))
+    width = 0.16
+    _tk = 4.6 if composite else 8
     _ax = 5.0 if composite else 10
-    _tk = 4.5 if composite else 9
-    fracs = _SIGNAL_FRACTIONS
-    xpos = {f: i for i, f in enumerate(fracs)}
-    off = {"dreamlet": 0.08, "limma_voom": 0.03, "sctrial_did": -0.03,
-           "wilcoxon_paired": -0.08, "nebula": 0.0}
-    sizes = _PANEL_SIZES
-    gs = (gs_parent.subgridspec(1, len(sizes), wspace=0.30) if gs_parent is not None
-          else fig.add_gridspec(1, len(sizes), wspace=0.30))
-    ylabel = ("FDR-controlled discovery sensitivity" if mode == "end_to_end"
-              else "Tested-only BH TPR")
-    for ci, ng in enumerate(sizes):
-        ax = fig.add_subplot(gs[ci])
-        sub = rate[rate["n_genes"] == ng]
-        for method in _BENCH_METHODS:
-            m = sub[sub["method"] == method].sort_values("signal_pct")
-            if m.empty:
-                continue
-            style = _method_style(method, is_focal=(method == "sctrial_did"),
-                                  composite=composite)
-            xs = [xpos[int(f)] + off[method] for f in m["signal_pct"]]
-            ax.plot(xs, m["mean"],
-                    label=_BENCH_METHOD_LABELS[method] if ci == 0 else None, **style)
-            ax.errorbar(xs, m["mean"], yerr=1.96 * m["mcse"], fmt="none",
-                        ecolor=style["color"], elinewidth=0.7, capsize=1.2, alpha=0.55)
-        ax.set_xticks(range(len(fracs)))
-        ax.set_xticklabels([f"{f}%" for f in fracs])
-        ax.set_xlim(-0.5, len(fracs) - 0.5)
-        ax.set_ylim(0, 1.02)
-        ax.set_xlabel("Signal fraction", fontsize=_ax)
-        ax.set_title(f"{ng:,} tested genes", fontsize=_ttl, fontweight="bold", pad=3)
-        ax.tick_params(labelsize=_tk)
-        _style_axis(ax)
-        if ci > 0:
-            ax.set_yticklabels([])
-        else:
-            ax.set_ylabel(ylabel, fontsize=_ax)
-    if not composite:
-        fig.suptitle("FDR-controlled discovery sensitivity (end-to-end TPR)",
-                     fontsize=13, fontweight="bold", y=1.0)
-        fig.text(0.5, 0.955, "Balanced signal architecture", ha="center", va="top",
-                 fontsize=10, fontstyle="italic", color="#444")
-        fig.legend(handles=_bench_legend_handles(), loc="lower center",
-                   bbox_to_anchor=(0.5, -0.04), ncol=len(_LEGEND_ORDER), frameon=True,
-                   framealpha=0.95, edgecolor="#cccccc", fontsize=8,
-                   columnspacing=1.1, handlelength=1.6)
-
-
-def _panel_bench_quality(ax, bench_df, *, kind="evaluability", composite=False):
-    """Evaluability or convergence per method (equal-weight mean over balanced
-    scenarios, with the scenario spread). Evaluability exposes gene filtering
-    (e.g. dreamlet); convergence is computed among ATTEMPTED (evaluable) fits, so
-    the two are reported separately and never conflated."""
-    bal = bench_df[bench_df["architecture"] == "balanced"]
-    q = _per_scenario_quality(bal, kind=kind)
-    # equal-weight over scenarios within a method
-    summ = (q.groupby("method")["mean"]
-            .agg(m="mean", lo=lambda s: s.quantile(0.05), hi=lambda s: s.quantile(0.95))
-            .reset_index())
-    order = [mm for mm in _LEGEND_ORDER if mm in set(summ["method"])]
-    xs = np.arange(len(order))
-    _tk = 5.0 if composite else 10
-    _ax = 5.2 if composite else 11
     _ttl = 6.0 if composite else 12
-    for i, mth in enumerate(order):
-        r = summ[summ["method"] == mth].iloc[0]
-        col = _BENCH_METHOD_COLORS[mth]
-        ax.bar(i, r["m"], width=0.62, color=col, alpha=0.85, edgecolor="white",
-               linewidth=0.5, zorder=2)
-        ax.errorbar(i, r["m"], yerr=[[r["m"] - r["lo"]], [r["hi"] - r["m"]]],
-                    fmt="none", ecolor="#333", elinewidth=0.9, capsize=2.5, zorder=3)
-        ax.text(i, min(r["m"] + 0.02, 1.0), f"{r['m']:.2f}", ha="center", va="bottom",
-                fontsize=(4.6 if composite else 7), color="#333")
-    ax.set_xticks(xs)
-    ax.set_xticklabels([_BENCH_METHOD_LABELS_SHORT[mm] for mm in order],
-                       rotation=25, ha="right", fontsize=_tk)
-    ax.set_ylim(0, 1.06)
-    ylab = ("Evaluability (valid / prespecified genes)" if kind == "evaluability"
-            else "Convergence (converged / attempted fits)")
-    ax.set_ylabel(ylab, fontsize=_ax)
+    for mi, method in enumerate(order):
+        vals = []
+        for f, _ in fam_order:
+            r = fam_rate[(fam_rate["family"] == f) & (fam_rate["method"] == method)]
+            vals.append(float(r["mean"].iloc[0]) if not r.empty else np.nan)
+        offset = (mi - (len(order) - 1) / 2) * width
+        ax.bar(x + offset, vals, width, color=_BENCH_METHOD_COLORS[method],
+               label=_BENCH_METHOD_LABELS[method], edgecolor="white", linewidth=0.4)
     ax.axhline(1.0, color="#888", linestyle=":", linewidth=0.8, alpha=0.6, zorder=1)
-    ax.set_title("Gene evaluability" if kind == "evaluability" else "Convergence among attempted fits",
+    # Focus the y-range on the informative band so the small dips are visible.
+    ax.set_ylim(0.80, 1.01)
+    ax.set_xticks(x)
+    ax.set_xticklabels([lab for _, lab in fam_order], rotation=35, ha="right",
+                       fontsize=_tk)
+    ylab = ("Evaluability (valid / prespecified)" if kind == "evaluability"
+            else "Convergence (converged / attempted)")
+    ax.set_ylabel(ylab, fontsize=_ax)
+    ax.set_title("Gene evaluability across robustness families" if kind == "evaluability"
+                 else "Convergence among attempted fits",
                  fontsize=_ttl, fontweight="bold", pad=(4 if composite else 8))
     ax.tick_params(axis="y", labelsize=_tk)
+    if not composite:
+        ax.legend(loc="lower center", bbox_to_anchor=(0.5, -0.32),
+                  ncol=len(order), fontsize=8, frameon=True, framealpha=0.95,
+                  edgecolor="#cccccc", columnspacing=1.0)
     _style_axis(ax)
