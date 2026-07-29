@@ -1639,7 +1639,7 @@ def _panel_power_curves(data: dict) -> plt.Figure | None:
 # a method added to CORE_METHODS would have appeared in the main figure and
 # silently vanished from the supplement -- with both looking internally
 # consistent. Supp Fig 5 and Figure 3 must describe the same benchmark.
-from ..main.figure3_robustness_benchmarking import (  # noqa: E402
+from .._benchmark import (  # noqa: E402
     _BENCH_METHOD_COLORS,
     _BENCH_METHOD_LABELS,
     _BENCH_METHOD_MARKERS,
@@ -1662,7 +1662,7 @@ def _load_benchmark_data():
     disagreeing with the main figure while both looked internally consistent.
     Supp Fig 5 and Figure 3 must describe the same benchmark.
     """
-    from ..main.figure3_robustness_benchmarking import (
+    from .._benchmark import (
         _load_benchmark_data as _load_from_figure3,
     )
 
