@@ -23,7 +23,7 @@ Panels (letters match the composite artboard, left-to-right and top-to-bottom)
   --- composite row 4 ---
   H  Benchmark: mixed-signal null-gene FPR vs signal fraction (expanded from Figure 3 panel D).
   I  Benchmark: pure-null Type I error vs panel size.
-  J  Empirical power curves (participant subsampling; 3+2 facet grid).
+  J  Empirical power curves (participant subsampling; 3+3 facet grid).
 
 Non-overlap guardrail: methodological sensitivity only, not biological claims.
 """
@@ -2049,7 +2049,7 @@ def generate():
       G  Leave-one-out stability matrix (all datasets)
       H  Mixed-signal null-gene FPR vs signal fraction (NatMeth benchmark, 5 methods)
       I  Pure-null Type I error vs panel size (NatMeth benchmark, 5 methods)
-      J  Empirical power curves (participant subsampling; 3+2 facet grid)
+      J  Empirical power curves (participant subsampling; 3+3 facet grid)
 
     Composite (180 mm × ≤215 mm): row1 A | row2 B|C|D | row3 E|F|G |
     row4 H|I | row5 J.
