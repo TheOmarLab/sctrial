@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt  # noqa: F401
 import numpy as np
 import pandas as pd
 from matplotlib.patches import Patch  # noqa: F401
-from matplotlib.ticker import MultipleLocator  # noqa: F401
+from matplotlib.ticker import MaxNLocator, MultipleLocator  # noqa: F401
 from scipy import stats
 
 from ._shared import MANUSCRIPT_DIR, despine
@@ -104,7 +104,7 @@ _PANEL_SIZES = [50, 200, 500, 2000]
 _SIGNAL_FRACTIONS = [2, 4, 10, 20]
 
 
-def _load_benchmark_data() -> pd.DataFrame:
+def _load_benchmark_data(architectures=("balanced", "heterogeneous")) -> pd.DataFrame:
     from sctrial.benchmark.paths import require_layout
 
     layout = require_layout(_RESULTS_ROOT, _frozen_manifest_sha())
@@ -169,10 +169,13 @@ def _load_benchmark_data() -> pd.DataFrame:
     df["signal_pct"] = (df["signal_fraction_realised"] * 100).round().astype(int)
     df["is_null_scenario"] = df["signal_fraction_realised"] == 0
 
-    # These panels describe the PRIMARY (balanced) architecture. The
-    # one-directional arm is a separate composition-stress analysis and is
-    # excluded here explicitly rather than by hoping the name regex misses it.
-    df = df[df["architecture"].isin(["balanced", "heterogeneous"])].copy()
+    # Which signal architectures to keep. Figure 3's condensed panels take the
+    # PRIMARY (balanced) architecture only; the benchmark supplement additionally
+    # requests the one-directional composition-stress arm for its side-by-side
+    # panel, so the caller names the architectures explicitly rather than the
+    # loader hard-coding a single set (which silently blanked the one-directional
+    # supplementary panel).
+    df = df[df["architecture"].isin(architectures)].copy()
     return df
 
 
@@ -287,9 +290,14 @@ def _method_style(method: str, is_focal: bool = False, alpha: float = 1.0, *, co
     }
 
 
-def _add_nominal_band(ax, level: float = 0.05, low: float = 0.03, high: float = 0.07, color: str = "#d62728"):
-    ax.axhspan(low, high, color=color, alpha=0.06, zorder=0)
-    ax.axhline(level, color=color, linestyle="--", linewidth=1.0, alpha=0.65, zorder=1)
+def _add_nominal_band(ax, level: float = 0.05, low: float = 0.03, high: float = 0.07, color: str = "#555555"):
+    # A single neutral-gray dashed reference at the nominal level. The shaded
+    # 0.03-0.07 band is intentionally dropped: it collided with dreamlet's red
+    # series near 0.05, and only some panels carried it, so every calibration
+    # panel now shows the same gray line-only reference (low/high kept for the
+    # call signature).
+    del low, high
+    ax.axhline(level, color=color, linestyle="--", linewidth=1.0, alpha=0.8, zorder=1)
 
 
 def _style_axis(ax) -> None:
@@ -303,6 +311,11 @@ def _style_axis(ax) -> None:
 
 
 def _compute_signal_bias_rmse_table(bench_df: pd.DataFrame) -> pd.DataFrame:
+    # Balanced architecture only: the bias/RMSE panel describes the primary
+    # architecture, and the supplement now loads one-directional in the same frame
+    # (for the mixed-FPR panel), which must not leak into this estimand summary.
+    if "architecture" in bench_df.columns:
+        bench_df = bench_df[bench_df["architecture"] == "balanced"]
     mixed = bench_df[~bench_df["is_null_scenario"]].copy()
     sig = mixed[mixed["true_beta"] != 0.0].dropna(subset=["estimated_beta"]).copy()
     sig["err"] = sig["estimated_beta"] - sig["true_beta"]
@@ -433,12 +446,15 @@ def _panel_bench_runtime(ax, bench_df: pd.DataFrame, *, composite: bool = False)
     big = summary[summary["n_genes"] == max(_PANEL_SIZES)].set_index("method")["med"]
     if "sctrial_did" in big.index and big["sctrial_did"] > 0:
         base = big["sctrial_did"]
-        # NEBULA is omitted from the speed comparison: a runtime advantage over a
-        # miscalibrated method is not a meaningful claim.
+        # Every other method's fold-change vs sctrial, slowest first. NEBULA is
+        # INCLUDED (it is the slowest, not the fastest, so there is no risk of
+        # implying a favourable runtime for a miscalibrated method); omitting it
+        # read as selectively hiding the worst-case cost.
         lines = [f"at {max(_PANEL_SIZES):,} genes vs sctrial:"]
-        for mth in ("dreamlet", "limma_voom"):
-            if mth in big.index:
-                lines.append(f"  {_BENCH_METHOD_LABELS[mth]}: {big[mth] / base:.0f}x")
+        ratios = sorted(((m, big[m] / base) for m in big.index if m != "sctrial_did"),
+                        key=lambda kv: kv[1], reverse=True)
+        for mth, r in ratios:
+            lines.append(f"  {_BENCH_METHOD_LABELS[mth]}: {r:.0f}x")
         # Lower-right corner: empty at the largest tested-set size (all lines are
         # high there), so the ratio box never collides with the upper-left legend.
         ax.text(0.97, 0.03, "\n".join(lines), transform=ax.transAxes,
@@ -472,13 +488,17 @@ def _panel_bench_runtime(ax, bench_df: pd.DataFrame, *, composite: bool = False)
     _style_axis(ax)
 
 
-def _panel_bench_signal_rmse(fig, bench_df: pd.DataFrame, *, composite: bool = False) -> None:
+def _panel_bench_signal_rmse(fig, bench_df: pd.DataFrame, *, composite: bool = False,
+                             gs_parent=None) -> None:
     df = _compute_signal_bias_rmse_table(bench_df)
     if hasattr(fig, "set_constrained_layout"):
         fig.set_constrained_layout(False)
     # Lower the panel top so the method legend sits ABOVE the column titles
-    # instead of colliding with them.
-    if composite:
+    # instead of colliding with them. When embedded in a composite cell, build a
+    # subgridspec inside that cell rather than a figure-wide gridspec.
+    if gs_parent is not None:
+        gs = gs_parent.subgridspec(2, 4, hspace=0.52, wspace=0.18)
+    elif composite:
         gs = fig.add_gridspec(2, 4, hspace=0.52, wspace=0.18, left=0.07, right=0.99, top=0.78, bottom=0.16)
     else:
         gs = fig.add_gridspec(2, 4, hspace=0.38, wspace=0.22, left=0.08, right=0.985, top=0.80, bottom=0.11)
@@ -491,10 +511,16 @@ def _panel_bench_signal_rmse(fig, bench_df: pd.DataFrame, *, composite: bool = F
     # is against its OWN oracle (METHOD_ESTIMAND); this is NOT a cross-method
     # bias ranking, and the caption must say so.
     bar_width = 0.16
-    method_order = list(_BENCH_METHODS)
+    # Canonical bar/legend order (sctrial first); bars have no z-order concern, so
+    # this is the display order used everywhere else.
+    method_order = list(_LEGEND_ORDER)
     x_positions = np.arange(len(_SIGNAL_FRACTIONS))
     bias_lo = min(df["bias"].min(), 0) - 0.02
     bias_hi = max(df["bias"].max(), 0.02) * 1.12
+    # Adaptive bias tick step: a fixed 0.05 spacing left only the "0.00" tick when
+    # every method's bias is within +-0.02, making the vertical scale unreadable.
+    _bias_span = max(abs(bias_lo), abs(bias_hi))
+    _bias_step = 0.05 if _bias_span > 0.12 else (0.02 if _bias_span > 0.045 else 0.01)
     rmse_hi = df["rmse"].max() * 1.18
     bias_axes = []
     rmse_axes = []
@@ -524,7 +550,7 @@ def _panel_bench_signal_rmse(fig, bench_df: pd.DataFrame, *, composite: bool = F
         ax_bias.set_xticks(x_positions)
         ax_bias.set_xticklabels([])
         ax_bias.set_ylim(bias_lo, bias_hi)
-        ax_bias.yaxis.set_major_locator(MultipleLocator(0.05))
+        ax_bias.yaxis.set_major_locator(MultipleLocator(_bias_step))
         ax_bias.set_title(f"{n_g:,} genes", fontsize=_ttl_fs, fontweight="bold",
                           color="#1a1a1a", pad=(-7 if composite else 8))
         _style_axis(ax_bias)
@@ -558,8 +584,12 @@ def _panel_bench_signal_rmse(fig, bench_df: pd.DataFrame, *, composite: bool = F
                        handlelength=0.85, handleheight=0.42, handletextpad=0.35,
                        columnspacing=0.55, borderpad=0.35)
     else:
+        fig.suptitle("Estimator bias and RMSE (per method's own oracle)",
+                     fontsize=13, fontweight="bold", y=0.998)
+        fig.text(0.5, 0.965, "Balanced signal architecture", ha="center", va="top",
+                 fontsize=10, fontstyle="italic", color="#444")
         fig.legend(handles=legend_handles, loc="upper center", ncol=len(method_order),
-                   bbox_to_anchor=(0.53, 0.99), frameon=True, framealpha=0.95,
+                   bbox_to_anchor=(0.53, 0.915), frameon=True, framealpha=0.95,
                    edgecolor="#cccccc", fontsize=_leg_fs)
 
 
@@ -623,7 +653,7 @@ def _panel_bench_qq_single(
     _axlbl_fs = 5.1 if composite else 10
     _tick_fs  = 5.1 if composite else 10
 
-    for mi, (ax, method) in enumerate(zip(axes, _BENCH_METHODS)):
+    for mi, (ax, method) in enumerate(zip(axes, _LEGEND_ORDER)):
         pvals = (
             null.loc[null["method"] == method, "pvalue"]
             .dropna()
@@ -689,7 +719,7 @@ def _panel_bench_qq_heatmap(fig, bench_df, *, composite: bool = False, gs_parent
 
     _iter_col = "iteration" if "iteration" in bench_df.columns else None
     frac_data = {}
-    for method in _BENCH_METHODS:
+    for method in _LEGEND_ORDER:
         mat = np.full((len(n_genes_vals), len(signal_pct_vals)), np.nan)
         for ri, ng in enumerate(n_genes_vals):
             for ci, sf in enumerate(signal_pct_vals):
@@ -721,11 +751,25 @@ def _panel_bench_qq_heatmap(fig, bench_df, *, composite: bool = False, gs_parent
     if len(all_vals) == 0:
         print("    WARNING: no calibration data found for panel F heatmap")
         return []
-    vcenter = 0.05
-    _abs_dev = max(np.nanmax(np.abs(all_vals - vcenter)) * 1.1, 0.03)
-    vmin, vmax = vcenter - _abs_dev, vcenter + _abs_dev
-    norm = mcolors.TwoSlopeNorm(vcenter=vcenter, vmin=vmin, vmax=vmax)
-    cmap = "RdBu_r"
+    # The statistic is a proportion in [0, 100%]: the calibrated methods cluster
+    # near the nominal 5%, NEBULA sits at 90-100%, and nothing lands in between.
+    # A diverging map centred at 0% wasted its whole lower (negative) half and made
+    # a well-calibrated 5% read as "mildly miscalibrated". Instead a SEQUENTIAL map
+    # on a SPLIT scale that expands 0-12% and 90-100% (compressing the empty
+    # 12-90% middle) resolves the small differences among the calibrated methods
+    # while still placing NEBULA off in the dark extreme -- the same broken-scale
+    # convention the line panels use for NEBULA.
+    _brk_d = [0.0, 0.12, 0.90, 1.0]   # data-value break-points
+    _brk_c = [0.0, 0.45, 0.55, 1.0]   # colour-map positions
+
+    def _fwd(v):
+        return np.interp(np.asarray(v, dtype=float), _brk_d, _brk_c)
+
+    def _inv(t):
+        return np.interp(np.asarray(t, dtype=float), _brk_c, _brk_d)
+
+    norm = mcolors.FuncNorm((_fwd, _inv), vmin=0.0, vmax=1.0)
+    cmap = "YlOrRd"
 
     _ttl_fs   = 5.2 if composite else 11
     _axlbl_fs = 5.1 if composite else 9
@@ -755,7 +799,7 @@ def _panel_bench_qq_heatmap(fig, bench_df, *, composite: bool = False, gs_parent
     row_labels = [f"{ng:,}" for ng in n_genes_vals]
 
     im_last = None
-    for mi, (ax, method) in enumerate(zip(axes, _BENCH_METHODS)):
+    for mi, (ax, method) in enumerate(zip(axes, _LEGEND_ORDER)):
         mat = frac_data[method]
         im = ax.imshow(mat, cmap=cmap, norm=norm, aspect="auto",
                        interpolation="nearest")
@@ -769,7 +813,8 @@ def _panel_bench_qq_heatmap(fig, bench_df, *, composite: bool = False, gs_parent
                     fc = "#777777"
                 else:
                     txt = f"{val * 100:.1f}%"
-                    fc = "white" if abs(val - vcenter) > _abs_dev * 0.5 else "#222222"
+                    # White text only on the dark (high-%) cells.
+                    fc = "white" if val > 0.35 else "#222222"
                 ax.text(ci, ri, txt, ha="center", va="center",
                         fontsize=_ann_fs, color=fc)
 
@@ -795,10 +840,13 @@ def _panel_bench_qq_heatmap(fig, bench_df, *, composite: bool = False, gs_parent
 
     cb = fig.colorbar(im_last, cax=cbar_ax, orientation="vertical")
     cb.set_label("% outside 95% CI", fontsize=_cblbl_fs, labelpad=2)
+    # Ticks mark the split: the expanded low band (0/5/12%) and the NEBULA band
+    # (90/100%); the nominal 5% target is drawn as the dashed reference.
+    cb.set_ticks([0.0, 0.05, 0.12, 0.90, 1.0])
     cb.ax.tick_params(labelsize=_tick_fs, length=2, pad=1)
     cb.formatter = plt.FuncFormatter(lambda x, _: f"{x * 100:.0f}%")
     cb.update_ticks()
-    cb.ax.axhline(vcenter, color="#333333", linewidth=0.7, linestyle="--")
+    cb.ax.axhline(0.05, color="#111111", linewidth=0.8, linestyle="--")
 
     if not composite:
         fig.suptitle(
@@ -980,7 +1028,7 @@ def _panel_bench_typeI_main(fig, core_df, *, composite: bool = False, gs_parent=
                           label=_BENCH_METHOD_LABELS["nebula"] if ci == 0 else None, **ns)
             ax_strip.errorbar(xs, neb["mean"], yerr=1.96 * neb["mcse"], fmt="none",
                               ecolor=ns["color"], elinewidth=0.8, capsize=1.5, alpha=0.6)
-        ax_main.axhline(0.05, color="#d62728", linestyle="--", linewidth=1.0, alpha=0.7)
+        ax_main.axhline(0.05, color="#555555", linestyle="--", linewidth=1.0, alpha=0.8)
         ax_main.set_xticks(range(len(n_vals)))
         ax_main.set_xticklabels(n_vals)
         ax_main.set_xlim(-0.4, len(n_vals) - 0.6)
@@ -1159,8 +1207,10 @@ def _faceted_broken_by_fraction(fig, rate, *, ylabel, main_ylim, strip_ylim,
     sizes = panel_sizes if panel_sizes is not None else _PANEL_SIZES
     fracs = _SIGNAL_FRACTIONS
     xpos = {f: i for i, f in enumerate(fracs)}
-    off = {"dreamlet": 0.08, "limma_voom": 0.03, "sctrial_did": -0.03,
-           "wilcoxon_paired": -0.08, "nebula": 0.0}
+    # Wider per-method x-offsets so the calibrated methods (all near the nominal
+    # band) stay separable; at 0.03 limma-voom's marker sat under sctrial's.
+    off = {"dreamlet": 0.11, "limma_voom": 0.055, "sctrial_did": -0.055,
+           "wilcoxon_paired": -0.11, "nebula": 0.0}
     gs = (gs_parent.subgridspec(1, len(sizes), wspace=0.30) if gs_parent is not None
           else fig.add_gridspec(1, len(sizes), wspace=0.30))
     for ci, ng in enumerate(sizes):
@@ -1187,7 +1237,7 @@ def _faceted_broken_by_fraction(fig, rate, *, ylabel, main_ylim, strip_ylim,
             ax_strip.errorbar(xs, neb["mean"], yerr=1.96 * neb["mcse"], fmt="none",
                               ecolor=ns["color"], elinewidth=0.7, capsize=1.2, alpha=0.55)
         if nominal:
-            ax_main.axhline(0.05, color="#d62728", linestyle="--", linewidth=1.0, alpha=0.7)
+            ax_main.axhline(0.05, color="#555555", linestyle="--", linewidth=1.0, alpha=0.8)
         ax_main.set_xticks(range(len(fracs)))
         ax_main.set_xticklabels([f"{f}%" for f in fracs])
         ax_main.set_xlim(-0.5, len(fracs) - 0.5)
@@ -1274,9 +1324,12 @@ def _panel_bench_power_vs_n(fig, core_df, *, composite: bool = False, only_beta=
     row_header = {"two_arm": "Two-arm DiD", "single_arm": "Single-arm paired change"}
     # Tighter rows, room on the left for row headers and one shared y-label, room
     # at the top for the title + legend.
-    gs = (gs_parent.subgridspec(len(designs), len(betas), hspace=0.32, wspace=0.26)
+    # Roomy hspace: the two-arm (top) and single-arm (bottom) rows are INDEPENDENT
+    # designs, each with its own x ticks and x-axis title, so they need vertical
+    # separation or the two-arm ticks/label collide with the single-arm axis.
+    gs = (gs_parent.subgridspec(len(designs), len(betas), hspace=0.55, wspace=0.26)
           if gs_parent is not None
-          else fig.add_gridspec(len(designs), len(betas), hspace=0.32, wspace=0.26,
+          else fig.add_gridspec(len(designs), len(betas), hspace=0.55, wspace=0.26,
                                 left=0.13, right=0.98, top=0.84, bottom=0.10))
     _ttl = 5.6 if composite else 11
     _ax = 5.0 if composite else 10
@@ -1324,8 +1377,14 @@ def _panel_bench_power_vs_n(fig, core_df, *, composite: bool = False, only_beta=
             # In a composite the effect size is folded into the panel's corner
             # title, so the per-axis beta title (which would collide with it) is
             # suppressed; standalone keeps it as the column header.
-            if ri == 0 and not composite:
-                ax.set_title(rf"$\beta$ = {beta}", fontsize=_ttl, fontweight="bold")
+            # Effect-size column header on the top row, in BOTH standalone and
+            # composite, but ONLY when there is more than one beta column: a
+            # single-column crop (Figure 3 F, only_beta=0.5) already names the beta
+            # in its panel title, so a column header would duplicate it.
+            if ri == 0 and len(betas) > 1:
+                ax.set_title(rf"$\beta$ = {beta}",
+                             fontsize=(5.4 if composite else _ttl), fontweight="bold",
+                             pad=(2 if composite else 6))
             if ci > 0:
                 ax.set_yticklabels([])
             xl = "Participants per arm" if design == "two_arm" else "Paired participants"
@@ -1353,8 +1412,11 @@ def _panel_bench_power_vs_n(fig, core_df, *, composite: bool = False, only_beta=
                  ha="center", va="center", fontsize=11)
         fig.suptitle("Marginal detection probability by effect size and sample size",
                      fontsize=13, fontweight="bold", y=0.99)
-        fig.legend(handles=_bench_legend_handles(_CALIBRATED), loc="upper center",
-                   bbox_to_anchor=(0.5, 0.925), ncol=len(_CALIBRATED), frameon=True,
+        # Canonical legend order (sctrial first), independent of the sctrial-last
+        # draw order; NEBULA is legitimately absent from the power comparison.
+        _cal_legend = [m for m in _LEGEND_ORDER if m != "nebula"]
+        fig.legend(handles=_bench_legend_handles(_cal_legend), loc="upper center",
+                   bbox_to_anchor=(0.5, 0.925), ncol=len(_cal_legend), frameon=True,
                    framealpha=0.95, edgecolor="#cccccc", fontsize=8,
                    columnspacing=1.1, handlelength=1.6)
 
@@ -1367,7 +1429,7 @@ def _panel_bench_scenario_families(ax, core_df, *, composite: bool = False):
     composition stress; NEBULA is off-scale throughout (clipped + annotated).
     """
     fam_order = [
-        ("cells_50", "50 cells/PV"), ("cells_250", "250"), ("cells_1000", "1000"),
+        ("cells_50", "50 cells/PV"), ("cells_250", "250"), ("cells_1000", "1,000"),
         ("missing_10pct", "10% miss"), ("missing_20pct", "20% miss"),
         ("imbal_3v7", "3:7"), ("imbal_5v10", "5:10"), ("imbal_10v20", "10:20"),
         ("compstress_onedir", "comp. stress"),
@@ -1385,14 +1447,16 @@ def _panel_bench_scenario_families(ax, core_df, *, composite: bool = False):
     x = np.arange(len(fam_order))
     width = 0.16
     ymax = 0.15
-    for mi, method in enumerate(_BENCH_METHODS):
+    # Canonical bar/legend order (sctrial first), matching every other panel.
+    order = [m for m in _LEGEND_ORDER if m in set(core_df["method"].unique())]
+    for mi, method in enumerate(order):
         vals = []
         for f, _ in fam_order:
             r = fam_rate[(fam_rate["family"] == f) & (fam_rate["method"] == method)]
             vals.append(float(r["mean"].iloc[0]) if not r.empty else np.nan)
         vals = np.array(vals)
         style = _method_style(method, is_focal=(method == "sctrial_did"), composite=composite)
-        offset = (mi - (len(_BENCH_METHODS) - 1) / 2) * width
+        offset = (mi - (len(order) - 1) / 2) * width
         clipped = np.minimum(vals, ymax)
         ax.bar(x + offset, clipped, width, color=style["color"],
                label=_BENCH_METHOD_LABELS[method], edgecolor="white", linewidth=0.4)
@@ -1486,8 +1550,13 @@ def _panel_bench_quality(ax, core_df, *, kind="evaluability", composite=False):
     ax.set_xticks(x)
     ax.set_xticklabels([lab for _, lab in fam_order], rotation=35, ha="right",
                        fontsize=_tk)
-    ylab = ("Evaluability (valid / prespecified)" if kind == "evaluability"
-            else "Convergence (converged / attempted)")
+    # Short y-label in the composite so the rotated label's top does not reach the
+    # panel letter at the cell's upper-left (the parenthetical is in the caption).
+    if composite:
+        ylab = "Evaluability" if kind == "evaluability" else "Convergence"
+    else:
+        ylab = ("Evaluability (valid / prespecified)" if kind == "evaluability"
+                else "Convergence (converged / attempted)")
     ax.set_ylabel(ylab, fontsize=_ax)
     ax.set_title("Gene evaluability across robustness families" if kind == "evaluability"
                  else "Convergence among attempted fits",
@@ -1500,11 +1569,14 @@ def _panel_bench_quality(ax, core_df, *, kind="evaluability", composite=False):
     _style_axis(ax)
 
 
+# Same family order as _panel_bench_quality's fam_order (minus the null-only
+# families) so the stacked bar panels L/M/N/O share one left-to-right x-order and
+# their family columns line up vertically.
 _ROBUST_FAMILIES = [
     ("cells_50", "50 cells/PV"), ("cells_250", "250"), ("cells_1000", "1,000"),
-    ("de_hetero", "het. effect"),
     ("missing_10pct", "10% miss"), ("missing_20pct", "20% miss"),
     ("imbal_3v7", "3:7"), ("imbal_5v10", "5:10"), ("imbal_10v20", "10:20"),
+    ("de_hetero", "het. effect"),
     ("compstress_onedir", "comp. stress"),
 ]
 
@@ -1576,17 +1648,30 @@ def _panel_bench_endtoend_vs_tested(ax, core_df, *, composite=False):
                edgecolor="white", linewidth=0.4, label="Tested-only" if i == 0 else None)
         ax.bar(i + width / 2, r["e2e"], width, color=col, alpha=0.95,
                edgecolor="white", linewidth=0.4, label="End-to-end" if i == 0 else None)
+        # NEBULA's high TPR is not FDR-controlled (its realised FDR is severe, see
+        # the FDR/discovery panels); mark it so the tall bars are not misread as
+        # superior power.
+        if mth == "nebula":
+            ax.annotate("*", (i, max(r["tst"], r["e2e"]) + 0.02), ha="center",
+                        va="bottom", fontsize=11, color=col, fontweight="bold")
     ax.set_xticks(x)
-    ax.set_xticklabels([_BENCH_METHOD_LABELS_SHORT[mm] for mm in order],
-                       rotation=25, ha="right", fontsize=_tk)
-    ax.set_ylim(0, 1.02)
+    # Full canonical labels, matching the evaluability/convergence panels.
+    ax.set_xticklabels([_BENCH_METHOD_LABELS[mm] for mm in order],
+                       rotation=30, ha="right", fontsize=_tk)
+    # Headroom so the legend (upper-left, over the empty region) and the NEBULA
+    # asterisk clear the tallest bars.
+    ax.set_ylim(0, 1.14)
     ax.set_ylabel("BH TPR (cell-yield families)", fontsize=_ax)
     ax.set_title("End-to-end vs tested-only detection",
                  fontsize=_ttl, fontweight="bold", pad=(4 if composite else 8))
     ax.tick_params(axis="y", labelsize=_tk)
-    if not composite:
-        ax.legend(loc="upper right", fontsize=8, frameon=True, framealpha=0.95,
-                  edgecolor="#cccccc")
+    # The NEBULA "*" marks that its high TPR is not FDR-controlled; the sentence
+    # explaining it lives in the caption (lab convention keeps notes off figures).
+    # The tested-only vs end-to-end key IS the panel; always draw it (small in the
+    # composite), in the empty upper-left region.
+    ax.legend(loc="upper left", fontsize=(4.6 if composite else 8), frameon=True,
+              framealpha=0.95, edgecolor="#cccccc", handlelength=1.0,
+              handletextpad=0.3, borderpad=0.3, labelspacing=0.25)
     _style_axis(ax)
 
 
@@ -1613,11 +1698,12 @@ def _panel_bench_pure_null_fpr(fig, bench_df, *, composite: bool = False,
 
     if gs_parent is None:
         gs_parent = fig.add_gridspec(1, 1)[0]
-    ax_main, ax_strip = _broken_pair(fig, gs_parent, main_ylim=(0.025, 0.10),
+    # Same main y-range, ticks and gray line-only reference as the vs-participants
+    # Type I panel, so the two calibration sub-panels read as one system.
+    ax_main, ax_strip = _broken_pair(fig, gs_parent, main_ylim=(0.0, 0.10),
                                      strip_ylim=(0.68, 0.82))
-    ax_main.axhspan(0.03, 0.07, color="#d62728", alpha=0.08, zorder=0)
-    ax_main.axhline(0.05, color="#d62728", linestyle="--", linewidth=1.0,
-                    alpha=0.7, zorder=1)
+    ax_main.axhline(0.05, color="#555555", linestyle="--", linewidth=1.0,
+                    alpha=0.8, zorder=1)
 
     panel_sizes = sorted(_PANEL_SIZES)
     x_positions = np.arange(len(panel_sizes), dtype=float)
@@ -1665,22 +1751,18 @@ def _panel_bench_pure_null_fpr(fig, bench_df, *, composite: bool = False,
     ax_main.set_xlim(-0.35, len(panel_sizes) - 0.65)
     ax_main.set_xlabel("Panel size (genes)", fontsize=_tk_fs)
     ax_main.set_ylabel("Pure-null Type I error (p < 0.05)", fontsize=_tk_fs)
-    ax_main.set_yticks([0.03, 0.05, 0.07, 0.09])
+    ax_main.set_yticks([0.0, 0.02, 0.04, 0.06, 0.08, 0.10])
     ax_strip.set_yticks([0.7, 0.8])
     for a in (ax_main, ax_strip):
         a.tick_params(labelsize=_tk_fs)
         _style_axis(a)
-    handles = _bench_legend_handles()
-    if composite:
+    # Standalone panel carries its own method key; in a composite the shared
+    # top legend covers every panel, so the in-panel legend is omitted (it would
+    # otherwise sit on the ~0.05 calibrated cluster).
+    if not composite:
         ax_main.legend(
-            handles=handles, loc="upper center", bbox_to_anchor=(0.5, 0.99), ncol=2,
-            frameon=True, framealpha=0.93, edgecolor="#cccccc",
-            fontsize=_leg_fs, columnspacing=0.75, handlelength=0.85, markerscale=0.55,
-        )
-    else:
-        ax_main.legend(
-            handles=handles, loc="upper left", frameon=True, framealpha=0.95,
-            edgecolor="#cccccc", fontsize=_leg_fs, ncol=2,
+            handles=_bench_legend_handles(), loc="upper left", frameon=True,
+            framealpha=0.95, edgecolor="#cccccc", fontsize=_leg_fs, ncol=2,
         )
     ax_strip.set_title(
         "Pure-null Type I error", fontsize=_ttl_fs, fontweight="bold",

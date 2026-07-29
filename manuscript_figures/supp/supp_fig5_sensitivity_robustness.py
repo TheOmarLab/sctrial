@@ -1,29 +1,27 @@
 """
-Supplementary Figure 5 — Sensitivity, Robustness, and Benchmarking.
-===================================================================
+Supplementary Figure 5 — Sensitivity and Robustness.
+====================================================
 
-Panels A–G characterize the sensitivity and robustness of sctrial's
-participant-level inference on real datasets.  NatMeth benchmark
-panels H–I use the same five methods (sctrial (DiD), Wilcoxon (Δ scores),
-limma-voom, dreamlet, NEBULA) on a hierarchical gamma-Poisson simulator
-(panel sizes 50–2000, signal fractions 2–20%: 2, 4, 10, 20%); the
-λ_GC-calibration (Figure 3 panel H) and QQ-calibration benchmark panels
-were promoted to Figure 3.
-Panel J shows empirical power curves on real datasets.
+Panels A–H characterize the sensitivity and robustness of sctrial's
+participant-level inference on the real datasets: agreement of analytical and
+bootstrap standard errors, stability of effect sizes across preprocessing and
+aggregation choices, cell-type stratification, leave-one-out influence, and
+empirical power under participant subsampling.
+
+The NatMeth simulation-benchmark panels (calibration, power and robustness on
+the hierarchical gamma-Poisson simulator) live in Supp Fig 8, drawn from the
+shared ``manuscript_figures._benchmark`` toolkit; none are duplicated here.
 
 Panels (letters match the composite artboard, left-to-right and top-to-bottom)
 --------------------------------------------------------------------------------
-  A  Analytical vs bootstrap SE (all 5 datasets, forest plot).
+  A  Analytical vs bootstrap SE (all datasets, forest plot).
   B  Standardized vs unstandardized effect sizes (TNBC).
   C  Mean vs median aggregation comparison (TNBC).
   D  Log-transform sensitivity (TNBC).
   E  Cell-type-stratified DiD heatmap (TNBC).
   F  Rank-order concordance across preprocessing choices (TNBC).
   G  Leave-one-out stability matrix (max influence, all datasets).
-  --- composite row 4 ---
-  H  Benchmark: mixed-signal null-gene FPR vs signal fraction (expanded from Figure 3 panel D).
-  I  Benchmark: pure-null Type I error vs panel size.
-  J  Empirical power curves (participant subsampling; 3+3 facet grid).
+  H  Empirical power curves (participant subsampling; 3+3 facet grid).
 
 Non-overlap guardrail: methodological sensitivity only, not biological claims.
 """
@@ -40,7 +38,6 @@ import matplotlib.transforms as mtransforms
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from matplotlib.ticker import MultipleLocator
 from scipy import stats as sp_stats
 
 from .._shared import (
@@ -167,17 +164,22 @@ def _add_gene_labels(ax, features, x_series, y_series, *, fontsize=7):
     if _HAS_ADJUSTTEXT:
         texts = []
         for feat in features:
+            # White bounding box: masks any residual overlap so every gene name
+            # stays legible, and gives adjustText a box to repel from / clip the
+            # leader line at (dense clouds overprinted labels without it).
             texts.append(
                 ax.text(x_series[feat], y_series[feat], feat,
-                        fontsize=fontsize, fontweight="bold", ha="left")
+                        fontsize=fontsize, fontweight="bold", ha="left", zorder=6,
+                        bbox=dict(boxstyle="round,pad=0.1", fc="white", ec="none",
+                                  alpha=0.72))
             )
         _adjust_text(
             texts, ax=ax,
-            force_text=(1.2, 1.2), force_static=(0.3, 0.3),
-            force_explode=(0.3, 0.3),
-            expand=(1.3, 1.5),
-            max_move=(40, 40),
-            time_lim=5,
+            force_text=(1.7, 1.9), force_static=(0.4, 0.4),
+            force_explode=(0.5, 0.5),
+            expand=(1.6, 1.9),
+            max_move=(60, 60),
+            time_lim=8,
             arrowprops=dict(arrowstyle="-", color="gray", lw=0.6),
         )
     else:
@@ -441,14 +443,30 @@ def _panel_bootstrap_multi(fig, boot_data: dict, *, composite: bool = False):
         ax.set_yticklabels(df["feature"], fontsize=_ytick_fs)
         ax.set_title(name, fontweight="bold", fontsize=_title_fs)
         ax.set_xlabel("")
-
-        if composite:
-            if name == "Vaccine":
-                ax.legend(fontsize=4, loc="lower right", frameon=True)
-        else:
-            if ax == axes[0]:
-                ax.legend(fontsize=6, loc="lower right", frameon=True)
+        # Wide right margin: the forests fill the plot at every row (effects near 0
+        # with wide ±CI whiskers), so the ONLY reliably data-free region is a band
+        # to the right of every whisker cap. get_xlim() already includes the whisker
+        # extent, so adding 0.75x the range guarantees an empty right band for the
+        # legend that no row's whisker reaches.
+        _xlo, _xhi = ax.get_xlim()
+        ax.set_xlim(_xlo, _xhi + 0.75 * (_xhi - _xlo))
         despine(ax)
+
+    # ONE shared Analytical/Bootstrap key for the whole row, in the top-right
+    # margin created above, so it never overlaps a data marker in any subpanel.
+    from matplotlib.lines import Line2D
+    _key = [
+        Line2D([0], [0], marker="s", linestyle="", color=_PAL["cell"],
+               markersize=_ms + 1, label="Analytical"),
+        Line2D([0], [0], marker="o", linestyle="", color=_PAL["participant"],
+               markersize=_ms + 1, label="Bootstrap"),
+    ]
+    # CENTER-RIGHT of the last panel, inside the wide empty right band. Center
+    # height (not a corner) keeps it clear of the top row's larger-effect whisker
+    # and the bottom row's; every corner touched data in earlier attempts.
+    axes[-1].legend(handles=_key, fontsize=(4 if composite else 6), loc="center right",
+                    frameon=True, framealpha=0.96, edgecolor="#cccccc",
+                    handletextpad=0.3, borderpad=0.3, labelspacing=0.2)
 
     # Centered x-axis label under the full row, rather than anchored to one
     # subplot — robust to dataset count/order changes (e.g. adding TNBC),
@@ -480,7 +498,7 @@ def _panel_bootstrap_multi(fig, boot_data: dict, *, composite: bool = False):
         _xc_parent = _sf_pos.x0 + _xc * _sf_pos.width
         _y0_parent = _sf_pos.y0 + _y0 * _sf_pos.height
         _parent_fig.text(
-            _xc_parent, _y0_parent - 0.050, "β with 95% CI",
+            _xc_parent, _y0_parent - 0.072, "β with 95% CI",
             ha="center", va="top", fontsize=_xlbl_fs,
             transform=_parent_fig.transFigure,
         )
@@ -511,7 +529,7 @@ def _panel_std_vs_unstd(ax, data: dict, *, composite: bool = False):
         return
 
     _s = 18 if composite else 50
-    _lbl_fs = 4.5 if composite else 7
+    _lbl_fs = 3.8 if composite else 7
     _r_fs = 5.5 if composite else 7
 
     x, y = std[common].values, unstd[common].values
@@ -560,7 +578,7 @@ def _panel_mean_vs_median(ax, data: dict, *, composite: bool = False):
         return
 
     _s = 18 if composite else 50
-    _lbl_fs = 4.5 if composite else 7
+    _lbl_fs = 3.8 if composite else 7
     _r_fs = 5.5 if composite else 7
 
     x, y = mean_df[common].values, med_df[common].values
@@ -613,7 +631,7 @@ def _panel_log_sensitivity(ax, data: dict, *, composite: bool = False):
         return
 
     _s = 18 if composite else 50
-    _lbl_fs = 4.5 if composite else 7
+    _lbl_fs = 3.8 if composite else 7
     _r_fs = 5.5 if composite else 7
 
     x, y = log_df[common].values, raw_df[common].values
@@ -766,7 +784,10 @@ def _panel_rank_concordance(ax, data: dict, *, composite: bool = False):
     ax.set_yticklabels(labels, fontsize=_yt_fs)
     ax.set_xlabel(f"Spearman ρ (vs {ref_key})")
     ax.set_xlim(0, 1.15)
-    ax.set_title("Rank concordance across choices (TNBC)",
+    # Shorter title in the composite so it does not overflow into the Panel G
+    # letter to its right (the full phrasing is kept for the standalone panel).
+    ax.set_title("Rank concordance (TNBC)" if composite
+                 else "Rank concordance across choices (TNBC)",
                  fontweight="bold", fontsize=5.5 if composite else 11)
 
     _rho_lbl_fs = 5.0 if composite else 7
@@ -1635,79 +1656,6 @@ def _panel_power_curves(data: dict) -> plt.Figure | None:
 # See figure3: derive from MANUSCRIPT_DIR so the HPC checkout depth is honoured.
 # Path resolution lives in figure3's loader, which this delegates to.
 
-# Imported from Figure 3, not restated. These were hand-maintained duplicates, so
-# a method added to CORE_METHODS would have appeared in the main figure and
-# silently vanished from the supplement -- with both looking internally
-# consistent. Supp Fig 5 and Figure 3 must describe the same benchmark.
-from .._benchmark import (  # noqa: E402
-    _BENCH_METHOD_COLORS,
-    _BENCH_METHOD_LABELS,
-    _BENCH_METHOD_MARKERS,
-    _BENCH_METHODS,
-)
-
-_PANEL_SIZES = [50, 200, 500, 2000]
-_SIGNAL_FRACTIONS = [2, 4, 10, 20]
-
-
-def _load_benchmark_data():
-    """Delegate to Figure 3's loader — do not re-implement it here.
-
-    This was a second, independent copy of the same parsing logic. When the
-    scenario labelling was found to be wrong (nominal versus realised signal
-    fraction), fixing one copy would have left the supplementary panels
-    disagreeing with the main figure while both looked internally consistent.
-    Supp Fig 5 and Figure 3 must describe the same benchmark.
-    """
-    from .._benchmark import (
-        _load_benchmark_data as _load_from_figure3,
-    )
-
-    return _load_from_figure3()
-
-
-def _method_style(method, is_focal=False, alpha=1.0, *, composite=False):
-    """Line/marker style for benchmark method curves.
-
-    *composite*: smaller glyphs for the tight multi-panel artboard.
-    """
-    if composite:
-        ms_hi, ms_lo = 5.6, 4.3
-        lw_hi, lw_lo = 1.45, 1.1
-        mew = 0.48
-    else:
-        ms_hi, ms_lo = 9, 7
-        lw_hi, lw_lo = 2.5, 1.8
-        mew = 0.6
-    return {
-        "color": _BENCH_METHOD_COLORS[method],
-        "marker": _BENCH_METHOD_MARKERS[method],
-        "markersize": ms_hi if is_focal else ms_lo,
-        "markeredgecolor": "white",
-        "markeredgewidth": mew,
-        "linewidth": lw_hi if is_focal else lw_lo,
-        "alpha": alpha,
-    }
-
-
-def _add_nominal_band(ax, level=0.05, low=0.03, high=0.07, color="#d62728"):
-    ax.axhspan(low, high, color=color, alpha=0.06, zorder=0)
-    ax.axhline(level, color=color, linestyle="--", linewidth=1.0,
-               alpha=0.65, zorder=1)
-
-
-def _style_axis(ax):
-    ax.grid(axis="y", linestyle=":", color="#b0b0b0", alpha=0.45,
-            linewidth=0.6, zorder=0)
-    ax.set_axisbelow(True)
-    despine(ax)
-    for spine in ("left", "bottom"):
-        ax.spines[spine].set_color("#333333")
-        ax.spines[spine].set_linewidth(0.9)
-    ax.tick_params(axis="both", which="major",
-                   color="#333333", width=0.8, length=4)
-
-
 def _subfig_bbox_in_figure_coords(fig, subfig) -> mtransforms.Bbox:
     """Return *subfig* bounds in normalized figure coordinates (0–1).
 
@@ -1790,161 +1738,8 @@ def _figure_title_above_subfig(
 # Panel H — Mixed-signal null-gene FPR vs signal fraction (expanded from Figure 3 panel D)
 # ======================================================================
 
-def _compute_null_fpr_table(bench_df) -> pd.DataFrame:
-    null = bench_df[bench_df["true_beta"] == 0.0].copy()
-    rows = []
-    for (method, n_g, frac), grp in null.groupby(["method", "n_genes", "signal_pct"]):
-        pvals = grp["pvalue"].dropna().values
-        if len(pvals) == 0:
-            continue
-        rows.append({"method": method, "n_genes": int(n_g), "signal_pct": int(frac),
-                     "fpr": float((pvals < 0.05).mean()), "n_tests": int(len(pvals))})
-    return pd.DataFrame(rows)
-
-
-def _panel_bench_fpr_curves(fig, bench_df, *, composite: bool = False, axes=None) -> None:
-    fpr_df = _compute_null_fpr_table(bench_df)
-    fpr_df = fpr_df[fpr_df["signal_pct"] > 0].copy()
-    if axes is None:
-        axes = fig.subplots(1, 4, sharey=True)
-        if not hasattr(axes, "__len__"):
-            axes = [axes]
-        if composite:
-            fig.suptitle("Mixed-signal null-gene FPR vs signal fraction", x=0.5, y=0.99, fontsize=5.8, fontweight="bold")
-
-    _ttl_fs = 5.75 if composite else 12
-    _ax_fs = 5.15 if composite else 11
-    _tk_fs = 4.65 if composite else 10
-    _leg_fs = 5.2 if composite else 9
-
-    x_positions = np.arange(len(_SIGNAL_FRACTIONS), dtype=float)
-    frac_to_x = dict(zip(_SIGNAL_FRACTIONS, x_positions))
-    # Five methods (limma-voom was added to the benchmark); offsets spread them so
-    # the near-nominal calibrated curves stay legible where they overlap.
-    method_offsets = {"wilcoxon_paired": -0.10, "nebula": -0.05, "limma_voom": 0.0,
-                      "sctrial_did": +0.05, "dreamlet": +0.10}
-
-    for ax_idx, (ax, n_g) in enumerate(zip(axes, _PANEL_SIZES)):
-        sub = fpr_df[fpr_df["n_genes"] == n_g]
-        for method in _BENCH_METHODS:
-            m = sub[sub["method"] == method].sort_values("signal_pct")
-            if m.empty:
-                continue
-            is_focal = method == "sctrial_did"
-            style = _method_style(method, is_focal=is_focal, composite=composite)
-            x = np.array([frac_to_x[int(f)] for f in m["signal_pct"].values]) + method_offsets[method]
-            ax.plot(x, m["fpr"], label=_BENCH_METHOD_LABELS[method] if ax_idx == 0 else None,
-                    zorder=10 if is_focal else 3, **style)
-        _add_nominal_band(ax)
-        ax.set_xticks(x_positions)
-        ax.set_xticklabels([f"{f}%" for f in _SIGNAL_FRACTIONS], fontsize=_tk_fs)
-        ax.set_xlim(-0.4, len(_SIGNAL_FRACTIONS) - 0.6)
-        ax.set_xlabel("Signal fraction", fontsize=_ax_fs)
-        ax.set_title(f"{n_g:,} genes", fontsize=_ttl_fs, fontweight="bold",
-                     color="#222222", pad=4 if composite else 8)
-        ax.set_ylim(0.0, 0.7)
-        ax.yaxis.set_major_locator(MultipleLocator(0.1))
-        ax.tick_params(axis="y", labelsize=_tk_fs)
-        _style_axis(ax)
-
-    axes[0].set_ylabel("Null-gene FPR (p < 0.05)", fontsize=_ax_fs)
-    if composite:
-        h, lab = axes[0].get_legend_handles_labels()
-        for ax in axes:
-            leg = ax.get_legend()
-            if leg is not None:
-                leg.remove()
-        axes[0].legend(h, lab, loc="upper left", bbox_to_anchor=(0.02, 0.98),
-                       ncol=1, frameon=True, framealpha=0.95, edgecolor="#cccccc",
-                       fontsize=_leg_fs, handlelength=0.85, columnspacing=0.55, markerscale=0.65)
-    else:
-        axes[0].legend(loc="upper left", frameon=True, framealpha=0.95, edgecolor="#cccccc", fontsize=_leg_fs)
-
-
-# ======================================================================
-# Panel I — Pure-null Type I error vs panel size
-# (was panel H before reshuffle)
-# ======================================================================
-
-# ======================================================================
-# (unused) Runtime comparison across methods — corresponds to Figure 3 panel G
-# (was panel N before reshuffle)
-# ======================================================================
-
-def _panel_bench_runtime(ax, bench_df, *, composite: bool = False):
-    """Per-iteration runtime by method × panel size (log y).
-
-    X-axis uses evenly-spaced categorical positions so the 4 panel sizes
-    are ticked at equal intervals, independent of their raw values.
-    """
-    rt = (
-        bench_df.groupby(["method", "scenario", "n_genes", "iteration"])[
-            "runtime_seconds"
-        ]
-        .first()
-        .reset_index()
-    )
-
-    summary = (
-        rt.groupby(["method", "n_genes"])["runtime_seconds"]
-        .median()
-        .reset_index()
-    )
-
-    x_positions = np.arange(len(_PANEL_SIZES), dtype=float)
-    n_to_x = dict(zip(_PANEL_SIZES, x_positions))
-
-    _lbl_fs = 5.05 if composite else 11
-    _ttl_fs = 6.0 if composite else 12
-    _ttl_pad = 5 if composite else 10
-    _leg_fs = 4.5 if composite else 9
-
-    for method in _BENCH_METHODS:
-        sub = summary[summary["method"] == method].sort_values("n_genes")
-        if sub.empty:
-            continue
-        is_focal = method == "sctrial_did"
-        style = _method_style(method, is_focal=is_focal, composite=composite)
-        xs = [n_to_x[int(n)] for n in sub["n_genes"].values]
-        ax.plot(
-            xs, sub["runtime_seconds"],
-            label=_BENCH_METHOD_LABELS[method],
-            zorder=10 if is_focal else 3,
-            **style,
-        )
-
-    ax.set_yscale("log")
-    ax.set_xticks(x_positions)
-    ax.set_xticklabels([f"{p:,}" for p in _PANEL_SIZES], fontsize=_lbl_fs)
-    ax.set_xlim(-0.35, len(_PANEL_SIZES) - 0.65)
-    ax.set_xlabel("Panel size (genes)", fontsize=_lbl_fs)
-    ax.set_ylabel("Median runtime per iteration (s)", fontsize=_lbl_fs)
-    ax.set_title(
-        "Computational cost", fontsize=_ttl_fs, fontweight="bold", pad=_ttl_pad,
-    )
-    ax.tick_params(axis="y", labelsize=_lbl_fs)
-    if composite:
-        ax.legend(
-            loc="upper left",
-            bbox_to_anchor=(0.02, 0.72),
-            frameon=True, framealpha=0.95, edgecolor="#cccccc", fontsize=_leg_fs,
-            markerscale=0.52, handlelength=1.0,
-        )
-    else:
-        ax.legend(
-            loc="upper left", frameon=True, framealpha=0.95,
-            edgecolor="#cccccc", fontsize=_leg_fs,
-            markerscale=1.0, handlelength=1.5,
-        )
-    _style_axis(ax)
-
-
-# ======================================================================
-# Generate
-# ======================================================================
-
 def generate():
-    """Create and save Supplementary Figure 5 panels (A–J) + composite.
+    """Create and save Supplementary Figure 5 panels (A–H) + composite.
 
     Layout (same order as the composite artboard):
       A  Analytical vs bootstrap SE (all datasets, faceted forest plot)
@@ -1954,12 +1749,13 @@ def generate():
       E  Cell-type-stratified DiD heatmap (TNBC)
       F  Rank-order concordance across choices (TNBC)
       G  Leave-one-out stability matrix (all datasets)
-      H  Mixed-signal null-gene FPR vs signal fraction (NatMeth benchmark, 5 methods)
-      I  Pure-null Type I error vs panel size (NatMeth benchmark, 5 methods)
-      J  Empirical power curves (participant subsampling; 3+3 facet grid)
+      H  Empirical power curves (participant subsampling; 3+3 facet grid)
 
-    Composite (180 mm × ≤215 mm): row1 A | row2 B|C|D | row3 E|F|G |
-    row4 H|I | row5 J.
+    The NatMeth simulation-benchmark panels live in Supp Fig 8 (drawn from the
+    shared manuscript_figures._benchmark toolkit); this figure is the empirical
+    sensitivity/robustness supplement only.
+
+    Composite (180 mm × ≤215 mm): row1 A | row2 B|C|D | row3 E|F|G | row4 H.
     """
     print("Supplementary Figure 5: Sensitivity to Modeling and Preprocessing")
 
@@ -2282,7 +2078,7 @@ def generate():
 
     clear_cache()
     gc.collect()
-    print("  SuppFig5 complete: 10 individual panels + combined (A–J)\n")
+    print("  SuppFig5 complete: 8 individual panels + combined (A–H)\n")
 
 
 if __name__ == "__main__":

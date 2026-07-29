@@ -624,27 +624,43 @@ def _panel_a_single(
     ax.set_ylim(lo, hi)
     despine(ax)
 
-    # ── Labels with leader lines via adjust_text ──────────────────────
-    fontsize_pt = 5.2 if composite else 6.5
-    texts = []
-    for feat, xa, ya in zip(feats, analytical, bootstrap):
-        label = sig_display(feat)
-        texts.append(ax.text(xa, ya, label, fontsize=fontsize_pt, ha="left", va="center"))
-
-    adjust_text(
-        texts, x=analytical, y=bootstrap, ax=ax,
-        arrowprops=dict(arrowstyle="-", color="#aaaaaa", lw=0.5),
-        expand=(1.4, 1.6),
-        force_text=(0.8, 0.8),
-        force_points=(0.5, 0.5),
-    )
-
+    # The r/p statistics box is drawn FIRST and passed to adjust_text as a fixed
+    # object to avoid, so no signature label lands on it (previously the p-value
+    # was overprinted). Labels carry a white bounding box: adjust_text sets the box
+    # as the arrow's patchB, so the leader line terminates at the box EDGE instead
+    # of crossing the glyphs (the "strikethrough" defect).
     r, p = stats.pearsonr(analytical, bootstrap)
-    ax.text(
-        0.05, 0.95, f"r = {r:.2f}\np = {p:.1e}",
-        transform=ax.transAxes, fontsize=8, va="top", ha="left",
-        bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="none", alpha=0.8),
+    stat_text = ax.text(
+        0.04, 0.96, f"r = {r:.2f}\np = {p:.1e}",
+        transform=ax.transAxes, fontsize=(6 if composite else 8), va="top", ha="left",
+        zorder=6,
+        bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="#dddddd", alpha=0.9),
     )
+
+    # ── Labels with leader lines via adjust_text ──────────────────────
+    # Only in the STANDALONE panel: 15 leader-lined labels cannot be separated in
+    # the tiny composite cell (they garble even after repulsion + font shrink), and
+    # the composite panel's message is the correlation (r/p) and the identity line,
+    # not per-signature SEs. The standalone panel_A carries every label.
+    if not composite:
+        texts = []
+        for feat, xa, ya in zip(feats, analytical, bootstrap):
+            label = sig_display(feat)
+            texts.append(ax.text(
+                xa, ya, label, fontsize=6.5, ha="center", va="center",
+                color="#1a1a1a", zorder=5,
+                bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="none", alpha=0.75)))
+        _adj_kw = dict(
+            x=analytical, y=bootstrap, ax=ax,
+            arrowprops=dict(arrowstyle="-", color="#bbbbbb", lw=0.5, shrinkA=2, shrinkB=3),
+            expand=(1.8, 2.2), force_text=(1.1, 1.3), force_points=(0.6, 0.7),
+        )
+        try:
+            adjust_text(texts, add_objects=[stat_text], **_adj_kw)
+        except TypeError:
+            # Older/newer adjustText may name the parameter differently; fall back
+            # to repelling from points/text only.
+            adjust_text(texts, **_adj_kw)
 
 
 def _panel_a(ax_top, ax_bottom, data_sf: dict, data_tnbc: dict, *, composite: bool = False) -> None:
@@ -703,7 +719,9 @@ def _panel_b_single(ax, data: dict, *, title: str = "Leave-One-Out Sensitivity")
     if _all_vals:
         _v_lo, _v_hi = min(_all_vals), max(_all_vals)
         _v_range = max(_v_hi - _v_lo, 1e-6)
-        ax.set_xlim(_v_lo - 0.15 * _v_range, _v_hi + 0.15 * _v_range)
+        # Wide right margin so the legend sits in a clear band, never over a
+        # diamond, LOO point or range whisker (the previous legend hid a whole row).
+        ax.set_xlim(_v_lo - 0.15 * _v_range, _v_hi + 0.72 * _v_range)
 
     ax.set_yticks(range(len(top_sigs)))
     ax.set_yticklabels([sig_display(s) for s in top_sigs], fontsize=8)
@@ -714,13 +732,16 @@ def _panel_b_single(ax, data: dict, *, title: str = "Leave-One-Out Sensitivity")
     ax.set_title(title, fontsize=10, fontweight="bold")
 
     from matplotlib.lines import Line2D
+    # Signature entries in TOP-to-BOTTOM row order (rows are drawn with the
+    # largest-|beta| signature at idx 0 = bottom, so reverse for the legend).
     handles = []
-    for idx, feat in enumerate(top_sigs):
+    for feat in reversed(top_sigs):
         color = _panel_b_color(feat)
         handles.append(Patch(facecolor=color, edgecolor="#333333", linewidth=0.5, label=sig_display(feat)))
     handles.append(Line2D([0], [0], marker="o", color="w", markerfacecolor=COLORS["gray"], markersize=4.0, label="LOO estimate"))
     handles.append(Line2D([0], [0], marker="D", color="w", markerfacecolor=COLORS["gray"], markeredgecolor="black", markersize=4.8, label="Full sample"))
-    ax.legend(handles=handles, fontsize=7.6, loc="lower right", frameon=True, framealpha=0.9)
+    ax.legend(handles=handles, fontsize=7.0, loc="center right", frameon=True,
+              framealpha=0.95, edgecolor="#cccccc", borderpad=0.4, labelspacing=0.3)
     despine(ax)
 
 
@@ -978,7 +999,7 @@ def _panel_e_cross_dataset(ax, data: dict, *, composite: bool = False) -> None:
     # function), so this is NOT Hedges' g. Labelled as a design-specific
     # standardized participant-level effect rather than a single "Cohen's d".
     ax.set_xlabel("Standardized effect (design-specific Cohen's d)", fontsize=_xl_fs)
-    ax.set_title("Effect sizes — pre-specified endpoints", fontsize=_ttl_fs, fontweight="bold",
+    ax.set_title("Effect sizes: pre-specified endpoints", fontsize=_ttl_fs, fontweight="bold",
                  pad=12 if not composite else 8)
     ax.tick_params(axis="x", which="major", labelsize=_xt_fs)
     all_vals = effect_df[["d_lower", "d_upper", "d"]].values.flatten()
@@ -1067,8 +1088,10 @@ def generate() -> None:
 
         fig_3g, ax_3g = plt.subplots(figsize=(6.5, 4.6))
         _panel_bench_runtime(ax_3g, bench_df)
-        ax_3g.legend(loc="upper left", fontsize=8, frameon=True,
-                     framealpha=0.95, edgecolor="#cccccc")
+        # Do NOT call ax_3g.legend() here: _panel_bench_runtime already draws the
+        # legend with canonical method order (sctrial first). A bare ax.legend()
+        # rebuilds it from the sctrial-last DRAW order, which is the non-canonical
+        # 3G legend the reviewer kept flagging.
         fig_3g.tight_layout()
         save_panel(fig_3g, "panel_3G_runtime", FIGURE_NAME, MAIN_OUTPUT)
 
@@ -1205,6 +1228,13 @@ def generate() -> None:
 
     # Compact corner titles for the four half-width benchmark panels (composite
     # suppresses their standalone titles), raised above their internal titles.
+    # Centre the panel title on the cell so it stacks cleanly above the facet's
+    # internal "N tested genes" strip title (which is centred); a left-aligned
+    # title staggered to the right of the centred strip title in D and E.
+    def _cell_tc(cell):
+        pos = cell.get_position(fig_c)
+        return 0.5 * (pos.x0 + pos.x1), pos.y1
+
     def _cell_tl(cell):
         pos = cell.get_position(fig_c)
         return pos.x0, pos.y1
@@ -1215,9 +1245,9 @@ def generate() -> None:
         (gs_ef[0], "Realized FDR after BH"),
         (gs_ef[1], r"Marginal detection ($\beta$ = 0.5)"),
     ]:
-        x0, y1 = _cell_tl(cell)
-        fig_c.text(x0, min(y1 + 0.013, 0.997), ttl, fontsize=5.4,
-                   fontweight="bold", va="bottom", ha="left")
+        cx, y1 = _cell_tc(cell)
+        fig_c.text(cx, min(y1 + 0.013, 0.997), ttl, fontsize=5.4,
+                   fontweight="bold", va="bottom", ha="center")
 
     # Per-panel method legend beneath each benchmark panel, as a SINGLE ROW.
     # C/D/E/G/H carry all five methods; F (marginal power) omits NEBULA. Short
@@ -1226,8 +1256,9 @@ def generate() -> None:
     _leg_fs, _leg_pad = 3.2, 0.006
     if core_df is not None:
         _bench_legend_below(fig_c, gs_cd[0], fontsize=_leg_fs, y_pad=_leg_pad, short=True)
-        _bench_legend_below(fig_c, gs_ef[1], methods=_CALIBRATED, fontsize=_leg_fs,
-                            y_pad=_leg_pad, short=True)
+        _bench_legend_below(fig_c, gs_ef[1],
+                            methods=[m for m in _LEGEND_ORDER if m != "nebula"],
+                            fontsize=_leg_fs, y_pad=_leg_pad, short=True)
     if bench_df is not None:
         _bench_legend_below(fig_c, gs_cd[1], fontsize=_leg_fs, y_pad=_leg_pad, short=True)
         _bench_legend_below(fig_c, gs_ef[0], fontsize=_leg_fs, y_pad=_leg_pad, short=True)
