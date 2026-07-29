@@ -1215,9 +1215,13 @@ def _faceted_broken_by_fraction(fig, rate, *, ylabel, main_ylim, strip_ylim,
 
 
 def _panel_bench_mixed_fpr(fig, bench_df, *, composite: bool = False, panel_sizes=None,
-                           gs_parent=None):
-    """3D. Mixed-signal null-gene FPR, balanced, four tested-set-size facets."""
-    bal = bench_df[(bench_df["architecture"] == "balanced")
+                           gs_parent=None, architecture="balanced"):
+    """Mixed-signal null-gene FPR, four tested-set-size facets, for one signal
+    architecture ('balanced' or 'one_directional')."""
+    _arch_lab = {"balanced": "Balanced signal architecture",
+                 "one_directional": "One-directional signal architecture"}.get(
+                     architecture, architecture)
+    bal = bench_df[(bench_df["architecture"] == architecture)
                    & (bench_df["signal_fraction_realised"] > 0)
                    & (~bench_df["is_signal"])]
     rate = _per_scenario_rate(bal, on_signal=False)
@@ -1226,7 +1230,7 @@ def _panel_bench_mixed_fpr(fig, bench_df, *, composite: bool = False, panel_size
     rate = rate.merge(meta, on="scenario")
     _faceted_broken_by_fraction(
         fig, rate, ylabel="Null-gene FPR (p < 0.05)",
-        main_ylim=(0.0, 0.10), strip_ylim=(0.68, 0.82),
+        main_ylim=(0.0, 0.10), strip_ylim=(0.68, 0.82), arch=_arch_lab,
         title="Mixed-signal null-gene false-positive rate", composite=composite,
         panel_sizes=panel_sizes, gs_parent=gs_parent)
 
@@ -1493,4 +1497,94 @@ def _panel_bench_quality(ax, core_df, *, kind="evaluability", composite=False):
         ax.legend(loc="lower center", bbox_to_anchor=(0.5, -0.32),
                   ncol=len(order), fontsize=8, frameon=True, framealpha=0.95,
                   edgecolor="#cccccc", columnspacing=1.0)
+    _style_axis(ax)
+
+
+_ROBUST_FAMILIES = [
+    ("cells_50", "50 cells/PV"), ("cells_250", "250"), ("cells_1000", "1,000"),
+    ("de_hetero", "het. effect"),
+    ("missing_10pct", "10% miss"), ("missing_20pct", "20% miss"),
+    ("imbal_3v7", "3:7"), ("imbal_5v10", "5:10"), ("imbal_10v20", "10:20"),
+    ("compstress_onedir", "comp. stress"),
+]
+
+
+def _panel_bench_family_tpr(ax, core_df, *, composite=False):
+    """End-to-end BH TPR across the robustness families that CONTAIN signal-bearing
+    scenarios (the manifest availability table excludes null/null_hetero). NEBULA's
+    high TPR is not FDR-controlled (see the FDR/discovery panels) and is read
+    alongside them."""
+    sig = core_df[core_df["is_signal"].groupby(core_df["scenario"]).transform("any")]
+    tpr = _per_scenario_tpr(sig, mode="end_to_end")
+    meta = sig.groupby("scenario").agg(family=("family", "first")).reset_index()
+    tpr = tpr.merge(meta, on="scenario")
+    fam_rate = tpr.groupby(["family", "method"])["mean"].mean().reset_index()
+    present = set(core_df["family"].unique())
+    fams = [(f, lab) for f, lab in _ROBUST_FAMILIES if f in present]
+    order = [m for m in _LEGEND_ORDER if m in set(core_df["method"].unique())]
+    x = np.arange(len(fams))
+    width = 0.16
+    _tk = 4.6 if composite else 8
+    _ax = 5.0 if composite else 10
+    _ttl = 6.0 if composite else 12
+    for mi, method in enumerate(order):
+        vals = []
+        for f, _ in fams:
+            r = fam_rate[(fam_rate["family"] == f) & (fam_rate["method"] == method)]
+            vals.append(float(r["mean"].iloc[0]) if not r.empty else np.nan)
+        offset = (mi - (len(order) - 1) / 2) * width
+        ax.bar(x + offset, vals, width, color=_BENCH_METHOD_COLORS[method],
+               label=_BENCH_METHOD_LABELS[method], edgecolor="white", linewidth=0.4)
+    ax.set_ylim(0, 1.02)
+    ax.set_xticks(x)
+    ax.set_xticklabels([lab for _, lab in fams], rotation=35, ha="right", fontsize=_tk)
+    ax.set_ylabel("End-to-end BH TPR", fontsize=_ax)
+    ax.set_title("Signal detection across robustness families",
+                 fontsize=_ttl, fontweight="bold", pad=(4 if composite else 8))
+    ax.tick_params(axis="y", labelsize=_tk)
+    if not composite:
+        ax.legend(loc="lower center", bbox_to_anchor=(0.5, -0.32), ncol=len(order),
+                  fontsize=8, frameon=True, framealpha=0.95, edgecolor="#cccccc",
+                  columnspacing=1.0)
+    _style_axis(ax)
+
+
+def _panel_bench_endtoend_vs_tested(ax, core_df, *, composite=False):
+    """End-to-end vs tested-only BH TPR, per method, focused on the cell-yield
+    families where filtering occurs. The gap (end-to-end below tested) is the
+    detection lost to gene filtering; it is non-zero only for dreamlet in the
+    lowest cell-yield / empirical-heterogeneous-yield conditions."""
+    fams = ["cells_50", "cells_250", "cells_1000"]
+    sub = core_df[core_df["family"].isin(fams)
+                  & core_df["is_signal"].groupby(core_df["scenario"]).transform("any")]
+    e2e = _per_scenario_tpr(sub, mode="end_to_end").rename(columns={"mean": "e2e"})
+    tst = _per_scenario_tpr(sub, mode="tested").rename(columns={"mean": "tst"})
+    m = e2e.merge(tst[["scenario", "method", "tst"]], on=["scenario", "method"])
+    meta = sub.groupby("scenario").agg(family=("family", "first")).reset_index()
+    m = m.merge(meta, on="scenario")
+    summ = m.groupby("method")[["e2e", "tst"]].mean().reset_index()
+    order = [mm for mm in _LEGEND_ORDER if mm in set(summ["method"])]
+    x = np.arange(len(order))
+    width = 0.36
+    _tk = 4.6 if composite else 9
+    _ax = 5.0 if composite else 10
+    _ttl = 6.0 if composite else 12
+    for i, mth in enumerate(order):
+        r = summ[summ["method"] == mth].iloc[0]
+        col = _BENCH_METHOD_COLORS[mth]
+        ax.bar(i - width / 2, r["tst"], width, color=col, alpha=0.45,
+               edgecolor="white", linewidth=0.4, label="Tested-only" if i == 0 else None)
+        ax.bar(i + width / 2, r["e2e"], width, color=col, alpha=0.95,
+               edgecolor="white", linewidth=0.4, label="End-to-end" if i == 0 else None)
+    ax.set_xticks(x)
+    ax.set_xticklabels([_BENCH_METHOD_LABELS_SHORT[mm] for mm in order],
+                       rotation=25, ha="right", fontsize=_tk)
+    ax.set_ylim(0, 1.02)
+    ax.set_ylabel("BH TPR (cell-yield families)", fontsize=_ax)
+    ax.set_title("End-to-end vs tested-only detection",
+                 fontsize=_ttl, fontweight="bold", pad=(4 if composite else 8))
+    ax.tick_params(axis="y", labelsize=_tk)
+    if not composite:
+        ax.legend(loc="upper right", fontsize=8, frameon=True, framealpha=0.95,
+                  edgecolor="#cccccc")
     _style_axis(ax)
