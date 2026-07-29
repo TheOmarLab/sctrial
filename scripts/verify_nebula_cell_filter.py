@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import json
 import subprocess
-import sys
 import time
 from pathlib import Path
 
@@ -56,6 +55,27 @@ def _git_sha() -> str:
         return "unknown"
 
 
+def _load_frozen_population() -> dict:
+    """Frozen calibration (population) fields only, WITHOUT the source-hash guard.
+
+    ``run_benchmark._load_frozen_config`` additionally asserts that the current
+    source tree hash equals the frozen benchmark's. That is correct for a frozen
+    production run, but wrong here: this diagnostic deliberately varies the NEBULA
+    cell filter, so the source hash differs by design. The generating POPULATION is
+    unchanged, so the same config fields are read directly (identical extraction:
+    ``blob["config"]`` minus the scenario-owned fields).
+    """
+    from sctrial.benchmark.simulator_v2 import SCENARIO_OWNED_FIELDS
+
+    path = PROJECT_ROOT / "manuscript" / "benchmark" / "validation" / "frozen_simulator_config.json"
+    if not path.exists():
+        raise SystemExit(f"No frozen configuration at {path}; freeze the simulator first.")
+    frozen = dict(json.loads(path.read_text())["config"])
+    for field in SCENARIO_OWNED_FIELDS:
+        frozen.pop(field, None)
+    return frozen
+
+
 def _fpr_and_beta(res: dict, null_genes: list[str]):
     pvals, betas = [], []
     for g in null_genes:
@@ -73,11 +93,6 @@ def _fpr_and_beta(res: dict, null_genes: list[str]):
 
 
 def main() -> None:
-    # Reuse the ONE canonical frozen-config loader (manifest-verified) instead of a
-    # second copy, so this diagnostic sees exactly the population the benchmark froze.
-    sys.path.insert(0, str(PROJECT_ROOT / "scripts"))
-    import run_benchmark
-
     from sctrial.benchmark.contracts import prepare_inputs
     from sctrial.benchmark.runners import nebula_runner
     from sctrial.benchmark.simulator_v2 import (
@@ -88,7 +103,7 @@ def main() -> None:
     )
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    frozen = run_benchmark._load_frozen_config()
+    frozen = _load_frozen_population()
     log_lines: list[str] = []
 
     def emit(s=""):
