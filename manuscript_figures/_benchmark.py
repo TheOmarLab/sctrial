@@ -1092,6 +1092,56 @@ def _per_scenario_fdr(df, q=0.05):
     return agg
 
 
+def _per_scenario_tpr(df, q=0.05, mode="end_to_end"):
+    """Per-(scenario, method) BH-controlled true-positive rate (per replicate,
+    then mean + MCSE across replicates).
+
+    mode='end_to_end': FDR-controlled discovery sensitivity =
+        #{prespecified signal genes with BH q<0.05} / #{all prespecified signal genes};
+        signal genes filtered before testing count as NON-DETECTIONS.
+    mode='tested': denominator restricted to signal genes that were evaluable.
+    """
+    rows = []
+    for (sc, m, it), g in df.groupby(["scenario", "method", "iteration"], sort=False):
+        sig = g["is_signal"].to_numpy(bool)
+        n_sig = int(sig.sum())
+        if n_sig == 0:
+            continue
+        rej = _bh_reject(g["pvalue"].to_numpy(), q)
+        ev = g["evaluable"].to_numpy(bool)
+        n_hit = int((rej & sig).sum())
+        denom = int((sig & ev).sum()) if mode == "tested" else n_sig
+        rows.append((sc, m, it, float(n_hit / denom) if denom else np.nan))
+    per_rep = pd.DataFrame(rows, columns=["scenario", "method", "iteration", "tpr"])
+    agg = (per_rep.groupby(["scenario", "method"])["tpr"]
+           .agg(mean="mean", sd="std", n_rep="count").reset_index())
+    agg["mcse"] = agg["sd"] / np.sqrt(agg["n_rep"].clip(lower=1))
+    return agg
+
+
+def _per_scenario_quality(df, kind="evaluability"):
+    """Per-(scenario, method) evaluability or convergence (per replicate, then
+    mean + MCSE).
+
+    evaluability = #{genes with valid inference} / #{prespecified genes}.
+    convergence  = #{converged fits} / #{attempted (evaluable) fits}.
+    """
+    rows = []
+    for (sc, m, it), g in df.groupby(["scenario", "method", "iteration"], sort=False):
+        ev = g["evaluable"].to_numpy(bool)
+        conv = g["converged"].to_numpy(bool)
+        if kind == "evaluability":
+            val = float(ev.mean()) if len(ev) else np.nan
+        else:  # convergence among attempted (evaluable) fits
+            val = float(conv[ev].mean()) if ev.any() else np.nan
+        rows.append((sc, m, it, val))
+    per_rep = pd.DataFrame(rows, columns=["scenario", "method", "iteration", "value"])
+    agg = (per_rep.groupby(["scenario", "method"])["value"]
+           .agg(mean="mean", sd="std", n_rep="count").reset_index())
+    agg["mcse"] = agg["sd"] / np.sqrt(agg["n_rep"].clip(lower=1))
+    return agg
+
+
 def _faceted_broken_by_fraction(fig, rate, *, ylabel, main_ylim, strip_ylim,
                                 title, arch="Balanced signal architecture",
                                 nominal=True, composite=False, panel_sizes=None,
@@ -1366,3 +1416,106 @@ def _panel_bench_scenario_families(ax, core_df, *, composite: bool = False):
     _style_axis(ax)
 
 
+
+
+def _panel_bench_discovery_sensitivity(fig, bench_df, *, composite=False,
+                                       gs_parent=None, mode="end_to_end"):
+    """FDR-controlled discovery sensitivity: BH-controlled end-to-end true-positive
+    rate vs signal fraction, one facet per tested-set size (balanced architecture).
+
+    All five methods are shown; NEBULA's high sensitivity is not FDR-controlled
+    (its realised FDR is severe, see the FDR panel), so it must be read alongside
+    that panel rather than as a favourable result.
+    """
+    bal = bench_df[(bench_df["architecture"] == "balanced")
+                   & (bench_df["signal_fraction_realised"] > 0)]
+    rate = _per_scenario_tpr(bal, mode=mode)
+    meta = bal.groupby("scenario").agg(n_genes=("n_genes", "first"),
+                                       signal_pct=("signal_pct", "first")).reset_index()
+    rate = rate.merge(meta, on="scenario")
+    _ttl = 5.6 if composite else 11
+    _ax = 5.0 if composite else 10
+    _tk = 4.5 if composite else 9
+    fracs = _SIGNAL_FRACTIONS
+    xpos = {f: i for i, f in enumerate(fracs)}
+    off = {"dreamlet": 0.08, "limma_voom": 0.03, "sctrial_did": -0.03,
+           "wilcoxon_paired": -0.08, "nebula": 0.0}
+    sizes = _PANEL_SIZES
+    gs = (gs_parent.subgridspec(1, len(sizes), wspace=0.30) if gs_parent is not None
+          else fig.add_gridspec(1, len(sizes), wspace=0.30))
+    ylabel = ("FDR-controlled discovery sensitivity" if mode == "end_to_end"
+              else "Tested-only BH TPR")
+    for ci, ng in enumerate(sizes):
+        ax = fig.add_subplot(gs[ci])
+        sub = rate[rate["n_genes"] == ng]
+        for method in _BENCH_METHODS:
+            m = sub[sub["method"] == method].sort_values("signal_pct")
+            if m.empty:
+                continue
+            style = _method_style(method, is_focal=(method == "sctrial_did"),
+                                  composite=composite)
+            xs = [xpos[int(f)] + off[method] for f in m["signal_pct"]]
+            ax.plot(xs, m["mean"],
+                    label=_BENCH_METHOD_LABELS[method] if ci == 0 else None, **style)
+            ax.errorbar(xs, m["mean"], yerr=1.96 * m["mcse"], fmt="none",
+                        ecolor=style["color"], elinewidth=0.7, capsize=1.2, alpha=0.55)
+        ax.set_xticks(range(len(fracs)))
+        ax.set_xticklabels([f"{f}%" for f in fracs])
+        ax.set_xlim(-0.5, len(fracs) - 0.5)
+        ax.set_ylim(0, 1.02)
+        ax.set_xlabel("Signal fraction", fontsize=_ax)
+        ax.set_title(f"{ng:,} tested genes", fontsize=_ttl, fontweight="bold", pad=3)
+        ax.tick_params(labelsize=_tk)
+        _style_axis(ax)
+        if ci > 0:
+            ax.set_yticklabels([])
+        else:
+            ax.set_ylabel(ylabel, fontsize=_ax)
+    if not composite:
+        fig.suptitle("FDR-controlled discovery sensitivity (end-to-end TPR)",
+                     fontsize=13, fontweight="bold", y=1.0)
+        fig.text(0.5, 0.955, "Balanced signal architecture", ha="center", va="top",
+                 fontsize=10, fontstyle="italic", color="#444")
+        fig.legend(handles=_bench_legend_handles(), loc="lower center",
+                   bbox_to_anchor=(0.5, -0.04), ncol=len(_LEGEND_ORDER), frameon=True,
+                   framealpha=0.95, edgecolor="#cccccc", fontsize=8,
+                   columnspacing=1.1, handlelength=1.6)
+
+
+def _panel_bench_quality(ax, bench_df, *, kind="evaluability", composite=False):
+    """Evaluability or convergence per method (equal-weight mean over balanced
+    scenarios, with the scenario spread). Evaluability exposes gene filtering
+    (e.g. dreamlet); convergence is computed among ATTEMPTED (evaluable) fits, so
+    the two are reported separately and never conflated."""
+    bal = bench_df[bench_df["architecture"] == "balanced"]
+    q = _per_scenario_quality(bal, kind=kind)
+    # equal-weight over scenarios within a method
+    summ = (q.groupby("method")["mean"]
+            .agg(m="mean", lo=lambda s: s.quantile(0.05), hi=lambda s: s.quantile(0.95))
+            .reset_index())
+    order = [mm for mm in _LEGEND_ORDER if mm in set(summ["method"])]
+    xs = np.arange(len(order))
+    _tk = 5.0 if composite else 10
+    _ax = 5.2 if composite else 11
+    _ttl = 6.0 if composite else 12
+    for i, mth in enumerate(order):
+        r = summ[summ["method"] == mth].iloc[0]
+        col = _BENCH_METHOD_COLORS[mth]
+        ax.bar(i, r["m"], width=0.62, color=col, alpha=0.85, edgecolor="white",
+               linewidth=0.5, zorder=2)
+        ax.errorbar(i, r["m"], yerr=[[r["m"] - r["lo"]], [r["hi"] - r["m"]]],
+                    fmt="none", ecolor="#333", elinewidth=0.9, capsize=2.5, zorder=3)
+        ax.text(i, min(r["m"] + 0.02, 1.0), f"{r['m']:.2f}", ha="center", va="bottom",
+                fontsize=(4.6 if composite else 7), color="#333")
+    ax.set_xticks(xs)
+    ax.set_xticklabels([_BENCH_METHOD_LABELS_SHORT[mm] for mm in order],
+                       rotation=25, ha="right", fontsize=_tk)
+    ax.set_ylim(0, 1.06)
+    ylab = ("Evaluability (valid / prespecified genes)" if kind == "evaluability"
+            else "Convergence (converged / attempted fits)")
+    ax.set_ylabel(ylab, fontsize=_ax)
+    ax.axhline(1.0, color="#888", linestyle=":", linewidth=0.8, alpha=0.6, zorder=1)
+    ax.set_title("Gene evaluability" if kind == "evaluability" else "Convergence among attempted fits",
+                 fontsize=_ttl, fontweight="bold", pad=(4 if composite else 8))
+    ax.tick_params(axis="y", labelsize=_tk)
+    _style_axis(ax)
