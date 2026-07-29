@@ -42,7 +42,7 @@ meta$arm   <- factor(meta$arm, levels=c("{control}", "{treated}"))
 meta$visit <- factor(meta$visit, levels=c("{pre}", "{post}"))
 
 # Drop cells with no library — a zero offset is undefined
-keep <- colSums(counts) > 0 & meta$lib_size > 0
+keep <- {keep_expr}
 if (sum(keep) < 2) stop("Too few cells with non-zero counts after filtering")
 counts <- counts[, keep]
 meta   <- meta[keep, ]
@@ -92,7 +92,7 @@ meta <- read.csv("{meta_csv}", stringsAsFactors=TRUE)
 meta$visit <- factor(meta$visit, levels=c("{pre}", "{post}"))
 
 # Drop cells with no library — a zero offset is undefined
-keep <- colSums(counts) > 0 & meta$lib_size > 0
+keep <- {keep_expr}
 if (sum(keep) < 2) stop("Too few cells with non-zero counts after filtering")
 counts <- counts[, keep]
 meta   <- meta[keep, ]
@@ -125,6 +125,19 @@ write.csv(out, "{output_csv}")
 """
 
 
+# Cell-inclusion filter, made an explicit contract. The offset is the
+# full-transcriptome library size, so only ``meta$lib_size > 0`` is required for a
+# defined offset. The additional ``colSums(counts) > 0`` term drops cells with no
+# reads in the TESTED panel; because a panel sum moves with the signal and small
+# panels have many all-zero cells, that makes the analyzed population outcome- and
+# panel-size-dependent. ``lib_only`` is the correct filter; ``panel_and_lib`` is the
+# historical default retained for exact reproducibility of the frozen v1.0.0 run.
+_CELL_FILTERS = {
+    "panel_and_lib": "colSums(counts) > 0 & meta$lib_size > 0",
+    "lib_only": "meta$lib_size > 0",
+}
+
+
 def run(
     adata,
     gene_cols: list[str],
@@ -136,6 +149,7 @@ def run(
     visits: tuple[str, str] = ("Pre", "Post"),
     design_type: str = "two_arm",
     lib_size=None,
+    cell_filter: str = "panel_and_lib",
 ) -> dict[str, dict]:
     """Run NEBULA NBLMM on cell-level counts.
 
@@ -151,6 +165,10 @@ def run(
             "nebula requires an explicit full-transcriptome lib_size. Deriving it "
             "from the tested panel makes the normalisation reference move with the "
             "signal; see sctrial.benchmark.contracts."
+        )
+    if cell_filter not in _CELL_FILTERS:
+        raise ValueError(
+            f"cell_filter must be one of {sorted(_CELL_FILTERS)}, got {cell_filter!r}"
         )
     with tempfile.TemporaryDirectory() as _tmpdir:
         td = Path(_tmpdir)
@@ -191,6 +209,7 @@ def run(
             control=control_label,
             pre=visits[0],
             post=visits[1],
+            keep_expr=_CELL_FILTERS[cell_filter],
         )
 
         script_file = td / "run_nebula.R"
