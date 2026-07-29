@@ -2213,7 +2213,7 @@ def _panel_e_cross_dataset(ax, data: dict, *, composite: bool = False) -> None:
     data_rows: list[tuple[int, dict]] = []
     # Extra whitespace above each dataset's group label separates the datasets
     # visually; the point + label colours carry the grouping.
-    _GROUP_GAP = 0.9
+    _GROUP_GAP = 0.7
 
     for r in reversed(rows):
         if "_group_label" in r:
@@ -2432,9 +2432,11 @@ def generate() -> None:
     fig_c = plt.figure(figsize=(180 * _mm, 234 * _mm))
     # lambda_GC (old panel H) removed; its space enlarges the cross-dataset forest,
     # which is now a full-width, tall bottom panel (H). Letters are consecutive A-H.
+    # Spacer rows below A, below B and below G are enlarged because those panels
+    # carry x-axis labels that would otherwise collide with the next panel's title.
     outer = fig_c.add_gridspec(
         11, 1,
-        height_ratios=[0.44, 0.22, 0.38, 0.30, 0.60, 0.56, 0.60, 0.56, 0.48, 0.30, 1.95],
+        height_ratios=[0.42, 0.40, 0.36, 0.46, 0.58, 0.50, 0.58, 0.50, 0.46, 0.44, 1.72],
         hspace=0.0, left=0.085, right=0.965, top=0.980, bottom=0.032,
     )
 
