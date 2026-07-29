@@ -1644,8 +1644,6 @@ from .._benchmark import (  # noqa: E402
     _BENCH_METHOD_LABELS,
     _BENCH_METHOD_MARKERS,
     _BENCH_METHODS,
-    _panel_bench_mixed_fpr,
-    _panel_bench_pure_null_fpr,
 )
 
 _PANEL_SIZES = [50, 200, 500, 2000]
@@ -2021,29 +2019,6 @@ def generate():
     fig.tight_layout()
     save_panel(fig, "panel_G", FIGURE_NAME, SUPP_OUTPUT)
 
-    # ── Benchmark (panels H–I) — H: null-gene FPR curves; I: pure-null Type I error ──
-    print("  Loading signal-fraction sensitivity benchmark results ...")
-    bench_df = _load_benchmark_data()
-    print(
-        f"    {len(bench_df):,} rows, "
-        f"{bench_df.scenario.nunique()} scenarios, "
-        f"panel sizes = {sorted(bench_df['n_genes'].unique())}"
-    )
-
-    # Panel H: Mixed-signal null-gene FPR vs signal fraction (the full four-facet
-    # grid that Figure 3 panel D condenses). Delegated to Figure 3's panel so the
-    # NEBULA broken-axis strip and the per-replicate aggregation stay identical
-    # between the main figure and the supplement.
-    fig_h_stand = plt.figure(figsize=(13, 4.6))
-    _panel_bench_mixed_fpr(fig_h_stand, bench_df)
-    save_panel(fig_h_stand, "panel_H_benchmark_fpr_curves", FIGURE_NAME, SUPP_OUTPUT)
-
-    # Panel I: Pure-null Type I error vs gene panel size (NEBULA on a broken
-    # upper axis). Unique to the supplement (Figure 3 panel C is vs participants).
-    fig_i = plt.figure(figsize=(7.5, 5.0))
-    _panel_bench_pure_null_fpr(fig_i, bench_df)
-    save_panel(fig_i, "panel_I_benchmark_pure_null_fpr", FIGURE_NAME, SUPP_OUTPUT)
-
     # ── Empirical power curves on real datasets (panel J) ─────────────
     print("  Computing empirical power curves (panel J) ...")
     try:
@@ -2055,7 +2030,7 @@ def generate():
 
     fig_j = _panel_power_curves(composite_data)
     if fig_j is not None:
-        save_panel(fig_j, "panel_J_power_curves", FIGURE_NAME, SUPP_OUTPUT)
+        save_panel(fig_j, "panel_H_power_curves", FIGURE_NAME, SUPP_OUTPUT)
 
     # ==================================================================
     # Composite artboard  (180 mm × 215 mm)
@@ -2109,8 +2084,8 @@ def generate():
     fig_c = plt.figure(figsize=(180 * _mm, 215 * _mm))
 
     outer = fig_c.add_gridspec(
-        5, 1,
-        height_ratios=[1.0, 1.0, 0.80, 0.80, 1.10],
+        4, 1,
+        height_ratios=[1.0, 1.0, 0.80, 1.10],
         hspace=0.52,
         left=0.065, right=0.985, top=0.97, bottom=0.068,
     )
@@ -2155,25 +2130,11 @@ def generate():
         ax_g.text(0.5, 0.5, "No LOO data", ha="center", va="center",
                   transform=ax_g.transAxes)
 
-    # ── Row 4: H (FPR curves) | I (pure-null FPR) ────────────────────
-    # H = mixed-signal null-gene FPR vs signal fraction (expanded from Figure 3 panel D).
-    # I = pure-null Type I error vs panel size (was H in row 3).
-    # Use a subgridspec (not a SubFigure) so H's 4 axes get the same
-    # automatic margin behaviour as ax_i, preventing vertical stretch.
-    gs_r4 = outer[3].subgridspec(1, 2, width_ratios=[2.8, 1.0], wspace=0.25)
-    # H (mixed-signal null-gene FPR, four facets, NEBULA broken-axis strip) is
-    # delegated to Figure 3's panel; I (pure-null Type I error vs gene panel size)
-    # is drawn as a broken pair and returns its (main, strip) axes.
-    _cell_h = gs_r4[0]
-    _panel_bench_mixed_fpr(fig_c, bench_df, composite=True, gs_parent=_cell_h)
-    _ax_i_main, ax_i_strip = _panel_bench_pure_null_fpr(
-        fig_c, bench_df, composite=True, gs_parent=gs_r4[1])
-
     # ── Row 5: J centered (empirical power curves) ────────────────────────
     # Centered by flanking with empty columns; wider than before because it
     # now has the full figure width to draw from.
     _R5_INSET = (0.12, 0.95, 0.08)
-    gs_r5_outer = outer[4].subgridspec(3, 1, height_ratios=list(_R5_INSET), hspace=0)
+    gs_r5_outer = outer[3].subgridspec(3, 1, height_ratios=list(_R5_INSET), hspace=0)
     gs_r5 = gs_r5_outer[1].subgridspec(1, 3, wspace=0, width_ratios=[0.10, 1.0, 0.10])
 
     if power_data is not None and not power_data["power_df"].empty:
@@ -2193,15 +2154,6 @@ def generate():
         ax_power_stub.set_axis_off()
 
     fig_c.canvas.draw()
-
-    # H panel group title — placed above the H cell (positions resolved post-draw)
-    _h_pos = _cell_h.get_position(fig_c)
-    fig_c.text(
-        0.5 * (_h_pos.x0 + _h_pos.x1), _h_pos.y1 + 0.006,
-        "Mixed-signal null-gene FPR vs signal fraction",
-        ha="center", va="bottom", fontsize=5.8, fontweight="bold",
-        transform=fig_c.transFigure, clip_on=False,
-    )
 
     # ── Post-processing ───────────────────────────────────────────────
     for ax_pp in fig_c.get_axes():
@@ -2267,20 +2219,8 @@ def generate():
             fontsize=_lbl_fs, fontweight="bold", va="top", ha="left",
         )
 
-    # H label at the upper-left of the H cell (figure coords, since H's axes are
-    # owned by the delegated Figure 3 panel).
-    fig_c.text(
-        max(_h_pos.x0 - 0.028, 0.004), min(_h_pos.y1 + 0.006, 0.997), "H",
-        transform=fig_c.transFigure, fontsize=_lbl_fs, fontweight="bold",
-        va="bottom", ha="left",
-    )
-    # I label on the pure-null strip axis (top of the broken pair).
-    ax_i_strip.text(
-        -0.25, 1.35, "I",
-        transform=ax_i_strip.transAxes,
-        fontsize=_lbl_fs, fontweight="bold", va="top", ha="left",
-    )
-    _label_axes_panel(power_axes, "J", x=-0.30, y=1.42)
+    # Empirical power curves are now panel H (benchmark H/I moved to Supp Fig 8).
+    _label_axes_panel(power_axes, "H", x=-0.30, y=1.42)
 
     # E & G: heatmaps — label slightly lower to clear title/colorbar
     _heat_y = 1.08
@@ -2336,7 +2276,7 @@ def generate():
     data.clear()
     boot_data.clear()
     composite_data.clear()
-    del bench_df, loo_mat
+    del loo_mat
     if power_data is not None:
         power_data.clear()
 
