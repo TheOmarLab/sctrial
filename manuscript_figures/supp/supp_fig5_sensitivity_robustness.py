@@ -1644,9 +1644,8 @@ from .._benchmark import (  # noqa: E402
     _BENCH_METHOD_LABELS,
     _BENCH_METHOD_MARKERS,
     _BENCH_METHODS,
-    _bench_legend_handles,
-    _broken_pair,
     _panel_bench_mixed_fpr,
+    _panel_bench_pure_null_fpr,
 )
 
 _PANEL_SIZES = [50, 200, 500, 2000]
@@ -1868,105 +1867,6 @@ def _panel_bench_fpr_curves(fig, bench_df, *, composite: bool = False, axes=None
 # Panel I — Pure-null Type I error vs panel size
 # (was panel H before reshuffle)
 # ======================================================================
-
-def _panel_bench_pure_null_fpr(fig, bench_df, *, composite: bool = False,
-                               gs_parent=None):
-    """Pure-null Type I error vs gene panel size, with NEBULA on a broken upper
-    axis (matches the Figure 3 display convention) so its ~0.75 inflation is
-    shown without compressing the calibrated methods. Returns (ax_main, ax_strip)."""
-    null = bench_df[(bench_df["is_null_scenario"]) & (bench_df["true_beta"] == 0.0)]
-    rows = []
-    for (method, n_g), grp in null.groupby(["method", "n_genes"]):
-        pvals = grp["pvalue"].dropna().values
-        if len(pvals) == 0:
-            continue
-        k = int((pvals < 0.05).sum())
-        n = len(pvals)
-        p = k / n
-        ci = sp_stats.binomtest(k, n, p=0.05).proportion_ci(confidence_level=0.95, method="wilson")
-        rows.append({
-            "method": method, "n_genes": int(n_g),
-            "fpr": p, "ci_lo": ci.low, "ci_hi": ci.high,
-        })
-    df = pd.DataFrame(rows)
-
-    if gs_parent is None:
-        gs_parent = fig.add_gridspec(1, 1)[0]
-    ax_main, ax_strip = _broken_pair(fig, gs_parent, main_ylim=(0.025, 0.10),
-                                     strip_ylim=(0.68, 0.82))
-    ax_main.axhspan(0.03, 0.07, color="#d62728", alpha=0.08, zorder=0)
-    ax_main.axhline(0.05, color="#d62728", linestyle="--", linewidth=1.0,
-                    alpha=0.7, zorder=1)
-
-    panel_sizes = sorted(_PANEL_SIZES)
-    x_positions = np.arange(len(panel_sizes), dtype=float)
-    n_to_x = dict(zip(panel_sizes, x_positions))
-    method_offsets = {
-        "wilcoxon_paired": -0.10,
-        "nebula": -0.05,
-        "limma_voom": 0.0,
-        "sctrial_did": +0.05,
-        "dreamlet": +0.09,
-    }
-    _ms_hi, _ms_lo = (5.0, 3.85) if composite else (9.0, 7.2)
-    _lw_hi, _lw_lo = (1.25, 0.95) if composite else (2.0, 1.4)
-    _cap_w = (2.0, 0.85) if composite else (4, 1.2)
-    for method in _BENCH_METHODS:
-        sub = df[df["method"] == method].sort_values("n_genes")
-        if sub.empty:
-            continue
-        # NEBULA (~0.75) goes on the upper strip; calibrated methods in the main axis.
-        target = ax_strip if method == "nebula" else ax_main
-        xs = np.array([n_to_x[int(n)] for n in sub["n_genes"].values]) + method_offsets[method]
-        ys = sub["fpr"].values
-        lo = sub["ci_lo"].values
-        hi = sub["ci_hi"].values
-        is_focal = method == "sctrial_did"
-        target.errorbar(
-            xs, ys, yerr=[ys - lo, hi - ys], fmt=_BENCH_METHOD_MARKERS[method],
-            markersize=_ms_hi if is_focal else _ms_lo,
-            color=_BENCH_METHOD_COLORS[method],
-            markerfacecolor=_BENCH_METHOD_COLORS[method], markeredgecolor="white",
-            markeredgewidth=0.6 if composite else 0.8,
-            ecolor=_BENCH_METHOD_COLORS[method],
-            elinewidth=1.0 if composite else 1.4,
-            capsize=_cap_w[0], capthick=_cap_w[1],
-            linestyle="-",
-            linewidth=_lw_hi if is_focal else _lw_lo,
-            alpha=0.92, zorder=10 if is_focal else 4,
-        )
-    _tk_fs = 5.05 if composite else 11
-    _ttl_fs = 6.0 if composite else 12
-    _leg_fs = 5.2 if composite else 8
-
-    ax_main.set_xticks(x_positions)
-    ax_main.set_xticklabels([f"{p:,}" for p in panel_sizes], fontsize=_tk_fs, rotation=0)
-    ax_main.set_xlim(-0.35, len(panel_sizes) - 0.65)
-    ax_main.set_xlabel("Panel size (genes)", fontsize=_tk_fs)
-    ax_main.set_ylabel("Pure-null Type I error (p < 0.05)", fontsize=_tk_fs)
-    ax_main.set_yticks([0.03, 0.05, 0.07, 0.09])
-    ax_strip.set_yticks([0.7, 0.8])
-    for a in (ax_main, ax_strip):
-        a.tick_params(labelsize=_tk_fs)
-        _style_axis(a)
-    handles = _bench_legend_handles()
-    if composite:
-        ax_main.legend(
-            handles=handles, loc="upper center", bbox_to_anchor=(0.5, 0.99), ncol=2,
-            frameon=True, framealpha=0.93, edgecolor="#cccccc",
-            fontsize=_leg_fs, columnspacing=0.75, handlelength=0.85, markerscale=0.55,
-        )
-    else:
-        ax_main.legend(
-            handles=handles, loc="upper left", frameon=True, framealpha=0.95,
-            edgecolor="#cccccc", fontsize=_leg_fs, ncol=2,
-        )
-    ax_strip.set_title(
-        "Pure-null Type I error", fontsize=_ttl_fs, fontweight="bold",
-        pad=(4 if composite else 8),
-    )
-    return ax_main, ax_strip
-
 
 # ======================================================================
 # (unused) Runtime comparison across methods — corresponds to Figure 3 panel G
