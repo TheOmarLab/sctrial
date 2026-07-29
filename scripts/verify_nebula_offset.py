@@ -363,7 +363,7 @@ def sigma_u_ablation(
     print(f"  design: {n_t} versus {n_c} participants, {n_rep} replicates per level")
     print(f"\n  {'sigma_u':>8s} {'mean beta':>11s} {'MCSE':>8s} {'FPR@0.05':>9s} "
           f"{'FPR MCSE':>9s} {'converged':>10s}")
-    for sigma_u in (0.0, 0.25, 0.50, 0.766):  # last = the Treg-calibrated value
+    for sigma_u in (0.0, 0.25, 0.50, 0.7683):  # last = the final Treg-calibrated value
         rng = np.random.default_rng(31337)
         rate = rng.lognormal(np.log(2e-3), 0.5, size=panel_n)
         rate = rate / rate.sum() * 0.35
@@ -457,7 +457,7 @@ def sigma_u_ablation(
 
 
 def workaround_diagnostic(depth_factor: float = 3.0, panel_n: int = 100,
-                          n_rep: int = 20, sigma_u: float = 0.766) -> None:
+                          n_rep: int = 20, sigma_u: float = 0.7683) -> None:
     """Can a determined user recover calibration inside NEBULA itself?
 
     NEBULA takes an arbitrary fixed-effect design and ONE grouping vector. So a
