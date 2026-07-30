@@ -27,6 +27,8 @@ from __future__ import annotations
 
 import gc
 import hashlib
+import multiprocessing as mp
+import os
 import pickle  # noqa: S403 — local dev cache of our own DataFrames
 import warnings
 from pathlib import Path
@@ -103,6 +105,79 @@ TNBC_GROUP_PALETTE = {
 }
 
 
+# ── parallel permutation test ────────────────────────────────────────────
+# The 999-permutation null was a serial loop that ran ~4 h single-threaded on the
+# largest cohort. Each permutation is independent, so we fan them out across the
+# node's cores. Workers FORK the (large, read-only) AnnData via copy-on-write, so
+# the multi-GB object is shared rather than re-pickled per worker. Every
+# permutation reseeds independently (base_seed + i), which makes the loop
+# parallelisable AND fully reproducible; the previous serial loop drew from one
+# shared RNG stream, so the exact null realisation changes (statistically
+# equivalent) and the cache key versions are bumped accordingly.
+#
+# Requires single-threaded BLAS (OMP/MKL/OPENBLAS/NUMEXPR_NUM_THREADS=1, set by the
+# SLURM scripts) so forked workers do not oversubscribe. Set FIGURE_PERM_SERIAL=1
+# to force the old serial path (e.g. on a platform without a usable fork).
+_PERM_SHARED: dict = {}
+
+
+def _one_permutation(i: int):
+    """One participant-arm label permutation + participant-visit DiD fit.
+
+    Reads the shared AnnData / arm assignment inherited via fork; returns the
+    per-gene DiD table for permutation ``i`` (or ``None`` if the fit fails).
+    """
+    s = _PERM_SHARED
+    adata = s["adata"]
+    pid_arm = s["pid_arm"]
+    rng = np.random.default_rng(s["base_seed"] + i)
+    shuffled = pd.Series(rng.permutation(pid_arm.to_numpy()), index=pid_arm.index)
+    adata.obs[s["arm_col"]] = adata.obs[s["pid_col"]].map(shuffled)
+    try:
+        df = did_table(adata, aggregate="participant_visit", **s["common_kw"])
+        df["permutation"] = i
+        return df
+    except Exception:
+        return None
+
+
+def _run_permutations(adata, design, common_kw, *, n_perm: int = N_PERM, base_seed: int = 42):
+    """Run ``n_perm`` label-permutation DiD fits and return the concatenated table.
+
+    Parallel over the node's cores by default; falls back to a serial loop when a
+    single worker is requested or fork is unavailable.
+    """
+    arm_col = design.arm_col
+    pid_col = design.participant_col
+    pid_arm = adata.obs.groupby(pid_col, observed=True)[arm_col].first()
+    original_arm = adata.obs[arm_col].copy()
+
+    n_jobs = int(os.environ.get("SLURM_CPUS_PER_TASK") or max(1, (os.cpu_count() or 2) - 1))
+    n_jobs = max(1, min(n_jobs, n_perm))
+    serial = n_jobs == 1 or os.environ.get("FIGURE_PERM_SERIAL") == "1"
+
+    _PERM_SHARED.update(adata=adata, pid_arm=pid_arm, arm_col=arm_col,
+                        pid_col=pid_col, common_kw=common_kw, base_seed=base_seed)
+    try:
+        if serial:
+            print(f"  Running {n_perm} permutations (serial) ...")
+            results = [_one_permutation(i) for i in range(n_perm)]
+        else:
+            print(f"  Running {n_perm} permutations on {n_jobs} workers ...")
+            ctx = mp.get_context("fork")
+            with ctx.Pool(processes=n_jobs) as pool:
+                results = pool.map(_one_permutation, range(n_perm),
+                                   chunksize=max(1, n_perm // (n_jobs * 4)))
+    finally:
+        adata.obs[arm_col] = original_arm  # restore the real labels in the parent
+        _PERM_SHARED.clear()
+
+    perm = [r for r in results if r is not None]
+    df_perm_all = pd.concat(perm, ignore_index=True)
+    print(f"  Completed {df_perm_all['permutation'].nunique()} permutations")
+    return df_perm_all
+
+
 # ── data preparation ─────────────────────────────────────────────────────
 
 def _to_array(mat) -> np.ndarray:
@@ -119,7 +194,7 @@ def _prepare_sf_data(*, use_cache: bool = True) -> dict:
     _code_hash = hashlib.md5(  # noqa: S324 — cache tag, not security
         f"{N_PERM}|{DESIGN}|{VISITS}|{HETERO_FEATURES}".encode()
     ).hexdigest()[:8]
-    cache_key = f"figure6_sf_perm_v1_{_code_hash}"
+    cache_key = f"figure6_sf_perm_v2_{_code_hash}"
     cache_path = _CACHE_DIR / f"{cache_key}.pkl"
 
     # ── load adata fresh every time (too large to pickle) ────────────────
@@ -156,33 +231,8 @@ def _prepare_sf_data(*, use_cache: bool = True) -> dict:
     print("  Running participant-level DiD ...")
     df_part = did_table(adata, aggregate="participant_visit", **common_kw)
 
-    # Permutation test
-    print(f"  Running {N_PERM} permutations ...")
-    np.random.seed(42)
-    arm_col = DESIGN.arm_col
-    original_arm = adata.obs[arm_col].copy()
-    perm_results: list[pd.DataFrame] = []
-
-    for i in range(N_PERM):
-        pid_col = DESIGN.participant_col
-        pid_arm = adata.obs.groupby(pid_col, observed=True)[arm_col].first()
-        shuffled = pid_arm.sample(frac=1, replace=False)
-        shuffled.index = pid_arm.index
-        adata.obs[arm_col] = adata.obs[pid_col].map(shuffled)
-        try:
-            df_perm = did_table(
-                adata, aggregate="participant_visit", **common_kw,
-            )
-            df_perm["permutation"] = i
-            perm_results.append(df_perm)
-        except Exception:
-            pass
-        if (i + 1) % 100 == 0:
-            print(f"    permutation {i + 1}/{N_PERM}")
-
-    adata.obs[arm_col] = original_arm
-    df_perm_all = pd.concat(perm_results, ignore_index=True)
-    print(f"  Completed {df_perm_all['permutation'].nunique()} permutations")
+    # Permutation test (parallel over cores; see _run_permutations)
+    df_perm_all = _run_permutations(adata, DESIGN, common_kw)
 
     # Participant-level deltas for heterogeneity panels
     delta_df = _compute_participant_delta(adata, hetero_feats)
@@ -317,7 +367,7 @@ def _prepare_tnbc_perm_data(*, use_cache: bool = True) -> dict:
     _code_hash = hashlib.md5(
         f"{N_PERM}|{VISITS}|{HETERO_FEATURES}|arm".encode()
     ).hexdigest()[:8]
-    cache_key = f"figure5_tnbc_perm_v2_{_code_hash}"
+    cache_key = f"figure5_tnbc_perm_v3_{_code_hash}"
     cache_path = _CACHE_DIR / f"{cache_key}.pkl"
 
     adata = get_tnbc_zhang()
@@ -359,30 +409,8 @@ def _prepare_tnbc_perm_data(*, use_cache: bool = True) -> dict:
     print("  Running TNBC participant-level DiD ...")
     df_part = did_table(adata, aggregate="participant_visit", **common_kw)
 
-    print(f"  Running {N_PERM} permutations (TNBC) ...")
-    np.random.seed(42)
-    arm_col = tnbc_design.arm_col
-    original_arm = adata.obs[arm_col].copy()
-    perm_results: list[pd.DataFrame] = []
-
-    for i in range(N_PERM):
-        pid_col = tnbc_design.participant_col
-        pid_arm = adata.obs.groupby(pid_col, observed=True)[arm_col].first()
-        shuffled = pid_arm.sample(frac=1, replace=False)
-        shuffled.index = pid_arm.index
-        adata.obs[arm_col] = adata.obs[pid_col].map(shuffled)
-        try:
-            df_perm = did_table(adata, aggregate="participant_visit", **common_kw)
-            df_perm["permutation"] = i
-            perm_results.append(df_perm)
-        except Exception:
-            pass
-        if (i + 1) % 100 == 0:
-            print(f"    permutation {i + 1}/{N_PERM}")
-
-    adata.obs[arm_col] = original_arm
-    df_perm_all = pd.concat(perm_results, ignore_index=True)
-    print(f"  Completed {df_perm_all['permutation'].nunique()} permutations (TNBC)")
+    # Permutation test (parallel over cores; see _run_permutations)
+    df_perm_all = _run_permutations(adata, tnbc_design, common_kw)
 
     delta_df = _compute_tnbc_participant_delta(adata, hetero_feats, layer)
 
@@ -1302,7 +1330,7 @@ def generate() -> None:
     fig_c.savefig(str(pdf_path), format="pdf", bbox_inches="tight",
                   facecolor="white")
     plt.close(fig_c)
-    print(f"    Saved combined artboard (PNG + PDF)")
+    print("    Saved combined artboard (PNG + PDF)")
 
     # Cleanup
     for d in [tnbc_perm_data, sf_data, steph_data]:
@@ -1312,7 +1340,7 @@ def generate() -> None:
     del tnbc_perm_data, sf_data, steph_data
     gc.collect()
 
-    print(f"  Figure 6 complete: 10 individual panels + combined (A–J)\n")
+    print("  Figure 6 complete: 10 individual panels + combined (A–J)\n")
 
 
 if __name__ == "__main__":
