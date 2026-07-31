@@ -1249,10 +1249,12 @@ def generate():
     _panel_qc_waterfall(ax_g, loaded, compact=True)
     _panel_completeness_detailed(ax_h, loaded)
 
-    # Move legends inside plots for the composite
+    # Restyle legends for the composite. Panel C's arm legend has ~12 entries and
+    # overlapped the boxplots at any in-axes location, so it goes below the axes
+    # (matching the standalone panel); the hspace=0.32 row gap leaves room.
     _inside = {
         ax_a: dict(loc="upper left", ncol=1),
-        ax_c: dict(loc="upper right", ncol=3),
+        ax_c: dict(loc="upper center", bbox_to_anchor=(0.5, -0.16), ncol=6),
         ax_d: dict(loc="upper right", ncol=3),
         ax_f: dict(loc="upper left", ncol=1),
     }
