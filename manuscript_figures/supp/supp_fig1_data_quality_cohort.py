@@ -1271,19 +1271,20 @@ def generate():
                 **kw,
             )
 
-    # Panel C's arm legend is the union of every dataset's arms (~13 long labels),
-    # so it overlaps the boxplots inside the axes and a 6-column block below runs
-    # into panel D's title. Give it a dedicated compact two-row block (small font,
-    # 7 columns) that stays within the hspace=0.32 row gap.
+    # Panel C's arm legend is the union of every dataset's arms (~13 long labels).
+    # Inside a corner it overlaps the boxplots; below the axes it runs into panel
+    # D's title. The boxplots top out near log10 ~4.6 while the axis reaches 5.7,
+    # so put a compact two-row block (small font, 7 columns) in that top headroom.
     leg_c = ax_c.get_legend()
     if leg_c:
         _h_c = leg_c.legend_handles
         _l_c = [t.get_text() for t in leg_c.get_texts()]
         leg_c.remove()
+        ax_c.set_ylim(ax_c.get_ylim()[0], 6.3)  # a little more top headroom
         ax_c.legend(
             handles=_h_c, labels=_l_c, fontsize=4.0,
-            loc="upper center", bbox_to_anchor=(0.5, -0.13), ncol=7,
-            frameon=True, framealpha=0.85, edgecolor="#CCCCCC",
+            loc="upper center", bbox_to_anchor=(0.5, 1.0), ncol=7,
+            frameon=True, framealpha=0.9, edgecolor="#CCCCCC",
             borderpad=0.25, handlelength=0.8, handletextpad=0.25,
             labelspacing=0.18, columnspacing=0.6,
         )
