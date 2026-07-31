@@ -36,32 +36,30 @@ from scipy import stats as sp_stats
 
 from .._shared import (
     COLORS,
-    sig_display,
     SUPP_OUTPUT,
     add_log1p_cpm_layer,
     apply_style,
     clear_cache,
     despine,
-    get_sade_feldman,
-    get_stephenson,
-    get_vaccine,
-    harmonize_response,
     get_aml,
     get_cart,
+    get_sade_feldman,
+    get_stephenson,
     get_tnbc_zhang,
+    get_vaccine,
+    harmonize_response,
     save_panel,
+    sig_display,
 )
 from ..main.figure4_biological_discovery_multi_dataset import (
-    _prepare_bio_discovery_data,
-    _swap_leading_edge_axes,
-    _shrink_colorbars,
-    _compact_legend,
-    _is_likely_protein_coding,
     _clean_pathway_name,
+    _compact_legend,
     _detect_gsea_columns,
-    _is_immune_or_metabolic,
+    _is_likely_protein_coding,
+    _prepare_bio_discovery_data,
+    _shrink_colorbars,
+    _swap_leading_edge_axes,
 )
-
 
 # ======================================================================
 # Melanoma biological discovery panel helpers (supp figure A–E)
@@ -402,7 +400,7 @@ def panel_B(ax, data: dict):
 
 # Panel C — GSEA enrichment bar chart (Melanoma)
 def panel_C(ax, data: dict):
-    """GSEA immune + metabolic pathway enrichment bar chart with balanced up/down."""
+    """GSEA pathway enrichment bar chart: top pathways by NES, balanced up/down."""
     gsea_results = data["gsea_results"]
 
     if gsea_results is None or len(gsea_results) == 0:
@@ -423,7 +421,7 @@ def panel_C(ax, data: dict):
         df[fdr_col] = pd.to_numeric(df[fdr_col], errors="coerce")
     df = df.dropna(subset=[nes_col])
 
-    # Immune/metabolic filtering already done in _prepare_data.
+    # Pathway selection is global (top by NES); no thematic keyword filter.
 
     # Balanced selection: top N up + top N down by |NES|
     n_show = 15

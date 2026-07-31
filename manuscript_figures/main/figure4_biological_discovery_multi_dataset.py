@@ -123,48 +123,6 @@ def _is_likely_protein_coding(gene: str) -> bool:
 
 
 # ======================================================================
-# Immune + Metabolic pathway inclusion filter
-# ======================================================================
-# Instead of manually blacklisting irrelevant pathways (analyst degrees
-# of freedom), we INCLUDE only immune-related and metabolic pathways via
-# keyword matching.  This is reproducible and transparent.
-
-_IMMUNE_METABOLIC_KEYWORDS = [
-    # ── Immune ──
-    "immune", "inflamm", "cytokine", "interleukin", "interferon",
-    "leukocyte", "lymphocyte", "T cell", "B cell", "NK cell",
-    "macrophage", "monocyte", "dendritic", "neutrophil", "phagocyt",
-    "antigen", "MHC", "complement", "toll-like", "chemokine",
-    "apoptot", "autophagy", "NF-kB", "JAK-STAT", "TNF",
-    "defense response", "innate immune", "adaptive immune",
-    "myeloid", "granulocyte", "eosinophil", "basophil", "natural killer",
-    "antibody", "immunoglobulin", "hematopoietic", "lymph", "thymus",
-    "spleen", "response to virus", "response to bacter", "viral",
-    "type I interferon", "cell killing",
-    # ── Metabolic ──
-    "oxidative phosphorylation", "glycolysis", "gluconeogenesis",
-    "fatty acid", "lipid", "cholesterol", "bile acid",
-    "amino acid", "glutamine", "glutamate", "tryptophan", "arginine",
-    "citric acid", "TCA cycle", "krebs", "electron transport",
-    "mitochondri", "respiratory chain", "OXPHOS",
-    "pentose phosphate", "nucleotide", "purine", "pyrimidine",
-    "xenobiotic", "drug metabolism", "metabolism",
-    "mTOR", "AMPK", "PI3K", "Akt", "Wnt",
-    "hypoxia", "HIF", "reactive oxygen", "ROS", "oxidative stress",
-    "ferroptosis", "iron", "heme",
-]
-_IMMUNE_METABOLIC_RE = re.compile(
-    "|".join(re.escape(kw) for kw in _IMMUNE_METABOLIC_KEYWORDS),
-    re.IGNORECASE,
-)
-
-
-def _is_immune_or_metabolic(term: str) -> bool:
-    """Return True if pathway name matches immune or metabolic keywords."""
-    return _IMMUNE_METABOLIC_RE.search(str(term)) is not None
-
-
-# ======================================================================
 # Data preparation
 # ======================================================================
 
@@ -236,7 +194,7 @@ def _prepare_bio_discovery_data(*, use_cache: bool = True) -> dict:
     )
 
     if gsea_results is not None and len(gsea_results) > 0:
-        # Detect term column for immune/metabolic filtering
+        # Detect the pathway-name column
         term_col = None
         for c in gsea_results.columns:
             cl = c.lower().strip()
@@ -251,15 +209,8 @@ def _prepare_bio_discovery_data(*, use_cache: bool = True) -> dict:
             if term_col is None:
                 term_col = gsea_results.columns[0]
 
-        # Filter to immune + metabolic pathways only
-        n_before = len(gsea_results)
-        gsea_results = gsea_results[
-            gsea_results[term_col].apply(_is_immune_or_metabolic)
-        ].reset_index(drop=True)
-        n_after = len(gsea_results)
-        print(
-            f"  Immune/metabolic filter: {n_after}/{n_before} pathways retained"
-        )
+        # Global pathway selection: the top pathways by NES across all gene
+        # sets, with no thematic keyword filter.
 
         # Handle duplicate pathways across libraries: average NES
         nes_col_name = None
@@ -393,12 +344,12 @@ def _prepare_bio_discovery_data(*, use_cache: bool = True) -> dict:
             gsea_results[fdr_col_name] = fdr_pooled
             n_sig_pooled = (fdr_pooled < 0.25).sum()
             print(
-                f"  GSEA total: {len(gsea_results)} immune/metabolic pathways "
+                f"  GSEA total: {len(gsea_results)} pathways "
                 f"({n_sig_pooled} FDR<0.25 after pooled correction)"
             )
         else:
             print(
-                f"  GSEA total: {len(gsea_results)} immune/metabolic pathways"
+                f"  GSEA total: {len(gsea_results)} pathways"
             )
     else:
         gsea_results = None
@@ -578,12 +529,7 @@ def _prepare_tnbc_bio_discovery_data(*, use_cache: bool = True) -> dict:
             if term_col is None:
                 term_col = gsea_results.columns[0]
 
-        n_before = len(gsea_results)
-        gsea_results = gsea_results[
-            gsea_results[term_col].apply(_is_immune_or_metabolic)
-        ].reset_index(drop=True)
-        print(f"  TNBC GSEA immune/metabolic filter: "
-              f"{len(gsea_results)}/{n_before} pathways retained")
+        # Global pathway selection: top pathways by NES across all gene sets.
 
     # -- Gene-level DiD (top variable genes) --
     gene_results = None
@@ -897,12 +843,8 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
     except Exception as exc:
         print(f"    COVID-19: FAILED ({exc})")
 
-    # Apply immune/metabolic filter consistently to all datasets.
-    # Melanoma results are pre-filtered by _prepare_bio_discovery_data(); all
-    # other datasets are loaded raw above, so without this pass they would
-    # contain cell-cycle, ubiquitin-proteasome, and other non-immune/metabolic
-    # pathways that are absent from Melanoma — causing a spurious asymmetry in
-    # panel_C_replicated (Panel M).
+    # Normalise the per-dataset index; pathway selection is global (top by NES),
+    # with no thematic keyword filter, so every dataset is treated identically.
     for _ds_name in list(gsea_multi.keys()):
         _df = gsea_multi[_ds_name]
         if _df is None or len(_df) == 0:
@@ -915,15 +857,8 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
                 (c for c in _df.columns if c.lower() in ("name", "pathway")),
                 _df.columns[0],
             )
-        _n_before = len(_df)
-        gsea_multi[_ds_name] = _df[
-            _df[_term_col].apply(_is_immune_or_metabolic)
-        ].reset_index(drop=True)
-        _n_after = len(gsea_multi[_ds_name])
-        print(
-            f"    {_ds_name}: immune/metabolic filter: "
-            f"{_n_after}/{_n_before} pathways retained"
-        )
+        # Global pathway selection: top pathways by NES (no keyword filter).
+        gsea_multi[_ds_name] = _df.reset_index(drop=True)
 
     print(f"  Multi-dataset GSEA: {len(gsea_multi)} datasets completed")
     return gsea_multi
@@ -1095,7 +1030,7 @@ def _panel_A_signature_waterfall(ax, data: dict):
 # ======================================================================
 
 def _tnbc_gsea_bars(ax, data: dict):
-    """GSEA immune + metabolic pathway enrichment bar chart with balanced up/down."""
+    """GSEA pathway enrichment bar chart: top pathways by NES, balanced up/down."""
     gsea_results = data["gsea_results"]
 
     if gsea_results is None or len(gsea_results) == 0:
@@ -1116,9 +1051,7 @@ def _tnbc_gsea_bars(ax, data: dict):
         df[fdr_col] = pd.to_numeric(df[fdr_col], errors="coerce")
     df = df.dropna(subset=[nes_col])
 
-    # Immune/metabolic filtering already done in _prepare_data.
-
-    # Balanced selection: top N up + top N down by |NES|
+    # Balanced selection: top N up + top N down by |NES| (no thematic filter)
     n_show = 15
     df_pos = df[df[nes_col] > 0].nlargest(n_show // 2 + 1, nes_col)
     df_neg = df[df[nes_col] < 0].nsmallest(n_show - len(df_pos), nes_col)
@@ -2632,12 +2565,7 @@ def _prepare_tnbc_response_gsea(data_tnbc: dict, *, arm: str) -> pd.DataFrame | 
                 (c for c in gsea_results.columns if c.lower() in ("name", "pathway")),
                 gsea_results.columns[0],
             )
-        n_before = len(gsea_results)
-        gsea_results = gsea_results[
-            gsea_results[term_col].apply(_is_immune_or_metabolic)
-        ].reset_index(drop=True)
-        print(f"    GSEA R vs NR ({arm}): immune/metabolic filter "
-              f"{len(gsea_results)}/{n_before} pathways retained")
+        # Global pathway selection: top pathways by NES across all gene sets.
 
         # Save combined filtered CSV to GSEA/TNBC/
         try:
