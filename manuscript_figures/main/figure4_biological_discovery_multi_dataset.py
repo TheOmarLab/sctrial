@@ -3561,6 +3561,13 @@ def panel_f_heatmap(ax, data: dict[str, Any]) -> None:
                        fontsize=7.5)
     ax.set_yticklabels(ax.get_yticklabels(), rotation=0, fontsize=8.5)
 
+    ax.text(
+        0.5, 1.01, "* FDR < 0.05   † FDR 0.05–0.1",
+        transform=ax.transAxes,
+        fontsize=6, color="0.45", ha="center", va="bottom",
+        style="italic",
+    )
+
 
 
 

@@ -764,8 +764,8 @@ def _looks_log1p(X, sample: int = 10000, seed: int = 0) -> bool:
     )
 
 
-def _download_file(url: str, dest: Path, label: str = "file") -> None:
-    """Download a single file with error handling and partial-file cleanup.
+def _download_file(url: str, dest: Path, label: str = "file", retries: int = 5) -> None:
+    """Download a single file with retry logic and partial-file cleanup.
 
     Parameters
     ----------
@@ -776,17 +776,30 @@ def _download_file(url: str, dest: Path, label: str = "file") -> None:
     label : str
         Human-readable label for log messages (e.g. "TPM file").
     """
+    import time
+
     logger.info(f"Downloading {label} from {url}...")
-    try:
-        urllib.request.urlretrieve(url, str(dest))
-    except (urllib.error.URLError, urllib.error.HTTPError, OSError) as e:
-        if dest.exists():
-            dest.unlink()
-        raise RuntimeError(
-            f"Failed to download {label} from {url}: {e}. "
-            f"Please download manually and place it in {dest.parent}"
-        ) from e
-    logger.info(f"Successfully downloaded {label}: {dest}")
+    last_exc: Exception | None = None
+    for attempt in range(1, retries + 1):
+        try:
+            urllib.request.urlretrieve(url, str(dest))
+            logger.info(f"Successfully downloaded {label}: {dest}")
+            return
+        except (urllib.error.URLError, urllib.error.HTTPError, OSError) as e:
+            last_exc = e
+            if dest.exists():
+                dest.unlink()
+            if attempt < retries:
+                wait = 2**attempt
+                logger.warning(
+                    f"Download attempt {attempt}/{retries} failed for {label}: {e}. "
+                    f"Retrying in {wait}s..."
+                )
+                time.sleep(wait)
+    raise RuntimeError(
+        f"Failed to download {label} from {url} after {retries} attempts: {last_exc}. "
+        f"Please download manually and place it in {dest.parent}"
+    ) from last_exc
 
 
 def _get_counts_matrix(adata: ad.AnnData) -> tuple[np.ndarray | None, str | None]:
