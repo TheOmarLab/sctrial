@@ -550,10 +550,13 @@ def _panel_d(ax: plt.Axes, data: dict) -> None:
                markerfacecolor=COL_CTRL, markersize=3,
                label=f"{DESIGN.arm_control} ↑"),
     ]
+    # Anchor below the x-axis title so the key never overprints it; ncol=2 keeps
+    # it compact on the single row beneath the label.
     ax.legend(handles=handles,
               fontsize=5,
               loc="upper center",
-              bbox_to_anchor=(0.5, -0.05),
+              bbox_to_anchor=(0.5, -0.16),
+              ncol=2,
               frameon=True,
               framealpha=0.9,
               borderpad=0.3,

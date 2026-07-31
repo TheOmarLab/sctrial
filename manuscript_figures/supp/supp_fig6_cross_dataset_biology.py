@@ -290,12 +290,12 @@ def panel_A(ax, data: dict, *, composite: bool = False):
         texts, ax=ax,
         arrowprops=dict(arrowstyle="-", color="#888888", lw=_arrow_lw,
                         shrinkA=5, shrinkB=3),
-        force_text=(2.0, 2.0),
-        force_points=(3.5, 3.5),
-        expand=(1.8, 2.0),
+        force_text=(3.0, 3.2),
+        force_static=(3.5, 3.5),
+        force_explode=(0.5, 0.6),
+        expand=(2.3, 2.6),
         ensure_inside_axes=True,
-        max_move=(x_span * 0.25, y_span * 0.25),
-        only_move="xy",
+        max_move=(x_span * 0.45, y_span * 0.45),
     )
 
     # Threshold line

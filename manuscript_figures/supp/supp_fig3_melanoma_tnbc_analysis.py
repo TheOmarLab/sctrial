@@ -336,29 +336,21 @@ def _panel_b_beta_comparison(ax: plt.Axes, data: dict) -> None:
     lim_hi = max(beta_cell.max(), beta_part.max()) * 1.15
     ax.plot([lim_lo, lim_hi], [lim_lo, lim_hi], "--", color=COLORS["gray"],
             lw=1, zorder=1, label="Identity")
-    ax.set_xlim(left=-1.1)
+    ax.set_xlim(lim_lo, lim_hi)
+    ax.set_ylim(lim_lo, lim_hi)
     ax.axhline(0, color=COLORS["gray"], lw=0.5, ls=":", zorder=0)
     ax.axvline(0, color=COLORS["gray"], lw=0.5, ls=":", zorder=0)
 
-    x_range = max(beta_cell) - min(beta_cell)
-    offset = x_range * 0.04
-    _force_right = {"memory"}
-    _force_left = {"ifn"}
-    for i, (feat, xv, yv) in enumerate(zip(common, beta_cell, beta_part)):
-        label = sig_display(feat)
-        ll = label.lower()
-        if any(k in ll for k in _force_right):
-            ha, dx = "left", offset
-        elif any(k in ll for k in _force_left):
-            ha, dx = "right", -offset
-        else:
-            ha = "left" if i % 2 == 0 else "right"
-            dx = offset if i % 2 == 0 else -offset
-        ax.annotate(
-            label, (xv, yv),
-            xytext=(xv + dx, yv), fontsize=8, alpha=0.85,
-            ha=ha, va="center",
-        )
+    # adjustText with leader lines resolves the dense near-origin label cluster
+    # (Memory/Regulatory T Cells previously overprinted each other).
+    from adjustText import adjust_text
+    texts = [ax.text(xv, yv, sig_display(feat), fontsize=8, alpha=0.9)
+             for feat, xv, yv in zip(common, beta_cell, beta_part)]
+    adjust_text(
+        texts, ax=ax, expand=(1.4, 1.7),
+        arrowprops=dict(arrowstyle="-", color=COLORS["gray"], lw=0.4, alpha=0.6),
+        ensure_inside_axes=True,
+    )
 
     r, p = stats.pearsonr(beta_cell, beta_part)
     ax.text(
@@ -827,15 +819,20 @@ def _panel_i_heatmap(ax: plt.Axes, data: dict) -> None:
         vmin=-vmax, vmax=vmax, interpolation="nearest",
     )
 
-    # Row annotations — arm colour sidebar
+    # Row annotations — arm colour sidebar. Keep it INSIDE the axes (right of the
+    # left spine) so it never overprints the participant-ID y-tick labels, which
+    # live in the margin to the left of the spine. The widened left xlim below
+    # reserves the strip's column.
     sidebar_w = 0.35
+    _sb_left = -0.5 - sidebar_w            # right edge abuts the first data column
     for i, pid in enumerate(ordered_pids):
         arm = arms.loc[pid]
         color = COL_RESP if arm == "Responder" else COL_NRESP
         ax.add_patch(plt.Rectangle(
-            (-sidebar_w - 0.35, i - 0.5), sidebar_w, 1.0,
+            (_sb_left, i - 0.5), sidebar_w, 1.0,
             color=color, clip_on=False,
         ))
+    ax.set_xlim(_sb_left - 0.15, len(delta.columns) - 0.5)
 
     # Separator between groups
     n_resp = sum(1 for p in ordered_pids if arms.loc[p] == "Responder")
@@ -864,9 +861,10 @@ def _panel_i_heatmap(ax: plt.Axes, data: dict) -> None:
         Line2D([0], [0], marker="s", color="w", markerfacecolor=COL_NRESP,
                markersize=9, markeredgewidth=0, label="Non-responder"),
     ]
+    # Anchor well below the rotated x-tick labels so the key never overlaps them.
     ax.legend(
         handles=legend_handles, fontsize=10,
-        loc="upper center", bbox_to_anchor=(0.5, -0.15),
+        loc="upper center", bbox_to_anchor=(0.5, -0.32),
         ncol=2, frameon=False, handletextpad=0.3, columnspacing=1.5,
     )
 
@@ -1190,8 +1188,9 @@ def generate() -> None:
     ax_a = fig_c.add_subplot(gs0[0])
     ax_b = fig_c.add_subplot(gs0[1])
 
-    # Row 1: C | D | E  (C and E narrower, increased spacing)
-    gs1  = outer[1].subgridspec(1, 3, wspace=0.65, width_ratios=[0.75, 1, 0.75])
+    # Row 1: C | D | E  (C and E narrower, wide gutters so C's title and its
+    # p=0.05 annotation do not bleed into panel D's letter / y-tick labels)
+    gs1  = outer[1].subgridspec(1, 3, wspace=0.95, width_ratios=[0.72, 1, 0.72])
     ax_c = fig_c.add_subplot(gs1[0])
     ax_d = fig_c.add_subplot(gs1[1])
     ax_e = fig_c.add_subplot(gs1[2])
