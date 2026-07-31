@@ -146,17 +146,34 @@ def _run_permutations(adata, design, common_kw, *, n_perm: int = N_PERM, base_se
 
     Parallel over the node's cores by default; falls back to a serial loop when a
     single worker is requested or fork is unavailable.
+
+    Before forking, the AnnData is slimmed to only the genes ``did_table`` will pull
+    from the matrix. The permutation features here are participant-level signature
+    SCORES held in ``adata.obs``; ``did_table`` resolves obs-column features without
+    ever indexing the gene matrix (``did.py``: ``genes_to_extract`` is empty when
+    every feature is an obs column), so the slim keeps the full ``.obs`` and drops
+    the transcriptome down to a single token gene. Forking the full 55k-gene
+    Sade-Feldman matrix across 32 workers OOM-killed the node via copy-on-write
+    refcount churn even though the matrix was never read. Slimming makes each fork a
+    few MB and leaves the numeric result bit-identical (same obs, same seeds).
     """
     arm_col = design.arm_col
     pid_col = design.participant_col
-    pid_arm = adata.obs.groupby(pid_col, observed=True)[arm_col].first()
-    original_arm = adata.obs[arm_col].copy()
+
+    # Keep only genes actually extracted from the matrix (var-name features), plus a
+    # single token gene so a valid AnnData with its layer survives when there are none.
+    feats = list(common_kw.get("features", []))
+    gene_feats = [f for f in feats if f in adata.var_names and f not in adata.obs.columns]
+    keep = gene_feats if gene_feats else list(adata.var_names[:1])
+    slim = adata[:, keep].copy()  # NB: a copy — the caller's adata is never mutated
+
+    pid_arm = slim.obs.groupby(pid_col, observed=True)[arm_col].first()
 
     n_jobs = int(os.environ.get("SLURM_CPUS_PER_TASK") or max(1, (os.cpu_count() or 2) - 1))
     n_jobs = max(1, min(n_jobs, n_perm))
     serial = n_jobs == 1 or os.environ.get("FIGURE_PERM_SERIAL") == "1"
 
-    _PERM_SHARED.update(adata=adata, pid_arm=pid_arm, arm_col=arm_col,
+    _PERM_SHARED.update(adata=slim, pid_arm=pid_arm, arm_col=arm_col,
                         pid_col=pid_col, common_kw=common_kw, base_seed=base_seed)
     try:
         if serial:
@@ -165,12 +182,14 @@ def _run_permutations(adata, design, common_kw, *, n_perm: int = N_PERM, base_se
         else:
             print(f"  Running {n_perm} permutations on {n_jobs} workers ...")
             ctx = mp.get_context("fork")
-            with ctx.Pool(processes=n_jobs) as pool:
+            # maxtasksperchild recycles workers so any residual COW growth is bounded.
+            with ctx.Pool(processes=n_jobs, maxtasksperchild=100) as pool:
                 results = pool.map(_one_permutation, range(n_perm),
                                    chunksize=max(1, n_perm // (n_jobs * 4)))
     finally:
-        adata.obs[arm_col] = original_arm  # restore the real labels in the parent
         _PERM_SHARED.clear()
+        del slim
+        gc.collect()
 
     perm = [r for r in results if r is not None]
     df_perm_all = pd.concat(perm, ignore_index=True)
@@ -1106,7 +1125,7 @@ def _panel_j(ax, steph_data: dict) -> None:
 # ── Composite generation ────────────────────────────────────────────────
 
 def generate() -> None:
-    """Create and save all Figure 6 panels."""
+    """Create and save all Figure 5 panels."""
     apply_style()
     print("Figure 5: Validation, Heterogeneity & Temporal Dynamics")
 
@@ -1340,7 +1359,7 @@ def generate() -> None:
     del tnbc_perm_data, sf_data, steph_data
     gc.collect()
 
-    print("  Figure 6 complete: 10 individual panels + combined (A–J)\n")
+    print("  Figure 5 complete: 10 individual panels + combined (A–J)\n")
 
 
 if __name__ == "__main__":

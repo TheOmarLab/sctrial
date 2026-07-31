@@ -27,7 +27,6 @@ from __future__ import annotations
 
 import gc
 
-import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -1304,6 +1303,8 @@ def generate():
     try:
         from ..main.figure3_robustness_benchmarking import (
             _panel_c as _fig4_panel_c,
+        )
+        from ..main.figure3_robustness_benchmarking import (
             _prepare_scalability_data,
         )
         scale_data = _prepare_scalability_data()
@@ -1736,6 +1737,8 @@ def generate():
     try:
         from ..main.figure3_robustness_benchmarking import (
             _panel_c as _fig4_panel_c,
+        )
+        from ..main.figure3_robustness_benchmarking import (
             _prepare_scalability_data,
         )
         _scale_data = _prepare_scalability_data()
@@ -1911,7 +1914,7 @@ def generate():
     all_pseudo.clear()
     clear_cache()
     gc.collect()
-    print("  SuppFig3 complete: individual panels + combined (A–J)\n")
+    print("  SuppFig4 complete: individual panels + combined (A–J)\n")
 
 
 if __name__ == "__main__":

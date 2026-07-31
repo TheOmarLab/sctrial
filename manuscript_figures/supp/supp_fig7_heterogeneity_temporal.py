@@ -40,13 +40,13 @@ from .._shared import (
     apply_style,
     clear_cache,
     despine,
-    get_sade_feldman,
-    get_stephenson,
-    get_vaccine,
-    harmonize_response,
     get_aml,
     get_cart,
+    get_sade_feldman,
+    get_stephenson,
     get_tnbc_zhang,
+    get_vaccine,
+    harmonize_response,
     save_panel,
 )
 
@@ -933,7 +933,7 @@ def generate():
     data.clear()
     clear_cache()
     gc.collect()
-    print("  SuppFig6 complete: 11 individual panels + combined (A–K)\n")
+    print("  SuppFig7 complete: 11 individual panels + combined (A–K)\n")
 
 
 if __name__ == "__main__":
