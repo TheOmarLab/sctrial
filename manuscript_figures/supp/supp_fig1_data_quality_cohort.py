@@ -1235,8 +1235,9 @@ def generate():
         ax_bi.tick_params(axis="y", labelsize=4.5)
         despine(ax_bi)
 
-    # Fixed y-axis limits for TNBC and Melanoma to make space for the legend
-    _b_ylim = {"TNBC": 8.8, "Melanoma": 17.5}
+    # Fixed y-axis ceilings so the upper-right arm legend clears the tallest bar
+    # (the Melanoma Non-responder Post bar reaches ~17, so 17.5 left no room).
+    _b_ylim = {"TNBC": 11.0, "Melanoma": 23.0}
     for ax_bi, nm_bi in ax_b_list:
         if nm_bi in _b_ylim:
             ax_bi.set_ylim(ax_bi.get_ylim()[0], _b_ylim[nm_bi])

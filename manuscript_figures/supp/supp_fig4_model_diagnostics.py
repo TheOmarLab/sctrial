@@ -648,52 +648,44 @@ def _panel_baseline_comparability(
             color=_DS_PALETTE.get(name, "grey"),
             edgecolors="white", linewidth=0.5, zorder=3,
         )
+
+        # Fix the axes frame (with a margin) and draw the identity line BEFORE
+        # labelling. adjustText needs the final coordinate frame plus some empty
+        # margin to spread the dense near-origin cluster (several signatures share
+        # the (0, 0) point); doing this afterwards via set_aspect(adjustable=
+        # "datalim") re-cramped the labels it had just placed.
+        lo = float(min(x_vals.min(), y_vals.min()))
+        hi = float(max(x_vals.max(), y_vals.max()))
+        pad = (hi - lo) * 0.15 if hi > lo else 0.1
+        lo, hi = lo - pad, hi + pad
+        ax.set_xlim(lo, hi)
+        ax.set_ylim(lo, hi)
+        ax.set_aspect("equal", adjustable="box")
+        ax.plot([lo, hi], [lo, hi], ls="--", color="black",
+                lw=0.3 if composite else 0.9, zorder=1)
+
         # adjustText 1.3.0: point repulsion is `force_static` (the old
         # `force_points` is silently dropped, so labels never cleared the dense
-        # near-origin cluster). Explode overlaps first, then repel from both text
-        # and points, keep inside the axes, and draw a leader when a label moves.
+        # near-origin cluster). Explode overlaps apart first, then repel from both
+        # text and points, keep inside the axes, draw a leader for moved labels.
         _lbl_bbox = dict(boxstyle="round,pad=0.05", fc="white",
                          ec="none", alpha=0.6)
-        if composite:
-            if i > 0:
-                _cur_yl = ax.get_ylim()
-                ax.set_ylim(min(-0.5, _cur_yl[0]), _cur_yl[1])
-            texts = [
-                ax.text(cx, ty, feat, fontsize=3.0, fontweight="bold",
-                        bbox=_lbl_bbox)
-                for feat, cx, ty in zip(
-                    features, x_vals.values, y_vals.values
-                )
-            ]
-            adjust_text(
-                texts, ax=ax,
-                force_text=(1.8, 2.0), force_static=(1.6, 1.8),
-                force_explode=(1.2, 1.4), expand=(1.7, 2.0),
-                max_move=40, ensure_inside_axes=True, min_arrow_len=1,
-                time_lim=8,
-                arrowprops=dict(arrowstyle="-", color="#bbbbbb", lw=0.25),
-            )
-        else:
-            texts = [
-                ax.text(cx, ty, feat, fontsize=9, fontweight="bold",
-                        bbox=_lbl_bbox)
-                for feat, cx, ty in zip(
-                    features, x_vals.values, y_vals.values
-                )
-            ]
-            adjust_text(
-                texts, ax=ax,
-                force_text=(1.8, 2.0), force_static=(1.6, 1.8),
-                force_explode=(1.2, 1.4), expand=(1.6, 1.9),
-                max_move=60, ensure_inside_axes=True, min_arrow_len=2,
-                time_lim=8,
-                arrowprops=dict(arrowstyle="-", color="gray", lw=0.5),
-            )
-
-        lo = min(x_vals.min(), y_vals.min()) * 0.9
-        hi = max(x_vals.max(), y_vals.max()) * 1.1
-        ax.plot([lo, hi], [lo, hi], ls="--", color="black",
-                lw=0.3 if composite else 0.9)
+        _fs = 3.0 if composite else 9
+        texts = [
+            ax.text(cx, ty, feat, fontsize=_fs, fontweight="bold", bbox=_lbl_bbox)
+            for feat, cx, ty in zip(features, x_vals.values, y_vals.values)
+        ]
+        adjust_text(
+            texts, ax=ax,
+            force_text=(1.8, 2.0), force_static=(1.6, 1.8),
+            force_explode=(1.8, 2.0), expand=(1.7, 2.0),
+            max_move=(40 if composite else 70),
+            ensure_inside_axes=True, min_arrow_len=(1 if composite else 2),
+            time_lim=10,
+            arrowprops=dict(arrowstyle="-",
+                            color="#bbbbbb" if composite else "gray",
+                            lw=0.25 if composite else 0.5),
+        )
 
         r, _ = stats.pearsonr(x_vals.values, y_vals.values)
         ax.text(
@@ -705,7 +697,6 @@ def _panel_baseline_comparability(
         ax.set_xlabel(x_label, fontsize=9 if not composite else 8)
         ax.set_ylabel(y_label, fontsize=9 if not composite else 8)
         ax.set_title(subtitle, fontsize=4.0 if composite else 11, fontweight="bold")
-        ax.set_aspect("equal", adjustable="datalim")
         despine(ax)
 
 
