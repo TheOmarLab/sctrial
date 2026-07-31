@@ -640,7 +640,7 @@ def _panel_baseline_comparability(
             y_vals = post_data[features].mean()
             x_label = "Pre-treatment mean"
             y_label = "Post-treatment mean"
-            subtitle = f"{name} — pre vs post"
+            subtitle = f"{name}: pre vs post"
 
         ax.scatter(
             x_vals.values, y_vals.values,
@@ -648,33 +648,45 @@ def _panel_baseline_comparability(
             color=_DS_PALETTE.get(name, "grey"),
             edgecolors="white", linewidth=0.5, zorder=3,
         )
+        # adjustText 1.3.0: point repulsion is `force_static` (the old
+        # `force_points` is silently dropped, so labels never cleared the dense
+        # near-origin cluster). Explode overlaps first, then repel from both text
+        # and points, keep inside the axes, and draw a leader when a label moves.
+        _lbl_bbox = dict(boxstyle="round,pad=0.05", fc="white",
+                         ec="none", alpha=0.6)
         if composite:
             if i > 0:
                 _cur_yl = ax.get_ylim()
                 ax.set_ylim(min(-0.5, _cur_yl[0]), _cur_yl[1])
             texts = [
-                ax.text(cx, ty, feat, fontsize=3.0, fontweight="bold")
+                ax.text(cx, ty, feat, fontsize=3.0, fontweight="bold",
+                        bbox=_lbl_bbox)
                 for feat, cx, ty in zip(
                     features, x_vals.values, y_vals.values
                 )
             ]
             adjust_text(
                 texts, ax=ax,
-                force_text=(2.0, 2.0), force_points=(2.0, 2.0),
-                expand=(1.5, 1.5),
-                arrowprops=dict(arrowstyle="-", color="#cccccc", lw=0.25),
+                force_text=(1.8, 2.0), force_static=(1.6, 1.8),
+                force_explode=(1.2, 1.4), expand=(1.7, 2.0),
+                max_move=40, ensure_inside_axes=True, min_arrow_len=1,
+                time_lim=8,
+                arrowprops=dict(arrowstyle="-", color="#bbbbbb", lw=0.25),
             )
         else:
             texts = [
-                ax.text(cx, ty, feat, fontsize=9, fontweight="bold")
+                ax.text(cx, ty, feat, fontsize=9, fontweight="bold",
+                        bbox=_lbl_bbox)
                 for feat, cx, ty in zip(
                     features, x_vals.values, y_vals.values
                 )
             ]
             adjust_text(
                 texts, ax=ax,
-                force_text=(2.0, 2.0), force_points=(2.0, 2.0),
-                expand=(1.5, 1.5),
+                force_text=(1.8, 2.0), force_static=(1.6, 1.8),
+                force_explode=(1.2, 1.4), expand=(1.6, 1.9),
+                max_move=60, ensure_inside_axes=True, min_arrow_len=2,
+                time_lim=8,
                 arrowprops=dict(arrowstyle="-", color="gray", lw=0.5),
             )
 

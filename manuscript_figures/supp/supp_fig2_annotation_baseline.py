@@ -34,14 +34,14 @@ from .._shared import (
     apply_style,
     clear_cache,
     despine,
+    get_aml,
+    get_cart,
     get_sade_feldman,
     get_stephenson,
+    get_tnbc_zhang,
     get_vaccine,
     harmonize_celltype,
     harmonize_response,
-    get_aml,
-    get_cart,
-    get_tnbc_zhang,
     save_panel,
 )
 
@@ -900,10 +900,10 @@ def _build_composite(loaded: dict):
         if _leg:
             _handles = list(_leg.legend_handles)
             _labels = [t.get_text() for t in _leg.get_texts()]
-            # Truncate long cell-type names and cap the entry count, then use a
-            # single narrow column: the 2-column legends were wider than their
-            # (narrow) UMAP cell and overprinted the neighbouring dataset's legend.
-            _labels = [s if len(s) <= 11 else s[:10] + "…" for s in _labels]
+            # Two columns of short labels: truncate names hard and cap the entry
+            # count so the two narrow columns still fit inside the (narrow) UMAP
+            # cell rather than overprinting the neighbouring dataset's legend.
+            _labels = [s if len(s) <= 9 else s[:8] + "…" for s in _labels]
             _keep = 8
             if len(_labels) > _keep:
                 _handles, _labels = _handles[:_keep], _labels[:_keep]
@@ -911,9 +911,9 @@ def _build_composite(loaded: dict):
             _ax.legend(
                 handles=_handles, labels=_labels,
                 fontsize=3.5, loc="upper center",
-                bbox_to_anchor=(0.5, -0.02), ncol=1,
+                bbox_to_anchor=(0.5, -0.02), ncol=2,
                 frameon=False, handlelength=0.6, handleheight=0.5,
-                borderpad=0.1, labelspacing=0.12, columnspacing=0.4,
+                borderpad=0.1, labelspacing=0.12, columnspacing=0.3,
                 markerscale=0.35,
             )
 

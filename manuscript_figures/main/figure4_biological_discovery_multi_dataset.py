@@ -690,16 +690,16 @@ def _prepare_tnbc_bio_discovery_data(*, use_cache: bool = True) -> dict:
 
 def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict[str, pd.DataFrame]:
     """Run GSEA on all 5 datasets and return results per dataset.
-    
+
     Uses all 5 gene set libraries (Hallmark, KEGG, Reactome, GO BP, WikiPathways)
     for comprehensive pathway coverage, matching the single-dataset analysis.
-    
+
     Parameters
     ----------
     sf_gsea_results : pd.DataFrame, optional
         Pre-computed GSEA results for Sade-Feldman from _prepare_data().
         If provided, these will be reused to avoid recomputation.
-    
+
     Returns
     -------
     dict[str, pd.DataFrame]
@@ -1050,18 +1050,18 @@ def _tnbc_waterfall(ax, data: dict):
     ax.set_yticklabels(selected["feature"].values, fontsize=4)
 
     ax.set_xlabel(r"Effect size ($\beta_{\mathrm{DiD}}$)")
-    ax.set_title("Top Genes by Effect Size — Melanoma DiD", fontsize=11,
+    ax.set_title("Top Genes by Effect Size: TNBC DiD", fontsize=11,
                  fontweight="bold")
 
     legend_handles = [
         mpatches.Patch(color=COLORS["treated"], alpha=0.9,
-                       label="Responder ↑ (p < 0.05)"),
+                       label=f"{_TNBC_TREATED_ARM} ↑ (p < 0.05)"),
         mpatches.Patch(color=COLORS["treated"], alpha=0.35,
-                       label="Responder ↑ (n.s.)"),
+                       label=f"{_TNBC_TREATED_ARM} ↑ (n.s.)"),
         mpatches.Patch(color=COLORS["control"], alpha=0.9,
-                       label="Non-responder ↑ (p < 0.05)"),
+                       label=f"{_TNBC_CONTROL_ARM} ↑ (p < 0.05)"),
         mpatches.Patch(color=COLORS["control"], alpha=0.35,
-                       label="Non-responder ↑ (n.s.)"),
+                       label=f"{_TNBC_CONTROL_ARM} ↑ (n.s.)"),
     ]
     ax.legend(handles=legend_handles, fontsize=9, loc="lower right",
               frameon=True, framealpha=0.9)
@@ -1156,7 +1156,7 @@ def _tnbc_gsea_bars(ax, data: dict):
     df_selected["pathway"] = new_labels
 
     # Color by direction and significance — use project palette
-    # treated (blue) = Responder ↑, control (orange) = Non-responder ↑
+    # treated (blue) = anti-PDL1+Chemo ↑, control (orange) = Chemo ↑
     clr_up_sig = COLORS["treated"]
     clr_up_ns = COLORS["treated"] + "66"  # 40% alpha hex
     clr_dn_sig = COLORS["control"]
@@ -1208,22 +1208,22 @@ def _tnbc_gsea_bars(ax, data: dict):
     if has_up_sig:
         legend_handles.append(mpatches.Patch(
             color=COLORS["treated"], alpha=0.9,
-            label="Responder ↑ (FDR < 0.25)",
+            label=f"{_TNBC_TREATED_ARM} ↑ (FDR < 0.25)",
         ))
     if has_up_ns:
         legend_handles.append(mpatches.Patch(
             color=COLORS["treated"], alpha=0.4,
-            label="Responder ↑ (n.s.)",
+            label=f"{_TNBC_TREATED_ARM} ↑ (n.s.)",
         ))
     if has_down_sig:
         legend_handles.append(mpatches.Patch(
             color=COLORS["control"], alpha=0.9,
-            label="Non-responder ↑ (FDR < 0.25)",
+            label=f"{_TNBC_CONTROL_ARM} ↑ (FDR < 0.25)",
         ))
     if has_down_ns:
         legend_handles.append(mpatches.Patch(
             color=COLORS["control"], alpha=0.4,
-            label="Non-responder ↑ (n.s.)",
+            label=f"{_TNBC_CONTROL_ARM} ↑ (n.s.)",
         ))
     if legend_handles:
         ax.legend(handles=legend_handles, fontsize=9, loc="lower right",
@@ -1454,8 +1454,8 @@ def _tnbc_leading_edge(ax, data: dict, *, composite: bool = False):
     col_counts = matrix.sum(axis=0)
 
     # ── Colour constants ──
-    BLUE = (0.122, 0.471, 0.706)   # steel blue (Responder ↑ / NES>0)
-    ORANGE = (0.878, 0.478, 0.184)  # warm orange (Non-responder ↑ / NES<0)
+    BLUE = (0.122, 0.471, 0.706)   # steel blue (anti-PDL1+Chemo ↑ / NES>0)
+    ORANGE = (0.878, 0.478, 0.184)  # warm orange (Chemo ↑ / NES<0)
     EMPTY_COLOR = (0.94, 0.94, 0.94)    # light gray for "not in leading edge"  # noqa: N806
 
     # ── Colour matrix: in leading edge (filled) vs not (empty) ──
@@ -1529,10 +1529,10 @@ def _tnbc_leading_edge(ax, data: dict, *, composite: bool = False):
         ax.set_title("Leading-Edge Gene Overlap", fontsize=11,
                      fontweight="bold")
 
-    # Legend — inside the heatmap lower-right (gray empty region)
+    # Legend inside the heatmap lower-right (gray empty region)
     legend_handles = [
-        mpatches.Patch(facecolor=BLUE, label="Resp. ↑"),
-        mpatches.Patch(facecolor=ORANGE, label="Non-resp. ↑"),
+        mpatches.Patch(facecolor=BLUE, label=f"{_TNBC_TREATED_ARM} ↑"),
+        mpatches.Patch(facecolor=ORANGE, label=f"{_TNBC_CONTROL_ARM} ↑"),
         mpatches.Patch(facecolor=EMPTY_COLOR, edgecolor="#CCCCCC",
                        label="Not in leading edge"),
     ]
@@ -1797,15 +1797,15 @@ def _tnbc_volcano(ax, data: dict, *, composite: bool = False):
 
     ax.set_xlabel(r"Effect size ($\beta_{\mathrm{DiD}}$)")
     ax.set_ylabel(r"$-\log_{10}$(p)")
-    ax.set_title("Gene-Level Volcano (Melanoma DiD)", fontsize=11,
+    ax.set_title("Gene-Level Volcano (TNBC DiD)", fontsize=11,
                  fontweight="bold")
 
-    # Legend — no footnotes, no summary boxes
+    # Legend: no footnotes, no summary boxes
     legend_handles = [
         mpatches.Patch(color=COLORS["treated"], alpha=0.8,
-                       label="Responder ↑"),
+                       label=f"{_TNBC_TREATED_ARM} ↑"),
         mpatches.Patch(color=COLORS["control"], alpha=0.8,
-                       label="Non-responder ↑"),
+                       label=f"{_TNBC_CONTROL_ARM} ↑"),
         mpatches.Patch(color=COLORS["gray"], alpha=0.3,
                        label="Not significant"),
     ]
@@ -1820,12 +1820,12 @@ def _tnbc_volcano(ax, data: dict, *, composite: bool = False):
 
 def panel_C_replicated(ax, data: dict):
     """Replicated pathways: heatmap showing top pathways enriched across datasets.
-    
+
     Creates a heatmap with pathways as rows and datasets as columns.
     Shows the top 15 pathways with a balanced mix of high positive and high negative
     enrichment, prioritizing pathways that are highly enriched across datasets.
     Pathways must appear in at least 3 out of 5 datasets.
-    
+
     Color intensity represents NES magnitude, with blue for positive NES
     (responder-enriched) and orange for negative NES (non-responder-enriched).
     Only shows pathways that are significant (FDR < 0.25) in at least one dataset.
@@ -2197,7 +2197,7 @@ def _panel_tnbc_celltype_hm(ax, data_tnbc: dict):
     ax.set_xticklabels(effect_mat.columns, rotation=30, ha="right", fontsize=6.5)
     ax.set_yticks(np.arange(effect_mat.shape[0]))
     ax.set_yticklabels(effect_mat.index, fontsize=7)
-    ax.set_title("Cell-Type DiD Effects — TNBC", fontsize=11,
+    ax.set_title("Cell-Type DiD Effects: TNBC", fontsize=11,
                  fontweight="bold")
     cbar = ax.figure.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
     cbar.set_label(r"$\Delta\Delta$ expression (DiD)", fontsize=8)
@@ -2227,7 +2227,6 @@ def _panel_tnbc_abundance_did(ax, data_tnbc: dict) -> None:
 
     col_treat = COLORS["treated"]
     col_ctrl  = COLORS["control"]
-    col_gray  = COLORS["gray"]
 
     for i, (_, row) in enumerate(df.iterrows()):
         color = col_treat if row["beta_DiD"] > 0 else col_ctrl
@@ -2672,7 +2671,7 @@ def _panel_tnbc_response_gsea_bars(ax, data_tnbc: dict, *, arm: str) -> None:
             fontsize=10, color=COLORS["gray"],
         )
         ax.set_title(
-            f"Pathway Enrichment — R vs NR ({short_arm})",
+            f"Pathway Enrichment: R vs NR ({short_arm})",
             fontsize=11, fontweight="bold",
         )
         ax.axis("off")
@@ -2753,7 +2752,7 @@ def _panel_tnbc_response_gsea_bars(ax, data_tnbc: dict, *, arm: str) -> None:
     ax.set_yticklabels(df_selected["pathway"].values, fontsize=8)
     ax.set_xlabel("Normalized Enrichment Score (NES)")
     ax.set_title(
-        f"Pathway Enrichment — Responder vs Non-responder\n({short_arm} arm)",
+        f"Pathway Enrichment: Responder vs Non-responder\n({short_arm} arm)",
         fontsize=11, fontweight="bold",
     )
 
@@ -3705,8 +3704,6 @@ def _save_individual_panels(data_tnbc: dict, data5: dict) -> None:
     for label, fn, data, fsize, kwargs in tnbc_panels:
         fig_p, ax_p = plt.subplots(figsize=fsize)
         fn(ax_p, data, **kwargs)
-        if label in ("A", "B", "C", "D"):
-            _fix_tnbc_labels(ax_p)
         if label != "D":
             fig_p.tight_layout()
         save_panel(fig_p, f"panel_{label}", FIGURE_NAME, MAIN_OUTPUT)
@@ -3831,29 +3828,6 @@ def _compact_legend(ax, loc: str, fs: float = 3.0) -> None:
     )
 
 
-def _fix_tnbc_labels(ax) -> None:
-    """Replace melanoma arm labels with TNBC arm names in legend + title."""
-    _rep = {
-        "Responder ↑":     "anti-PDL1+Chemo ↑",
-        "Non-responder ↑": "Chemo ↑",
-        "Resp. ↑":         "anti-PDL1+Chemo ↑",
-        "Non-resp. ↑":     "Chemo ↑",
-        "Melanoma DiD":    "TNBC DiD",
-    }
-    leg = ax.get_legend()
-    if leg:
-        for t in leg.get_texts():
-            txt = t.get_text()
-            for old, new in _rep.items():
-                txt = txt.replace(old, new)
-            t.set_text(txt)
-    title = ax.get_title()
-    for old, new in _rep.items():
-        title = title.replace(old, new)
-    ax.set_title(title, fontsize=ax.title.get_fontsize(),
-                 fontweight=ax.title.get_fontweight())
-
-
 def _build_composite(data_tnbc: dict, data5: dict) -> None:
     """Build and save the combined 14-panel artboard (180 × 195 mm).
 
@@ -3936,32 +3910,28 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
     ax_a.set_title("Gene-Level Volcano (TNBC DiD)", fontsize=4.5,
                    fontweight="bold")
     ax_a.xaxis.label.set_fontsize(4.5)
-    _fix_tnbc_labels(ax_a)
 
     tnbc_waterfall(ax_b, data_tnbc)
-    ax_b.set_title("Top Genes — TNBC DiD", fontsize=4.5, fontweight="bold")
+    ax_b.set_title("Top Genes: TNBC DiD", fontsize=4.5, fontweight="bold")
     ax_b.tick_params(axis='y', labelsize=4.0)
     ax_b.xaxis.label.set_fontsize(4.5)
-    # Thin crowded gene labels — show every other tick
+    # Thin crowded gene labels: show every other tick
     _b_lbls = [t.get_text() for t in ax_b.get_yticklabels()]
     if _b_lbls:
         ax_b.set_yticklabels(
             [t if _k % 2 == 0 else "" for _k, t in enumerate(_b_lbls)],
             fontsize=4.0,
         )
-    _fix_tnbc_labels(ax_b)
 
     tnbc_gsea_bars(ax_c, data_tnbc)
-    ax_c.set_title("Pathway Enrichment — TNBC", fontsize=4.5, fontweight="bold")
+    ax_c.set_title("Pathway Enrichment: TNBC", fontsize=4.5, fontweight="bold")
     ax_c.tick_params(axis='y', labelsize=3.5)
     ax_c.xaxis.label.set_fontsize(4.5)
     ax_c.set_xticks([-2, 0, 2])
-    _fix_tnbc_labels(ax_c)
 
     tnbc_leading_edge(ax_d, data_tnbc, composite=True)
-    ax_d.set_title("Leading-Edge — TNBC", fontsize=4.5, fontweight="bold")
+    ax_d.set_title("Leading-Edge: TNBC", fontsize=4.5, fontweight="bold")
     _swap_leading_edge_axes(ax_d)
-    _fix_tnbc_labels(ax_d)
     ax_d.tick_params(axis='y', labelsize=4.0)
     ax_d.tick_params(axis='x', labelsize=3.0)
 

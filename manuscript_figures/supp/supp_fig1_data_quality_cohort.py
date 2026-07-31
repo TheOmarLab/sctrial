@@ -35,13 +35,13 @@ from .._shared import (
     apply_style,
     clear_cache,
     despine,
-    get_sade_feldman,
-    get_stephenson,
-    get_vaccine,
-    harmonize_response,
     get_aml,
     get_cart,
+    get_sade_feldman,
+    get_stephenson,
     get_tnbc_zhang,
+    get_vaccine,
+    harmonize_response,
     save_panel,
 )
 
@@ -422,6 +422,11 @@ def _panel_participant_counts(fig, loaded: dict):
                 ax.text(bar.get_x() + bar.get_width() / 2, h + 0.3,
                         f"{int(h)}", ha="center", va="bottom", fontsize=6)
 
+        # Headroom so the value labels and the upper-right arm legend clear the
+        # tallest bar (the Melanoma Post bar otherwise runs into the legend).
+        _ytop = ax.get_ylim()[1]
+        ax.set_ylim(top=_ytop * (1.32 if hue_col else 1.15))
+
         ax.set_title(name, fontweight="bold", fontsize=9)
         ax.set_xlabel("")
         if ax == axes[0]:
@@ -474,7 +479,6 @@ def _panel_cells_per_pid_arm(ax, loaded: dict):
     # Use categorical positions explicitly to avoid seaborn 0.13 dodge centering bug
     ds_order = list(loaded.keys())
     arms_present = sorted(df["Arm"].unique())
-    n_arms = len(arms_present)
     # "All" is a placeholder for single-arm datasets; keep it neutral grey
     # so it never clashes with real arm labels like "anti-PDL1+Chemo".
     _non_all = sorted(a for a in arms_present if a != "All")
@@ -502,8 +506,8 @@ def _panel_cells_per_pid_arm(ax, loaded: dict):
             if len(arm_df) == 0:
                 continue
             color = arm_colors.get(arm, "grey")
-            bp = ax.boxplot(arm_df, positions=[tick_idx + off],
-                            widths=box_width * 0.85,
+            ax.boxplot(arm_df, positions=[tick_idx + off],
+                       widths=box_width * 0.85,
                             patch_artist=True,
                             showfliers=False,
                             medianprops=dict(color="black", linewidth=1.5),
@@ -527,8 +531,11 @@ def _panel_cells_per_pid_arm(ax, loaded: dict):
     ax.set_title("Cells per Participant by Arm", fontweight="bold")
     from matplotlib.patches import Patch
     handles = [Patch(facecolor=arm_colors[a], label=a) for a in arms_present]
+    # Legend below the axes: the many-arm "upper right" legend overlapped the
+    # tallest points once the panel is shrunk into the composite cell.
     ax.legend(handles=handles, fontsize=6, title="Arm", title_fontsize=7,
-              loc="upper right", frameon=True, ncol=3)
+              loc="upper center", bbox_to_anchor=(0.5, -0.16),
+              frameon=True, ncol=min(len(arms_present), 6))
     ax.tick_params(axis="x", rotation=15)
     despine(ax)
     ax.set_ylim(ax.get_ylim()[0], 5.7)
