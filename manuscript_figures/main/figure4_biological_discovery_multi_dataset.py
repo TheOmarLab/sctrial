@@ -46,6 +46,8 @@ from matplotlib.lines import Line2D
 from scipy import stats
 from statsmodels.stats.multitest import multipletests
 
+from sctrial import abundance_did
+
 from .._shared import (
     COLORS,
     GSEA_OUTPUT,
@@ -72,8 +74,6 @@ from .._shared import (
     sig_display,
     within_arm_comparison,
 )
-from sctrial import abundance_did
-
 
 FIGURE_NAME = "Figure4_biological_discovery_multi_dataset"
 
@@ -707,7 +707,7 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
     """
     print("  Running GSEA on all datasets for pathway replication...")
     gsea_multi = {}
-    
+
     # 1. Melanoma - reuse results from _prepare_data() if available
     if sf_gsea_results is not None and len(sf_gsea_results) > 0:
         sf_results = sf_gsea_results.copy()
@@ -745,7 +745,7 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
                 print(f"    Melanoma: {len(sf_results)} pathways (cached or computed)")
         except Exception as exc:
             print(f"    Melanoma: FAILED ({exc})")
-    
+
     # 2. Vaccine (within_arm_comparison; GSE171964 is raw UMI counts, so use the
     #    log1p_norm layer added by the loader -- NOT raw .X)
     try:
@@ -771,7 +771,7 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
             print(f"    Vaccine: {len(vax_results)} pathways")
     except Exception as exc:
         print(f"    Vaccine: FAILED ({exc})")
-    
+
     # 3. AML (use within_arm_comparison; log1p_norm available)
     try:
         aml = get_aml()
@@ -799,7 +799,7 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
             print(f"    AML: {len(aml_results)} pathways")
     except Exception as exc:
         print(f"    AML: FAILED ({exc})")
-    
+
     # 4. CAR-T (use within_arm_comparison; log1p_norm available)
     try:
         cart = get_cart()
@@ -827,7 +827,7 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
             print(f"    CAR-T: {len(cart_results)} pathways")
     except Exception as exc:
         print(f"    CAR-T: FAILED ({exc})")
-    
+
     # 5. TNBC two-arm DiD (anti-PDL1+Chemo vs Chemo, response-agnostic)
     try:
         tnbc = get_tnbc_zhang()
@@ -896,7 +896,7 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
             print(f"    COVID-19: {len(covid_results)} pathways")
     except Exception as exc:
         print(f"    COVID-19: FAILED ({exc})")
-    
+
     # Apply immune/metabolic filter consistently to all datasets.
     # Melanoma results are pre-filtered by _prepare_bio_discovery_data(); all
     # other datasets are loaded raw above, so without this pass they would
@@ -1031,19 +1031,19 @@ def _tnbc_waterfall(ax, data: dict):
     )
 
     y_pos = np.arange(len(selected))
+    # Encode significance as per-bar RGBA alpha (0.9 = p<0.05, 0.35 = n.s.). A
+    # scalar alpha= passed to barh OVERRIDES the per-color alpha channel, so the
+    # alpha must live in the RGBA tuples and barh must be called WITHOUT alpha=;
+    # otherwise every bar renders saturated and the n.s. genes are drawn as if
+    # significant (this made the top-effect genes contradict the volcano).
+    import matplotlib.colors as mcolors
     colors = []
     for _, row in selected.iterrows():
         sig = row[p_col] < p_thresh
-        if row[beta_col] > 0:
-            colors.append(
-                COLORS["treated"] if sig else COLORS["treated"] + "55"
-            )
-        else:
-            colors.append(
-                COLORS["control"] if sig else COLORS["control"] + "55"
-            )
+        base = COLORS["treated"] if row[beta_col] > 0 else COLORS["control"]
+        colors.append(mcolors.to_rgba(base, 0.9 if sig else 0.35))
 
-    ax.barh(y_pos, selected[beta_col].values, color=colors, alpha=0.9,
+    ax.barh(y_pos, selected[beta_col].values, color=colors,
             edgecolor="white", linewidth=0.3, height=0.7)
     ax.axvline(0, color="black", lw=0.8)
     ax.set_yticks(y_pos)
@@ -1831,7 +1831,7 @@ def panel_C_replicated(ax, data: dict):
     Only shows pathways that are significant (FDR < 0.25) in at least one dataset.
     """
     gsea_multi = data.get("gsea_multi_dataset", {})
-    
+
     if not gsea_multi:
         ax.text(0.5, 0.5, "Multi-dataset GSEA results unavailable",
                 transform=ax.transAxes, ha="center", va="center",
@@ -1847,19 +1847,19 @@ def panel_C_replicated(ax, data: dict):
             continue
         cols = _detect_gsea_columns(df)
         nes_col_name, fdr_col_name, term_col_name = cols["nes"], cols["fdr"], cols["term"]
-        
+
         if nes_col_name is None or fdr_col_name is None or term_col_name is None:
             continue
-        
+
         df = df.copy()
         df[nes_col_name] = pd.to_numeric(df[nes_col_name], errors="coerce")
         df[fdr_col_name] = pd.to_numeric(df[fdr_col_name], errors="coerce")
         # Keep all pathways with valid NES - FDR will be used for significance annotation (stars)
         df = df.dropna(subset=[nes_col_name])
-        
+
         if len(df) == 0:
             continue
-        
+
         df["dataset"] = ds_name
         df["pathway"] = df[term_col_name].apply(
             lambda s: _clean_pathway_name(s, max_len=70)
@@ -1868,7 +1868,7 @@ def panel_C_replicated(ax, data: dict):
         df_clean = df[[nes_col_name, fdr_col_name, "pathway", "dataset"]].copy()
         df_clean.columns = ["NES", "FDR", "pathway", "dataset"]
         all_results.append(df_clean)
-    
+
     if not all_results:
         ax.text(0.5, 0.5, "No pathways found across datasets",
                 transform=ax.transAxes, ha="center", va="center",
@@ -1878,15 +1878,15 @@ def panel_C_replicated(ax, data: dict):
         return
 
     combined = pd.concat(all_results, ignore_index=True)
-    
+
     # Get all unique pathways and datasets
     all_pathways = sorted(combined["pathway"].unique())
     all_datasets = sorted(combined["dataset"].unique())
-    
+
     # Build NES matrix: pathways × datasets
     nes_matrix = np.full((len(all_pathways), len(all_datasets)), np.nan)
     fdr_matrix = np.full((len(all_pathways), len(all_datasets)), np.nan)
-    
+
     for i, pathway in enumerate(all_pathways):
         for j, dataset in enumerate(all_datasets):
             subset = combined[(combined["pathway"] == pathway) &
@@ -2021,7 +2021,7 @@ def panel_C_replicated(ax, data: dict):
     colors = np.vstack((cmap_neg(np.linspace(0, 1, n_bins//2)),
                        cmap_pos(np.linspace(0, 1, n_bins//2))))
     cmap = mcolors.LinearSegmentedColormap.from_list('diverging', colors, N=n_bins)
-    
+
     # Set colorbar range to actual data min/max
     valid_nes = nes_matrix[~np.isnan(nes_matrix)]
     if len(valid_nes) > 0:
@@ -2031,10 +2031,10 @@ def panel_C_replicated(ax, data: dict):
         vmax += vrange * 0.05
     else:
         vmin, vmax = -2.0, 2.0
-    
+
     # For NaN values set to white
     masked_nes = np.ma.masked_invalid(nes_matrix)
-    
+
     # Plot heatmap
     im = ax.imshow(masked_nes, aspect="auto", interpolation="nearest", origin="lower",
                    cmap=cmap, vmin=vmin, vmax=vmax)
@@ -2042,23 +2042,23 @@ def panel_C_replicated(ax, data: dict):
     cbar = ax.figure.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
     cbar.set_label("NES", fontsize=9, rotation=0, labelpad=10)
     cbar.ax.tick_params(labelsize=8)
-    
+
     for i in range(len(all_pathways) + 1):
         ax.axhline(i - 0.5, color="#E0E0E0", linewidth=0.8, zorder=1)
     for j in range(len(all_datasets) + 1):
         ax.axvline(j - 0.5, color="#E0E0E0", linewidth=0.8, zorder=1)
-    
+
     # Labels
     ax.set_yticks(range(len(all_pathways)))
     ax.set_yticklabels(all_pathways, fontsize=7.5)
     ax.set_xticks(range(len(all_datasets)))
     ax.set_xticklabels(all_datasets, fontsize=7.5, rotation=25, ha="right")
-    
+
     ax.set_xlabel("Dataset", fontsize=9)
     ax.set_ylabel("Pathway", fontsize=9)
     ax.set_title("Replicated Pathways Across Datasets (FDR < 0.25)",
                  fontsize=11, fontweight="bold")
-    
+
     ax.tick_params(axis="both", length=0)
     despine(ax)
 
@@ -2570,7 +2570,7 @@ def _panel_tnbc_response_abundance_did(ax, data_tnbc: dict, *, arm: str) -> None
 # Panels C1/C2 — GSEA enrichment: Responder vs Non-responder per arm
 # ======================================================================
 
-def _prepare_tnbc_response_gsea(data_tnbc: dict, *, arm: str) -> "pd.DataFrame | None":
+def _prepare_tnbc_response_gsea(data_tnbc: dict, *, arm: str) -> pd.DataFrame | None:
     """Run GSEA DiD (Responder vs Non-responder) within one TNBC treatment arm.
 
     Subsets adata to *arm*, detects the response column, and calls

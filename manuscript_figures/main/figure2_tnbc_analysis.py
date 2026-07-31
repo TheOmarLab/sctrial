@@ -41,6 +41,7 @@ import numpy as np
 import pandas as pd
 from matplotlib.lines import Line2D
 from scipy import stats
+
 import sctrial as st
 from sctrial import TrialDesign, did_table
 from sctrial.stats.effect_size import cohens_d_from_did
@@ -414,45 +415,25 @@ def _panel_b(ax: plt.Axes, data: dict) -> None:
     ax.axhline(0, color=COL_GRAY, lw=0.5, ls=":", zorder=0)
     ax.axvline(0, color=COL_GRAY, lw=0.5, ls=":", zorder=0)
 
-    x_range = max(beta_cell) - min(beta_cell)
-    y_range = max(beta_part) - min(beta_part)
-    dx = x_range * 0.04
-    dy = y_range * 0.04
+    # Explicit symmetric limits (with the identity-line margin) guarantee every
+    # marker is inside the view — no point can be clipped below the axis, which
+    # previously dropped a signature marker while its label floated in the corner.
+    ax.set_xlim(lim_lo, lim_hi)
+    ax.set_ylim(lim_lo, lim_hi)
 
-    # Explicit positions for each signature to avoid overlap
-    # Format: "substring of label": (x_offset, y_offset, ha)
-    _label_offsets = {
-        "antigen": (-dx, -dy * 3.5, "right"),
-        "cytotoxic": (-dx, dy * 2, "right"),
-        "memory": (-dx * 2, dy, "right"),
-        "immune exh": (-dx, dy * 3, "right"),
-        "exhaustion": (-dx * 2, dy * 0.5, "right"),
-        "interferon": (-dx * 3, -dy, "right"),
-        "cell prolif": (-dx * 2, dy, "right"),
-        "oxidative": (dx, -dy, "left"),
-        "inflammatory": (dx, dy * 2, "left"),
-        "regulatory": (dx * 2, dy, "left"),
-        "apoptosis": (dx, -dy * 2, "left"),
-        "t cell activ": (dx, dy * 3, "left"),
-        "nk cell": (dx * 2, -dy, "left"),
-    }
+    # Label every signature and let adjustText resolve overlaps, drawing a thin
+    # leader line from each label back to its marker. The former hand-tuned offsets
+    # had no leader line, so a label pushed far from its point read as an orphaned
+    # marker.
+    from adjustText import adjust_text
+    texts = [ax.text(xv, yv, sig_display(feat), fontsize=5, alpha=0.9)
+             for feat, xv, yv in zip(common, beta_cell, beta_part)]
+    adjust_text(
+        texts, ax=ax, expand=(1.4, 1.7),
+        arrowprops=dict(arrowstyle="-", color=COL_GRAY, lw=0.4, alpha=0.6),
+        ensure_inside_axes=True,
+    )
 
-    for feat, xv, yv in zip(common, beta_cell, beta_part):
-        label = sig_display(feat)
-        ll = label.lower()
-        ox, oy, ha = dx, 0, "left"  # default
-        for key, (ox_k, oy_k, ha_k) in _label_offsets.items():
-            if key in ll:
-                ox, oy, ha = ox_k, oy_k, ha_k
-                break
-        ax.annotate(
-            label, (xv, yv),
-            xytext=(xv + ox, yv + oy),
-            fontsize=4, alpha=0.85,
-            ha=ha, va="center",
-           # arrowprops=dict(arrowstyle="-", color=COL_GRAY,
-            #                lw=0.4, alpha=0.5),
-        )
     # FIX v1 Issue 6: Spearman rho not Pearson r
     rho, p = stats.spearmanr(beta_cell, beta_part)
     ax.text(
@@ -1550,7 +1531,7 @@ def generate() -> None:
     fig_c.savefig(str(pdf_path), format="pdf", bbox_inches="tight",
                   facecolor="white")
     plt.close(fig_c)
-    print(f"  Saved combined artboard (PNG + PDF)")
+    print("  Saved combined artboard (PNG + PDF)")
 
     del data
     gc.collect()

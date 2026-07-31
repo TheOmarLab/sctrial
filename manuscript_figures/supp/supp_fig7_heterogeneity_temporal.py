@@ -288,12 +288,15 @@ def _draw_heatmap_row_annotations(ax, pid_order, annotations, n_features, compos
     ax.set_xlim(-total_left, n_features)
 
     _leg_fs = 5 if composite else 6
+    _ncol = 2
     ax.legend(handles=all_handles, fontsize=_leg_fs, frameon=True,
-              loc="lower center", ncol=2,
+              loc="lower center", ncol=_ncol,
               handlelength=0.7, handleheight=0.7,
               borderpad=0.3, labelspacing=0.15,
               bbox_to_anchor=(0.5, 1.01),
               bbox_transform=ax.transAxes)
+    # Report the legend's row count so the caller can lift the title clear of it.
+    return int(np.ceil(len(all_handles) / _ncol))
 
 
 def _panel_heatmap(ax, effects: pd.DataFrame, features: list[str], title: str,
@@ -334,12 +337,20 @@ def _panel_heatmap(ax, effects: pd.DataFrame, features: list[str], title: str,
     )
     _xtk_fs = 5 if composite else 8
     ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right", fontsize=_xtk_fs)
-    ax.set_title(title, fontweight="bold")
     ax.set_ylabel("Participants")
 
     if annotations:
-        _draw_heatmap_row_annotations(ax, mat.index.tolist(), annotations, len(features), composite)
+        n_leg_rows = _draw_heatmap_row_annotations(
+            ax, mat.index.tolist(), annotations, len(features), composite)
+        # The row-annotation legend is anchored just above the axes (lower center at
+        # y=1.01). Lift the title clear of it so they never overprint. The composite
+        # re-issues its own title y afterward, so only the standalone needs this.
+        if composite:
+            ax.set_title(title, fontweight="bold")
+        else:
+            ax.set_title(title, fontweight="bold", y=1.05 + 0.075 * max(1, n_leg_rows))
     else:
+        ax.set_title(title, fontweight="bold")
         ax.yaxis.set_label_coords(-0.06, 0.5)
 
 
