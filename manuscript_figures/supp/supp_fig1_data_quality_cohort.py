@@ -1249,12 +1249,9 @@ def generate():
     _panel_qc_waterfall(ax_g, loaded, compact=True)
     _panel_completeness_detailed(ax_h, loaded)
 
-    # Restyle legends for the composite. Panel C's arm legend has ~12 entries and
-    # overlapped the boxplots at any in-axes location, so it goes below the axes
-    # (matching the standalone panel); the hspace=0.32 row gap leaves room.
+    # Restyle legends inside the plots for the composite.
     _inside = {
         ax_a: dict(loc="upper left", ncol=1),
-        ax_c: dict(loc="upper center", bbox_to_anchor=(0.5, -0.16), ncol=6),
         ax_d: dict(loc="upper right", ncol=3),
         ax_f: dict(loc="upper left", ncol=1),
     }
@@ -1273,6 +1270,23 @@ def generate():
                 labelspacing=0.2,
                 **kw,
             )
+
+    # Panel C's arm legend is the union of every dataset's arms (~13 long labels),
+    # so it overlaps the boxplots inside the axes and a 6-column block below runs
+    # into panel D's title. Give it a dedicated compact two-row block (small font,
+    # 7 columns) that stays within the hspace=0.32 row gap.
+    leg_c = ax_c.get_legend()
+    if leg_c:
+        _h_c = leg_c.legend_handles
+        _l_c = [t.get_text() for t in leg_c.get_texts()]
+        leg_c.remove()
+        ax_c.legend(
+            handles=_h_c, labels=_l_c, fontsize=4.0,
+            loc="upper center", bbox_to_anchor=(0.5, -0.13), ncol=7,
+            frameon=True, framealpha=0.85, edgecolor="#CCCCCC",
+            borderpad=0.25, handlelength=0.8, handletextpad=0.25,
+            labelspacing=0.18, columnspacing=0.6,
+        )
 
     # G legend: single horizontal row along top
     leg_g = ax_g.get_legend()
