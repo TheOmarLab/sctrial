@@ -1376,8 +1376,10 @@ def generate() -> None:
     _panel_b(ax_b, data)
     _panel_c(ax_c, data)
     _panel_d(ax_d, data)
+    # Wider inner hspace so the top-row Pre/Post tick labels clear the bottom-row
+    # subplot titles in the 2x3 interaction grid.
     axes_e = _panel_e(fig_c, gs1[:, 1], data, n_sigs=6,
-                      inner_hspace=0.45, inner_wspace=0.40)
+                      inner_hspace=0.85, inner_wspace=0.40)
     _panel_f(ax_f, data)
     _panel_g(ax_g, data)
     _panel_h(ax_h, data)
