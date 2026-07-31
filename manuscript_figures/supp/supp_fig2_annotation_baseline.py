@@ -898,13 +898,20 @@ def _build_composite(loaded: dict):
                 _coll.set_sizes([0.15])
         _leg = _ax.get_legend()
         if _leg:
-            _handles = _leg.legend_handles
+            _handles = list(_leg.legend_handles)
             _labels = [t.get_text() for t in _leg.get_texts()]
+            # Truncate long cell-type names and cap the entry count, then use a
+            # single narrow column: the 2-column legends were wider than their
+            # (narrow) UMAP cell and overprinted the neighbouring dataset's legend.
+            _labels = [s if len(s) <= 11 else s[:10] + "…" for s in _labels]
+            _keep = 8
+            if len(_labels) > _keep:
+                _handles, _labels = _handles[:_keep], _labels[:_keep]
             _leg.remove()
             _ax.legend(
                 handles=_handles, labels=_labels,
                 fontsize=3.5, loc="upper center",
-                bbox_to_anchor=(0.5, -0.02), ncol=2,
+                bbox_to_anchor=(0.5, -0.02), ncol=1,
                 frameon=False, handlelength=0.6, handleheight=0.5,
                 borderpad=0.1, labelspacing=0.12, columnspacing=0.4,
                 markerscale=0.35,

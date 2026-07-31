@@ -747,8 +747,14 @@ def _panel_counts_mito_merged(fig_merged, loaded: dict):
 # ── Panel G: QC attrition waterfall ──────────────────────────────────
 
 
-def _panel_qc_waterfall(ax, loaded: dict):
-    """Post-QC threshold check: cells meeting each criterion in processed data."""
+def _panel_qc_waterfall(ax, loaded: dict, compact: bool = False):
+    """Post-QC threshold check: cells meeting each criterion in processed data.
+
+    In ``compact`` mode (the small composite cell) the per-bar value labels are
+    omitted and the legend is placed below the axes: at composite size the six
+    datasets' rotated count labels overprinted each other and the top-anchored
+    legend occluded the tallest bars. The standalone panel keeps both.
+    """
     thresholds = [
         ("All cells", None),
         ("genes ≥ 200", lambda ng, tc, mt: ng >= 200),
@@ -785,10 +791,11 @@ def _panel_qc_waterfall(ax, loaded: dict):
         is_orange = (color == "#d95f02")
         bars = ax.bar(x + offsets[di], counts_at_stage, width,
                       color=color, edgecolor="white", label=name)
-        for bar, cnt in zip(bars, counts_at_stage):
-            ax.text(bar.get_x() + bar.get_width() / 2, cnt + cnt * 0.01,
-                    f"{cnt:,}", ha="center", va="bottom", fontsize=5,
-                    rotation=0 if is_orange else 90)
+        if not compact:
+            for bar, cnt in zip(bars, counts_at_stage):
+                ax.text(bar.get_x() + bar.get_width() / 2, cnt + cnt * 0.01,
+                        f"{cnt:,}", ha="center", va="bottom", fontsize=5,
+                        rotation=0 if is_orange else 90)
 
     ax.set_xticks(x)
     ax.set_xticklabels([t[0] for t in thresholds], fontsize=8,
@@ -798,10 +805,17 @@ def _panel_qc_waterfall(ax, loaded: dict):
     ax.yaxis.set_major_formatter(
         FuncFormatter(lambda v, _: f"{int(v):,}" if v >= 1 else "0"))
     ymin, ymax = ax.get_ylim()
-    ax.set_ylim(ymin, ymax * 1.30)
-    ax.legend(fontsize=5, frameon=True, ncol=len(ds_names),
-              loc="upper center", borderpad=0.2,
-              handlelength=0.8, handletextpad=0.2, columnspacing=0.5)
+    ax.set_ylim(ymin, ymax * (1.12 if compact else 1.30))
+    if compact:
+        # Below the axes so it never sits over the tallest bars in the small cell.
+        ax.legend(fontsize=5, frameon=False, ncol=3,
+                  loc="upper center", bbox_to_anchor=(0.5, -0.30),
+                  borderpad=0.2, handlelength=0.8, handletextpad=0.2,
+                  columnspacing=0.5)
+    else:
+        ax.legend(fontsize=5, frameon=True, ncol=len(ds_names),
+                  loc="upper center", borderpad=0.2,
+                  handlelength=0.8, handletextpad=0.2, columnspacing=0.5)
     despine(ax)
 
 
@@ -1224,7 +1238,7 @@ def generate():
     _panel_counts_dist(ax_e1, loaded)
     _panel_mito_ribo(ax_e2, loaded)
     _panel_lorenz_gini(ax_f, loaded)
-    _panel_qc_waterfall(ax_g, loaded)
+    _panel_qc_waterfall(ax_g, loaded, compact=True)
     _panel_completeness_detailed(ax_h, loaded)
 
     # Move legends inside plots for the composite
