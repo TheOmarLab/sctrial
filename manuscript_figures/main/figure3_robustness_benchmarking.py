@@ -138,7 +138,7 @@ TNBC_DESIGN = TrialDesign(
 TNBC_VISITS: tuple[str, str] = ("Pre", "Post")
 
 N_BENCHMARK_REPLICATES = 5
-_CODE_VERSION = "v14"
+_CODE_VERSION = "v15"
 
 _METHOD_FAMILY: dict[str, str] = {
     "two_arm_did": "did_table",
@@ -159,8 +159,8 @@ _DATASET_TAGS: dict[str, str] = {
 
 _PRESPECIFIED_ENDPOINTS = [
     "sig_Cytotoxic T Cell Activity",
-    "sig_Interferon Response",
-    "sig_Immune Exhaustion",
+    "sig_Type I Interferon",
+    "sig_T Cell Exhaustion",
     "sig_T Cell Activation",
     "sig_Inflammatory Response",
 ]
@@ -897,16 +897,16 @@ def _panel_e_cross_dataset(ax, data: dict, *, composite: bool = False) -> None:
     ds_order = [d for d in _priority if d in _natural_order] + [d for d in _natural_order if d not in _priority]
 
     _SIG_ORDER = [
-        "Cytotoxic T Cell Activity", "Immune Exhaustion", "Inflammatory Response",
-        "Interferon Response", "T Cell Activation",
+        "Cytotoxic T Cell Activity", "T Cell Exhaustion", "Inflammatory Response",
+        "Type I Interferon", "T Cell Activation",
     ]
     # Consistent short endpoint labels (the full signature names are long and
     # ragged; these keep the forest y-axis compact and uniform).
     _SIG_SHORT = {
         "Cytotoxic T Cell Activity": "Cytotoxic",
-        "Immune Exhaustion": "Exhaustion",
+        "T Cell Exhaustion": "Exhaustion",
         "Inflammatory Response": "Inflammatory",
-        "Interferon Response": "Interferon",
+        "Type I Interferon": "Type I IFN",
         "T Cell Activation": "T-cell activation",
     }
 
