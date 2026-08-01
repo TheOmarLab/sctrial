@@ -16,7 +16,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-
 def _require_cols(obs: pd.DataFrame, cols: list[str]) -> None:
     """Require specific columns in the DataFrame."""
     missing = [c for c in cols if c not in obs.columns]

@@ -8,6 +8,7 @@ Usage:
     python -m manuscript_figures.run_all --supp       # supplementary only
     python -m manuscript_figures.run_all --figure 2   # single main figure
     python -m manuscript_figures.run_all --supp-fig 3 # single supp figure
+    python -m manuscript_figures.run_all --supp-tables # supplementary tables only
 """
 
 from __future__ import annotations
@@ -23,11 +24,10 @@ from ._shared import MAIN_OUTPUT, SUPP_OUTPUT, apply_style
 # ---------------------------------------------------------------------------
 
 MAIN_FIGURES = {
-    2: ("Figure 2: Pseudoreplication Bias & Melanoma Analysis", "main.figure2_melanoma_analysis"),
-    3: ("Figure 3: Robustness & Benchmarking", "main.figure3_robustness_benchmarking"),
-    4: ("Figure 4: Biological Discovery", "main.figure4_biological_discovery"),
-    5: ("Figure 5: Multi-Dataset Generalization", "main.figure5_multi_dataset"),
-    6: ("Figure 6: Validation & Dynamics", "main.figure6_validation_dynamics"),
+    2: ("Figure 2: TNBC Immunotherapy Primary Analysis",                "main.figure2_tnbc_analysis"),
+    3: ("Figure 3: Robustness & Benchmarking",                          "main.figure3_robustness_benchmarking"),
+    4: ("Figure 4: Biological Discovery & Multi-Dataset Generalization", "main.figure4_biological_discovery_multi_dataset"),
+    5: ("Figure 5: Validation & Dynamics",                              "main.figure5_validation_dynamics"),
 }
 
 SUPP_TABLES = {
@@ -35,12 +35,14 @@ SUPP_TABLES = {
 }
 
 SUPP_FIGURES = {
-    1: ("Supp Fig 1: Data Quality and Cohort Characterisation", "supp.supp_fig1_data_quality_cohort"),
-    2: ("Supp Fig 2: Cell Annotation and Baseline Comparability", "supp.supp_fig2_annotation_baseline"),
-    3: ("Supp Fig 3: Model Diagnostics and Assumption Checks", "supp.supp_fig3_model_diagnostics"),
-    4: ("Supp Fig 4: Sensitivity and Robustness", "supp.supp_fig4_sensitivity_robustness"),
-    5: ("Supp Fig 5: Cross-Dataset Biological Consistency", "supp.supp_fig5_cross_dataset_biology"),
-    6: ("Supp Fig 6: Heterogeneity and Temporal Dynamics", "supp.supp_fig6_heterogeneity_temporal"),
+    1: ("Supp Fig 1: Data Quality and Cohort Characterisation",          "supp.supp_fig1_data_quality_cohort"),
+    2: ("Supp Fig 2: Cell Annotation and Baseline Comparability",        "supp.supp_fig2_annotation_baseline"),
+    3: ("Supp Fig 3: Pseudoreplication Bias & Melanoma/TNBC Analysis",   "supp.supp_fig3_melanoma_tnbc_analysis"),
+    4: ("Supp Fig 4: Model Diagnostics and Assumption Checks",           "supp.supp_fig4_model_diagnostics"),
+    5: ("Supp Fig 5: Sensitivity and Robustness",                        "supp.supp_fig5_sensitivity_robustness"),
+    6: ("Supp Fig 6: Cross-Dataset Biological Consistency",              "supp.supp_fig6_cross_dataset_biology"),
+    7: ("Supp Fig 7: Heterogeneity and Temporal Dynamics",               "supp.supp_fig7_heterogeneity_temporal"),
+    8: ("Supp Fig 8: Benchmark Calibration, Power and Robustness",        "supp.supp_fig8_benchmark_calibration"),
 }
 
 
@@ -143,6 +145,7 @@ def main():
     parser.add_argument("--supp", action="store_true", help="Supplementary only")
     parser.add_argument("--figure", type=int, help="Single main figure number")
     parser.add_argument("--supp-fig", type=int, help="Single supp figure number")
+    parser.add_argument("--supp-tables", action="store_true", help="Supplementary tables only")
     args = parser.parse_args()
 
     apply_style()
@@ -155,6 +158,9 @@ def main():
         run_main()
     elif args.supp:
         run_supp()
+    elif args.supp_tables:
+        label, mod = SUPP_TABLES["tables"]
+        _run(label, mod)
     else:
         run_all()
 

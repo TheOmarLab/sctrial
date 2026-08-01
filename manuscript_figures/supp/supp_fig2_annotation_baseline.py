@@ -6,7 +6,7 @@ Establish cell-type annotation quality and demonstrate that pre-treatment
 groups are comparable before DiD analysis.
 
 Panels:
-  A  UMAP per dataset coloured by cell type (5 mini-UMAPs).
+  A  UMAP per dataset coloured by cell type (mini-UMAPs).
   B  UMAP per dataset coloured by grouping variable (arm/visit).
   C  Marker gene dot plot (top 3 markers per cell type, pooled).
   D  Embedding quality: silhouette + kNN purity (merged 1×2).
@@ -34,13 +34,14 @@ from .._shared import (
     apply_style,
     clear_cache,
     despine,
+    get_aml,
+    get_cart,
     get_sade_feldman,
     get_stephenson,
+    get_tnbc_zhang,
     get_vaccine,
     harmonize_celltype,
     harmonize_response,
-    get_aml,
-    get_cart,
     save_panel,
 )
 
@@ -49,11 +50,12 @@ FIGURE_NAME = "SuppFig2_annotation_baseline"
 DOT_SIZE = 1.8
 
 _DS_PALETTE = dict(zip(
-    ["Melanoma", "COVID-19", "Vaccine", "AML", "CAR-T"],
-    ["#1b9e77", "#d95f02", "#7570b3", "#e7298a", "#66a61e"],
+    ["TNBC", "Melanoma", "COVID-19", "Vaccine", "AML", "CAR-T"],
+    ["#996633", "#1b9e77", "#d95f02", "#7570b3", "#e7298a", "#66a61e"],
 ))
 
 DATASETS = [
+    ("TNBC", lambda: get_tnbc_zhang()),
     ("Melanoma", get_sade_feldman),
     ("COVID-19", get_stephenson),
     ("Vaccine", get_vaccine),
@@ -160,16 +162,16 @@ def _visit_col(obs):
 
 
 def _arm_col(obs):
-    for c in ("response", "severity", "therapy", "condition"):
+    for c in ("arm", "response", "severity", "therapy", "condition"):
         if c in obs.columns and obs[c].nunique() > 1:
             return c
     return None
 
 
-# ── Panel A: UMAP per dataset (5 mini-UMAPs) ─────────────────────
+# ── Panel A: UMAP per dataset (mini-UMAPs) ─────────────────────
 
 def _panel_umap_grid(fig, axes, loaded: dict):
-    """5 mini-UMAPs coloured by cell type."""
+    """Mini-UMAPs coloured by cell type."""
     ds_names = list(loaded.keys())
     for i, name in enumerate(ds_names):
         ax = axes[i]
@@ -220,7 +222,7 @@ def _panel_umap_grid(fig, axes, loaded: dict):
 # ── Panel B: UMAP per dataset coloured by grouping variable ──────
 
 def _panel_umap_grouping(fig, axes, loaded: dict):
-    """5 mini-UMAPs coloured by arm_col or visit_col."""
+    """Mini-UMAPs coloured by arm_col or visit_col."""
     ds_names = list(loaded.keys())
     for i, name in enumerate(ds_names):
         ax = axes[i]
@@ -252,9 +254,10 @@ def _panel_umap_grouping(fig, axes, loaded: dict):
 
         handles = [mpatches.Patch(facecolor=palette[v], edgecolor="none",
                                   label=v) for v in unique_vals]
-        ax.legend(handles=handles, fontsize=6.5, loc="best", frameon=True,
-                  framealpha=0.8, handlelength=0.8, handleheight=0.7,
-                  borderpad=0.4, labelspacing=0.2)
+        leg_loc = "upper left" if name == "TNBC" else "upper right" if name == "COVID-19" else "lower left"
+        ax.legend(handles=handles, fontsize=6.5, loc=leg_loc, frameon=True,
+                  framealpha=0.8, handlelength=0.6, handleheight=0.5,
+                  borderpad=0.2, labelspacing=0.1, handletextpad=0.3)
 
         grp_label = "arm" if arm else "visit"
         ax.set_title(f"{name} ({grp_label})", fontweight="bold", fontsize=9)
@@ -483,11 +486,16 @@ def _panel_knn_purity(ax, loaded: dict):
             if conn is None:
                 continue
             conn = conn.tocsr()
+            conn.eliminate_zeros()  # ensure .data matches structural nnz exactly
             labels = pd.Categorical(adata.obs[ct_col].astype(str)).codes
             # Vectorised kNN purity: build same-label weight matrix, row-sum
             label_arr = np.asarray(labels)
-            # For each non-zero entry, check if source and target share a label
-            rows, cols = conn.nonzero()
+            # Derive row/col indices from the CSR structure itself so they are
+            # guaranteed to align 1:1 with conn.data (conn.nonzero() instead
+            # value-filters and can return a different length if a matrix has
+            # explicit zero entries stored, causing a shape mismatch).
+            cols = conn.indices
+            rows = np.repeat(np.arange(conn.shape[0]), np.diff(conn.indptr))
             same_label = label_arr[rows] == label_arr[cols]
             # Build sparse matrix of same-label weights only
             from scipy import sparse as sp
@@ -630,9 +638,9 @@ def _panel_arm_mixing(ax, loaded: dict):
     bar_w = 0.6
     for xi, null in enumerate(null_lines):
         ax.plot([xi - bar_w / 2, xi + bar_w / 2], [null, null],
-                color="black", linewidth=1.2, linestyle="--", zorder=4)
+                color="black", linewidth=0.6, linestyle="--", zorder=4)
     # Add a single legend entry for the null lines
-    ax.plot([], [], color="black", linewidth=1.2, linestyle="--",
+    ax.plot([], [], color="black", linewidth=0.6, linestyle="--",
             label="Expected (random, 2p(1−p))")
 
     ax.set_xticks(x_pos)
@@ -744,16 +752,16 @@ def _make_plotly_parcats(ds_name: str, obs_sub, right_col: str, ct_col: str,
         df_expanded,
         dimensions=["Cell type", right_label],
         color=color_vals,
-        title=ds_name,
-        width=700,
-        height=600,
+        #title=ds_name,
+        width=850,
+        height=720,
     )
     fig.update_layout(
         coloraxis_showscale=False,
-        font=dict(size=12),
-        title=dict(text=ds_name, font=dict(size=16, family="Arial"),
-                   x=0.5, xanchor="center", y=0.98, yanchor="top"),
-        margin=dict(l=120, r=80, t=60, b=20),
+        font=dict(size=42, color="black"),
+        #title=dict(text=ds_name, font=dict(size=22, family="Arial"),
+        #           x=0.5, xanchor="center", y=0.98, yanchor="top"),
+        margin=dict(l=160, r=100, t=70, b=30),
         paper_bgcolor="white",
         plot_bgcolor="white",
     )
@@ -812,11 +820,228 @@ def _panel_baseline_ct_by_arm_separate(loaded: dict):
 
 
 # ======================================================================
+# Composite  (180 mm × ≤215 mm)
+# ======================================================================
+#   Row 0: A  — UMAP by cell type (1 × n_ds)
+#   Row 2: B  — UMAP by grouping  (1 × n_ds)
+#   Row 4: C (marker dot plot, left) | D (silhouette + purity, right)
+#   Row 6: E (ct × ds heatmap, left) | F (arm mixing, right)
+#   Row 8: G  — parallel-categories PNGs (1 × n_ds)
+# ======================================================================
+
+_SMALL_RC = {
+    "font.size": 4.5,
+    "axes.titlesize": 5,
+    "axes.labelsize": 4.5,
+    "xtick.labelsize": 4,
+    "ytick.labelsize": 4,
+    "legend.fontsize": 2.5,
+    "legend.title_fontsize": 2.5,
+}
+_MAX_FONT = 5.5
+
+
+def _cap_fontsize(fig_obj, maximum):
+    """Clamp all text elements in *fig_obj* to *maximum* pt."""
+    for ax_i in fig_obj.get_axes():
+        for txt in ([ax_i.title, ax_i.xaxis.label, ax_i.yaxis.label]
+                    + ax_i.get_xticklabels() + ax_i.get_yticklabels()
+                    + ax_i.texts):
+            if txt.get_fontsize() > maximum:
+                txt.set_fontsize(maximum)
+        leg = ax_i.get_legend()
+        if leg:
+            for txt in leg.get_texts():
+                if txt.get_fontsize() > maximum:
+                    txt.set_fontsize(maximum)
+            t = leg.get_title()
+            if t and t.get_fontsize() > maximum:
+                t.set_fontsize(maximum)
+
+
+def _build_composite(loaded: dict):
+    """Assemble all panels A–G into a single 180 mm × ≤215 mm figure."""
+    import matplotlib.image as mpimg
+
+    print("  Building composite figure (panels A–G) ...")
+    _prev_rc = {k: plt.rcParams[k] for k in _SMALL_RC}
+    plt.rcParams.update(_SMALL_RC)
+
+    _mm = 1.0 / 25.4
+    n_ds = len(loaded)
+    fig_c = plt.figure(figsize=(180 * _mm, 215 * _mm))
+
+    outer = fig_c.add_gridspec(
+        9, 1,
+        height_ratios=[
+            0.28,   # row 0: A (UMAPs cell type)
+            0.17,   # spacer (room for A legends below)
+            0.28,   # row 2: B (UMAPs grouping)
+            0.09,   # spacer (B → C|D)
+            0.36,   # row 4: C | D  (reduced height)
+            0.14,   # spacer (C|D → E|F)
+            0.32,   # row 6: E | F  (reduced height)
+            0.07,   # spacer (E|F → G)
+            0.38,   # row 8: G (PNGs)
+        ],
+        hspace=0.0,
+        left=0.06, right=0.98, top=0.97, bottom=0.03,
+    )
+
+    # ── Row 0: A — UMAPs coloured by cell type ─────────────────────
+    gs_a = outer[0].subgridspec(1, n_ds, wspace=0.30)
+    axes_a = [fig_c.add_subplot(gs_a[0, i]) for i in range(n_ds)]
+    _panel_umap_grid(fig_c, axes_a, loaded)
+    for _ax in axes_a:
+        for _coll in _ax.collections:
+            if hasattr(_coll, "set_sizes"):
+                _coll.set_sizes([0.15])
+        _leg = _ax.get_legend()
+        if _leg:
+            _handles = list(_leg.legend_handles)
+            _labels = [t.get_text() for t in _leg.get_texts()]
+            # Two columns of short labels: truncate names hard and cap the entry
+            # count so the two narrow columns still fit inside the (narrow) UMAP
+            # cell rather than overprinting the neighbouring dataset's legend.
+            _labels = [s if len(s) <= 9 else s[:8] + "…" for s in _labels]
+            _keep = 8
+            if len(_labels) > _keep:
+                _handles, _labels = _handles[:_keep], _labels[:_keep]
+            _leg.remove()
+            _ax.legend(
+                handles=_handles, labels=_labels,
+                fontsize=3.5, loc="upper center",
+                bbox_to_anchor=(0.5, -0.02), ncol=2,
+                frameon=False, handlelength=0.6, handleheight=0.5,
+                borderpad=0.1, labelspacing=0.12, columnspacing=0.3,
+                markerscale=0.35,
+            )
+
+    # ── Row 2: B — UMAPs coloured by grouping variable ─────────────
+    gs_b = outer[2].subgridspec(1, n_ds, wspace=0.30)
+    axes_b = [fig_c.add_subplot(gs_b[0, i]) for i in range(n_ds)]
+    _panel_umap_grouping(fig_c, axes_b, loaded)
+    _ds_names_b = list(loaded.keys())
+    for _i, _ax in enumerate(axes_b):
+        for _coll in _ax.collections:
+            if hasattr(_coll, "set_sizes"):
+                _coll.set_sizes([0.15])
+        _leg_b = _ax.get_legend()
+        if _leg_b:
+            for _txt in _leg_b.get_texts():
+                _txt.set_fontsize(3.5)
+            _bname = _ds_names_b[_i] if _i < len(_ds_names_b) else ""
+            _bloc = "upper left" if _bname == "TNBC" else "upper right" if _bname == "COVID-19" else "lower left"
+            _leg_b.set_loc(_bloc)
+
+    # ── Row 4: C (marker dot plot, left) | D (sil + purity, right) ─
+    gs_cd = outer[4].subgridspec(1, 2, width_ratios=[0.55, 0.45],
+                                 wspace=0.15)
+    ax_c = fig_c.add_subplot(gs_cd[0])
+    _panel_marker_dotplot(fig_c, ax_c, loaded)
+    ax_c.tick_params(axis="x", labelsize=4)
+    ax_c.tick_params(axis="y", labelsize=4)
+    for _coll in ax_c.collections:
+        if hasattr(_coll, "get_sizes") and hasattr(_coll, "set_sizes"):
+            _coll.set_sizes(_coll.get_sizes() * 0.35)
+    _leg_c = ax_c.get_legend()
+    if _leg_c:
+        for _lh in _leg_c.legend_handles:
+            if hasattr(_lh, "set_sizes"):
+                _lh.set_sizes([s * 0.1 for s in _lh.get_sizes()])
+        for _txt in _leg_c.get_texts():
+            _txt.set_fontsize(3.5)
+        _t_c = _leg_c.get_title()
+        if _t_c:
+            _t_c.set_fontsize(3.5)
+        _leg_c.set_bbox_to_anchor((1.02, 1.05))
+        _leg_c._loc = 1  # top right, above colorbar
+
+    gs_d = gs_cd[1].subgridspec(2, 1, hspace=0.80)
+    ax_d1 = fig_c.add_subplot(gs_d[0])
+    ax_d2 = fig_c.add_subplot(gs_d[1])
+    _panel_silhouette(ax_d1, loaded)
+    _panel_knn_purity(ax_d2, loaded)
+    ax_d1.set_ylabel("Centroid-silhouette\nscore", fontsize=3.5)
+    ax_d2.set_ylabel("Graph label purity\n(connectivities)", fontsize=3.5)
+
+    # ── Row 6: E (ct × ds heatmap, left) | F (arm mixing, right) ──
+    gs_ef = outer[6].subgridspec(1, 2, width_ratios=[0.55, 0.45],
+                                 wspace=0.15)
+    ax_e = fig_c.add_subplot(gs_ef[0])
+    _panel_ct_crosstab(ax_e, loaded)
+    ax_f = fig_c.add_subplot(gs_ef[1])
+    _panel_arm_mixing(ax_f, loaded)
+    for _txt in ax_f.texts:
+        _txt.set_fontsize(4.5)
+    _leg_f = ax_f.get_legend()
+    if _leg_f:
+        for _txt in _leg_f.get_texts():
+            _txt.set_fontsize(4.5)
+
+    # ── Row 8: G — parallel-categories PNGs ────────────────────────
+    panel_dir = SUPP_OUTPUT / f"{FIGURE_NAME}_panels"
+    ds_names = list(loaded.keys())
+    gs_g = outer[8].subgridspec(1, n_ds, wspace=0.05)
+    axes_g: list[plt.Axes] = []
+    for i, name in enumerate(ds_names):
+        ax_gi = fig_c.add_subplot(gs_g[0, i])
+        axes_g.append(ax_gi)
+        safe_name = name.replace(" ", "_").replace("-", "_")
+        png_path = panel_dir / f"panel_G_{safe_name}.png"
+        if png_path.exists():
+            img = mpimg.imread(str(png_path))
+            ax_gi.imshow(img)
+            ax_gi.set_title(name, fontweight="bold", fontsize=6, pad=2)
+        else:
+            ax_gi.text(0.5, 0.5, f"{name}\n(PNG not found)",
+                       ha="center", va="center",
+                       transform=ax_gi.transAxes, fontsize=4)
+        ax_gi.set_xticks([])
+        ax_gi.set_yticks([])
+        ax_gi.axis("off")
+
+    # ── Post-processing ────────────────────────────────────────────
+    _cap_fontsize(fig_c, _MAX_FONT)
+
+    _lbl_fs = 8
+    _lbl_x = -0.12
+    _lbl_y = 1.15
+
+    _label_pairs: list[tuple] = [
+        (axes_a[0], "A"),
+        (axes_b[0], "B"),
+        (ax_c, "C"),
+        (ax_d1, "D"),
+        (ax_e, "E"),
+        (ax_f, "F"),
+    ]
+    if axes_g:
+        _label_pairs.append((axes_g[0], "G"))
+
+    for ax_lbl, lbl in _label_pairs:
+        ax_lbl.text(
+            _lbl_x, _lbl_y, lbl,
+            transform=ax_lbl.transAxes,
+            fontsize=_lbl_fs, fontweight="bold", va="top", ha="left",
+        )
+
+    plt.rcParams.update(_prev_rc)
+
+    save_panel(fig_c, FIGURE_NAME, FIGURE_NAME, SUPP_OUTPUT, close=False)
+    pdf_path = panel_dir / f"{FIGURE_NAME}.pdf"
+    fig_c.savefig(str(pdf_path), format="pdf", bbox_inches="tight",
+                  facecolor="white")
+    plt.close(fig_c)
+    print("    Saved combined artboard (PNG + PDF)")
+
+
+# ======================================================================
 # Generate
 # ======================================================================
 
 def generate():
-    """Create and save Supplementary Figure 2 panels (A–G)."""
+    """Create and save Supplementary Figure 2 panels (A–G) + composite."""
     print("Supplementary Figure 2: Cell Annotation and Baseline Comparability")
 
     loaded = {}
@@ -847,7 +1072,7 @@ def generate():
         print("  No datasets available; skipping.")
         return
 
-    # Panel A: UMAP grid coloured by cell type (5 mini-UMAPs)
+    # Panel A: UMAP grid coloured by cell type (mini-UMAPs)
     n_ds = len(loaded)
     ncols = min(n_ds, 3)
     nrows = (n_ds + ncols - 1) // ncols
@@ -858,11 +1083,24 @@ def generate():
     fig.tight_layout()
     save_panel(fig, "panel_A", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Save individual cell-type UMAPs
+    # Save individual cell-type UMAPs (legend below figure, 2 cols)
     for name, data in loaded.items():
-        fig_ind, ax_ind = plt.subplots(figsize=(5.5, 5.0))
+        fig_ind, ax_ind = plt.subplots(figsize=(5.5, 6.0))
         _panel_umap_grid(fig_ind, [ax_ind], {name: data})
+        _leg_ind = ax_ind.get_legend()
+        if _leg_ind:
+            _h = _leg_ind.legend_handles
+            _l = [t.get_text() for t in _leg_ind.get_texts()]
+            _leg_ind.remove()
+            ax_ind.legend(
+                handles=_h, labels=_l,
+                fontsize=7, loc="upper center",
+                bbox_to_anchor=(0.5, -0.05), ncol=2,
+                frameon=False, handlelength=1.0, handleheight=0.8,
+                borderpad=0.3, labelspacing=0.3, columnspacing=0.8,
+            )
         fig_ind.tight_layout()
+        fig_ind.subplots_adjust(bottom=0.22)
         safe = name.replace(" ", "_").replace("-", "_")
         save_panel(fig_ind, f"panel_A_{safe}", FIGURE_NAME, SUPP_OUTPUT)
 
@@ -908,7 +1146,13 @@ def generate():
     save_panel(fig, "panel_F", FIGURE_NAME, SUPP_OUTPUT)
 
     # Panel G: Per-dataset parallel categories (separate PNGs)
-    _panel_baseline_ct_by_arm_separate(loaded)
+    try:
+        _panel_baseline_ct_by_arm_separate(loaded)
+    except Exception as exc:
+        print(f"    Skipping plotly panel G PNGs: {exc}")
+
+    # ── Composite artboard ─────────────────────────────────────────
+    _build_composite(loaded)
 
     # Cleanup
     for data in loaded.values():

@@ -122,6 +122,7 @@ sctrial ships with five real clinical trial datasets, accessible via built-in lo
 | Design | Description | Dataset | Source | Tutorial |
 |--------|-------------|---------|--------|----------|
 | **Two-arm paired DiD** | Pre/post × treatment/control interaction | Sade-Feldman et al., *Cell* 2018 — melanoma immunotherapy | [GSE120575](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE120575) | [Immunotherapy](tutorials/example_immunotherapy_sade_feldman.ipynb) |
+| **Two-arm paired DiD** | Pre/post × treatment/control interaction | Zhang et al., *Cell* 2021 — TNBC immunotherapy (anti-PD-L1+Chemo vs Chemo) | [GSE169246](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE169246) | [TNBC](tutorials/example_tnbc_zhang.ipynb) |
 | **Single-arm pre/post** | Paired within-arm contrasts over time | ImmPort GSE171964 — PBMC vaccine response | [GSE171964](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE171964) | [Vaccine](tutorials/example_vaccine_immport.ipynb) |
 | **Single-arm pre/post** | Paired within-arm, multi-timepoint | van Galen et al., *Cell* 2019 — AML chemotherapy | [GSE116256](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE116256) | — |
 | **Single-arm multi-timepoint** | Longitudinal tracking across 4 visits | GSE290722 — CAR-T cell therapy (ZUMA-1) | [GSE290722](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE290722) | — |

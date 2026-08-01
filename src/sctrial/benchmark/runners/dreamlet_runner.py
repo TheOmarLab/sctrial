@@ -10,14 +10,23 @@ Requires: BiocManager::install("dreamlet") in R.
 from __future__ import annotations
 
 import logging
-import subprocess
 import tempfile
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
+from . import _r_session
+
 logger = logging.getLogger(__name__)
+
+# Loaded once per worker process when the session is first created.
+_DREAMLET_INIT_R = """\
+suppressPackageStartupMessages({
+  library(dreamlet)
+  library(edgeR)
+})
+"""
 
 _R_SCRIPT_TWO_ARM = """\
 suppressPackageStartupMessages({{
@@ -31,9 +40,16 @@ meta   <- read.csv("{meta_csv}", row.names=1, stringsAsFactors=TRUE)
 meta$arm   <- factor(meta$arm, levels=c("{control}", "{treated}"))
 meta$visit <- factor(meta$visit, levels=c("{pre}", "{post}"))
 
+# NORMALISATION-SCOPE CONTRACT. lib.size is the FULL-TRANSCRIPTOME total supplied
+# by the caller, not colSums of the tested panel. With a panel denominator a
+# coordinated signal moves the reference every null gene is measured against, and
+# each null gene acquires an offsetting apparent effect. Roughly two thirds of the
+# "empirical-Bayes inflation" previously reported for dreamlet is that artifact.
+# keep.lib.sizes=TRUE prevents filterByExpr from recomputing it from the panel.
 y <- DGEList(counts=t(counts))
+y$samples$lib.size <- meta$lib_size
 keep <- filterByExpr(y, min.count=1)
-y <- y[keep, , keep.lib.sizes=FALSE]
+y <- y[keep, , keep.lib.sizes=TRUE]
 y <- calcNormFactors(y)
 
 # Two-arm: interaction + random intercept for participant
@@ -64,9 +80,16 @@ meta   <- read.csv("{meta_csv}", row.names=1, stringsAsFactors=TRUE)
 meta$visit       <- factor(meta$visit, levels=c("{pre}", "{post}"))
 meta$participant <- factor(meta$participant)
 
+# NORMALISATION-SCOPE CONTRACT. lib.size is the FULL-TRANSCRIPTOME total supplied
+# by the caller, not colSums of the tested panel. With a panel denominator a
+# coordinated signal moves the reference every null gene is measured against, and
+# each null gene acquires an offsetting apparent effect. Roughly two thirds of the
+# "empirical-Bayes inflation" previously reported for dreamlet is that artifact.
+# keep.lib.sizes=TRUE prevents filterByExpr from recomputing it from the panel.
 y <- DGEList(counts=t(counts))
+y$samples$lib.size <- meta$lib_size
 keep <- filterByExpr(y, min.count=1)
-y <- y[keep, , keep.lib.sizes=FALSE]
+y <- y[keep, , keep.lib.sizes=TRUE]
 y <- calcNormFactors(y)
 
 # Single-arm: visit effect + random intercept for participant
@@ -85,6 +108,15 @@ res <- topTable(fitmm, coef=coef_name, number=Inf, sort.by="none",
 write.csv(res, "{output_csv}")
 """
 
+# limma/voom/dreamlet/edgeR report log2 fold-changes; the simulator injects the
+# effect on the NATURAL log scale (simulator.py: log_mu += effect) and NEBULA,
+# sctrial_did and wilcoxon_paired all report natural-log betas. Harvesting logFC
+# unconverted put log2 values into the same `estimated_beta` column as natural-log
+# truth, inflating every dreamlet effect by 1/ln2 = 1.4427 and manufacturing the
+# "substantial effect-size bias" finding: measured dreamlet signal-gene beta was
+# 0.7157 vs 0.5/ln2 = 0.7213, while every natural-log method sat at 0.498-0.504.
+_LN2 = float(np.log(2.0))  # log2 -> natural log
+
 
 def run(
     pseudobulk: pd.DataFrame,
@@ -96,6 +128,7 @@ def run(
     control_label: str = "Control",
     visits: tuple[str, str] = ("Pre", "Post"),
     design_type: str = "two_arm",
+    lib_size=None,
 ) -> dict[str, dict]:
     """Run dreamlet repeated-measures pseudobulk analysis."""
     with tempfile.TemporaryDirectory() as _tmpdir:
@@ -111,6 +144,15 @@ def run(
 
         meta_df = pseudobulk[[participant_col, arm_col, visit_col]].copy()
         meta_df.columns = ["participant", "arm", "visit"]
+        # Full-transcriptome library size. Required: without it the model
+        # normalises against the tested panel, whose total moves with the
+        # signal. See sctrial.benchmark.contracts.
+        if lib_size is None:
+            raise ValueError(
+                "an explicit full-transcriptome lib_size is required; a panel-derived "
+                "library size makes the normalisation reference move with the signal"
+            )
+        meta_df["lib_size"] = np.asarray(lib_size, dtype=float)
         meta_df.index = sample_ids
         meta_csv = td / "meta.csv"
         meta_df.to_csv(meta_csv)
@@ -132,13 +174,8 @@ def run(
         script_file = td / "run_dreamlet.R"
         script_file.write_text(script)
         try:
-            proc = subprocess.run(
-                ["Rscript", str(script_file)],
-                capture_output=True, text=True, timeout=600,
-            )
-            if proc.returncode != 0:
-                logger.warning("dreamlet R error: %s", proc.stderr[-500:])
-                return {g: _fail_result("numerical") for g in gene_cols}
+            session = _r_session.get_session("dreamlet", _DREAMLET_INIT_R)
+            session.run(str(script_file), timeout=1800)
             res = pd.read_csv(output_csv, index_col=0)
         except Exception as exc:
             logger.warning("dreamlet failed: %s", exc)
@@ -149,10 +186,10 @@ def run(
         if gene in res.index:
             row = res.loc[gene]
             out[gene] = {
-                "beta": float(row.get("logFC", np.nan)),
+                "beta": float(row.get("logFC", np.nan)) * _LN2,
                 "pvalue": float(row.get("P.Value", np.nan)),
-                "ci_lo": float(row.get("CI.L", np.nan)),
-                "ci_hi": float(row.get("CI.R", np.nan)),
+                "ci_lo": float(row.get("CI.L", np.nan)) * _LN2,
+                "ci_hi": float(row.get("CI.R", np.nan)) * _LN2,
                 "converged": True,
                 "failure_mode": None,
             }

@@ -1,5 +1,5 @@
 """
-Supplementary Figure 3 — Model Diagnostics and Assumption Checks.
+Supplementary Figure 4 — Model Diagnostics and Assumption Checks.
 =================================================================
 
 Validate that the OLS interaction (DiD) model assumptions hold across
@@ -7,18 +7,17 @@ all datasets with paired two-arm pre/post data.
 
 Panels:
   A  Q-Q plots of model residuals (faceted, one per dataset).
-  B  Residual vs fitted values (multi-dataset overlay).
+  B  Residual vs fitted values (all datasets overlaid, single panel).
   C  Influence diagnostics: Cook's distance per dataset.
   D  Baseline diagnostics: arm means (two-arm) / pre-post means (single-arm).
   E  Signal enrichment: observed |effect| vs permutation null quantiles.
-  F  Full assumption diagnostics: normality + heteroscedasticity (merged 1×2).
+  F  Full assumption diagnostics: normality + heteroscedasticity (merged 2×1).
   G  Funnel plot: model effect vs standard error.
   H  Observed rejection rate vs nominal alpha (signal excess over null).
-  I  Pseudoreplication diagnostics: cell-level vs participant-level
-     inference comparison across all 5 datasets (β scatter, −log10(p),
+  I  Runtime scaling across datasets (Cleveland dot plot).
+  J  Pseudoreplication diagnostics: cell-level vs participant-level
+     inference comparison across all datasets (β scatter, −log10(p),
      SE bars).
-  J  Runtime scaling across datasets (Cleveland dot plot; moved from
-     Figure 3 panel C).
 
 Non-overlap guardrail: no sensitivity analysis (→ SF4), no cross-dataset
 biological concordance (→ SF5), no heterogeneity (→ SF6).
@@ -47,12 +46,13 @@ from .._shared import (
     get_cart,
     get_sade_feldman,
     get_stephenson,
+    get_tnbc_zhang,
     get_vaccine,
     harmonize_response,
     save_panel,
 )
 
-FIGURE_NAME = "SuppFig3_model_diagnostics"
+FIGURE_NAME = "SuppFig4_model_diagnostics"
 
 _TEST_FEATURES = [
     "CD8A", "CD4", "PDCD1", "HAVCR2", "LAG3", "CTLA4",
@@ -61,6 +61,19 @@ _TEST_FEATURES = [
 ]
 
 _DATASET_CFG = {
+    "TNBC": {
+        # Two-arm DiD: anti-PDL1+Chemo vs Chemo, Pre vs Post (paired).
+        "design": "two_arm",
+        "loader": lambda: get_tnbc_zhang(),
+        "harmonize": False,
+        "layer": "log1p_norm",
+        "participant_col": "participant_id",
+        "visit_col": "visit",
+        "arm_col": "arm",
+        "arm_treated": "anti-PDL1+Chemo",
+        "arm_control": "Chemo",
+        "visits": ("Pre", "Post"),
+    },
     "Melanoma": {
         # Two-arm DiD: Responder vs Non-responder, Pre vs Post (paired).
         "design": "two_arm",
@@ -95,8 +108,11 @@ _DATASET_CFG = {
         "layer": "log1p_norm",
         "participant_col": "participant_id",
         "visit_col": "visit",
-        "arm_col": "response",
-        "arm_filter": "CAR-T",
+        # Single-arm: every patient received CAR-T, so there is no arm to
+        # filter on. (response now holds LtR/R/NR/Unknown from the loader, so the
+        # old arm_filter="CAR-T" selected zero cells.)
+        "arm_col": None,
+        "arm_filter": None,
         "visits": ("Pre", "Post"),
     },
     "COVID-19": {
@@ -126,7 +142,7 @@ _DATASET_CFG = {
 }
 
 _DS_PALETTE = dict(
-    zip(_DATASET_CFG.keys(), ["#1b9e77", "#d95f02", "#7570b3", "#e7298a", "#66a61e"])
+    zip(_DATASET_CFG.keys(), ["#996633", "#1b9e77", "#d95f02", "#7570b3", "#e7298a", "#66a61e"])
 )
 
 
@@ -246,12 +262,7 @@ def _ols_interaction(y: np.ndarray, post: np.ndarray, treated: np.ndarray | None
 
 
 def _fit_dataset(name: str, adata, cfg: dict) -> dict | None:
-    """Run OLS for each feature and return effect + residual tables.
-
-    Supports two designs via cfg["design"]:
-      "two_arm"           — Y ~ 1 + post + treated + post:treated  (DiD)
-      "single_arm_paired" — Y ~ 1 + post  (within-arm pre/post)
-    """
+    """Run OLS for each feature and return effect + residual tables."""
     design = cfg.get("design", "two_arm")
     features = [f for f in _TEST_FEATURES if f in adata.var_names]
     if len(features) < 4:
@@ -263,16 +274,14 @@ def _fit_dataset(name: str, adata, cfg: dict) -> dict | None:
 
     pid_col = cfg["participant_col"]
     visit_col = cfg["visit_col"]
-    arm_col = cfg.get("arm_col")  # None for single-arm without arm column
+    arm_col = cfg.get("arm_col")
     pre_v, post_v = cfg["visits"]
 
-    # Restrict to requested visits.
     pv = pv[pv[visit_col].isin([pre_v, post_v])].copy()
     if pv.empty:
         return None
 
     if design == "two_arm":
-        # Two-arm DiD: filter to the two arms.
         pv = pv[
             pv[arm_col].isin([cfg["arm_treated"], cfg["arm_control"]])
         ].copy()
@@ -294,7 +303,6 @@ def _fit_dataset(name: str, adata, cfg: dict) -> dict | None:
             return None
         treated = (pv[arm_col].values == cfg["arm_treated"]).astype(float)
     else:
-        # Single-arm: no arm covariate.
         n_per_group = int(pv[pid_col].nunique())
         if n_per_group < 2:
             return None
@@ -336,7 +344,6 @@ def _fit_dataset(name: str, adata, cfg: dict) -> dict | None:
     effect_df = pd.DataFrame(effect_rows)
     resid_df = pd.concat(resid_rows, axis=0, ignore_index=True)
 
-    # Permutation null.
     null_abs = _permutation_null(pv, features, cfg, n_perm=200)
 
     design_label = "DiD" if design == "two_arm" else "pre–post"
@@ -360,11 +367,7 @@ def _permutation_null(
     cfg: dict,
     n_perm: int = 200,
 ) -> np.ndarray:
-    """Generate null distribution of |beta| by permuting labels.
-
-    Two-arm: permute arm assignment across participants.
-    Single-arm: permute visit assignment across participants.
-    """
+    """Generate null distribution of |beta| by permuting labels."""
     design = cfg.get("design", "two_arm")
     pid_col = cfg["participant_col"]
     visit_col = cfg["visit_col"]
@@ -397,7 +400,6 @@ def _permutation_null(
                 if fit is not None and np.isfinite(fit["beta"]):
                     out.append(abs(fit["beta"]))
     else:
-        # Single-arm: permute visit labels WITHIN each participant.
         pids = pv[pid_col].values
         unique_pids = np.unique(pids)
         for _ in range(n_perm):
@@ -423,7 +425,6 @@ def _load_results() -> dict[str, dict]:
             adata = cfg["loader"]()
             if cfg.get("harmonize", False):
                 adata = harmonize_response(adata)
-            # Create log1p_cpm layer if needed but missing.
             layer = cfg["layer"]
             if layer == "log1p_cpm" and "log1p_cpm" not in adata.layers:
                 if "counts" in adata.layers:
@@ -441,9 +442,7 @@ def _load_results() -> dict[str, dict]:
                     f"n/group={res['n_per_group']}"
                 )
             else:
-                print(
-                    f"  {name}: skipped (insufficient paired data)"
-                )
+                print(f"  {name}: skipped (insufficient paired data)")
         except Exception as exc:
             print(f"  {name}: failed ({exc})")
     return out
@@ -480,7 +479,7 @@ def _panel_qq(fig, axes, results: dict[str, dict]):
 
 
 def _panel_resid_fitted(fig_faceted, results: dict[str, dict]):
-    """B: Residual vs fitted value scatter, faceted per dataset."""
+    """B (faceted): Residual vs fitted value scatter, one subplot per dataset."""
     names = list(results.keys())
     n_ds = len(names)
     ncols = min(n_ds, 3)
@@ -501,10 +500,28 @@ def _panel_resid_fitted(fig_faceted, results: dict[str, dict]):
         ax.set_ylabel("Residual", fontsize=8)
         ax.set_title(name, fontsize=10, fontweight="bold")
         despine(ax)
-    # Hide unused axes
     for idx in range(n_ds, nrows * ncols):
         r, c = divmod(idx, ncols)
         axes[r][c].set_visible(False)
+
+
+def _panel_resid_fitted_combined(ax, results: dict[str, dict]):
+    """B (combined): All datasets overlaid in a single scatter plot."""
+    for name, res in results.items():
+        df = res["residuals"]
+        ax.scatter(
+            df["fitted"], df["residual"],
+            s=10, alpha=0.3,
+            color=_DS_PALETTE.get(name, "grey"),
+            label=f"{name} ({res['design_label']})",
+            rasterized=True,
+        )
+    ax.axhline(0, color="black", lw=0.8, ls="--")
+    ax.set_xlabel("Fitted value")
+    ax.set_ylabel("Residual")
+    ax.set_title("Residual vs Fitted", fontweight="bold")
+    ax.legend(fontsize=7, frameon=True, markerscale=1.5)
+    despine(ax)
 
 
 def _panel_influence(ax, results: dict[str, dict]):
@@ -529,7 +546,6 @@ def _panel_influence(ax, results: dict[str, dict]):
         data=df, x="Dataset", y="Cook's D",
         ax=ax, color="black", size=2.0, alpha=0.25, jitter=0.2,
     )
-    # 4/n threshold per dataset + participant-level flagged rate annotation
     for i, name in enumerate(df["Dataset"].unique()):
         n = results[name]["effects"]["n_obs"].median()
         n_features = len(results[name]["features"])
@@ -539,7 +555,6 @@ def _panel_influence(ax, results: dict[str, dict]):
                 [i - 0.35, i + 0.35], [thr, thr],
                 color="red", lw=1.0, ls="--",
             )
-            # Count participants flagged in ≥1 feature (not pooled obs)
             resid_df = results[name]["residuals"]
             pid_col = results[name]["cfg"]["participant_col"]
             if pid_col in resid_df.columns:
@@ -556,7 +571,6 @@ def _panel_influence(ax, results: dict[str, dict]):
                     fontstyle="italic",
                 )
             else:
-                # Fallback: pooled observation count
                 ds_vals = df.loc[df["Dataset"] == name, "Cook's D"].values
                 n_flagged = int(np.sum(ds_vals > thr))
                 n_total = len(ds_vals)
@@ -572,15 +586,10 @@ def _panel_influence(ax, results: dict[str, dict]):
     despine(ax)
 
 
-def _panel_baseline_comparability(fig, axes, results: dict[str, dict]):
-    """D: Baseline mean comparability.
-
-    Two-arm datasets: scatter of (control pre-mean, treated pre-mean) per
-    feature.  Points near diagonal → arms have similar baseline expression.
-
-    Single-arm datasets: scatter of (Pre mean, Post mean) per feature to
-    show the magnitude/direction of change.
-    """
+def _panel_baseline_comparability(
+    fig, axes, results: dict[str, dict], *, composite: bool = False,
+):
+    """D: Baseline mean comparability."""
     names = list(results)
     for i, ax in enumerate(np.ravel(axes)):
         if i >= len(names):
@@ -613,9 +622,12 @@ def _panel_baseline_comparability(fig, axes, results: dict[str, dict]):
             )
             x_label = f"{cfg['arm_control']} mean"
             y_label = f"{cfg['arm_treated']} mean"
-            subtitle = f"{name} — baseline comparability"
+            subtitle = {
+                "TNBC": "TNBC — anti-PDL1+Chemo vs Chemo",
+                "Melanoma": "Melanoma — responder vs non-responder",
+                "COVID-19": "COVID-19 — severe vs mild",
+            }.get(name, f"{name} — baseline comparability")
         else:
-            # Single-arm: compare Pre vs Post means.
             pre_data = pv[pv[visit_col] == pre_v]
             post_data = pv[pv[visit_col] == post_v]
             if pre_data.empty or post_data.empty:
@@ -628,7 +640,7 @@ def _panel_baseline_comparability(fig, axes, results: dict[str, dict]):
             y_vals = post_data[features].mean()
             x_label = "Pre-treatment mean"
             y_label = "Post-treatment mean"
-            subtitle = f"{name} — pre vs post"
+            subtitle = f"{name}: pre vs post"
 
         ax.scatter(
             x_vals.values, y_vals.values,
@@ -636,43 +648,60 @@ def _panel_baseline_comparability(fig, axes, results: dict[str, dict]):
             color=_DS_PALETTE.get(name, "grey"),
             edgecolors="white", linewidth=0.5, zorder=3,
         )
+
+        # Fix the axes frame (with a margin) and draw the identity line BEFORE
+        # labelling. adjustText needs the final coordinate frame plus some empty
+        # margin to spread the dense near-origin cluster (several signatures share
+        # the (0, 0) point); doing this afterwards via set_aspect(adjustable=
+        # "datalim") re-cramped the labels it had just placed.
+        lo = float(min(x_vals.min(), y_vals.min()))
+        hi = float(max(x_vals.max(), y_vals.max()))
+        pad = (hi - lo) * 0.15 if hi > lo else 0.1
+        lo, hi = lo - pad, hi + pad
+        ax.set_xlim(lo, hi)
+        ax.set_ylim(lo, hi)
+        ax.set_aspect("equal", adjustable="box")
+        ax.plot([lo, hi], [lo, hi], ls="--", color="black",
+                lw=0.3 if composite else 0.9, zorder=1)
+
+        # adjustText 1.3.0: point repulsion is `force_static` (the old
+        # `force_points` is silently dropped, so labels never cleared the dense
+        # near-origin cluster). Explode overlaps apart first, then repel from both
+        # text and points, keep inside the axes, draw a leader for moved labels.
+        _lbl_bbox = dict(boxstyle="round,pad=0.05", fc="white",
+                         ec="none", alpha=0.6)
+        _fs = 3.0 if composite else 9
         texts = [
-            ax.text(cx, ty, feat, fontsize=7, fontweight="bold")
-            for feat, cx, ty in zip(
-                features, x_vals.values, y_vals.values
-            )
+            ax.text(cx, ty, feat, fontsize=_fs, fontweight="bold", bbox=_lbl_bbox)
+            for feat, cx, ty in zip(features, x_vals.values, y_vals.values)
         ]
         adjust_text(
             texts, ax=ax,
-            force_text=(2.0, 2.0), force_points=(2.0, 2.0),
-            expand=(1.5, 1.5),
-            arrowprops=dict(arrowstyle="-", color="gray", lw=0.5),
+            force_text=(1.8, 2.0), force_static=(1.6, 1.8),
+            force_explode=(1.8, 2.0), expand=(1.7, 2.0),
+            max_move=(40 if composite else 70),
+            ensure_inside_axes=True, min_arrow_len=(1 if composite else 2),
+            time_lim=10,
+            arrowprops=dict(arrowstyle="-",
+                            color="#bbbbbb" if composite else "gray",
+                            lw=0.25 if composite else 0.5),
         )
-
-        lo = min(x_vals.min(), y_vals.min()) * 0.9
-        hi = max(x_vals.max(), y_vals.max()) * 1.1
-        ax.plot([lo, hi], [lo, hi], ls="--", color="black", lw=0.9)
 
         r, _ = stats.pearsonr(x_vals.values, y_vals.values)
         ax.text(
             0.05, 0.92, f"r = {r:.3f}",
-            transform=ax.transAxes, fontsize=8,
+            transform=ax.transAxes, fontsize=9 if not composite else 8,
             bbox=dict(boxstyle="round,pad=0.3", fc="white", alpha=0.8),
         )
 
-        ax.set_xlabel(x_label, fontsize=8)
-        ax.set_ylabel(y_label, fontsize=8)
-        ax.set_title(subtitle, fontsize=10, fontweight="bold")
-        ax.set_aspect("equal", adjustable="datalim")
+        ax.set_xlabel(x_label, fontsize=9 if not composite else 8)
+        ax.set_ylabel(y_label, fontsize=9 if not composite else 8)
+        ax.set_title(subtitle, fontsize=4.0 if composite else 11, fontweight="bold")
         despine(ax)
 
 
 def _panel_signal_enrichment(ax, results: dict[str, dict]):
-    """E: Observed |effect| quantiles vs permutation null quantiles.
-
-    Points above the diagonal indicate features with effects larger than
-    expected under the null (signal enrichment), NOT type-I error calibration.
-    """
+    """E: Observed |effect| quantiles vs permutation null quantiles."""
     for name, res in results.items():
         label = f"{name} ({res['design_label']})"
         obs = np.sort(np.abs(res["effects"]["beta"].dropna().values))
@@ -697,14 +726,8 @@ def _panel_signal_enrichment(ax, results: dict[str, dict]):
     despine(ax)
 
 
-
 def _panel_normality_tests(ax, results: dict[str, dict]):
-    """F-left: Per-feature Shapiro-Wilk, summarised as median W per dataset.
-
-    Tests are run on each feature's residuals separately (not pooled across
-    features), since pooling residuals from different models violates the
-    independence assumption of the Shapiro-Wilk test.
-    """
+    """F-left: Per-feature Shapiro-Wilk, summarised as median W per dataset."""
     rows = []
     for name, res in results.items():
         rdf = res["residuals"]
@@ -737,14 +760,13 @@ def _panel_normality_tests(ax, results: dict[str, dict]):
     y = np.arange(len(df))
     colors = [_DS_PALETTE.get(n, "grey") for n in df["Dataset"]]
 
-    # Main: median Shapiro W statistic bars
     ax.barh(y, df["Median W"], color=colors, edgecolor="white",
             height=0.6, alpha=0.85)
     for i, (_, row) in enumerate(df.iterrows()):
         label = (f"med W={row['Median W']:.3f}, "
                  f"{row['Frac W>0.95']:.0%} pass "
                  f"({int(row['n_features'])} features)")
-        ax.text(row["Median W"] + 0.002, i, label, va="center",
+        ax.text(row["Median W"] + 0.002, i - 0.45, label, va="bottom",
                 fontsize=7, fontweight="bold")
 
     ax.set_yticks(y)
@@ -754,6 +776,7 @@ def _panel_normality_tests(ax, results: dict[str, dict]):
     ax.axvline(0.95, color="red", ls="--", lw=0.8, alpha=0.7,
                label="W=0.95 reference")
     ax.legend(fontsize=6, frameon=True)
+    ax.invert_yaxis()
     despine(ax)
 
 
@@ -769,7 +792,7 @@ def _panel_funnel(ax, results: dict[str, dict]):
             edgecolors="white", linewidth=0.5, label=label,
         )
     ax.axvline(0, color="black", lw=0.8, ls="--")
-    ax.invert_yaxis()  # convention: SE=0 at top
+    ax.invert_yaxis()
     ax.set_xlabel("Model effect (β)")
     ax.set_ylabel("Standard error")
     ax.set_title("Effect Size vs Standard Error (Funnel)", fontweight="bold")
@@ -785,13 +808,7 @@ def _panel_assumptions_merged(fig_merged, results: dict[str, dict]):
 
 
 def _panel_rejection_vs_alpha(ax, results: dict[str, dict]):
-    """H: Observed rejection rate vs nominal alpha.
-
-    For alphas in [0.01..0.20], compute the fraction of features where
-    |observed effect| > quantile(|null effects|, 1-alpha).  Above the
-    diagonal indicates more signal than expected under the null (not
-    type-I error calibration, since observed effects may contain true signal).
-    """
+    """H: Observed rejection rate vs nominal alpha."""
     alphas = np.arange(0.01, 0.205, 0.01)
     for name, res in results.items():
         label = f"{name} ({res['design_label']})"
@@ -817,16 +834,11 @@ def _panel_rejection_vs_alpha(ax, results: dict[str, dict]):
     despine(ax)
 
 
-# ── Heteroscedasticity helper (used by merged panel F) ─────────────
+# ── Heteroscedasticity helper ─────────────────────────────────────
 
 
 def _panel_heteroscedasticity(ax, results: dict[str, dict]):
-    """F-right: Per-feature Breusch-Pagan, summarised per dataset.
-
-    Tests are run on each feature's residuals separately (not pooled),
-    since pooling residuals from different models violates i.i.d. assumptions.
-    Reports median BP statistic and fraction with p < 0.05.
-    """
+    """F-right: Per-feature Breusch-Pagan, summarised per dataset."""
     rows = []
     for name, res in results.items():
         rdf = res["residuals"]
@@ -880,7 +892,7 @@ def _panel_heteroscedasticity(ax, results: dict[str, dict]):
         label = (f"med BP={row['Median BP']:.2f}, "
                  f"{row['Frac p<0.05']:.0%} sig "
                  f"({int(row['n_features'])} features)")
-        ax.text(row["Median BP"] + 0.05, i, label, va="center",
+        ax.text(row["Median BP"] + 0.05, i - 0.45, label, va="bottom",
                 fontsize=7, fontweight="bold")
 
     ax.set_yticks(y)
@@ -890,22 +902,15 @@ def _panel_heteroscedasticity(ax, results: dict[str, dict]):
     ax.axvline(3.84, color="red", ls="--", lw=0.8, alpha=0.7,
                label=r"$\chi^2$(1) = 3.84 reference")
     ax.legend(fontsize=6, frameon=True)
+    ax.invert_yaxis()
     despine(ax)
 
 
-# ── Generate ──────────────────────────────────────────────────────
-
-
-# ── Pseudoreplication panels (I) ──────────────────────────────────
+# ── Pseudoreplication panels ──────────────────────────────────────
 
 
 def _naive_cell_prepost(expr_df, features, visit_col, visits):
-    """Naive cell-level pre-vs-post: two-sample t-test ignoring participant.
-
-    This intentionally ignores participant structure — every cell is treated
-    as independent, which is exactly the pseudoreplication fallacy.
-    Returns DataFrame with columns (feature, beta, pval, se).
-    """
+    """Naive cell-level pre-vs-post: two-sample t-test ignoring participant."""
     visit_pre, visit_post = visits
     pre = expr_df[expr_df[visit_col] == visit_pre]
     post = expr_df[expr_df[visit_col] == visit_post]
@@ -918,8 +923,6 @@ def _naive_cell_prepost(expr_df, features, visit_col, visits):
                          "pval": np.nan, "se": np.nan})
             continue
         beta = x_post.mean() - x_pre.mean()
-        # Welch's t-test (unequal variance) for consistency:
-        # SE uses separate variances, df uses Welch-Satterthwaite.
         t_res = stats.ttest_ind(x_post, x_pre, equal_var=False)
         se = abs(beta / t_res.statistic) if t_res.statistic != 0 else 0.0
         pval = float(t_res.pvalue)
@@ -928,11 +931,7 @@ def _naive_cell_prepost(expr_df, features, visit_col, visits):
 
 
 def _participant_paired_delta(expr_df, features, pid_col, visit_col, visits):
-    """Participant-level paired Δ: per-participant pre-post change.
-
-    Proper inference: Δ_i = post_i − pre_i, then one-sample t-test on Δ_i.
-    Returns DataFrame with columns (feature, beta, pval, se).
-    """
+    """Participant-level paired Δ: per-participant pre-post change."""
     visit_pre, visit_post = visits
     pre = (expr_df[expr_df[visit_col] == visit_pre]
            .set_index(pid_col)[features])
@@ -943,7 +942,7 @@ def _participant_paired_delta(expr_df, features, pid_col, visit_col, visits):
         return pd.DataFrame(
             [{"feature": f, "beta": np.nan, "pval": np.nan, "se": np.nan}
              for f in features])
-    delta = post.loc[shared] - pre.loc[shared]  # (n_participants, n_features)
+    delta = post.loc[shared] - pre.loc[shared]
     rows = []
     for feat in features:
         d = delta[feat].dropna().values
@@ -957,10 +956,8 @@ def _participant_paired_delta(expr_df, features, pid_col, visit_col, visits):
             t_stat = mean_d / se_d
             pval = 2 * (1 - stats.t.cdf(abs(t_stat), df=len(d) - 1))
         elif mean_d == 0:
-            # No variance, no effect — undefined test
             pval = np.nan
         else:
-            # No variance but nonzero mean — infinitely significant
             pval = 0.0
         rows.append({"feature": feat, "beta": mean_d, "pval": pval,
                      "se": se_d})
@@ -970,13 +967,7 @@ def _participant_paired_delta(expr_df, features, pid_col, visit_col, visits):
 def _pseudorep_data_for_dataset(
     name: str, cfg: dict,
 ) -> dict | None:
-    """Run cell-level and participant-level inference for one dataset.
-
-    Two-arm designs use DiD (beta_DiD).
-    Single-arm designs use pre-vs-post OLS: y ~ time + participant_FE.
-    Both return normalised columns (feature, beta, pval, se) so that
-    cell vs participant comparisons are on equal footing.
-    """
+    """Run cell-level and participant-level inference for one dataset."""
     try:
         adata = cfg["loader"]()
         if cfg.get("harmonize", False):
@@ -1002,7 +993,6 @@ def _pseudorep_data_for_dataset(
         design_type = cfg.get("design", "two_arm")
 
         if design_type == "two_arm":
-            # ── Two-arm: use did_table for DiD interaction ──
             arm_col_val = cfg.get("arm_col", "response")
             design = TrialDesign(
                 participant_col=cfg["participant_col"],
@@ -1022,13 +1012,11 @@ def _pseudorep_data_for_dataset(
             df_part = did_table(
                 adata, aggregate="participant_visit", **common_kw,
             )
-            # Rename DiD columns to normalised names
             for df in [df_cell, df_part]:
                 df.rename(columns={
                     "beta_DiD": "beta", "p_DiD": "pval", "se_DiD": "se",
                 }, inplace=True)
         else:
-            # ── Single-arm: naive cell pre/post vs participant paired Δ ──
             arm_filter = cfg.get("arm_filter")
             arm_col_val = cfg.get("arm_col")
             if arm_filter and arm_col_val:
@@ -1038,7 +1026,6 @@ def _pseudorep_data_for_dataset(
             visit_col = cfg["visit_col"]
             visits = cfg["visits"]
 
-            # Build cell-level expression DataFrame
             mat = _matrix_from_layer(adata, features, layer)
             expr_cell = pd.DataFrame(
                 mat, columns=features, index=adata.obs_names,
@@ -1046,12 +1033,10 @@ def _pseudorep_data_for_dataset(
             expr_cell[pid_col] = adata.obs[pid_col].values
             expr_cell[visit_col] = adata.obs[visit_col].values
 
-            # Cell-level: naive two-sample pre-vs-post (pseudoreplication)
             df_cell = _naive_cell_prepost(
                 expr_cell, features, visit_col, visits,
             )
 
-            # Participant-level: pseudobulk means → paired Δ with t-test
             expr_part = (
                 expr_cell.groupby([pid_col, visit_col], observed=True)[features]
                 .mean()
@@ -1073,15 +1058,10 @@ def _pseudorep_data_for_dataset(
 
 
 def _panel_pseudoreplication_single(ds_name, res, design_type="two_arm"):
-    """One-dataset pseudoreplication panel: 1×3 (β scatter, −log10(p), SE).
-
-    Returns figure or None if data is invalid.
-    design_type controls axis labels: "two_arm" → DiD, else → Δ (pre-post).
-    """
+    """One-dataset pseudoreplication panel: 1×3 (β scatter, −log10(p), SE)."""
     df_cell = res["df_cell"]
     df_part = res["df_part"]
 
-    # Drop features where either level has NaN
     merged = df_cell[["feature", "beta", "pval", "se"]].merge(
         df_part[["feature", "beta", "pval", "se"]],
         on="feature", suffixes=("_cell", "_part"),
@@ -1093,7 +1073,6 @@ def _panel_pseudoreplication_single(ds_name, res, design_type="two_arm"):
     if len(merged) < 3:
         return None
 
-    # Axis labels depend on design
     if design_type == "two_arm":
         beta_label = r"$\beta_{\mathrm{DiD}}$"
         method_tag = "DiD"
@@ -1104,7 +1083,6 @@ def _panel_pseudoreplication_single(ds_name, res, design_type="two_arm"):
     color = _DS_PALETTE.get(ds_name, "#555555")
     fig, axes = plt.subplots(1, 3, figsize=(16, 5.0))
 
-    # Col 0: β scatter (cell vs participant) with adjustText
     ax = axes[0]
     x = merged["beta_cell"].values
     y = merged["beta_part"].values
@@ -1142,7 +1120,6 @@ def _panel_pseudoreplication_single(ds_name, res, design_type="two_arm"):
     ax.set_title("Effect Size Correlation", fontsize=10, fontweight="bold")
     despine(ax)
 
-    # Col 1: −log10(p) bars — use log scale so both levels are visible
     ax = axes[1]
     merged["nlog10_cell"] = -np.log10(
         merged["pval_cell"].clip(lower=1e-300))
@@ -1151,11 +1128,8 @@ def _panel_pseudoreplication_single(ds_name, res, design_type="two_arm"):
     m_sorted = merged.sort_values("nlog10_part", ascending=True)
     y_pos = np.arange(len(m_sorted))
     bar_h = 0.35
-    # Use log1p transform: log10(1 + nlog10p) — compresses large values,
-    # keeps small values visible
     nlog_cell_vals = m_sorted["nlog10_cell"].values
     nlog_part_vals = m_sorted["nlog10_part"].values
-    # Check if scale ratio is extreme (>20x) — use log x-axis
     max_cell = np.nanmax(nlog_cell_vals) if len(nlog_cell_vals) else 1
     max_part = np.nanmax(nlog_part_vals) if len(nlog_part_vals) else 1
     use_log_x = (max_cell / max(max_part, 0.01) > 20) or \
@@ -1167,12 +1141,10 @@ def _panel_pseudoreplication_single(ds_name, res, design_type="two_arm"):
     ax.barh(y_pos + bar_h / 2, nlog_part_vals,
             height=bar_h, color=color, alpha=0.9,
             label="Participant-level", edgecolor="none")
-    # α = 0.05 threshold
     thresh = -np.log10(0.05)
     ax.axvline(thresh, ls="--", color="#999999", lw=0.8)
     if use_log_x:
         ax.set_xscale("symlog", linthresh=1.0)
-        # Nice tick placement for symlog
         ax.set_xlim(left=0)
     ax.set_yticks(y_pos)
     ax.set_yticklabels(m_sorted["feature"].values, fontsize=6.5)
@@ -1182,7 +1154,6 @@ def _panel_pseudoreplication_single(ds_name, res, design_type="two_arm"):
     ax.legend(fontsize=7, loc="lower right", frameon=True, framealpha=0.9)
     despine(ax)
 
-    # Col 2: SE bars — use log x-axis when scale ratio is extreme
     ax = axes[2]
     m_sorted2 = merged.sort_values("se_part", ascending=True)
     y_pos2 = np.arange(len(m_sorted2))
@@ -1217,6 +1188,10 @@ def _panel_pseudoreplication_single(ds_name, res, design_type="two_arm"):
     return fig
 
 
+
+
+
+
 def generate():
     """Create and save all Supplementary Figure 3 panels."""
     print("Supplementary Figure 3: Model Diagnostics and Assumption Checks")
@@ -1241,16 +1216,22 @@ def generate():
     fig.tight_layout()
     save_panel(fig, "panel_A", FIGURE_NAME, SUPP_OUTPUT)
 
-    # B: Residual vs fitted (faceted per dataset)
+    # B: Residual vs fitted (combined overlay)
+    fig, ax = plt.subplots(figsize=(8, 6))
+    _panel_resid_fitted_combined(ax, results)
+    fig.tight_layout()
+    save_panel(fig, "panel_B", FIGURE_NAME, SUPP_OUTPUT)
+
+    # B (faceted version)
     ncols_b = min(n_ds, 3)
     nrows_b = max(1, (n_ds + ncols_b - 1) // ncols_b)
     fig = plt.figure(figsize=(5.2 * ncols_b, 4.8 * nrows_b))
     _panel_resid_fitted(fig, results)
     fig.suptitle("Residual vs Fitted", fontweight="bold", y=1.02)
     fig.tight_layout()
-    save_panel(fig, "panel_B", FIGURE_NAME, SUPP_OUTPUT)
+    save_panel(fig, "panel_B_faceted", FIGURE_NAME, SUPP_OUTPUT)
 
-    # C: Influence diagnostics
+    # C: Influence diagnostics (Cook's distance)
     fig, ax = plt.subplots(figsize=(7.4, 5.8))
     _panel_influence(ax, results)
     fig.tight_layout()
@@ -1296,19 +1277,20 @@ def generate():
     fig.tight_layout()
     save_panel(fig, "panel_H", FIGURE_NAME, SUPP_OUTPUT)
 
-    # I: Pseudoreplication — cell-level vs participant-level (separate per dataset)
+    # I: Pseudoreplication — cell-level vs participant-level
     print("  Computing pseudoreplication comparisons ...")
     pseudo_idx = 0
+    all_pseudo: dict[str, dict] = {}
     for ds_name, ds_cfg in _DATASET_CFG.items():
         print(f"    {ds_name} ...")
         pr = _pseudorep_data_for_dataset(ds_name, ds_cfg)
         if pr is None:
             print(f"    {ds_name}: skipped (data unavailable)")
             continue
-        # Skip datasets where cell-level inference is degenerate (all NaN)
         if pr["df_cell"]["beta"].isna().all():
             print(f"    {ds_name}: skipped (cell-level stats degenerate)")
             continue
+        all_pseudo[ds_name] = pr
         ds_design = ds_cfg.get("design", "two_arm")
         fig_pr = _panel_pseudoreplication_single(ds_name, pr, ds_design)
         if fig_pr is not None:
@@ -1320,27 +1302,622 @@ def generate():
     if pseudo_idx == 0:
         print("  Pseudoreplication: no datasets had valid cell+participant stats.")
 
-    # J: Runtime scaling (Cleveland dot plot, moved from Figure 3)
+    # I: Runtime scaling (Cleveland dot plot, from figure4_robustness_benchmarking)
     try:
         from ..main.figure3_robustness_benchmarking import (
-            _panel_c as _fig3_panel_c,
+            _panel_c as _fig4_panel_c,
         )
         from ..main.figure3_robustness_benchmarking import (
             _prepare_scalability_data,
         )
         scale_data = _prepare_scalability_data()
         fig_rt, ax_rt = plt.subplots(figsize=(8, 5.5))
-        _fig3_panel_c(ax_rt, {"scale_data": scale_data})
+        _fig4_panel_c(ax_rt, {"scale_data": scale_data})
         fig_rt.tight_layout()
-        save_panel(fig_rt, "panel_J_runtime_scaling", FIGURE_NAME, SUPP_OUTPUT)
+        save_panel(fig_rt, "panel_I_runtime_scaling", FIGURE_NAME, SUPP_OUTPUT)
     except Exception as exc:
-        print(f"  Warning: Could not generate runtime panel J: {exc}")
+        print(f"  Warning: Could not generate runtime panel I: {exc}")
 
-    # Cleanup
+    # ==================================================================
+    # Composite artboard  (180 mm × 215 mm)
+    # ==================================================================
+    print("  Building composite figure (all panels A–J) ...")
+
+    _SMALL_RC = {
+        "font.size": 4.5,
+        "axes.titlesize": 5,
+        "axes.labelsize": 4.5,
+        "xtick.labelsize": 4,
+        "ytick.labelsize": 4,
+        "legend.fontsize": 2.5,
+        "legend.title_fontsize": 2.5,
+    }
+    _MAX_FONT = 5.5
+
+    def _cap_fontsize(fig_obj, maximum):
+        for ax_i in fig_obj.get_axes():
+            for txt in ([ax_i.title, ax_i.xaxis.label, ax_i.yaxis.label]
+                        + ax_i.get_xticklabels() + ax_i.get_yticklabels()
+                        + ax_i.texts):
+                if txt.get_fontsize() > maximum:
+                    txt.set_fontsize(maximum)
+            leg = ax_i.get_legend()
+            if leg:
+                for txt in leg.get_texts():
+                    if txt.get_fontsize() > maximum:
+                        txt.set_fontsize(maximum)
+                t = leg.get_title()
+                if t and t.get_fontsize() > maximum:
+                    t.set_fontsize(maximum)
+
+    def _draw_pseudorep_compact(axes_3, ds_name, pr_data, design_type):
+        """Draw compact 1×3 pseudoreplication on pre-created axes."""
+        df_c_pr = pr_data["df_cell"]
+        df_p_pr = pr_data["df_part"]
+        merged = df_c_pr[["feature", "beta", "pval", "se"]].merge(
+            df_p_pr[["feature", "beta", "pval", "se"]],
+            on="feature", suffixes=("_cell", "_part"),
+        )
+        merged = merged.dropna(
+            subset=["beta_cell", "beta_part", "pval_cell",
+                     "pval_part", "se_cell", "se_part"],
+        )
+        if len(merged) < 3:
+            for _ax in axes_3:
+                _ax.text(0.5, 0.5, "Too few features",
+                         ha="center", va="center", transform=_ax.transAxes)
+            return
+
+        color = _DS_PALETTE.get(ds_name, "#555")
+        beta_lbl = (r"$\beta_{\mathrm{DiD}}$" if design_type == "two_arm"
+                    else r"$\Delta$")
+
+        ax0 = axes_3[0]
+        x_b = merged["beta_cell"].values
+        y_b = merged["beta_part"].values
+        span = max(np.ptp(x_b), np.ptp(y_b)) if len(x_b) > 1 else 1.0
+        margin = span * 0.15 if span > 0 else 0.5
+        lo_b = min(x_b.min(), y_b.min()) - margin
+        hi_b = max(x_b.max(), y_b.max()) + margin
+        ax0.plot([lo_b, hi_b], [lo_b, hi_b], ls="--", color="#999",
+                 lw=0.5, zorder=1)
+        ax0.scatter(x_b, y_b, s=12, color=color, edgecolor="white",
+                    linewidth=0.3, zorder=3)
+        if len(x_b) >= 3:
+            r_val, _ = stats.pearsonr(x_b, y_b)
+            ax0.text(
+                0.05, 0.95, f"r={r_val:.2f}", transform=ax0.transAxes,
+                fontsize=4.5, va="top",
+                bbox=dict(boxstyle="round,pad=0.2", fc="white",
+                          ec="none", alpha=0.8),
+            )
+        ax0.set_xlabel(f"Cell {beta_lbl}")
+        ax0.set_ylabel(f"Part. {beta_lbl}")
+        ax0.set_title(ds_name, fontweight="bold")
+        despine(ax0)
+
+        ax1 = axes_3[1]
+        merged["nlp_cell"] = -np.log10(merged["pval_cell"].clip(1e-300))
+        merged["nlp_part"] = -np.log10(merged["pval_part"].clip(1e-300))
+        ms = merged.sort_values("nlp_part", ascending=True)
+        yp = np.arange(len(ms))
+        bh = 0.30
+        ax1.barh(yp - bh / 2, ms["nlp_cell"].values,
+                 height=bh, color=color, alpha=0.5,
+                 label="Cell", edgecolor="none")
+        ax1.barh(yp + bh / 2, ms["nlp_part"].values,
+                 height=bh, color=color, alpha=0.9,
+                 label="Part.", edgecolor="none")
+        ax1.axvline(-np.log10(0.05), ls="--", color="#999", lw=0.4)
+        mc = np.nanmax(ms["nlp_cell"].values) if len(ms) else 1
+        mp = np.nanmax(ms["nlp_part"].values) if len(ms) else 1
+        if mc / max(mp, 0.01) > 20 or mp / max(mc, 0.01) > 20:
+            ax1.set_xscale("symlog", linthresh=1.0)
+            ax1.set_xlim(left=0)
+        ax1.set_yticks(yp)
+        ax1.set_yticklabels(ms["feature"].values, fontsize=2.5)
+        ax1.set_xlabel(r"$-\log_{10}(p)$")
+        ax1.set_title(r"$-\log_{10}(p)$", fontweight="bold")
+        ax1.legend(fontsize=2.5, loc="lower right", frameon=True)
+        despine(ax1)
+
+        ax2 = axes_3[2]
+        ms2 = merged.sort_values("se_part", ascending=True)
+        yp2 = np.arange(len(ms2))
+        se_c_vals = ms2["se_cell"].values
+        se_p_vals = ms2["se_part"].values
+        ax2.barh(yp2 - bh / 2, se_c_vals,
+                 height=bh, color=color, alpha=0.5,
+                 label="Cell", edgecolor="none")
+        ax2.barh(yp2 + bh / 2, se_p_vals,
+                 height=bh, color=color, alpha=0.9,
+                 label="Part.", edgecolor="none")
+        msc = np.nanmax(se_c_vals) if len(se_c_vals) else 1
+        msp = np.nanmax(se_p_vals) if len(se_p_vals) else 1
+        if msp / max(msc, 1e-10) > 20 or msc / max(msp, 1e-10) > 20:
+            ax2.set_xscale("symlog", linthresh=0.001)
+            ax2.set_xlim(left=0)
+        ax2.set_yticks(yp2)
+        ax2.set_yticklabels(ms2["feature"].values, fontsize=2.5)
+        ax2.set_xlabel("SE")
+        ax2.set_title("SE", fontweight="bold")
+        ax2.legend(fontsize=2.5, loc="lower right", frameon=True)
+        despine(ax2)
+
+    _prev_rc = {k: plt.rcParams[k] for k in _SMALL_RC}
+    plt.rcParams.update(_SMALL_RC)
+
+    _mm = 1.0 / 25.4
+    fig_c = plt.figure(figsize=(180 * _mm, 215 * _mm))
+
+    outer = fig_c.add_gridspec(
+        15, 1,
+        height_ratios=[
+            0.34,   # row  0: A (Q-Q)
+            0.34,   # spacer
+            0.40,   # row  2: B | C
+            0.34,   # spacer
+            0.58,   # row  4: D (baseline, 1×n_ds, taller)
+            0.36,   # spacer
+            0.50,   # row  6: E | F1 | F2
+            0.36,   # spacer
+            0.42,   # row  8: G | H | I
+            0.40,   # spacer
+            0.52,   # row 10: J row 1
+            0.36,   # spacer
+            0.52,   # row 12: J row 2
+            0.36,   # spacer
+            0.52,   # row 14: J row 3
+        ],
+        hspace=0.0,
+        left=0.06, right=0.98, top=0.97, bottom=0.03,
+    )
+
+    import re as _re
+
+    # ── Row 0: A — Q-Q ───────────────────────────────────────────────
+    gs_a = outer[0].subgridspec(1, n_ds, wspace=0.35)
+    axes_a = np.array(
+        [fig_c.add_subplot(gs_a[0, i]) for i in range(n_ds)]
+    )
+    _panel_qq(fig_c, axes_a, results)
+    for _aq in axes_a:
+        lines_aq = _aq.get_lines()
+        if lines_aq:
+            lines_aq[0].set_markersize(1.5)
+        _aq.set_xlabel(_aq.get_xlabel(), labelpad=1)
+        _aq.set_ylabel(_aq.get_ylabel(), labelpad=1)
+
+    # ── Row 2: B | C ─────────────────────────────────────────────────
+    gs_bc = outer[2].subgridspec(1, 2, width_ratios=[0.5, 0.5], wspace=0.35)
+    ax_b = fig_c.add_subplot(gs_bc[0])
+    _panel_resid_fitted_combined(ax_b, results)
+    for _coll in ax_b.collections:
+        if hasattr(_coll, "set_sizes"):
+            _coll.set_sizes([2])
+    _leg_b = ax_b.get_legend()
+    if _leg_b:
+        _leg_b.remove()
+    ax_b.legend(
+        fontsize=3.0, ncol=3, loc="upper right",
+        frameon=True, framealpha=0.85,
+        markerscale=0.6, handlelength=1.0,
+        columnspacing=0.6, handletextpad=0.3,
+    )
+
+    ax_c = fig_c.add_subplot(gs_bc[1])
+    _panel_influence(ax_c, results)
+    for _txt in list(ax_c.texts):
+        _m = _re.search(
+            r'(\d+/\d+).*?(\d+%)', _txt.get_text().replace('\n', ' '),
+        )
+        if _m:
+            _txt.set_text(f"{_m.group(1)}\n({_m.group(2)})")
+            _txt.set_fontsize(3.5)
+    for _line in ax_c.lines:
+        _line.set_linewidth(max(0.15, _line.get_linewidth() * 0.25))
+    for _patch in ax_c.patches:
+        _patch.set_linewidth(0.2)
+    for _coll in ax_c.collections:
+        if hasattr(_coll, 'set_sizes'):
+            _coll.set_sizes([0.5])
+        if hasattr(_coll, 'set_linewidths'):
+            _coll.set_linewidths([0.0])
+
+    # ── Row 4: D — Baseline comparability (1 × n_ds) ─────────────────
+    gs_d = outer[4].subgridspec(1, n_ds, wspace=0.45)
+    axes_d = np.array(
+        [fig_c.add_subplot(gs_d[0, i]) for i in range(n_ds)]
+    )
+    _panel_baseline_comparability(fig_c, axes_d, results, composite=True)
+    for _axd_i in axes_d:
+        for _coll in _axd_i.collections:
+            if hasattr(_coll, 'set_sizes'):
+                _coll.set_sizes([5])
+        for _ann in list(_axd_i.texts):
+            if "r =" in _ann.get_text() or "r=" in _ann.get_text():
+                _ann.set_fontsize(3.5)
+        _axd_i.set_xlabel(_axd_i.get_xlabel(), labelpad=1, fontsize=4.5)
+        _axd_i.set_ylabel(_axd_i.get_ylabel(), labelpad=1, fontsize=4.5)
+
+    # Dataset order: TNBC[0], Melanoma[1], AML[2], CAR-T[3], COVID-19[4], Vaccine[5]
+    # TNBC (axes_d[0]): nudge specific gene labels
+    _tnbc_nudge = {
+        "CD8A": (0.0, 0.05),
+        "HAVCR2": (0.08, 0.0),
+        "LAG3": (0.0, -0.05),
+        "PDCD1": (-0.10, 0.0),
+        "IL2": (0.0, 0.06),
+    }
+    for _ann in list(axes_d[0].texts):
+        _gene = _ann.get_text()
+        if _gene in _tnbc_nudge:
+            _cx, _cy = _ann.get_position()
+            _dx, _dy = _tnbc_nudge[_gene]
+            _ann.set_position((_cx + _dx, _cy + _dy))
+
+    # Melanoma (axes_d[1])
+    _mel_nudge = {
+        "IL2": (-0.22, 0.0),
+        "CD4": (0.0, 0.05),
+        "CD8A": (0.0, 0.05),
+        "NKG7": (0.08, 0.0),
+        "FOXP3": (0.08, 0.0),
+        "CD19": (0.08, 0.0),
+    }
+    _mel_ha = {"IL2": "right"}
+    for _ann in list(axes_d[1].texts):
+        _gene = _ann.get_text()
+        if _gene in _mel_nudge:
+            _cx, _cy = _ann.get_position()
+            _dx, _dy = _mel_nudge[_gene]
+            _ann.set_position((_cx + _dx, _cy + _dy))
+        if _gene in _mel_ha:
+            _ann.set_ha(_mel_ha[_gene])
+
+    # AML (axes_d[2])
+    _aml_nudge = {
+        "LAG3": (-0.10, 0.05),
+        "CD14": (-0.18, 0.05),
+        "CD8A": (-0.10, 0.0),
+        "GZMB": (0.0, -0.06),
+        "CTLA4": (0.0, -0.02),
+    }
+    _aml_ha = {"CD14": "right"}
+    for _ann in list(axes_d[2].texts):
+        _gene = _ann.get_text()
+        if _gene in _aml_nudge:
+            _cx, _cy = _ann.get_position()
+            _dx, _dy = _aml_nudge[_gene]
+            _ann.set_position((_cx + _dx, _cy + _dy))
+        if _gene in _aml_ha:
+            _ann.set_ha(_aml_ha[_gene])
+
+    # CAR-T (axes_d[3])
+    _cart_nudge = {
+        "IL7R": (-0.08, 0.05),
+        "CD8A": (0.08, 0.0),
+        "CD3D": (0.0, -0.06),
+        "LAG3": (0.0, 0.06),
+        "CTLA4": (-0.05, 0.0),
+        "CD19": (-0.10, 0.0),
+        "IL2": (0.0, 0.08),
+        "CD4": (0.0, -0.06),
+    }
+    for _ann in list(axes_d[3].texts):
+        _gene = _ann.get_text()
+        if _gene in _cart_nudge:
+            _cx, _cy = _ann.get_position()
+            _dx, _dy = _cart_nudge[_gene]
+            _ann.set_position((_cx + _dx, _cy + _dy))
+
+    # COVID-19 (axes_d[4])
+    _covid_nudge = {
+        "FOXP3": (-0.15, 0.0),
+        "LAG3": (0.10, 0.0),
+        "IFNG": (0.10, 0.0),
+        "HAVCR2": (0.10, 0.06),
+        "CD4": (0.0, -0.05),
+    }
+    for _ann in list(axes_d[4].texts):
+        _gene = _ann.get_text()
+        if _gene in _covid_nudge:
+            _cx, _cy = _ann.get_position()
+            _dx, _dy = _covid_nudge[_gene]
+            _ann.set_position((_cx + _dx, _cy + _dy))
+
+    # Vaccine (axes_d[5])
+    _vacc_nudge = {
+        "CD14": (0.10, 0.0),
+        "CTLA4": (-0.10, 0.0),
+        "HAVCR2": (0.0, 0.06),
+        "IFNG": (0.08, 0.0),
+        "CD8A": (0.0, 0.06),
+        "FOXP3": (0.0, 0.02),
+        "PDCD1": (0.06, 0.0),
+    }
+    for _ann in list(axes_d[5].texts):
+        _gene = _ann.get_text()
+        if _gene in _vacc_nudge:
+            _cx, _cy = _ann.get_position()
+            _dx, _dy = _vacc_nudge[_gene]
+            _ann.set_position((_cx + _dx, _cy + _dy))
+
+    # ── Row 6: E | F1 | F2 ───────────────────────────────────────────
+    gs_row6 = outer[6].subgridspec(
+        1, 3, width_ratios=[0.34, 0.33, 0.33], wspace=0.35,
+    )
+    ax_e = fig_c.add_subplot(gs_row6[0])
+    _panel_signal_enrichment(ax_e, results)
+    ax_e.set_ylabel("Observed |effect|\nquantiles")
+    ax_e.set_xlabel(ax_e.get_xlabel(), labelpad=0.5)
+    for _line_e in ax_e.get_lines():
+        _line_e.set_linewidth(max(0.4, _line_e.get_linewidth() * 0.5))
+        _line_e.set_markersize(max(0.8, _line_e.get_markersize() * 0.35))
+    _leg_e = ax_e.get_legend()
+    if _leg_e:
+        _leg_e.remove()
+    ax_e.legend(
+        fontsize=3.0, ncol=3, loc="upper left",
+        frameon=True, framealpha=0.85,
+        markerscale=0.4, handlelength=1.0,
+        columnspacing=0.6, handletextpad=0.3,
+    )
+    _yl_e = ax_e.get_ylim()
+    ax_e.set_ylim(_yl_e[0], _yl_e[1] * 0.85)
+
+    ax_f1 = fig_c.add_subplot(gs_row6[1])
+    ax_f2 = fig_c.add_subplot(gs_row6[2])
+    _panel_normality_tests(ax_f1, results)
+    _panel_heteroscedasticity(ax_f2, results)
+    for _ax_f in [ax_f1, ax_f2]:
+        for _txt in list(_ax_f.texts):
+            _x_pos, _y_pos = _txt.get_position()
+            _txt.set_position((0.01, _y_pos + 0.33))
+            _txt.set_fontsize(3.5)
+            _txt.set_fontweight("normal")
+            _txt.set_ha("left")
+            _txt.set_va("bottom")
+        _ax_f.set_title(
+            _ax_f.get_title(), pad=5.0, fontweight="bold",
+        )
+        _ax_f.set_xlabel(_ax_f.get_xlabel(), labelpad=0.5)
+        _ax_f.tick_params(axis="y", labelsize=3)
+        _leg_f = _ax_f.get_legend()
+        if _leg_f:
+            _leg_f.remove()
+    _yl1 = ax_f1.get_ylim()
+    ax_f1.text(
+        0.96, (_yl1[0] + _yl1[1]) / 2, "W = 0.95",
+        fontsize=3.2, color="red", ha="left", va="center", rotation=90,
+    )
+    _yl2 = ax_f2.get_ylim()
+    ax_f2.text(
+        3.95, (_yl2[0] + _yl2[1]) / 2,
+        r"$\chi^2$(1) = 3.84",
+        fontsize=3.2, color="red", ha="left", va="center", rotation=90,
+    )
+
+    # ── Row 8: G | H | I ─────────────────────────────────────────────
+    gs_row8 = outer[8].subgridspec(
+        1, 3, width_ratios=[0.34, 0.33, 0.33], wspace=0.35,
+    )
+
+    ax_g = fig_c.add_subplot(gs_row8[0])
+    _panel_funnel(ax_g, results)
+    for _coll in ax_g.collections:
+        if hasattr(_coll, 'set_sizes'):
+            _coll.set_sizes([10])
+    _leg_g = ax_g.get_legend()
+    if _leg_g:
+        _leg_g.remove()
+    ax_g.legend(
+        fontsize=3.0, ncol=2, loc="upper left",
+        frameon=True, framealpha=0.85,
+        markerscale=0.8, handlelength=1.0,
+        columnspacing=0.6, handletextpad=0.3,
+    )
+
+    ax_h = fig_c.add_subplot(gs_row8[1])
+    _panel_rejection_vs_alpha(ax_h, results)
+    ax_h.set_ylabel("Fraction of features\nexceeding threshold")
+    ax_h.set_ylim(0, 0.65)
+    ax_h.set_xlim(-0.05, ax_h.get_xlim()[1])
+    for _line_h in ax_h.get_lines():
+        _line_h.set_linewidth(max(0.3, _line_h.get_linewidth() * 0.5))
+        _line_h.set_markersize(max(1.0, _line_h.get_markersize() * 0.5))
+    _leg_h = ax_h.get_legend()
+    if _leg_h:
+        _leg_h.remove()
+    ax_h.legend(
+        fontsize=3.0, ncol=2, loc="upper left",
+        frameon=True, framealpha=0.85,
+        markerscale=0.4, handlelength=1.0,
+        columnspacing=0.8, handletextpad=0.3,
+    )
+
+    ax_i = fig_c.add_subplot(gs_row8[2])
+    try:
+        from ..main.figure3_robustness_benchmarking import (
+            _panel_c as _fig4_panel_c,
+        )
+        from ..main.figure3_robustness_benchmarking import (
+            _prepare_scalability_data,
+        )
+        _scale_data = _prepare_scalability_data()
+        _fig4_panel_c(ax_i, {"scale_data": _scale_data})
+    except Exception:
+        ax_i.text(
+            0.5, 0.5, "Runtime data unavailable",
+            ha="center", va="center", transform=ax_i.transAxes,
+        )
+    for _coll in ax_i.collections:
+        if hasattr(_coll, 'set_sizes'):
+            _coll.set_sizes(_coll.get_sizes() * 0.2)
+    ax_i.tick_params(axis='y', labelsize=3)
+    ax_i.set_xlabel(ax_i.get_xlabel(), fontsize=4.5)
+    ax_i.set_ylabel(ax_i.get_ylabel(), fontsize=4.5)
+    _leg_i = ax_i.get_legend()
+    if _leg_i:
+        _i_handles = _leg_i.legend_handles
+        _i_labels = [t.get_text() for t in _leg_i.get_texts()]
+        _leg_i.remove()
+        ax_i.legend(
+            handles=_i_handles, labels=_i_labels,
+            fontsize=3.0, loc="lower right",
+            frameon=True, framealpha=0.85,
+            markerscale=0.3, handlelength=1.0,
+            handletextpad=0.3,
+        )
+    despine(ax_i)
+
+    # ── Rows 10–14: J (pseudorep) ─────────────────────────────────────
+    pseudo_names = list(all_pseudo.keys())
+    n_pseudo = len(pseudo_names)
+    _ax_j_first = None
+    _all_j_axes: list[plt.Axes] = []
+    _j_group_mid_axes: list[tuple] = []
+
+    _j_study_titles = {
+        "TNBC": "TNBC (DiD)",
+        "Melanoma": "Melanoma (DiD)",
+        "AML": r"AML ($\Delta$, within-arm)",
+        "CAR-T": r"CAR-T ($\Delta$, within-arm)",
+        "COVID-19": "COVID-19 (DiD)",
+        "Vaccine": r"Vaccine ($\Delta$, within-arm)",
+    }
+
+    def _draw_j_group(gs_parent, slot, pi):
+        nonlocal _ax_j_first
+        if pi >= n_pseudo:
+            _ax_empty = fig_c.add_subplot(gs_parent[slot])
+            _ax_empty.set_visible(False)
+            return None
+        _gsj = gs_parent[slot].subgridspec(1, 3, wspace=0.45)
+        _axes_j = [fig_c.add_subplot(_gsj[0, j]) for j in range(3)]
+        _dn = pseudo_names[pi]
+        _draw_pseudorep_compact(
+            _axes_j, _dn, all_pseudo[_dn],
+            _DATASET_CFG[_dn].get("design", "two_arm"),
+        )
+        _all_j_axes.extend(_axes_j)
+        _j_group_mid_axes.append((_axes_j[1], _dn))
+        if _ax_j_first is None:
+            _ax_j_first = _axes_j[0]
+        return _axes_j
+
+    # Row 10: datasets 0, 1
+    gs_jr1 = outer[10].subgridspec(1, 2, wspace=0.10)
+    _draw_j_group(gs_jr1, 0, 0)
+    _draw_j_group(gs_jr1, 1, 1)
+
+    # Row 12: datasets 2, 3
+    gs_jr2 = outer[12].subgridspec(1, 2, wspace=0.10)
+    _draw_j_group(gs_jr2, 0, 2)
+    _draw_j_group(gs_jr2, 1, 3)
+
+    # Row 14: datasets 4, 5 (or centred single if only 5 total)
+    if n_pseudo >= 6:
+        gs_jr3 = outer[14].subgridspec(1, 2, wspace=0.10)
+        _draw_j_group(gs_jr3, 0, 4)
+        _draw_j_group(gs_jr3, 1, 5)
+    elif n_pseudo == 5:
+        gs_jr3 = outer[14].subgridspec(
+            1, 3, width_ratios=[1, 2, 1], wspace=0.0,
+        )
+        _ax_pad_l = fig_c.add_subplot(gs_jr3[0, 0])
+        _ax_pad_l.set_visible(False)
+        _ax_pad_r = fig_c.add_subplot(gs_jr3[0, 2])
+        _ax_pad_r.set_visible(False)
+        _gsj = gs_jr3[0, 1].subgridspec(1, 3, wspace=0.55)
+        _axes_j = [fig_c.add_subplot(_gsj[0, j]) for j in range(3)]
+        _dn = pseudo_names[4]
+        _draw_pseudorep_compact(
+            _axes_j, _dn, all_pseudo[_dn],
+            _DATASET_CFG[_dn].get("design", "two_arm"),
+        )
+        _all_j_axes.extend(_axes_j)
+        _j_group_mid_axes.append((_axes_j[1], _dn))
+        if _ax_j_first is None:
+            _ax_j_first = _axes_j[0]
+    else:
+        _ax_empty = fig_c.add_subplot(outer[14])
+        _ax_empty.set_visible(False)
+
+    # Post-process J axes
+    for _axj in _all_j_axes:
+        _axj.set_xlabel(_axj.get_xlabel(), labelpad=1)
+        _axj.set_ylabel(_axj.get_ylabel(), labelpad=1)
+        _axj.set_title("")
+        _leg_j = _axj.get_legend()
+        if _leg_j:
+            for _lt in _leg_j.get_texts():
+                _lt.set_fontsize(3.5)
+
+    for _mid_ax, _dn in _j_group_mid_axes:
+        _stitle = _j_study_titles.get(_dn, _dn)
+        _mid_ax.set_title(_stitle, fontsize=4.5, fontweight="bold", pad=3)
+
+    if _ax_j_first is not None:
+        _j_top_y = _ax_j_first.get_position().y1
+        fig_c.text(
+            0.5, _j_top_y + 0.015,
+            "Cell-Level vs Participant-Level Inference",
+            fontsize=5.5, fontweight="bold", ha="center", va="bottom",
+        )
+
+    # ── Post-processing ───────────────────────────────────────────────
+    for ax_pp in fig_c.get_axes():
+        leg = ax_pp.get_legend()
+        if leg:
+            leg.get_frame().set_alpha(0.85)
+            leg.get_frame().set_edgecolor("#CCCCCC")
+
+    _cap_fontsize(fig_c, _MAX_FONT)
+
+    _lbl_fs = 8
+    _lbl_x = -0.10
+    _lbl_y = 1.10
+    _lbl_y_hi = 1.30
+    _lbl_x_far = -0.20
+    _lbl_x_xfar = -0.25
+
+    _label_pairs: list[tuple] = [
+        (axes_a[0], "A", _lbl_x_far, _lbl_y_hi),
+        (ax_b, "B", _lbl_x, _lbl_y),
+        (ax_c, "C", _lbl_x, _lbl_y),
+        (axes_d[0], "D", _lbl_x_xfar, _lbl_y),
+        (ax_e, "E", _lbl_x_far + 0.06, _lbl_y_hi),
+        (ax_f1, "F", _lbl_x_far + 0.06, _lbl_y_hi),
+        (ax_g, "G", _lbl_x_far + 0.06, _lbl_y_hi),
+        (ax_h, "H", _lbl_x_far, _lbl_y_hi),
+        (ax_i, "I", _lbl_x_far, _lbl_y_hi),
+    ]
+    if _ax_j_first is not None:
+        _label_pairs.append((_ax_j_first, "J", _lbl_x_xfar, _lbl_y))
+
+    for ax_lbl, lbl, lx, ly in _label_pairs:
+        ax_lbl.text(
+            lx, ly, lbl,
+            transform=ax_lbl.transAxes,
+            fontsize=_lbl_fs, fontweight="bold", va="top", ha="left",
+        )
+
+    plt.rcParams.update(_prev_rc)
+
+    save_panel(fig_c, FIGURE_NAME, FIGURE_NAME, SUPP_OUTPUT, close=False)
+    pdf_path = SUPP_OUTPUT / f"{FIGURE_NAME}_panels" / f"{FIGURE_NAME}.pdf"
+    fig_c.savefig(str(pdf_path), format="pdf", bbox_inches="tight",
+                  facecolor="white")
+    plt.close(fig_c)
+    print("    Saved combined artboard (PNG + PDF)")
+
+    # ── Cleanup ───────────────────────────────────────────────────────
     results.clear()
+    all_pseudo.clear()
     clear_cache()
     gc.collect()
-    print("  Done.\n")
+    print("  SuppFig4 complete: individual panels + combined (A–J)\n")
 
 
 if __name__ == "__main__":

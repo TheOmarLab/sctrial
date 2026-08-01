@@ -1,0 +1,1111 @@
+"""Gate F/G: every method gets the input its estimand assumes, and is scored on it.
+
+These are seam tests. Each defect they pin was invisible in isolation -- both
+halves of the seam were individually correct -- and each one reached the
+manuscript:
+
+* every method normalised against the 50-2000 gene **panel** rather than the
+  transcriptome, so a coordinated signal moved the denominator it was being
+  measured against. About two thirds of dreamlet's "empirical-Bayes inflation"
+  was that artifact;
+* NEBULA received ``log(colSums(panel))`` for an argument that is logged
+  internally, double-logging the offset and attenuating library-size adjustment;
+* every method was scored against one shared ``true_beta`` although
+  ``log(1+CPM)`` models and log-link models estimate different functionals.
+
+A seam has no natural owner, so it needs an explicit test.
+"""
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+import pytest
+
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+
+from sctrial.benchmark.contracts import (
+    METHOD_ESTIMAND,
+    METHOD_INPUT,
+    participant_log1p_cpm,
+    prepare_inputs,
+)
+from sctrial.benchmark.orchestrator import CORE_METHODS
+from sctrial.benchmark.simulator_v2 import TranscriptomeSimConfig, simulate_trial_v2
+
+RUNNERS = Path(__file__).resolve().parent.parent / "src" / "sctrial" / "benchmark" / "runners"
+_TEST_GENES = 2500
+
+
+def _cfg(**kw) -> TranscriptomeSimConfig:
+    base = dict(
+        n_per_arm=6,
+        n_genes_transcriptome=_TEST_GENES,
+        # A 2,500-gene test transcriptome yields ~1,100 detectable genes,
+        # so the production 2,000-gene panel does not fit. Stated here
+        # rather than silently skipped.
+        panel_sizes=(50, 200, 500),
+        cells_per_pv_fixed=60,
+        use_empirical_library=False,
+        use_empirical_cells_per_pv=False,
+        seed=7,
+    )
+    base.update(kw)
+    return TranscriptomeSimConfig(**base)
+
+
+@pytest.fixture(scope="module")
+def sim():
+    return simulate_trial_v2(_cfg())
+
+
+@pytest.fixture(scope="module")
+def inputs(sim):
+    return prepare_inputs(sim, sim["panels"][50])
+
+
+# ---------------------------------------------------------------------------
+# Normalisation scope
+# ---------------------------------------------------------------------------
+
+
+def test_cpm_denominator_is_the_transcriptome_not_the_panel(sim):
+    """The CPM denominator must be the full transcriptome.
+
+    With a panel denominator the reference moves with the signal: under a
+    coordinated effect the panel total shifts and every null gene in the panel
+    acquires an offsetting apparent effect.
+    """
+    panel = sim["panels"][50]
+    pb = sim["pseudobulk_counts"]
+    out = participant_log1p_cpm(pb, panel, gene_cols=sim["gene_names"])
+
+    mat = pb[sim["gene_names"]].to_numpy(dtype=float)
+    expected = np.log1p(mat / mat.sum(axis=1, keepdims=True) * 1e6)
+    pos = {g: i for i, g in enumerate(sim["gene_names"])}
+    for g in panel[:10]:
+        np.testing.assert_allclose(out[g].to_numpy(), expected[:, pos[g]], rtol=1e-10)
+
+    # And it is NOT the panel denominator. Compared on genes that actually carry
+    # counts: an all-zero gene is log1p(0) = 0 under any denominator, so it
+    # cannot distinguish the two and would make this test pass vacuously.
+    panel_mat = pb[panel].to_numpy(dtype=float)
+    panel_norm = np.log1p(panel_mat / panel_mat.sum(axis=1, keepdims=True) * 1e6)
+    expressed = np.flatnonzero(panel_mat.sum(axis=0) > 0)
+    assert expressed.size >= 5, "too few expressed panel genes to test the denominator"
+    for j in expressed[:5]:
+        assert not np.allclose(out[panel[j]].to_numpy(), panel_norm[:, j]), (
+            f"{panel[j]}: normalisation used the panel total; that is the artifact "
+            "this contract exists to prevent"
+        )
+
+
+def test_panel_selection_happens_after_normalisation(sim):
+    """Selecting the panel must not change any gene's normalised value."""
+    pb = sim["pseudobulk_counts"]
+    small = participant_log1p_cpm(pb, sim["panels"][50], gene_cols=sim["gene_names"])
+    large = participant_log1p_cpm(pb, sim["panels"][500], gene_cols=sim["gene_names"])
+    for g in sim["panels"][50][:10]:
+        np.testing.assert_allclose(small[g].to_numpy(), large[g].to_numpy(), rtol=1e-12)
+
+
+def test_lib_size_is_the_full_transcriptome_total(sim, inputs):
+    expected = sim["pseudobulk_counts"][sim["gene_names"]].to_numpy(dtype=float).sum(axis=1)
+    np.testing.assert_allclose(inputs["lib_size"], expected)
+    panel_total = sim["pseudobulk_counts"][sim["panels"][50]].to_numpy(dtype=float).sum(axis=1)
+    assert not np.allclose(inputs["lib_size"], panel_total)
+
+
+def test_cell_lib_size_is_the_full_transcriptome_total(sim, inputs):
+    expected = np.asarray(sim["adata"].X.sum(axis=1)).ravel()
+    np.testing.assert_allclose(inputs["cell_lib_size"], expected)
+    assert inputs["cell_counts"].n_vars == 50, "NEBULA must still be TESTED on the panel"
+    assert len(inputs["cell_lib_size"]) == sim["adata"].n_obs
+
+
+# ---------------------------------------------------------------------------
+# sctrial and Wilcoxon must receive the identical outcome
+# ---------------------------------------------------------------------------
+
+
+def test_sctrial_and_wilcoxon_share_one_outcome(inputs):
+    """Any difference between them must be the test, not the data.
+
+    They are contrasted in the paper as "the DiD framework versus a rank test on
+    the same change scores". If they silently received differently prepared
+    outcomes, that contrast would not be about the tests at all.
+    """
+    assert METHOD_INPUT["sctrial_did"] == METHOD_INPUT["wilcoxon_paired"]
+    assert METHOD_ESTIMAND["sctrial_did"] == METHOD_ESTIMAND["wilcoxon_paired"]
+
+
+# ---------------------------------------------------------------------------
+# Count-based runners must refuse a panel-derived library size
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("module", ["dreamlet_runner", "limma_voom", "edger_qlf"])
+def test_count_runners_require_explicit_lib_size(module, inputs):
+    """Silence is the failure mode here: a default would be a panel library size."""
+    import importlib
+
+    mod = importlib.import_module(f"sctrial.benchmark.runners.{module}")
+    with pytest.raises(ValueError, match="lib_size"):
+        mod.run(inputs["pseudobulk_counts"], inputs["panel_genes"])
+
+
+def test_nebula_requires_explicit_lib_size(inputs):
+    from sctrial.benchmark.runners import nebula_runner
+
+    with pytest.raises(ValueError, match="lib_size"):
+        nebula_runner.run(inputs["cell_counts"], inputs["panel_genes"])
+
+
+@pytest.mark.parametrize("fname", ["dreamlet_runner.py", "limma_voom.py", "edger_qlf.py"])
+def test_count_runners_do_not_recompute_lib_size_from_the_panel(fname):
+    """``keep.lib.sizes=FALSE`` after filtering silently restores the panel total."""
+    src = (RUNNERS / fname).read_text(encoding="utf-8")
+    assert "y$samples$lib.size <- meta$lib_size" in src, (
+        f"{fname} never sets the supplied library size on the DGEList"
+    )
+    assert "keep.lib.sizes=FALSE" not in src, (
+        f"{fname} recomputes lib.size from the filtered PANEL, discarding the "
+        "full-transcriptome value it was given"
+    )
+
+
+def test_nebula_offset_is_linear_scale_and_not_the_panel_sum():
+    """nebula logs the offset internally; a logged input is logged twice."""
+    src = (RUNNERS / "nebula_runner.py").read_text(encoding="utf-8")
+    assert "offset = log(colSums" not in src, (
+        "NEBULA offset is double-logged AND derived from the panel"
+    )
+    assert src.count("offset = meta$lib_size") >= 1
+    assert "log(colSums(counts))" not in src
+
+
+# ---------------------------------------------------------------------------
+# Estimands
+# ---------------------------------------------------------------------------
+
+
+def test_every_core_method_has_an_estimand_and_an_input():
+    for m in CORE_METHODS:
+        assert m in METHOD_ESTIMAND, f"{m} has no declared estimand"
+        assert m in METHOD_INPUT, f"{m} has no declared input representation"
+
+
+def test_oracle_is_zero_under_a_true_null():
+    """A null scenario must have a null target on BOTH estimand scales."""
+    sim = simulate_trial_v2(_cfg(effects={}))
+    for scale, table in sim["oracle"].items():
+        vals = np.array(list(table.values()))
+        assert np.abs(vals).max() < 1e-9, f"oracle {scale} is non-zero under the null"
+
+
+def test_count_link_oracle_equals_the_injected_effect():
+    sim = simulate_trial_v2(_cfg(effects={"gene_0": 0.5, "gene_1": -0.8}))
+    assert sim["oracle"]["count_link"]["gene_0"] == pytest.approx(0.5)
+    assert sim["oracle"]["count_link"]["gene_1"] == pytest.approx(-0.8)
+
+
+def test_log1p_cpm_oracle_is_attenuated_and_same_sign():
+    """Pin the attenuation, which is the reason two oracles exist.
+
+    ``log(1+CPM)`` shrinks a log-link effect toward zero for low-expression
+    genes. Scoring sctrial against the injected beta would report that shrinkage
+    as method bias.
+    """
+    sim = simulate_trial_v2(_cfg(effects={"gene_0": 0.5, "gene_1": -0.8}))
+    o = sim["oracle"]["log1p_cpm"]
+    for g, injected in (("gene_0", 0.5), ("gene_1", -0.8)):
+        assert np.sign(o[g]) == np.sign(injected), f"{g}: oracle flipped sign"
+        assert abs(o[g]) <= abs(injected) + 1e-9, (
+            f"{g}: log1p oracle {o[g]:.4f} exceeds the injected {injected}; the "
+            "transform can only shrink"
+        )
+
+
+def test_log1p_cpm_oracle_approaches_beta_at_high_expression():
+    """The two estimands must coincide when CPM >> 1, or the oracle is wrong."""
+    # Parametric rates on purpose: this test constructs a high-expression regime
+    # to check the quadrature limit, which the empirical proportion vector (drawn
+    # from real, mostly low-expression genes) cannot produce.
+    cfg = _cfg(
+        effects={"gene_0": 0.5},
+        use_empirical_gene_rates=False,
+        gene_rate_log_mean=-2.0,
+        gene_rate_log_sd=0.2,
+    )
+    sim = simulate_trial_v2(cfg)
+    o = sim["oracle"]["log1p_cpm"]["gene_0"]
+    assert o == pytest.approx(0.5, rel=0.05), (
+        f"at high expression the log1p oracle is {o:.4f}, not ~0.5; the quadrature "
+        "or the transform is wrong"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Gate G: the conventional pseudobulk comparator
+# ---------------------------------------------------------------------------
+
+
+def test_conventional_pseudobulk_comparator_is_included():
+    assert "limma_voom" in CORE_METHODS, (
+        "Gate G requires a conventional pseudobulk comparator in the reported set"
+    )
+
+
+def test_limma_models_the_repeated_measure():
+    """An unpaired ~arm*visit would treat a participant's two visits as independent."""
+    src = (RUNNERS / "limma_voom.py").read_text(encoding="utf-8")
+    assert "duplicateCorrelation" in src
+    assert "block=meta$participant" in src
+
+
+def test_limma_does_not_silently_fall_back_to_an_unpaired_model():
+    """A fallback would report a different model under the same method name."""
+    src = (RUNNERS / "limma_voom.py").read_text(encoding="utf-8")
+    two_arm = src.split("_R_SCRIPT_SINGLE_ARM")[0]
+    assert "tryCatch" not in two_arm, (
+        "the two-arm limma script swallows a duplicateCorrelation failure; the "
+        "failure rate is a reported result, not something to paper over"
+    )
+
+
+# ---------------------------------------------------------------------------
+# The real-data path must be the SAME path
+# ---------------------------------------------------------------------------
+
+
+def test_real_data_path_reproduces_the_simulated_path_exactly(sim):
+    """Permutation and subsampling must hand methods identical representations.
+
+    Those analyses run the same methods on real cohorts. They previously built
+    their own pseudobulk and normalised inside the tested panel, so the
+    real-data results characterised these methods under a different
+    normalisation scope from the simulation used to characterise them -- and
+    nothing compared the two. Feeding the same data through both paths and
+    requiring bit-identical output is the only check that keeps them together.
+    """
+    from sctrial.benchmark.contracts import prepare_inputs_from_adata
+
+    panel = sim["panels"][50]
+    adata = sim["adata"].copy()
+    # Deliberately non-canonical column names: the real cohorts use
+    # participant_id / timepoint / response, so the renaming must be exercised.
+    adata.obs = adata.obs.rename(
+        columns={"participant": "pid", "visit": "tp", "arm": "grp"}
+    )
+
+    via_sim = prepare_inputs(sim, panel)
+    via_real = prepare_inputs_from_adata(
+        adata, panel, participant_col="pid", visit_col="tp", arm_col="grp"
+    )
+
+    def _index(df):
+        import pandas as pd
+
+        return pd.MultiIndex.from_arrays([df["participant"], df["visit"]])
+
+    a = via_sim["participant_log1p_cpm"].copy()
+    a.index = _index(a)
+    b = via_real["participant_log1p_cpm"].copy()
+    b.index = _index(b)
+    b = b.loc[a.index]
+
+    np.testing.assert_allclose(a[panel].to_numpy(), b[panel].to_numpy(), atol=0, rtol=0)
+
+    import pandas as pd
+
+    lib_sim = pd.Series(via_sim["lib_size"], index=a.index)
+    lib_real = pd.Series(
+        via_real["lib_size"], index=_index(via_real["participant_log1p_cpm"])
+    ).loc[a.index]
+    np.testing.assert_allclose(lib_sim.to_numpy(), lib_real.to_numpy(), atol=0, rtol=0)
+    np.testing.assert_allclose(
+        np.sort(via_sim["cell_lib_size"]), np.sort(via_real["cell_lib_size"])
+    )
+
+
+# ---------------------------------------------------------------------------
+# The calibration must actually reach the simulator
+# ---------------------------------------------------------------------------
+
+
+def test_frozen_calibration_reaches_the_simulator(monkeypatch):
+    """The single most consequential wiring in the benchmark.
+
+    The previous benchmark's headline defect was not a wrong calibration: it was
+    a calibration that existed, was described in the Methods, and was never
+    threaded through, so every published simulation ran on dataclass defaults at
+    2.3e7 UMIs per cell. Nothing failed, nothing warned, and the numbers looked
+    plausible.
+
+    This asserts the merge order directly: the frozen configuration is the floor,
+    and a scenario may override only the knobs it is explicitly varying.
+    """
+    from sctrial.benchmark import orchestrator
+
+    captured = {}
+
+    def _spy(cfg):
+        captured["cfg"] = cfg
+        raise RuntimeError("stop after config construction")
+
+    monkeypatch.setattr(orchestrator, "simulate_trial_v2", _spy)
+
+    base = {
+        "n_genes_transcriptome": _TEST_GENES,
+        "panel_sizes": (50, 200, 500),
+        "use_empirical_library": False,
+        "use_empirical_cells_per_pv": False,
+        # Deliberately unlike the dataclass default, so "the default happened to
+        # match" cannot make this pass.
+        "dispersion_median": 0.9137,
+        "between_participant_sd": 1.234,
+        "prepost_corr": 0.321,
+    }
+    scenario = {
+        "name": "t",
+        "description": "t",
+        "panel_size": 50,
+        "n_signal": 0,
+        "signal_fraction": 0.0,
+        "architecture": "balanced",
+        "magnitude": 0.5,
+        # The scenario varies participant SD; everything else must come from base.
+        "config_kwargs": {
+            "design": "two_arm",
+            "n_per_arm": 6,
+            "cells_per_pv_fixed": 40,
+            "between_participant_sd": 2.5,
+        },
+    }
+
+    with pytest.raises(RuntimeError, match="stop after config construction"):
+        orchestrator._run_single_iteration(("t", 0, 5, scenario, ["sctrial_did"], base))
+
+    cfg = captured["cfg"]
+    assert cfg.dispersion_median == pytest.approx(0.9137), (
+        "the frozen calibration did not reach the simulator; this is exactly the "
+        "defect that produced 2.3e7 UMIs per cell under a Methods section "
+        "describing calibrated parameters"
+    )
+    assert cfg.prepost_corr == pytest.approx(0.321)
+    assert cfg.between_participant_sd == pytest.approx(2.5), (
+        "the scenario must win for the knob it is explicitly varying"
+    )
+    assert cfg.cells_per_pv_fixed == 40
+
+
+def test_no_base_config_falls_back_to_dataclass_defaults():
+    """Document the fallback so the guard above is unambiguous.
+
+    ``base_config=None`` is legitimate only for tests. The production driver
+    refuses to start without a frozen configuration, which is asserted here so
+    that guarantee is not quietly removed later.
+    """
+    driver = (
+        Path(__file__).resolve().parent.parent / "scripts" / "run_benchmark.py"
+    ).read_text(encoding="utf-8")
+    assert "_load_frozen_config()" in driver
+    assert "There is deliberately no default fallback" in driver
+    assert driver.count("base_config=frozen") >= 2, (
+        "a benchmark phase runs without the frozen calibration"
+    )
+
+
+def test_every_reported_method_has_a_plotting_style():
+    """A method added to CORE_METHODS must not vanish from the figures.
+
+    The style dicts were hand-maintained copies in Figure 3 AND Supp Fig 5, so a
+    new method appeared in neither, or in one and not the other, with both files
+    looking internally consistent. Figure 3 now derives the list from
+    CORE_METHODS and raises on a missing style; Supp Fig 5 imports it.
+    """
+    import sys
+    from pathlib import Path as _P
+
+    root = _P(__file__).resolve().parent.parent
+    fig3 = (root / "manuscript_figures" / "main"
+            / "figure3_robustness_benchmarking.py").read_text(encoding="utf-8")
+    supp = (root / "manuscript_figures" / "supp"
+            / "supp_fig5_sensitivity_robustness.py").read_text(encoding="utf-8")
+
+    assert "from sctrial.benchmark.orchestrator import CORE_METHODS" in fig3, (
+        "Figure 3 restates the method list instead of deriving it"
+    )
+    assert "_BENCH_METHODS = [" not in supp, (
+        "Supp Fig 5 keeps its own copy of the method list; it must import Figure 3's"
+    )
+    for m in CORE_METHODS:
+        assert f'"{m}"' in fig3, f"{m} has no plotting style in Figure 3"
+    sys.modules.pop("manuscript_figures", None)
+
+
+# ---------------------------------------------------------------------------
+# Panel eligibility must not depend on the injected signal
+# ---------------------------------------------------------------------------
+
+
+def test_eligibility_is_independent_of_the_injected_signal():
+    """A gene must not become testable BECAUSE it is differential.
+
+    If eligibility were computed after injecting the effect, signal genes would be
+    preferentially admitted at the margin and every power estimate would be
+    optimistic by an amount nobody could see.
+    """
+    from sctrial.benchmark.simulator_v2 import eligible_panel_genes, nested_panels
+
+    base = _cfg(effects={})
+    strong = _cfg(effects={f"gene_{i}": 3.0 for i in range(200)})
+
+    np.testing.assert_array_equal(
+        eligible_panel_genes(base), eligible_panel_genes(strong)
+    )
+    p0 = nested_panels(base, rng=np.random.default_rng(1))
+    p1 = nested_panels(strong, rng=np.random.default_rng(1))
+    for size in p0:
+        assert p0[size] == p1[size], f"panel {size} moved when a signal was injected"
+
+
+def test_all_methods_receive_the_same_panel():
+    """Comparability requires an identical denominator across methods."""
+    from sctrial.benchmark.simulator_v2 import simulate_trial_v2
+
+    sim = simulate_trial_v2(_cfg())
+    panel = sim["panels"][50]
+    inputs = prepare_inputs(sim, panel)
+    assert inputs["panel_genes"] == panel
+    assert list(inputs["pseudobulk_counts"].columns[3:]) == panel
+    assert list(inputs["cell_counts"].var_names) == panel
+    outcome_genes = [c for c in inputs["participant_log1p_cpm"].columns
+                     if c not in ("participant", "visit", "arm")]
+    assert outcome_genes == panel
+
+
+def test_evaluability_is_recorded_not_silently_dropped():
+    """A method's own filtering must show up as a rate, not shrink the denominator."""
+    from sctrial.benchmark.orchestrator import _run_single_iteration
+
+    scenario = {
+        "name": "t", "description": "t", "panel_size": 50,
+        "n_signal": 0, "signal_fraction": 0.0,
+        "architecture": "balanced", "magnitude": 0.5,
+        "config_kwargs": {
+            "design": "two_arm", "n_per_arm": 6, "cells_per_pv_fixed": 40,
+            "n_genes_transcriptome": _TEST_GENES, "panel_sizes": (50, 200, 500),
+            "use_empirical_library": False, "use_empirical_cells_per_pv": False,
+            "use_empirical_gene_rates": False, "use_empirical_dispersion": False,
+        },
+    }
+    rows = _run_single_iteration(("t", 0, 3, scenario, ["sctrial_did"], None))
+    assert len(rows) == 50, "the denominator must be the full panel"
+    assert all("evaluable" in r for r in rows)
+
+
+# ---------------------------------------------------------------------------
+# Freeze-level: normalisation must not follow the panel
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("panel_size", [50, 200, 500])
+def test_library_size_is_invariant_to_panel_size(sim, panel_size):
+    """The normalisation reference must be identical for every nested panel.
+
+    This is the artifact Gate D proved: with a panel-scoped denominator the bias
+    swings from +0.094 to -0.076 purely with signal architecture, while a
+    full-transcriptome denominator holds at ~-0.01 throughout. If TMM or voom
+    recomputed norm factors after the matrix were cut down to the tested panel,
+    that artifact would come straight back and no downstream check would see it.
+
+    Freeze-level assertion: lib_size is computed BEFORE panel selection and does
+    not move as the panel grows from 50 to 2,000 genes.
+    """
+    ref = prepare_inputs(sim, sim["panels"][50])["lib_size"]
+    got = prepare_inputs(sim, sim["panels"][panel_size])["lib_size"]
+    np.testing.assert_allclose(got, ref, atol=0, rtol=0)
+
+
+@pytest.mark.parametrize("panel_size", [50, 200, 500])
+def test_cell_library_size_is_invariant_to_panel_size(sim, panel_size):
+    """Same guarantee for NEBULA's per-cell offset."""
+    ref = prepare_inputs(sim, sim["panels"][50])["cell_lib_size"]
+    got = prepare_inputs(sim, sim["panels"][panel_size])["cell_lib_size"]
+    np.testing.assert_allclose(got, ref, atol=0, rtol=0)
+
+
+def test_count_runners_keep_the_supplied_library_size_through_filtering(sim):
+    """filterByExpr must not be allowed to recompute lib.size from the panel."""
+    for fname in ("dreamlet_runner.py", "limma_voom.py", "edger_qlf.py"):
+        src = (RUNNERS / fname).read_text(encoding="utf-8")
+        assert "y$samples$lib.size <- meta$lib_size" in src
+        assert "keep.lib.sizes=TRUE" in src
+        assert "keep.lib.sizes=FALSE" not in src, (
+            f"{fname} lets filtering recompute the library size from the tested "
+            "panel, which reinstates the normalisation-scope artifact"
+        )
+
+
+def test_limma_follows_the_canonical_repeated_measures_order():
+    """The voom / duplicateCorrelation sequence must be in the prescribed order.
+
+    The limma workflow for repeated measures is: normalise, voom, estimate the
+    within-block correlation, re-voom WITH that correlation, then fit with it.
+    Skipping the second voom, or fitting without the block, silently reverts to
+    treating a participant's two visits as independent -- which is the
+    pseudoreplication this paper is about, committed by the comparator.
+
+    Also guards two mixups the limma maintainers call out: combining a logCPM /
+    limma-trend pipeline with voom, and putting participant in the design as a
+    fixed effect while ALSO blocking on it.
+    """
+    src = (RUNNERS / "limma_voom.py").read_text(encoding="utf-8")
+    two_arm = src.split("_R_SCRIPT_SINGLE_ARM")[0]
+
+    # Match STATEMENTS, not substrings: "keep.lib.sizes=TRUE" also appears in the
+    # explanatory comment above the code, so a bare substring search finds the
+    # comment first and the order check becomes meaningless.
+    order = [
+        "y$samples$lib.size <- meta$lib_size",
+        "y <- y[keep, , keep.lib.sizes=TRUE]",
+        "calcNormFactors(y)",
+        "v0 <- voom(y, design)",
+        "corfit <- duplicateCorrelation(v0, design, block=meta$participant)",
+        "v <- voom(y, design, block=meta$participant, correlation=corfit$consensus)",
+        "fit <- lmFit(v, design, block=meta$participant, correlation=corfit$consensus)",
+        "eBayes(fit)",
+    ]
+    pos = -1
+    for step in order:
+        i = two_arm.find(step)
+        assert i > pos, f"limma step out of order or missing: {step!r}"
+        pos = i
+
+    assert "trend=TRUE" not in two_arm, "voom and limma-trend must not be combined"
+    assert "~arm * visit" in two_arm
+    assert "participant +" not in two_arm, (
+        "participant appears as a fixed effect AND as a duplicateCorrelation block"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Freeze must refuse, not fall back
+# ---------------------------------------------------------------------------
+
+
+def test_freeze_refuses_a_fallback_or_unrun_distributional_gate():
+    """A development fallback must not be allowed into a frozen benchmark.
+
+    The distributional gate has a simulation-only reference for use while the
+    participant bootstrap is unavailable. It is a DIFFERENT, tighter test. It once
+    ran that way for a whole gate cycle and reported PASS, and separately the gate
+    returned INSUFFICIENT because the observed arm carried no quantile grid -- in
+    a summary count, a gate that never ran is indistinguishable from one that
+    passed.
+
+    Freeze must therefore reject both conditions rather than accept a ledger that
+    looks green.
+    """
+    src = (
+        Path(__file__).resolve().parent.parent / "scripts" / "calibrate_simulator.py"
+    ).read_text(encoding="utf-8")
+    freeze = src[src.index("def cmd_freeze("):]
+
+    assert "simulation_only" in freeze, (
+        "freeze does not check whether the distributional gate fell back to its "
+        "development reference"
+    )
+    assert "INSUFFICIENT" in freeze, "freeze accepts a gate that never ran"
+    assert "git_dirty" in freeze, (
+        "freeze accepts an uncommitted tree; such a run cannot be reproduced from "
+        "any commit"
+    )
+    # Each refusal must be a hard exit, overridable only deliberately.
+    for guard in ("simulation_only", "INSUFFICIENT", "git_dirty"):
+        seg = freeze[freeze.index(guard) : freeze.index(guard) + 900]
+        assert "SystemExit" in seg and "args.force" in seg, (
+            f"the {guard!r} guard does not raise, or is not force-overridable"
+        )
+
+
+def test_results_carry_provenance_and_mixing_is_refused():
+    """Every result row is stamped, and mixed manifests are a hard error."""
+    import pandas as pd
+
+    from sctrial.benchmark.manifest import assert_single_manifest
+
+    orch = (
+        Path(__file__).resolve().parent.parent
+        / "src" / "sctrial" / "benchmark" / "orchestrator.py"
+    ).read_text(encoding="utf-8")
+    assert 'df["manifest_sha256"] = manifest["manifest_sha256"]' in orch, (
+        "benchmark output is not stamped with the manifest that produced it"
+    )
+
+    one = pd.DataFrame({"manifest_sha256": ["a" * 64] * 3})
+    assert assert_single_manifest(one) == "a" * 64
+
+    mixed = pd.DataFrame({"manifest_sha256": ["a" * 64, "b" * 64]})
+    with pytest.raises(ValueError, match="mix"):
+        assert_single_manifest(mixed, "benchmark results")
+
+    with pytest.raises(ValueError, match="no manifest_sha256"):
+        assert_single_manifest(pd.DataFrame({"x": [1]}), "legacy results")
+
+
+def test_benchmark_refuses_to_run_from_unfrozen_source():
+    """A job must verify the source it is executing, not the commit it claims.
+
+    git is absent from this cluster's compute nodes, and the cluster spent this
+    project with HEAD pinned at one commit while the files on disk were many
+    commits newer -- so the nominal commit described nothing that was running. A
+    content hash needs no git and answers the question that matters.
+    """
+    driver = (
+        Path(__file__).resolve().parent.parent / "scripts" / "run_benchmark.py"
+    ).read_text(encoding="utf-8")
+    assert "source_tree_sha256" in driver, (
+        "the benchmark driver does not verify the source tree it is running"
+    )
+    assert "REFUSING TO RUN" in driver
+    seg = driver[driver.index("source_tree_sha256") : driver.index("source_tree_sha256") + 1800]
+    assert "SystemExit" in seg, "a source mismatch does not stop the run"
+
+
+def test_source_tree_hash_is_deterministic_and_sensitive():
+    """It must be stable across calls and change when any source file changes."""
+    from sctrial.benchmark.manifest import source_tree_sha256
+
+    a = source_tree_sha256()
+    assert a == source_tree_sha256(), "hash is not deterministic"
+
+    target = (
+        Path(__file__).resolve().parent.parent
+        / "src" / "sctrial" / "benchmark" / "gates.py"
+    )
+    original = target.read_text(encoding="utf-8")
+    try:
+        target.write_text(original + "\n# a single added comment\n", encoding="utf-8")
+        assert source_tree_sha256() != a, (
+            "a source change did not alter the hash; the guard would not fire"
+        )
+    finally:
+        target.write_text(original, encoding="utf-8")
+    assert source_tree_sha256() == a, "hash did not return to its original value"
+
+
+# ---------------------------------------------------------------------------
+# The frozen calibration must not dictate the experimental design
+# ---------------------------------------------------------------------------
+
+
+def test_scenario_design_survives_the_frozen_calibration(tmp_path, monkeypatch):
+    """The grid's sample-size axis must not collapse to the anchor's design.
+
+    The frozen calibration describes the reference POPULATION. The anchor's
+    retained 6-versus-5 paired design is a property of the TNBC Treg cohort, not
+    of a simulated n=40 arm. It leaked in as `arm_ratio`, and because
+    `build_params` reads `arm_ratio` before `n_per_arm`, EVERY two-arm scenario
+    from n=8 to n=60 simulated 11 participants -- while the results file recorded
+    the requested size, so nothing downstream could have detected it. FPR-versus-n
+    and power-versus-n would have been flat by construction, and two-arm "n=40"
+    (11 people) would have sat beside single-arm "n=40" (40 people) in one figure.
+
+    This drives the REAL loader against a REAL frozen file. An earlier version
+    recomputed the field partition inside the test, so it verified the constant
+    rather than the code that uses it and passed happily when the loader was
+    broken -- a guard that cannot fail is not a guard.
+    """
+    import importlib.util
+    import json as _json
+
+    from sctrial.benchmark.orchestrator import build_scenario_grid
+    from sctrial.benchmark.simulator_v2 import TranscriptomeSimConfig, build_params
+
+    root = Path(__file__).resolve().parent.parent
+    val = tmp_path / "benchmark" / "validation"
+    val.mkdir(parents=True)
+    frozen_cfg = {
+        "arm_ratio": [6, 5],          # the anchor's retained design
+        "n_per_arm": 11,
+        "n_genes_transcriptome": _TEST_GENES,
+        "panel_sizes": [50, 200, 500],
+        "use_empirical_library": False,
+        "use_empirical_cells_per_pv": False,
+        "use_empirical_gene_rates": False,
+        "use_empirical_dispersion": False,
+        "dispersion_median": 0.3404,
+    }
+    (val / "frozen_simulator_config.json").write_text(
+        _json.dumps({"config": frozen_cfg, "manifest": {"_test": True}})
+    )
+
+    spec = importlib.util.spec_from_file_location(
+        "_rb_under_test", root / "scripts" / "run_benchmark.py"
+    )
+    rb = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(rb)
+    monkeypatch.setattr(rb, "OUTPUT_DIR", tmp_path / "benchmark")
+    monkeypatch.setattr(rb, "_verify_manifest", lambda *a, **k: None)
+
+    calibration_only = rb._load_frozen_config()
+    assert "arm_ratio" not in calibration_only, (
+        "_load_frozen_config let the anchor's arm_ratio through into the grid"
+    )
+    assert "n_per_arm" not in calibration_only
+    assert calibration_only.get("dispersion_median") == 0.3404, (
+        "the calibration itself was stripped; only design fields should be removed"
+    )
+
+    for scenario in build_scenario_grid("two_arm"):
+        kw = dict(calibration_only)
+        kw.update(scenario["config_kwargs"])
+        cfg = TranscriptomeSimConfig(seed=1, **kw)
+        arms = build_params(cfg)["arms"]
+        requested = scenario["config_kwargs"].get("arm_ratio")
+        if requested is not None:
+            assert len(arms) == sum(requested), scenario["name"]
+        else:
+            assert len(arms) == 2 * cfg.n_per_arm, (
+                f"{scenario['name']}: requested n_per_arm={cfg.n_per_arm} but "
+                f"simulated {len(arms)} participants"
+            )
+
+
+def test_signal_is_an_integer_count_and_the_grid_is_a_complete_factorial():
+    """Signal is an integer COUNT, and every fraction is exact at every panel.
+
+    50 x 1% is 0.5 genes and 50 x 5% is 2.5. Rounding either gives a scenario
+    whose label is wrong -- one gene out of 50 is 2%, not 1% -- which would
+    corrupt exactly the lowest-signal condition the sensitivity analysis exists
+    to measure. Skipping them instead leaves holes in the panel-size comparison.
+
+    The fractions are therefore chosen so that every panel size can express every
+    one of them exactly (2/4/10/20% give 1/2/5/10 genes at 50, and scale by 4, 10
+    and 40 at the larger panels). Nothing is scientifically privileged about 1%
+    and 5%; an exactly-defined experimental factor is worth more.
+    """
+    from sctrial.benchmark.orchestrator import build_sensitivity_grid
+    from sctrial.benchmark.simulator_v2 import make_signal
+
+    panel = [f"gene_{i}" for i in range(50)]
+    for n in (1, 5, 10):
+        effects = make_signal(panel, n, "balanced", 0.5, rng=np.random.default_rng(0))
+        assert len(effects) == n, f"requested {n} signal genes, got {len(effects)}"
+    assert make_signal(panel, 0, "balanced", 0.5) == {}
+
+    with pytest.raises(ValueError, match="exceeds"):
+        make_signal(panel, 51, "balanced", 0.5)
+
+    # Every grid cell's label must be the fraction it actually realises.
+    for sc in build_sensitivity_grid("two_arm"):
+        n_sig, panel_size = sc["n_signal"], sc["panel_size"]
+        assert sc["signal_fraction"] == pytest.approx(n_sig / panel_size), sc["name"]
+        assert float(n_sig).is_integer()
+
+    # COMPLETE FACTORIAL: the same fraction set exists at every panel size, and
+    # every one of them is an exact integer count. A missing cell here is a hole
+    # in the heatmap the panel-size comparison is drawn from.
+    grid = build_sensitivity_grid("two_arm")
+    by_panel = {}
+    for sc in grid:
+        by_panel.setdefault(sc["panel_size"], set()).add(round(sc["signal_fraction"], 4))
+    assert set(by_panel) == {50, 200, 500, 2000}, sorted(by_panel)
+    expected = {0.0, 0.02, 0.04, 0.10, 0.20}
+    for panel, fracs in by_panel.items():
+        assert expected <= fracs, f"{panel} genes is missing {sorted(expected - fracs)}"
+        for f in expected - {0.0}:
+            exact = panel * f
+            assert abs(exact - round(exact)) < 1e-9, (
+                f"{panel} x {f:.0%} = {exact} genes is not an integer count"
+            )
+
+
+def test_only_the_aggregator_writes_the_combined_results():
+    """Producers must not race each other on the file the figures read.
+
+    Several SLURM jobs share one output directory. Any producer writing a
+    combined file lets the last to finish overwrite the rest, silently, on the
+    only file the figure layer consumes -- so a panel would be drawn from a
+    quarter of the grid and look complete.
+    """
+    root = Path(__file__).resolve().parent.parent
+    orch = (root / "src" / "sctrial" / "benchmark" / "orchestrator.py").read_text(
+        encoding="utf-8"
+    )
+    assert "combined.to_csv" not in orch, (
+        "a producer still writes the combined results file"
+    )
+    assert "aggregate_benchmark.py" in orch, (
+        "the orchestrator does not point at the aggregator that owns the combined file"
+    )
+
+    agg = (root / "scripts" / "aggregate_benchmark.py").read_text(encoding="utf-8")
+    for guard in ("MISSING", "UNEXPECTED", "mix", "unstamped", "iterations", "REFUSING"):
+        assert guard in agg, f"the aggregator does not check for {guard!r}"
+    assert "os.replace" in agg, "the combined file is not written atomically"
+    assert "benchmark_complete.json" in agg
+
+
+def test_figures_refuse_a_grid_without_a_completion_record(tmp_path):
+    """A partial grid must not be able to reach a manuscript figure.
+
+    Asserted as BEHAVIOUR rather than by grepping the loader for a filename. The
+    previous version searched the source for the literal
+    ``benchmark_complete.json``; moving that constant into `paths.py` -- which
+    changed nothing about what the loader does -- broke the test, while a loader
+    that merely MENTIONED the name would have passed it. A guard that tracks
+    spelling rather than conduct fails on refactors and passes on regressions.
+    """
+    from sctrial.benchmark.paths import ResultLayout, require_layout
+
+    sha = "f" * 64
+    root = tmp_path / "results"
+    layout = ResultLayout(root, sha).create()
+    csv = layout.combined_csv("sensitivity_combined.csv")
+    pd.DataFrame({"scenario": ["s"], "manifest_sha256": [sha]}).to_csv(csv, index=False)
+
+    # A combined file WITHOUT the aggregator's completion marker.
+    assert not layout.completion_marker("sensitivity").exists()
+    assert csv.exists()
+
+    # The loader's own precondition: results exist, marker does not.
+    resolved = require_layout(root, sha)
+    assert not resolved.completion_marker("sensitivity").exists(), (
+        "a combined file with no completion record must not look complete; it is "
+        "what a single shard of the grid looks like"
+    )
+
+    # And a manifest that was never produced must not resolve to a sibling.
+    with pytest.raises(FileNotFoundError):
+        require_layout(root, "0" * 64)
+
+    loader = (
+        Path(__file__).resolve().parent.parent
+        / "manuscript_figures" / "main" / "figure3_robustness_benchmarking.py"
+    ).read_text(encoding="utf-8")
+    assert "completion_marker" in loader, (
+        "the figure loader does not check for a completion record, so a single "
+        "shard would plot as if it were the whole grid"
+    )
+    assert "assert_single_manifest" in loader, (
+        "the figure loader does not reject results mixing two benchmark runs"
+    )
+    assert "require_layout" in loader, (
+        "the figure loader does not address results by manifest, so it can read a "
+        "run other than the frozen one"
+    )
+
+
+def test_the_frozen_calibration_carries_no_experimental_design():
+    """The frozen object must not be able to leak a design downstream.
+
+    Consumers strip scenario-owned fields, and that defence stays. This asserts
+    the PRODUCER side as well: the freeze writes calibration only, and records the
+    anchor's own design under a key nothing loads as configuration. A consumer
+    that forgets to strip -- or a new consumer that never knew it had to -- then
+    cannot leak a design it was never given.
+
+    This is the defect that collapsed the two-arm sample-size axis: the anchor's
+    retained 6-versus-5 split reached every scenario as `arm_ratio`, and
+    `build_params` reads it ahead of `n_per_arm`.
+    """
+    freeze_src = (
+        Path(__file__).resolve().parent.parent / "scripts" / "calibrate_simulator.py"
+    ).read_text(encoding="utf-8")
+
+    from sctrial.benchmark.simulator_v2 import SCENARIO_OWNED_FIELDS
+
+    assert "anchor_design" in freeze_src, (
+        "the freeze does not separate the anchor's design from the calibration"
+    )
+    assert 'if k not in SCENARIO_OWNED_FIELDS' in freeze_src, (
+        "the freeze writes scenario-owned fields into the config it hands to the "
+        "benchmark, so a design can still leak into every scenario"
+    )
+    for f in ("arm_ratio", "n_per_arm", "cells_per_pv_fixed"):
+        assert f in SCENARIO_OWNED_FIELDS, (
+            f"{f!r} is not scenario-owned, so the frozen calibration may dictate it"
+        )
+
+
+def test_scenario_contract_detects_a_leaked_design(tmp_path):
+    """The production validator must fail on the exact B1 signature.
+
+    Exercised directly rather than only through the integration test, because the
+    integration test's first version passed with the defect present: every
+    scenario specified every field, so each was protected by its own values and
+    only an omitted one could be captured.
+    """
+    from sctrial.benchmark.scenario_contract import check_scenario_results
+
+    scenario = {
+        "name": "null_n60",
+        "panel_size": 50,
+        "n_signal": 0,
+        "signal_fraction": 0.0,
+        "config_kwargs": {"design": "two_arm", "n_per_arm": 60, "arm_ratio": None},
+    }
+    # What the results looked like under B1: 60 requested, 6/5 simulated.
+    leaked = pd.DataFrame({
+        "scenario": ["null_n60"] * 4,
+        "iteration": [0, 0, 1, 1],
+        "method": ["sctrial_did"] * 4,
+        "n_treated": [6] * 4,
+        "n_control": [5] * 4,
+        "panel_size": [50] * 4,
+        "n_signal_realised": [0] * 4,
+        "cells_per_pv_min": [200.0] * 4,
+        "cells_per_pv_max": [900.0] * 4,
+    })
+    report = check_scenario_results("null_n60", scenario, leaked)
+    assert not report.ok
+    fields = {v.field for v in report.violations}
+    assert {"n_treated", "n_control"} <= fields, report.violations
+    with pytest.raises(RuntimeError, match="SCENARIO CONTRACT VIOLATED"):
+        report.raise_if_violated()
+
+    # The correct design passes.
+    good = leaked.assign(n_treated=60, n_control=60)
+    assert check_scenario_results("null_n60", scenario, good).ok
+
+
+def test_scenario_contract_detects_a_constant_cell_yield(tmp_path):
+    """A scenario that asked for a distribution must not receive one value.
+
+    This is the leak seen from the other direction, and it is the check that
+    would have caught a frozen `cells_per_pv_fixed` reaching a heterogeneous-yield
+    scenario.
+    """
+    from sctrial.benchmark.scenario_contract import check_scenario_results
+
+    scenario = {
+        "name": "null_hetero_n20",
+        "panel_size": 50,
+        "n_signal": 0,
+        "signal_fraction": 0.0,
+        # No cells_per_pv_fixed: the empirical distribution was requested.
+        "config_kwargs": {"design": "two_arm", "n_per_arm": 20, "arm_ratio": None},
+    }
+    base = {
+        "scenario": ["null_hetero_n20"] * 2,
+        "iteration": [0, 1],
+        "method": ["sctrial_did"] * 2,
+        "n_treated": [20] * 2, "n_control": [20] * 2,
+        "panel_size": [50] * 2, "n_signal_realised": [0] * 2,
+    }
+    constant = pd.DataFrame({**base, "cells_per_pv_min": [999.0] * 2,
+                             "cells_per_pv_max": [999.0] * 2})
+    report = check_scenario_results("null_hetero_n20", scenario, constant)
+    assert not report.ok
+    assert any(v.field == "cells_per_pv" for v in report.violations), report.violations
+
+    dispersed = pd.DataFrame({**base, "cells_per_pv_min": [37.0] * 2,
+                              "cells_per_pv_max": [1120.0] * 2})
+    assert check_scenario_results("null_hetero_n20", scenario, dispersed).ok
+
+
+def test_replicate_cap_is_raised_where_the_estimand_is_discrete():
+    """Scenarios with 1-2 signal genes get 2,500 replicates, not 1,000.
+
+    Per-replicate power is a mean over the signal genes, so with one signal gene
+    it is Bernoulli with a worst-case replicate SD of 0.5. Meeting the 0.01
+    power-MCSE target needs 2,500 replicates; at 1,000 the best achievable is
+    0.0158. Rather than relax the target where it is inconvenient -- which would
+    mean the prespecified precision requirement did not hold across the grid --
+    the common target is kept and the cap is raised for those scenarios, which
+    are the cheapest in the benchmark.
+
+    The rule keys on the SIGNAL GENE COUNT, never on the number of genes tested:
+    genes within a replicate share participants, libraries, random effects and
+    normalisation, so a 2,000-gene scenario does not carry 40x the independent
+    information. The independent unit is the simulated dataset.
+    """
+    import math
+
+    from sctrial.benchmark.orchestrator import (
+        _MC_MAX,
+        _MC_MAX_SPARSE_SIGNAL,
+        _MCSE_TARGET_POWER,
+        build_scenario_grid,
+        build_sensitivity_grid,
+        mc_max_for,
+    )
+
+    # The arithmetic that motivates the rule.
+    assert math.ceil((math.sqrt(0.25 / 1) / _MCSE_TARGET_POWER) ** 2) > _MC_MAX
+    assert math.ceil((math.sqrt(0.25 / 1) / _MCSE_TARGET_POWER) ** 2) <= _MC_MAX_SPARSE_SIGNAL
+
+    assert mc_max_for({"n_signal": 1}) == _MC_MAX_SPARSE_SIGNAL
+    assert mc_max_for({"n_signal": 2}) == _MC_MAX_SPARSE_SIGNAL
+    assert mc_max_for({"n_signal": 4}) == _MC_MAX
+    # A null scenario has no power criterion at all, so it keeps the base cap.
+    assert mc_max_for({"n_signal": 0}) == _MC_MAX
+
+    # The cap must not depend on the panel size.
+    for panel in (50, 200, 500, 2000):
+        assert mc_max_for({"n_signal": 1, "panel_size": panel}) == _MC_MAX_SPARSE_SIGNAL
+        assert mc_max_for({"n_signal": 10, "panel_size": panel}) == _MC_MAX
+
+    raised = [
+        sc["name"]
+        for fn, designs in (
+            (build_scenario_grid, ("two_arm", "single_arm")),
+            (build_sensitivity_grid, ("two_arm",)),
+        )
+        for d in designs
+        for sc in fn(d)
+        if mc_max_for(sc) == _MC_MAX_SPARSE_SIGNAL
+    ]
+    # Exactly the 50-gene panels at 2% and 4%, in both architectures.
+    assert len(raised) == 4, raised
+    assert all("g50" in n for n in raised), raised
+
+
+def test_manifest_hash_excludes_itself_and_is_order_independent():
+    """The digest must not depend on its own stored value or on key order.
+
+    A self-referential hash cannot be recomputed for verification, and an
+    order-dependent one changes when nothing about the content does. Results are
+    addressed by this digest on disk and stamped onto every row, so either defect
+    would silently split one run across two identities.
+    """
+    from sctrial.benchmark.manifest import manifest_hash, verify_manifest
+
+    payload = {
+        "git_commit": "a" * 40,
+        "source_tree_sha256": "b" * 64,
+        "config_sha256": "c" * 64,
+        "gate_summary": {"n_pass": 32, "n_fail": 0},
+        "package_versions": {"numpy": "1.26.4", "pandas": "2.2.1"},
+    }
+    h = manifest_hash(payload)
+
+    # 1. Inserting the digest must not change it -- i.e. it excludes itself.
+    stamped = dict(payload, manifest_sha256=h)
+    assert manifest_hash(stamped) == h, (
+        "the digest depends on its own stored value, so it can never be "
+        "recomputed for verification"
+    )
+
+    # 2. Key order must not matter.
+    reordered = {k: payload[k] for k in reversed(list(payload))}
+    assert manifest_hash(reordered) == h, "the digest depends on key insertion order"
+
+    # 3. Nested ordering must not matter either.
+    nested = dict(payload, package_versions={"pandas": "2.2.1", "numpy": "1.26.4"})
+    assert manifest_hash(nested) == h, "the digest depends on nested key order"
+
+    # 4. A real content change MUST change it.
+    changed = dict(payload, source_tree_sha256="d" * 64)
+    assert manifest_hash(changed) != h
+
+    # 5. The round trip the freeze performs must verify.
+    verify_manifest(stamped)
+    tampered = dict(stamped, git_commit="e" * 40)
+    with pytest.raises(RuntimeError, match="does not match"):
+        verify_manifest(tampered)

@@ -1,13 +1,20 @@
 """Ablation study — progressive component addition.
 
-Tests what each component of sctrial contributes by running
-increasingly complete variants:
+Tests what each component of sctrial contributes by running increasingly
+complete variants:
 
 1. Cell-level OLS (pseudoreplication baseline)
 2. Pseudobulk OLS (aggregation only)
 3. Pseudobulk + FE (fixed effects)
 4. Pseudobulk + FE + CRSE (cluster-robust SE)
 5. Full sctrial (FE + interaction + bootstrap)
+
+EVERY RUNG USES THE SAME OUTCOME: ``log(1 + CPM)`` normalised on the full
+transcriptome, computed per cell for the cell-level rung and per
+participant-visit for the pseudobulk rungs. Previously the cell-level rung ran on
+raw counts and the pseudobulk rungs on raw mean counts, so the ladder varied the
+outcome scale at the same time as the aggregation and could not isolate either.
+The whole point of an ablation is that exactly one thing changes per step.
 """
 
 from __future__ import annotations
@@ -21,8 +28,15 @@ import pandas as pd
 logger = logging.getLogger(__name__)
 
 
-def _cell_level_ols(adata, gene_cols: list[str]) -> dict:
-    """Naive OLS on cell-level data (pseudoreplication baseline)."""
+def _cell_level_ols(adata, gene_cols: list[str], cell_lib_size=None) -> dict:
+    """Naive OLS on cell-level data (the pseudoreplication baseline).
+
+    The outcome is ``log(1 + CPM)`` per cell, with the CPM denominator taken from
+    the FULL transcriptome via ``cell_lib_size`` — the same quantity and the same
+    scope the pseudobulk rungs use. This rung differs from the next one only in
+    treating each cell as an independent observation, which is the entire claim
+    being demonstrated.
+    """
     import statsmodels.api as sm
 
     obs = adata.obs.copy()
@@ -31,6 +45,16 @@ def _cell_level_ols(adata, gene_cols: list[str]) -> dict:
     obs["interact"] = obs["post"] * obs["treat"]
 
     X_mat = adata.X.toarray() if hasattr(adata.X, "toarray") else adata.X
+    X_mat = np.asarray(X_mat, dtype=float)
+    if cell_lib_size is None:
+        raise ValueError(
+            "cell_lib_size is required: a panel-derived denominator makes the "
+            "normalisation reference move with the signal (see "
+            "sctrial.benchmark.contracts)"
+        )
+    denom = np.asarray(cell_lib_size, dtype=float).copy()
+    denom[denom <= 0] = 1.0
+    X_mat = np.log1p(X_mat / denom[:, None] * 1e6)
 
     out = {}
     for i, gene in enumerate(gene_cols):
@@ -153,7 +177,7 @@ ABLATION_VARIANTS = {
 
 
 def run_ablation(
-    sim: dict,
+    inputs: dict,
     gene_cols: list[str],
     variants: list[str] | None = None,
 ) -> dict[str, dict]:
@@ -161,8 +185,10 @@ def run_ablation(
 
     Parameters
     ----------
-    sim : dict
-        Must have "adata" and "pseudobulk_means" keys (from simulate_trial).
+    inputs : dict
+        From :func:`sctrial.benchmark.contracts.prepare_inputs`. Supplying the
+        prepared contract rather than a raw ``sim`` dict is what guarantees every
+        rung sees the same outcome.
     gene_cols : list[str]
         Genes to test.
     variants : list[str]
@@ -177,13 +203,19 @@ def run_ablation(
 
     results = {}
     for var_name in variants:
-        label, fn, data_key = ABLATION_VARIANTS[var_name]
+        _label, fn, _data_key = ABLATION_VARIANTS[var_name]
 
         if var_name == "sctrial_full":
             from .runners.sctrial_did import run as run_sctrial
 
-            results[var_name] = run_sctrial(sim["adata"], gene_cols)
+            results[var_name] = run_sctrial(
+                inputs["participant_log1p_cpm"], gene_cols, from_pseudobulk=True
+            )
+        elif var_name == "cell_ols":
+            results[var_name] = _cell_level_ols(
+                inputs["cell_counts"], gene_cols, cell_lib_size=inputs["cell_lib_size"]
+            )
         elif fn is not None:
-            results[var_name] = fn(sim[data_key], gene_cols)
+            results[var_name] = fn(inputs["participant_log1p_cpm"], gene_cols)
 
     return results

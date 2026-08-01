@@ -8,7 +8,7 @@ Full benchmark execution script. Run phases independently or all together.
 Usage examples::
 
     # Phase 0: Simulator validation gate (MUST pass before Phase 2)
-    python scripts/run_benchmark.py --phase validate --n-jobs 1
+    # (calibration has moved to scripts/calibrate_simulator.py)
 
     # Phase 2: Full simulation grid (heavy — days on 25 cores)
     python scripts/run_benchmark.py --phase simulate --n-jobs 25
@@ -40,291 +40,222 @@ OUTPUT_DIR = PROJECT_ROOT / "manuscript" / "benchmark"
 
 
 def phase_validate(n_jobs: int):
-    """Phase 0: Simulator validation gate.
+    """Phase 0: simulator calibration and validation.
 
-    Calibrates the simulator from TNBC (raw counts), validates on
-    vaccine (holdout), and generates descriptive comparison for melanoma
-    (no raw counts). MUST pass before Phase 2.
+    Moved out of this script. Calibration is now a separate, canonical entry
+    point because it must run ONCE, on a compute node, and produce the frozen
+    configuration this benchmark then consumes. Keeping a second calibration
+    path here is exactly how the shipped benchmark ended up running on
+    uncalibrated defaults while the Methods described calibrated ones.
     """
-    import matplotlib.pyplot as plt
-    import numpy as np
-
-    from sctrial.benchmark.simulator import (
-        SimulationConfig,
-        calibrate_from_real_data,
-        simulate_trial,
-        validate_simulator,
+    raise SystemExit(
+        "Phase `validate` has moved to scripts/calibrate_simulator.py:\n"
+        "  python scripts/calibrate_simulator.py targets --dataset tnbc\n"
+        "  python scripts/calibrate_simulator.py gates --n-mc 200 --n-jobs 16\n"
+        "  python scripts/calibrate_simulator.py ablate\n"
+        "  python scripts/calibrate_simulator.py freeze\n"
+        "Run those under sbatch, never on a login node."
     )
 
-    out_dir = OUTPUT_DIR / "validation"
-    out_dir.mkdir(parents=True, exist_ok=True)
 
-    # Load real datasets
-    print("=" * 60)
-    print("PHASE 0: Simulator Validation Gate")
-    print("=" * 60)
 
-    # ---------------------------------------------------------------
-    # Calibration / Validation / Descriptive split (locked rule):
-    #
-    #   TNBC (GSE169246)     = CALIBRATION source (raw UMI counts)
-    #   Vaccine (GSE171964)  = HOLDOUT validation (raw counts, NOT used for param estimation)
-    #   Melanoma (Sade-Feld) = DESCRIPTIVE only (no raw counts, transformed-scale check)
-    #
-    # Simulator parameters are estimated from TNBC ONLY.
-    # Vaccine tests generalization. Melanoma is real-data benchmarks only.
-    # ---------------------------------------------------------------
-    datasets = {}
+def _layout(manifest: dict):
+    """The manifest-scoped result tree for this run.
 
-    # 1. CALIBRATION SOURCE: TNBC (two-arm, raw UMI counts)
-    print("\nLoading TNBC (CALIBRATION SOURCE, raw counts)...")
-    import anndata as ad
-    tnbc_path = Path(__file__).parent.parent.parent.parent / "try" / "GSE169246" / "tnbc_processed.h5ad"
-    if tnbc_path.exists():
-        tnbc = ad.read_h5ad(tnbc_path)
-        datasets["tnbc"] = {
-            "adata": tnbc,
-            "layer": None,                # .X is normalized
-            "count_layer": "counts",       # raw integer UMI counts
-            "participant_col": "participant_id", "visit_col": "visit",
-            "arm_col": "arm",
-            "design": "two_arm",
-            "role": "CALIBRATION",
-        }
-    else:
-        print(f"  FATAL: TNBC not found at {tnbc_path}")
-        print("  Cannot proceed — calibration source is required.")
-        return
+    Producers write scenario CSVs and per-scenario completion records here.
+    Nothing else in the pipeline resolves a results directory by name or date.
+    """
+    from sctrial.benchmark.paths import ResultLayout
 
-    # 2. HOLDOUT VALIDATION: Vaccine (single-arm, raw counts)
-    print("Loading Vaccine (HOLDOUT VALIDATION, raw counts)...")
-    from sctrial.datasets import load_vaccine_gse171964
-    vax = load_vaccine_gse171964()
-    if "pt_id" in vax.obs.columns:
-        vax.obs["participant_id"] = vax.obs["pt_id"]
-    if "day" in vax.obs.columns:
-        vax.obs["visit"] = vax.obs["day"].map({0: "Pre", 7: "Post"})
-    datasets["vaccine"] = {
-        "adata": vax,
-        "layer": None,                # .X is raw counts
-        "count_layer": None,           # auto-detect (.X is integer counts)
-        "participant_col": "participant_id", "visit_col": "visit",
-        "arm_col": "arm" if "arm" in vax.obs.columns else None,
-        "design": "single_arm",
-        "role": "HOLDOUT VALIDATION",
-    }
+    return ResultLayout(OUTPUT_DIR / "results", manifest["manifest_sha256"])
 
-    # 3. DESCRIPTIVE ONLY: Melanoma (no raw counts)
-    print("Loading Sade-Feldman (DESCRIPTIVE ONLY, no raw counts)...")
-    from sctrial.datasets import load_sade_feldman
-    sf = load_sade_feldman(
-        max_cells_per_participant_visit=None,
-        processed_name="sade_feldman_processed_v6.h5ad",
-    )
-    datasets["melanoma"] = {
-        "adata": sf,
-        "layer": "log1p_tpm",
-        "count_layer": None,          # NO raw counts available
-        "participant_col": "participant_id", "visit_col": "visit",
-        "arm_col": "response",
-        "design": "two_arm",
-        "role": "DESCRIPTIVE (transformed-scale, no raw counts)",
-    }
 
+def _load_frozen_manifest() -> dict:
+    """The manifest stamped onto every result row."""
+    import json as _json
+
+    path = OUTPUT_DIR / "validation" / "frozen_simulator_config.json"
+    with open(path) as fh:
+        m = dict(_json.load(fh).get("manifest") or {})
+    # A missing hash is refused HERE rather than defaulted, because the default
+    # was reached: the previous freeze recorded no manifest_sha256, so every row
+    # would have been stamped "unknown" and every run would have shared one
+    # results directory -- reintroducing exactly the collision the manifest-scoped
+    # layout exists to prevent. Failing at load names the cause; failing later, at
+    # directory creation, names only the symptom.
+    sha = m.get("manifest_sha256") or m.get("config_sha256")
+    if not sha:
+        raise SystemExit(
+            f"{path} carries no manifest_sha256. It predates the freeze protocol. "
+            "Re-run scripts/calibrate_simulator.py freeze; results are addressed "
+            "by this hash and cannot be written without it."
+        )
+    m["manifest_sha256"] = sha
+    m.setdefault("git_sha", m.get("git_commit", "unknown"))
+    return m
+
+
+def _load_frozen_config() -> dict:
+    """The one configuration every benchmark phase must use.
+
+    Refuses to proceed without it. A missing calibration used to fall through to
+    ``SimulationConfig`` defaults, which produced 2.3e7 UMIs per cell against a
+    TNBC median of 2,113 while the Methods claimed calibrated parameters.
+    """
     import json
 
-    # ---- Step 1: Calibrate from TNBC ONLY ----
-    print("\n" + "=" * 60)
-    print("Step 1: Calibrate simulator from TNBC (calibration source)")
-    print("=" * 60)
-    d_cal = datasets["tnbc"]
-    calibration_params = calibrate_from_real_data(
-        d_cal["adata"],
-        layer=d_cal["layer"],
-        count_layer=d_cal.get("count_layer"),
-        participant_col=d_cal["participant_col"],
-        visit_col=d_cal["visit_col"],
-    )
-    for k, v in calibration_params.items():
-        if isinstance(v, bool):
-            print(f"  {k}: {v}")
-        else:
-            print(f"  {k}: {v:.3f}")
-    with open(out_dir / "calibration_tnbc.json", "w") as f:
-        json.dump(calibration_params, f, indent=2)
-
-    # ---- Step 2: Validate against ALL datasets with correct labels ----
-    print("\n" + "=" * 60)
-    print("Step 2: Validate simulator against all datasets")
-    print("=" * 60)
-
-    for name, d in datasets.items():
-        role = d["role"]
-        print(f"\n--- {name} [{role}] ---")
-
-        # For non-calibration datasets, still compute their params for comparison
-        params = calibrate_from_real_data(
-            d["adata"],
-            layer=d["layer"],
-            count_layer=d.get("count_layer"),
-            participant_col=d["participant_col"],
-            visit_col=d["visit_col"],
+    path = OUTPUT_DIR / "validation" / "frozen_simulator_config.json"
+    if not path.exists():
+        raise SystemExit(
+            f"No frozen simulator configuration at {path}.\n"
+            "Run scripts/calibrate_simulator.py (targets -> gates -> freeze) first. "
+            "There is deliberately no default fallback."
         )
-        for k, v in params.items():
-            if isinstance(v, bool):
-                print(f"  {k}: {v}")
-            else:
-                print(f"  {k}: {v:.3f}")
+    with open(path) as fh:
+        blob = json.load(fh)
+    _verify_manifest(blob, path)
+    # Keep ONLY calibration-owned fields. The frozen configuration describes the
+    # reference POPULATION; the scenario grid owns the EXPERIMENT. The anchor's
+    # retained 6-versus-5 design is a property of the TNBC Treg cohort, not of a
+    # simulated n=40 arm, and letting it through collapsed every two-arm scenario
+    # to 11 participants while the results recorded the requested size.
+    from sctrial.benchmark.simulator_v2 import SCENARIO_OWNED_FIELDS
 
-        # Save per-dataset descriptive params (for reference, not for calibration)
-        with open(out_dir / f"params_{name}.json", "w") as f:
-            json.dump(params, f, indent=2)
+    frozen = blob["config"]
+    for field in SCENARIO_OWNED_FIELDS:
+        frozen.pop(field, None)
+    return frozen
 
-        # Generate simulated data using TNBC CALIBRATION PARAMS (not per-dataset)
-        # Only adjust n_per_arm and design to match the real dataset's structure
-        is_two_arm = d["design"] == "two_arm"
-        n_participants = d["adata"].obs[d["participant_col"]].nunique()
-        n_per_arm = n_participants // 2 if is_two_arm else n_participants
-        cfg = SimulationConfig(
-            design=d["design"],
-            n_per_arm=n_per_arm,
-            n_genes=min(50, d["adata"].n_vars),
-            # ALL distributional params from TNBC calibration (not per-dataset)
-            mean_cells_per_visit=int(calibration_params["mean_cells_per_visit"]),
-            participant_sd=max(0.1, np.sqrt(calibration_params["participant_icc"])),
-            baseline_mean=calibration_params["baseline_mean"],
-            baseline_sd=calibration_params["baseline_sd"],
-            target_library_size=int(np.exp(calibration_params["library_size_mean"])),
-            library_size_sd=calibration_params["library_size_sd"],
-            seed=42,
+
+def _verify_manifest(blob: dict, path) -> None:
+    """Re-check the frozen manifest before any compute happens.
+
+    Every provenance failure this project has had was silent: a calibration read
+    from a deleted scratch file, a stale .npz analysed after a partial sync, a
+    calibration that never reached the scenario generator. Verifying hashes costs
+    a second and converts each of those into a refusal.
+    """
+    import hashlib
+    import subprocess
+
+    m = blob.get("manifest")
+    if not m:
+        raise SystemExit(
+            f"{path} has no run manifest. It predates the freeze protocol and its "
+            "provenance cannot be established; re-run scripts/calibrate_simulator.py freeze."
         )
 
-        validation = validate_simulator(
-            cfg, d["adata"], layer=d["layer"],
-            participant_col=d["participant_col"],
-            visit_col=d["visit_col"],
+    problems = []
+
+    # THE SOURCE ACTUALLY EXECUTING, verified by content rather than by the commit
+    # it claims to be. git is absent from this cluster's compute nodes, and the
+    # cluster spent this project with HEAD pinned at one commit while the files on
+    # disk were many commits newer -- so the nominal commit described nothing that
+    # was running. A content hash needs no git and answers the question that
+    # matters.
+    from sctrial.benchmark.manifest import source_tree_sha256
+
+    want_src = m.get("source_tree_sha256")
+    if not want_src:
+        raise SystemExit(
+            f"{path} carries no source_tree_sha256. It predates source "
+            "verification; re-freeze before running."
+        )
+    got_src = source_tree_sha256()
+    if got_src != want_src:
+        raise SystemExit(
+            "REFUSING TO RUN: the source tree does not match the frozen "
+            f"benchmark.\n  frozen: {want_src}\n  actual: {got_src}\n"
+            "Deploy the frozen commit (scripts/sync_hpc.sh deploy <sha>) or "
+            "re-freeze deliberately. Results produced by unfrozen code cannot be "
+            "attributed to the frozen configuration."
+        )
+    print(f"source tree verified against the frozen benchmark: {got_src[:16]}", flush=True)
+
+    val_dir = path.parent
+    for key, fname in (
+        ("targets_sha256", f"{m['dataset']}_sim_targets.json"),
+        ("empirical_sha256", f"{m['dataset']}_empirical.npz"),
+    ):
+        want = m.get(key)
+        f = val_dir / fname
+        if want is None:
+            continue
+        if not f.exists():
+            problems.append(f"{fname} is missing")
+            continue
+        h = hashlib.sha256()
+        with open(f, "rb") as fh:
+            for chunk in iter(lambda: fh.read(1 << 20), b""):
+                h.update(chunk)
+        if h.hexdigest() != want:
+            problems.append(
+                f"{fname} has changed since the freeze "
+                f"({h.hexdigest()[:12]} != {want[:12]})"
+            )
+
+    try:
+        here = subprocess.run(
+            ["git", "-C", str(PROJECT_ROOT), "rev-parse", "HEAD"],
+            capture_output=True, text=True, timeout=60,
+        ).stdout.strip()
+    except Exception:
+        here = ""
+    if here and m.get("git_commit") not in ("unavailable", "", here):
+        problems.append(
+            f"code is at {here[:12]} but the run was frozen at "
+            f"{str(m.get('git_commit'))[:12]}"
         )
 
-        # Plot validation figure
-        fig, axes = plt.subplots(2, 3, figsize=(15, 10))
-        scale_label = "count-scale" if params["has_raw_counts"] else "transformed-scale"
-        fig.suptitle(
-            f"Simulator Validation: {name}\n"
-            f"[{role} — {scale_label} comparison — calibrated from TNBC]",
-            fontsize=12, fontweight="bold",
+    if problems:
+        raise SystemExit(
+            "refusing to run: the frozen manifest does not describe this tree.\n  - "
+            + "\n  - ".join(problems)
+            + "\nRe-freeze deliberately, or check out the frozen commit."
         )
-
-        cl = validation["cell_level"]
-        pl = validation["pseudobulk_level"]
-
-        # 1. Mean-variance
-        ax = axes[0, 0]
-        ax.scatter(np.log10(cl["real_gene_means"] + 1),
-                   np.log10(cl["real_gene_vars"] + 1),
-                   s=10, alpha=0.5, label="Real", color="C0")
-        ax.scatter(np.log10(cl["sim_gene_means"] + 1),
-                   np.log10(cl["sim_gene_vars"] + 1),
-                   s=10, alpha=0.5, label="Simulated", color="C1")
-        ax.set_xlabel("log10(mean + 1)")
-        ax.set_ylabel("log10(variance + 1)")
-        ax.set_title("Mean-Variance")
-        ax.legend(fontsize=8)
-
-        # 2. Zero fraction
-        ax = axes[0, 1]
-        ax.hist(cl["real_zero_fraction"], bins=30, alpha=0.5, label="Real", color="C0")
-        ax.hist(cl["sim_zero_fraction"], bins=30, alpha=0.5, label="Simulated", color="C1")
-        ax.set_xlabel("Zero fraction per gene")
-        ax.set_title("Zero Fraction")
-        ax.legend(fontsize=8)
-
-        # 3. Library size
-        ax = axes[0, 2]
-        ax.hist(np.log10(cl["real_library_sizes"] + 1), bins=50,
-                alpha=0.5, label="Real", color="C0", density=True)
-        ax.hist(np.log10(cl["sim_library_sizes"] + 1), bins=50,
-                alpha=0.5, label="Simulated", color="C1", density=True)
-        ax.set_xlabel("log10(library size)")
-        ax.set_title("Library Size Distribution")
-        ax.legend(fontsize=8)
-
-        # 4. Cell counts per participant-visit
-        ax = axes[1, 0]
-        ax.hist(pl["real_cell_counts"], bins=30, alpha=0.5,
-                label="Real", color="C0", density=True)
-        ax.hist(pl["sim_cell_counts"], bins=30, alpha=0.5,
-                label="Simulated", color="C1", density=True)
-        ax.set_xlabel("Cells per participant-visit")
-        ax.set_title("Cell Count Distribution")
-        ax.legend(fontsize=8)
-
-        # 5. Pseudobulk means
-        ax = axes[1, 1]
-        ax.hist(np.log10(pl["sim_pb_means"] + 1), bins=50,
-                alpha=0.7, color="C1", density=True)
-        ax.set_xlabel("log10(pseudobulk mean + 1)")
-        ax.set_title("Pseudobulk Mean Distribution (sim)")
-
-        # 6. Summary text
-        ax = axes[1, 2]
-        ax.axis("off")
-        text = (
-            f"Dataset: {name}\n"
-            f"Role: {role}\n"
-            f"Raw counts: {'YES' if params['has_raw_counts'] else 'NO'}\n"
-            f"Real cells: {d['adata'].n_obs:,}\n"
-            f"Real genes: {d['adata'].n_vars:,}\n"
-            f"Participants: {d['adata'].obs[d['participant_col']].nunique()}\n"
-            f"\nSimulator params (from TNBC):\n"
-            f"  mean_cells: {calibration_params['mean_cells_per_visit']:.0f}\n"
-            f"  ICC: {calibration_params['participant_icc']:.3f}\n"
-            f"  dispersion: {calibration_params['dispersion_median']:.1f}\n"
-            f"  baseline: {calibration_params['baseline_mean']:.2f}\n"
-            f"  lib_size: {calibration_params['library_size_mean']:.2f}\n"
-        )
-        ax.text(0.1, 0.9, text, transform=ax.transAxes, fontsize=10,
-                verticalalignment="top", fontfamily="monospace")
-
-        fig.tight_layout()
-        fig_path = out_dir / f"validation_{name}.png"
-        fig.savefig(fig_path, dpi=150, bbox_inches="tight")
-        plt.close(fig)
-        print(f"  Saved → {fig_path}")
-
-    print("\n" + "=" * 60)
-    print("VALIDATION GATE — Review figures in:")
-    print(f"  {out_dir}/")
-    print()
-    print("  validation_tnbc.png    → CALIBRATION source (must match well)")
-    print("  validation_vaccine.png → HOLDOUT validation (tests generalization)")
-    print("  validation_melanoma.png → DESCRIPTIVE only (transformed-scale)")
-    print()
-    print("Key check: TNBC should match closely (calibrated on it).")
-    print("Vaccine should match reasonably (holdout — the real test).")
-    print("Melanoma is descriptive — no count-scale claims.")
-    print()
-    print("If vaccine validation looks reasonable, proceed to Phase 2.")
-    print("=" * 60)
+    print(f"manifest verified: commit {str(m.get('git_commit'))[:12]}, "
+          f"{m.get('n_eligible_genes')} eligible genes, "
+          f"calibration {m.get('calibration_level')}")
 
 
-def phase_simulate(n_jobs: int, n_iterations: int):
-    """Phase 2: Full simulation benchmark grid."""
+def phase_simulate(n_jobs: int, n_iterations: int, designs=None):
+    """Phase 2: Full simulation benchmark grid.
+
+    ``designs`` is exposed so the two design families can run as separate jobs.
+    Each iteration now simulates a full 20,284-gene transcriptome rather than
+    only the tested panel, which is far more expensive; both families in one job
+    does not fit a 72-hour wall clock. Splitting also means a timeout costs one
+    family rather than the whole grid, and `resume` picks up complete scenarios.
+    """
     from sctrial.benchmark.orchestrator import run_benchmark
 
-    out_dir = OUTPUT_DIR / "simulation"
+    designs = designs or ["two_arm", "single_arm"]
+    frozen = _load_frozen_config()
+    manifest = _load_frozen_manifest()
+    # Manifest-scoped AND grid-scoped: results are addressed by the configuration
+    # that produced them, and each grid keeps its own directory so the aggregator
+    # can validate one grid's shards against exactly that grid's expected set.
+    _lay = _layout(manifest).create()
+    out_dir = _lay.scenarios_for("core")
+    comp_dir = _lay.completion_for("core")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    comp_dir.mkdir(parents=True, exist_ok=True)
     print("=" * 60)
-    print(f"PHASE 2: Simulation Benchmark")
+    print("PHASE 2: Simulation Benchmark")
     print(f"  {n_iterations} iterations × 2 designs × ~30 scenarios × 6 methods")
     print(f"  Workers: {n_jobs}")
     print(f"  Output: {out_dir}")
     print("=" * 60)
 
     run_benchmark(
-        designs=["two_arm", "single_arm"],
+        designs=designs,
         n_iterations=n_iterations,
         n_jobs=n_jobs,
         output_dir=out_dir,
+        completion_dir=comp_dir,
         resume=True,
+        base_config=frozen,
+        manifest=manifest,
     )
 
 
@@ -372,20 +303,67 @@ def phase_realdata(n_jobs: int):
     )
 
 
-def phase_ablation(n_jobs: int):
-    """Phase 4: Ablation study.
+def phase_sensitivity(n_jobs: int, n_iterations: int, designs=None, panels=None):
+    """Phase 5: Signal-fraction sensitivity benchmark.
 
-    Uses TNBC-calibrated simulator params (same family as Phase 2)
-    to ensure ablation results support the same manuscript claims.
+    Tests how null-gene FPR depends on gene-panel size (50-2000) and
+    signal fraction (1-20%). Answers the key reviewer question: does
+    dreamlet inflation attenuate with larger, more realistic panels?
+
+    Grid: 4 panel sizes × (4 signal fractions + 1 null) = 20 scenarios
+    per design, × 200 iterations × 4 methods.
     """
-    import time
+    from sctrial.benchmark.orchestrator import run_sensitivity_benchmark
 
+    frozen = _load_frozen_config()
+    manifest = _load_frozen_manifest()
+    _lay = _layout(manifest).create()
+    out_dir = _lay.scenarios_for("sensitivity")
+    comp_dir = _lay.completion_for("sensitivity")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    comp_dir.mkdir(parents=True, exist_ok=True)
+    print("=" * 60)
+    print("PHASE 5: Signal-Fraction Sensitivity Benchmark")
+    print(f"  {n_iterations} iterations per scenario")
+    print(f"  Panel sizes: {panels or [50, 200, 500, 2000]}")
+    print("  Signal fractions: 1%, 5%, 10%, 20% + pure null, x balanced/one-directional")
+    print(f"  Workers: {n_jobs}")
+    print(f"  Output: {out_dir}")
+    print("=" * 60)
+
+    run_sensitivity_benchmark(
+        designs=designs or ["two_arm"],
+        panels=panels,
+        n_iterations=n_iterations,
+        n_jobs=n_jobs,
+        output_dir=out_dir,
+        completion_dir=comp_dir,
+        resume=True,
+        base_config=frozen,
+        manifest=manifest,
+    )
+
+
+def phase_ablation(n_jobs: int):
+    """Phase 4: progressive-component ablation (the pseudoreplication ladder).
+
+    Runs on the SAME frozen simulator configuration as the main grid. Reading
+    calibration from a file that may or may not exist, with a hardcoded fallback,
+    is how the published ablation silently ran on different parameters from the
+    benchmark it was supposed to support; there is no fallback here.
+    """
     import numpy as np
     import pandas as pd
 
-    from sctrial.benchmark.ablation import ABLATION_VARIANTS, run_ablation
+    from sctrial.benchmark.ablation import run_ablation
+    from sctrial.benchmark.contracts import prepare_inputs
     from sctrial.benchmark.metrics import summarize_iteration
-    from sctrial.benchmark.simulator import SimulationConfig, simulate_trial
+    from sctrial.benchmark.simulator_v2 import (
+        TranscriptomeSimConfig,
+        make_signal,
+        nested_panels,
+        simulate_trial_v2,
+    )
 
     print("=" * 60)
     print("PHASE 4: Ablation Study")
@@ -393,65 +371,48 @@ def phase_ablation(n_jobs: int):
 
     out_dir = OUTPUT_DIR / "ablation"
     out_dir.mkdir(parents=True, exist_ok=True)
+    frozen = _load_frozen_config()
 
-    # Load TNBC calibration params so ablation uses the same simulator
-    # family as the main Phase 2 benchmark (locked rule: same calibrated
-    # simulator for all manuscript claims).
-    import json
-
-    cal_path = OUTPUT_DIR / "validation" / "calibration_tnbc.json"
-    if cal_path.exists():
-        with open(cal_path) as f:
-            cal = json.load(f)
-        print(f"  Using TNBC calibration params from {cal_path}")
-    else:
-        # Fallback: hardcoded TNBC values (from calibration run)
-        print("  WARNING: calibration_tnbc.json not found, using hardcoded TNBC values")
-        cal = {
-            "mean_cells_per_visit": 5898,
-            "participant_icc": 0.0012,
-            "baseline_mean": -12.864,
-            "baseline_sd": 2.667,
-            "library_size_mean": 8.0,
-            "library_size_sd": 0.761,
-        }
-
-    # Run ablation on 100 simulated null + 100 simulated signal datasets
     all_rows = []
-    for scenario, beta in [("null", 0.0), ("signal", 0.5)]:
-        print(f"\n--- Ablation: {scenario} (beta={beta}) ---")
+    for scenario, frac in [("null", 0.0), ("signal", 0.20)]:
+        print(f"\n--- Ablation: {scenario} (signal fraction {frac:.0%}) ---")
         for it in range(100):
-            cfg = SimulationConfig(
-                n_per_arm=40, n_genes=50,
-                effects={f"gene_{i}": beta for i in range(10)} if beta > 0 else {},
-                # Use TNBC-calibrated params (same simulator family as Phase 2)
-                mean_cells_per_visit=int(cal["mean_cells_per_visit"]),
-                baseline_mean=cal["baseline_mean"],
-                baseline_sd=cal["baseline_sd"],
-                target_library_size=int(np.exp(cal["library_size_mean"])),
-                library_size_sd=cal["library_size_sd"],
-                participant_sd=max(0.1, np.sqrt(cal["participant_icc"])),
-                seed=42 + it,
+            seed = 42 + it
+            kw = dict(frozen)
+            kw.update(n_per_arm=40, cells_per_pv_fixed=500, seed=seed)  # frozen is the floor
+            probe = TranscriptomeSimConfig(**kw)
+            panels = nested_panels(probe, rng=np.random.default_rng(seed + 1))
+            panel = [f"gene_{i}" for i in panels[50]]
+            # make_signal takes an integer gene COUNT, not a fraction: int(0.20) is
+            # 0, which silently turns this "signal" rung into another null run.
+            # Convert the ablation fraction to a realizable count on the panel.
+            n_sig = round(frac * len(panel))
+            effects = (
+                make_signal(panel, n_sig, "balanced", 0.5, rng=np.random.default_rng(seed + 2))
+                if n_sig > 0
+                else {}
             )
-            sim = simulate_trial(cfg)
-            gene_cols = [f"gene_{i}" for i in range(50)]
-            signal_genes = set(cfg.effects.keys())
+            sim = simulate_trial_v2(TranscriptomeSimConfig(effects=effects, **kw))
+            inputs = prepare_inputs(sim, panel)
 
-            results = run_ablation(sim, gene_cols)
-
+            # Every ablation rung analyses log(1+CPM), so the truth it is scored
+            # against is the log1p_cpm oracle, not the injected beta. Those differ
+            # for low-expression genes at realistic depth.
+            truth = sim["oracle"]["log1p_cpm"]
+            results = run_ablation(inputs, panel)
             for var_name, gene_results in results.items():
-                metrics = summarize_iteration(gene_results, sim["truth"], signal_genes)
+                metrics = summarize_iteration(gene_results, truth, set(effects))
                 metrics["variant"] = var_name
                 metrics["scenario"] = scenario
                 metrics["iteration"] = it
                 all_rows.append(metrics)
 
             if (it + 1) % 20 == 0:
-                print(f"  {it+1}/100 iterations done")
+                print(f"  {it + 1}/100 iterations done")
 
     df = pd.DataFrame(all_rows)
     df.to_csv(out_dir / "ablation_results.csv", index=False)
-    print(f"  Saved → {out_dir / 'ablation_results.csv'}")
+    print(f"  Saved -> {out_dir / 'ablation_results.csv'}")
 
 
 def main():
@@ -462,14 +423,19 @@ def main():
     )
     parser.add_argument(
         "--phase",
-        choices=["validate", "simulate", "realdata", "ablation", "all"],
+        choices=["validate", "simulate", "sensitivity", "realdata", "ablation", "all"],
         required=True,
         help="Which phase to run",
     )
     parser.add_argument("--n-jobs", type=int, default=1,
                         help="Parallel workers (-1 = all cores)")
     parser.add_argument("--n-iterations", type=int, default=200,
-                        help="Monte Carlo iterations (Phase 2 only)")
+                        help="Monte Carlo iterations per scenario")
+    parser.add_argument("--designs", nargs="+", default=None,
+                        help="Design families to run; split across jobs for wall-clock")
+    parser.add_argument("--panels", nargs="+", type=int, default=None,
+                        help="Sensitivity panel sizes to run; a 2000-gene iteration "
+                             "measured 495 s versus 44 s at 50 genes, so it is split off")
 
     args = parser.parse_args()
 
@@ -479,7 +445,10 @@ def main():
         phase_validate(args.n_jobs)
 
     if args.phase in ("simulate", "all"):
-        phase_simulate(args.n_jobs, args.n_iterations)
+        phase_simulate(args.n_jobs, args.n_iterations, args.designs)
+
+    if args.phase in ("sensitivity", "all"):
+        phase_sensitivity(args.n_jobs, args.n_iterations, args.designs, args.panels)
 
     if args.phase in ("realdata", "all"):
         phase_realdata(args.n_jobs)
