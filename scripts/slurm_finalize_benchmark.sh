@@ -15,8 +15,8 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=64G
 #SBATCH --time=1:00:00
-#SBATCH --output=/common/omarmlab/members/omar/projects/sctrial/logs/finalize_%j.out
-#SBATCH --error=/common/omarmlab/members/omar/projects/sctrial/logs/finalize_%j.err
+#SBATCH --output=/common/vasanthakup/projects/sctrial/logs/finalize_%j.out
+#SBATCH --error=/common/vasanthakup/projects/sctrial/logs/finalize_%j.err
 
 source ~/.bashrc
 set -eo pipefail

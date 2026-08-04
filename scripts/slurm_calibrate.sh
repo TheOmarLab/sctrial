@@ -17,8 +17,8 @@
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=400G
 #SBATCH --time=24:00:00
-#SBATCH --output=/common/omarmlab/members/omar/projects/sctrial/logs/calib_%x_%j.out
-#SBATCH --error=/common/omarmlab/members/omar/projects/sctrial/logs/calib_%x_%j.err
+#SBATCH --output=/common/vasanthakup/projects/sctrial/logs/calib_%x_%j.out
+#SBATCH --error=/common/vasanthakup/projects/sctrial/logs/calib_%x_%j.err
 
 # Source the profile BEFORE enabling strict mode: the system /etc/bashrc reads an
 # unset variable, so `set -u` aborts the job at line 1 with a message that looks

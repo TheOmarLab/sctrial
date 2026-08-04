@@ -11,8 +11,8 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=200G
 #SBATCH --time=8:00:00
-#SBATCH --output=/common/omarmlab/members/omar/projects/sctrial/logs/smoke_%j.out
-#SBATCH --error=/common/omarmlab/members/omar/projects/sctrial/logs/smoke_%j.err
+#SBATCH --output=/common/vasanthakup/projects/sctrial/logs/smoke_%j.out
+#SBATCH --error=/common/vasanthakup/projects/sctrial/logs/smoke_%j.err
 
 source ~/.bashrc
 set -eo pipefail

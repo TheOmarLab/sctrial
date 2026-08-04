@@ -8,8 +8,8 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=64G
 #SBATCH --time=2:00:00
-#SBATCH --output=/common/omarmlab/members/omar/projects/sctrial/logs/aggregate_%x_%j.out
-#SBATCH --error=/common/omarmlab/members/omar/projects/sctrial/logs/aggregate_%x_%j.err
+#SBATCH --output=/common/vasanthakup/projects/sctrial/logs/aggregate_%x_%j.out
+#SBATCH --error=/common/vasanthakup/projects/sctrial/logs/aggregate_%x_%j.err
 
 source ~/.bashrc
 set -eo pipefail
