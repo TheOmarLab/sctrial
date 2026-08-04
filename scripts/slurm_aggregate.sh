@@ -13,7 +13,7 @@
 
 source ~/.bashrc
 set -eo pipefail
-PROJECT=/common/omarmlab/members/omar/projects/sctrial
+PROJECT=/common/vasanthakup/projects/sctrial
 cd "$PROJECT"
 mkdir -p logs
 export SCTRIAL_MANUSCRIPT_DIR="$PROJECT/manuscript"
@@ -26,7 +26,7 @@ MIN_ITER="${2:-200}"
 # either aggregate the wrong run or fail to find one -- both after the compute
 # has already been spent. There is exactly one frozen configuration, so there is
 # exactly one correct answer and no reason for an operator to supply it.
-SHA=$(micromamba run -n sctrial python -c "
+SHA=$(conda run -n sctrial_benchmark python -c "
 import json, sys
 p = '$PROJECT/manuscript/benchmark/validation/frozen_simulator_config.json'
 m = (json.load(open(p)).get('manifest') or {})
@@ -37,6 +37,6 @@ print(sha)
 ")
 
 echo "=== aggregate $GRID under manifest ${SHA:0:12} ($(date)) ==="
-micromamba run -n sctrial python scripts/aggregate_benchmark.py \
+conda run -n sctrial_benchmark python scripts/aggregate_benchmark.py \
     "$GRID" "$SHA" --min-iterations "$MIN_ITER"
 echo "=== done ($(date)) ==="

@@ -29,7 +29,7 @@
 # like a cluster problem rather than a script bug.
 source ~/.bashrc
 set -eo pipefail
-PROJECT=/common/omarmlab/members/omar/projects/sctrial
+PROJECT=/common/vasanthakup/projects/sctrial
 cd "$PROJECT"
 mkdir -p logs
 export SCTRIAL_MANUSCRIPT_DIR="$PROJECT/manuscript"
@@ -94,6 +94,6 @@ if [ -n "$DESIGN" ]; then DESIGN_ARG=(--designs "$DESIGN"); fi
 if [ -n "$PANELS" ]; then DESIGN_ARG+=(--panels $PANELS); fi
 
 echo "=== $GRID grid, $N_ITER iterations, $N_JOBS workers, design=${DESIGN:-all} ($(date)) ==="
-micromamba run -n sctrial python scripts/run_benchmark.py \
+conda run -n sctrial_benchmark python scripts/run_benchmark.py \
     --phase "$PHASE" --n-jobs "$N_JOBS" --n-iterations "$N_ITER" "${DESIGN_ARG[@]}"
 echo "=== done ($(date)) ==="

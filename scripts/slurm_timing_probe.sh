@@ -21,7 +21,7 @@
 # like a cluster problem rather than a script bug.
 source ~/.bashrc
 set -eo pipefail
-PROJECT=/common/omarmlab/members/omar/projects/sctrial
+PROJECT=/common/vasanthakup/projects/sctrial
 cd "$PROJECT"
 mkdir -p logs
 export SCTRIAL_MANUSCRIPT_DIR="$PROJECT/manuscript"
@@ -46,5 +46,5 @@ export NUMEXPR_NUM_THREADS=1
 # fold contention into the per-replicate figure and then multiply by the worker
 # count again.
 echo "=== timing probe ($(date)) ==="
-micromamba run -n sctrial python scripts/timing_probe.py --n-jobs 1
+conda run -n sctrial_benchmark python scripts/timing_probe.py --n-jobs 1
 echo "=== done ($(date)) ==="

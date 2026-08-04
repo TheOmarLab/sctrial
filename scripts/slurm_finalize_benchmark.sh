@@ -20,12 +20,12 @@
 
 source ~/.bashrc
 set -eo pipefail
-PROJECT=/common/omarmlab/members/omar/projects/sctrial
+PROJECT=/common/vasanthakup/projects/sctrial
 cd "$PROJECT"
 mkdir -p logs
 export SCTRIAL_MANUSCRIPT_DIR="$PROJECT/manuscript"
 
 # The manifest is read from the frozen configuration, never passed by hand.
 echo "=== finalize benchmark ($(date)) ==="
-micromamba run -n sctrial python scripts/finalize_benchmark.py
+conda run -n sctrial_benchmark python scripts/finalize_benchmark.py
 echo "=== done ($(date)) ==="

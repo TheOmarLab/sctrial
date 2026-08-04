@@ -25,7 +25,7 @@
 # like a cluster problem rather than a script bug.
 source ~/.bashrc
 set -eo pipefail
-PROJECT=/common/omarmlab/members/omar/projects/sctrial
+PROJECT=/common/vasanthakup/projects/sctrial
 cd "$PROJECT"
 mkdir -p logs
 
@@ -55,24 +55,24 @@ echo "=== phase: $PHASE  ($(date)) ==="
 
 case "$PHASE" in
   targets)
-    micromamba run -n sctrial python scripts/calibrate_simulator.py $COMMON targets
+    conda run -n sctrial_benchmark python scripts/calibrate_simulator.py $COMMON targets
     ;;
   gates)
-    micromamba run -n sctrial python scripts/calibrate_simulator.py $COMMON \
+    conda run -n sctrial_benchmark python scripts/calibrate_simulator.py $COMMON \
         gates --n-mc "$N_MC" --n-jobs 16
     ;;
   ablate)
-    micromamba run -n sctrial python scripts/calibrate_simulator.py $COMMON \
+    conda run -n sctrial_benchmark python scripts/calibrate_simulator.py $COMMON \
         ablate --n-rep 5
     ;;
   freeze)
-    micromamba run -n sctrial python scripts/calibrate_simulator.py $COMMON freeze
+    conda run -n sctrial_benchmark python scripts/calibrate_simulator.py $COMMON freeze
     ;;
   diagnose)
-    micromamba run -n sctrial python scripts/calibrate_simulator.py $COMMON diagnose
+    conda run -n sctrial_benchmark python scripts/calibrate_simulator.py $COMMON diagnose
     ;;
   nebula-offset)
-    micromamba run -n sctrial python scripts/verify_nebula_offset.py
+    conda run -n sctrial_benchmark python scripts/verify_nebula_offset.py
     ;;
   *)
     echo "unknown phase: $PHASE" >&2
