@@ -414,10 +414,10 @@ def _panel_bench_runtime(ax, bench_df: pd.DataFrame, *, composite: bool = False)
     x_positions = np.arange(len(_PANEL_SIZES), dtype=float)
     n_to_x = dict(zip(_PANEL_SIZES, x_positions))
 
-    _lbl_fs = 5.05 if composite else 11
-    _ttl_fs = 6.0 if composite else 12
+    _lbl_fs = 5.2 if composite else 11
+    _ttl_fs = 7.0 if composite else 12
     _ttl_pad = 5 if composite else 10
-    _leg_fs = 4.5 if composite else 9
+    _leg_fs = 6.0 if composite else 9
 
     for method in _BENCH_METHODS:
         sub = summary[summary["method"] == method].sort_values("n_genes")
@@ -458,7 +458,7 @@ def _panel_bench_runtime(ax, bench_df: pd.DataFrame, *, composite: bool = False)
         # Lower-right corner: empty at the largest tested-set size (all lines are
         # high there), so the ratio box never collides with the upper-left legend.
         ax.text(0.97, 0.03, "\n".join(lines), transform=ax.transAxes,
-                fontsize=(4.4 if composite else 7.5), va="bottom", ha="right",
+                fontsize=(6.0 if composite else 7.5), va="bottom", ha="right",
                 bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
                           edgecolor="#cccccc", alpha=0.9))
 
@@ -475,7 +475,7 @@ def _panel_bench_runtime(ax, bench_df: pd.DataFrame, *, composite: bool = False)
     if composite:
         ax.legend(
             handles=_bench_legend_handles(), loc="upper left",
-            bbox_to_anchor=(0.02, 0.58),
+            bbox_to_anchor=(0.02, 0.98),
             frameon=True, framealpha=0.95, edgecolor="#cccccc", fontsize=_leg_fs,
             markerscale=0.52, handlelength=1.0,
         )
@@ -1000,7 +1000,7 @@ def _panel_bench_typeI_main(fig, core_df, *, composite: bool = False, gs_parent=
     # allotted cell instead of overflowing into neighbouring panels.
     gs = (gs_parent.subgridspec(1, 2, wspace=0.28) if gs_parent is not None
           else fig.add_gridspec(1, 2, wspace=0.28))
-    _ttl = 5.8 if composite else 12
+    _ttl = 5.5 if composite else 12
     _ax = 5.2 if composite else 11
     _tk = 4.7 if composite else 10
     for ci, design in enumerate(("two_arm", "single_arm")):
@@ -1201,8 +1201,8 @@ def _faceted_broken_by_fraction(fig, rate, *, ylabel, main_ylim, strip_ylim,
     `panel_sizes` restricts the facets shown (the lean main figure shows one
     representative tested-set size; the full grid lives in the supplement).
     """
-    _ttl = 5.6 if composite else 11
-    _ax = 5.0 if composite else 10
+    _ttl = 5.5 if composite else 11
+    _ax = 5.2 if composite else 10
     _tk = 4.5 if composite else 9
     sizes = panel_sizes if panel_sizes is not None else _PANEL_SIZES
     fracs = _SIGNAL_FRACTIONS
@@ -1331,8 +1331,8 @@ def _panel_bench_power_vs_n(fig, core_df, *, composite: bool = False, only_beta=
           if gs_parent is not None
           else fig.add_gridspec(len(designs), len(betas), hspace=0.55, wspace=0.26,
                                 left=0.13, right=0.98, top=0.84, bottom=0.10))
-    _ttl = 5.6 if composite else 11
-    _ax = 5.0 if composite else 10
+    _ttl = 7.0 if composite else 11
+    _ax = 5.2 if composite else 10
     _tk = 4.6 if composite else 9
     # Deterministic x-offsets expose methods that otherwise overlap almost
     # exactly. NEBULA is EXCLUDED from marginal-detection comparisons: its Type I

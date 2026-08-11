@@ -206,11 +206,51 @@ def _save_cache(tag: str, df: pd.DataFrame) -> None:
     df.to_json(_CACHE_DIR / f"{tag}.json", orient="records", indent=2)
 
 
+def _save_analysis_cache(tag: str, data: dict) -> None:
+    """Persist the DataFrame outputs of _prepare_*_data to disk."""
+    import json
+    _CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    frame_keys = ("df_cell", "df_part", "df_boot", "loo_records")
+    for key in frame_keys:
+        df = data.get(key)
+        if df is not None and not df.empty:
+            df.to_json(_CACHE_DIR / f"{tag}_{key}.json", orient="records", indent=2)
+    sig_path = _CACHE_DIR / f"{tag}_sig_cols.json"
+    sig_path.write_text(json.dumps(data.get("sig_cols", [])))
+
+
+def _load_analysis_cache(tag: str) -> dict | None:
+    """Reload cached DataFrames; returns None if any required frame is missing."""
+    import json
+    frame_keys = ("df_cell", "df_part", "df_boot", "loo_records")
+    result: dict = {}
+    for key in frame_keys:
+        path = _CACHE_DIR / f"{tag}_{key}.json"
+        if not path.exists():
+            return None
+        try:
+            result[key] = pd.read_json(path, orient="records")
+        except Exception:
+            return None
+    sig_path = _CACHE_DIR / f"{tag}_sig_cols.json"
+    if not sig_path.exists():
+        return None
+    result["sig_cols"] = json.loads(sig_path.read_text())
+    result["adata"] = None  # not cached; only needed for cleanup
+    return result
+
+
 # ======================================================================
 # Data preparation
 # ======================================================================
 
 def _prepare_sf_data() -> dict:
+    _tag = "sf_analysis_" + _cache_key("sf")
+    cached = _load_analysis_cache(_tag)
+    if cached is not None:
+        print("  SF analysis (cached)")
+        return cached
+
     adata = get_sade_feldman()
     if "log1p_tpm" not in adata.layers:
         if "tpm" in adata.layers:
@@ -237,13 +277,21 @@ def _prepare_sf_data() -> dict:
     print("  Running leave-one-out analysis ...")
     loo_records = _run_loo(adata, sig_cols, common_kw)
 
-    return {
+    result = {
         "df_cell": df_cell, "df_part": df_part, "df_boot": df_boot,
         "loo_records": loo_records, "sig_cols": sig_cols, "adata": adata,
     }
+    _save_analysis_cache(_tag, result)
+    return result
 
 
 def _prepare_tnbc_data() -> dict:
+    _tag = "tnbc_analysis_" + _cache_key("tnbc")
+    cached = _load_analysis_cache(_tag)
+    if cached is not None:
+        print("  TNBC analysis (cached)")
+        return cached
+
     adata = get_tnbc_zhang()
     if "log1p_norm" not in adata.layers:
         raise RuntimeError("No log1p_norm layer found for TNBC dataset.")
@@ -266,10 +314,12 @@ def _prepare_tnbc_data() -> dict:
     print("  [TNBC] Running leave-one-out analysis ...")
     loo_records = _run_loo(adata, sig_cols, common_kw)
 
-    return {
+    result = {
         "df_cell": df_cell, "df_part": df_part, "df_boot": df_boot,
         "loo_records": loo_records, "sig_cols": sig_cols, "adata": adata,
     }
+    _save_analysis_cache(_tag, result)
+    return result
 
 
 def _run_loo(adata, sig_cols: list[str], common_kw: dict) -> pd.DataFrame:
@@ -617,9 +667,11 @@ def _panel_a_single(
     ax.scatter(analytical, bootstrap, s=22, color=COLORS["treated"],
                edgecolor="white", linewidth=0.5, zorder=3)
 
-    ax.set_xlabel("Analytical SE (cluster-robust)")
-    ax.set_ylabel("Bootstrap SE (wild cluster)")
-    ax.set_title(title, fontsize=10, fontweight="bold")
+    _ax_fs = 5.2 if composite else 10
+    _ttl_fs_a = 7.0 if composite else 10
+    ax.set_xlabel("Analytical SE (cluster-robust)", fontsize=_ax_fs)
+    ax.set_ylabel("Bootstrap SE (wild cluster)", fontsize=_ax_fs)
+    ax.set_title(title, fontsize=_ttl_fs_a, fontweight="bold")
     ax.set_xlim(x_lo, hi)
     ax.set_ylim(lo, hi)
     despine(ax)
@@ -632,22 +684,20 @@ def _panel_a_single(
     r, p = stats.pearsonr(analytical, bootstrap)
     stat_text = ax.text(
         0.04, 0.96, f"r = {r:.2f}\np = {p:.1e}",
-        transform=ax.transAxes, fontsize=(6 if composite else 8), va="top", ha="left",
+        transform=ax.transAxes, fontsize=(8 if composite else 8), va="top", ha="left",
         zorder=6,
         bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="#dddddd", alpha=0.9),
     )
 
     # ── Labels with leader lines via adjust_text ──────────────────────
-    # Only in the STANDALONE panel: 15 leader-lined labels cannot be separated in
-    # the tiny composite cell (they garble even after repulsion + font shrink), and
-    # the composite panel's message is the correlation (r/p) and the identity line,
-    # not per-signature SEs. The standalone panel_A carries every label.
-    if not composite:
+    # Show in both standalone and composite; font is smaller in composite.
+    if True:
         texts = []
+        _lbl_fs = 4.5 if composite else 6.5
         for feat, xa, ya in zip(feats, analytical, bootstrap):
             label = sig_display(feat)
             texts.append(ax.text(
-                xa, ya, label, fontsize=6.5, ha="center", va="center",
+                xa, ya, label, fontsize=_lbl_fs, ha="center", va="center",
                 color="#1a1a1a", zorder=5,
                 bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="none", alpha=0.75)))
         _adj_kw = dict(
@@ -685,7 +735,7 @@ def _panel_b_color(feat: str) -> str:
     return _panel_b_color_map[feat]
 
 
-def _panel_b_single(ax, data: dict, *, title: str = "Leave-One-Out Sensitivity") -> None:
+def _panel_b_single(ax, data: dict, *, title: str = "Leave-One-Out Sensitivity", composite: bool = False) -> None:
     loo_df = data["loo_records"]
     df_part = data["df_part"]
 
@@ -723,13 +773,15 @@ def _panel_b_single(ax, data: dict, *, title: str = "Leave-One-Out Sensitivity")
         # diamond, LOO point or range whisker (the previous legend hid a whole row).
         ax.set_xlim(_v_lo - 0.15 * _v_range, _v_hi + 0.72 * _v_range)
 
+    _ytick_fs = 5 if composite else 8
     ax.set_yticks(range(len(top_sigs)))
-    ax.set_yticklabels([sig_display(s) for s in top_sigs], fontsize=8)
+    ax.set_yticklabels([sig_display(s) for s in top_sigs], fontsize=_ytick_fs)
     if top_sigs:
         ax.set_ylim(-0.6, len(top_sigs) - 1 + 0.6)
+    _ax_fs_b = 5.2 if composite else 10
     ax.axvline(0, ls=":", color=COLORS["gray"], lw=0.8, zorder=0)
-    ax.set_xlabel(r"$\beta_{\mathrm{DiD}}$ (standardized)")
-    ax.set_title(title, fontsize=10, fontweight="bold")
+    ax.set_xlabel(r"$\beta_{\mathrm{DiD}}$ (standardized)", fontsize=_ax_fs_b)
+    ax.set_title(title, fontsize=(7.0 if composite else 10), fontweight="bold")
 
     from matplotlib.lines import Line2D
     # Signature entries in TOP-to-BOTTOM row order (rows are drawn with the
@@ -740,14 +792,15 @@ def _panel_b_single(ax, data: dict, *, title: str = "Leave-One-Out Sensitivity")
         handles.append(Patch(facecolor=color, edgecolor="#333333", linewidth=0.5, label=sig_display(feat)))
     handles.append(Line2D([0], [0], marker="o", color="w", markerfacecolor=COLORS["gray"], markersize=4.0, label="LOO estimate"))
     handles.append(Line2D([0], [0], marker="D", color="w", markerfacecolor=COLORS["gray"], markeredgecolor="black", markersize=4.8, label="Full sample"))
-    ax.legend(handles=handles, fontsize=7.0, loc="center right", frameon=True,
+    _leg_fs = 4.5 if composite else 7.0
+    ax.legend(handles=handles, fontsize=_leg_fs, loc="center right", frameon=True,
               framealpha=0.95, edgecolor="#cccccc", borderpad=0.4, labelspacing=0.3)
     despine(ax)
 
 
-def _panel_b(ax_top, ax_bottom, data_sf: dict, data_tnbc: dict) -> None:
-    _panel_b_single(ax_top, data_sf, title="Leave-One-Out Sensitivity (Melanoma)")
-    _panel_b_single(ax_bottom, data_tnbc, title="Leave-One-Out Sensitivity (TNBC)")
+def _panel_b(ax_top, ax_bottom, data_sf: dict, data_tnbc: dict, *, composite: bool = False) -> None:
+    _panel_b_single(ax_top, data_sf, title="Leave-One-Out Sensitivity (Melanoma)", composite=composite)
+    _panel_b_single(ax_bottom, data_tnbc, title="Leave-One-Out Sensitivity (TNBC)", composite=composite)
 
 
 # ======================================================================
@@ -959,8 +1012,8 @@ def _panel_e_cross_dataset(ax, data: dict, *, composite: bool = False) -> None:
     _ann_fs = 5.0 if composite else 7
     _yt_fs = 6.4 if composite else 8.5
     _yt_grp_fs = 7.2 if composite else 9.5
-    _xl_fs = 7.6 if composite else 11
-    _ttl_fs = 8.6 if composite else 13
+    _xl_fs = 5.2 if composite else 11
+    _ttl_fs = 7.0 if composite else 13
     _xt_fs = 6.4 if composite else 9.5
 
     for idx, row in data_rows:
@@ -1106,7 +1159,7 @@ def generate() -> None:
         "xtick.labelsize": 4.5, "ytick.labelsize": 4.5,
         "legend.fontsize": 4, "legend.title_fontsize": 4,
     }
-    _MAX_FONT_COMPOSITE = 6
+    _MAX_FONT_COMPOSITE = 10
 
     def _cap_fontsize(fig, maximum):
         for ax in fig.get_axes():
@@ -1151,13 +1204,13 @@ def generate() -> None:
     #   C pure-null Type I error | D mixed-signal null-gene FPR
     #   E realised FDR after BH  | F marginal detection (beta = 0.5)
     #   G runtime  +  H pure-null calibration (lambda_GC)   | I cross-dataset forest
-    fig_c = plt.figure(figsize=(180 * _mm, 234 * _mm))
+    fig_c = plt.figure(figsize=(180 * _mm, 215 * _mm))
     # lambda_GC (old panel H) removed. Bottom row places G (runtime) and H
     # (cross-dataset forest) SIDE BY SIDE so neither is over-wide; the forest gets
     # the wider column. Letters are consecutive A-H.
     outer = fig_c.add_gridspec(
         9, 1,
-        height_ratios=[0.44, 0.40, 0.38, 0.46, 0.60, 0.52, 0.60, 0.48, 1.92],
+        height_ratios=[0.54, 0.40, 0.48, 0.46, 0.60, 0.52, 0.60, 0.48, 1.92],
         hspace=0.0, left=0.085, right=0.965, top=0.980, bottom=0.032,
     )
 
@@ -1178,7 +1231,7 @@ def generate() -> None:
     fig_c.add_subplot(outer[7]).set_axis_off()
 
     # Bottom row: G runtime (left) | H cross-dataset forest (right, wider column).
-    gs_gh = outer[8].subgridspec(1, 2, width_ratios=[1.0, 1.32], wspace=0.24)
+    gs_gh = outer[8].subgridspec(1, 2, width_ratios=[1.0, 1.32], wspace=0.40)
     ax_rt = fig_c.add_subplot(gs_gh[0])
     ax_forest = fig_c.add_subplot(gs_gh[1])
 
@@ -1198,15 +1251,16 @@ def generate() -> None:
 
     # Biological panels (A, B) and the cross-dataset forest (I).
     _panel_a(ax_a_bot, ax_a_top, data, data_tnbc, composite=True)
-    _panel_b(ax_b_bot, ax_b_top, data, data_tnbc)
+    _panel_b(ax_b_bot, ax_b_top, data, data_tnbc, composite=True)
     _panel_e_cross_dataset(ax_forest, data, composite=True)
 
     fig_c.canvas.draw()
 
     # Inside legends for the biological panels + forest.
+    # Panel A: larger legend; panel H (forest): same treatment. Panel B draws its
+    # own composite-sized legend inside _panel_b_single and is excluded here.
     _inside = {
         ax_a_top: "upper right", ax_a_bot: "upper right",
-        ax_b_top: "lower right", ax_b_bot: "lower right",
         ax_forest: "lower right",
     }
     for ax_target, loc in _inside.items():
@@ -1215,7 +1269,7 @@ def generate() -> None:
             handles = leg.legend_handles
             labels = [t.get_text() for t in leg.get_texts()]
             leg.remove()
-            ax_target.legend(handles=handles, labels=labels, fontsize=5.0, loc=loc,
+            ax_target.legend(handles=handles, labels=labels, fontsize=6.0, loc=loc,
                              frameon=True, framealpha=0.85, handlelength=1.0,
                              handletextpad=0.3, borderpad=0.3, labelspacing=0.2)
 
@@ -1246,14 +1300,14 @@ def generate() -> None:
         (gs_ef[1], r"Marginal detection ($\beta$ = 0.5)"),
     ]:
         cx, y1 = _cell_tc(cell)
-        fig_c.text(cx, min(y1 + 0.013, 0.997), ttl, fontsize=5.4,
+        fig_c.text(cx, min(y1 + 0.013, 0.997), ttl, fontsize=7.0,
                    fontweight="bold", va="bottom", ha="center")
 
     # Per-panel method legend beneath each benchmark panel, as a SINGLE ROW.
     # C/D/E/G/H carry all five methods; F (marginal power) omits NEBULA. Short
     # labels + small font keep the whole key on one line under the half-width
     # column.
-    _leg_fs, _leg_pad = 3.2, 0.006
+    _leg_fs, _leg_pad = 6.0, 0.001
     if core_df is not None:
         _bench_legend_below(fig_c, gs_cd[0], fontsize=_leg_fs, y_pad=_leg_pad, short=True)
         _bench_legend_below(fig_c, gs_ef[1],
