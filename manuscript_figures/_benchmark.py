@@ -414,7 +414,7 @@ def _panel_bench_runtime(ax, bench_df: pd.DataFrame, *, composite: bool = False)
     x_positions = np.arange(len(_PANEL_SIZES), dtype=float)
     n_to_x = dict(zip(_PANEL_SIZES, x_positions))
 
-    _lbl_fs = 5.2 if composite else 11
+    _lbl_fs = 6.2 if composite else 11
     _ttl_fs = 7.0 if composite else 12
     _ttl_pad = 5 if composite else 10
     _leg_fs = 6.0 if composite else 9
@@ -1280,7 +1280,7 @@ def _panel_bench_mixed_fpr(fig, bench_df, *, composite: bool = False, panel_size
     rate = rate.merge(meta, on="scenario")
     _faceted_broken_by_fraction(
         fig, rate, ylabel="Null-gene FPR (p < 0.05)",
-        main_ylim=(0.0, 0.10), strip_ylim=(0.68, 0.82), arch=_arch_lab,
+        main_ylim=(0.025, 0.075), strip_ylim=(0.68, 0.82), arch=_arch_lab,
         title="Mixed-signal null-gene false-positive rate", composite=composite,
         panel_sizes=panel_sizes, gs_parent=gs_parent)
 
@@ -1397,7 +1397,7 @@ def _panel_bench_power_vs_n(fig, core_df, *, composite: bool = False, only_beta=
             # Short forms fit the narrow composite column (design detail is in the
             # caption).
             short = {"two_arm": "Two-arm", "single_arm": "Single-arm"}[design]
-            axes_by_row[ri][0].set_ylabel(short, fontsize=_ax, fontweight="bold")
+            axes_by_row[ri][0].set_ylabel(short, fontsize=_ax)
     if not composite:
         # Row headers on the left, ONE shared y-label, title, and a global legend
         # below the title (four calibrated methods; NEBULA omitted here).
