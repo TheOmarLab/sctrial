@@ -682,24 +682,46 @@ def _panel_a_single(
     # as the arrow's patchB, so the leader line terminates at the box EDGE instead
     # of crossing the glyphs (the "strikethrough" defect).
     r, p = stats.pearsonr(analytical, bootstrap)
+    _stat_x = 0.96 if dataset == "melanoma" else 0.96
+    _stat_ha = "right"
+    _stat_y = 0.96 if dataset == "melanoma" else 0.04
+    _stat_va = "top" if dataset == "melanoma" else "bottom"
     stat_text = ax.text(
-        0.04, 0.96, f"r = {r:.2f}\np = {p:.1e}",
-        transform=ax.transAxes, fontsize=(8 if composite else 8), va="top", ha="left",
+        _stat_x, _stat_y, f"r = {r:.2f}\np = {p:.1e}",
+        transform=ax.transAxes, fontsize=(8 if composite else 8), va=_stat_va, ha=_stat_ha,
         zorder=6,
         bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="#dddddd", alpha=0.9),
     )
+
+    # Per-signature manual (dx, dy) offsets for TNBC as fractions of data range.
+    # Positive dy = up, positive dx = right.
+    _TNBC_OFFSETS: dict[str, tuple[float, float]] = {
+        "Inflammatory": (0.0, -0.008),
+        "Antigen":      (0.0, -0.012),
+        "Checkpoint":   (0.0, +0.008),
+        "Regulatory":   (0.002, 0.002),   # place close to marker → short leader line
+        "Exhaustion":   (0.0, +0.018),    # raise above Monocyte/Macrophage
+        "Monocyte":     (+0.010, 0.0),    # nudge right to stay inside axes
+    }
 
     # ── Labels with leader lines via adjust_text ──────────────────────
     # Show in both standalone and composite; font is smaller in composite.
     if True:
         texts = []
         _lbl_fs = 4.5 if composite else 6.5
+        _dr = raw_hi - raw_lo
         for feat, xa, ya in zip(feats, analytical, bootstrap):
             label = sig_display(feat)
+            if dataset == "tnbc":
+                for kw, (dx, dy) in _TNBC_OFFSETS.items():
+                    if kw.lower() in label.lower():
+                        xa = xa + dx * _dr
+                        ya = ya + dy * _dr
+                        break
             texts.append(ax.text(
                 xa, ya, label, fontsize=_lbl_fs, ha="center", va="center",
                 color="#1a1a1a", zorder=5,
-                bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="none", alpha=0.75)))
+                bbox=dict(boxstyle="round,pad=0.15", fc="none", ec="none", alpha=0.75)))
         _adj_kw = dict(
             x=analytical, y=bootstrap, ax=ax,
             arrowprops=dict(arrowstyle="-", color="#bbbbbb", lw=0.5, shrinkA=2, shrinkB=3),
@@ -1210,7 +1232,7 @@ def generate() -> None:
     # the wider column. Letters are consecutive A-H.
     outer = fig_c.add_gridspec(
         9, 1,
-        height_ratios=[0.64, 0.40, 0.48, 0.46, 0.60, 0.52, 0.60, 0.48, 1.92],
+        height_ratios=[0.80, 0.40, 0.48, 0.46, 0.60, 0.72, 0.60, 0.68, 1.92],
         hspace=0.0, left=0.085, right=0.965, top=0.980, bottom=0.032,
     )
 
