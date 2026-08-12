@@ -139,8 +139,13 @@ def _cache_dir():
 
 
 def _load_cache(tag: str):
-    """Return cached object for *tag*, or None on miss."""
-    p = _cache_dir() / f"_cache_{tag}.pkl"
+    """Return cached object for *tag*, or None on miss.
+
+    The code version is part of the filename so that changing the analysis
+    (e.g. the signature gene sets) invalidates the pickle instead of silently
+    serving stale results.
+    """
+    p = _cache_dir() / f"_cache_{_CODE_VERSION}_{tag}.pkl"
     if not p.exists():
         return None
     print(f"    [cache hit] {tag}")
@@ -150,7 +155,7 @@ def _load_cache(tag: str):
 
 def _save_cache(tag: str, obj):
     """Persist *obj* under *tag*."""
-    p = _cache_dir() / f"_cache_{tag}.pkl"
+    p = _cache_dir() / f"_cache_{_CODE_VERSION}_{tag}.pkl"
     with open(p, "wb") as f:
         pickle.dump(obj, f, protocol=pickle.HIGHEST_PROTOCOL)
     print(f"    [cached]    {tag}")
@@ -1057,7 +1062,7 @@ _MDE_DATASET_CFG = {
 N_POWER_ITERATIONS = 200
 POWER_ALPHA = 0.05
 RNG_SEED = 42
-_CODE_VERSION = "v15"
+_CODE_VERSION = "v16"
 
 DatasetInfo = tuple[str, object, object, tuple, list[str], str]
 
@@ -1078,14 +1083,14 @@ _METHOD_FAMILY: dict[str, str] = {
 
 _PRESPECIFIED_ENDPOINTS = [
     "sig_Cytotoxic T Cell Activity",
-    "sig_Interferon Response",
-    "sig_Immune Exhaustion",
+    "sig_Type I Interferon",
+    "sig_T Cell Exhaustion",
     "sig_T Cell Activation",
     "sig_Inflammatory Response",
 ]
 
 _DATASET_PRIMARY_ENDPOINT: dict[str, str] = {
-    "Sade-Feldman": "sig_Interferon Response",
+    "Sade-Feldman": "sig_Type I Interferon",
     "TNBC":         "sig_Cytotoxic T Cell Activity",
     "AML":          "sig_Cytotoxic T Cell Activity",
     "CAR-T":        "sig_Cytotoxic T Cell Activity",

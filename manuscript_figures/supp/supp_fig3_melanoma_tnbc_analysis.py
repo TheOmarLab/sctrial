@@ -604,9 +604,11 @@ def _panel_g_forest(ax: plt.Axes, data: dict) -> None:
                markerfacecolor=COL_NRESP, markersize=5,
                label=r"Non-responder $\uparrow$"),
     ]
+    # Bottom rows (most negative) have short right whiskers, so the lower-right
+    # corner is clear; upper-left collided with the top rows' left whiskers.
     ax.legend(
-        handles=legend_handles, fontsize=16,
-        loc="upper left",
+        handles=legend_handles, fontsize=12,
+        loc="lower right",
         ncol=1, frameon=True, framealpha=0.95, edgecolor="#CCCCCC",
         handletextpad=0.4, borderpad=0.5,
     )

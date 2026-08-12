@@ -153,54 +153,111 @@ except ImportError:
 # Gene signatures & scoring
 # ---------------------------------------------------------------------------
 
+# Literature-grounded, adversarially-verified module gene sets (2026-07-31).
+# Each list was curated against MSigDB (Hallmark/Reactome/KEGG) and the dataset
+# source papers, then skeptically verified (unsupported/dropout/cross-lineage
+# genes cut). See manuscript/revised_module_signatures_2026-07-31.md for the
+# per-gene rationale and citations. Scored with scanpy score_genes (see
+# score_signatures); signatures may share a few effector genes by design and the
+# overlaps are documented (e.g. NK/cytotoxic share KLRD1/GNLY/NKG7).
 GENE_SIGNATURES: dict[str, list[str]] = {
     "Cytotoxic T Cell Activity": [
-        "GZMB", "GZMA", "GZMH", "GZMK", "PRF1", "GNLY", "NKG7", "KLRK1",
-        "KLRD1", "FASLG", "IFNG",
+        "GZMB", "GZMA", "GZMH", "GZMK", "GZMM", "PRF1", "GNLY", "NKG7",
+        "KLRK1", "KLRD1", "KLRG1", "FASLG", "IFNG", "CST7", "CCL5",
+        "CX3CR1", "FGFBP2",
     ],
-    "Immune Exhaustion": [
-        "PDCD1", "LAG3", "HAVCR2", "TIGIT", "CTLA4", "TOX", "TOX2",
-        "ENTPD1", "CD244", "CD160", "BTLA",
+    "T Cell Exhaustion": [  # terminal exhaustion program
+        "TOX", "TOX2", "PDCD1", "HAVCR2", "LAG3", "TIGIT", "ENTPD1",
+        "CXCL13", "LAYN", "CD38", "PRDM1", "BATF", "NR4A2", "NR4A3",
+        "CD160", "CD244",
     ],
-    "Interferon Response": [
-        "ISG15", "IFI6", "IFIT1", "IFIT2", "IFIT3", "MX1", "MX2",
-        "OAS1", "OAS2", "OAS3", "STAT1", "IRF7", "IRF9",
+    "Checkpoint Receptors": [  # acute inhibitory-receptor panel
+        "PDCD1", "CTLA4", "LAG3", "HAVCR2", "TIGIT", "BTLA", "CD160",
+        "CD244", "CD96",
+    ],
+    "Type I Interferon": [
+        "ISG15", "IFI27", "IFI44", "IFI44L", "IFI35", "MX1", "OAS1",
+        "OASL", "IFIT2", "IFIT3", "IFITM3", "RSAD2", "LY6E", "USP18",
+        "IRF7", "STAT2", "ISG20", "BST2", "HERC6", "EPSTI1", "SAMD9L",
+        "PARP9", "RTP4", "LGALS3BP", "CMPK2",
+    ],
+    "Type II Interferon": [  # IFN-gamma response
+        "STAT1", "IRF1", "GBP1", "GBP2", "GBP4", "GBP5", "CXCL9",
+        "CXCL10", "CXCL11", "IDO1", "SOCS1", "SOCS3", "JAK2", "UBE2L6",
+        "WARS", "IL18BP", "VCAM1", "SERPING1", "FGL2", "IFI30",
     ],
     "Memory T Cell": [
-        "IL7R", "TCF7", "LEF1", "CCR7", "SELL", "CD27", "CD28",
-        "BCL2", "EOMES", "ID3",
+        "IL7R", "TCF7", "LEF1", "CCR7", "SELL", "CD27", "CD28", "ID3",
+        "REL", "FOXP1", "BACH2", "MYB", "FOXO1", "KLF2", "S1PR1",
     ],
     "T Cell Activation": [
-        "CD69", "CD44", "IL2RA", "ICOS", "TNFRSF4", "TNFRSF9",
-        "CD40LG", "HLA-DRA", "HLA-DRB1",
+        "CD69", "CD44", "IL2RA", "ICOS", "TNFRSF4", "TNFRSF9", "CD40LG",
+        "EGR1", "EGR2", "EGR3", "NR4A1", "MYC", "IL2RB", "IRF4",
+        "TNFRSF18",
     ],
     "Inflammatory Response": [
-        "IL1B", "IL6", "TNF", "CXCL8", "CCL2", "CCL3", "CCL4",
-        "NFKB1", "NLRP3", "CASP1",
+        "IL1B", "IL6", "TNF", "CXCL8", "CCL2", "CCL3", "CCL4", "NFKB1",
+        "NLRP3", "CASP1", "CXCL1", "CXCL2", "CXCL3", "CCL20", "PTGS2",
+        "IL1A", "TNFAIP3", "NFKBIA", "IL18", "S100A8", "S100A9",
     ],
     "Antigen Presentation": [
-        "HLA-A", "HLA-B", "HLA-C", "B2M", "TAP1", "TAP2",
-        "PSMB8", "PSMB9", "CD74",
+        "HLA-A", "HLA-B", "HLA-C", "B2M", "TAP1", "TAP2", "TAPBP",
+        "NLRC5", "PSMB8", "PSMB9", "PSMB10", "CIITA", "CD74", "HLA-DRA",
+        "HLA-DRB1", "HLA-DPA1", "HLA-DPB1", "HLA-DQA1", "HLA-DMA",
+        "HLA-DMB", "CTSS",
     ],
     "Cell Proliferation": [
-        "MKI67", "TOP2A", "PCNA", "CDK1", "CCNB1", "CCNA2",
-        "MCM2", "MCM7", "TYMS",
+        "MKI67", "TOP2A", "PCNA", "CDK1", "CCNB1", "CCNA2", "MCM2",
+        "MCM7", "TYMS", "BIRC5", "UBE2C", "CENPF", "CENPE", "CCNB2",
+        "RRM2", "HMGB2", "TPX2", "NUSAP1", "CKS2", "AURKA", "CKS1B",
+        "STMN1",
     ],
     "Regulatory T Cell": [
-        "FOXP3", "IL2RA", "CTLA4", "TNFRSF18", "IKZF2", "IKZF4",
-        "IL10", "TGFB1", "ENTPD1",
+        "FOXP3", "IKZF2", "IKZF4", "IL2RA", "CTLA4", "TNFRSF18",
+        "TNFRSF4", "TNFRSF9", "TIGIT", "ENTPD1", "LRRC32", "RTKN2",
+        "CCR8", "LAYN", "IL1R2",
     ],
     "NK Cell Activity": [
-        "NCAM1", "FCGR3A", "NCR1", "NCR3", "KLRF1", "KLRC1",
-        "KIR2DL1", "KIR2DL3", "KIR3DL1",
+        "FCGR3A", "NCR1", "NCR3", "NCR2", "KLRF1", "KLRC1", "KLRC2",
+        "KLRD1", "KLRB1", "IL2RB", "TBX21", "GZMM", "SH2D1B", "GNLY",
+        "NKG7",
     ],
     "Apoptosis": [
-        "BCL2", "BAX", "BAK1", "CASP3", "CASP8", "CASP9",
-        "FAS", "FASLG", "BID", "PARP1",
+        "BAX", "BAK1", "BID", "BCL2L11", "BBC3", "PMAIP1", "CASP3",
+        "CASP7", "CASP8", "CASP9", "FAS", "TNFRSF10B", "DIABLO", "APAF1",
+        "CDKN1A", "GADD45A", "GADD45B", "DDIT3", "FDXR", "BTG2",
     ],
     "Oxidative Stress Response": [
-        "NFE2L2", "HMOX1", "NQO1", "GCLC", "GCLM", "GSR",
-        "SOD1", "SOD2", "CAT", "GPX1",
+        "NFE2L2", "HMOX1", "NQO1", "GCLC", "GCLM", "GSR", "SOD1", "SOD2",
+        "CAT", "GPX1", "TXN", "TXNRD1", "PRDX1", "PRDX2", "SRXN1",
+        "G6PD", "GPX4", "GLRX", "SLC7A11",
+    ],
+    "Humoral Plasma Cell": [
+        "MS4A1", "CD79A", "CD79B", "CD19", "CD37", "BANK1", "TCL1A",
+        "FCRL5", "POU2AF1", "MZB1", "JCHAIN", "XBP1", "PRDM1", "DERL3",
+        "SDC1", "TNFRSF17", "SEC11C", "HERPUD1", "FKBP11", "SLAMF7",
+        "IGHM", "IGHG1", "IGKC", "IGLC2", "FDCSP",
+    ],
+    "Monocyte Macrophage": [
+        "CD14", "CD68", "LYZ", "CSF1R", "AIF1", "TYROBP", "FCER1G",
+        "CTSS", "FCGR3A", "ITGAM", "MNDA", "CD163", "MRC1", "MSR1",
+        "MARCO", "APOE", "C1QA", "C1QB", "C1QC", "TREM2", "SELENOP",
+        "LGALS3", "FCN1", "VCAN", "S100A9",
+    ],
+    "Tissue-Resident Memory": [
+        "ITGAE", "ITGA1", "CXCR6", "ZNF683", "CD101", "RGS1", "RGS2",
+        "DUSP6", "RBPJ", "CD69", "ID2", "PRDM1", "NR4A1", "DUSP1",
+        "EGR1",
+    ],
+    "T Follicular Helper": [
+        "CXCL13", "CXCR5", "PDCD1", "ICOS", "BCL6", "TOX", "TOX2",
+        "IL21", "BTLA", "CD200", "MAF", "ASCL2", "SH2D1A", "CD40LG",
+        "TNFRSF4", "BATF",
+    ],
+    "Hypoxia": [
+        "VEGFA", "SLC2A1", "SLC2A3", "HK1", "HK2", "PGK1", "LDHA",
+        "ALDOA", "ENO1", "PDK1", "BNIP3L", "NDRG1", "ADM", "ANGPTL4",
+        "DDIT4", "PPP1R15A", "ERO1A", "P4HA1", "CA12", "IGFBP3", "PLIN2",
     ],
 }
 
@@ -209,13 +266,13 @@ CLINICAL_SIGNATURES: dict[str, list[str]] = {
         "GZMB", "GZMA", "GZMK", "GZMH", "PRF1", "NKG7", "GNLY", "IFNG",
     ],
     "Exhaustion": [
-        "PDCD1", "LAG3", "HAVCR2", "TIGIT", "CTLA4", "TOX", "ENTPD1",
+        "TOX", "PDCD1", "LAG3", "HAVCR2", "TIGIT", "ENTPD1", "CXCL13",
     ],
     "Memory_T": [
         "IL7R", "TCF7", "LEF1", "CCR7", "SELL", "CD27", "CD28",
     ],
     "IFN_response": [
-        "ISG15", "IFI6", "IFIT1", "IFIT3", "MX1", "OAS1", "IRF7",
+        "ISG15", "IFI27", "IFIT3", "MX1", "OAS1", "IRF7", "ISG20",
     ],
     "Proliferation": [
         "MKI67", "TOP2A", "PCNA", "CDK1", "CCNB1", "CCNA2",
@@ -224,8 +281,10 @@ CLINICAL_SIGNATURES: dict[str, list[str]] = {
 
 SIGNATURE_DISPLAY_NAMES: dict[str, str] = {
     "Cytotoxic T Cell Activity": "Cytotoxic T Cells",
-    "Immune Exhaustion": "T Cell Exhaustion",
-    "Interferon Response": "IFN Response",
+    "T Cell Exhaustion": "T Cell Exhaustion",
+    "Checkpoint Receptors": "Checkpoint Receptors",
+    "Type I Interferon": "Type I IFN",
+    "Type II Interferon": "Type II IFN",
     "Memory T Cell": "Memory T Cells",
     "T Cell Activation": "T Cell Activation",
     "Inflammatory Response": "Inflammation",
@@ -235,10 +294,15 @@ SIGNATURE_DISPLAY_NAMES: dict[str, str] = {
     "NK Cell Activity": "NK Cell Activity",
     "Apoptosis": "Apoptosis",
     "Oxidative Stress Response": "Oxidative Stress",
+    "Humoral Plasma Cell": "Humoral/Plasma",
+    "Monocyte Macrophage": "Monocyte/Macrophage",
+    "Tissue-Resident Memory": "Tissue-Res. Memory",
+    "T Follicular Helper": "Tfh/Tph",
+    "Hypoxia": "Hypoxia",
     "Cytotoxic": "Cytotoxic T Cells",
     "Exhaustion": "T Cell Exhaustion",
     "Memory_T": "Memory T Cells",
-    "IFN_response": "IFN Response",
+    "IFN_response": "Type I IFN",
     "Proliferation": "Cell Proliferation",
 }
 
@@ -294,7 +358,7 @@ def _resolve_scoring_layer(adata, layer):
 
 
 def score_signatures(adata, *, layer=None, min_genes=3):
-    """Score all 12 GENE_SIGNATURES using scanpy.tl.score_genes."""
+    """Score all GENE_SIGNATURES modules using scanpy.tl.score_genes."""
     import scanpy as sc
 
     layer = _resolve_scoring_layer(adata, layer)
