@@ -1210,7 +1210,7 @@ def generate() -> None:
     # the wider column. Letters are consecutive A-H.
     outer = fig_c.add_gridspec(
         9, 1,
-        height_ratios=[0.54, 0.40, 0.48, 0.46, 0.60, 0.52, 0.60, 0.48, 1.92],
+        height_ratios=[0.64, 0.40, 0.48, 0.46, 0.60, 0.52, 0.60, 0.48, 1.92],
         hspace=0.0, left=0.085, right=0.965, top=0.980, bottom=0.032,
     )
 
