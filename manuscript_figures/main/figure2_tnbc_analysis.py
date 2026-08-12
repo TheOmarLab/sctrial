@@ -453,6 +453,7 @@ def _panel_b(ax: plt.Axes, data: dict) -> None:
                   edgecolor=COL_GRAY, alpha=0.8),
     )
 
+    ax.tick_params(axis="y", labelsize=5)
     ax.set_xlabel(r'$\beta_{DID}$ (cell-level)', fontsize=9)
     ax.set_ylabel(r'$\beta_{DID}$ (participant-level)', fontsize=9)
     ax.set_title("Effect Size: Cell vs Participant Aggregation",
@@ -639,7 +640,7 @@ def _panel_e(
         ax.set_xticks([0, 1])
         ax.set_xticklabels(VISITS, fontsize=8)
         ax.set_xlim(-0.35, 1.35)
-        ax.tick_params(axis="y", labelsize=7)
+        ax.tick_params(axis="y", labelsize=5)
 
         # FIX v1 Issue 5: use permutation p-value for title
         p_val = row.get("p_DiD_perm", np.nan)
