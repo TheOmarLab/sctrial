@@ -1202,14 +1202,21 @@ def generate():
                     handles_bi = leg_bi.legend_handles
                     labels_bi = [t.get_text() for t in leg_bi.get_texts()]
                     leg_bi.remove()
-                    ax_bi.legend(
-                        handles=handles_bi, labels=labels_bi,
+                    _leg_kw = dict(
                         fontsize=5, title=None,
-                        loc="upper right", frameon=True, framealpha=0.85,
+                        frameon=True, framealpha=0.85,
                         edgecolor="#CCCCCC", borderpad=0.3,
                         handlelength=0.8, handletextpad=0.3,
                         labelspacing=0.2, ncol=1,
                     )
+                    if name_bi == "CAR-T":
+                        _leg_kw.update(loc="upper center",
+                                       bbox_to_anchor=(0.5, 1.0),
+                                       ncol=2)
+                    else:
+                        _leg_kw["loc"] = "upper right"
+                    ax_bi.legend(handles=handles_bi, labels=labels_bi,
+                                 **_leg_kw)
         elif vis_bi and vis_bi in obs_bi.columns:
             grp = (obs_bi.assign(**{vis_bi: obs_bi[vis_bi].astype(str)})
                    .groupby(vis_bi, observed=True)[pid_bi]
@@ -1237,7 +1244,7 @@ def generate():
 
     # Fixed y-axis ceilings so the upper-right arm legend clears the tallest bar
     # (the Melanoma Non-responder Post bar reaches ~17, so 17.5 left no room).
-    _b_ylim = {"TNBC": 11.0, "Melanoma": 23.0}
+    _b_ylim = {"TNBC": 11.0, "Melanoma": 23.0, "CAR-T": 16.0}
     for ax_bi, nm_bi in ax_b_list:
         if nm_bi in _b_ylim:
             ax_bi.set_ylim(ax_bi.get_ylim()[0], _b_ylim[nm_bi])
@@ -1283,7 +1290,8 @@ def generate():
         ax_c.set_ylim(ax_c.get_ylim()[0], 6.3)  # a little more top headroom
         ax_c.legend(
             handles=_h_c, labels=_l_c, fontsize=4.0,
-            loc="upper center", bbox_to_anchor=(0.5, 1.0), ncol=7,
+            loc="upper center", bbox_to_anchor=(0.5, 1.0),
+            ncol=math.ceil(len(_l_c) / 3),
             frameon=True, framealpha=0.9, edgecolor="#CCCCCC",
             borderpad=0.25, handlelength=0.8, handletextpad=0.25,
             labelspacing=0.18, columnspacing=0.6,
