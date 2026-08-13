@@ -724,8 +724,8 @@ def _panel_a_single(
                 bbox=dict(boxstyle="round,pad=0.15", fc="none", ec="none", alpha=0.75)))
         _adj_kw = dict(
             x=analytical, y=bootstrap, ax=ax,
-            arrowprops=dict(arrowstyle="-", color="#bbbbbb", lw=0.5, shrinkA=2, shrinkB=3),
-            expand=(1.8, 2.2), force_text=(1.1, 1.3), force_points=(0.6, 0.7),
+            arrowprops=dict(arrowstyle="-", color="#bbbbbb", lw=0.5, shrinkA=1, shrinkB=1),
+            expand=(1.1, 1.3), force_text=(0.5, 0.6), force_points=(0.3, 0.4),
         )
         try:
             adjust_text(texts, add_objects=[stat_text], **_adj_kw)
