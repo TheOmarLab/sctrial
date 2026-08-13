@@ -538,7 +538,7 @@ def _panel_a(ax, data: dict) -> None:
         perm_p = perm_pvals[feat]
         obs_beta = df_part.loc[df_part["feature"] == feat, "beta_DiD"].values[0]
         color = hist_colors[idx % len(hist_colors)]
-        y_label = y_top * (0.93 - idx * 0.15)
+        y_label = y_top * (0.93 - idx * 0.28)
         if "apoptosis" in sig_display(feat).lower():
             y_label -= y_top * 0.12
         if "oxidative" in sig_display(feat).lower():
@@ -551,7 +551,7 @@ def _panel_a(ax, data: dict) -> None:
     ax.set_xlabel(r"$\beta_{\mathrm{DiD}}$ (null distribution)")
     ax.set_ylabel("Density")
     ax.set_title("Permutation Null Distributions – TNBC (Top 3)", fontsize=10, fontweight="bold")
-    ax.legend(fontsize=7, loc="upper right", frameon=True, framealpha=0.9)
+    ax.legend(fontsize=9, loc="upper right", frameon=True, framealpha=0.9)
     despine(ax)
 
 
@@ -602,13 +602,13 @@ def _panel_b(ax, data: dict) -> None:
         for sig in rec_df["significant"]
     ]
     ax.scatter(
-        rec_df["obs_beta"], y_pos, c=colors, s=30,
+        rec_df["obs_beta"], y_pos, c=colors, s=20,
         edgecolor="white", linewidth=0.5, zorder=3,
     )
 
     ax.axvline(0, ls=":", color=COLORS["gray"], lw=0.8, zorder=0)
     ax.set_yticks(y_pos)
-    ax.set_yticklabels(rec_df["display"].values, fontsize=8)
+    ax.set_yticklabels(rec_df["display"].values, fontsize=5)
     ax.set_xlabel(r"$\beta_{\mathrm{DiD}}$ (standardized)")
     ax.set_title("Observed Effects vs Null Range – TNBC", fontsize=10, fontweight="bold")
 
@@ -622,7 +622,7 @@ def _panel_b(ax, data: dict) -> None:
         plt.Rectangle((0, 0), 1, 1, fc=COLORS["gray"], alpha=0.25,
                        label="95% null range"),
     ]
-    ax.legend(handles=handles, fontsize=7, loc="lower right",
+    ax.legend(handles=handles, fontsize=9, loc="lower right",
               frameon=True, framealpha=0.9)
     despine(ax)
 
@@ -673,7 +673,7 @@ def _panel_c(ax, data: dict) -> None:
     ax.set_xticklabels(feat_order, rotation=40, ha="right", fontsize=8)
     ax.set_ylabel("Participant Effect (Post − Pre)")
     ax.set_title("Individual Treatment Effects - Melanoma", fontsize=10, fontweight="bold")
-    ax.legend(fontsize=8, frameon=True, framealpha=0.9)
+    ax.legend(fontsize=9, frameon=True, framealpha=0.9)
     despine(ax)
 
 
@@ -727,7 +727,7 @@ def _panel_d(ax, data: dict) -> None:
         "Response-Stratified Heterogeneity - Melanoma\n(g: Hedges' g, Responder vs Non-responder)",
         fontsize=10, fontweight="bold",
     )
-    ax.legend(fontsize=7, frameon=True, title="Arm")
+    ax.legend(fontsize=9, frameon=True, title="Arm")
     despine(ax)
 
 
@@ -798,7 +798,7 @@ def _panel_e(ax, tnbc_data: dict) -> None:
                markeredgecolor="none", markersize=4,
                label="Non-responder"),
     ]
-    ax.legend(handles=handles, fontsize=7, frameon=True, framealpha=0.9,
+    ax.legend(handles=handles, fontsize=9, frameon=True, framealpha=0.9,
               loc="upper left", ncol=2)
     despine(ax)
 
@@ -896,7 +896,7 @@ def _panel_f(ax, tnbc_data: dict) -> None:
         for grp in group_order
     ]
 
-    ax.legend(handles=legend_handles, fontsize=7, frameon=True,
+    ax.legend(handles=legend_handles, fontsize=9, frameon=True,
               loc="lower right", ncol=2)
     despine(ax)
 
@@ -936,8 +936,8 @@ def _panel_g(ax, steph_data: dict) -> None:
                 ax.annotate(
                     sig_display(col),
                     (len(DFO_BINS) - 1, means[-1]),
-                    fontsize=6, ha="left", va="center",
-                    xytext=(6, -2), textcoords="offset points",
+                    fontsize=7.5, ha="left", va="center",
+                    xytext=(6, 6), textcoords="offset points",
                     color=color,
                 )
 
@@ -951,7 +951,7 @@ def _panel_g(ax, steph_data: dict) -> None:
         Line2D([0], [0], color=COL_SEVERE, lw=2, ls="-", label="Severe"),
         Line2D([0], [0], color=COL_MILD, lw=2, ls="--", label="Mild"),
     ]
-    ax.legend(handles=handles, fontsize=8, loc="best", frameon=True, framealpha=0.9)
+    ax.legend(handles=handles, fontsize=9, loc="lower right", frameon=True, framealpha=0.9, ncol=2)
     despine(ax)
 
 
@@ -999,7 +999,7 @@ def _panel_h(ax, steph_data: dict) -> None:
     ax.set_xlabel("Days from Onset")
     ax.set_ylabel("Divergence (Severe − Mild)")
     ax.set_title("Severity Divergence Over Time - COVID-19", fontsize=10, fontweight="bold")
-    ax.legend(fontsize=7, loc="best", frameon=True, framealpha=0.9)
+    ax.legend(fontsize=9, loc="best", frameon=True, framealpha=0.9, ncol=2)
     despine(ax)
 
 
@@ -1048,7 +1048,7 @@ def _panel_i(ax, steph_data: dict) -> None:
     ax.set_xlabel("Days from Onset")
     ax.set_ylabel("")
     ax.set_title("Temporal Divergence Heatmap - COVID-19", fontsize=10, fontweight="bold")
-    ax.tick_params(axis="y", labelsize=8)
+    ax.tick_params(axis="y", labelsize=6.5)
 
 
 # ── Panel J: Time-specific Hedges' g ────────────────────────────────────
@@ -1115,10 +1115,10 @@ def _panel_j(ax, steph_data: dict) -> None:
 
     ax.axvline(0, ls=":", color=COLORS["gray"], lw=0.8, zorder=0)
     ax.set_yticks(y_pos)
-    ax.set_yticklabels(pivot.index, fontsize=7)
+    ax.set_yticklabels(pivot.index, fontsize=6)
     ax.set_xlabel("Hedges' g (Severe − Mild)")
     ax.set_title("Time-Specific Effect Sizes - COVID-19", fontsize=10, fontweight="bold")
-    ax.legend(fontsize=7, loc="lower right", frameon=True, framealpha=0.9)
+    ax.legend(fontsize=9, loc="lower right", frameon=True, framealpha=0.9)
     despine(ax)
 
 
@@ -1208,7 +1208,7 @@ def generate() -> None:
     #   Row 4: I | J     (heatmap + bar)
     outer = fig_c.add_gridspec(
         5, 1,
-        height_ratios=[1, 1, 1, 1, 1],
+        height_ratios=[1.35, 1, 1, 0.85, 1.6],
         hspace=0.70,
         left=0.10, right=0.95, top=0.97, bottom=0.05,
     )
@@ -1251,11 +1251,18 @@ def generate() -> None:
     _panel_i(ax_i, steph_data)
     _panel_j(ax_j, steph_data)
 
+    # Force all xtick labels to show in composite (prevent matplotlib auto-skipping)
+    for _ax_strip in [ax_cc, ax_d, ax_e, ax_f]:
+        _ticks = _ax_strip.get_xticks()
+        _ax_strip.xaxis.set_major_locator(plt.FixedLocator(_ticks))
+        for _lbl in _ax_strip.get_xticklabels():
+            _lbl.set_visible(True)
+
     # Move legends inside plots for the composite
     _inside = {
         ax_a: "upper right", ax_b: "lower right",
         ax_e: "upper right", ax_f: "upper right",
-        ax_g: "upper right", ax_h: "upper right",
+        ax_g: "lower right",
         ax_j: "lower right",
     }
     for ax_target, loc in _inside.items():
@@ -1266,7 +1273,7 @@ def generate() -> None:
             leg.remove()
             ax_target.legend(
                 handles=handles, labels=labels,
-                fontsize=3.5, loc=loc,
+                fontsize=5, loc=loc,
                 frameon=True, framealpha=0.85,
                 edgecolor="#CCCCCC", borderpad=0.3,
                 handlelength=1, handletextpad=0.3,
@@ -1281,7 +1288,7 @@ def generate() -> None:
         leg_cc.remove()
         ax_cc.legend(
             handles=handles, labels=labels,
-            fontsize=3.5, loc="upper left", ncol=2,
+            fontsize=5, loc="upper left", ncol=2,
             frameon=True, framealpha=0.85,
             edgecolor="#CCCCCC", borderpad=0.3,
             handlelength=1, handletextpad=0.3,
@@ -1295,24 +1302,35 @@ def generate() -> None:
         leg_d.remove()
         ax_d.legend(
             handles=handles, labels=labels,
-            fontsize=3.5, loc="lower right", ncol=2,
+            fontsize=5, loc="lower right", ncol=2,
             frameon=True, framealpha=0.85,
             edgecolor="#CCCCCC", borderpad=0.3,
             handlelength=1, handletextpad=0.3,
             labelspacing=0.2,
         )
 
-    # Panel H: reduce legend marker size
+    # Panel H: 2-column legend with reduced marker size
     leg_h = ax_h.get_legend()
     if leg_h:
-        for handle in leg_h.legend_handles:
+        handles = leg_h.legend_handles
+        labels = [t.get_text() for t in leg_h.get_texts()]
+        leg_h.remove()
+        new_leg_h = ax_h.legend(
+            handles=handles, labels=labels,
+            fontsize=5, loc="upper right", ncol=2,
+            frameon=True, framealpha=0.85,
+            edgecolor="#CCCCCC", borderpad=0.3,
+            handlelength=1, handletextpad=0.3,
+            labelspacing=0.2,
+        )
+        for handle in new_leg_h.legend_handles:
             handle.set_markersize(3)
 
     # Panel G: extend x-axis right to make room for signature text
     xl = ax_g.get_xlim()
-    ax_g.set_xlim(xl[0], xl[1] + 0.8)
+    ax_g.set_xlim(xl[0], xl[1] + 1.4)
     for txt in ax_g.texts:
-        txt.set_fontsize(4)
+        txt.set_fontsize(5.5)
 
     # Panel I: increase heatmap annotation font and xtick/xlabel
     for txt in ax_i.texts:
