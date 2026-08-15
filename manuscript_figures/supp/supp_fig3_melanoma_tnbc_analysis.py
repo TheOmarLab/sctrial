@@ -283,7 +283,7 @@ def _panel_a_paired_verification(ax: plt.Axes, data: dict) -> None:
     ax.set_xticks(range(len(participants)))
     ax.set_xticklabels(
         [f"P{i+1}" for i in range(len(participants))],
-        rotation=90, ha="center", fontsize=7,
+        rotation=90, ha="center", fontsize=5,
     )
     ax.set_xlabel("Participant", fontsize=9)
     ax.set_ylabel("Number of cells", fontsize=12)
@@ -347,7 +347,7 @@ def _panel_b_beta_comparison(ax: plt.Axes, data: dict) -> None:
     texts = [ax.text(xv, yv, sig_display(feat), fontsize=8, alpha=0.9)
              for feat, xv, yv in zip(common, beta_cell, beta_part)]
     adjust_text(
-        texts, ax=ax, expand=(1.4, 1.7),
+        texts, ax=ax, expand=(1.05, 1.1),
         arrowprops=dict(arrowstyle="-", color=COLORS["gray"], lw=0.4, alpha=0.6),
         ensure_inside_axes=True,
     )
@@ -371,7 +371,7 @@ def _panel_b_beta_comparison(ax: plt.Axes, data: dict) -> None:
         mpatches.Patch(facecolor=COLORS["control"], label="Negative effect"),
     ]
     ax.legend(handles=legend_handles, fontsize=16,
-              loc="lower right",
+              loc="lower left",
               frameon=True, framealpha=0.9)
     despine(ax)
 
@@ -408,7 +408,7 @@ def _panel_c_pvalue_inflation(ax: plt.Axes, data: dict) -> None:
             va="bottom", color=COLORS["gray"])
 
     ax.set_yticks(y_pos)
-    ax.set_yticklabels(df["display"], fontsize=5)
+    ax.set_yticklabels(df["display"], fontsize=3.5)
     ax.set_xlabel(r"$-\log_{10}(p)$")
     ax.set_title("P-value Inflation: Cell vs Participant Level (Melanoma)", fontsize=11,
                  fontweight="bold")
@@ -464,16 +464,16 @@ def _within_arm_response_forest_tnbc(
     for i, (_, row) in enumerate(df.iterrows()):
         color = COL_RESP if row["DID"] > 0 else COL_NRESP
         ax.hlines(y_pos[i], row["ci_lo"], row["ci_hi"],
-                  color=color, linewidth=2.0, alpha=1.0, zorder=1)
-        ax.scatter(row["DID"], y_pos[i], color=color, s=20,
-                   edgecolors="white", linewidths=0.8, zorder=2)
+                  color=color, linewidth=1.2, alpha=1.0, zorder=1)
+        ax.scatter(row["DID"], y_pos[i], color=color, s=12,
+                   edgecolors="white", linewidths=0.5, zorder=2)
         if show_stars and not (row["ci_lo"] < 0 < row["ci_hi"]):
             ax.text(row["ci_hi"] + 0.02, y_pos[i], "*",
                     va="center", fontsize=10, fontweight="bold", color=color)
 
     ax.axvline(0, color="#333333", lw=0.9, ls="--", zorder=0, alpha=0.6)
     ax.set_yticks(y_pos)
-    ax.set_yticklabels([sig_display(f) for f in df["feature"]], fontsize=5)
+    ax.set_yticklabels([sig_display(f) for f in df["feature"]], fontsize=3.5)
     ax.set_xlabel(
         r"DID$_{\mathrm{response}}$ = $\Delta$R $-$ $\Delta$NR",
         fontsize=9,
@@ -531,7 +531,7 @@ def _panel_d_tnbc_mean_delta_by_arm(ax: plt.Axes, tnbc_data: dict) -> None:
 
     ax.axvline(0, ls=":", color=COL_GRAY, lw=0.8, zorder=0)
     ax.set_yticks(y_pos)
-    ax.set_yticklabels(display_names, fontsize=5)
+    ax.set_yticklabels(display_names, fontsize=3.5)
     ax.set_xlabel("Mean Δ score (Post − Pre)")
     ax.set_title("Signature Changes by Arm (TNBC)", fontsize=10,
                  fontweight="bold")
@@ -580,17 +580,17 @@ def _panel_g_forest(ax: plt.Axes, data: dict) -> None:
         color = COL_RESP if row["beta_DiD"] > 0 else COL_NRESP
         ax.hlines(
             y_pos[i], ci_lo.iloc[i], ci_hi.iloc[i],
-            color=color, linewidth=2.0, alpha=1.0, zorder=1,
+            color=color, linewidth=1.2, alpha=1.0, zorder=1,
         )
         ax.scatter(
-            row["beta_DiD"], y_pos[i], color=color, s=18,
-            edgecolors="white", linewidths=0.8, alpha=1.0, zorder=2,
+            row["beta_DiD"], y_pos[i], color=color, s=12,
+            edgecolors="white", linewidths=0.5, alpha=1.0, zorder=2,
         )
 
     ax.axvline(0, color="#333333", linewidth=0.9, linestyle="--", zorder=0,
                alpha=0.6)
     ax.set_yticks(y_pos)
-    ax.set_yticklabels([sig_display(f) for f in df["feature"]], fontsize=5)
+    ax.set_yticklabels([sig_display(f) for f in df["feature"]], fontsize=3.5)
     ax.set_xlabel(r"DiD coefficient ($\beta$, standardised)", fontsize=11)
     ax.set_title("DiD Effects Across Signatures (Melanoma)", fontsize=13,
                  fontweight="bold")
@@ -909,7 +909,7 @@ def _panel_j_delta_by_response(ax: plt.Axes, data: dict) -> None:
 
     ax.axvline(0, ls=":", color=COLORS["gray"], lw=0.8, zorder=0)
     ax.set_yticks(y_pos)
-    ax.set_yticklabels(display_names, fontsize=5)
+    ax.set_yticklabels(display_names, fontsize=3.5)
     ax.set_xlabel("Mean Δ score (Post − Pre)")
     ax.set_title("Signature Changes by Response (Melanoma)", fontsize=10,
                  fontweight="bold")
@@ -938,13 +938,13 @@ def _panel_k_cohens_d(ax: plt.Axes, data: dict) -> None:
 
     colors = [COL_RESP if v > 0 else COL_NRESP for v in df["d"].values]
 
-    ax.hlines(y_pos, 0, df["d"].values, colors=colors, lw=2, zorder=2)
-    ax.scatter(df["d"].values, y_pos, c=colors, s=20,
-               edgecolor="white", linewidth=0.5, zorder=3)
+    ax.hlines(y_pos, 0, df["d"].values, colors=colors, lw=1.2, zorder=2)
+    ax.scatter(df["d"].values, y_pos, c=colors, s=12,
+               edgecolor="white", linewidth=0.4, zorder=3)
 
     ax.axvline(0, ls=":", color=COLORS["gray"], lw=0.8, zorder=0)
     ax.set_yticks(y_pos)
-    ax.set_yticklabels(df["display"].values, fontsize=5)
+    ax.set_yticklabels(df["display"].values, fontsize=3.5)
     ax.set_xlabel("Cohen's d (Responder − Non-responder)")
     ax.set_title("Effect Size of Response Separation (Melanoma)", fontsize=10,
                  fontweight="bold")
@@ -1180,7 +1180,7 @@ def generate() -> None:
     #   Row 4: K (centred)
     outer = fig_c.add_gridspec(
         5, 1,
-        height_ratios=[1, 1.0, 2.2, 1.3, 1],
+        height_ratios=[1, 1.4, 2.8, 1.3, 1.4],
         hspace=0.70,
         left=0.10, right=0.95, top=0.97, bottom=0.05,
     )
@@ -1234,7 +1234,7 @@ def generate() -> None:
     # Move below-figure legends inside the plot area for space
     _inside = {
         ax_a:      "upper right",
-        ax_b:      "lower right",
+        ax_b:      "lower left",
         ax_c:      "lower right",    # Melanoma p-value inflation
         ax_d:      "center left",    # TNBC mean delta by arm
         ax_e:      "upper left",     # TNBC Chemo DID
