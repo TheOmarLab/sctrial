@@ -408,7 +408,7 @@ def _panel_c_pvalue_inflation(ax: plt.Axes, data: dict) -> None:
             va="bottom", color=COLORS["gray"])
 
     ax.set_yticks(y_pos)
-    ax.set_yticklabels(df["display"], fontsize=3.5)
+    ax.set_yticklabels(df["display"], fontsize=5.5)
     ax.set_xlabel(r"$-\log_{10}(p)$")
     ax.set_title("P-value Inflation: Cell vs Participant Level (Melanoma)", fontsize=11,
                  fontweight="bold")
@@ -473,7 +473,7 @@ def _within_arm_response_forest_tnbc(
 
     ax.axvline(0, color="#333333", lw=0.9, ls="--", zorder=0, alpha=0.6)
     ax.set_yticks(y_pos)
-    ax.set_yticklabels([sig_display(f) for f in df["feature"]], fontsize=3.5)
+    ax.set_yticklabels([sig_display(f) for f in df["feature"]], fontsize=5.5)
     ax.set_xlabel(
         r"DID$_{\mathrm{response}}$ = $\Delta$R $-$ $\Delta$NR",
         fontsize=9,
@@ -531,11 +531,11 @@ def _panel_d_tnbc_mean_delta_by_arm(ax: plt.Axes, tnbc_data: dict) -> None:
 
     ax.axvline(0, ls=":", color=COL_GRAY, lw=0.8, zorder=0)
     ax.set_yticks(y_pos)
-    ax.set_yticklabels(display_names, fontsize=3.5)
+    ax.set_yticklabels(display_names, fontsize=5.5)
     ax.set_xlabel("Mean Δ score (Post − Pre)")
     ax.set_title("Signature Changes by Arm (TNBC)", fontsize=10,
                  fontweight="bold")
-    ax.legend(fontsize=16, loc="center left", frameon=True, framealpha=0.9)
+    ax.legend(fontsize=16, loc="center right", frameon=True, framealpha=0.9)
     despine(ax)
 
 
@@ -545,7 +545,7 @@ def _panel_e_tnbc_response_did_chemo(ax: plt.Axes, tnbc_data: dict) -> None:
     """Panel E: response DID within the Chemo arm (TNBC)."""
     _within_arm_response_forest_tnbc(
         ax, tnbc_data, TNBC_DESIGN.arm_control, COL_NRESP,
-        show_stars=False, legend_loc="upper left",
+        show_stars=False, legend_loc="lower right",
     )
 
 
@@ -590,7 +590,7 @@ def _panel_g_forest(ax: plt.Axes, data: dict) -> None:
     ax.axvline(0, color="#333333", linewidth=0.9, linestyle="--", zorder=0,
                alpha=0.6)
     ax.set_yticks(y_pos)
-    ax.set_yticklabels([sig_display(f) for f in df["feature"]], fontsize=3.5)
+    ax.set_yticklabels([sig_display(f) for f in df["feature"]], fontsize=5.5)
     ax.set_xlabel(r"DiD coefficient ($\beta$, standardised)", fontsize=11)
     ax.set_title("DiD Effects Across Signatures (Melanoma)", fontsize=13,
                  fontweight="bold")
@@ -909,7 +909,7 @@ def _panel_j_delta_by_response(ax: plt.Axes, data: dict) -> None:
 
     ax.axvline(0, ls=":", color=COLORS["gray"], lw=0.8, zorder=0)
     ax.set_yticks(y_pos)
-    ax.set_yticklabels(display_names, fontsize=3.5)
+    ax.set_yticklabels(display_names, fontsize=5.5)
     ax.set_xlabel("Mean Δ score (Post − Pre)")
     ax.set_title("Signature Changes by Response (Melanoma)", fontsize=10,
                  fontweight="bold")
@@ -944,7 +944,7 @@ def _panel_k_cohens_d(ax: plt.Axes, data: dict) -> None:
 
     ax.axvline(0, ls=":", color=COLORS["gray"], lw=0.8, zorder=0)
     ax.set_yticks(y_pos)
-    ax.set_yticklabels(df["display"].values, fontsize=3.5)
+    ax.set_yticklabels(df["display"].values, fontsize=5.5)
     ax.set_xlabel("Cohen's d (Responder − Non-responder)")
     ax.set_title("Effect Size of Response Separation (Melanoma)", fontsize=10,
                  fontweight="bold")
@@ -1171,17 +1171,23 @@ def generate() -> None:
     plt.rcParams.update(_SMALL_RC)
 
     _mm  = 1.0 / 25.4
-    fig_c = plt.figure(figsize=(180 * _mm, 215 * _mm))
+    fig_c = plt.figure(figsize=(180 * _mm, 245 * _mm))
 
-    #   Row 0: A | B
-    #   Row 1: C | D | E  (3 columns)
-    #   Row 2: F (top-left) + G (bottom-left) | H (right, spans both)
-    #   Row 3: I | J
-    #   Row 4: K (centred)
+    # 9-row gridspec: content rows at indices 0,2,4,6,8; spacer rows at 1,3,5,7.
+    # Spacers between rows 1-2, 2-3, 4-5 are narrow; spacer between rows 3-4 is wider.
+    #   Row 0 (content): A | B
+    #   Row 1 (spacer):  narrow
+    #   Row 2 (content): C | D | E
+    #   Row 3 (spacer):  narrow
+    #   Row 4 (content): F (top-left) + G (bottom-left) | H (right, spans both)
+    #   Row 5 (spacer):  wider (keep gap between rows 3 and 4)
+    #   Row 6 (content): I | J
+    #   Row 7 (spacer):  narrow
+    #   Row 8 (content): K (centred)
     outer = fig_c.add_gridspec(
-        5, 1,
-        height_ratios=[1, 1.4, 2.8, 1.3, 1.4],
-        hspace=0.70,
+        9, 1,
+        height_ratios=[1.0, 1.05, 1.8, 1.05, 3.8, 0.75, 1.8, 1.05, 1.8],
+        hspace=0,
         left=0.10, right=0.95, top=0.97, bottom=0.05,
     )
 
@@ -1190,26 +1196,25 @@ def generate() -> None:
     ax_a = fig_c.add_subplot(gs0[0])
     ax_b = fig_c.add_subplot(gs0[1])
 
-    # Row 1: C | D | E  (C and E narrower, wide gutters so C's title and its
-    # p=0.05 annotation do not bleed into panel D's letter / y-tick labels)
-    gs1  = outer[1].subgridspec(1, 3, wspace=0.95, width_ratios=[0.72, 1, 0.72])
+    # Row 2: C | D | E
+    gs1  = outer[2].subgridspec(1, 3, wspace=0.95, width_ratios=[0.72, 1, 0.72])
     ax_c = fig_c.add_subplot(gs1[0])
     ax_d = fig_c.add_subplot(gs1[1])
     ax_e = fig_c.add_subplot(gs1[2])
 
-    # Row 2: F (top-left) + G (bottom-left) | H (right, spans both)
-    gs2       = outer[2].subgridspec(2, 2, width_ratios=[1, 1.6],
-                                     hspace=0.70, wspace=0.40)
+    # Row 4: F (top-left) + G (bottom-left) | H (right, spans both)
+    gs2       = outer[4].subgridspec(2, 2, width_ratios=[1, 1.6],
+                                     hspace=0.50, wspace=0.40)
     ax_f      = fig_c.add_subplot(gs2[0, 0])    # Panel F (TNBC anti-PDL1+Chemo DID)
     ax_g_comp = fig_c.add_subplot(gs2[1, 0])    # Panel G (Melanoma forest)
 
-    # Row 3: I | J
-    gs3  = outer[3].subgridspec(1, 2, wspace=0.55)
+    # Row 6: I | J
+    gs3  = outer[6].subgridspec(1, 2, wspace=0.55)
     ax_i = fig_c.add_subplot(gs3[0])
     ax_j = fig_c.add_subplot(gs3[1])
 
-    # Row 4: K (centred)
-    gs4  = outer[4].subgridspec(1, 3, width_ratios=[0.6, 1.8, 0.6], wspace=0.40)
+    # Row 8: K (centred)
+    gs4  = outer[8].subgridspec(1, 3, width_ratios=[0.6, 1.8, 0.6], wspace=0.40)
     ax_k = fig_c.add_subplot(gs4[1])
 
     # ── Draw all panels ────────────────────────────────────────────────────
@@ -1236,8 +1241,8 @@ def generate() -> None:
         ax_a:      "upper right",
         ax_b:      "lower left",
         ax_c:      "lower right",    # Melanoma p-value inflation
-        ax_d:      "center left",    # TNBC mean delta by arm
-        ax_e:      "upper left",     # TNBC Chemo DID
+        ax_d:      "center right",   # TNBC mean delta by arm
+        ax_e:      "lower right",    # TNBC Chemo DID
         ax_f:      "upper left",     # TNBC anti-PDL1 DID
         ax_g_comp: "upper left",     # Melanoma forest
         ax_j:      "lower right",    # Melanoma delta by response
@@ -1261,7 +1266,9 @@ def generate() -> None:
         leg_h = axes_h[-1].get_legend()
         if leg_h:
             leg_h.remove()
-        mid_ax = axes_h[4]
+        # Place legend between the two H rows: anchor to bottom of axes_h[1]
+        # (centre panel of top row), pointing downward into the inter-row gap.
+        mid_top_ax = axes_h[1]
         _hh = [
             Line2D([0], [0], color=COL_RESP, linewidth=1.5, marker="o",
                    markersize=3, markeredgecolor="white", label="Responder"),
@@ -1271,9 +1278,9 @@ def generate() -> None:
             Line2D([0], [0], color=COL_GRAY, linewidth=0.6, alpha=0.4,
                    label="Individual"),
         ]
-        mid_ax.legend(
+        mid_top_ax.legend(
             handles=_hh, fontsize=4.5,
-            loc="upper center", bbox_to_anchor=(0.5, -0.25),
+            loc="upper center", bbox_to_anchor=(0.5, -0.28),
             ncol=3, frameon=True, framealpha=0.95, edgecolor="#CCCCCC",
         )
 
