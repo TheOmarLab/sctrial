@@ -301,7 +301,7 @@ def _panel_a_paired_verification(ax: plt.Axes, data: dict) -> None:
                markersize=5, markeredgewidth=0, label="Post"),
     ]
     ax.legend(handles=legend_handles, fontsize=16,
-              loc="upper center", bbox_to_anchor=(0.5, -0.38),
+              loc="upper center", bbox_to_anchor=(0.5, -0.25),
               ncol=4, frameon=True, framealpha=0.9,
               handletextpad=0.3, columnspacing=0.8)
 
@@ -347,10 +347,19 @@ def _panel_b_beta_comparison(ax: plt.Axes, data: dict) -> None:
     texts = [ax.text(xv, yv, sig_display(feat), fontsize=8, alpha=0.9)
              for feat, xv, yv in zip(common, beta_cell, beta_part)]
     adjust_text(
-        texts, ax=ax, expand=(1.05, 1.1),
+        texts, ax=ax, expand=(0.92, 0.95),
         arrowprops=dict(arrowstyle="-", color=COLORS["gray"], lw=0.4, alpha=0.6),
         ensure_inside_axes=True,
     )
+    # Manual nudges for specific labels after auto-placement
+    _axis_range = ax.get_ylim()[1] - ax.get_ylim()[0]
+    for txt in texts:
+        s = txt.get_text()
+        x, y = txt.get_position()
+        if "NK" in s and "activit" in s.lower():
+            txt.set_position((x, y - 0.06 * _axis_range))
+        elif "Proliferat" in s:
+            txt.set_position((x, y + 0.06 * _axis_range))
 
     r, p = stats.pearsonr(beta_cell, beta_part)
     ax.text(
@@ -408,7 +417,7 @@ def _panel_c_pvalue_inflation(ax: plt.Axes, data: dict) -> None:
             va="bottom", color=COLORS["gray"])
 
     ax.set_yticks(y_pos)
-    ax.set_yticklabels(df["display"], fontsize=5.5)
+    ax.set_yticklabels(df["display"], fontsize=4.5)
     ax.set_xlabel(r"$-\log_{10}(p)$")
     ax.set_title("P-value Inflation: Cell vs Participant Level (Melanoma)", fontsize=11,
                  fontweight="bold")
@@ -473,7 +482,7 @@ def _within_arm_response_forest_tnbc(
 
     ax.axvline(0, color="#333333", lw=0.9, ls="--", zorder=0, alpha=0.6)
     ax.set_yticks(y_pos)
-    ax.set_yticklabels([sig_display(f) for f in df["feature"]], fontsize=5.5)
+    ax.set_yticklabels([sig_display(f) for f in df["feature"]], fontsize=4.5)
     ax.set_xlabel(
         r"DID$_{\mathrm{response}}$ = $\Delta$R $-$ $\Delta$NR",
         fontsize=9,
@@ -488,10 +497,10 @@ def _within_arm_response_forest_tnbc(
     handles = [
         Line2D([0], [0], marker="o", color="w",
                markerfacecolor=COL_RESP, markersize=5,
-               label=r"Responder $\uparrow$"),
+               label="Responder"),
         Line2D([0], [0], marker="o", color="w",
                markerfacecolor=COL_NRESP, markersize=5,
-               label=r"Non-responder $\uparrow$"),
+               label="Non-responder"),
     ]
     ax.legend(handles=handles, fontsize=16, loc=legend_loc,
               frameon=True, framealpha=0.9,
@@ -531,7 +540,7 @@ def _panel_d_tnbc_mean_delta_by_arm(ax: plt.Axes, tnbc_data: dict) -> None:
 
     ax.axvline(0, ls=":", color=COL_GRAY, lw=0.8, zorder=0)
     ax.set_yticks(y_pos)
-    ax.set_yticklabels(display_names, fontsize=5.5)
+    ax.set_yticklabels(display_names, fontsize=4.5)
     ax.set_xlabel("Mean Δ score (Post − Pre)")
     ax.set_title("Signature Changes by Arm (TNBC)", fontsize=10,
                  fontweight="bold")
@@ -555,6 +564,7 @@ def _panel_f_tnbc_response_did_antipdl1(ax: plt.Axes, tnbc_data: dict) -> None:
     """Panel F: response DID within the anti-PDL1+Chemo arm (TNBC)."""
     _within_arm_response_forest_tnbc(
         ax, tnbc_data, TNBC_DESIGN.arm_treated, COL_RESP,
+        show_stars=False,
     )
 
 
@@ -590,7 +600,7 @@ def _panel_g_forest(ax: plt.Axes, data: dict) -> None:
     ax.axvline(0, color="#333333", linewidth=0.9, linestyle="--", zorder=0,
                alpha=0.6)
     ax.set_yticks(y_pos)
-    ax.set_yticklabels([sig_display(f) for f in df["feature"]], fontsize=5.5)
+    ax.set_yticklabels([sig_display(f) for f in df["feature"]], fontsize=4.5)
     ax.set_xlabel(r"DiD coefficient ($\beta$, standardised)", fontsize=11)
     ax.set_title("DiD Effects Across Signatures (Melanoma)", fontsize=13,
                  fontweight="bold")
@@ -909,7 +919,7 @@ def _panel_j_delta_by_response(ax: plt.Axes, data: dict) -> None:
 
     ax.axvline(0, ls=":", color=COLORS["gray"], lw=0.8, zorder=0)
     ax.set_yticks(y_pos)
-    ax.set_yticklabels(display_names, fontsize=5.5)
+    ax.set_yticklabels(display_names, fontsize=4.5)
     ax.set_xlabel("Mean Δ score (Post − Pre)")
     ax.set_title("Signature Changes by Response (Melanoma)", fontsize=10,
                  fontweight="bold")
@@ -944,10 +954,17 @@ def _panel_k_cohens_d(ax: plt.Axes, data: dict) -> None:
 
     ax.axvline(0, ls=":", color=COLORS["gray"], lw=0.8, zorder=0)
     ax.set_yticks(y_pos)
-    ax.set_yticklabels(df["display"].values, fontsize=5.5)
+    ax.set_yticklabels(df["display"].values, fontsize=4.5)
     ax.set_xlabel("Cohen's d (Responder − Non-responder)")
     ax.set_title("Effect Size of Response Separation (Melanoma)", fontsize=10,
                  fontweight="bold")
+
+    legend_handles = [
+        mpatches.Patch(facecolor=COL_RESP, label="Responder ↑"),
+        mpatches.Patch(facecolor=COL_NRESP, label="Non-responder ↑"),
+    ]
+    ax.legend(handles=legend_handles, fontsize=16, loc="lower right",
+              frameon=True, framealpha=0.9)
     despine(ax)
 
 
@@ -1197,7 +1214,7 @@ def generate() -> None:
     ax_b = fig_c.add_subplot(gs0[1])
 
     # Row 2: C | D | E
-    gs1  = outer[2].subgridspec(1, 3, wspace=0.95, width_ratios=[0.72, 1, 0.72])
+    gs1  = outer[2].subgridspec(1, 3, wspace=0.95, width_ratios=[0.72, 1, 0.95])
     ax_c = fig_c.add_subplot(gs1[0])
     ax_d = fig_c.add_subplot(gs1[1])
     ax_e = fig_c.add_subplot(gs1[2])
@@ -1238,7 +1255,6 @@ def generate() -> None:
 
     # Move below-figure legends inside the plot area for space
     _inside = {
-        ax_a:      "upper right",
         ax_b:      "lower left",
         ax_c:      "lower right",    # Melanoma p-value inflation
         ax_d:      "center right",   # TNBC mean delta by arm
@@ -1246,6 +1262,7 @@ def generate() -> None:
         ax_f:      "upper left",     # TNBC anti-PDL1 DID
         ax_g_comp: "upper left",     # Melanoma forest
         ax_j:      "lower right",    # Melanoma delta by response
+        ax_k:      "lower right",    # Melanoma Cohen's d
     }
     for ax_target, loc in _inside.items():
         leg = ax_target.get_legend()
@@ -1260,6 +1277,22 @@ def generate() -> None:
                 handlelength=1, handletextpad=0.3,
                 borderpad=0.3, labelspacing=0.2,
             )
+
+    # Panel A: place legend high inside the plot area
+    leg_a = ax_a.get_legend()
+    if leg_a:
+        handles_a = leg_a.legend_handles
+        labels_a  = [t.get_text() for t in leg_a.get_texts()]
+        leg_a.remove()
+        ax_a.legend(
+            handles=handles_a, labels=labels_a,
+            fontsize=4.5, loc="upper right",
+            bbox_to_anchor=(1.0, 1.10),
+            frameon=True, framealpha=0.85,
+            handlelength=1, handletextpad=0.3,
+            borderpad=0.3, labelspacing=0.2,
+            ncol=2,
+        )
 
     # Panel H (interaction grid): consolidate legend at centre-bottom
     if axes_h:
