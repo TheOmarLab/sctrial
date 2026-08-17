@@ -523,7 +523,7 @@ def _panel_sd_scatter(ax, data: dict[str, dict], composite: bool = False):
         max_lim = 1.0
     lim = max_lim * 1.1
     ax.plot([0, lim], [0, lim], ls="--", color="gray", lw=0.8)
-    ax.set_xlim(0, lim)
+    ax.set_xlim(0, 2)
     ax.set_ylim(0, lim)
     ax.set_xlabel(f"SD ({ref})")
     ax.set_ylabel("SD (other dataset)")
