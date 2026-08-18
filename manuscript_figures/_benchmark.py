@@ -505,7 +505,7 @@ def _panel_bench_signal_rmse(fig, bench_df: pd.DataFrame, *, composite: bool = F
 
     _ttl_fs = 6.35 if composite else 12
     _yl_fs = 5.0 if composite else 11
-    _axis_fs = 5.0 if composite else 10
+    _axis_fs = 4.2 if composite else 10
     _xlab_fs = 5.45 if composite else 10
     # All FIVE methods (the previous list dropped limma-voom). Each method's bias
     # is against its OWN oracle (METHOD_ESTIMAND); this is NOT a cross-method
@@ -549,7 +549,7 @@ def _panel_bench_signal_rmse(fig, bench_df: pd.DataFrame, *, composite: bool = F
         ax_bias.axhline(0.0, color="#222222", linestyle="--", linewidth=0.9, alpha=0.7, zorder=2)
         ax_bias.set_xticks(x_positions)
         ax_bias.set_xticklabels([])
-        ax_bias.set_ylim(bias_lo, bias_hi)
+        ax_bias.set_ylim(-0.03, 0.01)
         ax_bias.yaxis.set_major_locator(MultipleLocator(_bias_step))
         ax_bias.set_title(f"{n_g:,} genes", fontsize=_ttl_fs, fontweight="bold",
                           color="#1a1a1a", pad=(-7 if composite else 8))
@@ -771,17 +771,17 @@ def _panel_bench_qq_heatmap(fig, bench_df, *, composite: bool = False, gs_parent
 
     _ttl_fs   = 5.2 if composite else 11
     _axlbl_fs = 4.0 if composite else 9
-    _cblbl_fs = 5.6 if composite else 9
+    _cblbl_fs = 4.6 if composite else 9
     _ann_fs   = 4.2 if composite else 8
     _tick_fs  = 4.0 if composite else 8
-    _ytick_fs = 3.8 if composite else 8
+    _ytick_fs = 3.2 if composite else 8
 
     # 2 rows x 3 method columns + a colorbar column, so all FIVE methods appear
     # (a 2x2 grid silently dropped sctrial, the focal method). The 6th cell is
     # hidden.
     n_methods = len(_BENCH_METHODS)
     if gs_parent is not None:
-        gs_inner = gs_parent.subgridspec(2, 4, hspace=1.05, wspace=0.30,
+        gs_inner = gs_parent.subgridspec(2, 4, hspace=1.05, wspace=0.45,
                                          width_ratios=[1, 1, 1, 0.06])
         axes = [fig.add_subplot(gs_inner[r, c]) for r in range(2) for c in range(3)]
         cbar_ax = fig.add_subplot(gs_inner[:, 3])
@@ -823,9 +823,8 @@ def _panel_bench_qq_heatmap(fig, bench_df, *, composite: bool = False, gs_parent
         ax.set_yticklabels(row_labels, fontsize=_ytick_fs)
         ax.tick_params(length=2, pad=1)
 
-        if mi >= 2:
-            ax.set_xlabel("Signal fraction", fontsize=_axlbl_fs,
-                          labelpad=(1 if composite else 4))
+        ax.set_xlabel("Signal fraction", fontsize=_axlbl_fs,
+                      labelpad=(1 if composite else 4))
         if mi == 0 and not composite:
             ax.set_ylabel("Genes", fontsize=_axlbl_fs)
 
@@ -849,6 +848,11 @@ def _panel_bench_qq_heatmap(fig, bench_df, *, composite: bool = False, gs_parent
     cb.update_ticks()
     cb.ax.axhline(0.05, color="#111111", linewidth=0.8, linestyle="--")
 
+    if composite and gs_parent is not None:
+        pos = gs_parent.get_position(fig)
+        fig.text(pos.x0 - 0.030, 0.5 * (pos.y0 + pos.y1),
+                 "Genes tested", fontsize=_axlbl_fs,
+                 ha="right", va="center", rotation=90)
     if not composite:
         fig.suptitle(
             "Null-gene p-value calibration: % of null p-values outside 95% CI",
@@ -1213,7 +1217,7 @@ def _faceted_broken_by_fraction(fig, rate, *, ylabel, main_ylim, strip_ylim,
     `panel_sizes` restricts the facets shown (the lean main figure shows one
     representative tested-set size; the full grid lives in the supplement).
     """
-    _ttl = 5.5 if composite else 11
+    _ttl = 4.6 if composite else 11
     _ax = 5.2 if composite else 10
     _tk = 4.5 if composite else 9
     sizes = panel_sizes if panel_sizes is not None else _PANEL_SIZES
@@ -1308,7 +1312,7 @@ def _panel_bench_mixed_fpr(fig, bench_df, *, composite: bool = False, panel_size
         fig, rate, ylabel="Null-gene FPR\n(p < 0.05)",
         main_ylim=(0.025, 0.075), strip_ylim=(0.68, 0.90), arch=_arch_lab,
         title="Mixed-signal null-gene false-positive rate", composite=composite,
-        panel_sizes=panel_sizes, gs_parent=gs_parent, title_y_composite=0.90,
+        panel_sizes=panel_sizes, gs_parent=gs_parent, title_y_composite=0.75,
         common_xlabel_composite=True, common_xlabel_pad=0.018, marker_scale=0.7)
 
 
@@ -1329,7 +1333,7 @@ def _panel_bench_bh_fdr(fig, bench_df, *, composite: bool = False, panel_sizes=N
 
 
 def _panel_bench_power_vs_n(fig, core_df, *, composite: bool = False, only_beta=None,
-                            gs_parent=None):
+                            gs_parent=None, marker_scale=1.0):
     """Marginal detection power vs sample size, faceted design x effect size.
 
     Separates single-arm from two-arm -- pooling them onto one participant axis
@@ -1381,6 +1385,7 @@ def _panel_bench_power_vs_n(fig, core_df, *, composite: bool = False, only_beta=
                     continue
                 style = _method_style(method, is_focal=(method == "sctrial_did"),
                                       composite=composite)
+                style["markersize"] *= marker_scale
                 xs = [pos[n] + off[method] for n in m["per_arm"]]
                 ys = m["mean"].to_numpy(float)
                 half = 1.96 * m["mcse"].to_numpy(float)
@@ -1517,7 +1522,8 @@ def _panel_bench_scenario_families(ax, core_df, *, composite: bool = False):
 
 def _panel_bench_discovery_sensitivity(fig, bench_df, *, composite=False,
                                        gs_parent=None, mode="end_to_end",
-                                       panel_sizes=None, suppress_ylabel=False):
+                                       panel_sizes=None, suppress_ylabel=False,
+                                       marker_scale=1.0):
     """FDR-controlled discovery sensitivity: BH-controlled end-to-end true-positive
     rate vs signal fraction, one facet per tested-set size (balanced architecture).
 
@@ -1539,7 +1545,8 @@ def _panel_bench_discovery_sensitivity(fig, bench_df, *, composite=False,
         title="FDR-controlled discovery sensitivity (end-to-end TPR)",
         nominal=False, composite=composite, gs_parent=gs_parent,
         panel_sizes=panel_sizes, suppress_ylabel=suppress_ylabel,
-        ytick_main=[0.0, 0.1, 0.2, 0.3], ytick_strip=[1.0, 1.2])
+        ytick_main=[0.0, 0.1, 0.2, 0.3], ytick_strip=[1.0, 1.2],
+        marker_scale=marker_scale)
 
 
 def _panel_bench_quality(ax, core_df, *, kind="evaluability", composite=False):

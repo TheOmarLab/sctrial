@@ -126,9 +126,9 @@ def _panel_nebula_hierarchy(fig, *, ax=None, composite: bool = False):
     prov = _DIAG_DIR / "provenance.json"
     if ax is None:
         ax = fig.add_subplot(1, 1, 1)
-    _lbl = 5.4 if composite else 11
+    _lbl = 5.05 if composite else 11
     _ttl = 6.0 if composite else 12
-    _ann = 3.5 if composite else 8
+    _ann = 4.2 if composite else 8
     if not log.exists():
         ax.text(0.5, 0.5, "NEBULA hierarchy diagnostic pending\n(run scripts/verify_nebula_offset.py)",
                 ha="center", va="center", transform=ax.transAxes, fontsize=9, color="#666")
@@ -172,7 +172,7 @@ def _panel_nebula_hierarchy(fig, *, ax=None, composite: bool = False):
         ax.annotate(
             f"Model-compatible control\n(NEBULA's own DGP):\nType I = {c['fpr']:.3f}, "
             fr"mean $\beta$ = {mb_str}""\n→ offset validated",
-            (0.40, 0.30), xycoords="axes fraction", fontsize=_ann, va="center", ha="left",
+            (0.22, 0.30), xycoords="axes fraction", fontsize=_ann, va="center", ha="left",
             bbox=dict(boxstyle="round,pad=0.35", fc="white", ec="#cccccc", alpha=0.95))
     despine(ax)
     for spine in ("left", "bottom"):
@@ -231,11 +231,14 @@ def _composite(bench, core) -> None:
     # Use a shared 2-row × 2-col inner grid so H's design rows align with I's size rows.
     # hspace=0.55 matches power_vs_n's internal hspace so the row boundary aligns.
     sub_hi = cell["HI"].subgridspec(2, 2, hspace=0.95, wspace=0.30)
-    _panel_bench_power_vs_n(fig, core, composite=True, gs_parent=sub_hi[0:2, 0])
+    _panel_bench_power_vs_n(fig, core, composite=True, gs_parent=sub_hi[0:2, 0],
+                            marker_scale=0.7)
     _panel_bench_discovery_sensitivity(fig, bench, composite=True, gs_parent=sub_hi[0, 1],
-                                       panel_sizes=[50, 200], suppress_ylabel=True)
+                                       panel_sizes=[50, 200], suppress_ylabel=True,
+                                       marker_scale=0.7)
     _panel_bench_discovery_sensitivity(fig, bench, composite=True, gs_parent=sub_hi[1, 1],
-                                       panel_sizes=[500, 2000], suppress_ylabel=True)
+                                       panel_sizes=[500, 2000], suppress_ylabel=True,
+                                       marker_scale=0.7)
 
     # J — bias / RMSE
     _panel_bench_signal_rmse(fig, bench, composite=True, gs_parent=cell["J"])
@@ -256,7 +259,7 @@ def _composite(bench, core) -> None:
 
     # Legend in the spacer below A and B — use tight-bbox so it clears xtick labels.
     _bench_legend_below(fig, cell["AB"], fontsize=4.6, short=True, markersize=4,
-                        y_pad=0.010)
+                        y_pad=0.007)
 
     # No figure-level legend: A and B carry no per-panel legend in composite mode.
 
@@ -278,12 +281,12 @@ def _composite(bench, core) -> None:
         fig.text(0.5 * (pos.x0 + pos.x1), min(pos.y1 + y_offset, 0.995), text,
                  fontsize=6.0, fontweight="bold", va="bottom", ha="center")
 
-    _title(sub_ab[0], "Mixed-signal null-gene FPR (balanced)", y_offset=0.030)
-    _title(sub_ab[1], "Mixed-signal null-gene FPR (one-directional)", y_offset=0.030)
+    _title(sub_ab[0], "Mixed-signal null-gene FPR (balanced)", y_offset=0.062)
+    _title(sub_ab[1], "Mixed-signal null-gene FPR (one-directional)", y_offset=0.062)
     _title(sub_fg[0], "Null-gene p-value QQ (200 genes, 10% signal)", y_offset=0.018)
     _title(sub_fg[1], "Null-gene calibration: % of p-values outside 95% CI", y_offset=0.018)
-    _title(sub_hi[0:2, 0], "Marginal detection probability")
-    _title(sub_hi[0, 1], "FDR-controlled discovery sensitivity (end-to-end TPR)")
+    _title(sub_hi[0:2, 0], "Marginal detection probability", y_offset=0.010)
+    _title(sub_hi[0, 1], "FDR-controlled discovery sensitivity (end-to-end TPR)", y_offset=0.010)
 
     # Panel letters A-N in sequential visual order.
     for lab, sp in [
