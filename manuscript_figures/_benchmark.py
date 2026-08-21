@@ -475,7 +475,7 @@ def _panel_bench_runtime(ax, bench_df: pd.DataFrame, *, composite: bool = False)
     if composite:
         ax.legend(
             handles=_bench_legend_handles(), loc="upper left",
-            bbox_to_anchor=(0.02, 0.98),
+            bbox_to_anchor=(0.02, 1.04),
             frameon=True, framealpha=0.95, edgecolor="#cccccc", fontsize=_leg_fs,
             markerscale=0.52, handlelength=1.0,
         )
@@ -1329,7 +1329,7 @@ def _panel_bench_bh_fdr(fig, bench_df, *, composite: bool = False, panel_sizes=N
         fig, rate, ylabel=r"Realized FDR at BH $q<0.05$",
         main_ylim=(0.0, 0.12), strip_ylim=(0.65, 1.02),
         title="False discovery rate after Benjamini-Hochberg", composite=composite,
-        panel_sizes=panel_sizes, gs_parent=gs_parent)
+        panel_sizes=panel_sizes, gs_parent=gs_parent, title_y_composite=0.95)
 
 
 def _panel_bench_power_vs_n(fig, core_df, *, composite: bool = False, only_beta=None,
@@ -1358,9 +1358,9 @@ def _panel_bench_power_vs_n(fig, core_df, *, composite: bool = False, only_beta=
     # Roomy hspace: the two-arm (top) and single-arm (bottom) rows are INDEPENDENT
     # designs, each with its own x ticks and x-axis title, so they need vertical
     # separation or the two-arm ticks/label collide with the single-arm axis.
-    gs = (gs_parent.subgridspec(len(designs), len(betas), hspace=0.95, wspace=0.26)
+    gs = (gs_parent.subgridspec(len(designs), len(betas), hspace=1.40, wspace=0.26)
           if gs_parent is not None
-          else fig.add_gridspec(len(designs), len(betas), hspace=0.95, wspace=0.26,
+          else fig.add_gridspec(len(designs), len(betas), hspace=1.40, wspace=0.26,
                                 left=0.13, right=0.98, top=0.84, bottom=0.10))
     _ttl = 7.0 if composite else 11
     _ax = 5.2 if composite else 10
@@ -1421,7 +1421,7 @@ def _panel_bench_power_vs_n(fig, core_df, *, composite: bool = False, only_beta=
             if ci > 0:
                 ax.set_yticklabels([])
             xl = "Participants per arm" if design == "two_arm" else "Paired participants"
-            ax.set_xlabel(xl, fontsize=_ax, labelpad=(1 if composite else 4))
+            ax.set_xlabel(xl, fontsize=_ax, labelpad=(4 if composite else 4))
             ax.tick_params(labelsize=_tk)
             _style_axis(ax)
         if composite:

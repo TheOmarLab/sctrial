@@ -673,7 +673,7 @@ def _panel_a_single(
     ax.set_ylabel("Bootstrap SE (wild cluster)", fontsize=_ax_fs)
     ax.set_title(title, fontsize=_ttl_fs_a, fontweight="bold")
     ax.set_xlim(x_lo, hi)
-    ax.set_ylim(lo, hi)
+    ax.set_ylim(lo, 2.0 if dataset == "melanoma" else 1.4)
     despine(ax)
 
     # The r/p statistics box is drawn FIRST and passed to adjust_text as a fixed
@@ -682,13 +682,14 @@ def _panel_a_single(
     # as the arrow's patchB, so the leader line terminates at the box EDGE instead
     # of crossing the glyphs (the "strikethrough" defect).
     r, p = stats.pearsonr(analytical, bootstrap)
-    _stat_x = 0.96 if dataset == "melanoma" else 0.96
-    _stat_ha = "right"
-    _stat_y = 0.96 if dataset == "melanoma" else 0.04
-    _stat_va = "top" if dataset == "melanoma" else "bottom"
+    # TNBC (left subpanel): top-left. Melanoma (right subpanel): bottom-right.
+    if dataset == "melanoma":
+        _stat_x, _stat_ha, _stat_y, _stat_va = 0.96, "right", 0.04, "bottom"
+    else:
+        _stat_x, _stat_ha, _stat_y, _stat_va = 0.04, "left", 0.96, "top"
     stat_text = ax.text(
         _stat_x, _stat_y, f"r = {r:.2f}\np = {p:.1e}",
-        transform=ax.transAxes, fontsize=(8 if composite else 8), va=_stat_va, ha=_stat_ha,
+        transform=ax.transAxes, fontsize=(10 if composite else 10), va=_stat_va, ha=_stat_ha,
         zorder=6,
         bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="#dddddd", alpha=0.9),
     )
@@ -1232,7 +1233,7 @@ def generate() -> None:
     # the wider column. Letters are consecutive A-H.
     outer = fig_c.add_gridspec(
         9, 1,
-        height_ratios=[0.80, 0.40, 0.48, 0.46, 0.60, 0.72, 0.60, 0.68, 1.92],
+        height_ratios=[0.80, 0.40, 0.48, 0.46, 0.60, 0.72, 0.72, 0.68, 1.92],
         hspace=0.0, left=0.085, right=0.965, top=0.980, bottom=0.032,
     )
 
@@ -1319,7 +1320,7 @@ def generate() -> None:
         (gs_cd[0], "Pure-null Type I error"),
         (gs_cd[1], "Mixed-signal null-gene FPR"),
         (gs_ef[0], "Realized FDR after BH"),
-        (gs_ef[1], r"Marginal detection ($\beta$ = 0.5)"),
+        (gs_ef[1], "Marginal detection probability"),
     ]:
         cx, y1 = _cell_tc(cell)
         fig_c.text(cx, min(y1 + 0.013, 0.997), ttl, fontsize=7.0,
