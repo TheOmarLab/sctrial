@@ -128,7 +128,7 @@ def _pid_col(obs):
 
 
 def _visit_col(obs):
-    for c in ("visit", "Collection_Day", "dfo_bin", "timepoint"):
+    for c in ("visit", "dfo_bin", "timepoint", "Collection_Day"):
         if c in obs.columns and obs[c].nunique() > 1:
             return c
     return None
@@ -148,6 +148,7 @@ _VISIT_ORDER_KNOWN = [
     ["Pre", "Post"],
     ["Baseline", "Pre", "Post"],
     ["D0", "D28"],
+    ["DFO_0-7", "DFO_8-14", "DFO_15+"],
 ]
 
 
