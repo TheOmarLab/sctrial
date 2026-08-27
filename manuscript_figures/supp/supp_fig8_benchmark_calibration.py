@@ -21,8 +21,8 @@ Panels
   F  Representative QQ plots (200 genes, 10% signal, balanced; separate NEBULA
      y-scale; 95% pointwise beta envelope).
   G  Null-gene calibration heatmaps: % of null p-values outside 95% CI.
-  H  Full marginal-detection curves (both designs; beta = 0.2/0.5/1.0).
-  I  FDR-controlled discovery sensitivity (end-to-end BH TPR).
+  H  FDR-controlled discovery sensitivity (end-to-end BH TPR).
+  I  Full marginal-detection curves (both designs; beta = 0.2/0.5/1.0).
   J  Bias and RMSE (per method's own oracle; balanced architecture).
   K  Null-gene FPR across robustness families.
   L  Signal detection (end-to-end BH TPR) across signal-bearing robustness families.
@@ -222,23 +222,23 @@ def _composite(bench, core) -> None:
     _panel_bench_endtoend_vs_tested(fig.add_subplot(sub_dgh[2]), core, composite=True)
 
     # F | G — QQ plots (common ylabel) | beta-envelope heatmaps
-    sub_fg = cell["FG"].subgridspec(1, 2, wspace=0.30)
+    sub_fg = cell["FG"].subgridspec(1, 2, wspace=0.30, width_ratios=[1, 1.18])
     _panel_bench_qq_single(fig, bench, n_genes=200, signal_pct=10, composite=True,
                            gs_parent=sub_fg[0], suppress_ylabel=True)
     _panel_bench_qq_heatmap(fig, bench, composite=True, gs_parent=sub_fg[1])
 
-    # H | I — marginal-detection curves (2 designs) | discovery sensitivity (2×2 sizes)
-    # Use a shared 2-row × 2-col inner grid so H's design rows align with I's size rows.
+    # H | I — discovery sensitivity (2×2 sizes) | marginal-detection curves (2 designs)
+    # Use a shared 2-row × 2-col inner grid so H's size rows align with I's design rows.
     # hspace=0.55 matches power_vs_n's internal hspace so the row boundary aligns.
     sub_hi = cell["HI"].subgridspec(2, 2, hspace=0.95, wspace=0.30)
-    _panel_bench_power_vs_n(fig, core, composite=True, gs_parent=sub_hi[0:2, 0],
-                            marker_scale=0.7)
-    _panel_bench_discovery_sensitivity(fig, bench, composite=True, gs_parent=sub_hi[0, 1],
+    _panel_bench_discovery_sensitivity(fig, bench, composite=True, gs_parent=sub_hi[0, 0],
                                        panel_sizes=[50, 200], suppress_ylabel=True,
                                        marker_scale=0.7)
-    _panel_bench_discovery_sensitivity(fig, bench, composite=True, gs_parent=sub_hi[1, 1],
+    _panel_bench_discovery_sensitivity(fig, bench, composite=True, gs_parent=sub_hi[1, 0],
                                        panel_sizes=[500, 2000], suppress_ylabel=True,
                                        marker_scale=0.7)
+    _panel_bench_power_vs_n(fig, core, composite=True, gs_parent=sub_hi[0:2, 1],
+                            marker_scale=0.7)
 
     # J — bias / RMSE
     _panel_bench_signal_rmse(fig, bench, composite=True, gs_parent=cell["J"])
@@ -269,8 +269,8 @@ def _composite(bench, core) -> None:
     fig.text(pos_f.x0 - 0.045, 0.5 * (pos_f.y0 + pos_f.y1),
              r"Observed $-\log_{10}(p)$", fontsize=_ylfs,
              ha="right", va="center", rotation=90)
-    pos_i0 = sub_hi[0, 1].get_position(fig)
-    pos_i1 = sub_hi[1, 1].get_position(fig)
+    pos_i0 = sub_hi[0, 0].get_position(fig)
+    pos_i1 = sub_hi[1, 0].get_position(fig)
     fig.text(pos_i0.x0 - 0.045, 0.5 * (pos_i1.y0 + pos_i0.y1),
              "FDR-controlled\ndiscovery sensitivity", fontsize=_ylfs,
              ha="right", va="center", rotation=90)
@@ -285,15 +285,15 @@ def _composite(bench, core) -> None:
     _title(sub_ab[1], "Mixed-signal null-gene FPR (one-directional)", y_offset=0.062)
     _title(sub_fg[0], "Null-gene p-value QQ (200 genes, 10% signal)", y_offset=0.018)
     _title(sub_fg[1], "Null-gene calibration: % of p-values outside 95% CI", y_offset=0.018)
-    _title(sub_hi[0:2, 0], "Marginal detection probability", y_offset=0.010)
-    _title(sub_hi[0, 1], "FDR-controlled discovery sensitivity (end-to-end TPR)", y_offset=0.010)
+    _title(sub_hi[0, 0], "FDR-controlled discovery sensitivity (end-to-end TPR)", y_offset=0.010)
+    _title(sub_hi[0:2, 1], "Marginal detection probability", y_offset=0.010)
 
     # Panel letters A-N in sequential visual order.
     for lab, sp in [
         ("A", sub_ab[0]),  ("B", sub_ab[1]),
         ("C", sub_dgh[0]), ("D", sub_dgh[1]), ("E", sub_dgh[2]),
         ("F", sub_fg[0]),  ("G", sub_fg[1]),
-        ("H", sub_hi[0:2, 0]), ("I", sub_hi[0, 1]),
+        ("H", sub_hi[0, 0]), ("I", sub_hi[0:2, 1]),
         ("J", cell["J"]),
         ("K", sub_lm[0]),  ("L", sub_lm[1]),
         ("M", sub_no[0]),  ("N", sub_no[1]),

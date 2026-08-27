@@ -1462,9 +1462,9 @@ def _panel_bench_scenario_families(ax, core_df, *, composite: bool = False):
     composition stress; NEBULA is off-scale throughout (clipped + annotated).
     """
     fam_order = [
-        ("cells_50", "50 cells/PV"), ("cells_250", "250"), ("cells_1000", "1,000"),
+        ("cells_50", "50 cells/PV"), ("cells_250", "250 cells/PV"), ("cells_1000", "1,000 cells/PV"),
         ("missing_10pct", "10% miss"), ("missing_20pct", "20% miss"),
-        ("imbal_3v7", "3:7"), ("imbal_5v10", "5:10"), ("imbal_10v20", "10:20"),
+        ("imbal_3v7", "3:7 arm imbalance"), ("imbal_5v10", "5:10 arm imbalance"), ("imbal_10v20", "10:20 arm imbalance"),
         ("compstress_onedir", "comp. stress"),
     ]
     present = {f for f in core_df["family"].unique()}
@@ -1505,7 +1505,7 @@ def _panel_bench_scenario_families(ax, core_df, *, composite: bool = False):
     ax.set_ylim(0, ymax)
     ax.set_xticks(x)
     ax.set_xticklabels([lab for _, lab in fam_order],
-                       rotation=20, ha="right", fontsize=(4.6 if composite else 8))
+                       rotation=20, ha="right", fontsize=(3.8 if composite else 8))
     ax.set_ylabel("Null-gene FPR\n(p < 0.05)", fontsize=(5.0 if composite else 10))
     ax.tick_params(axis="y", labelsize=(4.6 if composite else 8))
     if not composite:
@@ -1557,10 +1557,10 @@ def _panel_bench_quality(ax, core_df, *, kind="evaluability", composite=False):
     reported separately and the reduced retention is shown to be filtering, not a
     convergence failure."""
     fam_order = [
-        ("cells_50", "50 cells/PV"), ("cells_250", "250"), ("cells_1000", "1,000"),
+        ("cells_50", "50 cells/PV"), ("cells_250", "250 cells/PV"), ("cells_1000", "1,000 cells/PV"),
         ("null_hetero", "emp. het. yield"),
         ("missing_10pct", "10% miss"), ("missing_20pct", "20% miss"),
-        ("imbal_3v7", "3:7"), ("imbal_5v10", "5:10"), ("imbal_10v20", "10:20"),
+        ("imbal_3v7", "3:7 arm imbalance"), ("imbal_5v10", "5:10 arm imbalance"), ("imbal_10v20", "10:20 arm imbalance"),
         ("de_hetero", "het. effect"), ("compstress_onedir", "comp. stress"),
     ]
     q = _per_scenario_quality(core_df, kind=kind)
@@ -1572,7 +1572,7 @@ def _panel_bench_quality(ax, core_df, *, kind="evaluability", composite=False):
     order = [m for m in _LEGEND_ORDER if m in set(core_df["method"].unique())]
     x = np.arange(len(fam_order))
     width = 0.16
-    _tk = 4.6 if composite else 8
+    _tk = 3.8 if composite else 8
     _ax = 5.0 if composite else 10
     _ttl = 6.0 if composite else 12
     for mi, method in enumerate(order):
@@ -1612,9 +1612,9 @@ def _panel_bench_quality(ax, core_df, *, kind="evaluability", composite=False):
 # families) so the stacked bar panels L/M/N/O share one left-to-right x-order and
 # their family columns line up vertically.
 _ROBUST_FAMILIES = [
-    ("cells_50", "50 cells/PV"), ("cells_250", "250"), ("cells_1000", "1,000"),
+    ("cells_50", "50 cells/PV"), ("cells_250", "250 cells/PV"), ("cells_1000", "1,000 cells/PV"),
     ("missing_10pct", "10% miss"), ("missing_20pct", "20% miss"),
-    ("imbal_3v7", "3:7"), ("imbal_5v10", "5:10"), ("imbal_10v20", "10:20"),
+    ("imbal_3v7", "3:7 arm imbalance"), ("imbal_5v10", "5:10 arm imbalance"), ("imbal_10v20", "10:20 arm imbalance"),
     ("de_hetero", "het. effect"),
     ("compstress_onedir", "comp. stress"),
 ]
@@ -1635,7 +1635,7 @@ def _panel_bench_family_tpr(ax, core_df, *, composite=False):
     order = [m for m in _LEGEND_ORDER if m in set(core_df["method"].unique())]
     x = np.arange(len(fams))
     width = 0.16
-    _tk = 4.6 if composite else 8
+    _tk = 3.8 if composite else 8
     _ax = 5.0 if composite else 10
     _ttl = 6.0 if composite else 12
     for mi, method in enumerate(order):
