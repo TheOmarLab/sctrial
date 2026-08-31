@@ -1,5 +1,5 @@
 """
-Supplementary Figure 7 - Participant heterogeneity and temporal dynamics.
+Supplementary Figure 8 - Participant heterogeneity and temporal dynamics.
 
 Panels:
   Row 1 — TNBC (Zhang):
@@ -50,7 +50,7 @@ from .._shared import (
     save_panel,
 )
 
-FIGURE_NAME = "SuppFig7_heterogeneity_temporal"
+FIGURE_NAME = "SuppFig8_heterogeneity_temporal"
 
 FEATURES = [
     "CD8A", "CD4", "PDCD1", "HAVCR2", "LAG3", "CTLA4",
@@ -661,7 +661,7 @@ def _panel_treated_fc_concordance(ax, data: dict[str, dict]):
 
 
 def generate():
-    print("Supplementary Figure 6: Participant Heterogeneity and Temporal Dynamics")
+    print("Supplementary Figure 8: Participant Heterogeneity and Temporal Dynamics")
     data = _load_all()
     if not data:
         print("  No data loaded; skipping.")
@@ -944,7 +944,7 @@ def generate():
     data.clear()
     clear_cache()
     gc.collect()
-    print("  SuppFig7 complete: 11 individual panels + combined (A–K)\n")
+    print("  SuppFig8 complete: 11 individual panels + combined (A–K)\n")
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 """
-Supplementary Figure 8 — Full NatMeth benchmark: calibration, power and robustness.
+Supplementary Figure 6 — Full NatMeth benchmark: calibration, power and robustness.
 ====================================================================================
 
 The complete benchmark grids that Figure 3 condenses to single representative
@@ -55,7 +55,7 @@ from .._benchmark import (
 )
 from .._shared import MANUSCRIPT_DIR, SUPP_OUTPUT, apply_style, despine, save_panel
 
-FIGURE_NAME = "SuppFig8_benchmark_calibration"
+FIGURE_NAME = "SuppFig6_benchmark_calibration"
 _DIAG_DIR = MANUSCRIPT_DIR / "benchmark" / "validation" / "nebula_diagnostic"
 
 

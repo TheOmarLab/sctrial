@@ -1,5 +1,5 @@
 """
-Supplementary Figure 6 - Melanoma biological discovery + Cross-dataset consistency.
+Supplementary Figure 7 - Melanoma biological discovery + Cross-dataset consistency.
 
 Panels:
   A  Gene-level volcano plot (melanoma DiD).
@@ -1010,7 +1010,7 @@ def panel_E(ax, data: dict):
 # ======================================================================
 
 
-FIGURE_NAME = "SuppFig6_cross_dataset_biology"
+FIGURE_NAME = "SuppFig7_cross_dataset_biology"
 
 _FEATURES = [
     "CD8A", "CD4", "PDCD1", "HAVCR2", "LAG3", "CTLA4",
@@ -1621,8 +1621,8 @@ def _panel_enrichment_heatmap(ax, data: dict[str, dict]):
 
 
 def generate():
-    """Create and save Supplementary Figure 6 panels (A–M) + composite."""
-    print("Supplementary Figure 6: Melanoma Discovery + Cross-Dataset Consistency")
+    """Create and save Supplementary Figure 7 panels (A–M) + composite."""
+    print("Supplementary Figure 7: Melanoma Discovery + Cross-Dataset Consistency")
 
     # ── Load melanoma data (panels A–E) ──────────────────────────────
     print("  Loading melanoma biological discovery data...")
@@ -1925,7 +1925,7 @@ def generate():
     data.clear()
     clear_cache()
     gc.collect()
-    print("  SuppFig6 complete: 13 individual panels + combined (A–M)\n")
+    print("  SuppFig7 complete: 13 individual panels + combined (A–M)\n")
 
 
 if __name__ == "__main__":
