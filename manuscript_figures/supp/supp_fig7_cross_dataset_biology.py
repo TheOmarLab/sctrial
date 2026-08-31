@@ -1748,13 +1748,10 @@ def generate():
     ax_a.xaxis.label.set_fontsize(4.5)
     ax_a.yaxis.label.set_fontsize(4.5)
     panel_B(ax_b, data_mel)
-    ax_b.tick_params(axis='y', labelsize=4)
+    ax_b.tick_params(axis='y', labelsize=2.5)
     _b_lbls = [t.get_text() for t in ax_b.get_yticklabels()]
     if _b_lbls:
-        ax_b.set_yticklabels(
-            [t if _k % 2 == 0 else "" for _k, t in enumerate(_b_lbls)],
-            fontsize=4,
-        )
+        ax_b.set_yticklabels(_b_lbls, fontsize=2.5)
     panel_C(ax_c, data_mel)
     ax_c.set_title(ax_c.get_title().replace("Melanoma", "").strip(" —–-") +
                    " — Melanoma", fontsize=5.0, fontweight="bold")

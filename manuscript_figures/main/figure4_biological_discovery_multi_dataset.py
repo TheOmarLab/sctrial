@@ -3894,16 +3894,13 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
 
     tnbc_waterfall(ax_b, data_tnbc)
     ax_b.set_title("Top Genes: TNBC DiD", fontsize=4.5, fontweight="bold")
-    ax_b.tick_params(axis='y', labelsize=4.0)
+    ax_b.tick_params(axis='y', labelsize=2.5)
     ax_b.tick_params(axis='x', labelsize=4.5)
     ax_b.xaxis.label.set_fontsize(4.5)
-    # Thin crowded gene labels: show every other tick
+    # Show all gene labels at reduced font size
     _b_lbls = [t.get_text() for t in ax_b.get_yticklabels()]
     if _b_lbls:
-        ax_b.set_yticklabels(
-            [t if _k % 2 == 0 else "" for _k, t in enumerate(_b_lbls)],
-            fontsize=4.0,
-        )
+        ax_b.set_yticklabels(_b_lbls, fontsize=2.5)
 
     tnbc_gsea_bars(ax_c, data_tnbc)
     ax_c.set_title("Pathway Enrichment: TNBC", fontsize=4.5, fontweight="bold")
