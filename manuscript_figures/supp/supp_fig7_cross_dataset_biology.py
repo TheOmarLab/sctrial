@@ -1,5 +1,5 @@
 """
-Supplementary Figure 6 - Melanoma biological discovery + Cross-dataset consistency.
+Supplementary Figure 7 - Melanoma biological discovery + Cross-dataset consistency.
 
 Panels:
   A  Gene-level volcano plot (melanoma DiD).
@@ -1010,7 +1010,7 @@ def panel_E(ax, data: dict):
 # ======================================================================
 
 
-FIGURE_NAME = "SuppFig6_cross_dataset_biology"
+FIGURE_NAME = "SuppFig7_cross_dataset_biology"
 
 _FEATURES = [
     "CD8A", "CD4", "PDCD1", "HAVCR2", "LAG3", "CTLA4",
@@ -1615,13 +1615,14 @@ def _panel_enrichment_heatmap(ax, data: dict[str, dict]):
     sns.heatmap(piv, cmap="RdBu_r", center=0, linewidths=0.3, linecolor="white",
                 ax=ax, cbar_kws={"label": "Mean z-score\n(within-dataset)", "pad": 0.01})
     ax.set_title("Enrichment summary (within-dataset z-score)", fontweight="bold")
+    ax.set_xlabel("")
     ax.tick_params(axis="x", labelsize=3.5, rotation=45)
     ax.tick_params(axis="y", labelsize=4)
 
 
 def generate():
-    """Create and save Supplementary Figure 6 panels (A–M) + composite."""
-    print("Supplementary Figure 6: Melanoma Discovery + Cross-Dataset Consistency")
+    """Create and save Supplementary Figure 7 panels (A–M) + composite."""
+    print("Supplementary Figure 7: Melanoma Discovery + Cross-Dataset Consistency")
 
     # ── Load melanoma data (panels A–E) ──────────────────────────────
     print("  Loading melanoma biological discovery data...")
@@ -1718,9 +1719,9 @@ def generate():
         13, 1,
         height_ratios=[
             0.65,   # row  0: A | B | C  — melanoma
-            0.29,   # spacer
+            0.40,   # spacer
             0.50,   # row  2: D | E      — melanoma
-            0.38,   # section spacer
+            0.52,   # section spacer
             0.55,   # row  4: F | G
             0.39,   # spacer (slightly wider)
             0.43,   # row  6: H | I
@@ -1747,13 +1748,10 @@ def generate():
     ax_a.xaxis.label.set_fontsize(4.5)
     ax_a.yaxis.label.set_fontsize(4.5)
     panel_B(ax_b, data_mel)
-    ax_b.tick_params(axis='y', labelsize=4)
+    ax_b.tick_params(axis='y', labelsize=2.5)
     _b_lbls = [t.get_text() for t in ax_b.get_yticklabels()]
     if _b_lbls:
-        ax_b.set_yticklabels(
-            [t if _k % 2 == 0 else "" for _k, t in enumerate(_b_lbls)],
-            fontsize=4,
-        )
+        ax_b.set_yticklabels(_b_lbls, fontsize=2.5)
     panel_C(ax_c, data_mel)
     ax_c.set_title(ax_c.get_title().replace("Melanoma", "").strip(" —–-") +
                    " — Melanoma", fontsize=5.0, fontweight="bold")
@@ -1780,7 +1778,7 @@ def generate():
         _cb_ax.yaxis.label.set_fontsize(4.5)
     ax_e.set_title(ax_e.get_title().replace("Melanoma", "").strip(" —–-") +
                    " — Melanoma", fontsize=5.0, fontweight="bold")
-    ax_e.tick_params(axis='x', labelsize=4.0)
+    ax_e.tick_params(axis='x', labelsize=3.5)
     ax_e.tick_params(axis='y', labelsize=4)
 
     # ── Row 4: F | G ──────────────────────────────────────────────────
@@ -1807,6 +1805,13 @@ def generate():
     _panel_gene_dist(ax_i, data)
     ax_i.tick_params(axis='y', labelsize=4)
     ax_i.yaxis.label.set_fontsize(4.5)
+    _leg_i = ax_i.get_legend()
+    if _leg_i:
+        _i_handles = _leg_i.legend_handles
+        _i_labels = [t.get_text() for t in _leg_i.get_texts()]
+        ax_i.legend(handles=_i_handles, labels=_i_labels,
+                    fontsize=3.5, frameon=True, loc="upper left", ncol=3,
+                    bbox_to_anchor=(0.0, 1.10))
 
     # ── Row 8: J | K ──────────────────────────────────────────────────
     gs8 = outer[8].subgridspec(1, 3, width_ratios=[0.0, 1.0, 1.2], wspace=0.45)
@@ -1814,6 +1819,7 @@ def generate():
     ax_k = fig_c.add_subplot(gs8[2])
 
     _panel_exhaustion_by_celltype(ax_j, data)
+    ax_j.tick_params(axis='y', labelsize=3)
     _axes_before_k = set(fig_c.get_axes())
     _panel_effect_heatmap(ax_k, data)
     for _cb_ax in set(fig_c.get_axes()) - _axes_before_k - {ax_k}:
@@ -1842,8 +1848,8 @@ def generate():
 
     # Compact legends for melanoma panels
     _mel_bio_locs = {
-        ax_a: "upper right", ax_b: "upper left",
-        ax_c: "upper left",  ax_d: "lower right",
+        ax_a: "upper center", ax_b: "upper left",
+        ax_c: "upper left",  ax_d: "lower left",
     }
     for ax_target, loc in _mel_bio_locs.items():
         _compact_legend(ax_target, loc, fs=4)
@@ -1892,7 +1898,7 @@ def generate():
     ax_k.text(-0.10, 1.10, "K", transform=ax_k.transAxes,
               fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
     # Row 10: L  (further up)
-    ax_l.text(-0.05, 1.22, "L", transform=ax_l.transAxes,
+    ax_l.text(-0.05, 1.38, "L", transform=ax_l.transAxes,
               fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
     # Row 12: M  (left)
     ax_m.text(-0.16, 1.16, "M", transform=ax_m.transAxes,
@@ -1916,7 +1922,7 @@ def generate():
     data.clear()
     clear_cache()
     gc.collect()
-    print("  SuppFig6 complete: 13 individual panels + combined (A–M)\n")
+    print("  SuppFig7 complete: 13 individual panels + combined (A–M)\n")
 
 
 if __name__ == "__main__":

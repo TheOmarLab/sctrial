@@ -353,16 +353,17 @@ def _panel_a(ax: plt.Axes, data: dict) -> None:
             transform=star_trans, clip_on=False, zorder=5,
         )
 
+    ax.set_yscale("log")
     ax.set_xlabel("Participant", fontsize=9)
-    ax.set_ylabel("Number of cells", fontsize=9)
+    ax.set_ylabel("Number of cells\n(log scale)", fontsize=9)
     ax.set_title("Paired Participants: Cells per Visit",
                  fontsize=11, fontweight="bold")
 
     # FIX: uses verify_paired_participants output like melanoma Panel A
     ax.text(
-        0.055, 0.52,
+        0.98, 0.97,
         f"{pair_info['n_paired']}/{pair_info['n_total']} participants paired",
-        transform=ax.transAxes, fontsize=4, va="top",
+        transform=ax.transAxes, fontsize=4, va="top", ha="right",
         bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
                   edgecolor=COL_GRAY, alpha=0.8),
     )
@@ -388,8 +389,8 @@ def _panel_a(ax: plt.Axes, data: dict) -> None:
         )
     ax.legend(
         handles=handles, fontsize=5,
-        loc="upper center", bbox_to_anchor=(0.5, -0.28),
-        ncol=5 if _has_responders else 4, frameon=True, framealpha=0.9,
+        loc="upper center", bbox_to_anchor=(0.5, -0.26),
+        ncol=3, frameon=True, framealpha=0.9,
     )
     despine(ax)
 
@@ -429,10 +430,19 @@ def _panel_b(ax: plt.Axes, data: dict) -> None:
     texts = [ax.text(xv, yv, sig_display(feat), fontsize=5, alpha=0.9)
              for feat, xv, yv in zip(common, beta_cell, beta_part)]
     adjust_text(
-        texts, ax=ax, expand=(1.4, 1.7),
-        arrowprops=dict(arrowstyle="-", color=COL_GRAY, lw=0.4, alpha=0.6),
+        texts, ax=ax, expand=(1.5, 1.8),
+        force_text=(0.3, 0.5),
         ensure_inside_axes=True,
     )
+    _pull_closer = {"regulatory", "cytotoxic"}
+    for txt, xv, yv in zip(texts, beta_cell, beta_part):
+        if any(k in txt.get_text().lower() for k in _pull_closer):
+            tx, ty = txt.get_position()
+            txt.set_position((xv + (tx - xv) * 0.4, yv + (ty - yv) * 0.4))
+    for txt, xv, yv in zip(texts, beta_cell, beta_part):
+        tx, ty = txt.get_position()
+        ax.annotate("", xy=(xv, yv), xytext=(tx, ty),
+                    arrowprops=dict(arrowstyle="-", color=COL_GRAY, lw=0.4, alpha=0.6))
 
     # FIX v1 Issue 6: Spearman rho not Pearson r
     rho, p = stats.spearmanr(beta_cell, beta_part)
@@ -443,6 +453,7 @@ def _panel_b(ax: plt.Axes, data: dict) -> None:
                   edgecolor=COL_GRAY, alpha=0.8),
     )
 
+    ax.tick_params(axis="y", labelsize=5)
     ax.set_xlabel(r'$\beta_{DID}$ (cell-level)', fontsize=9)
     ax.set_ylabel(r'$\beta_{DID}$ (participant-level)', fontsize=9)
     ax.set_title("Effect Size: Cell vs Participant Aggregation",
@@ -452,7 +463,7 @@ def _panel_b(ax: plt.Axes, data: dict) -> None:
         mpatches.Patch(facecolor=COL_TREAT, label="Positive effect"),
         mpatches.Patch(facecolor=COL_CTRL,  label="Negative effect"),
     ]
-    ax.legend(handles=handles, fontsize=5, loc="lower right",
+    ax.legend(handles=handles, fontsize=5, loc="lower left",
               frameon=True, framealpha=0.9)
     despine(ax)
 
@@ -489,7 +500,7 @@ def _panel_c(ax: plt.Axes, data: dict) -> None:
             fontsize=7, va="bottom", color=COL_GRAY)
 
     ax.set_yticks(y_pos)
-    ax.set_yticklabels(df["display"], fontsize=5)
+    ax.set_yticklabels(df["display"], fontsize=4)
     ax.set_xlabel(r'$-\log_{10}(p)$', fontsize=9)
     ax.set_title("P-value Inflation: Cell vs Participant Level",
                  fontsize=11, fontweight="bold")
@@ -523,9 +534,9 @@ def _panel_d(ax: plt.Axes, data: dict) -> None:
     for i, (_, row) in enumerate(df.iterrows()):
         color = COL_TREAT if row["beta_DiD"] > 0 else COL_CTRL
         ax.hlines(y_pos[i], ci_lo.iloc[i], ci_hi.iloc[i],
-                  color=color, linewidth=2.0, alpha=1.0, zorder=1)
-        ax.scatter(row["beta_DiD"], y_pos[i], color=color, s=30,
-                   edgecolors="white", linewidths=0.8, zorder=2)
+                  color=color, linewidth=1.2, alpha=1.0, zorder=1)
+        ax.scatter(row["beta_DiD"], y_pos[i], color=color, s=18,
+                   edgecolors="white", linewidths=0.5, zorder=2)
 
         fdr_col = "FDR_DiD_perm" if "FDR_DiD_perm" in df.columns else "FDR_DiD"
         if pd.notna(row.get(fdr_col)) and row[fdr_col] < 0.25:
@@ -534,7 +545,7 @@ def _panel_d(ax: plt.Axes, data: dict) -> None:
 
     ax.axvline(0, color="#333333", lw=0.9, ls="--", zorder=0, alpha=0.6)
     ax.set_yticks(y_pos)
-    ax.set_yticklabels([sig_display(f) for f in df["feature"]], fontsize=5)
+    ax.set_yticklabels([sig_display(f) for f in df["feature"]], fontsize=4)
     ax.set_xlabel("DiD coefficient (β, standardised)", fontsize=5)
     ax.set_title(
         "DiD effects across signatures",
@@ -629,7 +640,7 @@ def _panel_e(
         ax.set_xticks([0, 1])
         ax.set_xticklabels(VISITS, fontsize=8)
         ax.set_xlim(-0.35, 1.35)
-        ax.tick_params(axis="y", labelsize=7)
+        ax.tick_params(axis="y", labelsize=5)
 
         # FIX v1 Issue 5: use permutation p-value for title
         p_val = row.get("p_DiD_perm", np.nan)
@@ -878,19 +889,32 @@ def _panel_h(ax: plt.Axes, data: dict) -> None:
     y_pos  = np.arange(len(df))
     colors = [COL_TREAT if v > 0 else COL_CTRL for v in df["d"].values]
 
-    ax.hlines(y_pos, 0, df["d"].values, colors=colors, lw=2, zorder=2)
-    ax.scatter(df["d"].values, y_pos, c=colors, s=35,
-               edgecolor="white", linewidth=0.5, zorder=3)
+    ax.hlines(y_pos, 0, df["d"].values, colors=colors, lw=1.2, zorder=2)
+    ax.scatter(df["d"].values, y_pos, c=colors, s=20,
+               edgecolor="white", linewidth=0.4, zorder=3)
     ax.axvline(0, ls=":", color=COL_GRAY, lw=0.8, zorder=0)
 
     ax.set_yticks(y_pos)
-    ax.set_yticklabels(df["display"].values, fontsize=8)
+    ax.set_yticklabels(df["display"].values, fontsize=4)
     ax.set_xlabel(
         f"Hedge's g ({DESIGN.arm_treated} - {DESIGN.arm_control})",
         fontsize=9,
     )
     ax.set_title("Effect Size of Arm Separation", fontsize=11,
                  fontweight="bold")
+
+    handles = [
+        Line2D([0], [0], marker="o", color="w",
+               markerfacecolor=COL_TREAT, markersize=4,
+               label=f"{DESIGN.arm_treated} ↑"),
+        Line2D([0], [0], marker="o", color="w",
+               markerfacecolor=COL_CTRL, markersize=4,
+               label=f"{DESIGN.arm_control} ↑"),
+    ]
+    ax.legend(handles=handles, fontsize=5,
+              loc="upper left",
+              frameon=True, framealpha=0.9,
+              borderpad=0.3, labelspacing=0.2, handlelength=1.0)
     despine(ax)
 
 
@@ -995,16 +1019,16 @@ def _panel_i(ax: plt.Axes, data: dict, *, show_note: bool = True) -> None:
     for i, (_, row) in enumerate(df.iterrows()):
         color = COL_TREAT if row["DID2"] > 0 else COL_CTRL
         ax.hlines(y_pos[i], row["ci_lo"], row["ci_hi"],
-                  color=color, linewidth=2.0, alpha=1.0, zorder=1)
-        ax.scatter(row["DID2"], y_pos[i], color=color, s=30,
-                   edgecolors="white", linewidths=0.8, zorder=2)
+                  color=color, linewidth=1.2, alpha=1.0, zorder=1)
+        ax.scatter(row["DID2"], y_pos[i], color=color, s=18,
+                   edgecolors="white", linewidths=0.5, zorder=2)
         if not (row["ci_lo"] < 0 < row["ci_hi"]):
             ax.text(row["ci_hi"] + 0.02, y_pos[i], "*",
                     va="center", fontsize=10, fontweight="bold", color=color)
 
     ax.axvline(0, color="#333333", lw=0.9, ls="--", zorder=0, alpha=0.6)
     ax.set_yticks(y_pos)
-    ax.set_yticklabels([sig_display(f) for f in df["feature"]], fontsize=5)
+    ax.set_yticklabels([sig_display(f) for f in df["feature"]], fontsize=4)
     ax.set_xlabel(
         r"DID$_2$ = DID$_{\mathrm{R}}$ $-$ DID$_{\mathrm{NR}}$ (standardised $\Delta$)",
         fontsize=5,
@@ -1093,7 +1117,7 @@ def _panel_g(ax: plt.Axes, data: dict) -> None:
 
     ax.axvline(0, ls=":", color=COL_GRAY, lw=0.8, zorder=0)
     ax.set_yticks(y_pos)
-    ax.set_yticklabels(display_names, fontsize=5)
+    ax.set_yticklabels(display_names, fontsize=4)
     ax.set_xlabel(r"Mean $\Delta$ score (Post $-$ Pre)", fontsize=5)
     ax.set_title("Signature changes by arm and response",
                  fontsize=11, fontweight="bold")
@@ -1345,7 +1369,7 @@ def generate() -> None:
 
     outer = fig_c.add_gridspec(
         4, 1,
-        height_ratios=[1, 2.2, 1.8, 1],
+        height_ratios=[1, 3.3, 2.2, 1.3],
         hspace=0.55,
         left=0.10, right=0.95, top=0.97, bottom=0.05,
     )
@@ -1389,7 +1413,7 @@ def generate() -> None:
 
     # Panels B, C, G — move below-axis legends inside plot
     _inside = {
-        ax_b: "lower right",
+        ax_b: "lower left",
         ax_c: "lower right",
     }
     for ax_target, loc in _inside.items():
@@ -1433,7 +1457,8 @@ def generate() -> None:
             handles=handles_a, labels=labels_a,
             fontsize=5,
             loc="upper left",
-            bbox_to_anchor=(0.04, 1.0),  # increase 0.08 to nudge further right
+            bbox_to_anchor=(0.04, 1.08),
+            ncol=3,
             frameon=True, framealpha=0.85,
             handlelength=0.8, handletextpad=0.2,
             borderpad=0.2, labelspacing=0.15,

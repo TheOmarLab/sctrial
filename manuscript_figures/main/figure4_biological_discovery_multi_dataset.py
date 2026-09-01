@@ -1697,8 +1697,13 @@ def _tnbc_volcano(ax, data: dict, *, composite: bool = False):
 
     from adjustText import adjust_text as _adjust_text
 
-    _lbl_fs = 3.5 if composite else 6.5
+    _lbl_fs = 5.5 if composite else 6.5
     _arrow_lw = 0.25 if composite else 0.4
+
+    # Store original data-point coords before adjust_text moves labels
+    text_origins = [
+        (row[beta_col], row["nlog10"]) for _, row in labelled_rows.iterrows()
+    ]
 
     texts = []
     for _, row in labelled_rows.iterrows():
@@ -1711,10 +1716,9 @@ def _tnbc_volcano(ax, data: dict, *, composite: bool = False):
 
     x_span = df[beta_col].max() - df[beta_col].min()
     y_span = df["nlog10"].max() - df["nlog10"].min()
+    # No arrowprops here — arrows are drawn manually after all nudges
     _adjust_text(
         texts, ax=ax,
-        arrowprops=dict(arrowstyle="-", color="#888888", lw=_arrow_lw,
-                        shrinkA=5, shrinkB=3),
         force_text=(2.0, 2.0),
         force_points=(3.5, 3.5),
         expand=(1.8, 2.0),
@@ -1722,6 +1726,28 @@ def _tnbc_volcano(ax, data: dict, *, composite: bool = False):
         max_move=(x_span * 0.25, y_span * 0.25),
         only_move="xy",
     )
+    # Manual nudge: move PRSS53 label down so arrow angle changes
+    for _t in texts:
+        if _t.get_text() == "PRSS53":
+            _tx, _ty = _t.get_position()
+            _t.set_position((_tx, _ty - y_span * 0.06))
+
+    # CHI3L2: force label to the right of its data point
+    for _t, (ox, oy) in zip(texts, text_origins):
+        if _t.get_text() == "CHI3L2":
+            _t.set_position((ox + x_span * 0.04, oy))
+            _t.set_ha("left")
+
+    # Draw arrows from original data points to final label positions
+    for _t, (ox, oy) in zip(texts, text_origins):
+        tx, ty = _t.get_position()
+        if abs(tx - ox) > 1e-9 or abs(ty - oy) > 1e-9:
+            ax.annotate(
+                "", xy=(ox, oy), xytext=(tx, ty),
+                arrowprops=dict(arrowstyle="-", color="#888888", lw=_arrow_lw,
+                                shrinkA=3, shrinkB=5),
+                zorder=4,
+            )
 
     # Threshold line
     thresh_y = -np.log10(p_thresh)
@@ -1734,16 +1760,21 @@ def _tnbc_volcano(ax, data: dict, *, composite: bool = False):
                  fontweight="bold")
 
     # Legend: no footnotes, no summary boxes
-    legend_handles = [
-        mpatches.Patch(color=COLORS["treated"], alpha=0.8,
-                       label=f"{_TNBC_TREATED_ARM} ↑"),
-        mpatches.Patch(color=COLORS["control"], alpha=0.8,
-                       label=f"{_TNBC_CONTROL_ARM} ↑"),
-        mpatches.Patch(color=COLORS["gray"], alpha=0.3,
-                       label="Not significant"),
-    ]
-    ax.legend(handles=legend_handles, fontsize=10, loc="lower left",
-              frameon=True, framealpha=0.9)
+    if composite:
+        pass  # legend is created in the composite section with explicit transform
+    else:
+        legend_handles = [
+            mpatches.Patch(color=COLORS["treated"], alpha=0.8,
+                           label=f"{_TNBC_TREATED_ARM} ↑"),
+            mpatches.Patch(color=COLORS["control"], alpha=0.8,
+                           label=f"{_TNBC_CONTROL_ARM} ↑"),
+            mpatches.Patch(color=COLORS["gray"], alpha=0.3,
+                           label="Not significant"),
+        ]
+        ax.legend(handles=legend_handles, fontsize=10, loc="upper left",
+                  ncol=3, frameon=True, framealpha=0.9,
+                  borderpad=0.3, columnspacing=0.5, handlelength=0.8,
+                  handletextpad=0.4)
     despine(ax)
 
 
@@ -2792,7 +2823,7 @@ def _forest_plot(
         color = color_pos if es > 0 else color_neg
 
         lw = 1.2
-        ms = 3.0
+        ms = 2.2
 
         ax.plot([lo, hi], [i, i], color=color, lw=lw, solid_capstyle="round")
         ax.plot(
@@ -3561,6 +3592,13 @@ def panel_f_heatmap(ax, data: dict[str, Any]) -> None:
                        fontsize=7.5)
     ax.set_yticklabels(ax.get_yticklabels(), rotation=0, fontsize=8.5)
 
+    ax.text(
+        0.5, 1.01, "* FDR < 0.05   † FDR 0.05–0.1",
+        transform=ax.transAxes,
+        fontsize=6, color="0.45", ha="center", va="bottom",
+        style="italic",
+    )
+
 
 
 
@@ -3782,7 +3820,7 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
     _prev_rc = {k: plt.rcParams[k] for k in _SMALL_RC}
     plt.rcParams.update(_SMALL_RC)
 
-    fig_c = plt.figure(figsize=(180 * _mm, 195 * _mm))
+    fig_c = plt.figure(figsize=(180 * _mm, 200 * _mm))
 
     # 9 rows; height sum ≈ 7.55  →  195 mm / 7.55 ≈ 25.8 mm per unit
     outer = fig_c.add_gridspec(
@@ -3792,9 +3830,9 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
             0.70,  # 1:  spacer
             0.90,  # 2:  D | E       — TNBC
             0.75,  # 3:  section spacer
-            0.95,  # 4:  F | G | H
+            1.15,  # 4:  F | G | H
             0.65,  # 5:  spacer
-            0.95,  # 6:  I | J | K
+            1.15,  # 6:  I | J | K
             0.65,  # 7:  spacer
             1.25,  # 8:  L | M
         ],
@@ -3811,7 +3849,7 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
 
     # ── Row 2: left-spacer | D | mid-spacer | E | mid-spacer | F ───
     gs2 = outer[2].subgridspec(1, 6, wspace=0.30,
-                                width_ratios=[0.10, 0.95, 0.15, 0.95, 0.40, 0.80])
+                                width_ratios=[0.10, 1.10, 0.15, 0.95, 0.40, 0.80])
     ax_d = fig_c.add_subplot(gs2[1])
     ax_e = fig_c.add_subplot(gs2[3])
     ax_f_abund = fig_c.add_subplot(gs2[5])
@@ -3829,7 +3867,7 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
     ax_k = fig_c.add_subplot(gs6[2])
 
     # ── Row 8: L | M ─────────────────────────────────────────────────
-    gs8 = outer[8].subgridspec(1, 2, wspace=1.10, width_ratios=[1.2, 0.75])
+    gs8 = outer[8].subgridspec(1, 2, wspace=0.85, width_ratios=[1.3, 0.32])
     ax_l = fig_c.add_subplot(gs8[0])
     ax_m = fig_c.add_subplot(gs8[1])
 
@@ -3838,22 +3876,36 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
     ax_a.set_title("Gene-Level Volcano (TNBC DiD)", fontsize=4.5,
                    fontweight="bold")
     ax_a.xaxis.label.set_fontsize(4.5)
+    ax_a.yaxis.label.set_fontsize(5.0)
+    ax_a.tick_params(axis='x', labelsize=4.5)
+    ax_a.tick_params(axis='y', labelsize=4.5)
+    _a_leg = ax_a.legend(
+        handles=[
+            mpatches.Patch(color=COLORS["treated"], alpha=0.8,
+                           label=f"{_TNBC_TREATED_ARM} ↑"),
+            mpatches.Patch(color=COLORS["control"], alpha=0.8,
+                           label=f"{_TNBC_CONTROL_ARM} ↑"),
+            mpatches.Patch(color=COLORS["gray"], alpha=0.3, label="n.s."),
+        ],
+        fontsize=3.5, loc="upper left",
+        frameon=True, framealpha=0.9,
+        borderpad=0.2, handlelength=0.6, handletextpad=0.2,
+    )
 
     tnbc_waterfall(ax_b, data_tnbc)
     ax_b.set_title("Top Genes: TNBC DiD", fontsize=4.5, fontweight="bold")
-    ax_b.tick_params(axis='y', labelsize=4.0)
+    ax_b.tick_params(axis='y', labelsize=2.5)
+    ax_b.tick_params(axis='x', labelsize=4.5)
     ax_b.xaxis.label.set_fontsize(4.5)
-    # Thin crowded gene labels: show every other tick
+    # Show all gene labels at reduced font size
     _b_lbls = [t.get_text() for t in ax_b.get_yticklabels()]
     if _b_lbls:
-        ax_b.set_yticklabels(
-            [t if _k % 2 == 0 else "" for _k, t in enumerate(_b_lbls)],
-            fontsize=4.0,
-        )
+        ax_b.set_yticklabels(_b_lbls, fontsize=2.5)
 
     tnbc_gsea_bars(ax_c, data_tnbc)
     ax_c.set_title("Pathway Enrichment: TNBC", fontsize=4.5, fontweight="bold")
     ax_c.tick_params(axis='y', labelsize=3.5)
+    ax_c.tick_params(axis='x', labelsize=4.5)
     ax_c.xaxis.label.set_fontsize(4.5)
     ax_c.set_xticks([-2, 0, 2])
 
@@ -3861,7 +3913,7 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
     ax_d.set_title("Leading-Edge: TNBC", fontsize=4.5, fontweight="bold")
     _swap_leading_edge_axes(ax_d)
     ax_d.tick_params(axis='y', labelsize=4.0)
-    ax_d.tick_params(axis='x', labelsize=3.0)
+    ax_d.tick_params(axis='x', labelsize=4.0)
 
     _axes_before_e = set(fig_c.get_axes())
     tnbc_celltype_hm(ax_e, data_tnbc)
@@ -3991,7 +4043,7 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
     # Row 8: M N
     ax_l.text(_x2, _y2, "M", transform=ax_l.transAxes,
               fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    ax_m.text(-0.48, _y2, "N", transform=ax_m.transAxes,
+    ax_m.text(-0.78, _y2, "N", transform=ax_m.transAxes,
               fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
 
     plt.rcParams.update(_prev_rc)
