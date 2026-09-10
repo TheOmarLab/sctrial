@@ -37,7 +37,7 @@
 - **Effect size** estimation with confidence intervals
 
 <p align="center">
-  <img src="docs/source/_static/overview_figure.png" alt="sctrial overview — from scRNA-seq input through trial-aware analysis to statistical outputs" width="100%">
+  <img src="docs/source/_static/overview_figurev2.png" alt="sctrial overview — from scRNA-seq input through trial-aware analysis to statistical outputs" width="100%">
 </p>
 
 ## Key Features
