@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import logging
 import warnings
+from collections.abc import Callable
 
 import numpy as np
 import pandas as pd
@@ -167,12 +168,12 @@ def _pseudobulk_fe_crse(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
     return out
 
 
-ABLATION_VARIANTS = {
+ABLATION_VARIANTS: dict[str, tuple[str, Callable | None, str]] = {
     "cell_ols": ("Cell-level OLS", _cell_level_ols, "adata"),
     "pb_ols": ("Pseudobulk OLS", _pseudobulk_ols, "pseudobulk_means"),
     "pb_fe": ("Pseudobulk + FE", _pseudobulk_fe, "pseudobulk_means"),
     "pb_fe_crse": ("Pseudobulk + FE + CRSE", _pseudobulk_fe_crse, "pseudobulk_means"),
-    "sctrial_full": ("Full sctrial", None, "adata"),  # uses sctrial runner
+    "sctrial_full": ("Full sctrial", None, "adata"),
 }
 
 

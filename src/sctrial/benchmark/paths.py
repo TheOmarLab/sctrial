@@ -138,7 +138,7 @@ class ResultLayout:
         A CSV without a record is NOT complete: it is what a job killed part-way
         through an adaptive extension leaves behind.
         """
-        out = {}
+        out: dict[str, dict] = {}
         base = self.completion_for(grid) if grid else self.completion
         if not base.exists():
             return out

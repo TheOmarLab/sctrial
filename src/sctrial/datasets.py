@@ -10,7 +10,7 @@ import tarfile
 import urllib.error
 import urllib.request
 import warnings
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from io import StringIO
 from pathlib import Path
 
@@ -357,7 +357,7 @@ def _sf_cell_base(name: str) -> str:
 
 def _join_published_labels(
     target_names: Sequence[str],
-    label_map: dict[str, object],
+    label_map: Mapping[str, object],
     *,
     normalise: Callable[[str], str] | None = None,
     label_desc: str = "published labels",
@@ -466,7 +466,7 @@ def _load_sade_feldman_published_labels(
     if mmc1.exists():
         df = pd.read_excel(mmc1, sheet_name="Cluster annotation-Fig1B-C")
         df.columns = [str(c).strip() for c in df.columns]
-        cmap = {
+        cmap: dict[str, object] = {
             str(n).strip(): int(c)
             for n, c in zip(df["Cell Name"], df["Cluster number"])
             if pd.notna(c)
@@ -479,7 +479,8 @@ def _load_sade_feldman_published_labels(
             f"G{c}" if c is not None else None for c in clusters
         ]
         out["cell_type_published"] = [
-            _SF_CLUSTER_NAMES.get(c) if c is not None else None for c in clusters
+            _SF_CLUSTER_NAMES.get(c) if c is not None else None  # type: ignore[call-overload]
+            for c in clusters
         ]
 
     for fname, sheet, key in (

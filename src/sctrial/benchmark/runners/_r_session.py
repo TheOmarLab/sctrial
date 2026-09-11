@@ -28,8 +28,10 @@ import logging
 import subprocess
 import tempfile
 import threading
+from io import RawIOBase
 from pathlib import Path
 from string import Template
+from typing import IO
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +79,12 @@ class _RSession:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
+        assert self._stdin is not None
+        assert self._stdout is not None
+        assert self._stderr is not None
+        self._stdin: IO[bytes] = self._stdin
+        self._stdout: IO[bytes] = self._stdout
+        self._stderr: IO[bytes] = self._stderr
 
         # Drain stderr in background so the pipe never blocks.
         self._stderr_lines: list[str] = []
@@ -92,7 +100,7 @@ class _RSession:
 
     # ------------------------------------------------------------------
     def _drain_stderr(self) -> None:
-        for raw in self._proc.stderr:
+        for raw in self._stderr:
             line = raw.decode(errors="replace").rstrip()
             self._stderr_lines.append(line)
             if line.startswith("R ERROR:") or "Error" in line:
@@ -110,7 +118,7 @@ class _RSession:
 
         def _reader() -> None:
             while True:
-                line = self._proc.stdout.readline()
+                line = self._stdout.readline()
                 if not line:
                     crashed.set()
                     ready.set()
@@ -145,8 +153,8 @@ class _RSession:
         self._send(script_path, timeout=timeout)
 
     def _send(self, script_path: str, timeout: float) -> None:
-        self._proc.stdin.write((script_path.strip() + "\n").encode())
-        self._proc.stdin.flush()
+        self._stdin.write((script_path.strip() + "\n").encode())
+        self._stdin.flush()
 
         done = threading.Event()
         crashed = threading.Event()
@@ -155,7 +163,7 @@ class _RSession:
 
         def _reader() -> None:
             while True:
-                line = self._proc.stdout.readline()
+                line = self._stdout.readline()
                 if not line:
                     crashed.set()
                     done.set()
@@ -190,8 +198,8 @@ class _RSession:
     def close(self) -> None:
         if self.is_alive():
             try:
-                self._proc.stdin.write(b"QUIT\n")
-                self._proc.stdin.flush()
+                self._stdin.write(b"QUIT\n")
+                self._stdin.flush()
                 self._proc.wait(timeout=10)
             except Exception:
                 self._proc.kill()
