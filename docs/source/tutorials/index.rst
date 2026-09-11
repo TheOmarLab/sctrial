@@ -8,5 +8,6 @@ End-to-end Jupyter Notebook tutorials demonstrating ``sctrial`` on real-world cl
 
    example_covid19_stephenson
    example_immunotherapy_sade_feldman
+   example_tnbc_zhang
    example_vaccine_immport
    stress_test_real_scale

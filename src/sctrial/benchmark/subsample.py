@@ -57,6 +57,7 @@ def run_subsampling(
 
     from scipy.stats import spearmanr
 
+    from .contracts import prepare_inputs_from_adata
     from .metrics import compute_topk_jaccard
     from .orchestrator import _dispatch_method
 
@@ -66,19 +67,19 @@ def run_subsampling(
 
     # First: run full-data reference for each method
     print(f"Running full-data reference ({len(methods)} methods, {len(gene_cols)} genes)...")
-    from sctrial.stats.pseudobulk import pseudobulk_expression
-
-    pb_full = pseudobulk_expression(
+    # Same contracts as the simulated path; see the note in permutation.py.
+    inputs_full = prepare_inputs_from_adata(
         adata,
         gene_cols,
-        groupby=[participant_col, visit_col, arm_col],
+        participant_col=participant_col,
+        visit_col=visit_col,
+        arm_col=arm_col,
     )
-    sim_full = {"adata": adata, "pseudobulk": pb_full}
 
     full_pvals = {}
     for method in methods:
         try:
-            res = _dispatch_method(method, sim_full, gene_cols)
+            res = _dispatch_method(method, inputs_full)
             full_pvals[method] = pd.Series({g: res[g]["pvalue"] for g in gene_cols})
         except Exception as exc:
             logger.warning("Full-data %s failed: %s", method, exc)
@@ -99,16 +100,17 @@ def run_subsampling(
             mask = adata.obs[participant_col].isin(sub_pids)
             adata_sub = adata[mask].copy()
 
-            pb_sub = pseudobulk_expression(
+            inputs_sub = prepare_inputs_from_adata(
                 adata_sub,
                 gene_cols,
-                groupby=[participant_col, visit_col, arm_col],
+                participant_col=participant_col,
+                visit_col=visit_col,
+                arm_col=arm_col,
             )
-            sim_sub = {"adata": adata_sub, "pseudobulk": pb_sub}
 
             for method in methods:
                 try:
-                    res = _dispatch_method(method, sim_sub, gene_cols)
+                    res = _dispatch_method(method, inputs_sub)
                     sub_pvals = pd.Series({g: res[g]["pvalue"] for g in gene_cols})
 
                     # Spearman ρ

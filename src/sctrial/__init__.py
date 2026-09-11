@@ -17,6 +17,7 @@ from .datasets import (
     load_cart,
     load_sade_feldman,
     load_stephenson_data,
+    load_tnbc_zhang,
     load_vaccine_gse171964,
     verify_paired_participants,
 )
@@ -38,7 +39,14 @@ from .plotting import (
     plot_within_arm_comparison,
     signed_logp,
 )
-from .preprocessing import add_log1p_cpm_layer
+from .preprocessing import (
+    add_log1p_cpm_layer,
+    add_qc_class_metrics,
+    drop_artifact_genes,
+    exclude_artifacts_from_hvg,
+    flag_artifact_genes,
+    is_artifact_gene,
+)
 from .scoring import ScoreMethod, score_gene_sets, score_gene_sets_aucell
 from .stats._extract import extract_gene_vector
 from .stats.abundance import abundance_did
@@ -128,6 +136,11 @@ __all__ = [
     "DiDConfig",
     # Preprocessing & Scoring
     "add_log1p_cpm_layer",
+    "add_qc_class_metrics",
+    "drop_artifact_genes",
+    "exclude_artifacts_from_hvg",
+    "flag_artifact_genes",
+    "is_artifact_gene",
     "score_gene_sets",
     "score_gene_sets_aucell",
     "ScoreMethod",
@@ -142,6 +155,7 @@ __all__ = [
     "load_vaccine_gse171964",
     "load_aml",
     "load_cart",
+    "load_tnbc_zhang",
     "harmonize_response",
     "count_paired",
     "verify_paired_participants",

@@ -480,7 +480,28 @@ def within_arm_comparison(
                 UserWarning,
                 stacklevel=2,
             )
-        fit = model.fit(cov_type="cluster", cov_kwds={"groups": clusters_aligned})
+        # A perfectly saturated paired design (n participants x 2 visits, with
+        # participant fixed effects) leaves zero residual degrees of freedom, so
+        # statsmodels' cluster-robust covariance raises ZeroDivisionError on its
+        # (nobs-1)/(nobs-k_params) small-sample correction before the degenerate-SE
+        # fallback below can run. Catch it and fall back to the nonrobust fit,
+        # which is valid here because participant FE already absorb the
+        # within-cluster correlation. Without this the exception propagates and
+        # aborts the whole caller (it silently killed all five AML GSEA libraries).
+        effective_cov_type = "cluster"
+        try:
+            fit = model.fit(cov_type="cluster", cov_kwds={"groups": clusters_aligned})
+        except (ZeroDivisionError, ValueError, np.linalg.LinAlgError) as exc:
+            warnings.warn(
+                f"Cluster-robust fit failed for feature '{feat}' with "
+                f"{n_units_feat} clusters ({type(exc).__name__}: {exc}); the model "
+                "is likely saturated (no residual degrees of freedom). Falling "
+                "back to nonrobust (homoskedastic) SE.",
+                UserWarning,
+                stacklevel=2,
+            )
+            fit = model.fit()
+            effective_cov_type = "nonrobust"
 
         beta = float(fit.params.get("visit_num", np.nan))
         se = float(fit.bse.get("visit_num", np.nan))
@@ -489,7 +510,6 @@ def within_arm_comparison(
         # Fallback: if cluster-robust SE is degenerate (NaN), re-fit
         # with nonrobust SE.  Participant FE already absorbs within-
         # cluster correlation so homoskedastic SE is valid.
-        effective_cov_type = "cluster"
         if not np.isfinite(se) or not np.isfinite(p_val):
             warnings.warn(
                 f"Cluster-robust SE is degenerate (NaN) for feature '{feat}' "
