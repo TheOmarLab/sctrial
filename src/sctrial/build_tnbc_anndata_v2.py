@@ -10,17 +10,16 @@ Processes EXACTLY like the existing 5 datasets in sctrial:
 
 Output: try/GSE169246/tnbc_processed_responces.h5ad
 """
-import os
-import sys
+import gc
 import gzip
 import logging
-import gc
+from pathlib import Path
+
+import anndata as ad
 import numpy as np
 import pandas as pd
 import scanpy as sc
-import anndata as ad
 from scipy.io import mmread
-from pathlib import Path
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
@@ -222,9 +221,9 @@ def main():
 
     # ── 2. Load barcodes and features ─────────────────────────────
     with gzip.open(str(DATA_DIR / "GSE169246_TNBC_RNA.barcode.tsv.gz"), "rt") as f:
-        barcodes = [l.strip() for l in f]
+        barcodes = [line.strip() for line in f]
     with gzip.open(str(DATA_DIR / "GSE169246_TNBC_RNA.feature.tsv.gz"), "rt") as f:
-        features_raw = [l.strip().split("\t") for l in f]
+        features_raw = [line.strip().split("\t") for line in f]
     gene_ids = [f[0] for f in features_raw]
     gene_names = [f[1] if len(f) > 1 else f[0] for f in features_raw]
 
@@ -326,7 +325,7 @@ def main():
 
     # ── 11. Summary ───────────────────────────────────────────────
     logger.info(f"\n{'='*60}")
-    logger.info(f"FINAL DATASET SUMMARY")
+    logger.info("FINAL DATASET SUMMARY")
     logger.info(f"{'='*60}")
     logger.info(f"  Cells: {adata.n_obs:,}")
     logger.info(f"  Genes: {adata.n_vars:,}")
@@ -334,12 +333,12 @@ def main():
     logger.info(f"  Arms: {dict(adata.obs['arm'].value_counts())}")
     logger.info(f"  Visits: {dict(adata.obs['visit'].value_counts())}")
     logger.info(f"  Layers: {list(adata.layers.keys())}")
-    logger.info(f"  Cell types:")
+    logger.info("  Cell types:")
     for ct, n in adata.obs["cell_type"].value_counts().items():
         logger.info(f"    {ct}: {n:,} cells")
 
     # NEW: Response summary
-    logger.info(f"\n  Response by arm:")
+    logger.info("\n  Response by arm:")
     for arm in sorted(adata.obs["arm"].dropna().unique()):
         arm_pids = adata.obs[adata.obs["arm"] == arm]["participant_id"].unique()
         for pid in sorted(arm_pids):
@@ -347,7 +346,7 @@ def main():
             r  = pid_obs["response"].iloc[0]
             logger.info(f"    {pid} ({arm}): {r}")
 
-    logger.info(f"\n  Cells per patient-visit:")
+    logger.info("\n  Cells per patient-visit:")
     for pid in sorted(adata.obs["participant_id"].unique()):
         arm = adata.obs.loc[adata.obs["participant_id"] == pid, "arm"].iloc[0]
         r   = adata.obs.loc[adata.obs["participant_id"] == pid, "response"].iloc[0]
@@ -361,7 +360,7 @@ def main():
         missing_pids = adata.obs[adata.obs["response"].isna()]["participant_id"].unique()
         logger.warning(f"\n  WARNING: {n_missing} cells have no response label.")
         logger.warning(f"  Missing patient IDs: {sorted(missing_pids)}")
-        logger.warning(f"  These patients are missing from mmc3.xlsx or have 'Na' efficacy.")
+        logger.warning("  These patients are missing from mmc3.xlsx or have 'Na' efficacy.")
     else:
         logger.info(f"\n  All {adata.n_obs:,} cells have a valid response label. OK")
 
