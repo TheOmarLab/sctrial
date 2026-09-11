@@ -457,7 +457,7 @@ class SummaryAccumulator:
         if not allr:
             return {}
         pooled_r = np.concatenate(allr)
-        out = {
+        out: dict[str, object] = {
             "genewise_corr_within_ct_median": float(np.median(pooled_r)),
             "genewise_corr_within_ct_mean": float(np.mean(pooled_r)),
             "genewise_corr_within_ct_sd": float(np.std(pooled_r)),
@@ -1095,18 +1095,19 @@ def conditional_dispersion(
     if celltype_col is not None and celltype_col in obs.columns:
         keys.append(celltype_col)
     groups = obs.groupby(keys, observed=True).indices
-    order, starts, ends = [], [], []
+    order_list: list = []
+    starts, ends = [], []
     pos = 0
     for idx in groups.values():
         if len(idx) < 2:
             continue  # no residual degrees of freedom
-        order.append(np.sort(np.asarray(idx)))
+        order_list.append(np.sort(np.asarray(idx)))
         starts.append(pos)
         pos += len(idx)
         ends.append(pos)
-    if not order:
+    if not order_list:
         raise ValueError("no stratum has >= 2 cells; check the grouping columns")
-    order = np.concatenate(order)
+    order = np.concatenate(order_list)
     n_strata = len(starts)
 
     X = adata.layers[layer] if layer is not None else adata.X

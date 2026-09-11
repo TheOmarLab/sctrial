@@ -40,9 +40,9 @@ SUPP_FIGURES = {
     3: ("Supp Fig 3: Pseudoreplication Bias & Melanoma/TNBC Analysis",   "supp.supp_fig3_melanoma_tnbc_analysis"),
     4: ("Supp Fig 4: Model Diagnostics and Assumption Checks",           "supp.supp_fig4_model_diagnostics"),
     5: ("Supp Fig 5: Sensitivity and Robustness",                        "supp.supp_fig5_sensitivity_robustness"),
-    6: ("Supp Fig 6: Cross-Dataset Biological Consistency",              "supp.supp_fig6_cross_dataset_biology"),
-    7: ("Supp Fig 7: Heterogeneity and Temporal Dynamics",               "supp.supp_fig7_heterogeneity_temporal"),
-    8: ("Supp Fig 8: Benchmark Calibration, Power and Robustness",        "supp.supp_fig8_benchmark_calibration"),
+    6: ("Supp Fig 6: Benchmark Calibration, Power and Robustness",        "supp.supp_fig6_benchmark_calibration"),
+    7: ("Supp Fig 7: Cross-Dataset Biological Consistency",              "supp.supp_fig7_cross_dataset_biology"),
+    8: ("Supp Fig 8: Heterogeneity and Temporal Dynamics",               "supp.supp_fig8_heterogeneity_temporal"),
 }
 
 

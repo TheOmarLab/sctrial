@@ -423,6 +423,7 @@ def get_sade_feldman():
         max_cells_per_participant_visit=None,
         processed_name="sade_feldman_processed_v6.h5ad",
         force_reprocess=False,
+        allow_download=True
     )
     print(f"  Sade-Feldman: {adata.n_obs:,} cells, {adata.n_vars:,} genes")
     _DATA_CACHE["sf"] = adata
@@ -449,7 +450,7 @@ def get_stephenson():
     if "steph" in _DATA_CACHE:
         return _DATA_CACHE["steph"]
     from sctrial.datasets import load_stephenson_data
-    adata = load_stephenson_data(force_reprocess=False)
+    adata = load_stephenson_data(force_reprocess=False, allow_download=True)
     print(f"  Stephenson: {adata.n_obs:,} cells, {adata.n_vars:,} genes")
     _DATA_CACHE["steph"] = adata
     return adata
@@ -460,7 +461,7 @@ def get_vaccine():
     if "vax" in _DATA_CACHE:
         return _DATA_CACHE["vax"]
     from sctrial.datasets import load_vaccine_gse171964
-    adata = load_vaccine_gse171964()
+    adata = load_vaccine_gse171964(allow_download=True)
     if "pt_id" in adata.obs.columns and "participant_id" not in adata.obs.columns:
         adata.obs["participant_id"] = adata.obs["pt_id"]
     if "day" in adata.obs.columns and "visit" not in adata.obs.columns:
@@ -475,7 +476,7 @@ def get_aml():
     if "aml" in _DATA_CACHE:
         return _DATA_CACHE["aml"]
     from sctrial.datasets import load_aml
-    adata = load_aml()
+    adata = load_aml(allow_download=True)
     print(f"  AML: {adata.n_obs:,} cells, {adata.n_vars:,} genes")
     _DATA_CACHE["aml"] = adata
     return adata
@@ -486,7 +487,7 @@ def get_cart():
     if "cart" in _DATA_CACHE:
         return _DATA_CACHE["cart"]
     from sctrial.datasets import load_cart
-    adata = load_cart()
+    adata = load_cart(allow_download=True)
     print(f"  CAR-T: {adata.n_obs:,} cells, {adata.n_vars:,} genes")
     _DATA_CACHE["cart"] = adata
     return adata

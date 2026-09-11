@@ -21,15 +21,15 @@
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=400G
 #SBATCH --time=72:00:00
-#SBATCH --output=/common/omarmlab/members/omar/projects/sctrial/logs/bench_%x_%j.out
-#SBATCH --error=/common/omarmlab/members/omar/projects/sctrial/logs/bench_%x_%j.err
+#SBATCH --output=/common/vasanthakup/projects/sctrial/logs/bench_%x_%j.out
+#SBATCH --error=/common/vasanthakup/projects/sctrial/logs/bench_%x_%j.err
 
 # Source the profile BEFORE enabling strict mode: the system /etc/bashrc reads an
 # unset variable, so `set -u` aborts the job at line 1 with a message that looks
 # like a cluster problem rather than a script bug.
 source ~/.bashrc
 set -eo pipefail
-PROJECT=/common/omarmlab/members/omar/projects/sctrial
+PROJECT=/common/vasanthakup/projects/sctrial
 cd "$PROJECT"
 mkdir -p logs
 export SCTRIAL_MANUSCRIPT_DIR="$PROJECT/manuscript"
@@ -94,6 +94,6 @@ if [ -n "$DESIGN" ]; then DESIGN_ARG=(--designs "$DESIGN"); fi
 if [ -n "$PANELS" ]; then DESIGN_ARG+=(--panels $PANELS); fi
 
 echo "=== $GRID grid, $N_ITER iterations, $N_JOBS workers, design=${DESIGN:-all} ($(date)) ==="
-micromamba run -n sctrial python scripts/run_benchmark.py \
+conda run -n sctrial_benchmark python scripts/run_benchmark.py \
     --phase "$PHASE" --n-jobs "$N_JOBS" --n-iterations "$N_ITER" "${DESIGN_ARG[@]}"
 echo "=== done ($(date)) ==="
