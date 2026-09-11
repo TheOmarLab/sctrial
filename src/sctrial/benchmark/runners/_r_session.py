@@ -28,7 +28,6 @@ import logging
 import subprocess
 import tempfile
 import threading
-from io import RawIOBase
 from pathlib import Path
 from string import Template
 from typing import IO
